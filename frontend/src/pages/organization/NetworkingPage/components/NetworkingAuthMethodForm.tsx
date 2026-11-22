@@ -294,7 +294,6 @@ export const NetworkingAuthMethodForm = ({
   useEffect(() => {
     reset(defaultValues);
     // The individual method values below are the server-backed reset boundary.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentMethod.method,
     initialAws?.allowedPrincipalArns,

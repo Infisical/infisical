@@ -76,6 +76,7 @@ Facts that usually fail this test:
 - Warnings about mistakes the steps don't lead the reader to make
 - Answers to questions the reader doesn't have, such as which response code an endpoint returns on a page about something else
 - Facts that another section or page already covers (link to it instead)
+- How a mechanism works internally, when the reader only needs to run the command, such as why a request needs the proxy's token, or which environment variable the CLI sets and where the CLI gets its value
 
 If a fact only matters to some readers, such as readers on an older plan or with an unusual setup, put it in a callout next to where those readers will run into it, or in a troubleshooting section.
 
@@ -111,6 +112,18 @@ Don't refer readers to content "above" or "below". Link to the section instead, 
 
 **Write:** These limits differ from the [Infisical Cloud limits](#limits-on-infisical-cloud).
 
+### Put the link inside the sentence that states the fact
+
+State the fact, and put the link inside that sentence. Don't add a separate sentence or clause whose only job is to point the reader somewhere else.
+
+**Instead of:** A machine identity needs access to referenced secrets too, as [secret referencing](/documentation/platform/secret-reference#secret-referencing) describes.
+
+**Instead of:** For the permissions that secret references need, see [secret referencing](/documentation/platform/secret-reference#secret-referencing).
+
+**Write:** If a secret [references another secret](/documentation/platform/secret-reference#secret-referencing), the machine identity that fetches it needs read access to both. Without access to the referenced secret, the reference doesn't resolve.
+
+Never write "as [X] describes", "as [X] explains", "as described in [X]", "For X, see [Y]", or "To see X, see [Y]". The one exception is a single line that points to a full reference or explanation. For example: "For the full reference, see the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint."
+
 ### Say how, whenever you say someone can do something
 
 If you tell the reader they can do something, link to the instructions for doing it. If no page has those instructions and the steps are short, write the steps on the page.
@@ -119,13 +132,21 @@ If you tell the reader they can do something, link to the instructions for doing
 
 **Write:** A super admin can change these limits in the [Server Console](/documentation/platform/admin-panel/server-admin).
 
-### Refer to endpoints by what they do, and link them
+### Refer to endpoints by name, and link them
 
-In a sentence, describe what an endpoint does and link to the endpoint's reference page. Use the method and path only in code blocks. Link every endpoint you mention, even an endpoint you mention only in passing.
+In a sentence, refer to an endpoint by its name followed by the word "endpoint", as in "the Create session endpoint". Copy the name exactly from the title of the endpoint's reference page, which is in sentence case, and link the name to that page. Use the method and path only in code blocks. Link every endpoint you mention, even an endpoint you mention only in passing.
 
-**Instead of:** Call `POST /api/v1/auth/universal-auth/login` with the client ID and client secret.
+**Instead of:** Call `POST /api/v1/agent-vault/sessions` with the access bundle's name.
 
-**Write:** Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret.
+**Or:** Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the access bundle's name.
+
+**Write:** Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the access bundle's name.
+
+If the name alone could refer to more than one endpoint, add the product or auth method the endpoint belongs to. For example, write "the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint", not "the Login endpoint".
+
+### Link every CLI command you name
+
+Format a CLI command as inline code, and link it to the command's entry in the CLI reference, such as [`infisical agent-vault run`](/cli/reference#agent-vault-run). Leave commands inside code blocks unlinked.
 
 ---
 
@@ -174,6 +195,26 @@ Use `<Tabs>` when the reader can complete a task in more than one way:
   <Tab title="Web">Connect through your browser...</Tab>
   <Tab title="CLI">Use the command line...</Tab>
 </Tabs>
+```
+
+If the reader can complete a task in Infisical, with the CLI, with the API, or with an SDK, show every way the product supports, each in its own tab or code tab. Check the CLI reference, the API reference, and the SDK pages before you write that a task is only possible through one of them, such as "only through the API".
+
+### Request and response fields
+
+Document request and response fields with `<ResponseField>`, introduced by a short line. If there are many fields, put them inside an `<Expandable>`:
+
+```mdx
+Here's a reference for each of the body's fields:
+
+<Expandable title="body fields">
+  <ResponseField name="version" type="string">
+    The version of the body's format, currently `1`.
+  </ResponseField>
+
+  <ResponseField name="deliveryId" type="string">
+    The same value as the `webhook-id` header.
+  </ResponseField>
+</Expandable>
 ```
 
 ### Callouts
@@ -367,6 +408,30 @@ If a sentence applies only in some cases, state the case in an "if" clause. Don'
 
 A clause like "that already exists" is fine when it says which thing you mean instead of stating a condition, as in "Select the role that owns the secrets."
 
+### Name the thing instead of describing it with a wh-clause
+
+Don't make a clause that starts with "what", "where", "who", "how", "whether", "whatever", or "whoever" the whole subject or object of a sentence. The reader has to finish the clause before they know what it refers to, and the sentence rarely sounds like something a person would say. Name the thing with a noun instead. If the noun needs more detail, add the clause after the noun, as in "the path where you saved the certificate."
+
+The same applies to field and parameter descriptions. If a clause stands in for the value, name the value instead.
+
+**Instead of:** Replace `/etc/agent-vault/ca.pem` with where you put the certificate in the image.
+
+**Write:** Replace `/etc/agent-vault/ca.pem` with the path to the certificate in the image.
+
+**Instead of:** What the tab shows depends on the account type.
+
+**Write:** The tab shows different details for each account type.
+
+**Instead of:** `OTEL_EXPORT_OTLP_ENDPOINT`: Where telemetry data is pushed for collection
+
+**Write:** `OTEL_EXPORT_OTLP_ENDPOINT`: The URL of the collector that Infisical sends telemetry data to
+
+Common phrases that people say out loud are fine. The rule is about a clause that stands in for a noun the sentence should have named. For example, these sentences are fine:
+
+- When you pick an order, the **Use existing key** toggle decides what happens to its certificate.
+- Each machine identity has a role that controls what the identity can access.
+- Change where the CLI stores your login credentials.
+
 ### Split mid-sentence detours
 
 A clause in the middle of a sentence interrupts the sentence, and the reader has to go back to find where the main clause left off. Split the sentence into two sentences, or move the clause to the start of the sentence.
@@ -374,6 +439,20 @@ A clause in the middle of a sentence interrupts the sentence, and the reader has
 **Instead of:** The menu adds temporary access and once a grant exists removes folder access.
 
 **Write:** The same menu lets you add temporary access or remove access.
+
+**Instead of:** If the CLI can't create links on the host, such as on Windows without permission to create symbolic links, it copies the skill's folder instead.
+
+**Write:** If the CLI can't create links, it copies the skill's folder instead. This can happen on Windows, where creating links requires extra permissions.
+
+### Write one idea per sentence
+
+If a sentence strings several ideas together with "because" and "and", the reader can't tell which idea explains which. Split the sentence into one sentence per idea. Then make each sentence follow from the one before it, so the reader can see why each sentence comes next.
+
+**Instead of:** The image installs Cursor's agent CLI and git, which the worker needs. It also combines the proxy's certificate with the image's own certificates in `/etc/agent-vault/ca.pem`, because `SSL_CERT_FILE` replaces the certificates the worker trusts, and the worker still connects to Cursor without the proxy.
+
+**Write:** The image installs Cursor’s agent CLI and git, which the worker needs. It also builds `/etc/agent-vault/ca.pem`, which combines both the proxy's certificate and the image's own certificates. This is because the worker needs the proxy's certificate for requests through the proxy, and the image's certificates for its direct connection to Cursor (which doesn't go through the proxy).
+
+The first sentence says what the image installs. The second names the file the image builds, then says what goes in it. The third starts with "This is because", so the reader knows it explains the second sentence, and it gives the reason for each set of certificates.
 
 ### Name what actually happens
 
@@ -443,6 +522,7 @@ The problem can show up anywhere in a sentence:
 | A noun and the verb after it read as one phrase | Any endpoint that returns a list of resources paginates its response. ("Resources paginates" reads as one phrase) | If an endpoint returns multiple items, it splits them into pages. |
 | The first word reads as an instruction | List endpoints return one page of results per request. (The sentence starts like an instruction to list endpoints) | If an endpoint returns a list, each request gets one page of results. |
 | A missing "that" makes the sentence seem to end early | Select the role permissions apply to. (The sentence starts like an instruction to select "the role permissions") | Select the role that the permissions apply to. |
+| A qualifier lands after the noun it limits | The CLI adds the session's MCP servers that are ready to Claude Code. ("Ready to Claude Code" reads as one phrase, and the reader can't tell which servers are skipped) | The CLI passes the session's MCP servers to Claude Code. It skips any MCP server that's still waiting for personal values. |
 
 These examples aren't a complete list. Any word that can play more than one role can cause this problem, in any position in a sentence, and the problem can come from other kinds of words too. Read every sentence one word at a time, and at each word, check whether more than one reading fits so far. If more than one does, add a small word that settles the role, or reorder the sentence. Don't keep a sentence until it has only one possible reading.
 
@@ -540,9 +620,12 @@ Readers scan a page for the part they need. If a section has several paragraphs 
 
 This is worst when each paragraph is about a different topic. The section's heading names only one of those topics, so a reader who scans the headings for one of the others won't find it.
 
-Don't put two paragraphs about different topics under one heading, and don't put more than two paragraphs in a row under one heading even if they're about the same topic. A single paragraph that covers several topics has the same problem, so give each topic its own paragraph first. Then split the section up:
+Don't put two paragraphs about different topics under one heading, and don't put more than two paragraphs in a row under one heading even if they're about the same topic. A single paragraph that covers several topics has the same problem, so give each topic its own paragraph first.
+
+To check a section, list its blocks in order: paragraph, code block, list, callout. If three or more paragraphs or code blocks come in a row under one heading, split the section up:
 
 - Give each topic in the section its own heading
+- Put alternatives in `<Tabs>`, such as "With the CLI" and "Without the CLI"
 - Turn a set of parallel items, such as options, cases, or roles, into a list or a table
 - Turn a paragraph that has more than one action into `<Steps>`
 - Move a fix that only some readers need into a troubleshooting section
@@ -671,6 +754,22 @@ Choose a page's structure based on what the page is for. Pages with different pu
 
 `sidebarTitle` is optional. Add a `sidebarTitle` when the page title is too long for the sidebar or
 doesn't make sense on its own in the sidebar. Without a `sidebarTitle`, the sidebar shows the page title.
+
+**Write the description as one plain clause.** Don't insert a second clause, start with "How", or break up a list with a clause.
+
+**Instead of:** Let the AI agents in your infrastructure call HTTP APIs and MCP servers, and reach databases and SSH servers, without having access to their credentials.
+
+**Write:** Let the AI agents in your infrastructure reach APIs, MCP servers, databases, and SSH servers without holding their credentials.
+
+**Headings and page titles name the topic.** Don't write a heading as a wh-clause, such as "How agents get skills" or "What gets recorded", or as a sentence. An imperative is fine, such as "Add a skill" or "Verify the signature". So is a noun with a short clause after it, such as "Users and groups you can add".
+
+**Instead of:** `## How agents get skills`, `## What gets recorded`
+
+**Write:** `## Skill installation`, `## Log contents`
+
+**Instead of:** `title: "How agents find their services"`
+
+**Write:** `title: "Service discovery"`
 
 **Headings name the topic in words a newcomer recognizes.** Readers often scan the headings before anything else on a page. If a heading is built around a code or a term the reader doesn't know yet, the heading won't help the reader find the section they need.
 

@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+export INFISICAL_DOMAIN="https://app.infisical.com"
+AGENT_VAULT_PROJECT_ID="<project-id>"
+ACCESS_BUNDLE="<access-bundle-name>"
+PROJECT="agent-run-$(date +%s)-$$"
+
+ACCESS_TOKEN=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/auth/universal-auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"clientId\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID\", \"clientSecret\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET\"}" \
+  | jq -r .accessToken)
+
+# The ttl only needs to outlast the longest run, because the script revokes the session when the run ends.
+SESSION=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/agent-vault/sessions" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"accessBundle\": \"$ACCESS_BUNDLE\", \"ttl\": \"20m\", \"projectId\": \"$AGENT_VAULT_PROJECT_ID\"}")
+SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
+
+cleanup() {
+  status=$?
+  # Removing the containers deletes the proxy's log, so print it first if the run failed.
+  [ "$status" -eq 0 ] || docker compose -p "$PROJECT" logs --no-log-prefix agent-vault-proxy || true
+  # The down command doesn't remove the agent's container, so remove it first.
+  docker rm -f "$PROJECT-agent" >/dev/null 2>&1 || true
+  docker compose -p "$PROJECT" down || true
+  curl -fsS -o /dev/null -X POST "$INFISICAL_DOMAIN/api/v1/agent-vault/sessions/$SESSION_ID/revoke" \
+    -H "Authorization: Bearer $ACCESS_TOKEN"
+}
+trap cleanup EXIT
+trap "exit 130" INT
+trap "exit 143" TERM
+
+export INFISICAL_AGENT_VAULT_SESSION_TOKEN=$(echo "$SESSION" | jq -r .session.token)
+# Run the agent in the background so that canceling the script stops the agent right away.
+echo "$1" | docker compose -p "$PROJECT" run --rm -T --name "$PROJECT-agent" agent &
+wait $!

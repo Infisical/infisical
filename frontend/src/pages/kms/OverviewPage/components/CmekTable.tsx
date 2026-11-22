@@ -8,9 +8,12 @@ import {
   DownloadIcon,
   EllipsisIcon,
   FileSignatureIcon,
+  GlobeIcon,
+  GlobeLockIcon,
   ImportIcon,
   InfoIcon,
   KeyIcon,
+  LinkIcon,
   LockIcon,
   PencilIcon,
   RotateCwIcon,
@@ -114,6 +117,18 @@ const getStatusBadgeProps = (
     return { variant: "danger", label: "Disabled" };
   }
   return { variant: "success", label: "Active" };
+};
+
+const copyToClipboard = async (value: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    createNotification({ type: "info", text: `${label} copied to clipboard` });
+  } catch {
+    createNotification({
+      type: "error",
+      text: `Couldn't copy the ${label}. Allow clipboard access in your browser and try again.`
+    });
+  }
 };
 
 const KeyAction = ({
@@ -235,6 +250,22 @@ export const CmekTable = () => {
     });
   };
 
+  const handleTogglePublicKeyPublished = async ({
+    id: keyId,
+    name,
+    isPublicKeyPublished
+  }: TCmek) => {
+    await updateCmek.mutateAsync({
+      keyId,
+      projectId,
+      isPublicKeyPublished: !isPublicKeyPublished
+    });
+    createNotification({
+      text: `Public key of "${name}" ${isPublicKeyPublished ? "unpublished" : "published"}`,
+      type: "success"
+    });
+  };
+
   const handleBulkExport = async () => {
     if (selectedKeyIds.length > 100) {
       createNotification({ text: "Cannot export more than 100 keys at once", type: "error" });
@@ -298,6 +329,9 @@ export const CmekTable = () => {
     ProjectPermissionCmekActions.ExportPrivateKey,
     ProjectPermissionSub.Cmek
   );
+  const cannotPublishPublicKey =
+    cannotEditKey ||
+    permission.cannot(ProjectPermissionCmekActions.PublishPublicKey, ProjectPermissionSub.Cmek);
   const cannotReadKey = permission.cannot(
     ProjectPermissionCmekActions.Read,
     ProjectPermissionSub.Cmek
@@ -506,8 +540,13 @@ export const CmekTable = () => {
                       isDisabled,
                       isExportable,
                       hasDeleteProtection,
-                      keyUsage
+                      keyUsage,
+                      isPublicKeyPublished,
+                      kid,
+                      jwksUrl
                     } = cmek;
+                    // A disabled key's URL returns 404, so it isn't shown as public
+                    const isPublicKeyServed = isPublicKeyPublished && !isDisabled;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
                     const isSelected = selectedKeyIds.includes(id);
 
@@ -630,7 +669,21 @@ export const CmekTable = () => {
                         </TableCell>
                         <TableCell>{formatKmsKeyAlgorithm(algorithm)}</TableCell>
                         <TableCell>
-                          <Badge variant={variant}>{label}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={variant}>{label}</Badge>
+                            {isPublicKeyServed && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="info">Public</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {jwksUrl
+                                    ? `Public key published at ${jwksUrl}`
+                                    : "Public key published"}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>
@@ -696,6 +749,35 @@ export const CmekTable = () => {
                                       <CircleCheckIcon className="mr-2 size-4" />
                                       Verify Data
                                     </KeyAction>
+                                    {kid && (
+                                      <KeyAction
+                                        onClick={() => handleTogglePublicKeyPublished(cmek)}
+                                        disabledReason={
+                                          cannotPublishPublicKey ? "Access Restricted" : undefined
+                                        }
+                                      >
+                                        {isPublicKeyPublished ? (
+                                          <GlobeLockIcon className="mr-2 size-4" />
+                                        ) : (
+                                          <GlobeIcon className="mr-2 size-4" />
+                                        )}
+                                        {isPublicKeyPublished ? "Unpublish" : "Publish"} Public Key
+                                      </KeyAction>
+                                    )}
+                                    {isPublicKeyServed && jwksUrl && (
+                                      <KeyAction
+                                        onClick={() => copyToClipboard(jwksUrl, "JWKS URL")}
+                                      >
+                                        <LinkIcon className="mr-2 size-4" />
+                                        Copy JWKS URL
+                                      </KeyAction>
+                                    )}
+                                    {isPublicKeyServed && kid && (
+                                      <KeyAction onClick={() => copyToClipboard(kid, "kid")}>
+                                        <CopyIcon className="mr-2 size-4" />
+                                        Copy kid
+                                      </KeyAction>
+                                    )}
                                   </>
                                 )}
                                 {keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC && (

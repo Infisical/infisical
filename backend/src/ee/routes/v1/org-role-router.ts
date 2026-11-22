@@ -44,6 +44,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createOrganizationRole",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "Create an organization role",
@@ -127,6 +128,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationRoleById",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "Get an organization role",
@@ -167,6 +169,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateOrganizationRole",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "Update an organization role",
@@ -258,6 +261,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteOrganizationRole",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "Delete an organization role",
@@ -320,6 +324,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizationRoles",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "List organization roles",
@@ -355,6 +360,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationRoleBySlug",
       hide: false,
       tags: [ApiDocsTags.OrganizationRoles],
       description: "Get an organization role by slug",
@@ -396,6 +402,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationPermissions",
       response: {
         200: z.object({
           memberships: z

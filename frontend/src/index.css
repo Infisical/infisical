@@ -164,7 +164,7 @@
   --color-proxied-service: oklch(51.4929% 0.1474105 306.2291);
 }
 
-/* Distinct neutral tones preserve surface depth and control contrast during migration. */
+/* Distinct neutral tones preserve surface depth and control contrast. */
 @theme {
   --color-border-bright: oklch(75.06158% 0.0030629 264.5385);
   --color-border-control: oklch(30.47636% 0.0077146 264.4536);
@@ -343,6 +343,27 @@ html[data-theme="light"] {
   --color-override: oklch(0.4138 0.0991 310.2);
   --color-override-foreground: var(--color-override);
   --color-proxied-service: oklch(0.4447 0.1461 309.7);
+}
+
+/* Declared after the light theme so the repoint wins at equal specificity; data-product is set by the root route. */
+html[data-product="cert-manager"] {
+  --color-project: var(--color-product-pki);
+}
+
+html[data-product="kms"] {
+  --color-project: var(--color-product-kms);
+}
+
+html[data-product="secret-scanning"] {
+  --color-project: var(--color-product-ss);
+}
+
+html[data-product="pam"] {
+  --color-project: var(--color-product-pam);
+}
+
+html[data-product="agent-vault"] {
+  --color-project: var(--color-product-av);
 }
 
 .product-color {

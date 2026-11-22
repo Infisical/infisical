@@ -11,7 +11,6 @@ import {
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import {
   FILTER_KINDS,
   FILTER_LABELS,
@@ -19,6 +18,7 @@ import {
   isFilterPresent,
   TFilterKind
 } from "./pki-sync-filter-fns";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const FILTER_HINTS: Record<TFilterKind, string> = {
   certificateOrderIds: "An order is a certificate and its renewals",

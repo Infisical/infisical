@@ -232,6 +232,16 @@ func signupClaims(tt *testing.T, loc *url.URL) map[string]any {
 // the select-organization page does.
 func Session(tt *testing.T, tn *harness.Tenant, login *http.Response) *api.ClientWithResponses {
 	tt.Helper()
+	selected := SelectOrganization(tt, tn, login, tn.OrgID.String())
+	require.Equalf(tt, http.StatusOK, selected.StatusCode(), "selecting the organization: %s", apierr.Body(selected.Body))
+	require.False(tt, selected.JSON200.IsMfaEnabled, "selecting the organization asked for MFA")
+	return tn.Client(tt, selected.JSON200.Token)
+}
+
+// SelectOrganization picks orgID with the session an SSO login set. Unlike Session, it
+// hands back the raw answer, so a test can see the MFA challenge.
+func SelectOrganization(tt *testing.T, tn *harness.Tenant, login *http.Response, orgID string) *api.SelectOrganizationV3Response {
+	tt.Helper()
 	ctx := tt.Context()
 	jid := RefreshCookie(login)
 	require.NotNil(tt, jid, "the login set no refresh cookie")
@@ -244,10 +254,22 @@ func Session(tt *testing.T, tn *harness.Tenant, login *http.Response) *api.Clien
 	require.Equalf(tt, http.StatusOK, refreshed.StatusCode(), "refreshing the SSO session: %s", apierr.Body(refreshed.Body))
 
 	selected, err := tn.Client(tt, refreshed.JSON200.Token).SelectOrganizationV3WithResponse(ctx,
-		api.SelectOrganizationV3JSONRequestBody{OrganizationId: tn.OrgID.String()})
+		api.SelectOrganizationV3JSONRequestBody{OrganizationId: orgID})
 	require.NoError(tt, err)
-	require.Equalf(tt, http.StatusOK, selected.StatusCode(), "selecting the organization: %s", apierr.Body(selected.Body))
-	return tn.Client(tt, selected.JSON200.Token)
+	return selected
+}
+
+// EnforceMFA turns on email MFA. With api.Signal, an SSO login the IdP flagged as MFA
+// skips the challenge.
+func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationJSONBodySsoMfaTrust) {
+	tt.Helper()
+	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
+		EnforceMfa:        new(true),
+		SelectedMfaMethod: new(api.UpdateOrganizationJSONBodySelectedMfaMethodEmail),
+		SsoMfaTrust:       &trust,
+	})
+	require.NoError(tt, err)
+	require.Equalf(tt, http.StatusOK, res.StatusCode(), "enforcing MFA: %s", apierr.Body(res.Body))
 }
 
 // CompleteSignup finishes SSO signup from the login that sent the browser to the SSO

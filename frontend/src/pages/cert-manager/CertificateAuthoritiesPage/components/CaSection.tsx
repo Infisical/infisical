@@ -36,10 +36,10 @@ import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { CreateCaWizard } from "./CreateCaWizard/CreateCaWizard";
 import { CaCertModal } from "./CaCertModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
 import { CaTable } from "./CaTable";
+import { CreateCaWizard } from "./CreateCaWizard/CreateCaWizard";
 
 export const CaSection = () => {
   const { currentProject } = useProject();

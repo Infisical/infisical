@@ -74,18 +74,17 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
-import { useToggle } from "@app/hooks";
+import { useActiveProduct, useToggle } from "@app/hooks";
 import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -151,6 +150,7 @@ export const Navbar = () => {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { permission } = useOrgPermission();
   const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
@@ -163,6 +163,12 @@ export const Navbar = () => {
     enabled: Boolean(subscription.subOrganization),
     select: (data) => data.organizations
   });
+
+  const canCreateSubOrg =
+    !isSubOrganization &&
+    permission.can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  const showSubOrgs =
+    Boolean(subscription.subOrganization) && (subOrganizations.length > 0 || canCreateSubOrg);
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
   const isCardDeclinedMoreThan30Days = Boolean(
@@ -178,6 +184,7 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
+  const activeProduct = useActiveProduct();
   const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
 
   const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
@@ -328,13 +335,7 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
-  const isPamScope = orgScopedProduct === ProjectType.PAM;
-  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
-  const isProjectScope =
-    Boolean(orgScopedProduct) ||
-    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-      location.pathname !== `/organizations/${currentOrg.id}/projects`);
+  const isProjectScope = Boolean(activeProduct);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -369,13 +370,7 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel &&
-          isProjectScope &&
-          !isPamScope &&
-          !isAgentVaultScope &&
-          "from-project/5",
+        !isServerAdminPanel && isProjectScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -415,15 +410,10 @@ export const Navbar = () => {
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
-                  <button
+                  <Link
+                    to="/organizations/$orgId/projects"
+                    params={{ orgId: currentOrg.id }}
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
-                    type="button"
-                    onClick={() => {
-                      navigate({
-                        to: "/organizations/$orgId/projects",
-                        params: { orgId: currentOrg.id }
-                      });
-                    }}
                   >
                     {isSubOrganization ? (
                       <SubOrgIcon
@@ -452,7 +442,7 @@ export const Navbar = () => {
                         {isSubOrganization ? "Sub" : "Org"}
                       </Badge>
                     )}
-                  </button>
+                  </Link>
                   {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -501,7 +491,7 @@ export const Navbar = () => {
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
-                      {subscription.subOrganization && (
+                      {showSubOrgs && (
                         <>
                           <CommandGroup
                             className="mb-3 ml-4.5 border-l border-border pt-0 pl-3 [&_[cmdk-group-heading]]:pt-0"
@@ -517,20 +507,20 @@ export const Navbar = () => {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <IconButton
+                                            asChild
                                             variant="ghost-muted"
                                             size="xs"
-                                            aria-label="Sub-Organization Settings"
                                             className="-mr-1 size-5"
-                                            onClick={() => {
-                                              setIsOrgSelectOpen(false);
-                                              navigate({
-                                                to: "/organizations/$orgId/settings",
-                                                params: { orgId: rootOrg.id },
-                                                search: { selectedTab: "tab-sub-organizations" }
-                                              });
-                                            }}
                                           >
-                                            <Settings className="size-3.5!" />
+                                            <Link
+                                              to="/organizations/$orgId/settings"
+                                              params={{ orgId: rootOrg.id }}
+                                              search={{ selectedTab: "tab-sub-organizations" }}
+                                              aria-label="Sub-Organization Settings"
+                                              onClick={() => setIsOrgSelectOpen(false)}
+                                            >
+                                              <Settings className="size-3.5!" />
+                                            </Link>
                                           </IconButton>
                                         </TooltipTrigger>
                                         <TooltipContent>Sub-Organization Settings</TooltipContent>
@@ -562,25 +552,18 @@ export const Navbar = () => {
                                 <span className="truncate">{subOrg.name}</span>
                               </CommandItem>
                             ))}
-                            <OrgPermissionCan
-                              I={OrgPermissionSubOrgActions.Create}
-                              a={OrgPermissionSubjects.SubOrganization}
-                            >
-                              {(isAllowed) =>
-                                isAllowed && !isSubOrganization ? (
-                                  <CommandItem
-                                    className="text-muted"
-                                    onSelect={() => {
-                                      setIsOrgSelectOpen(false);
-                                      setShowSubOrgForm(true);
-                                    }}
-                                  >
-                                    <Plus />
-                                    <span>New Sub-Organization</span>
-                                  </CommandItem>
-                                ) : null
-                              }
-                            </OrgPermissionCan>
+                            {canCreateSubOrg && (
+                              <CommandItem
+                                className="text-muted"
+                                onSelect={() => {
+                                  setIsOrgSelectOpen(false);
+                                  setShowSubOrgForm(true);
+                                }}
+                              >
+                                <Plus />
+                                <span>New Sub-Organization</span>
+                              </CommandItem>
+                            )}
                           </CommandGroup>
                           {otherOrgs.length > 0 && <CommandSeparator />}
                         </>

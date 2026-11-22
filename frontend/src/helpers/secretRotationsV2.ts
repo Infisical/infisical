@@ -154,6 +154,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "GCP Service Account Key",
     image: "Google Cloud Platform.png",
     size: 50
+  },
+  [SecretRotation.ClickHouseCredentials]: {
+    name: "ClickHouse Credentials",
+    image: "ClickHouse.png",
+    size: 50
   }
 };
 
@@ -187,7 +192,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare,
   [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare,
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
-  [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP
+  [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP,
+  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse
 };
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> =
@@ -231,7 +237,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.CloudflareApiToken]: true,
   [SecretRotation.CloudflareR2AccessKey]: true,
   [SecretRotation.StripeApiKey]: true,
-  [SecretRotation.GcpServiceAccountKey]: true
+  [SecretRotation.GcpServiceAccountKey]: true,
+  [SecretRotation.ClickHouseCredentials]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

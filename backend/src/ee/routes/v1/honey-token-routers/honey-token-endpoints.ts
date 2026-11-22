@@ -41,6 +41,10 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
   });
   const routeTestConnectionResponseSchema: z.ZodTypeAny = testConnectionResponseSchema;
   const routeDecryptedConfigSchema: z.ZodTypeAny = decryptedConfigSchema;
+  const honeyTokenTypeId = type
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
 
   server.route({
     url: "/configs",
@@ -50,6 +54,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: `upsert${honeyTokenTypeId}HoneyTokenConfig`,
       body: upsertBodySchema,
       response: {
         200: z.object({
@@ -79,6 +84,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: `test${honeyTokenTypeId}HoneyTokenConfigConnection`,
       response: {
         200: routeTestConnectionResponseSchema
       }
@@ -100,6 +106,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: `get${honeyTokenTypeId}HoneyTokenConfig`,
       response: {
         200: z.object({
           config: SanitizedHoneyTokenConfigSchema.extend({
@@ -149,6 +156,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
         rateLimit: writeLimit
       },
       schema: {
+        operationId: `trigger${honeyTokenTypeId}HoneyToken`,
         response: {
           200: z.object({
             acknowledged: z.boolean()

@@ -78,6 +78,7 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -383,7 +384,6 @@ const DestinationPathField = ({
 
       // Create each segment in order so a typed path such as /apps/api creates both levels.
       // The get-or-create mutation keeps retries idempotent after a partial failure.
-      // eslint-disable-next-line no-restricted-syntax
       for await (const segment of getPathSegments(path)) {
         const currentParentPath = parentPath;
         const environmentsMissingSegment = missingCreationTargets
@@ -998,23 +998,13 @@ const SingleEnvContent = ({
         isSourceUpdated = result.isSourceUpdated;
         secretMoveSucceeded = true;
       } catch (error) {
-        if (!foldersToMove.length && !rotationsToMove.length) throw error;
-        let message = (error as Error)?.message ?? "Failed to move selected secrets";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        createNotification({
-          type: "error",
-          text: `Failed to move selected secrets: ${message}`
-        });
+        showSecretWriteErrors([{ error }]);
+        if (!foldersToMove.length && !rotationsToMove.length) return;
       }
     }
 
-    const rotationFailures: { name: string; message: string }[] = [];
     let rotationSuccessCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const rotation of rotationsToMove) {
       try {
         await moveSecretRotation.mutateAsync({
@@ -1028,20 +1018,13 @@ const SingleEnvContent = ({
         });
         rotationSuccessCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move rotation";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        rotationFailures.push({ name: rotation.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
 
-    const folderFailures: { name: string; message: string }[] = [];
     let folderSuccessCount = 0;
     let folderApprovalCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const folder of foldersToMove) {
       try {
         const result = await moveFolder.mutateAsync({
@@ -1056,14 +1039,11 @@ const SingleEnvContent = ({
         folderSuccessCount += 1;
         if (result.hasApprovalRequests) folderApprovalCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move folder";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        folderFailures.push({ name: folder.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
+
+    if (!secretMoveSucceeded && !rotationSuccessCount && !folderSuccessCount) return;
 
     if (secretMoveSucceeded) {
       if (isDestinationUpdated && isSourceUpdated) {
@@ -1107,15 +1087,6 @@ const SingleEnvContent = ({
                 folderSuccessCount === 1 ? "" : "s"
               }. Approval requests were generated for change-policy protected paths.`
             : `Successfully moved ${folderSuccessCount} folder${folderSuccessCount === 1 ? "" : "s"}`
-      });
-    }
-
-    if (folderFailures.length > 0) {
-      createNotification({
-        type: "error",
-        text: `Failed to move ${folderFailures.length} folder${
-          folderFailures.length === 1 ? "" : "s"
-        }: ${folderFailures.map((f) => f.name).join(", ")}`
       });
     }
 
@@ -1461,7 +1432,6 @@ const MultiEnvContent = ({
       })
     );
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
@@ -1529,7 +1499,7 @@ const MultiEnvContent = ({
         } catch (error) {
           let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
           if (axios.isAxiosError(error)) {
-            const { message } = error?.response?.data as { message: string };
+            const { message } = (error.response?.data ?? {}) as { message: string };
             if (message) errorMessage = message;
           }
 
@@ -1542,7 +1512,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const rotation of rotationsToMove) {
         try {
           await moveSecretRotation.mutateAsync({
@@ -1577,7 +1546,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const folder of foldersToMove) {
         try {
           const { hasApprovalRequests } = await moveFolder.mutateAsync({

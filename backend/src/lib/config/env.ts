@@ -1,11 +1,9 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { RunMode } from "@app/lib/types";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import {
   isS3DirectoryBucket,
   keyPrefixSchema,
@@ -361,7 +359,6 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
 
     OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
@@ -606,6 +603,8 @@ const envSchema = z
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    ALERT_WEBHOOK_ALLOW_HTTP: zodStrBool.default("false"),
+    ALERT_WEBHOOK_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
@@ -617,6 +616,32 @@ const envSchema = z
     // PAM AWS credentials (for AWS IAM PAM resource type)
     PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+
+    // Infisical-managed honey tokens: decoy IAM users live in one AWS account the operator runs,
+    // and its CloudFormation stack signs trigger webhooks with this instance-wide key.
+    HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY: zpStr(
+      z
+        .string()
+        .regex(
+          /^[a-fA-F0-9]{64}$/,
+          "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY must be 64 hex characters (32 random bytes), e.g. from `openssl rand -hex 32`"
+        )
+        .optional()
+    ),
+    HONEY_TOKEN_MANAGED_AWS_ROLE_ARN: zpStr(z.string().optional()),
+    // Fall back to the identity Infisical already uses to assume roles in other AWS accounts.
+    HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+    ),
+    HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+    ),
+    HONEY_TOKEN_MANAGED_AWS_IAM_PATH: zpStr(
+      z
+        .string()
+        .regex(/^\/([\w+=,.@-]+\/)*$/, "HONEY_TOKEN_MANAGED_AWS_IAM_PATH must start and end with '/'")
+        .default("/infisical-honey-tokens/")
+    ),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -787,7 +812,6 @@ const envSchema = z
     isGeneralWorkerRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.GeneralWorkers),
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
-    isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
     isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
@@ -853,12 +877,7 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = async (
-  hsmService: THsmServiceFactory,
-  kmsRootConfigDAL: TKmsRootConfigDALFactory,
-  superAdminDAL?: TSuperAdminDALFactory,
-  logger?: CustomLogger
-) => {
+export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -874,7 +893,7 @@ export const initEnvConfig = async (
   }
 
   if (superAdminDAL) {
-    const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
+    const fipsEnabled = await crypto.initialize(superAdminDAL);
 
     await initializePqcSupport();
 
@@ -941,22 +960,6 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     })),
     pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
     replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
-  };
-};
-
-export const getHsmConfig = (logger?: CustomLogger) => {
-  const parsedEnv = envSchema.safeParse(process.env);
-  if (!parsedEnv.success) {
-    (logger ?? console).error("Invalid environment variables. Check the error below");
-    (logger ?? console).error(parsedEnv.error.issues);
-    process.exit(-1);
-  }
-  return {
-    isHsmConfigured: parsedEnv.data.isHsmConfigured,
-    HSM_PIN: parsedEnv.data.HSM_PIN,
-    HSM_SLOT: parsedEnv.data.HSM_SLOT,
-    HSM_LIB_PATH: parsedEnv.data.HSM_LIB_PATH,
-    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL
   };
 };
 

@@ -1,9 +1,8 @@
+import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
-
-import { KmsKeyUsage } from "../kms/kms-types";
 
 export type TCmekKeyEncryptionAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
 
@@ -16,6 +15,7 @@ export type TCreateCmekDTO = {
   keyUsage: KmsKeyUsage;
   isExportable?: boolean;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -24,6 +24,7 @@ export type TUpdabteCmekByIdDTO = {
   isDisabled?: boolean;
   description?: string;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
 };
 
 export type TListCmeksByProjectIdDTO = {

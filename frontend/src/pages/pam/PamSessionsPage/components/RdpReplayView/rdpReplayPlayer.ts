@@ -201,7 +201,6 @@ export class RdpReplayPlayer {
       try {
         this.apply(this.events[this.index]);
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("RDP replay: apply failed, skipping event", err);
       }
       this.index += 1;

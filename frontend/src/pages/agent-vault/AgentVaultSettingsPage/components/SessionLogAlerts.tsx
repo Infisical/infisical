@@ -3,7 +3,7 @@ import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useSubscription, useProject } from "@app/context";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
@@ -14,8 +14,9 @@ import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums
 import { SessionLogReadAccessAlert } from "./SessionLogReadAccessAlert";
 
 export const SessionLogAlerts = () => {
-  const { data: state } = useGetAgentVaultSessionLogSettings();
-  const { data: health } = useGetAgentVaultSessionLogHealth();
+  const { projectId } = useProject();
+  const { data: state } = useGetAgentVaultSessionLogSettings(projectId);
+  const { data: health } = useGetAgentVaultSessionLogHealth(projectId);
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 

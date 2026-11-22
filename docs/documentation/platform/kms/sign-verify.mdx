@@ -117,7 +117,7 @@ To list the signing algorithms for a key, call [the signing algorithms endpoint]
     }
     ```
 
-    To verify signatures without calling Infisical, get the key's public key from [the public key endpoint](/api-reference/endpoints/kms/keys/public-key).
+    To verify signatures without calling Infisical, get the key's public key from the [Retrieve public key](/api-reference/endpoints/kms/keys/public-key) endpoint, or [publish it at a public URL](#publish-a-public-key).
   </Tab>
 </Tabs>
 
@@ -151,3 +151,53 @@ If your data is large, or you don't want to send it to Infisical, you can hash t
 </Steps>
 
 To verify a signature over a digest, send the digest and `"isDigest": true` to [the verify endpoint](/api-reference/endpoints/kms/signing/verify) in the same way.
+
+## Publish a public key
+
+If third parties need to verify your signatures without calling Infisical, you can publish a key's public key at a URL that serves it as a JSON Web Key Set (JWKS), the format that JWT libraries and identity providers read. The URL needs no authentication, so anyone who has it can read the public key. Publishing doesn't expose the private key.
+
+You can publish RSA, ECC, and Ed25519 keys. Publishing a key requires the **Admin** role, or a [custom role](/documentation/platform/access-controls/role-based-access-controls) with the **Modify** and **Publish Public Key** permissions for KMS keys.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Publish Public Key**.
+      </Step>
+      <Step>
+        Select the options menu again, select **Copy JWKS URL**, and give the URL to the third parties that verify your signatures.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call the [Update key](/api-reference/endpoints/kms/keys/update) endpoint with `isPublicKeyPublished` set to `true`:
+
+    ```bash
+    curl --request PATCH \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id> \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "isPublicKeyPublished": true
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    The key in the response includes `jwksUrl`, the URL of the [Retrieve published public key](/api-reference/endpoints/kms/keys/public-jwks) endpoint.
+  </Tab>
+</Tabs>
+
+### Sign tokens with a published key
+
+Each key in the JWKS has a `kid`, which is the key's ID followed by its version, such as `<key-id>:v1`. When you sign a JWT or another token with the key, set the token's `kid` header to that value, so verifiers can find the key in the JWKS. To copy the value, select the options menu on the key's row, then select **Copy kid**, or read the `kid` field of the key through the API.
+
+<Note>
+  Infisical returns ECDSA signatures DER encoded, but JWTs need them in the raw format, which joins the signature's r and s values. If you sign JWTs with an ECC key, convert each signature to the raw format before you add it to the token.
+</Note>
+
+### Stop publishing a key
+
+To stop publishing a key, select **Unpublish Public Key** in the key's options menu, or call the [Update key](/api-reference/endpoints/kms/keys/update) endpoint with `isPublicKeyPublished` set to `false`. While a key is unpublished or disabled, its URL returns a 404 error. If a verifier cached the JWKS, it can keep accepting the key's signatures for a few minutes.

@@ -1,0 +1,81 @@
+# cursor-controller.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cursor
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor-workers
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [create, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor-workers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cursor-worker-controller
+subjects:
+  - kind: ServiceAccount
+    name: cursor-worker-controller
+    namespace: cursor
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cursor-worker-controller
+  template:
+    metadata:
+      labels:
+        app: cursor-worker-controller
+    spec:
+      serviceAccountName: cursor-worker-controller
+      containers:
+        - name: controller
+          image: <controller-image>
+          command:
+            - agent
+            - worker
+            - controller
+            - --spawn
+            - /hooks/spawn-worker.sh
+            - --pool
+            - <pool-name>
+            - --session-token
+          envFrom:
+            - secretRef:
+                name: cursor-worker-controller
+          volumeMounts:
+            - name: hooks
+              mountPath: /hooks
+              readOnly: true
+      volumes:
+        - name: hooks
+          configMap:
+            name: cursor-spawn-hook
+            defaultMode: 0755

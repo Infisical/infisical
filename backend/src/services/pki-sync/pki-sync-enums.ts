@@ -11,6 +11,7 @@ export enum PkiSync {
   PaloAltoNetworksSslTlsProfile = "palo-alto-networks-ssl-tls-profile",
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
+  Imperva = "imperva",
   LinuxServer = "linux-server",
   WindowsServer = "windows-server",
   NutanixPrismCentral = "nutanix-prism-central"

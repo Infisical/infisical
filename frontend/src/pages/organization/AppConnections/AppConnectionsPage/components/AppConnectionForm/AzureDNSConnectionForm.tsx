@@ -23,12 +23,12 @@ import { TAzureDNSConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type Props = {
   appConnection?: TAzureDNSConnection;

@@ -3,6 +3,11 @@ import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 
 import { MfaMethod } from "../auth/types";
 
+export enum SsoMfaTrust {
+  None = "none",
+  Signal = "signal"
+}
+
 export type TSecretShareBrandConfig = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -22,6 +27,8 @@ export type Organization = {
   defaultMembershipRole: string;
   enforceMfa: boolean;
   selectedMfaMethod?: MfaMethod;
+  allowedMfaMethods?: MfaMethod[] | null;
+  ssoMfaTrust: SsoMfaTrust;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
   userTokenExpiration?: string;
@@ -41,7 +48,6 @@ export type Organization = {
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
   pamProjectId: string | null;
-  agentVaultProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -54,6 +60,8 @@ export type UpdateOrgDTO = {
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
+  allowedMfaMethods?: MfaMethod[];
+  ssoMfaTrust?: SsoMfaTrust;
   allowSecretSharingOutsideOrganization?: boolean;
   bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;
@@ -123,8 +131,8 @@ export type TOrgProductStats = {
     foldersCount: number;
   };
   agentVault: {
-    accessBundlesCount: number;
     servicesCount: number;
-    proxiesCount: number;
+    skillsCount: number;
+    projectsCount: number;
   };
 };

@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
+import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
   getHoneyTokenConfigProvidersByType,
@@ -131,6 +132,7 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
   return {
     upsertConfig,
     testConnection,
-    getConfig
+    getConfig,
+    aws: honeyTokenAwsConfigServiceFactory(deps)
   };
 };

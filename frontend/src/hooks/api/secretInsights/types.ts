@@ -1,3 +1,4 @@
+import { SecretFolderRole } from "../folderAccess/types";
 import { IdentityAuthMethod } from "../identities/enums";
 
 export type TCalendarRotation = {
@@ -49,6 +50,114 @@ export type TSecretAccessVolumeDay = {
 
 export type TGetSecretAccessVolumeDTO = {
   projectId: string;
+};
+
+export enum UnusedAccessActorType {
+  User = "user",
+  Identity = "identity"
+}
+
+// A built-in role has no id; a custom role has the slug "custom" and its own id.
+export type TUnusedAccessRole = {
+  id: string | null;
+  slug: string;
+  name: string;
+};
+
+export type TUnusedAccessPaths = {
+  roles: TUnusedAccessRole[];
+  groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
+  additionalPrivileges: { id: string; name: string }[];
+  folderAccess: {
+    id: string;
+    folderId: string;
+    environment: string;
+    secretPath: string;
+    role: SecretFolderRole;
+  }[];
+};
+
+// A user or machine identity that can read secrets it has not read in the tracked period.
+export type TUnusedAccessActor = {
+  actorType: UnusedAccessActorType;
+  actorId: string;
+  name: string;
+  accessibleSecretCount: number;
+  unusedSecretCount: number;
+  environments: string[];
+  accessPaths: TUnusedAccessPaths;
+};
+
+export type TGetUnusedAccessDTO = {
+  projectId: string;
+  offset: number;
+  limit: number;
+  search?: string;
+};
+
+export type TGetUnusedAccessResponse = {
+  actors: TUnusedAccessActor[];
+  totalCount: number;
+  // Nothing is judged before this date: 30 days after tracking began.
+  unusedAccessFrom: string;
+  remainingTtl: number;
+};
+
+export type TGetUnusedAccessActorDTO = {
+  projectId: string;
+  actorType: UnusedAccessActorType;
+  actorId: string;
+};
+
+export type TUnusedSecret = {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+};
+
+export type TGetUnusedAccessActorResponse = {
+  actor: TUnusedAccessActor;
+  secrets: TUnusedSecret[];
+  unusedAccessFrom: string;
+  remainingTtl: number;
+};
+
+export enum SecretReadStatus {
+  Read = "read",
+  Unused = "unused",
+  NotJudged = "not-judged"
+}
+
+export enum SecretReadNotJudgedReason {
+  ProjectAdmin = "project-admin",
+  TrackingTooNew = "tracking-too-new",
+  AccessTooNew = "access-too-new",
+  SecretTooNew = "secret-too-new"
+}
+
+export type TGetSecretReadActivityDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
+export type TSecretReadActivityActor = {
+  actorType: UnusedAccessActorType;
+  actorId: string;
+  name: string;
+  isProjectAdmin: boolean;
+  lastReadAt: string | null;
+  // When they got access to this secret.
+  accessSince: string;
+  readStatus: SecretReadStatus;
+  notJudgedReason: SecretReadNotJudgedReason | null;
+};
+
+export type TSecretReadActivity = {
+  readsTrackedSince: string;
+  unusedAccessFrom: string;
+  actors: TSecretReadActivityActor[];
 };
 
 export type TGetInsightsSummaryDTO = {

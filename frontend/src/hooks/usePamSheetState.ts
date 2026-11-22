@@ -41,18 +41,15 @@ export const usePamSheetState = (key: PamSheetKey) => {
     isOpen: Boolean(selectedId),
     tab,
     openSheet: (id: string, initialTab?: PamSheetTab) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: { ...search, [key]: id, tab: initialTab } as any });
     },
     setTab: (newTab: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: { ...search, tab: newTab } as any, replace: true });
     },
     closeSheet: () => {
       const rest = Object.fromEntries(
         Object.entries(search).filter(([k]) => k !== key && k !== "tab")
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: rest as any });
     }
   };

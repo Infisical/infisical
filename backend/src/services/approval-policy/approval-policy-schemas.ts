@@ -8,6 +8,7 @@ import {
   ApprovalRequestStepsSchema
 } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
+import { auditSafeText } from "@app/server/lib/schemas";
 
 import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 import {
@@ -96,6 +97,12 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoApprovalEvidence: true }).extend({
   steps: ApprovalRequestStepSchema.array(),
   canBreakGlass: z.boolean().default(false),
+  canReview: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step."
+    ),
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional(),
   autoApproval: AutoApprovalOutcomeSchema.optional()
@@ -104,7 +111,7 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoAppro
 export const BaseCreateApprovalRequestSchema = z.object({
   scope: z.nativeEnum(ApprovalPolicyScope),
   scopeId: z.string().uuid(),
-  justification: z.string().max(256).nullable().optional(),
+  justification: auditSafeText(z.string().max(256), { allowMultiline: true }).nullable().optional(),
   requestDuration: z
     .string()
     .refine(

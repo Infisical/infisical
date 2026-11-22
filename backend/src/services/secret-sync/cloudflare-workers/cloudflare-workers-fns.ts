@@ -1,5 +1,4 @@
-import { AxiosError } from "axios";
-
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
@@ -7,24 +6,24 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { throwOnNonVariableConflicts, throwOnTypeConflicts } from "./cloudflare-workers-binding-fns";
 import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
+import {
+  CloudflareWorkersPendingVersionError,
+  TCloudflareApiResponse,
+  throwOnCloudflareRequestError,
+  validateCloudflareResponse
+} from "./cloudflare-workers-errors";
+import { removePreviewSecrets, syncPreviewSecrets } from "./cloudflare-workers-preview-fns";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
+import { applySecretsWithVersionFallback } from "./cloudflare-workers-version-fns";
 
-const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
-const VARIABLE_BINDING_TYPES = new Set<string>(Object.values(CloudflareWorkersVariableType));
 // Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
 const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
-
-type TCloudflareApiResponse = {
-  result?: unknown;
-  success?: boolean;
-  errors?: Array<{ code: number; message: string }>;
-  messages?: string[];
-};
 
 type TCloudflareSecretMetadata = {
   key: string;
@@ -48,55 +47,6 @@ const $validateJsonBindings = (
   if (invalidJsonBindings.length > 0) {
     throw new BadRequestError({
       message: `The following bindings already exist in Cloudflare as JSON variables but the values provided are not valid JSON: ${invalidJsonBindings.join(", ")}`
-    });
-  }
-};
-
-const $getCloudflareErrors = (data: unknown): Array<{ code: number; message: string }> => {
-  if (typeof data !== "object" || data === null) return [];
-  const { errors } = data as TCloudflareApiResponse;
-  if (!Array.isArray(errors)) return [];
-  return errors.filter((error) => typeof error?.message === "string");
-};
-
-const $throwCloudflareError = (
-  errors: Array<{ code: number; message: string }>,
-  cause: unknown,
-  secretKey?: string
-): never => {
-  const message = errors.some((e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE)
-    ? "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
-    : errors.map((e) => e.message).join(". ");
-
-  throw new SecretSyncError({
-    message,
-    error: cause,
-    secretKey,
-    shouldRetry: false
-  });
-};
-
-const throwOnCloudflareRequestError = (err: unknown, secretKey?: string): never => {
-  if (err instanceof AxiosError) {
-    const errors = $getCloudflareErrors(err.response?.data);
-    if (errors.length > 0) {
-      $throwCloudflareError(errors, err, secretKey);
-    }
-  }
-
-  throw err;
-};
-
-const $validateCloudflareResponse = (data: unknown) => {
-  if (typeof data !== "object" || data === null) return;
-  if ((data as TCloudflareApiResponse).success === false) {
-    const errors = $getCloudflareErrors(data);
-    if (errors.length > 0) {
-      $throwCloudflareError(errors, undefined);
-    }
-    throw new SecretSyncError({
-      message: "Cloudflare returned an unsuccessful response without error details.",
-      shouldRetry: false
     });
   }
 };
@@ -148,25 +98,6 @@ const getCloudflareBindings = async (
   // We need to know both types because cloudflare prevents secrets and variables (plaintext or JSON)
   // to have the same name.
   return { secrets, nonSecretBindings };
-};
-
-const VARIABLE_TYPE_LABELS: Record<string, string> = {
-  [CloudflareWorkersVariableType.Secret]: "secret",
-  [CloudflareWorkersVariableType.Text]: "text",
-  [CloudflareWorkersVariableType.Json]: "JSON"
-};
-
-// Changing a variable's type can break the Worker, since a JSON variable reaches it as a parsed object, or
-// expose a secret's value in the dashboard. A sync never changes one; it fails before writing anything.
-const $throwOnTypeConflicts = (conflicts: Array<{ name: string; type: string }>, fix: string) => {
-  if (conflicts.length === 0) return;
-
-  throw new SecretSyncError({
-    message: `The following secrets already exist on the Cloudflare Worker as a different type: ${conflicts
-      .map(({ name, type }) => `${name} (${VARIABLE_TYPE_LABELS[type]})`)
-      .join(", ")}. Infisical doesn't change a variable's type, so nothing was synced. ${fix}`,
-    shouldRetry: false
-  });
 };
 
 // A text or JSON sync only owns variables of its type, so syncs of different types can share a Worker.
@@ -240,18 +171,9 @@ const $syncVariableBindings = async (
 
     const existingBindings = settingsData.result.bindings ?? [];
 
-    const conflictingKeys = existingBindings
-      .filter((binding) => secretMapKeys.has(binding.name) && !VARIABLE_BINDING_TYPES.has(binding.type))
-      .map((binding) => binding.name);
+    throwOnNonVariableConflicts(existingBindings, secretMapKeys);
 
-    if (conflictingKeys.length > 0) {
-      throw new SecretSyncError({
-        message: `The following secrets have the same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: ${conflictingKeys.join(", ")}. Rename the secrets in Infisical, or use a key schema to change their names in Cloudflare.`,
-        shouldRetry: false
-      });
-    }
-
-    $throwOnTypeConflicts(
+    throwOnTypeConflicts(
       existingBindings.filter((binding) => secretMapKeys.has(binding.name) && binding.type !== variableType),
       "Delete them in Cloudflare or change the sync's variable type, then sync again."
     );
@@ -269,13 +191,13 @@ const $syncVariableBindings = async (
         Authorization: `Bearer ${apiToken}`
       }
     });
-    $validateCloudflareResponse(settingsPatchData);
+    validateCloudflareResponse(settingsPatchData);
   } catch (err) {
     throwOnCloudflareRequestError(err);
   }
 };
 
-export const CloudflareWorkersSyncFns = {
+const $inPlace = {
   syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
     const {
@@ -303,7 +225,7 @@ export const CloudflareWorkersSyncFns = {
     // Otherwise the sync fails rather than change their type, except a sync created before the type could be
     // chosen (no variableType), which keeps skipping them as it always has.
     if (!shouldSyncNonSecretBindings && variableType) {
-      $throwOnTypeConflicts(
+      throwOnTypeConflicts(
         cloudflareBindings.nonSecretBindings
           .filter((binding) => secretMapKeys.has(binding.key))
           .map(({ key, type }) => ({ name: key, type })),
@@ -372,7 +294,7 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
-        $validateCloudflareResponse(settingsPatchData);
+        validateCloudflareResponse(settingsPatchData);
       }
 
       // Build the bulk secrets payload using JSON Merge Patch (RFC 7396):
@@ -422,7 +344,7 @@ export const CloudflareWorkersSyncFns = {
               }
             }
           );
-          $validateCloudflareResponse(data);
+          validateCloudflareResponse(data);
         } catch (err) {
           throwOnCloudflareRequestError(err, firstSecretKey);
         }
@@ -484,10 +406,6 @@ export const CloudflareWorkersSyncFns = {
     }
   },
 
-  getSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<TSecretMap> => {
-    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
-  },
-
   removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
     const {
@@ -533,7 +451,7 @@ export const CloudflareWorkersSyncFns = {
               }
             }
           );
-          $validateCloudflareResponse(data);
+          validateCloudflareResponse(data);
         } catch (err) {
           throwOnCloudflareRequestError(err, firstSecretKey);
         }
@@ -573,10 +491,46 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
-        $validateCloudflareResponse(settingsPatchData);
+        validateCloudflareResponse(settingsPatchData);
       }
     } catch (err) {
       throwOnCloudflareRequestError(err);
     }
+  }
+};
+
+export const CloudflareWorkersSyncFns = {
+  syncSecrets: async (
+    secretSync: TCloudflareWorkersSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    { keyStore }: { keyStore: Pick<TKeyStoreFactory, "acquireLock"> }
+  ): Promise<TSyncSecretsResult | undefined> => {
+    const { previewName } = secretSync.destinationConfig;
+    if (previewName) {
+      await syncPreviewSecrets(secretSync, previewName, payload.flatten());
+      return undefined;
+    }
+
+    try {
+      await $inPlace.syncSecrets(secretSync, payload);
+      return undefined;
+    } catch (err) {
+      if (!(err instanceof CloudflareWorkersPendingVersionError)) throw err;
+
+      return applySecretsWithVersionFallback(secretSync, payload.flatten(), keyStore);
+    }
+  },
+
+  getSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<TSecretMap> => {
+    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
+  },
+
+  // No version fallback: it never deploys, so the secrets would stay on the live Worker while the removal, and with
+  // it a sync deletion, reported success.
+  removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const { previewName } = secretSync.destinationConfig;
+    if (previewName) return removePreviewSecrets(secretSync, previewName, payload.flatten());
+
+    return $inPlace.removeSecrets(secretSync, payload);
   }
 };

@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -38,7 +38,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsService"
+  | "kmsDataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -79,9 +79,9 @@ export const projectScopedInsightsDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsService: {
-    createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
-  }
+  kmsDataKeyService: {
+    createCipherPairWithDataKey: unreachable("kmsDataKeyService.createCipherPairWithDataKey")
+  } as never
 };
 
 // getSecretsUsageInsights is the only method that reads these three counts, and it has its own spec.
@@ -107,7 +107,11 @@ export const usageInsightsDepStubs: Pick<
 // share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
 export const buildOrgInsightsGateStubs = () => {
   let canReadInsights = true;
-  let planHasInsights = true;
+  const licenseService = new FakeLicenseService();
+  const setPlanHasInsights = (hasPlan: boolean) => {
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, secretAccessInsights: hasPlan as false };
+  };
+  setPlanHasInsights(true);
 
   const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
     createMongoAbility<OrgPermissionSet>(
@@ -130,15 +134,11 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
-      getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    licenseService,
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },
-    setPlanHasInsights: (hasPlan: boolean) => {
-      planHasInsights = hasPlan;
-    }
+    setPlanHasInsights
   };
 };
 

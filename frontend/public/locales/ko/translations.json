@@ -29,6 +29,7 @@
   },
   "common": {
     "head-title": "{{title}} | Infisical",
+    "head-title-scoped": "{{title}} · {{scope}} | Infisical",
     "error_project-already-exists": "동일한 이름을 가진 프로젝트가 이미 존재해요.",
     "email": "메일",
     "password": "비밀번호",

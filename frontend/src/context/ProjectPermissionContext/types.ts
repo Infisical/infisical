@@ -47,7 +47,8 @@ export enum ProjectPermissionCmekActions {
   GenerateMac = "generate-mac",
   VerifyMac = "verify-mac",
   Rotate = "rotate",
-  ExportPrivateKey = "export-private-key"
+  ExportPrivateKey = "export-private-key",
+  PublishPublicKey = "publish-public-key"
 }
 
 export enum ProjectPermissionKmipActions {
@@ -306,10 +307,40 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
   ManageMembers = "manage-members"
 }
 
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionAgentVaultHookActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
-  Revoke = "revoke"
+  Edit = "edit",
+  Revoke = "revoke",
+  ReadAny = "read-any",
+  EditAny = "edit-any",
+  RevokeAny = "revoke-any",
+  CreateWithInlineServices = "create-with-inline-services",
+  CreateWithInlineSkills = "create-with-inline-skills"
+}
+
+// Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.
+export enum ProjectPermissionAgentVaultVariableActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ReadValue = "read-value"
 }
 
 export enum ProjectPermissionAgentVaultProxyActions {
@@ -477,6 +508,9 @@ export enum ProjectPermissionSub {
   AgentVaultAccessBundles = "agent-vault-access-bundles",
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
+  AgentVaultSkills = "agent-vault-skills",
+  AgentVaultVariables = "agent-vault-variables",
+  AgentVaultHooks = "agent-vault-hooks",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -761,6 +795,9 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
+  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
+  | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
+  | [ProjectPermissionAgentVaultHookActions, ProjectPermissionSub.AgentVaultHooks]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

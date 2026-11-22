@@ -90,14 +90,26 @@ The scan stages only roles that can sign in. Roles are shared across all databas
     </Frame>
   </Step>
   <Step>
-    Select a **Destination Folder** and a **PostgreSQL Template**, then select **Import**.
+    Select a **Destination Folder** and a **PostgreSQL Template**.
 
     <Frame>
       <img src="/images/platform/pam/postgres-discovery-import-accounts.png" alt="Import 4 Accounts dialog with Production as the destination folder and PostgreSQL Standard as the template" />
     </Frame>
   </Step>
   <Step>
-    Go to **Privileged Access Management** > **Accounts**. For each imported account, open the options menu on its row, select **Configure**, and enter the password for its PostgreSQL role on the **Configuration** tab. The scan doesn't read passwords, so you can't connect to an imported account until you enter its password.
+    To have Infisical set a new password on each role during the import, turn on **Rotate account passwords on import**. Then pick the **PostgreSQL Rotation Account**, which is the [rotation account](/documentation/platform/pam/credential-rotation/overview#rotation-accounts) that Infisical signs in as to change the passwords. By default, the field is set to one of the source's credential accounts.
+
+    A rotation account can only change passwords on its own instance (the same host and port), so Infisical imports roles from other instances without a password.
+
+    <Warning>
+      Rotation changes each role's password on its instance, so anything that signs in with the old password stops working.
+    </Warning>
+  </Step>
+  <Step>
+    Select **Import**.
+  </Step>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**. The scan doesn't read passwords, so each imported account that Infisical didn't rotate shows **Unavailable** until you set its password. For each of those accounts, open the options menu on its row, select **Configure**, and enter the password for its PostgreSQL role on the **Configuration** tab.
   </Step>
 </Steps>
 

@@ -42,8 +42,8 @@ import { ApiErrorTypes, TApiErrors, TSecretReferenceTraceNode } from "@app/hooks
 import { SecretReferenceEdge } from "./edges/SecretReferenceEdge";
 import { ProjectGroupNode } from "./nodes/ProjectGroupNode";
 import { SecretNode } from "./nodes/SecretNode";
-import { convertDependencyTreeToFlow } from "./utils/convertToFlowElements";
 import { SecretReferenceCloseContext } from "./SecretReferenceContext";
+import { convertDependencyTreeToFlow } from "./utils/convertToFlowElements";
 
 import "./SecretReferenceTree.css";
 

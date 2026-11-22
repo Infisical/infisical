@@ -198,14 +198,14 @@ export const CreateAccountSheet = ({
 
   const needsGateway = Boolean(
     selectedMetadata?.requiresGateway !== false &&
-      selectedTemplate &&
-      !selectedTemplate.gatewayId &&
-      !selectedTemplate.gatewayPoolId
+    selectedTemplate &&
+    !selectedTemplate.gatewayId &&
+    !selectedTemplate.gatewayPoolId
   );
   const needsRecording = Boolean(
     selectedTemplate &&
-      accountTypeRequiresRecording(selectedTemplate.type) &&
-      !selectedTemplate.recordingConnectionId
+    accountTypeRequiresRecording(selectedTemplate.type) &&
+    !selectedTemplate.recordingConnectionId
   );
 
   const templateQuery = templateSearch.trim().toLowerCase();
@@ -248,9 +248,9 @@ export const CreateAccountSheet = ({
 
   const canProceed = Boolean(
     selectedFolderId &&
-      selectedTemplateId &&
-      selectedTemplate &&
-      !templateUnusableReason(selectedTemplate)
+    selectedTemplateId &&
+    selectedTemplate &&
+    !templateUnusableReason(selectedTemplate)
   );
 
   const handleContinue = () => {

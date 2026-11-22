@@ -16,11 +16,11 @@ import {
   Field,
   FieldLabel
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useProject } from "@app/context";
+import { useGetAvailableProjectUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 import { useAddPamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
+import { TAvailableProjectUser } from "@app/hooks/api/users/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
@@ -34,9 +34,11 @@ type SelectOption = {
   value: string;
 };
 
+const getUserLabel = ({ firstName, lastName, email, username }: TAvailableProjectUser) =>
+  firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || email || username;
+
 export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { mutate: addUser, isPending } = useAddPamProductUserMember();
   const navigate = useNavigate({ from: "" });
 
@@ -49,26 +51,25 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
 
   const { data: members } = useGetWorkspaceUsers(currentProject.id);
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { data: candidates } = useGetAvailableProjectUsers(currentProject.id, currentProject.type);
 
   const wsUsernames = useMemo(() => new Set(members?.map((m) => m.user.username)), [members]);
 
-  const availableUsers = useMemo(() => {
-    return (orgUsers || [])
-      .filter(({ user: u }) => !wsUsernames.has(u.username))
-      .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
-        value: id,
-        label:
-          firstName && lastName
-            ? `${firstName} ${lastName}`
-            : firstName || lastName || email || inviteEmail
-      }));
-  }, [orgUsers, wsUsernames]);
-
-  const requesterStatus = useMemo(
-    () => getRequesterStatus(requesterEmail, orgUsers, wsUsernames),
-    [requesterEmail, orgUsers, wsUsernames]
+  const availableUsers = useMemo(
+    () => (candidates || []).map((user) => ({ value: user.id, label: getUserLabel(user) })),
+    [candidates]
   );
+
+  const requesterStatus = useMemo(() => {
+    const requester = requesterEmail
+      ? candidates?.find((user) => user.username === requesterEmail)
+      : undefined;
+    return {
+      isProjectUser: Boolean(requesterEmail) && wsUsernames.has(requesterEmail as string),
+      userLabel: requester ? getUserLabel(requester) : "",
+      userId: requester?.id
+    };
+  }, [requesterEmail, candidates, wsUsernames]);
 
   useEffect(() => {
     if (requesterEmail && requesterStatus.userId && !requesterStatus.isProjectUser) {
@@ -97,23 +98,9 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const handleSubmit = () => {
     if (!selectedUsers.length) return;
 
-    const userIds: string[] = [];
-    const emails: string[] = [];
-    selectedUsers.forEach((selection) => {
-      const orgUser = orgUsers?.find((ou) => ou.id === selection.value);
-      if (!orgUser) return;
-      if (orgUser.user?.id) {
-        userIds.push(orgUser.user.id);
-      } else {
-        const email = orgUser.user?.email || orgUser.inviteEmail;
-        if (email) emails.push(email.toLowerCase());
-      }
-    });
-
     addUser(
       {
-        userIds,
-        emails,
+        userIds: selectedUsers.map((selection) => selection.value),
         role: selectedRole,
         projectId: currentProject.id
       },

@@ -12,6 +12,7 @@ import {
   ChefPkiSyncDestinationSection,
   F5BigIpPkiSyncDestinationSection,
   GcpCertificateManagerPkiSyncDestinationSection,
+  ImpervaPkiSyncDestinationSection,
   KempLoadMasterPkiSyncDestinationSection,
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
@@ -61,6 +62,9 @@ export const PkiSyncDestinationSection = ({ pkiSync }: Props) => {
       break;
     case PkiSync.KempLoadMaster:
       DestinationComponents = <KempLoadMasterPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.Imperva:
+      DestinationComponents = <ImpervaPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.LinuxServer:
       DestinationComponents = <LinuxServerPkiSyncDestinationSection pkiSync={pkiSync} />;

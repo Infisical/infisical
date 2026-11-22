@@ -10,6 +10,8 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +72,7 @@ func TestSecret_List(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		backend, billing, search := newTag(t, proj, "backend"), newTag(t, proj, "billing"), newTag(t, proj, "search")
+		backend, billing, search := secretmanager.CreateTag(t, proj, "backend"), secretmanager.CreateTag(t, proj, "billing"), secretmanager.CreateTag(t, proj, "search")
 		for name, tags := range map[string][]string{
 			"BACKEND_KEY": {backend}, "BILLING_KEY": {billing}, "SEARCH_KEY": {search}, "UNTAGGED": {},
 		} {
@@ -237,4 +239,132 @@ func TestSecret_List(t *testing.T) {
 			"Folder with path '/nope' in environment 'dev' was not found. Please ensure the environment slug and secret path is correct.",
 			res.JSON404.Message)
 	})
+
+	t.Run("should give actors who see different secrets different etags and answer another actor's etag with the full body", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		proj.NewRole(t, "one-secret-reader", fixture.Permission{
+			Subject:    "secrets",
+			Action:     []string{"read"},
+			Conditions: map[string]any{"secretName": map[string]any{"$eq": "VISIBLE"}},
+		})
+		reader := proj.NewMachineIdentity(t, fixture.WithRoles("one-secret-reader"))
+		secretmanager.CreateSecret(t, proj, "dev", "VISIBLE", "seen")
+		secretmanager.CreateSecret(t, proj, "dev", "HIDDEN", "unseen")
+		params := &api.ListSecretsV4Params{ProjectId: &proj.ID, Environment: new("dev")}
+		adminList, err := tn.Admin.API.ListSecretsV4WithResponse(t.Context(), params)
+		require.NoError(t, err)
+		readerList, err := reader.API.ListSecretsV4WithResponse(t.Context(), params)
+		require.NoError(t, err)
+		require.NotNilf(t, readerList.JSON200, "listing returned %d: %s", readerList.StatusCode(), apierr.Body(readerList.Body))
+		adminEtag := adminList.HTTPResponse.Header.Get("ETag")
+		require.NotEmpty(t, adminEtag, "the list response carried no ETag")
+
+		// Action
+		res, err := reader.API.ListSecretsV4WithResponse(t.Context(), params, func(_ context.Context, req *http.Request) error {
+			req.Header.Set("If-None-Match", adminEtag)
+			return nil
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqual(t, adminEtag, readerList.HTTPResponse.Header.Get("ETag"))
+		require.NotNilf(t, res.JSON200, "listing with another actor's etag returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Len(t, res.JSON200.Secrets, 1)
+		require.Equal(t, "VISIBLE", res.JSON200.Secrets[0].SecretKey)
+	})
+
+	t.Run("should answer not modified for an identity whose access comes from both its own and a group's membership", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, identity, group := identityWithGroupAccess(t, h)
+		proj.GrantGroup(t, group, "viewer")
+		first := waitForListedSecrets(t, identity, proj, "", 2)
+
+		// Action
+		again := listSecretsWithEtag(t, identity, proj, first.HTTPResponse.Header.Get("ETag"))
+
+		// Assert
+		require.Equal(t, http.StatusNotModified, again.StatusCode())
+	})
+
+	t.Run("should answer a cached etag with the full body once a group the identity is in gets a wider project role", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, identity, group := identityWithGroupAccess(t, h)
+		before := waitForListedSecrets(t, identity, proj, "", 1)
+
+		// Action
+		proj.GrantGroup(t, group, "viewer")
+
+		// Assert
+		spec.Why(t, "the etag hashes the actor's memberships, so a group-derived one has to change it or the client keeps its stale list")
+		waitForListedSecrets(t, identity, proj, before.HTTPResponse.Header.Get("ETag"), 2)
+	})
+
+	t.Run("should answer a cached etag with the full body once the identity leaves a group that widened its access", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, identity, group := identityWithGroupAccess(t, h)
+		proj.GrantGroup(t, group, "viewer")
+		before := waitForListedSecrets(t, identity, proj, "", 2)
+
+		// Action
+		group.RemoveIdentity(t, identity)
+
+		// Assert
+		waitForListedSecrets(t, identity, proj, before.HTTPResponse.Header.Get("ETag"), 1)
+	})
+}
+
+// identityWithGroupAccess returns a project with secrets VISIBLE and HIDDEN, an identity whose own role reads only
+// VISIBLE, and a group holding that identity with no project role yet.
+func identityWithGroupAccess(t *testing.T, h *harness.Stack) (*fixture.Project, *harness.Principal, *fixture.Group) {
+	t.Helper()
+	tn := h.NewTenant(t)
+	proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+	proj.NewRole(t, "one-secret-reader", fixture.Permission{
+		Subject:    "secrets",
+		Action:     []string{"read"},
+		Conditions: map[string]any{"secretName": map[string]any{"$eq": "VISIBLE"}},
+	})
+	identity := proj.NewMachineIdentity(t, fixture.WithRoles("one-secret-reader"))
+	secretmanager.CreateSecret(t, proj, "dev", "VISIBLE", "seen")
+	secretmanager.CreateSecret(t, proj, "dev", "HIDDEN", "unseen")
+	group := fixture.NewGroup(t, tn)
+	group.AddIdentity(t, identity)
+	return proj, identity, group
+}
+
+func listSecretsWithEtag(t *testing.T, pr *harness.Principal, proj *fixture.Project, etag string) *api.ListSecretsV4Response {
+	t.Helper()
+	res, err := pr.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{ProjectId: &proj.ID, Environment: new("dev")},
+		func(_ context.Context, req *http.Request) error {
+			if etag != "" {
+				req.Header.Set("If-None-Match", etag)
+			}
+			return nil
+		})
+	require.NoError(t, err)
+	return res
+}
+
+// waitForListedSecrets polls until the list answers 200 with want secrets, sending etag as If-None-Match when set.
+// A group change reaches the permission cache shortly after the request that made it, hence the wait.
+func waitForListedSecrets(t *testing.T, pr *harness.Principal, proj *fixture.Project, etag string, want int) *api.ListSecretsV4Response {
+	t.Helper()
+	var last *api.ListSecretsV4Response
+	_, err := wait.For(t.Context(), func(context.Context) (struct{}, bool, error) {
+		last = listSecretsWithEtag(t, pr, proj, etag)
+		return struct{}{}, last.JSON200 != nil && len(last.JSON200.Secrets) == want, nil
+	})
+	require.NoErrorf(t, err, "waiting for %d secrets, last %d: %s", want, last.StatusCode(), apierr.Body(last.Body))
+	require.NotEmpty(t, last.HTTPResponse.Header.Get("ETag"), "the list response carried no ETag")
+	return last
 }

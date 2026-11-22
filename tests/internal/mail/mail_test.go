@@ -84,4 +84,16 @@ This code expires in 5 minutes. Sent 2026-09-17.
 		require.NoError(t, err)
 		require.Equal(t, "771234", got)
 	})
+
+	t.Run("should skip digits inside a hex mail domain", func(t *testing.T) {
+		// Setup
+		m := Message{Subject: "Your confirmation code", Body: "To: alice@399960b0c1.test\nYour code is 528311.\n"}
+
+		// Action
+		got, err := Code(m, 6)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, "528311", got)
+	})
 }

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -98,9 +98,7 @@ export const RundeckConfigurePage = () => {
 
   return integrationAuth ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up Rundeck Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up Rundeck Integration" />
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -220,9 +218,7 @@ export const RundeckConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Rundeck Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up Rundeck Integration" />
       {isIntegrationAuthLoading ? (
         <img
           src="/images/loading/loading.gif"

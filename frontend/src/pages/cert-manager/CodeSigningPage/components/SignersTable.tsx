@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
@@ -23,6 +22,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -36,11 +36,13 @@ import {
 import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useSubscription
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getSignerStatusBadgeVariant,
+  hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
   signerStatusLabels,
@@ -48,6 +50,7 @@ import {
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { SignerRequestFailedBadge } from "../../components/SignerBadges";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 type Props = {
@@ -56,8 +59,7 @@ type Props = {
 };
 
 export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
@@ -138,21 +140,19 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             <TableBody>
               {!isLoading &&
                 signers.map((signer) => (
-                  <TableRow
-                    key={signer.id}
-                    className="cursor-pointer hover:bg-surface-hover"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
-                        params: {
-                          orgId: currentOrg.id,
-                          signerId: signer.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{signer.name}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                  <TableRow key={signer.id} className="hover:bg-surface-hover" linked>
+                    <TableCell>
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `code-signing/${signer.id}`
+                        )!}
+                      >
+                        {signer.name}
+                      </RowLink>
+                    </TableCell>
+                    <TableCell data-row-interactive className="cursor-default">
                       {signer.certificateFailureReason &&
                       (signer.status === SignerStatus.Failed ||
                         signer.status === SignerStatus.Pending) ? (
@@ -184,9 +184,14 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                          {signerStatusLabels[signer.status] ?? signer.status}
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                            {signerStatusLabels[signer.status]}
+                          </Badge>
+                          {hasFailedRenewal(signer) && (
+                            <SignerRequestFailedBadge reason={signer.certificateFailureReason} />
+                          )}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
+import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
   Card,
@@ -25,6 +26,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -37,12 +39,14 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   CertRequestRequestData,
+  CertRevocationRequestData,
   CodeSigningRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
@@ -92,12 +96,34 @@ const formatRelative = (iso: string): string => {
 const isCertRequestData = (data: unknown): data is { requestData: CertRequestRequestData } => {
   return Boolean(
     data &&
-      typeof data === "object" &&
-      "requestData" in data &&
-      data.requestData &&
-      typeof data.requestData === "object" &&
-      "profileName" in (data.requestData as object)
+    typeof data === "object" &&
+    "requestData" in data &&
+    data.requestData &&
+    typeof data.requestData === "object" &&
+    "profileName" in (data.requestData as object)
   );
+};
+
+// Issuance, renewal and revocation requests all belong to an Application, so they share one table.
+const getApplicationRequestSummary = (request: TApprovalRequest) => {
+  if (request.type === ApprovalPolicyType.CertRevocation) {
+    const data = request.requestData.requestData as CertRevocationRequestData;
+    return {
+      typeLabel: "Revocation",
+      commonName: data.commonName || data.serialNumber,
+      displayName: data.commonName || truncateSerialNumber(data.serialNumber),
+      profileName: data.profileName
+    };
+  }
+
+  const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
+  const commonName = data?.certificateRequest?.commonName ?? "";
+  return {
+    typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
+    commonName,
+    displayName: commonName,
+    profileName: data?.profileName ?? ""
+  };
 };
 
 const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
@@ -149,12 +175,27 @@ export const RequestsPage = () => {
   };
   const isSigningFiltered = signingStatusFilters.size > 0;
 
-  const { data: requests = [], isPending: isRequestsLoading } = useQuery(
+  const { data: issuanceRequests = [], isPending: isIssuanceRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
       scope: ApprovalPolicyScope.Project,
       scopeId: projectId
     })
+  );
+  const { data: revocationRequests = [], isPending: isRevocationRequestsLoading } = useQuery(
+    approvalRequestQuery.list({
+      policyType: ApprovalPolicyType.CertRevocation,
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
+    })
+  );
+  const isRequestsLoading = isIssuanceRequestsLoading || isRevocationRequestsLoading;
+  const requests = useMemo(
+    () =>
+      [...issuanceRequests, ...revocationRequests].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    [issuanceRequests, revocationRequests]
   );
 
   const { data: signingRequests = [], isPending: isSigningRequestsLoading } = useQuery(
@@ -209,16 +250,12 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const cn = isCertRequestData(r.requestData)
-          ? (r.requestData.requestData.certificateRequest?.commonName ?? "")
-          : "";
-        const profile = isCertRequestData(r.requestData)
-          ? (r.requestData.requestData.profileName ?? "")
-          : "";
+        const { typeLabel, commonName, profileName } = getApplicationRequestSummary(r);
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return (
-          cn.toLowerCase().includes(norm) ||
-          profile.toLowerCase().includes(norm) ||
+          commonName.toLowerCase().includes(norm) ||
+          profileName.toLowerCase().includes(norm) ||
+          typeLabel.toLowerCase().includes(norm) ||
           requester.toLowerCase().includes(norm)
         );
       });
@@ -242,9 +279,7 @@ export const RequestsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Requests</title>
-      </Helmet>
+      <PageTitle title="Requests" />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
@@ -288,7 +323,8 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
                     <CardDescription>
-                      Pending certificate issuance requests from your applications.
+                      Pending certificate issuance, renewal and revocation requests from your
+                      applications.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -298,7 +334,7 @@ export const RequestsPage = () => {
                           <SearchIcon />
                         </InputGroupAddon>
                         <InputGroupInput
-                          placeholder="Search by common name, profile, or requester…"
+                          placeholder="Search by common name, type, profile, or requester…"
                           value={searchInput}
                           onChange={(e) => setSearchInput(e.target.value)}
                         />
@@ -346,7 +382,8 @@ export const RequestsPage = () => {
                               : "No requests"}
                           </EmptyTitle>
                           <EmptyDescription>
-                            Certificate requests from any application will appear here.
+                            Certificate requests and revocations from any application will appear
+                            here.
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -356,6 +393,7 @@ export const RequestsPage = () => {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Common Name</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Profile</TableHead>
                             <TableHead>Application</TableHead>
                             <TableHead>Requester</TableHead>
@@ -365,11 +403,9 @@ export const RequestsPage = () => {
                         </TableHeader>
                         <TableBody>
                           {filtered.map((r) => {
-                            const certData = isCertRequestData(r.requestData)
-                              ? r.requestData.requestData
-                              : null;
-                            const cn = certData?.certificateRequest?.commonName ?? "—";
-                            const profile = certData?.profileName ?? "—";
+                            const summary = getApplicationRequestSummary(r);
+                            const cn = summary.displayName || "—";
+                            const profile = summary.profileName || "—";
                             const requestAppId =
                               r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
                             const app = requestAppId ? appById.get(requestAppId) : null;
@@ -379,37 +415,35 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertRequest,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {cn}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: r.type,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {cn}
+                                  </RowLink>
                                 </TableCell>
+                                <TableCell>{summary.typeLabel}</TableCell>
                                 <TableCell className="font-mono text-xs">{profile}</TableCell>
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to="/organizations/$orgId/cert-manager/applications/$applicationName"
-                                      params={{
-                                        orgId: orgId ?? "",
-                                        applicationName: app.name
-                                      }}
+                                      {...getInstancePinningLink(
+                                        currentProject.orgId,
+                                        currentProject,
+                                        `applications/${app.name}`
+                                      )!}
                                       className="text-foreground hover:text-project"
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       {app.name}
                                     </Link>
@@ -527,25 +561,23 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertCodeSigning,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {signerName}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertCodeSigning,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {signerName}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
                                 <TableCell>

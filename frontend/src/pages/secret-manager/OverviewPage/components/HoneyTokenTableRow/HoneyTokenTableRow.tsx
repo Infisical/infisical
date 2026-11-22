@@ -36,7 +36,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { useTimedReset, useToggle } from "@app/hooks";
+import { useTimedReset } from "@app/hooks";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
@@ -68,6 +68,8 @@ type Props = {
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -77,9 +79,10 @@ export const HoneyTokenTableRow = ({
   getHoneyTokenByName,
   onEdit,
   onRevoke,
-  onViewDetails
+  onViewDetails,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
   const [, isNameCopied, setIsNameCopied] = useTimedReset<boolean>({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
@@ -242,7 +245,7 @@ export const HoneyTokenTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className={twMerge(
           "group hover:z-10",
           isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10"

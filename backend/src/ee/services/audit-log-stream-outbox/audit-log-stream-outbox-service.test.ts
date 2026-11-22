@@ -119,7 +119,9 @@ const createService = () => {
     )
   };
 
-  const eventEmitter = { emit: vi.fn<(event: unknown, tx?: unknown) => Promise<void>>(async () => undefined) };
+  const eventEmitter = {
+    emit: vi.fn<(events: unknown[], tx?: unknown) => Promise<void>>(async () => undefined)
+  };
 
   const projectDAL = {
     findProjectTypesByIds: vi.fn(async () => [])
@@ -129,7 +131,7 @@ const createService = () => {
     auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
     auditLogStreamDAL: auditLogStreamDAL as never,
     projectDAL: projectDAL as never,
-    kmsService: {} as never,
+    kmsDataKeyService: {} as never,
     keyStore: {} as never,
     queueService: {} as never,
     eventEmitter
@@ -402,7 +404,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
       auditLogStreamDAL: auditLogStreamDAL as never,
       projectDAL: projectDAL as never,
-      kmsService: {} as never,
+      kmsDataKeyService: {} as never,
       keyStore: keyStore as never,
       queueService: queueService as never,
       eventEmitter: { emit: vi.fn(async () => undefined) }
@@ -617,8 +619,8 @@ describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
       { streamId: "stream-b", orgId: ORG_ID, provider: LogProvider.Splunk }
     ]);
 
-    const payloads = eventEmitter.emit.mock.calls.map(
-      ([event]) => (event as { payload: { targetIds: string[]; droppedCount: number } }).payload
+    const payloads = eventEmitter.emit.mock.calls.flatMap(([events]) =>
+      (events as { data: { targetIds: string[]; droppedCount: number } }[]).map((event) => event.data)
     );
     expect(payloads).toHaveLength(2);
     expect(payloads).toEqual(

@@ -1,6 +1,6 @@
 import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CrlReason } from "../certificates/enums";
+import { CertificateRevocationSource, CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -631,6 +631,7 @@ interface GetCaCsr {
   metadata: {
     caId: string;
     dn: string;
+    maxPathLength?: number;
   };
 }
 
@@ -656,6 +657,29 @@ interface ImportCaCert {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
   };
 }
 
@@ -702,7 +726,8 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: string;
-    deletionAllowedReason: string;
+    statusAtDeletion?: CertStatus;
+    deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -715,6 +740,44 @@ interface RevokeCert {
     cn: string;
     serialNumber: string;
     revocationReason?: CrlReason;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    crlWarning?: string;
+    source?: CertificateRevocationSource;
+  };
+}
+
+interface RequestCertRevocation {
+  type: EventType.REQUEST_CERT_REVOCATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    approvalPolicyId: string;
+    approvalPolicyName: string;
+  };
+}
+
+interface CertRevocationFailed {
+  type: EventType.CERT_REVOCATION_FAILED;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    error: string;
   };
 }
 
@@ -1104,12 +1167,16 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrl
   | IssueCert
   | ImportCert
   | GetCert
   | DeleteCert
   | RevokeCert
+  | RequestCertRevocation
+  | CertRevocationFailed
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle

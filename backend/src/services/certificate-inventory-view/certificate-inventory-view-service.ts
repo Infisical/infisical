@@ -8,6 +8,7 @@ import { TPermissionServiceFactory } from "../../ee/services/permission/permissi
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
@@ -19,6 +20,7 @@ import {
 
 type TSystemViewFilters = {
   status?: string[];
+  includeDeleted?: boolean;
   notAfterTo?: string;
   keyAlgorithm?: string[];
 };
@@ -33,7 +35,15 @@ type TSystemView = {
 };
 
 const SYSTEM_VIEWS: TSystemView[] = [
-  { id: "system-all", name: "All Certificates", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  { id: "system-default", name: "Default", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  {
+    id: "system-all",
+    name: "All Certificates",
+    filters: { includeDeleted: true },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
   {
     id: "system-expiring-7d",
     name: "Expiring in 7 days",
@@ -70,6 +80,14 @@ const SYSTEM_VIEWS: TSystemView[] = [
     id: "system-revoked",
     name: "Revoked",
     filters: { status: ["revoked"] },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
+    id: "system-deleted",
+    name: "Deleted",
+    filters: { status: [CertStatus.DELETED] },
     columns: null,
     isSystem: true,
     createdByUserId: null

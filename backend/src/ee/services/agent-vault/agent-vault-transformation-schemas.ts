@@ -10,10 +10,12 @@ import {
 } from "./agent-vault-credential-schemas";
 import { AgentVaultSubstitutionSurface } from "./agent-vault-enums";
 import {
+  AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE,
   AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE,
   AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE,
   hasMalformedVariableReference,
-  hasTooManyVariableReferences
+  hasTooManyVariableReferences,
+  hasVariableReference
 } from "./agent-vault-variable-fns";
 
 export const AGENT_VAULT_MAX_CUSTOM_HEADERS = 20;
@@ -112,6 +114,23 @@ export const AgentVaultSubstitutionUpdateSchema = z.object({
   placeholder: placeholderSchema.describe(AGENT_VAULT.SERVICE.placeholder),
   surfaces: surfacesSchema.describe(AGENT_VAULT.SERVICE.surfaces),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateSubstitutionValue)
+});
+
+// For every value of a service sent inline with a session. Whoever starts a session names the hosts its inline
+// services reach, so a variable reference would let them send any variable's value to a host of their choosing.
+export const acceptsNoVariableReferences = (schema: z.ZodString) =>
+  schema.refine((value) => !hasVariableReference(value), AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE);
+
+const inlineSecretValueSchema = acceptsNoVariableReferences(
+  z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+);
+
+export const AgentVaultInlineCustomHeaderInputSchema = AgentVaultCustomHeaderInputSchema.extend({
+  value: inlineSecretValueSchema.describe(AGENT_VAULT.SESSION.inlineCustomHeaderValue)
+});
+
+export const AgentVaultInlineSubstitutionInputSchema = AgentVaultSubstitutionInputSchema.extend({
+  value: inlineSecretValueSchema.describe(AGENT_VAULT.SESSION.inlineSubstitutionValue)
 });
 
 type TNamed = { name: string };

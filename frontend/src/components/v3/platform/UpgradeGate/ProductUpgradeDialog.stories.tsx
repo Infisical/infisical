@@ -16,10 +16,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { BillingV2CatalogProduct, BillingV2Plan } from "@app/hooks/api";
-import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
+import { BillingCatalogProduct, BillingCatalogPlan } from "@app/hooks/api";
+import { fmtMoney } from "@app/pages/organization/BillingPage/billing-format";
 
-const freePlan: BillingV2Plan = {
+const freePlan: BillingCatalogPlan = {
   tier: "free",
   name: "Free",
   selfServe: false,
@@ -30,7 +30,7 @@ const freePlan: BillingV2Plan = {
   dims: []
 };
 
-const proPlan: BillingV2Plan = {
+const proPlan: BillingCatalogPlan = {
   ...freePlan,
   tier: "pro",
   name: "Pro",
@@ -52,14 +52,14 @@ const proPlan: BillingV2Plan = {
   ]
 };
 
-const enterprisePlan: BillingV2Plan = {
+const enterprisePlan: BillingCatalogPlan = {
   ...freePlan,
   tier: "enterprise",
   name: "Enterprise",
   salesLed: true
 };
 
-const product: BillingV2CatalogProduct = {
+const product: BillingCatalogProduct = {
   id: "pam",
   name: "Privileged Access Management",
   icon: "users",

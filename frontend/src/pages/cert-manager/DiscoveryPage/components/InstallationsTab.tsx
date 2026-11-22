@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
@@ -23,38 +23,42 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionSub,
-  useOrganization
+  useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   TPkiInstallation,
   useDeletePkiInstallation,
   useListPkiInstallations
 } from "@app/hooks/api";
-import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import {
   canSetKeystorePassword,
   getEndpoint,
   getGatewayLabel,
+  getInstallationDiscoveryType,
   getKeystoreStatusBadge,
-  isHostFileInstallation,
   useCanRescanPkiInstallations
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
-import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteInstallationModal } from "./DeleteInstallationModal";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { EditInstallationModal } from "./EditInstallationModal";
 import {
   RESCAN_POLL_INTERVAL_MS,
@@ -69,8 +73,7 @@ type Props = {
 const PAGE_SIZE = 25;
 
 export const InstallationsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
@@ -132,8 +135,8 @@ export const InstallationsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Installations</CardTitle>
         <CardDescription>
-          Every place a certificate was found during a scan, identified by its host and port or its
-          host and file path.
+          Every place a certificate was found during a scan, identified by its host and its port,
+          file path or certificate store.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,37 +185,47 @@ export const InstallationsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {installations.map((installation) => (
-                  <TableRow
-                    key={installation.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
-                        params: {
-                          orgId: currentOrg.id,
-                          installationId: installation.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>
+                  <TableRow key={installation.id} linked>
+                    <TableCell className="max-w-96">
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon
-                          type={
-                            isHostFileInstallation(installation)
-                              ? PkiDiscoveryType.LinuxServer
-                              : PkiDiscoveryType.Network
-                          }
+                          type={getInstallationDiscoveryType(installation)}
                           className="size-4 shrink-0"
                         />
-                        <span className="truncate">
+                        <RowLink
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `discovery/installations/${installation.id}`
+                          )!}
+                          className="min-w-0"
+                          title={installation.name || getEndpoint(installation)}
+                        >
                           {installation.name || getEndpoint(installation)}
-                        </span>
+                        </RowLink>
                         {getKeystoreStatusBadge(installation)}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {installation.primaryCertName || <span className="text-accent">—</span>}
+                    <TableCell className="max-w-56">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-accent">—</span>
+                      )}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
@@ -221,7 +234,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">

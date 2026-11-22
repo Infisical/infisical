@@ -13,7 +13,7 @@
 
 ╭―― Thank you for installing Infisical! 👋  ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 │
-│   Infisical / All-in-one open-source SecretOps solution to manage your secrets across your infra! 🔒🔑
+│   Infisical / The open-source security infrastructure platform: Manage secrets, certificates, keys, privileged access, and AI agent access in one platform! 🔒🔑
 │
 │   Visit < https://infisical.com/docs/self-hosting/overview > for further documentation about self-hosting!
 │

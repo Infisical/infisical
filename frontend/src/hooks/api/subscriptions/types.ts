@@ -87,6 +87,7 @@ export type SubscriptionPlan = {
   pkiAwsKmsSigning: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
+  pkiCrossSignedCa: boolean;
   pkiDiscovery: boolean;
   pkiEnterpriseAlerting: boolean;
   pkiApprovals: boolean;
@@ -119,9 +120,11 @@ export type SubscriptionPlan = {
   secretsBrokering: boolean;
   agentVaultByoS3: boolean;
   agentVaultManagedStorage: boolean;
+  agentVaultHooks: boolean;
   // null means 30 days.
   agentVaultSessionLogRetentionDays: number | null;
   pam?: boolean | null;
+  agentVault?: boolean | null;
   enterprisePamAccount?: boolean | null;
   maxPamAccounts?: number | null;
   certManager?: boolean | null;

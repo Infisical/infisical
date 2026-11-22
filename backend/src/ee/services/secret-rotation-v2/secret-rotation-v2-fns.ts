@@ -1,14 +1,15 @@
 import { AxiosError } from "axios";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueOptions } from "@app/queue/queue-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
+import { CLICKHOUSE_CREDENTIALS_ROTATION_LIST_OPTION, TClickHouseCredentialsRotation } from "./clickhouse-credentials";
 import { CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION } from "./cloudflare-api-token";
 import { CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION } from "./cloudflare-r2-access-key";
 import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
@@ -24,7 +25,7 @@ import { GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION, TGcpServiceAccountKeyRota
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { LITELLM_API_KEY_ROTATION_LIST_OPTION } from "./litellm-api-key";
-import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
+import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION, TMongoDBCredentialsRotation } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
@@ -88,7 +89,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.CloudflareApiToken]: CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.ClickHouseCredentials]: CLICKHOUSE_CREDENTIALS_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -150,13 +152,13 @@ export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rota
 export const encryptSecretRotationCredentials = async ({
   projectId,
   generatedCredentials,
-  kmsService
+  kmsDataKeyService
 }: {
   projectId: string;
   generatedCredentials: TSecretRotationV2GeneratedCredentials;
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"];
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -171,13 +173,13 @@ export const encryptSecretRotationCredentials = async ({
 export const decryptSecretRotationCredentials = async ({
   projectId,
   encryptedGeneratedCredentials,
-  kmsService
+  kmsDataKeyService
 }: {
   projectId: string;
   encryptedGeneratedCredentials: Buffer;
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"];
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -272,9 +274,9 @@ export const calculateNextRotationAt = ({
 
 export const expandSecretRotation = async (
   { encryptedLastRotationMessage, ...secretRotation }: TSecretRotationV2Raw,
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"]
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"]
 ) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId: secretRotation.projectId
   });
@@ -463,6 +465,18 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update service account email" });
+      }
+      break;
+    case SecretRotation.MongoDBCredentials:
+    case SecretRotation.ClickHouseCredentials:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as (TMongoDBCredentialsRotation | TClickHouseCredentialsRotation)["parameters"],
+          secretRotation.parameters as (TMongoDBCredentialsRotation | TClickHouseCredentialsRotation)["parameters"],
+          ["username1", "username2"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update usernames" });
       }
       break;
     default:

@@ -3,7 +3,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
+import { useComposedRefs } from "../DataGrid/compose-refs";
+import { rowLinkContainerClassName } from "../RowLink";
 import { Skeleton } from "../Skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 const Table = React.forwardRef<
   HTMLDivElement,
@@ -150,22 +153,25 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <tr
-        ref={ref}
-        data-slot="table-row"
-        className={cn(
-          "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
-          props.onClick && "cursor-pointer select-none",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+const TableRow = React.forwardRef<
+  HTMLTableRowElement,
+  React.ComponentProps<"tr"> & { linked?: boolean }
+>(({ className, linked, ...props }, ref) => {
+  return (
+    <tr
+      ref={ref}
+      data-slot="table-row"
+      className={cn(
+        "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
+        props.onClick && "cursor-pointer select-none",
+        linked && rowLinkContainerClassName,
+        linked && "translate-x-0",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 TableRow.displayName = "TableRow";
 
@@ -246,26 +252,53 @@ function TableCell({
   className,
   isTruncatable,
   isWrappable,
+  isTopAligned,
   variant = "default",
+  children,
+  ref,
   ...props
 }: React.ComponentProps<"td"> & {
   isTruncatable?: boolean;
   isWrappable?: boolean;
+  isTopAligned?: boolean;
   variant?: TableColumnVariant;
 }) {
-  return (
+  const cellRef = React.useRef<HTMLTableCellElement>(null);
+  const composedRef = useComposedRefs(ref, cellRef);
+  const [isTooltipOpen, setIsTooltipOpen] = React.useState(false);
+
+  const cell = (
     <td
+      ref={composedRef}
       data-slot="table-cell"
       data-variant={variant}
       className={cn(
         "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
         isWrappable && "max-w-md wrap-anywhere whitespace-normal",
+        isTopAligned && "align-top",
         variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </td>
+  );
+
+  if (!isTruncatable || typeof children !== "string" || props.title !== undefined) return cell;
+
+  return (
+    <Tooltip
+      open={isTooltipOpen}
+      onOpenChange={(open) => {
+        const node = cellRef.current;
+        setIsTooltipOpen(open && !!node && node.scrollWidth > node.clientWidth);
+      }}
+    >
+      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+      <TooltipContent className="max-w-md wrap-anywhere">{children}</TooltipContent>
+    </Tooltip>
   );
 }
 

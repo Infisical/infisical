@@ -1,10 +1,27 @@
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
+import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
 import { agentVaultMembershipServiceFactory } from "./agent-vault-membership-service";
+
+// The real lock queries the database. Here only when the removal takes it matters.
+vi.mock("@app/services/membership/membership-dal", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/membership/membership-dal")>()),
+  lockMembershipsById: vi.fn(async () => [])
+}));
 
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
@@ -45,15 +62,35 @@ const buildTx = (adminCount: number) => {
 };
 
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
-// fails to short-circuit shows up as a crash rather than a silent pass.
+// fails to short-circuit shows up as a crash rather than a silent pass. findActorsWithActiveOrgAccess
+// follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
-  adminMembershipIds = [] as string[]
+  adminMembershipIds = [] as string[],
+  groupReachableIds = [] as string[],
+  // A role of its own, in place of Agent Vault admin.
+  rules = agentVaultProjectAdminPermissions as RawRuleOf<MongoAbility>[],
+  // Off is the legacy system, where the boundary compares rule sets instead of checking assign-role.
+  shouldUseNewPrivilegeSystem = false
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+    permissionService: {
+      getProjectPermissionByRoles: vi.fn(async (roles: string[]) =>
+        roles.map((role) => ({
+          permission: createMongoAbility(
+            (role === ProjectMembershipRole.Admin
+              ? agentVaultProjectAdminPermissions
+              : agentVaultProjectMemberPermissions) as RawRuleOf<MongoAbility>[]
+          ),
+          role: { name: role, slug: role }
+        }))
+      ),
+      getProjectPermission: vi.fn().mockResolvedValue({
+        permission: createMongoAbility(rules)
+      })
+    },
     identityDAL: {
       // Honours a projectId filter, because the ownership check pushes it into the query rather than
       // comparing in JS: a mock that ignored it would report every identity as Agent Vault's own.
@@ -68,7 +105,31 @@ const buildService = ({
     groupDAL: { find: vi.fn().mockResolvedValue([]) },
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null, shouldUseNewPrivilegeSystem }),
+      lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
+      findActorsWithActiveOrgAccess: vi.fn(
+        async ({ userIds, identityIds }: { userIds: string[]; identityIds: string[] }) => {
+          const active = async (column: "actorUserId" | "actorIdentityId", ids: string[]) => {
+            if (!ids.length) return new Set<string>();
+            const rows = (await deps.membershipDAL.find({
+              scope: AccessScope.Organization,
+              $in: { [column]: ids }
+            })) as Record<string, unknown>[];
+            const direct = rows.filter((row) => ids.includes(row[column] as string));
+            const withRow = new Set(direct.map((row) => row[column] as string));
+            return new Set([
+              ...direct.filter((row) => row.isActive).map((row) => row[column] as string),
+              ...ids.filter((id) => groupReachableIds.includes(id) && !withRow.has(id))
+            ]);
+          };
+          return {
+            userIds: await active("actorUserId", userIds),
+            identityIds: await active("actorIdentityId", identityIds)
+          };
+        }
+      )
+    },
     membershipDAL: {
       // The organization read is how an actor is judged to exist here, so it answers for whatever it is
       // asked about. That is what an org holds for every actor it reaches, including one it does not own
@@ -103,8 +164,8 @@ const buildService = ({
       delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() },
     agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    agentVaultMemberDAL: { findAvailableActors: vi.fn().mockResolvedValue({ members: [], totalCount: 0 }) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
     identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
@@ -186,9 +247,15 @@ describe("agentVaultMembership guards", () => {
       adminMembershipIds: ["mem-other"]
     });
 
+    vi.mocked(lockMembershipsById).mockClear();
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+    // Locked in id order before anything is deleted, the order a delegation save takes them in.
+    expect(lockMembershipsById).toHaveBeenCalledWith(["mem-1"], expect.anything());
+    expect(vi.mocked(lockMembershipsById).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.membershipDAL.delete).mock.invocationCallOrder[0]
+    );
     // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
     expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
       { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
@@ -239,7 +306,27 @@ describe("agentVaultMembership guards", () => {
   // Reaching the organization through a group is how a sub-org is given a parent group's members. They
   // reach Agent Vault the same way, by the group being a member, so neither is individually assignable.
   // Authentication resolves them through the group and is deliberately untouched by this.
-  test("refuses an actor whose organization access comes only from a group", async () => {
+  test("accepts an actor whose organization access comes only from a group", async () => {
+    const { service, deps } = buildService({ groupReachableIds: [OTHER_USER_ID] });
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(deps.membershipDAL.insertMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ actorUserId: OTHER_USER_ID })],
+      expect.anything()
+    );
+  });
+
+  test("refuses an actor the organization does not reach at all", async () => {
     const { service, deps } = buildService();
     deps.membershipDAL.find.mockResolvedValue([]);
 
@@ -499,4 +586,140 @@ describe("agentVaultMembership guards", () => {
     expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
     expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
+});
+
+describe("member changes take the action on each kind they name", () => {
+  // Can manage machine identities and read users, but can't add, change or remove users or groups.
+  const identityManager = [
+    ...[
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete
+    ].map((action) => ({ action, subject: ProjectPermissionSub.Identity })),
+    { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member }
+  ];
+  const withoutIdentity = { userIds: [], groupIds: [], machineIdentityIds: [] };
+
+  const identityRoleAssigner = [
+    ...identityManager,
+    { action: ProjectPermissionIdentityActions.AssignRole, subject: ProjectPermissionSub.Identity }
+  ];
+
+  test("adds, re-roles and removes an identity with the identity actions and assign-role", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-1" }],
+      adminMembershipIds: ["mem-other"],
+      rules: identityRoleAssigner,
+      shouldUseNewPrivilegeSystem: true
+    });
+
+    await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx });
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      ...addIds,
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
+    expect(deps.membershipDAL.delete).toHaveBeenCalled();
+  });
+
+  test.each([
+    ["a user by id", { ...withoutIdentity, userIds: [OTHER_USER_ID] }],
+    ["a user by email", { ...withoutIdentity, emails: ["someone@example.com"] }],
+    ["a group", { ...withoutIdentity, groupIds: [GROUP_ID] }],
+    ["an identity alongside a user", { ...addIds, userIds: [OTHER_USER_ID] }]
+  ])("refuses to add %s without that kind's create", async (_label, ids) => {
+    const { service, deps } = buildService({ rules: identityManager });
+
+    await expect(
+      service.addProductMembers({ projectId: PROJECT_ID, emails: [], ...ids, role: ProjectMembershipRole.Member, ctx })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("refuses to re-role or remove a user without the user actions", async () => {
+    const { service, deps } = buildService({ rules: identityManager });
+    const users = { ...withoutIdentity, userIds: [OTHER_USER_ID] };
+
+    await expect(
+      service.updateProductMemberRoles({ projectId: PROJECT_ID, ...users, role: ProjectMembershipRole.Admin, ctx })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...users, ctx })).rejects.toBeInstanceOf(
+      ForbiddenError
+    );
+    expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
+  });
+
+  test("lists as addable only the kinds the caller can both read and add", async () => {
+    const { service, deps } = buildService({ rules: identityManager });
+
+    await service.listAvailableProductMembers({ projectId: PROJECT_ID, limit: 10, offset: 0, ctx });
+    expect(deps.agentVaultMemberDAL.findAvailableActors).toHaveBeenCalledWith(
+      expect.objectContaining({ actorTypes: [AgentVaultMemberType.MachineIdentity] })
+    );
+
+    await expect(
+      service.listAvailableProductMembers({
+        projectId: PROJECT_ID,
+        actorType: AgentVaultMemberType.User,
+        limit: 10,
+        offset: 0,
+        ctx
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+describe("assigning a role is bounded like Secrets Management's membership routes", () => {
+  const identityManager = [
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionIdentityActions.Create,
+    ProjectPermissionIdentityActions.Edit,
+    ProjectPermissionIdentityActions.Delete
+  ].map((action) => ({ action, subject: ProjectPermissionSub.Identity }));
+
+  test.each([true, false])(
+    "without assign-role, a role that manages identities can't add, promote, demote or remove one (new system: %s)",
+    async (shouldUseNewPrivilegeSystem) => {
+      const { service, deps } = buildService({
+        productMemberships: [{ id: "mem-1" }],
+        adminMembershipIds: ["mem-1", "mem-other"],
+        rules: identityManager,
+        shouldUseNewPrivilegeSystem
+      });
+
+      await expect(
+        service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Admin, ctx })
+      ).rejects.toThrow("Failed to add the member with this role");
+      await expect(
+        service.updateProductMemberRoles({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx })
+      ).rejects.toThrow("Failed to change the role of a more privileged member");
+      await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
+        "Failed to remove a more privileged member"
+      );
+      expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+      expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+      expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
+    }
+  );
+
+  test.each([true, false])(
+    "an Agent Vault admin still promotes (new system: %s)",
+    async (shouldUseNewPrivilegeSystem) => {
+      const { service, deps } = buildService({
+        productMemberships: [{ id: "mem-1" }],
+        adminMembershipIds: ["mem-other"],
+        shouldUseNewPrivilegeSystem
+      });
+      await service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        ...addIds,
+        role: ProjectMembershipRole.Admin,
+        ctx
+      });
+      expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalled();
+    }
+  );
 });

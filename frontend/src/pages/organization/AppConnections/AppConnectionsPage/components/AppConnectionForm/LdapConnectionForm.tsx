@@ -42,12 +42,12 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type Props = {
   appConnection?: TLdapConnection;

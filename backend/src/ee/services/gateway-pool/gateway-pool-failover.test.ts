@@ -1,3 +1,4 @@
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError, GatewayTransportError } from "@app/lib/errors";
 
 type TDeps = Parameters<typeof import("./gateway-pool-service").gatewayPoolServiceFactory>[0];
@@ -28,7 +29,7 @@ const buildService = (members = MEMBERS) =>
     gatewayPoolMembershipDAL: { findHealthyGatewaysByPoolId: vi.fn().mockResolvedValue(members) },
     gatewayV2DAL: { findById: vi.fn() },
     permissionService: {},
-    licenseService: { getPlan: vi.fn() },
+    licenseService: new FakeLicenseService(),
     identityKubernetesAuthDAL: {},
     pkiDiscoveryConfigDAL: {},
     appConnectionDAL: {},
@@ -124,7 +125,7 @@ describe("selectGatewayFromPool under load-tracker failure", () => {
       gatewayPoolMembershipDAL: { findHealthyGatewaysByPoolId: vi.fn() },
       gatewayV2DAL: { findById: vi.fn() },
       permissionService: {},
-      licenseService: { getPlan: vi.fn() },
+      licenseService: new FakeLicenseService(),
       identityKubernetesAuthDAL: {},
       pkiDiscoveryConfigDAL: {},
       appConnectionDAL: {},
@@ -148,7 +149,7 @@ describe("selectGatewayFromPool under load-tracker failure", () => {
       },
       gatewayV2DAL: { findById: vi.fn() },
       permissionService: {},
-      licenseService: { getPlan: vi.fn() },
+      licenseService: new FakeLicenseService(),
       identityKubernetesAuthDAL: {},
       pkiDiscoveryConfigDAL: {},
       appConnectionDAL: {},

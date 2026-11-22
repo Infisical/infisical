@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -40,6 +39,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -55,10 +55,16 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -93,7 +99,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { user } = useUser();
-  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [filter, setFilter] = useState<Filter>({
     roles: []
   });
@@ -376,36 +382,30 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     const detailKey = isCertManager ? u.id : membershipId;
 
                     return (
-                      <TableRow
-                        key={`membership-${membershipId}`}
-                        className="group cursor-pointer"
-                        role="link"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.key === "Enter") {
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                              params: {
-                                projectId,
-                                membershipId: detailKey
-                              }
-                            });
-                          }
-                        }}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                            params: {
-                              projectId,
-                              membershipId: detailKey
-                            }
-                          })
-                        }
-                      >
+                      <TableRow key={`membership-${membershipId}`} linked>
                         <TableCell isTruncatable>
                           {name ?? <span className="text-muted">&mdash;</span>}
                         </TableCell>
-                        <TableCell isTruncatable>{email}</TableCell>
+                        <TableCell isTruncatable>
+                          <RowLink
+                            {...(getInstancePinningLink(
+                              currentOrg.id,
+                              currentProject,
+                              `members/${detailKey}`
+                            ) ??
+                              ({
+                                to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId,
+                                  membershipId: detailKey
+                                }
+                              } as const))}
+                            aria-label={email ? undefined : (name ?? u.username)}
+                          >
+                            {email}
+                          </RowLink>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             {roles

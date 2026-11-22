@@ -1,4 +1,8 @@
 export { useTestHoneyTokenConnection, useUpsertHoneyTokenConfig } from "./mutations";
-export { useGetHoneyTokenConfig } from "./queries";
-export type { THoneyTokenConfig, TUpsertHoneyTokenConfigDTO } from "./types";
+export { useGetHoneyTokenConfig, useListAwsHoneyTokenDeploymentOptions } from "./queries";
+export type {
+  TAwsHoneyTokenDeploymentOption,
+  THoneyTokenConfig,
+  TUpsertHoneyTokenConfigDTO
+} from "./types";
 export { HoneyTokenConfigStatus, HoneyTokenType } from "./types";

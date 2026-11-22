@@ -6,6 +6,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 
+// Org-less sessions are allowed because enrolling a factor at login is challenged before
+// an org is selected. A session is already bound to its user and login session.
 export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -30,7 +32,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.authMode !== AuthMode.JWT) {
         throw new UnauthorizedError({ message: "MFA session verification requires a user session" });
@@ -67,7 +69,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.authMode !== AuthMode.JWT) {
         throw new UnauthorizedError({ message: "MFA session status requires a user session" });

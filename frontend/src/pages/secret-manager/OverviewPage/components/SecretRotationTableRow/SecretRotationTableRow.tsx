@@ -36,7 +36,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
-import { useToggle } from "@app/hooks";
 import {
   SecretRotation,
   SecretRotationStatus,
@@ -74,6 +73,8 @@ type Props = {
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -100,9 +101,10 @@ export const SecretRotationTableRow = ({
   onReconcile,
   onCheckActiveCredentials,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
 
   const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
@@ -337,7 +339,7 @@ export const SecretRotationTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className={twMerge(
           "group hover:z-10",
           (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME

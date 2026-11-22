@@ -85,7 +85,7 @@ import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
-// organization members outside the project are not paged, so each kind is capped and search narrows it
+// organization members outside the project are not paged, so the list is capped and search narrows it
 const ORG_PREVIEW_LIMIT = 10;
 const NO_ACCESS_SECTION = "no-access";
 
@@ -219,8 +219,7 @@ export const FolderAccessSheet = ({
   );
 
   const orgCandidates = useMemo(() => {
-    if (!showsOrgMembers)
-      return { actors: [], usernames: new Map<string, string>(), hasMore: false };
+    if (!showsOrgMembers) return { actors: [], usernames: new Map<string, string>(), total: 0 };
     const query = debouncedSearch.trim().toLowerCase();
     const matchesQuery = (values: (string | undefined)[]) =>
       !query || values.some((value) => value?.toLowerCase().includes(query));
@@ -244,14 +243,15 @@ export const FolderAccessSheet = ({
       ? (orgIdentities ?? []).filter((identity) => matchesQuery([identity.name]))
       : [];
 
+    const matches = [
+      ...matchingUsers.map(toOrgUserActor),
+      ...matchingIdentities.map(toOrgIdentityActor)
+    ].sort(byName);
+
     return {
-      actors: [
-        ...matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor),
-        ...matchingIdentities.slice(0, ORG_PREVIEW_LIMIT).map(toOrgIdentityActor)
-      ].sort(byName),
+      actors: matches.slice(0, ORG_PREVIEW_LIMIT),
       usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username])),
-      hasMore:
-        matchingUsers.length > ORG_PREVIEW_LIMIT || matchingIdentities.length > ORG_PREVIEW_LIMIT
+      total: matches.length
     };
   }, [
     showsOrgMembers,
@@ -548,10 +548,10 @@ export const FolderAccessSheet = ({
                             onSetTier={(tier) => addToProjectAndGrant(actor, tier)}
                           />
                         ))}
-                        {orgCandidates.hasMore && (
+                        {orgCandidates.total > orgCandidates.actors.length && (
                           <p className="py-2.5 text-xs text-muted">
-                            Showing the first {ORG_PREVIEW_LIMIT} of each. Search to find someone
-                            else.
+                            Showing the first {ORG_PREVIEW_LIMIT} of {orgCandidates.total}. Search
+                            to find someone else.
                           </p>
                         )}
                       </section>

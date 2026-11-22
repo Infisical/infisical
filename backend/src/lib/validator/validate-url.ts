@@ -1,6 +1,5 @@
-import dns from "node:dns/promises";
-
 import { isIP } from "net";
+import dns from "node:dns/promises";
 import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -59,6 +58,24 @@ export const isValidAzureKeyVaultUrl = (url: string): boolean => {
     if (parsed.pathname !== "/" && parsed.pathname !== "") return false;
 
     return AZURE_KEY_VAULT_HOST_REGEX.test(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
+const AZURE_APP_CONFIGURATION_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.privatelink)?\.azconfig\.io$/);
+
+export const isValidAzureAppConfigurationUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port) return false;
+    // requests append paths to the raw string, so it has to be the bare origin
+    if (url.toLowerCase() !== parsed.origin) return false;
+
+    return AZURE_APP_CONFIGURATION_HOST_REGEX.test(parsed.hostname.toLowerCase());
   } catch {
     return false;
   }

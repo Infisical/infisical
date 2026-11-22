@@ -1,7 +1,9 @@
 import {
   BarChart3Icon,
   BellIcon,
+  BookOpenTextIcon,
   BoxIcon,
+  BracesIcon,
   CableIcon,
   ChevronsLeftRightEllipsisIcon,
   CpuIcon,
@@ -231,7 +233,10 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon),
   [ProjectPermissionSub.AgentVaultAccessBundles]: agentVault(PackageIcon),
   [ProjectPermissionSub.AgentVaultSessions]: agentVault(TicketIcon),
-  [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon)
+  [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon),
+  [ProjectPermissionSub.AgentVaultSkills]: agentVault(BookOpenTextIcon),
+  [ProjectPermissionSub.AgentVaultVariables]: agentVault(BracesIcon),
+  [ProjectPermissionSub.AgentVaultHooks]: agentVault(WebhookIcon)
 } as const satisfies Record<ProjectPermissionSub, ProjectPermissionSubjectPresentation>;
 
 export const getProjectPermissionSubjectPresentation = (

@@ -202,18 +202,31 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
+  const deleteByUserIdsInGroupsOwnedByOrgs = async (
+    { userIds, orgIds }: { userIds: string[]; orgIds: string[] },
+    tx: Knex
+  ) => {
     try {
+      await tx(TableName.UserGroupMembership)
+        .whereIn("userId", userIds)
+        .whereIn("groupId", tx(TableName.Groups).whereIn("orgId", orgIds).select("id"))
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user group memberships in groups owned by orgs" });
+    }
+  };
+
+  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string, tx?: Knex) => {
+    try {
+      const dbInstance = tx || db.replicaNode();
       // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
-      const groupIdsVisibleInOrg = db
-        .replicaNode()(TableName.Membership)
+      const groupIdsVisibleInOrg = dbInstance(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .select(`${TableName.Membership}.actorGroupId`);
 
-      const docs = await db
-        .replicaNode()(TableName.UserGroupMembership)
+      const docs = await dbInstance(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
@@ -277,6 +290,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     findUserGroupMembershipsInProjectByUserIds,
     findGroupMembersNotInProject,
     deletePendingUserGroupMembershipsByUserIds,
+    deleteByUserIdsInGroupsOwnedByOrgs,
     findGroupMembershipsByUserIdInOrg,
     findGroupMembershipsByGroupIdInOrg
   };

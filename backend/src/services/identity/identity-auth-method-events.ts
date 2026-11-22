@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -42,21 +44,24 @@ export const emitIdentityAuthMethodChanged = (
   tx: Knex
 ): Promise<void> =>
   eventEmitter.emit(
-    {
-      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-      payload: {
-        orgId: membership.scopeOrgId,
-        projectId: membership.identity.projectId,
-        resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-        resourceId: membership.identity.id,
-        targetIds: [membership.identity.id],
-        authMethod,
-        change,
-        actorType: actor,
-        actorId,
-        changedAt: new Date().toISOString(),
-        ...(credential ? { credentialId: credential.id, credentialName: credential.name ?? undefined } : {})
+    [
+      {
+        id: crypto.randomUUID(),
+        type: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+        data: {
+          orgId: membership.scopeOrgId,
+          projectId: membership.identity.projectId,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: membership.identity.id,
+          targetIds: [membership.identity.id],
+          authMethod,
+          change,
+          actorType: actor,
+          actorId,
+          changedAt: new Date().toISOString(),
+          ...(credential ? { credentialId: credential.id, credentialName: credential.name ?? undefined } : {})
+        }
       }
-    },
+    ],
     tx
   );

@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -84,7 +85,9 @@ const buildProvider = (opts?: {
         hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
       })
     },
-    licenseService: { getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false }) },
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
+    }),
     certManagerProjectResolver: { getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null) }
   } as unknown as TCertManagerSignerAlertProviderDep);
 
@@ -242,6 +245,15 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
     expect(provider.dedupWindowHours?.({ alertBefore: "30d", dailyReminder: true })).toBe(20);
+  });
+
+  // A Product Member assigned only to a signer can open Code Signing but not the certificate page,
+  // which needs product-wide certificate access or assignment to the certificate's application.
+  test("buildPayload gives signer certificates no link to the certificate page", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(signerAlert);
+    const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
+    expect(payload.items[0]).not.toHaveProperty("url");
   });
 
   test("a certificate shared by several signers is one item naming every signer", () => {

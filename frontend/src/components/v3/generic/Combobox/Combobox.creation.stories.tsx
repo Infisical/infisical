@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
+import { Combobox, type ComboboxFormCreationRenderProps } from ".";
 import { DiscardChangesAlertDialog } from "../AlertDialog/DiscardChangesAlertDialog";
 import { Button } from "../Button";
 import {
@@ -28,7 +29,6 @@ import {
   SheetTrigger
 } from "../Sheet";
 import { Stepper, StepperList, StepperStep } from "../Stepper";
-import { Combobox, type ComboboxFormCreationRenderProps } from ".";
 
 type Profile = { id: string; name: string };
 const PROFILES: Profile[] = [{ id: "existing", name: "Existing Profile" }];
@@ -288,6 +288,14 @@ export default meta;
 type Story = StoryObj;
 
 export const SheetCreation: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Sheet creation takes the existing Sheet size. renderForm returns a scrollable body and SheetFooter, not another Sheet or SheetContent. Use one caller-owned pending state for the form and creation.isPending, and route onDismiss and the form's Cancel through the same discard guard."
+      }
+    }
+  },
   render: () => <SheetCreationRender showHeader />
 };
 
@@ -364,6 +372,14 @@ const DialogCreationRender = () => {
 };
 
 export const DialogCreation: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Dialog creation renders DialogHeader followed by renderForm. Return a flex column form with DialogBody for fields and DialogFooter for actions; the dialog shell supplies the padding and the footer reaches its edges, so do not pad the form or inset the button row. Update the controlled options and selection before calling complete, which closes the dialog and returns focus to the input. Cancel keeps the query and reopens the option list without changing the selection."
+      }
+    }
+  },
   render: () => <DialogCreationRender />
 };
 
@@ -452,5 +468,13 @@ const ActionCreationRender = () => {
 };
 
 export const ActionCreation: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use action creation when the existing form switches into a sub-wizard without opening another overlay. The Create row stays available for empty, duplicate, and unmatched queries unless isDisabled is set. Selecting it closes only the picker and calls onAction with the trimmed query. Action mode does not persist, track pending work, or select an option; the caller owns the workflow and any later option or selection updates."
+      }
+    }
+  },
   render: () => <ActionCreationRender />
 };

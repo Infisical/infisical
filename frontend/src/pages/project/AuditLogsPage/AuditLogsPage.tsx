@@ -1,5 +1,4 @@
-import { Helmet } from "react-helmet";
-
+import { PageTitle } from "@app/components/PageTitle";
 import { LookingForOrgPageLink } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
@@ -14,10 +13,8 @@ export const AuditLogsPage = () => {
   const projectsHidden = hidesProjects(currentProject.type);
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{projectsHidden ? "Audit Logs" : "Project Audit Logs"}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={projectsHidden ? "Audit Logs" : "Project Audit Logs"} />
+      <link rel="icon" href="/infisical.ico" />
       <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader

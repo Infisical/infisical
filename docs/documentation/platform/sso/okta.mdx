@@ -56,6 +56,8 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
 
       ![SAML Okta attribute statements](../../../images/sso/okta/attribute-statements.png)
 
+      If you want Infisical to trust the MFA your users complete in Okta, also add an attribute statement named `amr` with the value `session.amr`. See [MFA for SSO logins](/documentation/platform/mfa#mfa-for-sso-logins).
+
       Once configured, select **Next** to proceed to the Feedback screen and select **Finish**.
 
    </Step>

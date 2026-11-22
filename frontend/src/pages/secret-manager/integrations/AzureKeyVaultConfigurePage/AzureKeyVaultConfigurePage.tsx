@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -113,6 +114,7 @@ export const AzureKeyVaultConfigurePage = () => {
 
   return integrationAuth && workspace && selectedSourceEnvironment ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Azure Key Vault Integration" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Azure Key Vault Integration</CardTitle>
@@ -195,6 +197,9 @@ export const AzureKeyVaultConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Azure Key Vault Integration" />
+      <div />
+    </>
   );
 };

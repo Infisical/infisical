@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { groupBy, removeTrailingSlash, sanitizeSqlLikeString, unique } from "@app/lib/fn";
+import { canonicalizeSecretPath, groupBy, removeTrailingSlash, sanitizeSqlLikeString, unique } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { isValidSecretPath } from "@app/lib/validator";
@@ -37,7 +37,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       throw new BadRequestError({
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -76,7 +76,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
 
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -136,7 +136,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
 
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -217,15 +217,23 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     projectId: string,
     folderIds: string[],
     tx?: Knex,
-    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
+    {
+      readFromPrimary = false,
+      includePendingDeletion = false
+    }: { readFromPrimary?: boolean; includePendingDeletion?: boolean } = {}
   ) => {
     const conn = tx || (readFromPrimary ? db : db.replicaNode());
+    // Environments pending deletion are hidden from reads, but a caller still acting inside one (eg revoking
+    // a honey token during the grace period) needs the real location.
+    const excludePendingDeletion = (qb: Knex.QueryBuilder) => {
+      if (!includePendingDeletion) void qb.whereNull(`${TableName.Environment}.deleteAfter`);
+    };
     try {
       const targetFolders = await conn(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(excludePendingDeletion)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
@@ -243,7 +251,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)
           .where(`${TableName.Environment}.projectId`, projectId)
-          .whereNull(`${TableName.Environment}.deleteAfter`)
+          .where(excludePendingDeletion)
       );
 
       const idMap = buildFolderIdMap(allEnvFolders);
@@ -548,6 +556,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await tx(TableName.SecretFolder)
         .whereIn("id", folderIds)
+        .orderBy("id")
         .forUpdate()
         .select(selectAllTableCols(TableName.SecretFolder));
       return folders;

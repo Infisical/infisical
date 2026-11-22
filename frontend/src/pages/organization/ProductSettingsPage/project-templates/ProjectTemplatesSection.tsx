@@ -1,3 +1,4 @@
+import { type LinkOptions, useNavigate } from "@tanstack/react-router";
 import { LayoutTemplate, PlusIcon } from "lucide-react";
 
 import { ProjectTemplatesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
@@ -21,10 +22,11 @@ import { ProjectTemplatesTable } from "./ProjectTemplatesTable";
 
 type Props = {
   projectType: ProjectType;
-  onTemplateSelect: (template: TProjectTemplate) => void;
+  getTemplateLink: (template: TProjectTemplate) => LinkOptions;
 };
 
-export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props) => {
+export const ProjectTemplatesSection = ({ projectType, getTemplateLink }: Props) => {
+  const navigate = useNavigate();
   const { subscription } = useSubscription();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -73,12 +75,12 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
           </CardAction>
         </CardHeader>
         <CardContent>
-          <ProjectTemplatesTable projectType={projectType} onEdit={onTemplateSelect} />
+          <ProjectTemplatesTable projectType={projectType} getTemplateLink={getTemplateLink} />
         </CardContent>
       </Card>
       <ProjectTemplateDetailsModal
         projectType={projectType}
-        onComplete={onTemplateSelect}
+        onComplete={(template) => navigate(getTemplateLink(template))}
         isOpen={popUp.addTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addTemplate", isOpen)}
       />

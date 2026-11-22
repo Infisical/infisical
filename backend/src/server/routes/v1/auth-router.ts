@@ -126,7 +126,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       if (!isGraceHit) {
         // Normal rotation: issue new refresh token and invalidate the old one
         const rotation = await server.services.authToken.rotateRefreshToken(decodedToken, tokenVersion);
-        newRefreshToken = rotation.newRefreshToken;
+        if (!rotation.isGraceHit) newRefreshToken = rotation.newRefreshToken;
       }
 
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
@@ -153,8 +153,10 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           accessVersion: tokenVersion.accessVersion,
           organizationId: decodedToken.organizationId,
           ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
+          issuingRootOrgId: decodedToken.issuingRootOrgId,
           isMfaVerified: decodedToken.isMfaVerified,
-          mfaMethod: decodedToken.mfaMethod
+          mfaMethod: decodedToken.mfaMethod,
+          idpMfaOrgId: decodedToken.idpMfaOrgId
         },
         appCfg.AUTH_SECRET,
         { expiresIn }

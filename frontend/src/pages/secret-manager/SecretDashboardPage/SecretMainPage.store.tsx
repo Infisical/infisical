@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { createContext, ReactNode, useContext, useEffect, useRef } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";
@@ -169,7 +168,6 @@ const createSelectedSecretStore: StateCreator<CombinedState, [], [], SelectedSec
 });
 
 export type BatchModeState = {
-  isBatchMode: boolean;
   pendingChanges: PendingChanges;
   pendingChangesByContext: Map<string, PendingChanges>;
   existingSecretKeys: Set<string>;
@@ -198,7 +196,6 @@ export const createBatchModeStore: StateCreator<CombinedState, [], [], BatchMode
   set,
   get
 ) => ({
-  isBatchMode: true, // Always enabled by default
   pendingChanges: { secrets: [], folders: [] },
   pendingChangesByContext: new Map<string, PendingChanges>(),
   currentContext: null,
@@ -628,7 +625,6 @@ export const usePopUpAction = () => useStoreContext(useShallow((state) => state.
 export const useBatchMode = () =>
   useStoreContext(
     useShallow((state) => ({
-      isBatchMode: state.isBatchMode,
       pendingChanges: state.pendingChanges,
       currentContext: state.currentContext,
       totalChangesCount: state.batchActions.getTotalPendingChangesCount(),

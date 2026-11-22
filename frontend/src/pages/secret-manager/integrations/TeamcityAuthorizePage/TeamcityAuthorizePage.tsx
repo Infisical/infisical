@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -69,9 +69,7 @@ export const TeamcityAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize TeamCity Integration</title>
-      </Helmet>
+      <PageTitle title="Authorize TeamCity Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

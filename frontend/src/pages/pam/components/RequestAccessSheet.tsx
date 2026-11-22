@@ -54,12 +54,12 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { AccessTypeBadge } from "./AccessTypeBadge";
+import { useAccountSheetDetails } from "./accountSheetDetails";
 import {
   AutoApprovalRequestInputs,
   toAutoApprovalInputValues
 } from "./auto-approval/AutoApprovalRequestInputs";
-import { AccessTypeBadge } from "./AccessTypeBadge";
-import { useAccountSheetDetails } from "./accountSheetDetails";
 import { PamDetailSheet } from "./PamDetailSheet";
 
 // Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
@@ -204,9 +204,9 @@ export const RequestAccessSheet = ({
   // With no approvers and no auto-approval rules that apply, break glass is the only way in
   const isBreakGlassOnly = Boolean(
     account?.canBreakGlass &&
-      approverData &&
-      !approverData.autoApprovalOnly &&
-      !approverData.steps.some((step) => step.approvers.length > 0)
+    approverData &&
+    !approverData.autoApprovalOnly &&
+    !approverData.steps.some((step) => step.approvers.length > 0)
   );
   const [breakGlassChosen, setBreakGlassChosen] = useState(false);
   const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
@@ -302,7 +302,7 @@ export const RequestAccessSheet = ({
             }))
             .sort((a, b) => a.failed - b.failed || b.passed - a.passed)[0]?.rule;
           const firstFailure = closestRule?.conditions.find(
-            (condition) => !condition.passed
+            (condition) => !condition.passed && condition.reason
           )?.reason;
 
           let text = isCredentialRequest
@@ -313,8 +313,10 @@ export const RequestAccessSheet = ({
             text = "Access granted. The approvers you skipped have been notified.";
           } else if (request?.autoApprovedAt) {
             text = `Access approved by the auto-approval rule "${approvingRule?.name ?? "auto-approval"}"`;
-          } else if (outcome && firstFailure) {
-            text = `${text}. It wasn't auto-approved: ${firstFailure}`;
+          } else if (outcome && closestRule) {
+            text = firstFailure
+              ? `${text}. It wasn't auto-approved: ${firstFailure}`
+              : `${text}. It wasn't auto-approved`;
             type = "info";
           }
 

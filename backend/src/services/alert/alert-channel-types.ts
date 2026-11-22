@@ -1,7 +1,11 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { OrgPermissionSet } from "@app/ee/services/permission/org-permission";
+import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
+import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 export const ALERT_CHANNEL_HTTP_TIMEOUT = 7 * 1000;
@@ -9,6 +13,7 @@ export const ALERT_CHANNEL_HTTP_TIMEOUT = 7 * 1000;
 export enum AlertChannelType {
   EMAIL = "email",
   SLACK = "slack",
+  SLACK_APP = "slack-app",
   WEBHOOK = "webhook",
   PAGERDUTY = "pagerduty"
 }
@@ -28,6 +33,7 @@ export type TAlertItem = {
   summary?: string;
   severity?: TAlertSeverity;
   resource?: Record<string, unknown>;
+  url?: string; // this item's page in the app; email and Slack link the item's title to it
 };
 
 export type TAlertPayload = {
@@ -62,8 +68,13 @@ export type TAlertRecipient = {
   firstName?: string | null;
 };
 
-export type TAlertChannelDeps = {
+export type TAlertChannelScopeDeps = {
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
+};
+
+export type TAlertChannelDeps = TAlertChannelScopeDeps & {
   smtpService: Pick<TSmtpService, "sendMail">;
+  kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">;
 };
 
 export type TAlertChannelSendContext = {
@@ -84,6 +95,12 @@ export type TAlertChannelDefinition = {
     incomingConfig: Record<string, unknown>,
     storedConfig: Record<string, unknown>
   ) => void;
+  assertConfigInScope?: (
+    input: { orgId: string; config: Record<string, unknown> },
+    deps: TAlertChannelScopeDeps
+  ) => Promise<void>;
+  getWorkflowIntegrationId?: (config: Record<string, unknown>) => string;
+  requiredOrgPermission?: { permission: OrgPermissionSet; message: string };
   send: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>;
 };
 
@@ -173,7 +190,15 @@ export const WebhookChannelConfigSchema = z
       .string()
       .max(2048)
       .url()
-      .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
+      .superRefine((url, ctx) => {
+        if (url.startsWith("https://")) return;
+        const appCfg = getConfig();
+        if (appCfg.ALERT_WEBHOOK_ALLOW_HTTP && url.startsWith("http://")) return;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Webhook URL must use HTTPS.${appCfg.isCloud ? "" : " If you are self-hosting, you can allow HTTP webhook URLs by setting the 'ALERT_WEBHOOK_ALLOW_HTTP' environment variable to 'true' on your instance."}`
+        });
+      }),
     signingSecret: z.string().max(256).optional().nullable(),
     authType: z.nativeEnum(WebhookAuthType).optional(),
     authCredentials: headerValueSchema("The token").optional(),
@@ -264,6 +289,32 @@ export const SlackChannelConfigSchema = z.object({
       }
     }, "Slack webhook URL must be from hooks.slack.com")
 });
+
+export const MAX_SLACK_APP_CHANNELS = 20;
+
+// Public (C) and private (G) channel IDs only, so a channel can't be pointed at a user (U) or DM (D).
+const slackChannelIdRegex = new RE2("^[CG][A-Z0-9]{1,31}$");
+
+export const SlackAppChannelConfigSchema = z.object({
+  workflowIntegrationId: z.string().uuid("Select a Slack integration"),
+  channels: z
+    .array(
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .refine((id) => slackChannelIdRegex.test(id), "Enter a Slack channel ID, such as C0123ABCD"),
+        name: z.string().trim().min(1).max(80)
+      })
+    )
+    .min(1, "Select at least one Slack channel")
+    .max(MAX_SLACK_APP_CHANNELS, `Select at most ${MAX_SLACK_APP_CHANNELS} Slack channels`)
+    .refine((channels) => new Set(channels.map((channel) => channel.id)).size === channels.length, {
+      message: "Each Slack channel can only be selected once"
+    })
+});
+
+export type TSlackAppChannelConfig = z.infer<typeof SlackAppChannelConfigSchema>;
 
 export const PagerDutyChannelConfigSchema = z.object({
   integrationKey: z

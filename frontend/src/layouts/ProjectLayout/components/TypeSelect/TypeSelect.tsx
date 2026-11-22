@@ -1,16 +1,23 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
-import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandItemLink,
+  CommandList
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   resolveCertManagerProjectId,
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
 import {
+  getInstancePinningLink,
   getOrgScopedProductFromPath,
   getProjectHomePage,
   getProjectLucideIcon,
@@ -46,13 +53,16 @@ const ORG_PRODUCT_PAGE_PATH_RE = /^\/organizations\/[^/]+\/projects\/([^/]+)\//;
 
 const TypeSelectInner = ({
   currentType,
-  currentProjectName
+  currentProjectName,
+  currentProjectId
 }: {
   currentType: ProjectType;
   currentProjectName?: string;
+  currentProjectId?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState("");
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
@@ -76,6 +86,26 @@ const TypeSelectInner = ({
       }),
     [currentOrg.id, projects, certManagerInstance?.activeProjectId]
   );
+
+  const getProductLink = (type: ProjectType) => {
+    const orgId = currentOrg?.id || "";
+    if (type === currentType && currentProjectId) {
+      const pinnedPath = type === ProjectType.CertificateManager ? "overview" : "data-sources";
+      const pinnedLink = getInstancePinningLink(orgId, { id: currentProjectId, type }, pinnedPath);
+      if (pinnedLink) return pinnedLink;
+    }
+    if (type === ProjectType.CertificateManager) {
+      if (!certManagerTargetProjectId) return null;
+      return getInstancePinningLink(orgId, { id: certManagerTargetProjectId, type }, "overview");
+    }
+    if (isOrgScopedProduct(type)) {
+      return { to: getProjectHomePage(type, []), params: { orgId } } as const;
+    }
+    return {
+      to: "/organizations/$orgId/projects/$type",
+      params: { orgId, type: projectTypeToUrlSlug(type) }
+    } as const;
+  };
 
   const navigateToCertManager = () => {
     if (isCertManagerInstancePending) return;
@@ -118,43 +148,46 @@ const TypeSelectInner = ({
   const typeTitle = getProjectTitle(currentType);
   const pillLabel = currentProjectName ?? typeTitle;
   const ProductIcon = getProjectLucideIcon(currentType);
+  const pillLink = getProductLink(currentType);
+  const pillClassName =
+    "group grid min-w-min cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse";
+  const pillContent = (
+    <>
+      <ProductIcon className="h-[14px] w-[14px] shrink-0" />
+      <span className="truncate">{pillLabel}</span>
+      <ProductPlanBadge type={currentType} />
+    </>
+  );
 
   return (
     <NavbarBlock className="min-w-16">
-      <NavbarSwitcher open={open} onOpenChange={setOpen}>
-        <button
-          type="button"
-          onClick={() => {
-            if (currentType === ProjectType.CertificateManager) {
-              navigateToCertManager();
-            } else if (isOrgScopedProduct(currentType)) {
-              navigate({
-                to: getProjectHomePage(currentType, []),
-                params: { orgId: currentOrg?.id || "" }
-              });
-            } else {
-              navigate({
-                to: "/organizations/$orgId/projects/$type",
-                params: { orgId: currentOrg?.id || "", type: projectTypeToUrlSlug(currentType) }
-              });
-            }
-          }}
-          className="group grid min-w-min cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
-        >
-          <ProductIcon className="h-[14px] w-[14px] shrink-0" />
-          <span className="truncate">{pillLabel}</span>
-          <ProductPlanBadge type={currentType} />
-        </button>
+      <NavbarSwitcher
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) setSelectedValue("");
+          setOpen(nextOpen);
+        }}
+      >
+        {pillLink ? (
+          <Link {...pillLink} className={pillClassName}>
+            {pillContent}
+          </Link>
+        ) : (
+          <button type="button" onClick={navigateToCertManager} className={pillClassName}>
+            {pillContent}
+          </button>
+        )}
         <PreviewBadge type={currentType} />
         <NavbarSwitcherTrigger aria-label="switch-product-type" />
         <NavbarSwitcherContent className="w-80">
-          <Command>
+          <Command value={selectedValue} onValueChange={setSelectedValue}>
             <CommandList>
               <CommandGroup heading="Products">
                 {PRODUCT_TYPES.map((type) => {
                   const isCertManager = type === ProjectType.CertificateManager;
                   const count = projectCountsByType[type] || 0;
                   const ItemIcon = getProjectLucideIcon(type);
+                  const itemLink = getProductLink(type);
 
                   return (
                     <CommandItem
@@ -166,7 +199,16 @@ const TypeSelectInner = ({
                       <Check className={currentType === type ? "opacity-100" : "opacity-0"} />
                       <ItemIcon className="h-4 w-4 shrink-0" />
                       <div className="flex min-w-0 flex-1 items-center justify-between">
-                        <span className="truncate text-sm">{getProjectTitle(type)}</span>
+                        {itemLink ? (
+                          <CommandItemLink
+                            {...itemLink}
+                            onFocus={() => setSelectedValue(getProjectTitle(type))}
+                          >
+                            {getProjectTitle(type)}
+                          </CommandItemLink>
+                        ) : (
+                          <span className="truncate text-sm">{getProjectTitle(type)}</span>
+                        )}
                         {!isCertManager && count > 1 && (
                           <span className="text-xs text-muted">{count}</span>
                         )}
@@ -217,6 +259,7 @@ export const TypeSelect = () => {
       <TypeSelectInner
         currentType={ProjectType.CertificateManager}
         currentProjectName={isLegacyCertManagerProject ? project?.name : undefined}
+        currentProjectId={isLegacyCertManagerProject ? project?.id : undefined}
       />
     );
   }
@@ -231,6 +274,7 @@ export const TypeSelect = () => {
       <TypeSelectInner
         currentType={ProjectType.SecretScanning}
         currentProjectName={isLegacySecretScanningProject ? project?.name : undefined}
+        currentProjectId={isLegacySecretScanningProject ? project?.id : undefined}
       />
     );
   }

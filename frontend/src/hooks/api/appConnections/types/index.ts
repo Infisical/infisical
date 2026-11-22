@@ -17,9 +17,11 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TClickHouseConnection } from "./clickhouse-connection";
 import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDaytonaConnection } from "./daytona-connection";
@@ -43,6 +45,9 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TImpervaConnection } from "./imperva-connection";
+import { TIncidentIoConnection } from "./incident-io-connection";
+import { TJenkinsConnection } from "./jenkins-connection";
 import { TJiraConnection } from "./jira-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
@@ -76,6 +81,7 @@ import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
 import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
+import { TServiceNowConnection } from "./servicenow-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
@@ -108,6 +114,7 @@ export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
+export * from "./clickhouse-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloud-66-connection";
@@ -134,6 +141,10 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./imperva-connection";
+export * from "./incident-io-connection";
+export * from "./jenkins-connection";
+export * from "./coolify-connection";
 export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -167,6 +178,7 @@ export * from "./render-connection";
 export * from "./rundeck-connection";
 export * from "./s3-compatible-connection";
 export * from "./salesforce-connection";
+export * from "./servicenow-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
@@ -251,6 +263,7 @@ export type TAppConnection =
   | TNetScalerConnection
   | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection
@@ -277,8 +290,13 @@ export type TAppConnection =
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
-  | TJiraConnection;
+  | TJiraConnection
+  | TClickHouseConnection
+  | TIncidentIoConnection
+  | TJenkinsConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;

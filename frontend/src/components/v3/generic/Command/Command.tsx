@@ -1,9 +1,11 @@
 import * as React from "react";
+import { createLink } from "@tanstack/react-router";
 import { Command as CommandPrimitive } from "cmdk";
 import { SearchIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
+import { rowLinkClassName } from "../RowLink";
 
 function Command({
   className,
@@ -167,6 +169,43 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
   );
 }
 
+// A CommandItem's href, for new tabs, copy link and the status bar preview. cmdk still owns
+// activation through onSelect, so a plain primary click skips the anchor's own navigation and
+// bubbles to cmdk, while a modified or middle click stays away from cmdk so the current tab keeps
+// its place. Pass onFocus to sync cmdk's selected value: cmdk resolves Enter against the row it
+// marks selected, not the focused element.
+const CommandItemAnchor = React.forwardRef<HTMLAnchorElement, React.ComponentProps<"a">>(
+  ({ className, onClick, href, children, ...props }, ref) => (
+    <a
+      ref={ref}
+      href={href}
+      data-row-link
+      className={cn(rowLinkClassName, "rounded-sm text-sm after:rounded-sm", className)}
+      onClick={(event) => {
+        if (
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey ||
+          event.button !== 0
+        ) {
+          event.stopPropagation();
+        } else {
+          event.preventDefault();
+        }
+        onClick?.(event);
+      }}
+      {...props}
+    >
+      {children}
+    </a>
+  )
+);
+
+CommandItemAnchor.displayName = "CommandItemAnchor";
+
+const CommandItemLink = createLink(CommandItemAnchor);
+
 function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
@@ -184,6 +223,7 @@ export {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   CommandSeparator,
   CommandShortcut

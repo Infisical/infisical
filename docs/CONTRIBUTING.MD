@@ -132,6 +132,19 @@ and single-letter labels. Where it is wrong, silence it in place rather than wea
 
 `{/* vale off */}` and `{/* vale on */}` disable everything between them.
 
+## Editing the CLI reference
+
+The CLI reference is written twice. `cli/reference.mdx` renders the page people see, from
+the props of each `CLICommand`. Mintlify's Markdown export (the `.md` route and
+`llms-full.txt`) drops those props, so the page's Markdown version holds only a pointer to
+`cli/reference-agents.mdx`, a page with a plain Markdown copy. It's a separate page so the
+reference page doesn't download the copy. Agents that follow `llms.txt` to a command reach the
+reference page's Markdown, and the pointer takes them to the copy. When you add or change a command, flag, or
+example, make the same change in both files.
+
+On the agent page, give each command a heading whose anchor matches its `id` on the page, such as
+``## `sm secrets set` `` for `id="sm-secrets-set"`, so links to the page's anchors still work.
+
 ## Getting familiar with Mintlify
 
 New to Mintlify? [Start Here](https://mintlify.com/docs/quickstart)

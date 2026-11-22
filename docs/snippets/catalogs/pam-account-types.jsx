@@ -14,6 +14,13 @@ export const pamAccountTypes = [
     browserAccess: true,
   },
   {
+    name: "CockroachDB",
+    path: "/documentation/platform/pam/accounts/cockroachdb",
+    description: "Give people and agents access to a CockroachDB database without sharing its credentials.",
+    category: "Databases",
+    browserAccess: true,
+  },
+  {
     name: "MySQL",
     path: "/documentation/platform/pam/accounts/mysql",
     description: "Give people and agents access to a MySQL database without sharing its credentials.",

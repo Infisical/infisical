@@ -8,6 +8,8 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -168,4 +170,134 @@ func TestSecret_PersonalOverride(t *testing.T) {
 		require.Equal(t, "Personal secret cannot change the key name", res.JSON400.Message)
 		require.Equal(t, "mine", secretmanager.GetSecret(t, proj, "dev", "DB_PASS", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
 	})
+
+	t.Run("should let a describe-only member create, update and delete their own override but not change the shared secret", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		describer := describeOnlyUser(t, proj, "describer")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "shared")
+
+		// Action
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "mine", secretmanager.As(describer), secretmanager.WithPersonal())
+		secretmanager.UpdateSecret(t, proj, "dev", "DB_PASS", "mine-v2", secretmanager.As(describer), secretmanager.WithPersonal())
+		secretmanager.DeleteSecret(t, proj, "dev", "DB_PASS", secretmanager.As(describer), secretmanager.WithPersonal())
+		shared, err := describer.API.UpdateSecretV4WithResponse(t.Context(), "DB_PASS",
+			api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: new("hijacked")})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, shared.StatusCode())
+		require.Equal(t, "You are not allowed to edit on secrets", shared.JSON403.Message)
+		require.Equal(t, "shared", secretmanager.GetSecret(t, proj, "dev", "DB_PASS").Value)
+		res, err := describer.API.GetSecretByNameV4WithResponse(t.Context(), "DB_PASS", &api.GetSecretByNameV4Params{
+			ProjectId: proj.ID, Environment: new("dev"), Type: new(api.GetSecretByNameV4ParamsTypePersonal),
+		})
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, res.StatusCode(), "the deleted override is still readable")
+	})
+
+	t.Run("should show the owner their override value even when they cannot read the shared value", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "an override is only ever readable by its owner, so the server unmasks it without read-value; the shared value stays hidden")
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		describer := describeOnlyUser(t, proj, "describer")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "shared-secret")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "mine", secretmanager.As(describer), secretmanager.WithPersonal())
+
+		// Action
+		res, err := describer.API.GetSecretByNameV4WithResponse(t.Context(), "DB_PASS", &api.GetSecretByNameV4Params{
+			ProjectId: proj.ID, Environment: new("dev"), Type: new(api.GetSecretByNameV4ParamsTypePersonal),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "reading the override returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, "mine", res.JSON200.Secret.SecretValue)
+		require.NotContains(t, string(res.Body), "shared-secret")
+	})
+
+	t.Run("should refuse a machine identity deleting a personal secret and keep the shared secret", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		identity := proj.NewMachineIdentity(t, fixture.WithRoles("admin"))
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "shared")
+
+		// Action
+		res, err := identity.API.DeleteSecretV4WithResponse(t.Context(), "DB_PASS", api.DeleteSecretV4JSONRequestBody{
+			ProjectId:   proj.ID,
+			Environment: "dev",
+			Type:        new(api.DeleteSecretV4JSONBodyTypePersonal),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Must be user to delete personal secret", res.JSON400.Message)
+		require.Equal(t, "shared", secretmanager.GetSecret(t, proj, "dev", "DB_PASS").Value)
+	})
+
+	t.Run("should return not found for a personal read when the owner has no override", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		owner := proj.NewUser(t, fixture.WithPrincipalName("owner"))
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "shared")
+
+		// Action
+		res, err := owner.API.GetSecretByNameV4WithResponse(t.Context(), "DB_PASS", &api.GetSecretByNameV4Params{
+			ProjectId: proj.ID, Environment: new("dev"), Type: new(api.GetSecretByNameV4ParamsTypePersonal),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, res.StatusCode())
+		require.Equal(t, "Secret with name 'DB_PASS' not found", res.JSON404.Message)
+		require.NotContains(t, string(res.Body), "shared")
+	})
+
+	t.Run("should show the owner's override in place of the imported shared value when overrides are included", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		owner := proj.NewUser(t, fixture.WithPrincipalName("owner"))
+		secretmanager.CreateSecret(t, proj, "prod", "DB_PASS", "shared")
+		secretmanager.CreateSecret(t, proj, "prod", "DB_PASS", "mine", secretmanager.As(owner), secretmanager.WithPersonal())
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"})
+
+		// Action
+		withOverrides := importedValues(t, owner, proj, api.ListSecretsV4ParamsIncludePersonalOverridesTrue)
+		withoutOverrides := importedValues(t, owner, proj, api.ListSecretsV4ParamsIncludePersonalOverridesFalse)
+
+		// Assert
+		require.Equal(t, map[string]string{"DB_PASS": "mine"}, withOverrides)
+		require.Equal(t, map[string]string{"DB_PASS": "shared"}, withoutOverrides)
+	})
+}
+
+func importedValues(t *testing.T, pr *harness.Principal, proj *fixture.Project, overrides api.ListSecretsV4ParamsIncludePersonalOverrides) map[string]string {
+	t.Helper()
+	res, err := pr.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+		ProjectId:                &proj.ID,
+		Environment:              new("dev"),
+		IncludeImports:           new(api.ListSecretsV4ParamsIncludeImportsTrue),
+		IncludePersonalOverrides: &overrides,
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	require.NotNil(t, res.JSON200.Imports)
+	values := map[string]string{}
+	for _, imp := range *res.JSON200.Imports {
+		for _, s := range imp.Secrets {
+			values[s.SecretKey] = s.SecretValue
+		}
+	}
+	return values
 }

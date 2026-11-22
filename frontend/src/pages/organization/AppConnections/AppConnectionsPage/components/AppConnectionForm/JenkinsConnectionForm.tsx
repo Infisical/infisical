@@ -1,0 +1,253 @@
+import { Controller, FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
+import { z } from "zod";
+
+import { OrgPermissionCan } from "@app/components/permissions";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { JenkinsConnectionMethod, TJenkinsConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
+import {
+  genericAppConnectionFieldsSchema,
+  GenericAppConnectionsFields
+} from "./GenericAppConnectionFields";
+
+type Props = {
+  appConnection?: TJenkinsConnection;
+  onSubmit: (formData: FormData) => void;
+};
+
+const isValidInstanceUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+};
+
+const rootSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.Jenkins)
+});
+
+const formSchema = z.discriminatedUnion("method", [
+  rootSchema.extend({
+    method: z.literal(JenkinsConnectionMethod.ApiToken),
+    credentials: z.object({
+      instanceUrl: z
+        .string()
+        .trim()
+        .min(1, "Instance URL required")
+        .max(255)
+        .refine(
+          isValidInstanceUrl,
+          "Instance URL must be an http or https URL without credentials, a query, or a fragment"
+        ),
+      username: z.string().trim().min(1, "Username required").max(255),
+      apiToken: z.string().trim().min(1, "API Token required").max(255)
+    })
+  })
+]);
+
+type FormData = z.infer<typeof formSchema>;
+
+export const JenkinsConnectionForm = ({ appConnection, onSubmit }: Props) => {
+  const isUpdate = Boolean(appConnection);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: appConnection ?? {
+      app: AppConnection.Jenkins,
+      method: JenkinsConnectionMethod.ApiToken,
+      gatewayId: null,
+      gatewayPoolId: null
+    }
+  });
+
+  const { handleSubmit, control, setValue, watch } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
+
+  return (
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => {
+            const picker = (
+              <GatewayPicker
+                isDisabled={!isAllowed}
+                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true });
+                  setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                }}
+              />
+            );
+
+            return (
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <FieldDescription>
+                  Route requests through a Gateway when your Jenkins instance is not reachable from
+                  the internet.
+                </FieldDescription>
+                {isAllowed ? (
+                  picker
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block w-full cursor-not-allowed">{picker}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </Field>
+            );
+          }}
+        </OrgPermissionCan>
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.Jenkins].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)} id="method">
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(JenkinsConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.instanceUrl"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="instance-url">
+                Jenkins Instance URL
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The URL of the Jenkins instance to authenticate with. Include the context path
+                    if Jenkins is served under one, such as https://example.com/jenkins.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="instance-url"
+                {...field}
+                placeholder="https://jenkins.example.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.username"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="username">
+                Jenkins Username
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Jenkins user that owns the API token.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input id="username" {...field} isError={Boolean(error?.message)} />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.apiToken"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="api-token">Jenkins API Token</FieldLabel>
+              <SecretInput
+                aria-describedby={error ? "api-token-error" : undefined}
+                isError={Boolean(error)}
+                id="api-token"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="api-token-error" errors={[error]} />
+            </Field>
+          )}
+        />
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Jenkins"}
+        />
+      </form>
+    </FormProvider>
+  );
+};

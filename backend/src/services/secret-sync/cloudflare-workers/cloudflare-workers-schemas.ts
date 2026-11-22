@@ -27,7 +27,14 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
   variableType: z
     .nativeEnum(CloudflareWorkersVariableType)
     .optional()
-    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType),
+  previewName: z
+    .string()
+    .trim()
+    .min(1, "Preview name is required")
+    .max(255)
+    .optional()
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.previewName)
 });
 
 const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({

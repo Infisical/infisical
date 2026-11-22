@@ -96,7 +96,9 @@ Each type's full config (connection/credential schemas, icon, label, sanitized-c
 in one `ACCOUNT_TYPE_CONFIGS` entry in `pam-account/pam-account-schemas.ts`. Forms are **schema-driven**:
 the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, so there are **no per-type
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
-`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
+`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file. CockroachDB reuses the
+Postgres implementation throughout and reaches the gateway as `postgres` (`resolveGatewayAccountType`, mirrored
+by the CLI's capability check), so it needs no gateway upgrade.
 
 **Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
 by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
@@ -129,11 +131,14 @@ Gateway-routed types run through one RPC — `testConnectionWithGateway` → the
 Windows RDP, SSH cert auth, MsSQL NTLM/Kerberos, and K8s gateway-auth). A null test result (gateway offline / missing
 the connection-test protocol) skips rather than blocks.
 
-Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
-`requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
-metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the
-gateway and injects a backend-minted short-lived token so no credential reaches the client. See
-`access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
+Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** mints
+short-lived credentials in `access()` and returns them in session metadata; **gateway-injection**
+(`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the gateway and injects a backend-minted
+short-lived token so no credential reaches the client. `AwsIam` (`requiresGateway: false`) is both: the console,
+and any account without a gateway, is gateway-less and capped at one hour, because Infisical Cloud's `AssumeRole`
+is role chaining. CLI sessions on an account with a gateway go through it instead, and the gateway re-signs each
+request (SigV4) with STS credentials it re-fetches from `getSessionCredentials` before they expire, so the session
+can outlive them. See `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
 **Snowflake is gateway-injection with no wire protocol**: the gateway answers the part of Snowflake's REST
 API that drivers speak and runs each statement through its own client (CLI `packages/pam/handlers/snowflake/`),
@@ -185,6 +190,11 @@ registry-driven in `pam/pam-policies.ts` and stored in the template's `policies`
 policies apply before the session starts; gateway-enforced ones flow to the gateway via `policyRules`.
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
+
+**Output masking fails closed**: an older gateway would silently ignore the rule, so
+`assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
+gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
+strips unknown keys, so a capability missing there is never stored and every check on it fails.
 
 **External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
 (`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
@@ -241,15 +251,17 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 ## Sessions
 
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
-account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
-scheduled at session creation.
+account deletion). Duration is capped at the template max, the approval grant's expiry and the end of a
+temporary folder or account membership (`getLaunchAccessRemainingMs`), since nothing ends a session when a
+membership lapses on its own; expiration is enforced by a delayed BullMQ job scheduled at session creation.
 
 **Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
-itself. `pam-session-access-fns.ts` holds the two: `terminatePamSessionsWithoutLaunchAccess` re-derives
-`LaunchSessions` after a membership or role change, and `terminatePamSessionsForUsers` drops everything a
-user holds when they leave the org (SCIM deactivate/delete, org deactivate/remove). Both run inside the
-caller's transaction and hand back a callback to fire after COMMIT — the row flip rolls back, the gateway
-signal does not.
+itself. `pam-session-access-fns.ts` holds the helpers: `terminatePamSessionsWithoutLaunchAccess` re-derives
+`LaunchSessions` after a membership or role change, `terminatePamSessionsLosingGroupAccess` runs it for group
+changes made outside PAM (removal from a group, group delete or sub-org unlink, including SCIM and IdP sync),
+and `terminatePamSessionsForUsers` drops everything a user holds when they leave the org (SCIM
+deactivate/delete, org deactivate/remove). All run inside the caller's transaction and hand back a callback
+to fire after COMMIT — the row flip rolls back, the gateway signal does not.
 
 **An orphaned session (null `accountId`) is scoped to product admin.** Every
 resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the

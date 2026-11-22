@@ -1,4 +1,5 @@
 import { AuthMethod, MfaMethod, ProviderAuthResult } from "./auth-type";
+import { TIdpMfaSignal } from "./idp-mfa-signal";
 
 export type TLoginGenServerPublicKeyDTO = {
   email: string;
@@ -20,7 +21,7 @@ export type TVerifyMfaTokenDTO = {
   userId: string;
   mfaToken: string;
   mfaMethod: MfaMethod;
-  requiredMfaMethod: MfaMethod;
+  allowedMfaMethods: MfaMethod[];
   mfaJwtToken: string;
   ip: string;
   userAgent: string;
@@ -51,6 +52,7 @@ export type TProcessProviderCallbackDTO = {
     firstName?: string | null;
     lastName?: string | null;
     isLocked?: boolean | null;
+    username?: string | null;
   };
   authMethod: AuthMethod;
   isEmailVerified: boolean;
@@ -59,6 +61,7 @@ export type TProcessProviderCallbackDTO = {
   userAgent: string;
   organizationId?: string;
   callbackPort?: number;
+  idpMfa?: TIdpMfaSignal;
 };
 
 export type TProviderAuthResult =

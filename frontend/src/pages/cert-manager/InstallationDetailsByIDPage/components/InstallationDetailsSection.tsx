@@ -17,9 +17,12 @@ import {
   PkiInstallationLocationType,
   TPkiInstallation
 } from "@app/hooks/api";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import {
   getKeystoreStatusBadge,
-  isHostFileInstallation
+  getStorePath,
+  isHostFileInstallation,
+  isStoreInstallation
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
 type Props = {
@@ -30,6 +33,7 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
   const { locationDetails } = installation;
   const endpoint = locationDetails.fqdn || locationDetails.ipAddress;
   const isHostFile = isHostFileInstallation(installation);
+  const isStore = isStoreInstallation(installation);
   const isKeystore = installation.locationType === PkiInstallationLocationType.Keystore;
 
   return (
@@ -47,6 +51,48 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
                 {installation.name || <span className="text-muted">-</span>}
               </DetailValue>
             </Detail>
+            {isStore && (
+              <>
+                <Detail>
+                  <DetailLabel>Host</DetailLabel>
+                  <DetailValue>
+                    {locationDetails.hostname || <span className="text-muted">-</span>}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Address</DetailLabel>
+                  <DetailValue>
+                    {locationDetails.hostIdentifier || <span className="text-muted">-</span>}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Certificate Store</DetailLabel>
+                  <DetailValue>
+                    {(locationDetails.storeName &&
+                      WindowsCertificateStoreLabels[locationDetails.storeName]) ||
+                      locationDetails.storeName}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Path</DetailLabel>
+                  <DetailValue className="font-mono break-all">
+                    {getStorePath(installation)}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Private Key</DetailLabel>
+                  <DetailValue>
+                    {locationDetails.hasPrivateKey ? "Present" : "Not present"}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Connection</DetailLabel>
+                  <DetailValue>
+                    {installation.connection?.name || <span className="text-muted">-</span>}
+                  </DetailValue>
+                </Detail>
+              </>
+            )}
             {isHostFile && (
               <>
                 <Detail>
@@ -96,7 +142,7 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
                 </DetailValue>
               </Detail>
             )}
-            {endpoint && !isHostFile && (
+            {endpoint && !isHostFile && !isStore && (
               <Detail>
                 <DetailLabel>Endpoint</DetailLabel>
                 <DetailValue>

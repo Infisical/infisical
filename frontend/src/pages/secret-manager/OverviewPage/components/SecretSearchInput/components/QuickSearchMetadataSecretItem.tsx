@@ -1,9 +1,17 @@
-import { useNavigate } from "@tanstack/react-router";
+import type { MouseEvent } from "react";
 import { ChevronRightIcon, KeyIcon } from "lucide-react";
 
-import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  RowLink,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TMetadataMatchedSecret } from "@app/hooks/api/dashboard/types";
 
+import { isPlainClick, QUICK_SEARCH_ROUTE } from "./quickSearchLink";
 import { QuickSearchMetadata, QuickSearchMetadataList } from "./QuickSearchMetadataList";
 import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
 import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
@@ -24,32 +32,33 @@ export const QuickSearchMetadataSecretItem = ({
   onSelectResult,
   onApplyMetadataFilter
 }: Props) => {
-  const navigate = useNavigate({
-    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
-  });
-
-  const handleNavigate = () => {
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(event)) return;
     onSelectResult({ search: secret.secretKey, tags: [] });
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        secretPath: secret.secretPath,
-        search: undefined,
-        filterBy: "secret",
-        environments: [envSlug],
-        tags: undefined
-      })
-    });
     onClose(false);
   };
 
   return (
-    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+    <TableRow linked>
       <TableCell>
         <KeyIcon className="text-secret" />
       </TableCell>
       <TableCell isTruncatable>
-        <span className="truncate font-medium">{secret.secretKey}</span>
+        <RowLink
+          from={QUICK_SEARCH_ROUTE}
+          to="."
+          search={(prev) => ({
+            ...prev,
+            secretPath: secret.secretPath,
+            search: secret.secretKey,
+            filterBy: "secret",
+            environments: [envSlug],
+            tags: undefined
+          })}
+          onClick={handleClick}
+        >
+          <span className="font-medium">{secret.secretKey}</span>
+        </RowLink>
       </TableCell>
       <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>

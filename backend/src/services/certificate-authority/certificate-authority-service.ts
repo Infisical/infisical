@@ -1,10 +1,18 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  PlanProduct,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -20,11 +28,6 @@ import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-app
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
-import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CrlReason } from "../certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { recordCertificateRequestFailure } from "../certificate-request/certificate-request-fns";
@@ -33,9 +36,11 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../certificate-request/certificate-request-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { InternalCas } from "../license-client";
-import { TUsageMeteringServiceFactory } from "../license-client/usage";
+import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CrlReason } from "../certificate/certificate-types";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -89,7 +94,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
-import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -146,16 +151,14 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -169,10 +172,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -192,7 +195,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -203,10 +207,10 @@ export const certificateAuthorityServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  licenseService,
   usageMeteringService,
   caKeySourceService,
   certificateAuthoritySecretDAL,
-  licenseService,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
   auditLogService
@@ -219,9 +223,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
@@ -238,9 +242,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
@@ -254,8 +258,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -269,8 +273,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -284,8 +288,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL
   });
 
@@ -297,8 +301,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   });
   const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
@@ -308,8 +312,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   });
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
@@ -319,8 +323,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL
   });
 
@@ -344,13 +348,13 @@ export const certificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+    if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
       throw new BadRequestError({
         message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
@@ -391,7 +395,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -686,8 +690,11 @@ export const certificateAuthorityServiceFactory = ({
     ]);
 
     return {
-      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
-      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+      certificateAuthorities: { used: totalUsed, limit: plan.limit(PlanLimit.CertificateAuthorities) },
+      internalCertificateAuthorities: {
+        used: internalUsed,
+        limit: plan.limit(PlanLimit.InternalCertificateAuthorities)
+      }
     };
   };
 
@@ -810,6 +817,7 @@ export const certificateAuthorityServiceFactory = ({
             crlDistributionPointUrls?: string[];
             disableManagedCrlDistributionPointUrl?: boolean;
             isOcspEnabled?: boolean;
+            crlValidityDays?: number;
           }
         | undefined;
 
@@ -820,7 +828,8 @@ export const certificateAuthorityServiceFactory = ({
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
         disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
-        isOcspEnabled: internalConfig?.isOcspEnabled
+        isOcspEnabled: internalConfig?.isOcspEnabled,
+        crlValidityDays: internalConfig?.crlValidityDays
       });
 
       if (!updatedCa.internalCa) {
@@ -830,14 +839,17 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       return {
-        id: updatedCa.id,
-        type,
-        enableDirectIssuance: updatedCa.enableDirectIssuance,
-        name: updatedCa.name,
-        projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
-        status: updatedCa.status
-      } as TCertificateAuthority;
+        ...({
+          id: updatedCa.id,
+          type,
+          enableDirectIssuance: updatedCa.enableDirectIssuance,
+          name: updatedCa.name,
+          projectId: updatedCa.projectId,
+          configuration: updatedCa.internalCa,
+          status: updatedCa.status
+        } as TCertificateAuthority),
+        crlWarning: updatedCa.crlWarning
+      };
     }
 
     if (type === CaType.ACME) {
@@ -967,7 +979,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1206,7 +1218,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1509,7 +1521,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
@@ -1525,7 +1537,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,

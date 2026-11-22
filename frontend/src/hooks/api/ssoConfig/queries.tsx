@@ -37,7 +37,9 @@ export const useCreateSSOConfig = () => {
       entryPoint,
       issuer,
       cert,
-      enableGroupSync
+      enableGroupSync,
+      mfaSignalAttribute,
+      mfaAuthnContexts
     }: {
       organizationId: string;
       authProvider: string;
@@ -46,6 +48,8 @@ export const useCreateSSOConfig = () => {
       issuer: string;
       cert: string;
       enableGroupSync?: boolean;
+      mfaSignalAttribute?: string | null;
+      mfaAuthnContexts?: string[] | null;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/config", {
         organizationId,
@@ -54,7 +58,9 @@ export const useCreateSSOConfig = () => {
         entryPoint,
         issuer,
         cert,
-        ...(enableGroupSync !== undefined ? { enableGroupSync } : {})
+        ...(enableGroupSync !== undefined ? { enableGroupSync } : {}),
+        ...(mfaSignalAttribute !== undefined ? { mfaSignalAttribute } : {}),
+        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {})
       });
 
       return data;
@@ -77,7 +83,9 @@ export const useUpdateSSOConfig = () => {
       entryPoint,
       issuer,
       cert,
-      enableGroupSync
+      enableGroupSync,
+      mfaSignalAttribute,
+      mfaAuthnContexts
     }: {
       organizationId: string;
       authProvider?: string;
@@ -86,6 +94,8 @@ export const useUpdateSSOConfig = () => {
       issuer?: string;
       cert?: string;
       enableGroupSync?: boolean;
+      mfaSignalAttribute?: string | null;
+      mfaAuthnContexts?: string[] | null;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/config", {
         organizationId,
@@ -94,7 +104,9 @@ export const useUpdateSSOConfig = () => {
         ...(entryPoint !== undefined ? { entryPoint } : {}),
         ...(issuer !== undefined ? { issuer } : {}),
         ...(cert !== undefined ? { cert } : {}),
-        ...(enableGroupSync !== undefined ? { enableGroupSync } : {})
+        ...(enableGroupSync !== undefined ? { enableGroupSync } : {}),
+        ...(mfaSignalAttribute !== undefined ? { mfaSignalAttribute } : {}),
+        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {})
       });
 
       return data;

@@ -43,6 +43,25 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_delegation_subjects
+    source: public.agent_vault_delegation_subjects
+    columns:
+      - id
+      - delegationId
+      - membershipId
+      - createdAt
+
+  - name: agent_vault_delegations
+    source: public.agent_vault_delegations
+    columns:
+      - id
+      - projectId
+      - identityId
+      - membershipId
+      - scope
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_personal_values
     source: public.agent_vault_personal_values
     columns:
@@ -85,10 +104,14 @@ tables:
     columns:
       - id
       - accessBundleId
+      - projectId
+      - sessionId
       - hostPattern
       - credentialType
       - allowedMethods
       - allowedPathPrefixes
+      - allowedTools
+      - type
       - memberProvidedFields
       - createdAt
       - updatedAt
@@ -100,6 +123,19 @@ tables:
       - sessionId
       - accessBundleId
       - createdAt
+
+  - name: agent_vault_session_inline_services
+    source: public.agent_vault_session_inline_services
+    columns:
+      - id
+      - sessionId
+      - type
+      - hostPattern
+      - credentialType
+      - allowedMethods
+      - allowedPathPrefixes
+      - createdAt
+      - updatedAt
 
   - name: agent_vault_session_log_configs
     source: public.agent_vault_session_log_configs
@@ -119,8 +155,18 @@ tables:
       - userId
       - identityId
       - actorType
+      - onBehalfOfUserId
       - expiresAt
       - revokedAt
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_session_stats
+    source: public.agent_vault_session_stats
+    columns:
+      - sessionId
+      - requests
+      - brokered
       - createdAt
       - updatedAt
 
@@ -759,6 +805,7 @@ tables:
       - defaultMembershipRole
       - enforceMfa
       - selectedMfaMethod
+      - allowedMfaMethods
       - allowSecretSharingOutsideOrganization
       - shouldUseNewPrivilegeSystem
       - privilegeUpgradeInitiatedByUsername
@@ -778,6 +825,8 @@ tables:
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
       - requireGatewayPools
+      - aiConnectionId
+      - aiModel
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -1139,6 +1188,18 @@ tables:
       - isScanNewCommitsEnabled
       - isDiscoveryEnabled
 
+  - name: secret_scanning_finding_locations
+    source: public.secret_scanning_finding_locations
+    columns:
+      - id
+      - findingId
+      - resourceId
+      - scanId
+      - fingerprint
+      - rule
+      - details
+      - createdAt
+
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
     columns:
@@ -1155,6 +1216,7 @@ tables:
       - fingerprint
       - details
       - scanId
+      - lastDetectedAt
       - createdAt
       - updatedAt
 
@@ -1294,6 +1356,15 @@ tables:
       - createdBy
       - projectId
       - expiryNotificationSent
+
+  - name: totp_configs
+    source: public.totp_configs
+    columns:
+      - id
+      - userId
+      - isVerified
+      - createdAt
+      - updatedAt
 
   - name: user_group_membership
     source: public.user_group_membership

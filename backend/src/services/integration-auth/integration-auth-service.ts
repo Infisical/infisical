@@ -2,7 +2,7 @@ import { KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
+import type { Space as OctopusSpace } from "@octopusdeploy/api-client";
 
 import {
   ActionProjectType,
@@ -11,6 +11,7 @@ import {
   TIntegrationAuths,
   TIntegrationAuthsInsert
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -20,13 +21,11 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { getApps, getAppsVercel } from "./integration-app-list";
+import { getApps, getAppsVercel, getOctopusDeployBaseUrl } from "./integration-app-list";
 import { TCircleCIContext } from "./integration-app-types";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
@@ -80,7 +79,7 @@ type TIntegrationAuthServiceFactoryDep = {
   integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -90,7 +89,7 @@ export const integrationAuthServiceFactory = ({
   integrationAuthDAL,
   integrationDAL,
   projectBotService,
-  kmsService
+  kmsDataKeyService
 }: TIntegrationAuthServiceFactoryDep) => {
   const listIntegrationAuthByProjectId = async ({
     actorId,
@@ -214,7 +213,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -323,7 +322,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -485,7 +484,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -628,7 +627,7 @@ export const integrationAuthServiceFactory = ({
 
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
-        await kmsService.createCipherPairWithDataKey({
+        await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: integrationAuth.projectId
         });
@@ -1675,7 +1674,7 @@ export const integrationAuthServiceFactory = ({
     if (appId) {
       const {
         data: { buildType }
-      } = await request.get<{ buildType: TTeamCityBuildConfig[] }>(`${integrationAuth.url}/app/rest/buildTypes`, {
+      } = await safeRequest.get<{ buildType: TTeamCityBuildConfig[] }>(`${integrationAuth.url}/app/rest/buildTypes`, {
         params: {
           locator: `project:${appId}`
         },
@@ -1969,18 +1968,15 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const client = await OctopusClient.create({
-      apiKey: accessToken,
-      instanceURL: integrationAuth.url!,
-      userAgentApp: "Infisical Integration"
-    });
-
-    const spaceRepository = new OctopusSpaceRepository(client);
-
-    const spaces = await spaceRepository.list({
-      partialName: "", // throws error if no string is present...
-      take: 1000
-    });
+    // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
+    // host again on every call, so the API is called through safeRequest instead
+    const { data: spaces } = await safeRequest.get<{ Items: OctopusSpace[] }>(
+      `${getOctopusDeployBaseUrl(integrationAuth.url!)}/api/spaces`,
+      {
+        params: { partialName: "", take: 1000 },
+        headers: { "X-Octopus-ApiKey": accessToken, Accept: "application/json" }
+      }
+    );
 
     return spaces.Items;
   };
@@ -2021,7 +2017,7 @@ export const integrationAuthServiceFactory = ({
     }
 
     // SDK doesn't support variable set...
-    const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
+    const { data: variableSet } = await safeRequest.get<TOctopusDeployVariableSet>(url, {
       headers: {
         "X-NuGet-ApiKey": accessToken,
         Accept: "application/json"

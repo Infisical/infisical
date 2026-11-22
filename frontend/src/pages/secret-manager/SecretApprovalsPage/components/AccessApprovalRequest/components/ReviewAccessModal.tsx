@@ -4,8 +4,10 @@ import {
   BanIcon,
   CheckIcon,
   FilterIcon,
+  FolderTreeIcon,
   HourglassIcon,
   InfoIcon,
+  RefreshCwIcon,
   ShieldAlertIcon,
   TimerIcon,
   TriangleAlertIcon,
@@ -31,6 +33,7 @@ import {
   Badge,
   Button,
   Checkbox,
+  CopyButton,
   Detail,
   DetailLabel,
   DetailValue,
@@ -69,25 +72,36 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionApprovalRequestActions
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
+  useCancelAccessRequest,
   useListWorkspaceGroups,
+  useRetryDelegatedApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest
 } from "@app/hooks/api";
+import { useIsDelegatedDispatchRetrying } from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import {
   Approver,
   ApproverType,
   TAccessApprovalPolicy,
   TAccessApprovalRequest
 } from "@app/hooks/api/accessApproval/types";
+import {
+  DelegatedApprovalRequestStatus,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
@@ -100,7 +114,12 @@ import {
   PROJECT_PERMISSION_OBJECT
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
-import { getAccessDurationLabel } from "../AccessApprovalRequest.utils";
+import {
+  ENTIRE_SCOPE_PATH,
+  getAccessDurationLabel,
+  getRequestedSecretPath
+} from "../AccessApprovalRequest.utils";
+import { AccessRequestScope } from "./AccessRequestScope";
 
 // The four basic CRUD actions render with clean labels rather than the role editor's
 // granular secret labels (e.g. "read" maps to "Read (legacy)" there), so existing
@@ -170,6 +189,21 @@ const formatConditions = (conditions: Record<string, unknown>): FormattedConditi
     }));
   });
 
+const DELEGATED_STATUS_MESSAGES: Record<
+  DelegatedApprovalRequestStatus,
+  (delegatedApprovalName: string) => string
+> = {
+  [DelegatedApprovalRequestStatus.PendingDispatch]: (name) => `Sending this request to ${name}.`,
+  [DelegatedApprovalRequestStatus.WaitingApproval]: (name) => `Awaiting review in ${name}.`,
+  [DelegatedApprovalRequestStatus.FailedDispatch]: (name) => `This request did not reach ${name}.`,
+  [DelegatedApprovalRequestStatus.Approved]: (name) => `Approved in ${name}.`,
+  [DelegatedApprovalRequestStatus.Rejected]: (name) => `Rejected in ${name}.`,
+  [DelegatedApprovalRequestStatus.Failed]: (name) =>
+    `This request could not be completed in ${name}.`
+};
+
+const getRetryingDelegatedStatusMessage = (name: string) => `Retrying the submission to ${name}.`;
+
 export const ReviewAccessRequestModal = ({
   isOpen,
   onOpenChange,
@@ -206,6 +240,22 @@ export const ReviewAccessRequestModal = ({
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
+  const isDelegatedRequest = Boolean(request.delegatedApproval);
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: isDelegatedRequest
+  });
+  const delegatedApprovalName =
+    delegatedApprovalOptions?.find(
+      (option) => option.type === request.policy.delegatedApproval?.type
+    )?.name ?? "the external approval system";
+  const isRetryingDelegatedDispatch = useIsDelegatedDispatchRetrying(request.id);
+  let delegatedStatusMessage: ((delegatedApprovalName: string) => string) | undefined;
+  if (isRetryingDelegatedDispatch) {
+    delegatedStatusMessage = getRetryingDelegatedStatusMessage;
+  } else if (request.delegatedApproval) {
+    delegatedStatusMessage = DELEGATED_STATUS_MESSAGES[request.delegatedApproval.status];
+  }
+
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
     [permission]
@@ -236,19 +286,21 @@ export const ReviewAccessRequestModal = ({
       currentProject?.environments.find((env) => env.slug === request.environmentName)?.name ??
       request.environmentName,
     // secret path will be inside $glob operator
-    secretPath: request.policy.secretPath,
+    secretPath: getRequestedSecretPath(request),
     temporaryAccess: {
       isTemporary: request.isTemporary,
       temporaryRange: request.temporaryRange
     }
   };
 
-  // Collapse the details grid to a single column when the environment name or secret
-  // path is long enough that two side-by-side columns would feel cramped.
+  // Collapse the details grid to a single column when the environment name or policy
+  // is long enough that side-by-side columns would feel cramped.
   const DETAILS_COLLAPSE_THRESHOLD = 30;
   const shouldCollapseDetails =
     (accessDetails.env?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD ||
-    (accessDetails.secretPath?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD;
+    request.policy.name.length + (request.policy.secretPath?.length ?? 0) >
+      DETAILS_COLLAPSE_THRESHOLD;
+  const isEntireScope = accessDetails.secretPath === ENTIRE_SCOPE_PATH;
 
   const permissionGroups = useMemo(() => {
     // Group rules by subject + effect (allow/deny) + conditions: rules that differ only in
@@ -300,6 +352,40 @@ export const ReviewAccessRequestModal = ({
 
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
+  const retryDelegatedApprovalDispatch = useRetryDelegatedApprovalDispatch();
+  const cancelAccessRequest = useCancelAccessRequest();
+
+  const handleRetryDispatch = useCallback(async () => {
+    try {
+      await retryDelegatedApprovalDispatch.mutateAsync({ requestId: request.id, projectSlug });
+    } catch {
+      return;
+    }
+    createNotification({
+      text: `Request sent to ${delegatedApprovalName} again`,
+      type: "success"
+    });
+    onOpenChange(false);
+  }, [
+    retryDelegatedApprovalDispatch,
+    request.id,
+    projectSlug,
+    delegatedApprovalName,
+    onOpenChange
+  ]);
+
+  const handleCancelRequest = useCallback(async () => {
+    try {
+      await cancelAccessRequest.mutateAsync({ requestId: request.id, projectSlug });
+    } catch {
+      return;
+    }
+    createNotification({
+      text: "Request cancelled",
+      type: "success"
+    });
+    onOpenChange(false);
+  }, [cancelAccessRequest, request.id, projectSlug, onOpenChange]);
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -433,8 +519,27 @@ export const ReviewAccessRequestModal = ({
     request.isApproved &&
     new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
+  const isDelegatedOpen =
+    isDelegatedRequest && request.status === ApprovalStatus.PENDING && !request.policy.deletedAt;
+  const isDelegatedPending = isDelegatedOpen && !hasExpired;
+
+  const canRetryDispatch =
+    !isRetryingDelegatedDispatch &&
+    isDelegatedPending &&
+    request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch &&
+    (request.isRequestedByCurrentUser ||
+      permission.can(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      ));
+
+  const canCancelDelegatedRequest =
+    isDelegatedOpen &&
+    (request.isRequestedByCurrentUser ||
+      permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval));
 
   const shouldBlockRequestActions =
+    isDelegatedRequest ||
     hasRejected ||
     hasApproved ||
     hasRevoked ||
@@ -522,8 +627,10 @@ export const ReviewAccessRequestModal = ({
       : null;
 
   // The status banner moved to the top of the sheet, so the footer only renders when there
-  // are actions to take: Approve/Reject when unblocked, or Revoke on an approved request.
-  const showFooter = !shouldBlockRequestActions || (hasApproved && canRevokeAccess);
+  // are actions to take: Approve/Reject when unblocked, Cancel on a pending delegated request,
+  // or Revoke on an approved request.
+  const showFooter =
+    !shouldBlockRequestActions || canCancelDelegatedRequest || (hasApproved && canRevokeAccess);
 
   type ApproverChain = NonNullable<typeof approverSequence.approvers>[number];
 
@@ -593,7 +700,7 @@ export const ReviewAccessRequestModal = ({
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="z-[70] max-h-64 thin-scrollbar w-72 overflow-y-auto px-3 py-2.5"
+          className="max-h-64 thin-scrollbar w-72 overflow-y-auto px-3 py-2.5"
           aria-label={`Reviewer progress for approval step ${approver.sequence ?? 1}`}
         >
           <div className="mb-2 text-sm font-medium text-foreground">Reviewer Progress</div>
@@ -746,10 +853,14 @@ export const ReviewAccessRequestModal = ({
         >
           <SheetHeader className="border-b">
             <SheetTitle>Review Request</SheetTitle>
-            <SheetDescription>Review the request and approve or deny access.</SheetDescription>
+            <SheetDescription>
+              {isDelegatedRequest
+                ? "Review the details of this access request."
+                : "Review the request and approve or deny access."}
+            </SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-            {shouldBlockRequestActions && (
+            {shouldBlockRequestActions && !isDelegatedPending && (
               <Alert variant={completedMessageVariant}>
                 {renderBannerIcon()}
                 <AlertTitle>{renderCompletedMessages()}</AlertTitle>
@@ -786,8 +897,13 @@ export const ReviewAccessRequestModal = ({
                   <DetailValue className="break-words">{accessDetails.env}</DetailValue>
                 </Detail>
                 <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
-                  <DetailLabel>Secret Path</DetailLabel>
-                  <DetailValue className="break-words">{accessDetails.secretPath}</DetailValue>
+                  <DetailLabel>Policy</DetailLabel>
+                  <DetailValue className="break-words">
+                    {request.policy.name}{" "}
+                    <code className="font-mono text-xs text-muted">
+                      {request.policy.secretPath}
+                    </code>
+                  </DetailValue>
                 </Detail>
                 <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
                   <DetailLabel>Access Duration</DetailLabel>
@@ -823,6 +939,31 @@ export const ReviewAccessRequestModal = ({
                   )}
               </div>
             </div>
+
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-normal text-foreground">Requested Scope</h3>
+                {isEntireScope && (
+                  <Badge variant="warning">
+                    <TriangleAlertIcon />
+                    Entire Scope
+                  </Badge>
+                )}
+              </div>
+              {isEntireScope && (
+                <Alert variant="warning">
+                  <FolderTreeIcon />
+                  <AlertDescription>
+                    <code className="font-mono">{ENTIRE_SCOPE_PATH}</code> grants every folder in{" "}
+                    {accessDetails.env}, including folders created later.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <AccessRequestScope
+                secretPath={accessDetails.secretPath}
+                environment={request.environmentName}
+              />
+            </section>
 
             <section className="flex flex-col gap-3">
               <h3 className="text-sm font-normal text-foreground">Requested Permissions</h3>
@@ -871,7 +1012,7 @@ export const ReviewAccessRequestModal = ({
                                   {group.conditions.length === 1 ? "condition" : "conditions"}
                                 </button>
                               </HoverCardTrigger>
-                              <HoverCardContent align="end" className="z-[70] w-auto max-w-xs">
+                              <HoverCardContent align="end" className="w-auto max-w-xs">
                                 <div className="mb-1.5 text-xs font-medium text-foreground">
                                   Conditions
                                 </div>
@@ -908,59 +1049,126 @@ export const ReviewAccessRequestModal = ({
               </Table>
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h3 className="text-sm font-normal text-foreground">Approvers</h3>
-              {approvers.length === 1 ? (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  <Item className="flex-nowrap items-start rounded-none border-0">
-                    <ItemContent className="min-w-0 gap-1.5">
-                      {renderApproverMembers(approvers[0])}
-                    </ItemContent>
-                    <ItemActions className="shrink-0">
-                      {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
-                      <span className="text-xs whitespace-nowrap text-muted">
-                        {approvers[0].approvals ?? 1} approval
-                        {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
-                      </span>
-                    </ItemActions>
-                  </Item>
-                </ItemGroup>
-              ) : (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  {approvers.map((approver, index) => {
-                    const isInactive =
-                      approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
-                    const badge = getStatusBadge(approver);
-
-                    return (
-                      <Fragment key={`approval-list-${index + 1}`}>
-                        {index > 0 && <ItemSeparator className="m-0" />}
-                        <Item
-                          className={twMerge(
-                            "flex-nowrap items-start rounded-none border-0",
-                            isInactive && "opacity-50"
-                          )}
-                        >
-                          <ItemMedia>
-                            <Badge variant="neutral">Step {index + 1}</Badge>
-                          </ItemMedia>
-                          <ItemContent className="min-w-0 gap-1.5">
-                            {renderApproverMembers(approver)}
-                          </ItemContent>
-                          <ItemActions className="shrink-0">
-                            {renderReviewerProgress(approver, badge)}
-                            <span className="text-xs whitespace-nowrap text-muted">
-                              {approver.approvals ?? 1} approval
-                              {(approver.approvals ?? 1) === 1 ? "" : "s"} required
+            {isDelegatedRequest ? (
+              <>
+                {isDelegatedPending && (
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-normal text-foreground">Approval</h3>
+                    <Alert variant="info">
+                      <InfoIcon />
+                      <AlertTitle>This request is reviewed in {delegatedApprovalName}.</AlertTitle>
+                      <AlertDescription>
+                        It cannot be approved here. Infisical grants access once{" "}
+                        {delegatedApprovalName} approves it.
+                      </AlertDescription>
+                    </Alert>
+                  </section>
+                )}
+                {delegatedStatusMessage && (
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-normal text-foreground">Status</h3>
+                    <Item variant="outline">
+                      <ItemContent>
+                        <span className="text-sm text-foreground">
+                          {delegatedStatusMessage(delegatedApprovalName)}
+                        </span>
+                        {request.delegatedApproval?.provider?.recordNumber && (
+                          <span className="flex items-center gap-1 text-xs text-muted">
+                            {delegatedApprovalName} request{" "}
+                            <span className="font-mono text-foreground">
+                              {request.delegatedApproval.provider.recordNumber}
                             </span>
-                          </ItemActions>
-                        </Item>
-                      </Fragment>
-                    );
-                  })}
-                </ItemGroup>
-              )}
-            </section>
+                            <CopyButton
+                              value={request.delegatedApproval.provider.recordNumber}
+                              ariaLabel={`Copy ${delegatedApprovalName} request number`}
+                              variant="ghost-muted"
+                              size="xs"
+                            />
+                          </span>
+                        )}
+                        {!isRetryingDelegatedDispatch &&
+                          request.delegatedApproval?.statusReason && (
+                            <span className="text-xs break-words text-muted">
+                              {request.delegatedApproval.statusReason}
+                            </span>
+                          )}
+                      </ItemContent>
+                      <ItemActions>
+                        <span className="text-xs whitespace-nowrap text-muted">
+                          Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
+                        </span>
+                        {canRetryDispatch && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            isPending={retryDelegatedApprovalDispatch.isPending}
+                            onClick={handleRetryDispatch}
+                          >
+                            <RefreshCwIcon />
+                            Retry
+                          </Button>
+                        )}
+                      </ItemActions>
+                    </Item>
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-normal text-foreground">Approvers</h3>
+                {approvers.length === 1 ? (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    <Item className="flex-nowrap items-start rounded-none border-0">
+                      <ItemContent className="min-w-0 gap-1.5">
+                        {renderApproverMembers(approvers[0])}
+                      </ItemContent>
+                      <ItemActions className="shrink-0">
+                        {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
+                        <span className="text-xs whitespace-nowrap text-muted">
+                          {approvers[0].approvals ?? 1} approval
+                          {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
+                        </span>
+                      </ItemActions>
+                    </Item>
+                  </ItemGroup>
+                ) : (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    {approvers.map((approver, index) => {
+                      const isInactive =
+                        approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
+                      const badge = getStatusBadge(approver);
+
+                      return (
+                        <Fragment key={`approval-list-${index + 1}`}>
+                          {index > 0 && <ItemSeparator className="m-0" />}
+                          <Item
+                            className={twMerge(
+                              "flex-nowrap items-start rounded-none border-0",
+                              isInactive && "opacity-50"
+                            )}
+                          >
+                            <ItemMedia>
+                              <Badge variant="neutral">Step {index + 1}</Badge>
+                            </ItemMedia>
+                            <ItemContent className="min-w-0 gap-1.5">
+                              {renderApproverMembers(approver)}
+                            </ItemContent>
+                            <ItemActions className="shrink-0">
+                              {renderReviewerProgress(approver, badge)}
+                              <span className="text-xs whitespace-nowrap text-muted">
+                                {approver.approvals ?? 1} approval
+                                {(approver.approvals ?? 1) === 1 ? "" : "s"} required
+                              </span>
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
+                      );
+                    })}
+                  </ItemGroup>
+                )}
+              </section>
+            )}
           </div>
           <SheetFooter className={twMerge("flex-col border-t", !showFooter && "hidden")}>
             {!shouldBlockRequestActions && (
@@ -1030,6 +1238,20 @@ export const ReviewAccessRequestModal = ({
                   </Button>
                 </div>
               </>
+            )}
+            {canCancelDelegatedRequest && (
+              <div>
+                <Button
+                  isPending={cancelAccessRequest.isPending}
+                  isDisabled={cancelAccessRequest.isPending}
+                  onClick={handleCancelRequest}
+                  size="sm"
+                  variant="danger"
+                >
+                  <BanIcon />
+                  Cancel Request
+                </Button>
+              </div>
             )}
             {hasApproved && canRevokeAccess && (
               <div className="flex justify-end">

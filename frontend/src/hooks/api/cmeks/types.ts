@@ -19,6 +19,9 @@ export type TCmek = {
   isReserved: boolean;
   isExportable: boolean;
   hasDeleteProtection: boolean;
+  isPublicKeyPublished: boolean;
+  kid: string | null;
+  jwksUrl: string | null;
   orgId: string;
   version: number;
   createdAt: string;
@@ -32,7 +35,12 @@ export type TCreateCmek = Pick<TCmek, "name" | "description" | "algorithm" | "ke
   Partial<Pick<TCmek, "isExportable" | "hasDeleteProtection">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
-  Partial<Pick<TCmek, "name" | "description" | "isDisabled" | "hasDeleteProtection">> &
+  Partial<
+    Pick<
+      TCmek,
+      "name" | "description" | "isDisabled" | "hasDeleteProtection" | "isPublicKeyPublished"
+    >
+  > &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
 export type TRotateCmek = KeyRef & ProjectRef;

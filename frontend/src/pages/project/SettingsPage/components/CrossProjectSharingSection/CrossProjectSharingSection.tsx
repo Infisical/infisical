@@ -65,10 +65,12 @@ import {
 } from "@app/context";
 import {
   TProjectFolderGrant,
+  useGetProjectFolderGrantsUsageTotal,
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
 
+import { GrantRevocationImpact } from "./GrantRevocationImpact";
 import { ShareSecretsEditData, ShareSecretsSheet } from "./ShareSecretsSheet";
 
 type ProjectGroup = {
@@ -117,6 +119,11 @@ const DeleteProjectGrantsDialog = ({
   const [confirmation, setConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const queryClient = useQueryClient();
+  const usage = useGetProjectFolderGrantsUsageTotal(
+    grants.map((g) => g.id),
+    sourceProjectId,
+    isOpen
+  );
 
   const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
 
@@ -171,6 +178,11 @@ const DeleteProjectGrantsDialog = ({
             shared {grants.length === 1 ? "grant" : "grants"}. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <GrantRevocationImpact
+          usage={usage}
+          targetProjectName={projectName}
+          folderCount={grants.length}
+        />
         <div className="w-full pb-4">
           <p className="mb-2 text-sm text-muted">
             Type <span className="font-medium text-foreground">{CONFIRMATION_KEYWORD}</span> to
@@ -189,7 +201,7 @@ const DeleteProjectGrantsDialog = ({
             variant="danger"
             onClick={handleConfirmDelete}
             isPending={isDeleting}
-            disabled={!isConfirmed}
+            disabled={!isConfirmed || usage.isChecking}
           >
             Remove
           </AlertDialogAction>

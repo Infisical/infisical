@@ -49,7 +49,7 @@ export const ViewsDropdown = ({
     systemViews.find((v) => v.id === activeViewId) ||
     sharedViews.find((v) => v.id === activeViewId) ||
     customViews.find((v) => v.id === activeViewId);
-  const label = activeView?.name || "All Certificates";
+  const label = activeView?.name || "Default";
 
   const renderActions = (viewId: string, isShared: boolean, isActive = false) => {
     if (!onDeleteView && !onToggleShare) return null;
@@ -157,7 +157,7 @@ export const ViewsDropdown = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent sideOffset={2} className="w-64" align="end">
         <DropdownMenuLabel>System Views</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={activeViewId || "system-all"}>
+        <DropdownMenuRadioGroup value={activeViewId || "system-default"}>
           {systemViews.map((view) => (
             <DropdownMenuRadioItem
               key={view.id}

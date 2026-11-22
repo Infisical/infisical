@@ -92,7 +92,6 @@ export const KmipServerAuthMethodModal = ({
 
   useEffect(() => {
     if (isOpen) reset(toFormDefaults(currentMethod));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const method = watch("method");

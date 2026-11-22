@@ -3,6 +3,7 @@ export const AnalyticsEvent = {
   SecretsOverviewLoaded: "Secrets Overview Loaded",
   SecretsOverviewInteraction: "Secrets Overview Interaction",
   SecretsOverviewFlowProgressed: "Secrets Overview Flow Progressed",
+  SecretsOverviewAnnotationProgressed: "Secrets Overview Annotation Progressed",
   SecretsActivationModalViewed: "Secrets Activation Modal Viewed",
   SecretsActivationModalMembersInvited: "Secrets Activation Modal Members Invited",
   SecretsActivationModalDismissed: "Secrets Activation Modal Dismissed",
@@ -18,7 +19,9 @@ export const AnalyticsEvent = {
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
   OnboardingResourceClicked: "Onboarding Resource Clicked",
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
-  SecretScanningOpened: "Secret Scanning Opened"
+  SecretScanningOpened: "Secret Scanning Opened",
+  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked",
+  SecretApprovalReviewSubmitted: "Secret Approval Review Submitted"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -48,8 +51,8 @@ export type OverviewInteractionProperties = {
     | "select-page"
     | "reveal"
     | "hide"
-    | "batch-mode-enabled"
-    | "batch-mode-disabled"
+    | "expand-all"
+    | "collapse-all"
     | "pagination"
     | "sort"
     | "history"
@@ -99,6 +102,18 @@ export type OverviewFlowProperties = {
   folderFailureCountBucket?: OverviewCountBucket;
   provenance?: "committed" | "pending";
   destination?: "clipboard" | "download" | "environment";
+  commitKind?: "single" | "batch";
+};
+
+export type OverviewAnnotationType = "comment" | "tags" | "reminder" | "metadata";
+
+export type OverviewAnnotationEntryPoint = "name-cell-icon" | "annotate-menu" | "quick-add";
+
+export type OverviewAnnotationProperties = {
+  annotationType: OverviewAnnotationType;
+  entryPoint: OverviewAnnotationEntryPoint;
+  phase: "opened" | "submitted" | "staged" | "canceled";
+  change?: "added" | "edited" | "removed";
 };
 
 export type OverviewScopeProperties = {
@@ -106,7 +121,6 @@ export type OverviewScopeProperties = {
   route: "/organizations/$orgId/projects/secret-management/$projectId/overview";
   environmentMode: "none" | "single" | "multiple";
   folderScope: "root" | "nested";
-  editMode: "immediate" | "batch";
 };
 
 export type SecretsActivationProperties = {
@@ -201,6 +215,25 @@ export type SecretScanningOpenedProperties = {
   plan: string;
 };
 
+export type AgentVaultRedirectSource = "agent-proxy-moved-modal";
+
+export type AgentVaultRedirectAction = "go-to-agent-vault";
+
+type AgentVaultRedirectClickedProperties = {
+  projectId: string;
+  source: AgentVaultRedirectSource;
+  action: AgentVaultRedirectAction;
+};
+
+export type SecretApprovalReviewSubmittedProperties = {
+  projectId: string;
+  mode: "bulk" | "single";
+  decision: "approved" | "rejected";
+  requestCount: number;
+  entryPoint: "request-detail" | "bulk-review-sheet";
+  mergeRequested: boolean;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -215,6 +248,8 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsOverviewInteraction]: OverviewScopeProperties &
     OverviewInteractionProperties;
   [AnalyticsEvent.SecretsOverviewFlowProgressed]: OverviewScopeProperties & OverviewFlowProperties;
+  [AnalyticsEvent.SecretsOverviewAnnotationProgressed]: OverviewScopeProperties &
+    OverviewAnnotationProperties;
   [AnalyticsEvent.PaywallViewed]: PaywallProperties;
   [AnalyticsEvent.PaywallUpgradeClicked]: PaywallProperties;
   [AnalyticsEvent.FolderAccessSheetOpened]: FolderAccessSheetOpenedProperties;
@@ -225,6 +260,8 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
+  [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
+  [AnalyticsEvent.SecretApprovalReviewSubmitted]: SecretApprovalReviewSubmittedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;

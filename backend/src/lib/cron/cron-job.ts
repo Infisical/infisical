@@ -36,13 +36,16 @@ export const CronJobName = {
   ProjectEnvHardDelete: "project-env-hard-delete",
   ProjectHardDelete: "project-hard-delete",
   DigiCertRevocationSync: "digicert-revocation-sync",
+  ScepIntuneRevocationSync: "scep-intune-revocation-sync",
   GoDaddyOrderPolling: "godaddy-order-polling",
   CaCrlRotation: "ca-crl-rotation",
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
   SignerIssuancePolling: "signer-issuance-polling",
+  SignerPendingRevocationSync: "signer-pending-revocation-sync",
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",
+  OrgAccessReconcileSweep: "org-access-reconcile-sweep",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
   PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
@@ -51,7 +54,9 @@ export const CronJobName = {
   EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
   EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
-  InstanceUpdateCheck: "instance-update-check"
+  InstanceUpdateCheck: "instance-update-check",
+  SecretReadActivityFlush: "secret-read-activity-flush",
+  SecretReadActivityPrune: "secret-read-activity-prune"
 } as const;
 
 const JITTER_INTERVAL_FRACTION = 0.25; // keep below ~0.48 so 30s retry fits before next 1-min fire

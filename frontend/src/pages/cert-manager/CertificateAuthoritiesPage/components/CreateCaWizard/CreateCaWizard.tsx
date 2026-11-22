@@ -21,7 +21,7 @@ import {
 import { useProject, useSubscription } from "@app/context";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { useCreateCa } from "@app/hooks/api/ca";
+import { DEFAULT_CRL_VALIDITY_DAYS, useCreateCa } from "@app/hooks/api/ca";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
@@ -67,7 +67,8 @@ const DEFAULT_VALUES: CaWizardForm = {
   maxPathLength: "-1",
   isOcspEnabled: false,
   disableManagedCrlDistributionPointUrl: false,
-  crlDistributionPointUrls: []
+  crlDistributionPointUrls: [],
+  crlValidityDays: DEFAULT_CRL_VALIDITY_DAYS
 };
 
 const STEP_FIELDS: (keyof CaWizardForm)[][] = [
@@ -82,7 +83,7 @@ const STEP_FIELDS: (keyof CaWizardForm)[][] = [
     "notAfter",
     "maxPathLength"
   ],
-  ["crlDistributionPointUrls"]
+  ["crlDistributionPointUrls", "crlValidityDays"]
 ];
 
 export const CreateCaWizard = ({ isOpen, onOpenChange, onComplete }: Props) => {
@@ -166,7 +167,8 @@ export const CreateCaWizard = ({ isOpen, onOpenChange, onComplete }: Props) => {
           ...(isRoot ? { notAfter: values.notAfter } : {}),
           crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value),
           disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl,
-          isOcspEnabled: values.isOcspEnabled
+          isOcspEnabled: values.isOcspEnabled,
+          crlValidityDays: Number(values.crlValidityDays)
         }
       });
 

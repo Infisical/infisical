@@ -4,10 +4,11 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -43,6 +44,8 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import {
@@ -52,10 +55,6 @@ import {
   identityLockoutLockKey,
   persistIdentityLockoutState
 } from "../identity/identity-fns";
-import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -79,12 +78,12 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   keyStore: Pick<
@@ -113,7 +112,7 @@ export const identityLdapAuthServiceFactory = ({
   membershipIdentityDAL,
   licenseService,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   identityAuthTemplateDAL,
   keyStore,
   orgDAL,
@@ -137,7 +136,7 @@ export const identityLdapAuthServiceFactory = ({
       ? AllowedFieldsSchema.array().parse(ldapAuth.allowedFields)
       : undefined;
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityOrgMembership.scopeOrgId
     });
@@ -209,7 +208,7 @@ export const identityLdapAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     const plan = await licenseService.getPlan(identity.orgId);
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message:
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
@@ -405,13 +404,13 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to add LDAP Auth to identity due to plan restriction. Upgrade plan to add LDAP Auth."
       });
     }
 
-    if (templateId && !plan.machineIdentityAuthTemplates) {
+    if (templateId && !plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -420,7 +419,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -437,7 +436,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -636,7 +635,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to update LDAP Auth due to plan restriction. Upgrade plan to update LDAP Auth."
       });
@@ -644,7 +643,11 @@ export const identityLdapAuthServiceFactory = ({
 
     // only a link change is new template use; a re-sent current templateId must not
     // break routine edits for orgs that have since downgraded
-    if (templateId && templateId !== identityLdapAuth.templateId && !plan.machineIdentityAuthTemplates) {
+    if (
+      templateId &&
+      templateId !== identityLdapAuth.templateId &&
+      !plan.has(PlanFeature.MachineIdentityAuthTemplates)
+    ) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -653,7 +656,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -670,7 +673,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -846,7 +849,7 @@ export const identityLdapAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });

@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { isValidIp } from "@app/lib/ip";
 import { isFQDN } from "@app/lib/validator/validate-url";
-import { TAltNameMapping, TAltNameType } from "@app/services/certificate/certificate-types";
 import { normalizeUrlForComparison } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TAltNameMapping, TAltNameType } from "@app/services/certificate/certificate-types";
 
 const MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS = 4;
 const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;

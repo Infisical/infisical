@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   DatabaseIcon,
@@ -72,7 +72,6 @@ import {
   useRemoveAccountMember,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
@@ -89,6 +88,7 @@ import { PendingInvitationBadge } from "../../components/PendingInvitationBadge"
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
@@ -130,14 +130,24 @@ const PermissionsTab = ({
   const { currentOrg } = useOrganization();
   const { user } = useUser();
   const navigate = useNavigate();
+  const matchRoute = useMatchRoute();
   const { data: accountMembers, isLoading: isLoadingAccount } = useListAccountMembers(accountId);
   const { data: folderMembers, isLoading: isLoadingFolder } = useListFolderMembers(folderId);
 
   const goToFolderPermissions = () => {
-    navigate({ search: { folderId, tab: PamSheetTab.Permissions } as any });
+    const search = { folderId, tab: PamSheetTab.Permissions };
+    if (matchRoute({ to: "/organizations/$orgId/pam/accounts/my-accounts" })) {
+      navigate({
+        to: "/organizations/$orgId/pam/accounts",
+        params: { orgId: currentOrg.id },
+        search
+      });
+      return;
+    }
+    navigate({ to: ".", search });
   };
   const { data: resourceRoles } = useListPamResourceRoles();
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { userMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const groupMap = useMemo(
     () => new Map((orgGroups ?? []).map((g) => [g.id, g.name] as const)),
@@ -191,25 +201,6 @@ const PermissionsTab = ({
           .map((m) => m.identityId) as string[]
       ),
     [accountMembers]
-  );
-
-  const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => {
-          const name =
-            [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
-          return [
-            ou.user.id,
-            {
-              name,
-              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
-              isPendingInvitation: ou.status === "invited"
-            }
-          ] as const;
-        })
-      ),
-    [orgUsers]
   );
 
   const directMembers = useMemo<ResolvedMember[]>(() => {
@@ -521,9 +512,6 @@ const SettingsTab = ({
   const [showGatewayPicker, setShowGatewayPicker] = useState(false);
   const [showRecordingPicker, setShowRecordingPicker] = useState(false);
 
-  const { map: settingsTypeMap } = usePamAccountTypeMap();
-  const showGatewaySection =
-    settingsTypeMap[account?.accountType as PamAccountType]?.requiresGateway !== false;
   const showRecordingOverride = account && accountTypeRequiresRecording(account.accountType);
 
   const {
@@ -651,6 +639,7 @@ const SettingsTab = ({
         settingsOverrides
       },
       {
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Overrides updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -691,62 +680,55 @@ const SettingsTab = ({
           <CardDescription>System configuration overrides.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {!showGatewaySection && !showRecordingOverride && (
-            <p className="text-sm text-muted">No settings available for this account type.</p>
-          )}
-          {showGatewaySection && (
-            <div
-              className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
-                    <Network className="size-4 text-muted" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      Gateway
-                      {isGatewayOverriding && (
-                        <span className="ml-2 text-xs font-normal text-product-pam">
-                          (override)
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-muted">
-                      {isGatewayOverriding
-                        ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
-                        : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
-                    </p>
-                  </div>
+          <div
+            className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
+                  <Network className="size-4 text-muted" />
                 </div>
-                {isGatewayOverriding ? (
-                  <Button type="button" size="sm" variant="ghost" onClick={removeGatewayOverride}>
-                    Remove Override
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowGatewayPicker(true)}
-                  >
-                    <SquarePen className="mr-1.5 size-3.5" />
-                    Override
-                  </Button>
-                )}
+                <div>
+                  <p className="font-medium text-foreground">
+                    Gateway
+                    {isGatewayOverriding && (
+                      <span className="ml-2 text-xs font-normal text-product-pam">(override)</span>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {isGatewayOverriding
+                      ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
+                      : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
+                  </p>
+                </div>
               </div>
-
-              {isGatewayOverriding && (
-                <div className="mt-4">
-                  <GatewayPicker
-                    value={{ gatewayId, gatewayPoolId }}
-                    onChange={setGateway}
-                    isRequired
-                  />
-                </div>
+              {isGatewayOverriding ? (
+                <Button type="button" size="sm" variant="ghost" onClick={removeGatewayOverride}>
+                  Remove Override
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowGatewayPicker(true)}
+                >
+                  <SquarePen className="mr-1.5 size-3.5" />
+                  Override
+                </Button>
               )}
             </div>
-          )}
+
+            {isGatewayOverriding && (
+              <div className="mt-4">
+                <GatewayPicker
+                  value={{ gatewayId, gatewayPoolId }}
+                  onChange={setGateway}
+                  isRequired
+                />
+              </div>
+            )}
+          </div>
 
           {showRecordingOverride && (
             <div

@@ -15,7 +15,8 @@ export const ExternalKmsSchema = z.object({
   encryptedProviderInputs: zodBuffer,
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
-  kmsKeyId: z.string().uuid()
+  kmsKeyId: z.string().uuid(),
+  providerInputsVersion: z.number().default(1)
 });
 
 export type TExternalKms = z.infer<typeof ExternalKmsSchema>;

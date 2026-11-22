@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -94,6 +95,7 @@ export const CodefreshConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Codefresh Integration" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Codefresh Integration</CardTitle>
@@ -171,6 +173,9 @@ export const CodefreshConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Codefresh Integration" />
+      <div />
+    </>
   );
 };

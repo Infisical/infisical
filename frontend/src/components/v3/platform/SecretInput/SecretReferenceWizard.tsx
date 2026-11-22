@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { RefObject, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   ChevronRightIcon,
@@ -28,6 +28,7 @@ type WizardState = {
 };
 
 type Props = {
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   onSelect: (referenceContent: string) => void;
   onNavigate: (referenceContent: string) => void;
   isEnabled: boolean;
@@ -47,6 +48,7 @@ const INITIAL_STATE: WizardState = {
 };
 
 export const SecretReferenceWizard = ({
+  inputRef,
   onSelect,
   onNavigate,
   isEnabled,
@@ -461,28 +463,31 @@ export const SecretReferenceWizard = ({
   };
 
   useEffect(() => {
-    if (!isEnabled) return undefined;
+    const input = inputRef.current;
+    if (!isEnabled || !input) return undefined;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
       const count = navigableCountRef.current;
-      if (e.key === "Tab" && count === 0) return;
+      if (count === 0) return;
       if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
         e.preventDefault();
-        if (count === 0) return;
+        e.stopPropagation();
         setHighlightedIndex((prev) => (prev + 1) % count);
       } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
         e.preventDefault();
-        if (count === 0) return;
+        e.stopPropagation();
         setHighlightedIndex((prev) => (prev - 1 + count) % count);
       } else if (e.key === "Enter") {
         e.preventDefault();
+        e.stopPropagation();
         selectHighlightedRef.current();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [isEnabled]);
+    input.addEventListener("keydown", handleKeyDown);
+    return () => input.removeEventListener("keydown", handleKeyDown);
+  }, [isEnabled, inputRef]);
 
   const renderProjectStep = () => {
     return (
@@ -500,7 +505,7 @@ export const SecretReferenceWizard = ({
               <button
                 key={grant.sourceProjectId}
                 type="button"
-                aria-label="suggestion-item"
+                data-secret-reference-item
                 data-nav-index={i}
                 onClick={() => {
                   onFocusItem();
@@ -532,7 +537,7 @@ export const SecretReferenceWizard = ({
         {state.selectedProjectFolderGrant && (
           <button
             type="button"
-            aria-label="suggestion-item"
+            data-secret-reference-item
             onClick={() => {
               onFocusItem();
               onNavigate("@");
@@ -552,7 +557,7 @@ export const SecretReferenceWizard = ({
               <button
                 key={env.slug}
                 type="button"
-                aria-label="suggestion-item"
+                data-secret-reference-item
                 data-nav-index={i}
                 onClick={() => {
                   onFocusItem();
@@ -592,7 +597,7 @@ export const SecretReferenceWizard = ({
                 <button
                   key={`${secret.env}-${secret.id}`}
                   type="button"
-                  aria-label="suggestion-item"
+                  data-secret-reference-item
                   data-nav-index={navIndex}
                   onClick={() => {
                     onFocusItem();
@@ -633,7 +638,7 @@ export const SecretReferenceWizard = ({
         <div className="no-scrollbar flex min-w-0 items-center gap-0.5 overflow-x-auto border-b border-border px-2 py-1.5 text-xs text-muted">
           <button
             type="button"
-            aria-label="suggestion-item"
+            data-secret-reference-item
             onClick={() => {
               onFocusItem();
               handleBreadcrumbClick(-1);
@@ -647,7 +652,7 @@ export const SecretReferenceWizard = ({
               <ChevronRightIcon className="size-3" />
               <button
                 type="button"
-                aria-label="suggestion-item"
+                data-secret-reference-item
                 onClick={() => {
                   onFocusItem();
                   handleBreadcrumbClick(i);
@@ -673,7 +678,7 @@ export const SecretReferenceWizard = ({
           <button
             key={folder.id}
             type="button"
-            aria-label="suggestion-item"
+            data-secret-reference-item
             data-nav-index={i}
             onClick={() => {
               onFocusItem();
@@ -708,7 +713,7 @@ export const SecretReferenceWizard = ({
             <button
               key={secret.id}
               type="button"
-              aria-label="suggestion-item"
+              data-secret-reference-item
               data-nav-index={navIndex}
               onClick={() => {
                 onFocusItem();

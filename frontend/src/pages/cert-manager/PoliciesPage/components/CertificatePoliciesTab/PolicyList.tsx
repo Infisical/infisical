@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -22,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -33,11 +33,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 
@@ -48,8 +49,6 @@ interface Props {
 
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -114,31 +113,19 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
       </TableHeader>
       <TableBody>
         {policies.map((policy) => (
-          <TableRow
-            key={policy.id}
-            onClick={() =>
-              navigate({
-                to: "/organizations/$orgId/cert-manager/certificate-policies/$policyId",
-                params: {
-                  orgId: currentOrg.id,
-                  policyId: policy.id
-                }
-              })
-            }
-          >
+          <TableRow key={policy.id} linked>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Link
-                  to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
-                  params={{
-                    orgId: currentOrg.id,
-                    policyId: policy.id
-                  }}
-                  className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onClick={(e) => e.stopPropagation()}
+                <RowLink
+                  {...getInstancePinningLink(
+                    currentProject.orgId,
+                    currentProject,
+                    `certificate-policies/${policy.id}`
+                  )!}
+                  className="hover:underline"
                 >
                   {policy.name}
-                </Link>
+                </RowLink>
                 {policy.description && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -152,7 +139,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             <TableCell>
               <span className="text-sm">{formatDate(policy.createdAt)}</span>
             </TableCell>
-            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+            <TableCell className="text-right" data-row-interactive>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton variant="ghost" size="xs" aria-label="Policy actions">

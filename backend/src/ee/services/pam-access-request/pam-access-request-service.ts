@@ -19,11 +19,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamAccessType } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccessApprovalResource } from "./pam-access-approval-resource";
 import { parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
 import {

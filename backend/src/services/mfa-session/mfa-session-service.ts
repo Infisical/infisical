@@ -1,11 +1,12 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { isMfaProofAccepted } from "@app/services/auth/auth-fns";
 import { MfaMethod } from "@app/services/auth/auth-type";
 import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
-import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
-import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 
@@ -20,7 +21,10 @@ import {
 
 type TMfaSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<
+    TAuthTokenServiceFactory,
+    "createTokenForUser" | "validateTokenForUser" | "getUserTokenSessionById"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
   mfaLockoutService: Pick<
@@ -91,6 +95,14 @@ export const mfaSessionServiceFactory = ({
     return true;
   };
 
+  const canCompleteFromSession = async (mfaSession: TMfaSession, userId: string, tokenVersionId: string) => {
+    if (!mfaSession.initiatingTokenVersionId || mfaSession.initiatingTokenVersionId === tokenVersionId) return true;
+    if (!mfaSession.allowCliHandoff) return false;
+
+    const initiatingSession = await tokenService.getUserTokenSessionById(mfaSession.initiatingTokenVersionId, userId);
+    return isCliUserAgent(initiatingSession?.userAgent ?? undefined);
+  };
+
   // Helper function to update MFA session in Redis
   const updateMfaSession = async (mfaSession: TMfaSession, ttlSeconds: number): Promise<void> => {
     const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSession.sessionId);
@@ -155,7 +167,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -229,7 +241,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -245,7 +257,8 @@ export const mfaSessionServiceFactory = ({
     userId: string,
     resourceId: string,
     mfaMethod: MfaMethod,
-    initiatingTokenVersionId?: string
+    initiatingTokenVersionId?: string,
+    allowCliHandoff?: boolean
   ): Promise<string> => {
     const mfaSessionId = crypto.randomBytes(32).toString("hex");
     const mfaSession: TMfaSession = {
@@ -254,7 +267,8 @@ export const mfaSessionServiceFactory = ({
       resourceId,
       status: MfaSessionStatus.PENDING,
       mfaMethod,
-      initiatingTokenVersionId
+      initiatingTokenVersionId,
+      allowCliHandoff
     };
 
     await keyStore.setItemWithExpiry(

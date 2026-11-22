@@ -6,7 +6,7 @@ description: "Let external platforms request delegated access to Infisical on a 
 
 The **authorization code** flow lets an [OAuth application](/documentation/platform/oauth-applications/overview) request **delegated access** to Infisical on behalf of one of your users. The platform never sees the user's password or session; instead it runs a standard authorization code flow, the user reviews and approves the request on an Infisical consent screen, and the platform receives short-lived access and refresh tokens scoped to that user.
 
-A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical sm run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
+A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical secrets-manager run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
 <Info>
   This page covers the browser-based flow, where each user approves the application on a consent screen. If you're registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
@@ -55,7 +55,7 @@ Scopes are a coarse, named contract for what a delegated token is allowed to do.
 | `secrets:read` | Read secrets, folders, and imports |
 
 <Note>
-  `secrets:read` is the only scope available today, supporting the read-only `infisical sm run` use case. Requesting an unrecognized scope rejects the authorization request rather than silently dropping it.
+  `secrets:read` is the only scope available today, supporting the read-only `infisical secrets-manager run` use case. Requesting an unrecognized scope rejects the authorization request rather than silently dropping it.
 </Note>
 
 ## Creating an OAuth application
@@ -140,7 +140,14 @@ The response contains:
 
 [Access token lifetime](/documentation/platform/oauth-applications/overview#managing-applications) defaults to 1 day. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
-`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client exchanges a new authorization code when the access token expires.
+The response omits `refresh_token` in two cases:
+
+- The application doesn't hold the `refresh_token` grant, which happens only if you registered the application through the API with `grantTypes` limited to `authorization_code`
+- Another refresh request used the same refresh token at about the same time, such as two requests your client sent at once
+
+Without the grant, the client exchanges a new authorization code when the access token expires. If a refresh returns no `refresh_token`, keep the refresh token the client already holds.
+
+If a refresh request gets no response, for example because the connection dropped, send the user through authorization again instead of retrying. Infisical may have rotated the refresh token before the response was lost, and the token the client holds then stops working shortly afterwards.
 
 ### Validation endpoint
 

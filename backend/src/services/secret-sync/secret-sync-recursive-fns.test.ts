@@ -211,7 +211,7 @@ describe("buildSyncPayload", () => {
         projectFolderGrantDAL: { find: async () => [] },
         actorOrgId: "org-1",
         orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-        kmsService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: async () => ({
             decryptor: () => "",
             encryptor: () => ({ cipherTextBlob: Buffer.from("") })
@@ -227,6 +227,7 @@ describe("buildSyncPayload", () => {
         sourcePath: "/",
         sourceFolderId: "root",
         syncOptions: { includeAllSubFolders: true },
+        includeAllSubFolders: true,
         includeImports: true
       },
       buildDeps
@@ -271,7 +272,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
       projectFolderGrantDAL: { find: async () => [] },
       actorOrgId: "org-1",
       orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: async () => ({
           decryptor: () => "",
           encryptor: () => ({ cipherTextBlob: Buffer.from("") })
@@ -286,6 +287,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
     sourcePath: "/",
     sourceFolderId: "root",
     syncOptions: { includeAllSubFolders: true },
+    includeAllSubFolders: true,
     includeImports: true
   } as Parameters<typeof buildSyncPayload>[0];
 

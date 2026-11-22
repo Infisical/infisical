@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { OrgMembershipRole, ProjectMembershipRole, SecretFolderRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
 
 // A machine identity is the actor to reach for when a spec needs a second, less privileged
 // principal. A second *user* cannot be made over the API at all (the real path is invite, email,
@@ -70,6 +70,26 @@ export const addIdentityToProject = async (dto: {
   });
 
   expect(res.statusCode).toBe(200);
+};
+
+export const addIdentityProjectMembership = async (dto: {
+  identityId: string;
+  orgId: string;
+  projectId: string;
+  role?: ProjectMembershipRole;
+}) => {
+  const [membership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: dto.orgId,
+      scopeProjectId: dto.projectId,
+      actorIdentityId: dto.identityId
+    })
+    .returning("id");
+  await testDb(TableName.MembershipRole).insert({
+    membershipId: (membership as { id: string }).id,
+    role: dto.role ?? ProjectMembershipRole.Member
+  });
 };
 
 export const grantIdentityFolderAccess = async (dto: {

@@ -13,8 +13,8 @@ import {
 } from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type Props = {
   label: string;

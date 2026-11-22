@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -42,8 +43,6 @@ import {
   TPamAccessPolicyInputs
 } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -51,6 +50,16 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  hasRevealableCredential,
+  noRevealableCredentialMessage,
+  normalizeCredentialAuthMethod
+} from "../pam-account/pam-account-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   PamAccessType,
   PamAccountType,
@@ -65,16 +74,6 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import {
-  hasRevealableCredential,
-  noRevealableCredentialMessage,
-  normalizeCredentialAuthMethod
-} from "../pam-account/pam-account-schemas";
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
 import { TPamAccessRequestData } from "./pam-access-request-types";
@@ -97,7 +96,7 @@ type TPamAccessApprovalResourceDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
 };
 
@@ -160,7 +159,7 @@ export const pamAccessApprovalResourceFactory = ({
   permissionService,
   userDAL,
   gatewayV2Service,
-  kmsService,
+  kmsDataKeyService,
   pamFolderNotificationConfigDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
@@ -434,7 +433,7 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     if (isCredentialRequest) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

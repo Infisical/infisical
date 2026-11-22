@@ -52,7 +52,7 @@ export const OrganizationLayout = () => {
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
-  const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
+  const containerHeight = config.pageFrameContent ? "h-[94dvh]" : "h-dvh";
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
@@ -64,12 +64,7 @@ export const OrganizationLayout = () => {
     if (!trialIntent?.orgId) return;
     clearSignupTrialIntent();
     if (trialIntent.orgId !== billingOrgId) return;
-    const search = new URLSearchParams(
-      getSignupTrialBillingSearch(
-        trialIntent,
-        `${window.location.pathname}${window.location.search}${window.location.hash}`
-      )
-    );
+    const search = new URLSearchParams(getSignupTrialBillingSearch(trialIntent));
     window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
   }, [billingOrgId]);
 

@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
+- `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -28,7 +29,6 @@ infisical/
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
-├── docker-compose.bdd.yml        # BDD testing environment
 ├── docker-compose.e2e-dbs.yml    # E2E test databases (Oracle, SAP, Snowflake, etc.)
 ├── Dockerfile.standalone-infisical       # Standalone image (frontend + backend)
 ├── Dockerfile.fips.standalone-infisical  # FIPS-compliant standalone image
@@ -101,6 +101,8 @@ If the user wrote or edited the docs prose themselves, don't just accept it. Tel
 
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
+The CLI reference exists twice: `docs/cli/reference.mdx` renders the page, and `docs/cli/reference-agents.mdx` is a plain Markdown copy that agents read. The reference page's Markdown version holds only a pointer to it. When you change a command in one, make the same change in the other (see [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD#editing-the-cli-reference)).
+
 Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. Every rule except `Infisical.EmDashes` reports at error level, including `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions`, so the run fails if either one reports a finding. `Infisical.EmDashes` reports at warning level and never changes the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
 
 ### Auth & Permissions
@@ -109,7 +111,9 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 ### Org-Scoped Products
 
-PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/AGENTS.md` and `backend/src/ee/services/agent-vault/AGENTS.md`.
+PAM is a product over one implicit project per organization, not projects a user creates. Its URLs are `/organizations/$orgId/pam/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, its roles are admin or member only, and it has its own metered identities dimension (`pam_identities`). See `backend/src/ee/services/pam/AGENTS.md`.
+
+Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles, so a `ProjectType.PAM` arm for roles usually needs an Agent Vault arm beside it. It bills per brokered request (`agent_vault_brokered_requests`), not per identity; its access rule and usage live in `backend/src/domains/agent-vault/agent-vault/`. See `backend/src/ee/services/agent-vault/AGENTS.md`.
 
 ### Single-Project Products
 
@@ -136,17 +140,32 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 All "someone has to approve this before it happens" features share one module:
 `backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
 the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
-requests, code signing.
+requests, certificate revocation, code signing.
 
 A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
 constructed with its own dependencies and registered in the `approvalResources` map in
 `server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
 which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
-endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
-converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+endpoint**: secret access (`ee/services/access-approval-*`) and secret change
+(`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
+longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
+
+A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
+can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
+requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
+action fails there, record the failure in the audit log and call
+`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
+(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
+`filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
+outlives their removal. Certificate
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
+(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
+run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
@@ -157,6 +176,110 @@ engine itself adds a reuse check (`not-used-before`) to every input, answered fr
 requests' evidence and claimed under an advisory lock in the auto-approve transaction. The
 stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
 never `autoApprovalEvidence`.
+
+An `ai` condition has the organization's AI model judge the request against the admin's prompt. It runs last,
+only when the rest of its rule passed and no earlier rule approved, and anything but a clean approval falls
+through to the approvers. See AI Features below.
+
+A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
+through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
+`delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
+on create and update (`ee/services/access-approval-policy/access-approval-policy-service.ts`). A delegated policy has no
+Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, and cannot be
+updated while it has pending requests. Keep those
+rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
+policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
+policies return it as a 400 rather than dropping the field.
+
+Delivery to the delegated system is asynchronous and goes through the event outbox (see `backend/AGENTS.md`).
+`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row, stamped with the policy's
+provider as `providerType` so `(providerRequestId, providerType)` can be unique, and emits
+`delegated-approval.request.dispatch-requested` (`delegated-approval-events.ts`) in the caller's transaction, so
+the dispatch is exactly as durable as the request; never enqueue it after commit. The
+`delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
+calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
+record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`), and the reason
+text promises that retry. The outbox flags the last attempt (`TEvent.isFinalAttempt`), and a transient failure
+on it closes the request instead: the delegated row goes `failed` with a reason that says so, the approval
+request goes `cancelled`, and the consumer returns `Failed`. A terminal failure the consumer raises itself (an
+`UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
+`failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
+`failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
+access approval request service (`ee/services/access-approval-request/`) checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+retried. A resend supersedes the event still in the outbox rather than running beside it: the row stores the
+live event id in `dispatchEventId`, and a resend writes a new random one (only while the row is
+`failed_dispatch`) and emits the event under it in one transaction. The consumer marks any event whose id no
+longer matches delivered without calling the provider or writing the row, so an older event's last attempt
+can never close a request the user resent, and concurrent resends call the provider once. A batch dispatches up to 10 different requests at once;
+events for one request stay serial. A second event for a request that was already delivered is marked delivered
+without calling the provider. A delegated request has
+no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
+one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
+policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
+`TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
+(`delegated-approval/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
+reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
+signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
+callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
+issued on the first dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of
+the request's project (`getOrIssueCallbackToken` resolves the project from the delegated request itself, since
+the inbound route knows only that row) so every retry resends the same value. Never send a provider a token that
+differs from the one stored for the request; the provider keeps the first token it was given and cannot be told
+another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
+with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
+the body carries no decision, which a later worker reads back from the provider. The route finds the row by
+`providerRequestId` and checks the token. Only a callback that starts a read-back counts in `callbackAttempts`,
+so the limit bounds read-backs rather than repeats; on the sixth such callback it sets the row `failed` with a
+readable `statusReason` and cancels the attached approval request in the claim's transaction, so the policy is
+freed and the UI stops offering Cancel. That transaction locks the approval request before it claims, the same
+order the decision consumer and cancel take, or failing the request inside it would invert their lock order. A
+refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
+record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
+refusal (no row for the record id, bad or missing token, request not `waiting_approval`)
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
+only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
+transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
+flight gets the same 200, emits nothing and is not counted. The last read-back attempt clears
+`decisionReadRequestedAt`, so a callback after the outbox gives up claims immediately. A claim whose worker
+died before that write stays until it is older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+(70 minutes), which is what lets a fresh notification start one then. The event's `type` is the body's event
+and its id is derived (uuid v5) from the delegated request id plus the attempt count. The
+`delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
+adapter over `delegatedApprovalDecisionService.applyDecision` that, like dispatch, reads up to 10 different
+requests at once and one request's events serially) then reads the decision back through the
+policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
+the permissions the provider holds, and the consumer answers `Retry` for `pending` (on the last attempt, `Failed`
+with the request left open, `decisionReadRequestedAt` cleared, and a `statusReason` saying Infisical stopped
+checking and the callback has to be sent again), compares the approved
+permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
+comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
+that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and
+runs the policy type's `postApprovalTxRoutine` from `approvalResources`. A mismatch, a record for another
+request, or any other `UnrecoverableError` goes through `failDelegatedApprovalRequest`: the delegated row
+becomes `failed` with a readable `statusReason`, the approval request is cancelled, and nothing can retry
+it. A request whose requester was deleted (`requesterId` is set null) or is no longer a member of the
+project, directly or through a group (`membershipDAL.isUserProjectMember`), takes the same path before the
+decision is read back. The secret access `postApprovalTxRoutine` refuses a non-member too, on both approval
+paths: removing a member reaps only the privileges that already exist, so one written afterwards would take
+effect if the user were ever added back. Every outcome is audited as
+`ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
+product notifications (the access request webhook) go through `decisionNotifiers`, never through the
+consumer itself. A new delegated policy type adds its `postApprovalTxRoutine` and decision notifier in
+`delegatedApprovalDecisionMapsFactory`, the same way dispatch details get a builder in
+`DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP`. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
+the provider reads that field alone and ignores `state`.
+
+### AI Features
+
+One model per organization (an Anthropic connection plus a model ID on `organizations`, set under Organization
+Settings > General) serves every AI feature, through `backend/src/services/ai/`. An app connection becomes usable
+as AI context by adding read-only tools to `APP_CONNECTION_AI_TOOLS` (`services/app-connection/app-connection-ai-tools.ts`);
+Jira is the first. Requester text and tool results are untrusted: they stay out of the system prompt, and the
+model is asked to answer through `submit_decision` (`tool_choice` stays `auto`, since thinking models reject a
+forced tool), and a reply without it does not approve.
 
 ### Object Storage
 
@@ -173,7 +296,35 @@ React Query + Axios with query key factories per domain. Each API domain in `fro
 
 ## Keeping AGENTS.md Up to Date
 
-When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant AGENTS.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/AGENTS.md` for Node.js backend changes, `backend-go/AGENTS.md` for Go backend changes, and `frontend/AGENTS.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.
+When a change adds a service, a pattern, or a rule other code must follow, update the AGENTS.md that owns it in the same PR. This file and the package files are loaded into every session, so every line costs context; add what prevents a mistake, not everything you learned.
+
+**Where it goes:**
+
+| Content | Home |
+|---|---|
+| Rules that span packages | this file |
+| Rules that code anywhere in a package must follow | `backend/AGENTS.md`, `backend-go/AGENTS.md`, `frontend/AGENTS.md` |
+| How a module works inside, for someone editing it | an `AGENTS.md` next to the code (e.g. `backend/src/services/<module>/AGENTS.md`), plus a one-line "read X before touching Y" pointer in the package file |
+| Why one piece of code is written the way it is | a code comment |
+| What must not regress | a test |
+
+Nested files are not loaded automatically; an agent reaches them only through those pointers, so never add one without its pointer.
+
+**The test for a line:** would an agent working outside this module get something wrong without it? If not, it belongs in the module's own file, a comment, or nowhere.
+
+**Write:**
+- Rules as imperatives, with the reason in the same sentence when it isn't obvious. The reason is what stops a later "simplification" from breaking the rule, so don't cut it to save space.
+- The names of the functions, constants and files involved, so the rule can be found in code.
+- Commands that can be copied and run as written.
+
+**Don't write:**
+- Line numbers, file counts, or "currently N of X"; they go stale silently.
+- Change history or incident narration ("this used to...", "after the outage...").
+- What the code already says, or a walkthrough of a module's internals in a package file.
+- A second copy of a rule; link the existing one.
+- Generic advice that holds for any codebase.
+
+When a section in a package file grows past about 30 lines of internals, move them to a nested `AGENTS.md` and keep only the rules other code must follow plus the pointer. Before deleting a section, check a code comment or test actually covers it.
 
 ## Wiring a New Full-Stack Feature
 
@@ -206,9 +357,9 @@ Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` 
 
 When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design system — colors, typography, components, and voice.
 
-Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions.
+Before deprecating or removing a shared frontend component, follow the component lifecycle rules in [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row; `Combobox` replaces both the deprecated `FilterableSelect` and `CreatableSelect`. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `CaInstallCertModal/useConnectionCreation.tsx`). A v2 `Modal` parent sits at `z-[60]`, above v3 overlays, so migrate it to the v3 `Dialog` when it hosts one (see `CaInstallCertModal/CaInstallCertModal.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`).
 
 ## Issue and PR Guidelines
 
@@ -219,5 +370,5 @@ Pickers for entities a user may need to create first (app connections, gateways,
 ## Workflow Guardrails
 
 - Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
-- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- Never push changes to `default-features.ts` (the License free tier) or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
 - When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

@@ -4,8 +4,9 @@ import * as x509 from "@peculiar/x509";
 import * as pkijs from "pkijs";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { buildHsmCaSigner, createEphemeralKeyCache } from "@app/services/certificate-authority/ca-signer";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { OCSP_NONCE_OID } from "./certificate-authority-ocsp-enums";
 
@@ -13,10 +14,6 @@ const getCaSignerMock = vi.fn();
 
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => ({
   getCaSigner: (...args: unknown[]) => getCaSignerMock(...args) as unknown
-}));
-
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-key-id")
 }));
 
 // eslint-disable-next-line import/first
@@ -75,7 +72,9 @@ const buildHarness = async () => {
     sign: async (tbs) => {
       signCount += 1;
       await gate;
-      return Buffer.from(await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, tbs));
+      return Buffer.from(
+        await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, asNonSharedBuffer(tbs))
+      );
     },
     ephemeralKeys: createEphemeralKeyCache()
   });
@@ -99,8 +98,8 @@ const buildHarness = async () => {
     } as never,
     certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
     certificateDAL: { find: vi.fn(async () => []), primaryNode: vi.fn(() => undefined) } as never,
-    projectDAL: { findById: vi.fn(), findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() } as never,
-    kmsService: {
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-id") } as never,
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn(async () => async () => Buffer.from(caCert.rawData)),
       generateKmsKey: vi.fn()
     } as never,

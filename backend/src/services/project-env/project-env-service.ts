@@ -1,11 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TAccessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -29,10 +27,8 @@ type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
-  accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
-  secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
 };
 
@@ -44,8 +40,6 @@ export const projectEnvServiceFactory = ({
   licenseService,
   keyStore,
   folderDAL,
-  accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL,
   approvalPolicySecretEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
@@ -101,9 +95,7 @@ export const projectEnvServiceFactory = ({
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
       const plan = await licenseService.getPlan(actorOrgId);
-      if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
-        // case: limit imposed on number of environments allowed
-        // case: number of environments used exceeds the number of environments allowed
+      if (plan.exceeds(PlanLimit.Environments, envs.length)) {
         throw new BadRequestError({
           message:
             "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
@@ -206,9 +198,8 @@ export const projectEnvServiceFactory = ({
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
       const plan = await licenseService.getPlan(actorOrgId);
-      if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
-        // case: limit imposed on number of environments allowed
-        // case: number of environments used exceeds the number of environments allowed
+      // An update adds nothing, so it's refused only once the project is already over the limit.
+      if (plan.exceeds(PlanLimit.Environments, envs.length, 0)) {
         throw new BadRequestError({
           message:
             "Failed to update environment due to environment limit exceeded. To update an environment, please upgrade your plan or remove unused environments."
@@ -274,24 +265,10 @@ export const projectEnvServiceFactory = ({
       }
 
       const env = await projectEnvDAL.transaction(async (tx) => {
-        const secretApprovalPolicies = await secretApprovalPolicyEnvironmentDAL.findAvailablePoliciesByEnvId(id, tx);
-        if (secretApprovalPolicies.length > 0) {
-          throw new BadRequestError({
-            message: "Environment is in use by a secret approval policy",
-            name: "DeleteEnvironment"
-          });
-        }
-        const accessApprovalPolicies = await accessApprovalPolicyEnvironmentDAL.findAvailablePoliciesByEnvId(id, tx);
-        if (accessApprovalPolicies.length > 0) {
-          throw new BadRequestError({
-            message: "Environment is in use by an access approval policy",
-            name: "DeleteEnvironment"
-          });
-        }
         const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
         if (approvalPolicy) {
           throw new BadRequestError({
-            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "an access approval policy" : "a secret approval policy"}`,
+            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "a secret access approval policy" : "an approval policy"}`,
             name: "DeleteEnvironment"
           });
         }
@@ -419,7 +396,7 @@ export const projectEnvServiceFactory = ({
         // getProjectPermission above guarantees project existence and org membership,
         // so actorOrgId === project.orgId — no separate project lookup needed.
         const plan = await licenseService.getPlan(actorOrgId);
-        if (plan.environmentLimit !== null && activeEnvs.length >= plan.environmentLimit) {
+        if (plan.exceeds(PlanLimit.Environments, activeEnvs.length)) {
           throw new BadRequestError({
             message:
               "Failed to restore environment due to environment limit reached. Upgrade plan or remove an existing environment."

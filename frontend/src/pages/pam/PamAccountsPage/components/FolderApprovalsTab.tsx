@@ -48,11 +48,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
@@ -68,7 +70,6 @@ import {
   useSetPamApprovalConfig
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { AlertAction } from "@app/views/Alerts";
 
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
@@ -81,9 +82,13 @@ import {
   serializeAutoApprovalDraft,
   TAutoApprovalDraft,
   toAutoApprovalConfig,
-  toAutoApprovalDraft
+  toAutoApprovalDraft,
+  toRequesterCheckValue,
+  TRequesterCheckOptions
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
+import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -125,9 +130,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
+  const { data: productGroups } = useListWorkspaceGroups(currentProject.id, currentProject.type);
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -151,6 +157,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
   const revokeMutation = useRevokePamAccessRequest();
   const [requestToRevoke, setRequestToRevoke] = useState<TPamAccessRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TPamAccessRequest | null>(null);
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
@@ -257,18 +264,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
 
   const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => [
-          ou.user.id,
-          {
-            label:
-              [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username,
-            email: ou.user.email ?? ou.inviteEmail ?? ou.user.username
-          }
-        ])
-      ),
-    [orgUsers]
+    () => new Map([...productUserMap].map(([id, u]) => [id, { label: u.name, email: u.email }])),
+    [productUserMap]
   );
 
   const groupMap = useMemo(
@@ -291,48 +288,44 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       .filter((g) => memberGroupIds.has(g.id) && !selectedIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedIds, memberUserIds, memberGroupIds]);
 
   const breakGlassOptions = useMemo<ApproverOption[]>(() => {
     const groups: ApproverOption[] = (orgGroups ?? [])
       .filter((g) => memberGroupIds.has(g.id) && !selectedBreakGlassIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id &&
-          memberUserIds.has(ou.user.id) &&
-          !selectedBreakGlassIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedBreakGlassIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
+
+  // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
+  // members: a requester can reach the folder through a group the rule doesn't name
+  const requesterOptions = useMemo<TRequesterCheckOptions>(
+    () => [
+      ...(productGroups ?? []).map(({ group }) => ({
+        value: toRequesterCheckValue(ApproverType.Group, group.id),
+        label: group.name,
+        subtitle: "Group",
+        kind: ApproverType.Group
+      })),
+      ...productUsers.map((u) => ({
+        value: toRequesterCheckValue(ApproverType.User, u.id),
+        label: u.name,
+        subtitle: u.email,
+        kind: ApproverType.User
+      }))
+    ],
+    [productUsers, productGroups]
+  );
 
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
@@ -386,9 +379,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onSuccess: () => {
           createNotification({ type: "success", text: "Approval configuration saved" });
           setIsDirty(false);
-        },
-        onError: () => {
-          createNotification({ type: "error", text: "Failed to save approval configuration" });
         }
       }
     );
@@ -420,6 +410,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onChange={setAutoApprovalDraft}
         showErrors={showAutoApprovalErrors}
         hasApprovers={approvers.length > 0}
+        requesterOptions={requesterOptions}
       />
 
       <Card>
@@ -611,6 +602,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                   ? undefined
                   : {
                       lockedChannelTypes: [
+                        AlertChannelType.SlackApp,
                         AlertChannelType.Slack,
                         AlertChannelType.Webhook,
                         AlertChannelType.PagerDuty
@@ -696,8 +688,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableBody>
                   {folderRequests.map((request) => {
                     const status = getRequestStatusInfo(request);
+                    const isApproved = request.status === PamAccessRequestStatus.Approved;
                     return (
-                      <TableRow key={request.id}>
+                      <TableRow
+                        key={request.id}
+                        className={isApproved ? "cursor-pointer" : undefined}
+                        onClick={isApproved ? () => setSelectedRequest(request) : undefined}
+                      >
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
@@ -800,6 +797,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
+      <ApprovalRequestDetailSheet
+        request={selectedRequest}
+        isOpen={!!selectedRequest}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+        canRevokeGrants={canRevoke}
+      />
       <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
         onOpenChange={(open) => {

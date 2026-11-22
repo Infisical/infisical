@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { MouseEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
@@ -47,18 +47,40 @@ export const NotificationDropdown = () => {
   // Links are stored server-side and may be site-relative or absolute, and may carry a query string. Passing them
   // straight to `to` would resolve them against the current path and swallow the search params, so normalize to a
   // path + search + hash and let the router parse it via `href`.
-  const openNotificationLink = (link: string) => {
-    const { pathname, search, hash } = new URL(link, window.location.origin);
-    router.navigate({ href: `${pathname}${search}${hash}` });
+  const getNotificationHref = (link: string) => {
+    try {
+      const { pathname, search, hash } = new URL(link, window.location.origin);
+      return `${pathname}${search}${hash}`;
+    } catch {
+      return undefined;
+    }
   };
 
-  const handleNotificationOpen = (notification: TUserNotification) => {
+  const markNotificationRead = (notification: TUserNotification) => {
     if (!notification.isRead) {
       updateNotification({ notificationId: notification.id, isRead: true });
     }
-    if (notification.link) {
-      openNotificationLink(notification.link);
+  };
+
+  const handleNotificationOpen = (
+    event: MouseEvent<HTMLElement>,
+    notification: TUserNotification,
+    href?: string
+  ) => {
+    markNotificationRead(notification);
+    if (
+      !href ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
     }
+    event.preventDefault();
+    router.navigate({ href });
   };
 
   const unreadCount = useMemo(
@@ -143,20 +165,21 @@ export const NotificationDropdown = () => {
               )}
               {!isLoading && notifications && notifications.length > 0 && (
                 <div className="flex w-full flex-col">
-                  {visibleNotifications?.map((notification) => (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      key={notification.id}
-                      onClick={() => handleNotificationOpen(notification)}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter") return;
-                        handleNotificationOpen(notification);
-                      }}
-                    >
-                      <Notification notification={notification} onDelete={deleteNotification} />
-                    </div>
-                  ))}
+                  {visibleNotifications?.map((notification) => {
+                    const href = notification.link
+                      ? getNotificationHref(notification.link)
+                      : undefined;
+                    return (
+                      <Notification
+                        key={notification.id}
+                        notification={notification}
+                        href={href}
+                        onOpen={(event) => handleNotificationOpen(event, notification, href)}
+                        onAuxOpen={() => markNotificationRead(notification)}
+                        onDelete={deleteNotification}
+                      />
+                    );
+                  })}
                   {hasMoreNotifications && (
                     <DropdownMenuItem
                       onSelect={(e) => {

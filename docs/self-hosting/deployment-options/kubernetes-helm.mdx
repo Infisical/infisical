@@ -110,7 +110,9 @@ For production deployments with many users or secrets, increase these values acc
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.167.0"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
+        # Leave tag unset to run the release this chart version was published for.
+        # To pin a version, set it to a tag from https://hub.docker.com/r/infisical/infisical/tags
+        # tag: "v0.167.0"
         pullPolicy: IfNotPresent
       replicaCount: 2
 
@@ -247,14 +249,16 @@ infisical:
   podAnnotations: {}
   # -- Custom annotations for Infisical deployment
   deploymentAnnotations: {}
+  # -- Adds an `updatedAt` timestamp annotation to the Deployment and pods, so every render (each `helm upgrade` or GitOps sync) rolls the pods and picks up changes to `kubeSecretRef`. Set to `false` for GitOps tools like Argo CD, and restart with `kubectl rollout restart` after changing the secret.
+  rolloutOnEveryRender: true
   # -- Number of pod replicas for high availability
   replicaCount: 2
 
   image:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
-    # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.167.0"
+    # -- Infisical image tag. Leave empty to use the chart's `appVersion`, the release this chart version was published for. Set it to pin a specific version from https://hub.docker.com/r/infisical/infisical
+    tag: ""
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed

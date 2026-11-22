@@ -21,7 +21,7 @@ export const NotFoundPage = () => {
 
   return (
     <ErrorPageFrame
-      helmetTitle="Infisical | Page Not Found"
+      pageTitle="Page Not Found"
       badgeIcon={<CompassIcon />}
       badgeText="404 · Not Found"
       heading={

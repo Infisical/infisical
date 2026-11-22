@@ -124,6 +124,18 @@ describe("logger redaction of outgoing request internals", () => {
     expect(valueAt(parsed, "error.status")).toBe(401);
   });
 
+  it("redacts the request config of an error wrapped in another error", () => {
+    const { testLogger, lastLine } = createTestLogger();
+    testLogger.error(Object.assign(new Error("sync failed"), { error: axiosError }), "sync failed");
+    const { raw, parsed } = lastLine();
+
+    expect(raw).not.toContain(BEARER_TOKEN);
+    expect(valueAt(parsed, "err.error.config")).toBe(REDACTED);
+    expect(valueAt(parsed, "err.error.response.config")).toBe(REDACTED);
+    expect(valueAt(parsed, "err.error.response.status")).toBe(401);
+    expect(axiosError.response?.config.headers.Authorization).toBe(`Bearer ${BEARER_TOKEN}`);
+  });
+
   it("leaves unrelated path fields alone", () => {
     const { testLogger, lastLine } = createTestLogger();
     testLogger.info({ path: "/api/v1/secrets", route: { path: "/api/v1/secrets" } }, "route hit");

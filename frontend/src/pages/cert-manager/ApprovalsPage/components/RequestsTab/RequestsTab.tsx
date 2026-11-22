@@ -7,7 +7,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 
 import {
@@ -36,6 +35,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -44,7 +44,8 @@ import {
   TableRow,
   TableSkeletonRows
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { useProject, useProjectPermission, useUser } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { getUserTablePreference, PreferenceKey } from "@app/helpers/userTablePreferences";
 import { usePagination } from "@app/hooks";
 import {
@@ -101,12 +102,10 @@ const checkIfUserNeedsToApprove = (
 
 export const RequestsTab = () => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { memberships } = useProjectPermission();
   const { user } = useUser();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState(ApprovalRequestStatus.Pending);
-  const navigate = useNavigate();
 
   const projectId = currentProject?.id || "";
   const userId = user?.id || "";
@@ -239,27 +238,24 @@ export const RequestsTab = () => {
                   const requestData = request.requestData.requestData as CertRequestRequestData;
 
                   return (
-                    <TableRow
-                      key={request.id}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                          params: {
-                            orgId: currentOrg.id,
-                            approvalRequestId: request.id
-                          },
-                          search: {
-                            policyType: ApprovalPolicyType.CertRequest
-                          }
-                        })
-                      }
-                    >
+                    <TableRow key={request.id} linked>
                       <TableCell>
                         <div>
-                          <div className="text-sm font-medium text-foreground">
+                          <RowLink
+                            {...getInstancePinningLink(
+                              currentProject.orgId,
+                              currentProject,
+                              `approvals/${request.id}`
+                            )!}
+                            search={
+                              {
+                                policyType: ApprovalPolicyType.CertRequest
+                              } as never
+                            }
+                            className="text-sm font-medium text-foreground"
+                          >
                             {request.requesterName || "Unknown"}
-                          </div>
+                          </RowLink>
                           <div className="text-xs text-muted">{request.requesterEmail}</div>
                         </div>
                       </TableCell>

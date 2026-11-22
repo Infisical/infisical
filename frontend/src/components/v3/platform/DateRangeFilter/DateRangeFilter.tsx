@@ -320,7 +320,6 @@ export function DateRangeFilter({
 
   const accentStyles = ACCENT_STYLES[accent];
 
-  // eslint-disable-next-line react/no-unstable-nested-components
   const DayButton = useCallback(
     (props: React.ComponentProps<typeof CalendarDayButton>) => (
       <CalendarDayButton {...props} className={accentStyles.calendarMiddle} />

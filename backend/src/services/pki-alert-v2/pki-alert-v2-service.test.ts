@@ -1,5 +1,6 @@
 import { createMongoAbility } from "@casl/ability";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertWithChannels } from "./pki-alert-v2-dal";
@@ -63,9 +64,9 @@ const buildService = () => {
     pkiAlertChannelDAL: {},
     pkiAlertHistoryDAL: {},
     permissionService,
-    licenseService: {},
+    licenseService: new FakeLicenseService(),
     smtpService: {},
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("") }),
         decryptor: () => Buffer.from("")

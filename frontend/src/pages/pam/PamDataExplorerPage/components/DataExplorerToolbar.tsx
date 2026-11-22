@@ -81,6 +81,7 @@ export const DataExplorerToolbar = ({
   const rangeEnd = Math.min(offset + pageSize, totalCount);
 
   return (
+    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- focus belongs to the toolbar's controls
     <div
       role="toolbar"
       data-grid-popover=""

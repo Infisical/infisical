@@ -12,6 +12,7 @@ import {
   OverflowBadgeList
 } from "@app/components/v3";
 import { PkiDiscoveryType, TPkiDiscovery } from "@app/hooks/api";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import { getItemLabel, parsePorts } from "@app/pages/cert-manager/pki-discovery-utils";
 
 type Props = {
@@ -81,9 +82,62 @@ const LinuxServerTargetSection = ({ discovery }: Props) => {
   );
 };
 
+const WindowsServerTargetSection = ({ discovery }: Props) => {
+  const { targetConfig } = discovery;
+  const connectionsById = new Map((discovery.connections ?? []).map((c) => [c.id, c.name]));
+
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Target Configuration</CardTitle>
+        <CardDescription>
+          Servers and certificate stores scanned by this discovery job
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>Windows (WinRM) Connections</DetailLabel>
+            <DetailValue>
+              <OverflowBadgeList
+                items={targetConfig.connectionIds ?? []}
+                getKey={(id) => id}
+                getLabel={(id) => connectionsById.get(id) ?? "Deleted connection"}
+              />
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Certificate Stores</DetailLabel>
+            <DetailValue>
+              <div className="flex flex-wrap gap-1">
+                {(targetConfig.certificateStores ?? []).map((store) => (
+                  <Badge key={store} variant="neutral">
+                    {WindowsCertificateStoreLabels[store] ?? store}
+                  </Badge>
+                ))}
+              </div>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Include CA Certificates</DetailLabel>
+            <DetailValue>
+              <Badge variant={targetConfig.importStandaloneCaCertificates ? "success" : "neutral"}>
+                {targetConfig.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+        </DetailGroup>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const DiscoveryTargetSection = ({ discovery }: Props) => {
   if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
     return <LinuxServerTargetSection discovery={discovery} />;
+  }
+  if (discovery.discoveryType === PkiDiscoveryType.WindowsServer) {
+    return <WindowsServerTargetSection discovery={discovery} />;
   }
 
   const { targetConfig } = discovery;

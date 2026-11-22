@@ -8,6 +8,7 @@ import {
   BaseUpdateSecretScanningDataSourceSchema,
   GitRepositoryScanFindingDetailsSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
+import { SecretScanningFindings } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 // Which repositories are scanned is the data source's resources, so a GitHub data source has nothing to configure.
@@ -63,5 +64,14 @@ export const GitHubDataSourceListItemSchema = z
 
 export const GitHubFindingSchema = BaseSecretScanningFindingSchema.extend({
   dataSourceType: z.literal(SecretScanningDataSource.GitHub),
-  details: GitRepositoryScanFindingDetailsSchema
+  details: GitRepositoryScanFindingDetailsSchema.describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION)
+});
+
+export const GitHubPullRequestScanMetadataSchema = z.object({
+  pullRequestNumber: z.number().int().positive(),
+  baseSha: z.string(),
+  headSha: z.string(),
+  checkRunId: z.number().int().positive(),
+  // Every finding in the pull request's commits, including ones another scan saved first; set when the scan completes.
+  findingIds: z.string().uuid().array().optional()
 });

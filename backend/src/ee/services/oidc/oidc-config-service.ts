@@ -5,12 +5,22 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -37,26 +47,25 @@ import {
 } from "@app/lib/validator";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import {
   adoptProvisionedShadowUser,
@@ -66,9 +75,14 @@ import {
   syncSsoUserProfile
 } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import {
+  findOrgIdByVerifiedDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
@@ -78,6 +92,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -94,17 +109,26 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "find" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "find"
+    | "updateById"
+    | "lockActorsForOrgAccess"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
-  groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
+  groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     | "find"
@@ -116,14 +140,19 @@ type TOidcConfigServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -133,6 +162,7 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  usageMeteringService,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -141,17 +171,23 @@ export const oidcConfigServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   membershipGroupDAL,
+  membershipDAL,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
+  eventEmitter,
   projectDAL,
   projectBotDAL,
   auditLogService,
-  kmsService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -175,7 +211,7 @@ export const oidcConfigServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: oidcCfg.orgId
     });
@@ -205,7 +241,9 @@ export const oidcConfigServiceFactory = ({
       clientId,
       clientSecret,
       manageGroupMemberships: oidcCfg.manageGroupMemberships,
-      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm
+      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm,
+      mfaClaimName: oidcCfg.mfaClaimName,
+      mfaAmrValues: oidcCfg.mfaAmrValues
     };
   };
 
@@ -219,7 +257,8 @@ export const oidcConfigServiceFactory = ({
     userAgent,
     callbackPort,
     groups = [],
-    manageGroupMemberships
+    manageGroupMemberships,
+    idpMfa
   }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
 
@@ -229,7 +268,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -242,10 +281,10 @@ export const oidcConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // The IdP is authoritative, and the separate email-verification step is skipped, only when the
+    // org enforces SSO and owns the asserted domain. Enforcement alone would promote an alias for
+    // any address the IdP asserts; ownership is what makes the assertion proof of the mailbox.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
 
     let user: TUsers;
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
@@ -305,7 +344,8 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+      const plan = await licenseService.getPlan(orgId);
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -346,8 +386,8 @@ export const oidcConfigServiceFactory = ({
               lastName,
               authMethods: [],
               isGhost: false,
-              isEmailVerified: skipEmailVerification,
-              isAccepted: skipEmailVerification
+              isEmailVerified: isIdpAuthoritative,
+              isAccepted: isIdpAuthoritative
             },
             tx
           );
@@ -363,7 +403,7 @@ export const oidcConfigServiceFactory = ({
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: skipEmailVerification
+            isEmailVerified: isIdpAuthoritative
           },
           tx
         );
@@ -378,13 +418,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
-            orgId,
-            identityLimit,
-            tx,
-            aliasType: UserAliasType.OIDC
-          });
+          seatUsage?.assertAvailable(plan, UserAliasType.OIDC);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -495,17 +529,27 @@ export const oidcConfigServiceFactory = ({
       }
 
       for await (const group of groupsToRemoveUserFrom) {
-        await removeUsersFromGroupByUserIds({
+        const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
           userIds: [user.id],
           group,
           userDAL,
           userGroupMembershipDAL,
+          identityGroupMembershipDAL,
+          agentVaultPersonalValueDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           usageMeteringService,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          eventEmitter,
+          membershipDAL,
+          membershipRoleDAL,
+          pamAccountDAL,
+          pamSessionDAL,
+          gatewayV2Service
         });
+        sendPamCancellations();
       }
 
       if (groupsToRemoveUserFrom.length) {
@@ -528,12 +572,12 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
-    if (skipEmailVerification) {
+    // When the IdP is authoritative, mark the user + alias as verified/accepted before issuing a session.
+    if (isIdpAuthoritative) {
       ({ user, userAlias } = await ensureSsoAccountVerified({
         user,
         userAlias,
@@ -552,7 +596,7 @@ export const oidcConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,
@@ -590,7 +634,8 @@ export const oidcConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort: callbackPort ? Number(callbackPort) : undefined
+      callbackPort: callbackPort ? Number(callbackPort) : undefined,
+      idpMfa
     });
 
     return { ...callbackResult, userId: user.id };
@@ -614,7 +659,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    mfaClaimName,
+    mfaAmrValues
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
 
@@ -625,7 +672,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -648,7 +695,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -676,6 +723,22 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
+    const isMfaSignalOnlyUpdate = [
+      allowedEmailDomains,
+      configurationType,
+      discoveryURL,
+      issuer,
+      authorizationEndpoint,
+      tokenEndpoint,
+      userinfoEndpoint,
+      jwksUri,
+      isActive,
+      clientId,
+      clientSecret,
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
+    ].every((value) => value === undefined);
+
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
       configurationType,
@@ -686,9 +749,11 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      lastUsed: null,
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
       manageGroupMemberships,
-      jwtSignatureAlgorithm
+      jwtSignatureAlgorithm,
+      mfaClaimName,
+      mfaAmrValues
     };
 
     if (clientId !== undefined) {
@@ -700,7 +765,9 @@ export const oidcConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    }
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };
@@ -723,7 +790,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    mfaClaimName,
+    mfaAmrValues
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
     if (!org) {
@@ -733,7 +802,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -769,7 +838,7 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -787,6 +856,8 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
+      mfaClaimName,
+      mfaAmrValues,
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
@@ -838,8 +909,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      issuer = await discoverOidcIssuer(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -852,9 +922,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -864,7 +931,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const client = new issuer.Client({
+    await secureOidcIssuer(issuer);
+
+    const client = createSsrfSafeOidcClient(issuer, {
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],
@@ -921,7 +990,8 @@ export const oidcConfigServiceFactory = ({
           userAgent: requestContext.get("userAgent") || "",
           groups,
           callbackPort,
-          manageGroupMemberships: oidcCfg.manageGroupMemberships
+          manageGroupMemberships: oidcCfg.manageGroupMemberships,
+          idpMfa: matchIdpMfaSignal({ kind: "oidc", claims, config: oidcCfg })
         })
           .then((loginResult) => {
             cb(null, loginResult);

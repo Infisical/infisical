@@ -52,20 +52,31 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import {
-  useCreateSecretV3,
+  useCreateSecretBatch,
   useCreateWsTag,
   useGetOrCreateFolder,
   useGetWsTags
 } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import {
   overviewCountBucket,
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import {
+  notifySecretsCreatedWithoutShare,
+  TNotifySecretsCreated
+} from "../../useNotifySecretsCreated";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
+
+const MAX_SECRETS_PER_COMMIT = 1000;
+const MAX_TAGS_PER_COMMITTED_SECRET = 100;
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
@@ -144,18 +155,10 @@ type Props = {
     onDirtyChange: (isDirty: boolean) => void;
     onSubmit: (changes: TSecretEditChanges) => Promise<void>;
   };
-  onBatchSecretCreate?: (params: {
-    env: string;
-    key: string;
-    value: string;
-    comment?: string;
-    skipMultilineEncoding?: boolean;
-    tags?: { id: string; slug: string }[];
-    metadata?: { key: string; value: string; isEncrypted?: boolean }[];
-  }) => void;
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
   // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
   onSecretCreated?: () => void;
+  notifySecretsCreated?: TNotifySecretsCreated;
   // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
   // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
   // along so the modal can skip its upload step.
@@ -166,10 +169,9 @@ export const CreateSecretForm = ({
   secretPath = "/",
   defaultSelectedEnvs,
   onClose,
-  isBatchMode,
   editSecret,
-  onBatchSecretCreate,
   onSecretCreated,
+  notifySecretsCreated = notifySecretsCreatedWithoutShare,
   onUploadSecrets
 }: Props) => {
   const overviewTelemetry = useOverviewTelemetry();
@@ -241,6 +243,7 @@ export const CreateSecretForm = ({
     reset,
     setValue,
     getValues,
+    setError,
     watch,
     formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
@@ -270,7 +273,13 @@ export const CreateSecretForm = ({
     remove: removeSecret
   } = useFieldArray({ control, name: "secrets" });
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
+  const { mutateAsync: createSecretBatch } = useCreateSecretBatch({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const batchStore = useBatchStoreApi();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? projectId : ""
@@ -291,7 +300,7 @@ export const CreateSecretForm = ({
   const hasValueChanges = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
   const hasEditChanges = Boolean(
     hasValueChanges ||
-      Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
+    Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
   );
   const onEditDirtyChange = editSecret?.onDirtyChange;
 
@@ -338,30 +347,45 @@ export const CreateSecretForm = ({
       countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
     };
     const attempt = telemetry.startFlow(flow);
-    if (isBatchMode && onBatchSecretCreate) {
-      secrets.forEach((secret) => {
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        selectedEnv.forEach((env) => {
-          onBatchSecretCreate({
-            env: env.slug,
-            key: secret.key,
-            value: secret.value || "",
-            comment: secret.comment || undefined,
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
-            metadata: filteredMetadata?.length ? filteredMetadata : undefined
-          });
-        });
+    const { currentContext, pendingChanges: storedPendingChanges } = batchStore.getState();
+    const isPendingContextTargeted =
+      currentContext?.secretPath === secretPath &&
+      selectedEnv.some((env) => env.slug === currentContext?.environment);
+    const reservedByPendingChange = new Set(
+      (isPendingContextTargeted ? storedPendingChanges.secrets : []).flatMap((change) => {
+        if (change.type === PendingAction.Create) return [change.secretKey];
+        return change.type === PendingAction.Update && change.newSecretName
+          ? [change.newSecretName]
+          : [];
+      })
+    );
+    const conflictingKeys = secrets
+      .map((secret) => secret.key)
+      .filter((key) => reservedByPendingChange.has(key));
+    if (conflictingKeys.length) {
+      attempt.flow({ ...flow, phase: "failed" });
+      createNotification({
+        type: "error",
+        text: `A pending change already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
       });
-      attempt.flow({ ...flow, phase: "staged" });
-      onClose();
-      reset();
       return;
     }
-
-    await Promise.all(
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const overTagLimitKeys = secrets
+        .filter((secret) => (secret.tags?.length ?? 0) > MAX_TAGS_PER_COMMITTED_SECRET)
+        .map((secret) => secret.key);
+      let limitError: string | undefined;
+      if (secrets.length > MAX_SECRETS_PER_COMMIT)
+        limitError = `You can create up to ${MAX_SECRETS_PER_COMMIT} secrets at once, and this has ${secrets.length}. Split them into smaller batches.`;
+      else if (overTagLimitKeys.length)
+        limitError = `A secret can have up to ${MAX_TAGS_PER_COMMITTED_SECRET} tags. Remove tags from ${overTagLimitKeys.map((key) => `"${key}"`).join(", ")}.`;
+      if (limitError) {
+        attempt.flow({ ...flow, phase: "failed" });
+        createNotification({ type: "error", text: limitError });
+        return;
+      }
+    }
+    const areFoldersReady = await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {
           const pathSegment = secretPath.split("/").filter(Boolean);
@@ -385,34 +409,100 @@ export const CreateSecretForm = ({
           }
         }
       })
-    ).catch((error) => {
-      attempt.flow({ ...flow, phase: "failed" });
-      throw error;
-    });
+    )
+      .then(() => true)
+      .catch((error) => {
+        attempt.flow({ ...flow, phase: "failed" });
+        showSecretWriteErrors([{ error }]);
+        return false;
+      });
+    if (!areFoldersReady) return;
 
-    const promises = selectedEnv.flatMap((env) =>
-      secrets.map(async (secret) => {
-        const environment = env.slug;
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        return {
-          ...(await createSecretV3({
-            environment,
-            projectId,
-            secretPath,
-            secretKey: secret.key,
-            secretValue: secret.value || "",
-            secretComment: secret.comment || "",
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            type: SecretType.Shared,
-            tagIds: secret.tags?.map((tag) => tag.value),
-            secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
-          })),
-          environment
-        };
-      })
-    );
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const result = await createCommit({
+        projectId,
+        environment: selectedEnv[0].slug,
+        secretPath,
+        message: "",
+        pendingChanges: {
+          folders: [],
+          secrets: secrets.map((secret) => {
+            const filteredMetadata = secret.metadata
+              ?.filter((metadata) => metadata.key && metadata.value)
+              .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+            return {
+              id: crypto.randomUUID(),
+              resourceType: "secret" as const,
+              type: PendingAction.Create as const,
+              secretKey: secret.key,
+              secretValue: secret.value || "",
+              secretComment: secret.comment || undefined,
+              skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+              tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
+              secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined,
+              timestamp: Date.now()
+            };
+          })
+        }
+      }).catch((error) => {
+        attempt.flow({ ...flow, commitKind: "batch", phase: "failed" });
+        showSecretWriteErrors([{ error }]);
+        return undefined;
+      });
+      if (!result) return;
+      attempt.flow({
+        ...flow,
+        commitKind: "batch",
+        phase: result.approval ? "approval-requested" : "response-received"
+      });
+      if (result.approval) {
+        createNotification({
+          type: "info",
+          text: "Requested changes have been sent for review"
+        });
+      } else {
+        notifySecretsCreated(
+          result.secrets.created.length,
+          secrets.map((secret) => ({
+            environment: selectedEnv[0].slug,
+            key: secret.key,
+            value: secret.value,
+            tags: secret.tags?.map((tag) => tag.label)
+          }))
+        );
+        onSecretCreated?.();
+      }
+      if (attempt.isCurrent() && formOwner.current.invocation === invocation) {
+        onClose();
+        reset();
+      }
+      return;
+    }
+
+    const batchSecrets = secrets.map((secret) => {
+      const filteredMetadata = secret.metadata
+        ?.filter((metadata) => metadata.key && metadata.value)
+        .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+      return {
+        secretKey: secret.key,
+        secretValue: secret.value || "",
+        secretComment: secret.comment || "",
+        skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+        type: SecretType.Shared,
+        tagIds: secret.tags?.map((tag) => tag.value),
+        secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
+      };
+    });
+    // One batch per environment, so an approval policy opens one request per environment
+    const promises = selectedEnv.map(async (env) => ({
+      ...(await createSecretBatch({
+        environment: env.slug,
+        projectId,
+        secretPath,
+        secrets: batchSecrets
+      })),
+      environment: env.slug
+    }));
 
     const results = await Promise.allSettled(promises);
     const allRequestsSucceeded = didAllSecretCreationsSucceed(results);
@@ -439,13 +529,10 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
-    const responseCount = results.filter(
-      (result) => result.status === "fulfilled" && !("approval" in result.value)
-    ).length;
-    const approvalCount = results.filter(
-      (result) => result.status === "fulfilled" && "approval" in result.value
-    ).length;
-    const failureCount = results.filter((result) => result.status === "rejected").length;
+    const responseCount = updatedEnvs.length * secrets.length;
+    const approvalCount = forApprovalEnvs.length * secrets.length;
+    const failureCount =
+      results.filter((result) => result.status === "rejected").length * secrets.length;
     attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
@@ -464,20 +551,44 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      createNotification({
-        type: "success",
-        text: `Secrets created in ${
-          updatedEnvs.length > 1 ? "environments" : "environment"
-        }: ${updatedEnvs.join(", ")}`
-      });
+      const createdSecrets = updatedEnvs.flatMap((environment) =>
+        secrets.map((secret) => ({
+          environment,
+          key: secret.key,
+          value: secret.value,
+          tags: secret.tags?.map((tag) => tag.label)
+        }))
+      );
+      notifySecretsCreated(
+        new Set(createdSecrets.map(({ key }) => key)).size,
+        createdSecrets,
+        updatedEnvs.length > 1 ? `Added to ${updatedEnvs.length} environments` : undefined
+      );
 
       // The user just created a secret: let the parent check whether to surface the nudge.
       onSecretCreated?.();
     }
 
-    if (!updatedEnvs.length && !forApprovalEnvs.length) {
-      // this should only occur when a toast notifcation is created from failed mutation
-      console.warn("failed to create secrets");
+    const failedRequests = selectedEnv.flatMap((env, index) => {
+      const result = results[index];
+      return result.status === "rejected" ? [{ env, error: result.reason as unknown }] : [];
+    });
+    if (failedRequests.length && formOwner.current.invocation === invocation) {
+      const failedEnvSlugs = new Set(failedRequests.map(({ env }) => env.slug));
+      // A batch fails as a whole, so keep every secret and only the failed environments
+      setValue(
+        "environments",
+        selectedEnv.filter((env) => failedEnvSlugs.has(env.slug))
+      );
+      showSecretWriteErrors(
+        failedRequests.map(({ env, error }) => ({
+          error,
+          // A batch error is not tied to one key, so only a lone secret shows it inline
+          field: secrets.length === 1 ? ("secrets.0.key" as const) : undefined,
+          environmentName: selectedEnv.length > 1 ? env.name : undefined
+        })),
+        (field, message) => setError(field, { type: "server", message })
+      );
     }
 
     if (
@@ -546,7 +657,7 @@ export const CreateSecretForm = ({
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
-  const editSubmitLabel = isBatchMode ? "Stage Changes" : "Save Changes";
+  const editSubmitLabel = "Save Changes";
 
   const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     // Allow Cmd+Enter (macOS) / Ctrl+Enter (other OSes) to submit the form.
@@ -670,7 +781,7 @@ export const CreateSecretForm = ({
                             </Tooltip>
                           )}
                         </div>
-                        <FieldError errors={[error]} />
+                        <FieldError errors={[error]} className="whitespace-pre-line" />
                       </FieldContent>
                     </Field>
                   )}
@@ -682,6 +793,7 @@ export const CreateSecretForm = ({
                     size="xs"
                     className="mt-6.5"
                     aria-label={`Remove secret ${index + 1}`}
+                    isDisabled={isSubmitting}
                     onClick={() => removeSecret(index)}
                   >
                     <TrashIcon className="size-4" />
@@ -970,7 +1082,7 @@ export const CreateSecretForm = ({
                                             checked={switchField.value}
                                             disabled={Boolean(
                                               currentProject?.enforceEncryptedSecretManagerSecretMetadata ||
-                                                (editSecret && isEditReadOnly)
+                                              (editSecret && isEditReadOnly)
                                             )}
                                             onCheckedChange={switchField.onChange}
                                           />

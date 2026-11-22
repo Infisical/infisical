@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   LookingForOrgPageLink,
   Tabs,
@@ -12,9 +12,9 @@ import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
+import { LogsSection } from "./components";
 import { AuditLogSettingsTab } from "./components/AuditLogSettingsTab";
 import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
-import { LogsSection } from "./components";
 
 enum AuditLogsPageTabs {
   AuditLogs = "audit-logs",
@@ -55,11 +55,9 @@ export const AuditLogsPage = () => {
 
   return (
     <div className="bg-page">
-      <Helmet>
-        <title>Infisical | Audit Logs</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title="Audit Logs" />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page pb-6 text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader

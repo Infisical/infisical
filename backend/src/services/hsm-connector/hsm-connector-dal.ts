@@ -15,11 +15,23 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     try {
       const result = await (tx || db)(TableName.Certificate)
         .where("hsmConnectorId", connectorId)
+        .whereNull("deletedAt")
         .count<{ count: string }[]>("id as count")
         .first();
       return Number(result?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "HsmConnectorDAL.countReferencingCertificates" });
+    }
+  };
+
+  const detachDeletedCertificates = async (connectorId: string, tx: Knex) => {
+    try {
+      await tx(TableName.Certificate)
+        .where("hsmConnectorId", connectorId)
+        .whereNotNull("deletedAt")
+        .update({ hsmConnectorId: null });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "HsmConnectorDAL.detachDeletedCertificates" });
     }
   };
 
@@ -56,7 +68,10 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     }: { offset: number; limit: number; includeCertificateAuthorities: boolean }
   ) => {
     try {
-      const baseQuery = db.replicaNode()(TableName.Certificate).where("hsmConnectorId", connectorId);
+      const baseQuery = db
+        .replicaNode()(TableName.Certificate)
+        .where("hsmConnectorId", connectorId)
+        .whereNull("deletedAt");
 
       const [rows, totalCountResult] = await Promise.all([
         baseQuery
@@ -123,6 +138,7 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     ...hsmConnectorOrm,
     countReferencingCertificates,
     countReferencingCertificateAuthorities,
+    detachDeletedCertificates,
     findByProjectId,
     listLinkedResources
   };

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -70,9 +70,7 @@ export const HasuraCloudAuthorizePage = () => {
   };
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize {APP_NAME} Integration</title>
-      </Helmet>
+      <PageTitle title={`Authorize ${APP_NAME} Integration`} />
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
