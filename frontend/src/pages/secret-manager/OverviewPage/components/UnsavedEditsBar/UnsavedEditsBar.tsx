@@ -103,10 +103,7 @@ export const useUnsavedEdits = () => {
   const count = useContext(UnsavedEditsCountContext);
   const isCommitting = useContext(UnsavedEditsCommittingContext);
   const getEdits = useCallback(() => registry?.getEdits() ?? [], [registry]);
-  const setCommitting = useCallback(
-    (isCommitting: boolean) => registry?.setCommitting(isCommitting),
-    [registry]
-  );
+  const setCommitting = useCallback((value: boolean) => registry?.setCommitting(value), [registry]);
   return { count, getEdits, isCommitting, setCommitting };
 };
 
