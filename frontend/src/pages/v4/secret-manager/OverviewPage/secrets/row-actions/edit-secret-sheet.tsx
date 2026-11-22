@@ -1,17 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
-import { Input } from "@infisical/cipher/ui/input";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import {
@@ -29,11 +18,11 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 import { readableValue, type Secret } from "../../secrets-model";
 import { type Entry, SecretEntryFields } from "../flows/create-secret-flow";
 import { DiscardDialog } from "../flows/shared";
+import { ConfirmDependentsDialog } from "./confirm-dependents-dialog";
 import { useDependents } from "./references-dialog";
 import type { SecretPatch } from "./types";
 
 import flowStyles from "../flows/flows.module.css";
-import styles from "./row-actions.module.css";
 
 const toEntry = (secret: Secret): Entry => ({
   id: secret.id,
@@ -76,7 +65,6 @@ export function EditSecretSheet({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [discard, setDiscard] = useState(false);
   const [confirm, setConfirm] = useState<SecretPatch>();
-  const [typed, setTyped] = useState("");
   const [saving, setSaving] = useState(false);
   const metadata = (list: Entry["metadata"]) =>
     list.map(({ key, value, isEncrypted }) => ({ key, value, encrypted: isEncrypted }));
@@ -115,7 +103,6 @@ export function EditSecretSheet({
     setErrors(issues);
     if (Object.keys(issues).length || !dirty) return;
     if (patch.value !== undefined && dependents.length) {
-      setTyped("");
       setConfirm(patch);
       return;
     }
@@ -216,48 +203,15 @@ export function EditSecretSheet({
           onClose();
         }}
       />
-      <AlertDialog
+      <ConfirmDependentsDialog
         open={Boolean(confirm)}
+        dependents={dependents}
+        pending={saving}
         onOpenChange={(open) => {
           if (!open) setConfirm(undefined);
         }}
-      >
-        <AlertDialogContent icon="alert">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Update this secret?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Other secrets reference this one. Saving updates it everywhere it&apos;s referenced.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <ul className={styles.dependentList}>
-            {dependents.map((dependent) => (
-              <li key={dependent.id}>
-                <code>{dependent.name}</code>
-                <span className={styles.muted}>{`${dependent.environment} ${dependent.path}`}</span>
-              </li>
-            ))}
-          </ul>
-          <Field label="Type confirm to confirm">
-            <Input
-              mono
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-              value={typed}
-              onChange={(event) => setTyped(event.target.value)}
-            />
-          </Field>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={typed !== "confirm"}
-              onClick={() => confirm && save(confirm)}
-            >
-              Save changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={() => confirm && save(confirm)}
+      />
     </>
   );
 }

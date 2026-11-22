@@ -106,8 +106,9 @@ import {
 import { usePlanGates } from "./plan-gates";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
+import { ConfirmDependentsDialog } from "./row-actions/confirm-dependents-dialog";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
-import { ReferencesDialog } from "./row-actions/references-dialog";
+import { ReferencesDialog, useDependents } from "./row-actions/references-dialog";
 import { RenameSecretDialog } from "./row-actions/rename-secret-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
@@ -485,7 +486,8 @@ function CellEditor({
   validate,
   onCommit,
   onInvalidBlur,
-  onDone
+  onDone,
+  holdCommit
 }: {
   label: string;
   initial: string;
@@ -497,6 +499,7 @@ function CellEditor({
   onCommit: (value: string) => void;
   onInvalidBlur: (message: string) => void;
   onDone: () => void;
+  holdCommit?: (value: string) => boolean;
 }) {
   useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
@@ -517,6 +520,7 @@ function CellEditor({
       return;
     }
     if (problem) onInvalidBlur(problem);
+    else if (holdCommit?.(next)) return;
     else onCommit(next);
     onDone();
   };
@@ -587,11 +591,44 @@ function CellEditor({
   );
 }
 
+function DependentsCellEditor({
+  secret,
+  ...editor
+}: ComponentProps<typeof CellEditor> & { secret: Secret }) {
+  const dependents = useDependents(secret);
+  const [held, setHeld] = useState<string>();
+  return (
+    <>
+      <CellEditor
+        {...editor}
+        holdCommit={(value) => {
+          if (!dependents.length) return false;
+          setHeld(value);
+          return true;
+        }}
+      />
+      <ConfirmDependentsDialog
+        open={held !== undefined}
+        dependents={dependents}
+        onOpenChange={(open) => {
+          if (!open) setHeld(undefined);
+        }}
+        onConfirm={() => {
+          if (held === undefined) return;
+          editor.onCommit(held);
+          editor.onDone();
+        }}
+      />
+    </>
+  );
+}
+
 // TODO: replace with Cipher's inline editable cell once it ships; Cipher has none yet.
 function EditableCell({
   canEdit,
   load,
   editor,
+  dependentsOf,
   trailing,
   children,
   ...cell
@@ -599,6 +636,7 @@ function EditableCell({
   canEdit: boolean;
   load: () => Promise<string | undefined>;
   editor: Omit<ComponentProps<typeof CellEditor>, "initial" | "onDone">;
+  dependentsOf?: Secret;
   trailing?: ReactNode;
 }) {
   const [initial, setInitial] = useState<string>();
@@ -623,6 +661,13 @@ function EditableCell({
       <div className={styles.nameLine}>
         {initial === undefined ? (
           children
+        ) : dependentsOf ? (
+          <DependentsCellEditor
+            {...editor}
+            secret={dependentsOf}
+            initial={initial}
+            onDone={() => setInitial(undefined)}
+          />
         ) : (
           <CellEditor {...editor} initial={initial} onDone={() => setInitial(undefined)} />
         )}
@@ -1407,6 +1452,7 @@ function SingleSecretRowView({
           className={styles.valueCell}
           canEdit={editable}
           load={loadValue}
+          dependentsOf={first}
           editor={{
             multiline: true,
             label: `Value of ${name}`,
