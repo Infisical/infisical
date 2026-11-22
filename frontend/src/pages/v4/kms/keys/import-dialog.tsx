@@ -353,7 +353,7 @@ export const ImportKeysDialog = ({
                           {error && (
                             <Tooltip content={error} side="top">
                               <span aria-label={error} role="img">
-                                <Icon name="alert-c" size={14} />
+                                <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
                               </span>
                             </Tooltip>
                           )}
@@ -361,7 +361,7 @@ export const ImportKeysDialog = ({
                           {entry.isExportable === false && (
                             <Tooltip content="Not exportable" side="top">
                               <span aria-label="Not exportable" role="img">
-                                <Icon name="lock" size={14} />
+                                <Icon name="lock" size="var(--cipher-size-icon-small)" />
                               </span>
                             </Tooltip>
                           )}

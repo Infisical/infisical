@@ -49,7 +49,6 @@ import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -346,12 +345,12 @@ export const OrgIdentitiesTab = () => {
       render: (row) =>
         isProjectScoped(row) ? (
           <Badge tone="outline">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             {row.project?.name ?? "Project"}
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             {managedByLabel(isSubOrg, isOwned(row))}
           </Badge>
         )
@@ -453,7 +452,7 @@ export const OrgIdentitiesTab = () => {
 
   return (
     <Stack gap={32}>
-      <ToolbarStack>
+      <Stack gap="toolbar">
         <FilterBar
           label="Machine identity filters"
           fields={[]}
@@ -548,7 +547,7 @@ export const OrgIdentitiesTab = () => {
             ) : undefined
           }
         />
-      </ToolbarStack>
+      </Stack>
       <AuthTemplatesSection />
       <CreateIdentitySheet open={creating} onOpenChange={setCreating} />
       {authForm && (

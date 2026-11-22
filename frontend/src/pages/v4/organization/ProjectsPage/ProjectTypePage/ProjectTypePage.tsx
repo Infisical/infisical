@@ -305,7 +305,7 @@ const ProjectCard = ({
         <Inline gap={16} justify="between">
           {project.type !== ProjectType.AgentVault && (
             <Inline gap={4} align="center">
-              <Icon name="layers" size={14} />
+              <Icon name="layers" size="var(--cipher-size-icon-small)" />
               <span>
                 <strong>{environmentCount}</strong>{" "}
                 {environmentCount === 1 ? "Environment" : "Environments"}
@@ -865,7 +865,7 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
       width: 176,
       render: (row) => (
         <Badge tone="warn">
-          <Icon name="clock" size={12} />
+          <Icon name="clock" />
           {`In ${formatDistanceToNowStrict(new Date(row.deleteAfter))}`}
         </Badge>
       )

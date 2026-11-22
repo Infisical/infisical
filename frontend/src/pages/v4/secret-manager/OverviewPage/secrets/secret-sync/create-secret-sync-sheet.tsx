@@ -400,7 +400,7 @@ const isUnchanged = (row: ExampleRow) =>
 const stateCell = (state: SyncState) =>
   state === "unchanged" ? (
     <span className={styles.unchangedMark}>
-      <Icon name="check" size={14} />
+      <Icon name="check" size="var(--cipher-size-icon-small)" />
       <span className={flowStyles.srOnly}>{STATE_LABEL.unchanged}</span>
     </span>
   ) : (

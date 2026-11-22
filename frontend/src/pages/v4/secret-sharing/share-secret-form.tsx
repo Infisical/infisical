@@ -355,7 +355,11 @@ export const useShareSecretForm = ({
                     {!allowSecretSharingOutsideOrganization && (
                       <Tooltip content="Enforced by your organization">
                         <span className={styles.hint}>
-                          <Icon name="lock" size={14} label="Enforced by your organization" />
+                          <Icon
+                            name="lock"
+                            size="var(--cipher-size-icon-small)"
+                            label="Enforced by your organization"
+                          />
                         </span>
                       </Tooltip>
                     )}
@@ -373,7 +377,11 @@ export const useShareSecretForm = ({
                     {!allowSecretSharingOutsideOrganization && (
                       <Tooltip content="External sharing is disabled by your organization">
                         <span className={styles.hint}>
-                          <Icon name="lock" size={14} label="External sharing is disabled" />
+                          <Icon
+                            name="lock"
+                            size="var(--cipher-size-icon-small)"
+                            label="External sharing is disabled"
+                          />
                         </span>
                       </Tooltip>
                     )}
@@ -396,7 +404,11 @@ export const useShareSecretForm = ({
                       trailing={
                         <Tooltip content="Each recipient gets their own link. Leave this empty to get one link you can share yourself.">
                           <span className={styles.hint}>
-                            <Icon name="info" size={14} label="About email recipients" />
+                            <Icon
+                              name="info"
+                              size="var(--cipher-size-icon-small)"
+                              label="About email recipients"
+                            />
                           </span>
                         </Tooltip>
                       }

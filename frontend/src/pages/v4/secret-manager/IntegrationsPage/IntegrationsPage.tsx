@@ -76,7 +76,7 @@ export const IntegrationsPage = () => {
               >
                 <Inline gap={4} align="center" wrap={false}>
                   Native integrations
-                  <Icon name="alert" size={14} aria-label="Retiring" />
+                  <Icon name="alert" size="var(--cipher-size-icon-small)" aria-label="Retiring" />
                 </Inline>
               </Tooltip>
             )

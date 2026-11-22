@@ -39,7 +39,6 @@ import { findOrgMembershipRole } from "@app/helpers/roles";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import type { TOrgUserAccess } from "@app/hooks/api/users/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -281,7 +280,7 @@ export const OrgMembersTab = () => {
               {member.user.superAdmin && (
                 <Tooltip content="Server admin">
                   <Badge tone="info">
-                    <Icon icon={UserCogIcon} size={12} />
+                    <Icon icon={UserCogIcon} />
                     Server admin
                   </Badge>
                 </Tooltip>
@@ -304,7 +303,7 @@ export const OrgMembersTab = () => {
               content={`Last login with ${member.membership.lastLoginAuthMethod} on ${formatDateTime(member.membership.lastLoginTime)}`}
             >
               <button type="button" className={styles.rowHint} aria-label="Last login">
-                <Icon icon={InfoIcon} size={14} />
+                <Icon icon={InfoIcon} size="var(--cipher-size-icon-small)" />
               </button>
             </Tooltip>
           )}
@@ -451,7 +450,7 @@ export const OrgMembersTab = () => {
   const canCreate = can(OrgPermissionMemberActions.Create);
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization user filters"
         fields={[
@@ -652,6 +651,6 @@ export const OrgMembersTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ToolbarStack>
+    </Stack>
   );
 };

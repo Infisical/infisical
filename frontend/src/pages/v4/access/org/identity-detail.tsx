@@ -390,7 +390,7 @@ export const OrgIdentityDetail = () => {
                   [
                     "Managed by",
                     <Badge key="managed" tone="outline">
-                      <Icon name="building" size={12} />
+                      <Icon name="building" />
                       Organization
                     </Badge>
                   ],
@@ -400,12 +400,12 @@ export const OrgIdentityDetail = () => {
                     "Delete protection",
                     identity.hasDeleteProtection ? (
                       <Badge key="protection" tone="ok">
-                        <Icon name="check" size={12} />
+                        <Icon name="check" />
                         Enabled
                       </Badge>
                     ) : (
                       <Badge key="protection" tone="outline">
-                        <Icon name="x" size={12} />
+                        <Icon name="x" />
                         Disabled
                       </Badge>
                     )

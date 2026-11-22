@@ -7,7 +7,7 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip, TooltipText } from "@infisical/cipher/ui/tooltip";
@@ -18,7 +18,6 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 import { RESTRICTED, type Sort } from "../../../access/ui";
 import { ProviderIcon } from "../../../components/provider-icon";
-import { ToolbarStack } from "../../../components/toolbar-stack";
 import { orgHref, useGo } from "../../../links";
 import { copySyncId, destinationNameOf, usePkiSyncOption, usePkiSyncPermissions } from "./shared";
 import {
@@ -272,7 +271,7 @@ export const PkiSyncsTable = ({
   const presentDestinations = [...new Set(syncs.map((sync) => sync.destination))] as PkiSync[];
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Certificate sync filters"
         fields={[
@@ -344,6 +343,6 @@ export const PkiSyncsTable = ({
         }
       />
       <PkiSyncDialog dialog={dialog} onClose={() => setDialog(undefined)} />
-    </ToolbarStack>
+    </Stack>
   );
 };

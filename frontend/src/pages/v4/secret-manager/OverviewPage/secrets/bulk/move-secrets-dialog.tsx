@@ -690,7 +690,11 @@ function MoveSecretsDialogContent({
                   />
                   <Tooltip content="Overwrite matching destination keys, including keys hidden by your access.">
                     <span className={styles.hint}>
-                      <Icon name="info" size={14} label="About overwriting existing secrets" />
+                      <Icon
+                        name="info"
+                        size="var(--cipher-size-icon-small)"
+                        label="About overwriting existing secrets"
+                      />
                     </span>
                   </Tooltip>
                 </span>

@@ -248,7 +248,7 @@ function SecretValue({
             } secret value.`}
           >
             <span className={styles.hiddenMark}>
-              <Icon icon={EyeOffIcon} size={14} label="Value hidden" />
+              <Icon icon={EyeOffIcon} size="var(--cipher-size-icon-small)" label="Value hidden" />
             </span>
           </Tooltip>
         ) : (
@@ -319,7 +319,7 @@ function MetadataDiff({
               {entry.isEncrypted && (
                 <Tooltip content="This value is encrypted">
                   <span className={styles.hiddenMark}>
-                    <Icon name="lock" size={12} label="Encrypted" />
+                    <Icon name="lock" size="var(--cipher-size-icon-caption)" label="Encrypted" />
                   </span>
                 </Tooltip>
               )}
@@ -504,7 +504,7 @@ export function SecretDiffView({
         newVersion?.isRedacted && (
           <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
             <Badge tone="bad">
-              <Icon name="alert" size={12} />
+              <Icon name="alert" />
               Redacted version
             </Badge>
           </Tooltip>
@@ -656,7 +656,11 @@ function VersionTitle({ item }: { item: DiffViewItem }) {
   else if (item.isUpdated) badge = { tone: "warn", label: "Updated" };
   return (
     <span className={styles.cardTitle}>
-      <Icon name={isSecret ? "key" : "folder"} size={16} className={styles.secretIcon} />
+      <Icon
+        name={isSecret ? "key" : "folder"}
+        size="var(--cipher-size-icon-label)"
+        className={styles.secretIcon}
+      />
       <span className={styles.cardName} data-deleted={item.isDeleted || undefined}>
         {name}
       </span>

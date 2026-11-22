@@ -87,7 +87,7 @@ export const DurationBadge = ({ grant }: { grant: GrantDraft }) => {
   return (
     <Tooltip content={tooltip}>
       <Badge tone={expired ? "bad" : "warn"}>
-        {expired ? <Icon icon={ClockAlertIcon} size={12} /> : <Icon name="clock" size={12} />}
+        {expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />}
         {text}
       </Badge>
     </Tooltip>

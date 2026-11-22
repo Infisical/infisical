@@ -121,7 +121,7 @@ export const ScimGroupRoleMappings = () => {
               SCIM group name
               <Tooltip content="The name associated with this group in your SCIM provider">
                 <span className={styles.infoMark}>
-                  <Icon name="info" size={12} />
+                  <Icon name="info" size="var(--cipher-size-icon-caption)" />
                 </span>
               </Tooltip>
             </span>

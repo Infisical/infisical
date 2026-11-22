@@ -322,7 +322,7 @@ const GroupMembersSection = ({
               role="img"
               aria-label={isUser ? "User" : "Machine identity"}
             >
-              <Icon name={isUser ? "user" : "machine"} size={14} />
+              <Icon name={isUser ? "user" : "machine"} size="var(--cipher-size-icon-small)" />
             </span>
             <span>{memberName(member)}</span>
             {email && <Muted>{`(${email})`}</Muted>}

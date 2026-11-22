@@ -125,7 +125,7 @@ function InfoHint({ text }: { text: string }) {
   return (
     <Tooltip content={text}>
       <span className={styles.hint}>
-        <Icon name="info" size={12} label={text} />
+        <Icon name="info" size="var(--cipher-size-icon-caption)" label={text} />
       </span>
     </Tooltip>
   );
@@ -996,7 +996,7 @@ export function ImportRow({
           <Icon name="layers" />
           {sourceEnvironment}
         </Badge>
-        <Icon name="folder" size={14} />
+        <Icon name="folder" size="var(--cipher-size-icon-small)" />
         <span className={styles.truncate}>{first.source.path}</span>
       </span>
       <span className={`${styles.importLabel} ${styles.importNarrow}`}>

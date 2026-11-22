@@ -229,7 +229,7 @@ const GlobInfo = () => {
 const HintIcon = ({ content, label }: { content: string; label: string }) => (
   <Tooltip content={content}>
     <button type="button" className={styles.hint} aria-label={label}>
-      <Icon name="info" size={14} />
+      <Icon name="info" size="var(--cipher-size-icon-small)" />
     </button>
   </Tooltip>
 );
@@ -468,7 +468,7 @@ export const ConditionsFields = ({
                 )}
                 {unknown.length > 0 && (
                   <p className={styles.warning} role="status">
-                    <Icon name="alert" size={14} />
+                    <Icon name="alert" size="var(--cipher-size-icon-small)" />
                     {`${condition.lhs === "environment" ? "Environment" : "Tag"}${unknown.length > 1 ? "s" : ""} ${unknown
                       .map((slug) => JSON.stringify(slug))
                       .join(

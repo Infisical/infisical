@@ -16,6 +16,7 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 
@@ -26,7 +27,6 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -233,7 +233,7 @@ export const ProjectIdentitiesTab = () => {
   const searching = Boolean(debouncedSearch.trim() || roleFilter.length);
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label={`${accessLabel(scope.projectType, "machine identity")} filters`}
         fields={[
@@ -346,6 +346,6 @@ export const ProjectIdentitiesTab = () => {
         onOpenChange={(open) => !open && setRemoving(undefined)}
       />
       {flows.overlays}
-    </ToolbarStack>
+    </Stack>
   );
 };

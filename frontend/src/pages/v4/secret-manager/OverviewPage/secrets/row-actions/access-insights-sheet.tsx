@@ -296,7 +296,7 @@ export function AccessInsightsSheet({
           {row.groups && !isMobile && (
             <Tooltip content={`Access through group: ${row.groups.join(", ")}`}>
               <span className={styles.groupCount} data-row-interactive>
-                <Icon icon={UsersIcon} size={12} />
+                <Icon icon={UsersIcon} size="var(--cipher-size-icon-caption)" />
                 {row.groups.length}
               </span>
             </Tooltip>

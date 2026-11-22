@@ -42,7 +42,6 @@ import {
 import { isCustomOrgRole } from "@app/helpers/roles";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -251,7 +250,7 @@ export const OrgRolesTab = () => {
         const custom = isCustomOrgRole(role.slug);
         return (
           <Badge tone="outline">
-            <Icon icon={custom ? WrenchIcon : "server"} size={12} />
+            <Icon icon={custom ? WrenchIcon : "server"} />
             {custom ? "Custom" : "Platform"}
           </Badge>
         );
@@ -313,7 +312,7 @@ export const OrgRolesTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization role filters"
         fields={[]}
@@ -397,6 +396,6 @@ export const OrgRolesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ToolbarStack>
+    </Stack>
   );
 };

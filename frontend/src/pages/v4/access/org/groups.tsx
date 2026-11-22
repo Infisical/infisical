@@ -21,6 +21,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
@@ -32,7 +33,6 @@ import {
 import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
 import { copyText } from "../../clipboard";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -60,7 +60,7 @@ const managedByColumn = (orgId: string): DataTableColumn<TGroupOrgMembership> =>
   header: "Managed by",
   render: (group) => (
     <Badge tone="outline">
-      <Icon name="building" size={12} />
+      <Icon name="building" />
       {group.orgId !== orgId ? "Root organization" : "Sub-organization"}
     </Badge>
   )
@@ -280,7 +280,7 @@ export const OrgGroupsTab = () => {
   const searching = Boolean(debouncedSearch);
   const canCreate = can(OrgPermissionGroupActions.Create);
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization group filters"
         fields={[
@@ -375,6 +375,6 @@ export const OrgGroupsTab = () => {
         />
       )}
       <RemoveGroupDialog group={deleting} onClose={() => setDeleting(undefined)} />
-    </ToolbarStack>
+    </Stack>
   );
 };

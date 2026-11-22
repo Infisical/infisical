@@ -3,6 +3,7 @@ import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -26,7 +27,6 @@ import { useProjectPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
@@ -175,7 +175,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
   ];
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Scan filters"
         fields={[]}
@@ -252,6 +252,6 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
           ) : undefined
         }
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

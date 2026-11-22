@@ -35,7 +35,6 @@ import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { pamKeys, type TPamIdentityMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { accessLinks } from "../../links";
 import { useGo } from "../../navigation";
@@ -324,12 +323,12 @@ export const PamIdentitiesTab = () => {
       render: (member) =>
         isPamManaged(member, projectId) ? (
           <Badge tone="soft">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             PAM
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             Organization
           </Badge>
         )
@@ -388,7 +387,7 @@ export const PamIdentitiesTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Machine identity filters"
         fields={[]}
@@ -471,6 +470,6 @@ export const PamIdentitiesTab = () => {
         actionLabel={managedRemoval ? "Delete machine identity" : "Remove from PAM"}
         onConfirm={remove}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

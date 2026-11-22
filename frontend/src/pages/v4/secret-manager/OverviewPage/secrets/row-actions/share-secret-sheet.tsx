@@ -195,7 +195,7 @@ export function ShareSecretSheet({
                 )}
                 <div className={styles.resultSummary}>
                   <span>
-                    <Icon name="calendar" size={12} />
+                    <Icon name="calendar" size="var(--cipher-size-icon-caption)" />
                     {`Expires ${result.expiresAt}`}
                   </span>
                   <span>
@@ -352,7 +352,11 @@ export function ShareSecretSheet({
                             trailing={
                               <Tooltip content="Each recipient gets their own link. Leave this empty to get one link you can share yourself.">
                                 <span className={styles.hint}>
-                                  <Icon name="info" size={14} label="About email recipients" />
+                                  <Icon
+                                    name="info"
+                                    size="var(--cipher-size-icon-small)"
+                                    label="About email recipients"
+                                  />
                                 </span>
                               </Tooltip>
                             }

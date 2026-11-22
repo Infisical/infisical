@@ -26,7 +26,6 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../../access/permissions";
 import { failed, toast } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
-import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useGo, v4Path } from "../../../links";
 import {
@@ -331,7 +330,7 @@ export const SecretSyncsTab = ({
   const presentDestinations = [...new Set(syncs.map((sync) => sync.destination))];
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Secret sync filters"
         fields={[
@@ -485,6 +484,6 @@ export const SecretSyncsTab = ({
         }
         onToast={(tone, feedback) => toast({ tone, ...feedback })}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

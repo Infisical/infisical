@@ -8,6 +8,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { StatusText } from "@infisical/cipher/ui/text";
@@ -18,7 +19,6 @@ import {
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -130,7 +130,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
   ];
   const filtered = Boolean(term) || status !== ApprovalRequestStatus.Pending;
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Certificate request filters"
         fields={[statusField]}
@@ -202,6 +202,6 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
           ) : undefined
         }
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

@@ -83,7 +83,7 @@ export const LinkResult = ({
       <div className={styles.resultMeta}>
         {meta.map((item) => (
           <span key={item.label}>
-            <Icon name={item.icon} size={12} />
+            <Icon name={item.icon} size="var(--cipher-size-icon-caption)" />
             {item.label}
           </span>
         ))}

@@ -297,14 +297,14 @@ const columns: DataTableColumn<TCmek>[] = [
         {r.description && (
           <Tooltip content={r.description} side="top">
             <span aria-label={r.description} role="img">
-              <Icon name="info" size={14} />
+              <Icon name="info" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
         )}
         {!r.isExportable && (
           <Tooltip content="Created as non-exportable" side="top">
             <span aria-label="Not exportable" role="img">
-              <Icon name="lock" size={14} />
+              <Icon name="lock" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
         )}

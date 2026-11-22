@@ -113,12 +113,12 @@ function VersionItem({
             {current && <Badge tone="info">Current</Badge>}
             {version.redacted && (
               <Badge tone="outline">
-                <Icon icon={EyeOffIcon} size={12} />
+                <Icon icon={EyeOffIcon} />
                 Redacted
               </Badge>
             )}
             <span className={styles.versionTime}>
-              <Icon name="clock" size={12} />
+              <Icon name="clock" size="var(--cipher-size-icon-caption)" />
               {format(new Date(version.createdAt), "MMM d, yyyy, h:mm a")}
             </span>
           </span>
@@ -184,7 +184,7 @@ function VersionItem({
           <Icon
             name={version.actorType === "user" ? "user" : undefined}
             icon={actorIcons[version.actorType]}
-            size={12}
+            size="var(--cipher-size-icon-caption)"
           />
           {`${version.version === 1 ? "Created" : "Modified"} by ${actorName(version)}`}
         </span>
