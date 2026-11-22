@@ -15,6 +15,10 @@
 --
 -- The recursive tree CTE walks every folder on Cloud. If a query is slow, run it with
 -- SET statement_timeout = '15min';
+--
+-- Table names are unqualified. Set the schema that holds the Infisical tables first;
+-- if your client runs each query in a fresh session, run this line before each one.
+SET search_path TO <schema_name>;
 
 
 -- =====================================================================================
