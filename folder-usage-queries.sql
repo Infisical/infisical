@@ -17,8 +17,8 @@
 --
 -- Performance: the analytics tables may have no indexes, so the queries avoid per-row
 -- lookups and only walk the folder tree recursively where depth or full paths are needed
--- (Q2b, Q3, Q8, Q11, Q17). Those are the heaviest; if they still time out, raise the limit
--- for the session with SET statement_timeout = '15min'; if your client allows it.
+-- (Q2b, Q3, Q8, Q11, Q17). Each query starts with SET statement_timeout = 0; so it runs
+-- without the database time limit; run that line together with the query below it.
 --
 -- Not in the analytics schema, so not covered: project_folder_grants, approval_policies,
 -- approval_policy_secret_environments, access_approval_policies, secret_references_v2,
@@ -30,6 +30,7 @@
 -- =====================================================================================
 -- Q1. Overview: adoption of folders
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id, p.version AS project_version
@@ -68,6 +69,7 @@ LEFT JOIN secret_counts sc ON sc."folderId" = f.id;
 -- =====================================================================================
 -- Q2. Folders per project: histogram (all projects, including 0)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -105,6 +107,7 @@ ORDER BY min(folders);
 -- =====================================================================================
 -- Q2b. Folder count and tree depth percentiles among projects that use folders (recursive)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -146,6 +149,7 @@ WHERE folders > 0;
 -- =====================================================================================
 -- Q3. Depth: how deep are trees, and where do secrets live (recursive)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
@@ -183,6 +187,7 @@ ORDER BY t.depth;
 -- =====================================================================================
 -- Q4. Breadth: how many child folders does a folder have
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id
@@ -212,6 +217,7 @@ GROUP BY 1;
 -- =====================================================================================
 -- Q5. What folders are used for: classify every user folder by its contents
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id
@@ -271,6 +277,7 @@ ORDER BY 1;
 -- =====================================================================================
 -- Q5b. Secrets per folder histogram (folders that hold at least one secret)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id
@@ -305,6 +312,7 @@ ORDER BY 1, min(sc.n);
 -- =====================================================================================
 -- Q6. Per project: how much of the project's secrets live outside root
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -343,6 +351,7 @@ ORDER BY 1;
 -- =====================================================================================
 -- Q7. Common folder names (only names used by >= 10 orgs, so nothing customer-specific leaks)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
@@ -372,6 +381,7 @@ LIMIT 150;
 -- =====================================================================================
 -- Q7b. Naming conventions
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id
@@ -402,6 +412,7 @@ ORDER BY folders DESC;
 -- =====================================================================================
 -- Q7c. Semantic category of top-level folder names (what the first level of the tree models)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -456,6 +467,7 @@ ORDER BY folders DESC;
 -- =====================================================================================
 -- Q8. Structure parity across environments: do all envs have the same tree? (recursive)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -510,6 +522,7 @@ ORDER BY 1;
 -- =====================================================================================
 -- Q9. Folder metadata: descriptions, renames, age, staleness
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id
@@ -535,6 +548,7 @@ WHERE f."parentId" IS NOT NULL AND NOT COALESCE(f."isReserved", false);
 -- =====================================================================================
 -- Q10. Which features attach to folders rather than root
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -578,6 +592,7 @@ ORDER BY total DESC;
 -- =====================================================================================
 -- Q11. Secret imports: how folders are composed from each other (recursive)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -631,6 +646,7 @@ FROM imports;
 -- =====================================================================================
 -- Q11b. Imports per destination folder
 -- =====================================================================================
+SET statement_timeout = 0;
 SELECT
   CASE WHEN n = 1 THEN '1' WHEN n <= 3 THEN '2-3' WHEN n <= 5 THEN '4-5'
        WHEN n <= 10 THEN '6-10' WHEN n <= 25 THEN '11-25' ELSE '25+' END AS imports_per_folder,
@@ -653,6 +669,7 @@ ORDER BY min(n);
 -- =====================================================================================
 -- Only the legacy secret_approval_policies table is in the analytics schema. New policies
 -- live in approval_policies, which is not, so this undercounts current policy usage.
+SET statement_timeout = 0;
 SELECT
   CASE
     WHEN sap."secretPath" IN ('/', '') THEN 'root only'
@@ -674,6 +691,7 @@ ORDER BY policies DESC;
 -- =====================================================================================
 -- Q13. Folder-path conditions in custom project roles
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH perms AS (
   SELECT r."projectId" AS project_id, r.permissions::text AS p
   FROM analytics.roles r JOIN analytics.projects pr ON pr.id = r."projectId" AND pr.type = 'secret-manager'
@@ -694,6 +712,7 @@ FROM perms;
 --      (tag assignments are not in the analytics schema, so this checks whether the project
 --      has defined any tags, not whether secrets carry them)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
@@ -720,6 +739,7 @@ ORDER BY 1, 2;
 -- =====================================================================================
 -- Q16b. Folder creation per month (current folders only) and how many orgs created folders
 -- =====================================================================================
+SET statement_timeout = 0;
 SELECT
   date_trunc('month', f."createdAt")::date AS month,
   count(*) AS folders_created,
@@ -738,6 +758,7 @@ ORDER BY 1;
 -- =====================================================================================
 -- Q17. Segment by org size: do bigger orgs structure more? (recursive)
 -- =====================================================================================
+SET statement_timeout = 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
