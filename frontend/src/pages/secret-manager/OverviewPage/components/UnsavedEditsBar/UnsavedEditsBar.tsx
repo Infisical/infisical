@@ -10,12 +10,38 @@ import {
   useRef,
   useState
 } from "react";
-import { SaveIcon } from "lucide-react";
+import { ClipboardCheckIcon, EyeIcon, SaveIcon } from "lucide-react";
 
-import { Button, SelectedActionBar } from "@app/components/v3";
+import { SecretVersionDiffView } from "@app/components/secrets/diff";
+import {
+  Badge,
+  Button,
+  Input,
+  SelectedActionBar,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
+
+export type TUnsavedChange = {
+  environment: string;
+  environmentName: string;
+  secretKey: string;
+  secretValue: string;
+  originalValue: string | null;
+  secretValueHidden: boolean;
+  isCreate: boolean;
+  secretComment?: string;
+  tagIds?: string[];
+};
 
 type TUnsavedEdit = {
-  save: () => Promise<boolean>;
+  getChange: () => TUnsavedChange | null;
+  settle: (committedValue: string) => void;
   discard: () => void;
 };
 
@@ -74,7 +100,8 @@ export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
   useEffect(() => {
     if (!registry || !isDirty) return undefined;
     return registry.register(id, {
-      save: () => editRef.current.save(),
+      getChange: () => editRef.current.getChange(),
+      settle: (committedValue) => editRef.current.settle(committedValue),
       discard: () => editRef.current.discard()
     });
   }, [registry, isDirty, id]);
@@ -82,40 +109,166 @@ export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
 
 type Props = {
   count: number;
-  isSaving: boolean;
+  isCommitting: boolean;
   portalContainer: HTMLElement | null;
-  onSaveAll: () => void;
+  getChanges: () => TUnsavedChange[];
+  onCommit: (message: string) => Promise<boolean>;
   onDiscardAll: () => void;
 };
 
 export const UnsavedEditsBar = ({
   count,
-  isSaving,
+  isCommitting,
   portalContainer,
-  onSaveAll,
+  getChanges,
+  onCommit,
   onDiscardAll
-}: Props) => (
-  <SelectedActionBar
-    portalContainer={portalContainer}
-    positionerClassName={portalContainer ? "absolute bottom-4" : undefined}
-    selectedCount={count}
-    onClearSelection={() => {
-      if (!isSaving) onDiscardAll();
-    }}
-    selectionLabel={`${count} unsaved change${count === 1 ? "" : "s"}`}
-    clearLabel="Discard all"
-    iconOnlyClear={false}
-    aria-label="Unsaved change actions"
-  >
-    <Button
-      variant="project"
-      size="xs"
-      onClick={onSaveAll}
-      isDisabled={isSaving}
-      isPending={isSaving}
-    >
-      <SaveIcon />
-      Save all
-    </Button>
-  </SelectedActionBar>
-);
+}: Props) => {
+  const [reviewChanges, setReviewChanges] = useState<TUnsavedChange[] | null>(null);
+  const [message, setMessage] = useState("");
+  const isSingleChange = count === 1;
+  const commitLabel = isSingleChange ? "Save Change" : `Commit ${count} Changes`;
+
+  const handleCommit = async () => {
+    if (isCommitting || !(await onCommit(message))) return;
+    setReviewChanges(null);
+    setMessage("");
+  };
+
+  const changesByEnvironment = new Map<string, TUnsavedChange[]>();
+  (reviewChanges ?? []).forEach((change) => {
+    changesByEnvironment.set(change.environment, [
+      ...(changesByEnvironment.get(change.environment) ?? []),
+      change
+    ]);
+  });
+
+  return (
+    <>
+      <SelectedActionBar
+        portalContainer={portalContainer}
+        positionerClassName={portalContainer ? "absolute bottom-4" : undefined}
+        selectedCount={reviewChanges ? 0 : count}
+        onClearSelection={() => {
+          if (!isCommitting) onDiscardAll();
+        }}
+        clearOnEscape={false}
+        selectionLabel={`${count} pending change${isSingleChange ? "" : "s"}`}
+        clearLabel="Discard"
+        iconOnlyClear={false}
+        aria-label="Pending change actions"
+      >
+        <Button variant="outline" size="xs" onClick={() => setReviewChanges(getChanges())}>
+          <EyeIcon />
+          Review
+        </Button>
+        <Button
+          variant="project"
+          size="xs"
+          onClick={handleCommit}
+          isDisabled={isCommitting}
+          isPending={isCommitting}
+        >
+          <SaveIcon />
+          {commitLabel}
+        </Button>
+      </SelectedActionBar>
+
+      <Sheet open={Boolean(reviewChanges)} onOpenChange={(open) => !open && setReviewChanges(null)}>
+        <SheetContent size="wide" isPending={isCommitting} className="gap-y-0">
+          <SheetHeader className="border-b">
+            <SheetTitle className="flex items-center gap-2">
+              Review Changes
+              <Badge variant="warning">
+                <ClipboardCheckIcon />
+                {count} Change{isSingleChange ? "" : "s"}
+              </Badge>
+            </SheetTitle>
+            <SheetDescription>
+              Each environment gets its own commit. Environments with a change policy open a change
+              request instead.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
+            {[...changesByEnvironment.entries()].map(([environment, changes]) => (
+              <div key={environment}>
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                  <span className="flex-1 text-sm font-medium">{changes[0].environmentName}</span>
+                  <Badge variant="neutral">{changes.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {changes.map((change) => {
+                    const newVersion = {
+                      version: 2,
+                      secretKey: change.secretKey,
+                      secretValue: change.secretValue
+                    };
+                    return (
+                      <SecretVersionDiffView
+                        key={`${change.environment}:${change.secretKey}`}
+                        showViewed
+                        item={{
+                          id: `${change.environment}:${change.secretKey}`,
+                          type: "secret",
+                          secretKey: change.secretKey,
+                          isAdded: change.isCreate,
+                          isUpdated: !change.isCreate,
+                          versions: change.isCreate
+                            ? [newVersion]
+                            : [
+                                {
+                                  version: 1,
+                                  secretKey: change.secretKey,
+                                  secretValue: change.secretValueHidden
+                                    ? HIDDEN_SECRET_VALUE_API_MASK
+                                    : (change.originalValue ?? ""),
+                                  secretValueHidden: change.secretValueHidden
+                                },
+                                newVersion
+                              ]
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <SheetFooter className="border-t border-border">
+            <div className="flex w-full flex-col gap-4">
+              {!isSingleChange && (
+                <Input
+                  aria-label="Commit message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Describe your changes..."
+                  maxLength={255}
+                />
+              )}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setReviewChanges(null)}
+                  isDisabled={isCommitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="project"
+                  onClick={handleCommit}
+                  isPending={isCommitting}
+                  isDisabled={isCommitting}
+                >
+                  <SaveIcon />
+                  {commitLabel}
+                </Button>
+              </div>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+};

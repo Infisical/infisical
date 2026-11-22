@@ -1179,13 +1179,31 @@ export const SecretEditTableRow = ({
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
 
-  useUnsavedEdit(isDirtyState, {
-    save: async () => {
-      let isSaved = false;
-      await handleSubmit(async (data) => {
-        isSaved = await handleFormSubmit(data);
-      })();
-      return isSaved;
+  useUnsavedEdit(isDirtyState && !isSubmitting, {
+    getChange: () => {
+      const value = getValues("value");
+      if (
+        value === null ||
+        value === undefined ||
+        (secretValueHidden && value === HIDDEN_SECRET_VALUE)
+      )
+        return null;
+      return {
+        environment,
+        environmentName,
+        secretKey: secretName,
+        secretValue: value,
+        originalValue: sharedValueData?.value ?? (defaultValue || null),
+        secretValueHidden,
+        isCreate: Boolean(isCreatable),
+        secretComment: comment,
+        tagIds: tags?.map((tag) => tag.id)
+      };
+    },
+    settle: (committedValue) => {
+      const currentValue = getValues("value");
+      reset({ value: secretValueHidden ? defaultValue || null : committedValue });
+      if (currentValue !== committedValue) setValue("value", currentValue, { shouldDirty: true });
     },
     discard: handleFormReset
   });

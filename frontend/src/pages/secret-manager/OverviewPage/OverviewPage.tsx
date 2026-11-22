@@ -215,7 +215,8 @@ import {
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
-import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
+import { useCreateCommit, useCreateCommits } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
@@ -833,8 +834,7 @@ const OverviewPageContent = () => {
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
   const { count: unsavedEditsCount, getEdits: getUnsavedEdits } = useUnsavedEdits();
-  const bulkSaveOutcomeRef = useRef<{ reviewRequests: number } | null>(null);
-  const [isSavingUnsavedEdits, setIsSavingUnsavedEdits] = useState(false);
+  const { mutateAsync: createCommits, isPending: isCommittingUnsavedEdits } = useCreateCommits();
   const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -2355,21 +2355,12 @@ const OverviewPageContent = () => {
     );
 
     if ("approval" in result) {
-      if (bulkSaveOutcomeRef.current) {
-        bulkSaveOutcomeRef.current.reviewRequests += 1;
-        return;
-      }
       createNotification({
         type: "info",
         text: "Requested change has been sent for review"
       });
     } else {
-      if (!bulkSaveOutcomeRef.current) {
-        notifySecretsCreated(
-          1,
-          type === SecretType.Shared ? [{ environment: env, key, value }] : []
-        );
-      }
+      notifySecretsCreated(1, type === SecretType.Shared ? [{ environment: env, key, value }] : []);
 
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
@@ -2525,11 +2516,6 @@ const OverviewPageContent = () => {
         })
     );
 
-    if (bulkSaveOutcomeRef.current) {
-      if ("approval" in result) bulkSaveOutcomeRef.current.reviewRequests += 1;
-      return;
-    }
-
     if ("approval" in result) {
       createNotification({
         type: "info",
@@ -2543,37 +2529,75 @@ const OverviewPageContent = () => {
     }
   };
 
-  const handleSaveAllUnsavedEdits = async () => {
-    if (bulkSaveOutcomeRef.current) return;
-    const outcome = { reviewRequests: 0 };
-    bulkSaveOutcomeRef.current = outcome;
-    setIsSavingUnsavedEdits(true);
-    let savedCount = 0;
+  const getUnsavedChanges = () =>
+    getUnsavedEdits().flatMap((edit) => {
+      const change = edit.getChange();
+      return change ? [change] : [];
+    });
+
+  const handleCommitUnsavedEdits = async (message: string) => {
+    const edits = getUnsavedEdits().flatMap((edit) => {
+      const change = edit.getChange();
+      return change ? [{ edit, change }] : [];
+    });
+    const changes = edits.map(({ change }) => change);
+    if (!changes.length) return false;
+
     try {
-      const results = await Promise.all(getUnsavedEdits().map((edit) => edit.save()));
-      savedCount = results.filter(Boolean).length;
-    } finally {
-      bulkSaveOutcomeRef.current = null;
-      setIsSavingUnsavedEdits(false);
-    }
+      const { commits } = await createCommits({ projectId, secretPath, message, secrets: changes });
+      const failedEnvironments = commits
+        .filter(({ commit }) => !commit)
+        .map(({ environment }) => environment);
+      edits
+        .filter(({ change }) => !failedEnvironments.includes(change.environment))
+        .forEach(({ edit, change }) => edit.settle(change.secretValue));
+      showSecretWriteErrors(
+        commits.flatMap(({ environment, error }) =>
+          error
+            ? [
+                {
+                  error,
+                  environmentName: changes.find((change) => change.environment === environment)
+                    ?.environmentName
+                }
+              ]
+            : []
+        )
+      );
 
-    const appliedCount = savedCount - outcome.reviewRequests;
-    if (appliedCount > 0) {
-      createNotification({
-        type: "success",
-        text: `Saved ${appliedCount} change${appliedCount === 1 ? "" : "s"}`
-      });
-    }
-    if (outcome.reviewRequests > 0) {
-      createNotification({
-        type: "info",
-        text: `Sent ${outcome.reviewRequests} change${outcome.reviewRequests === 1 ? "" : "s"} for review`
-      });
-    }
-  };
+      const reviewEnvironments = commits
+        .filter(({ commit }) => commit?.approval)
+        .map(({ environment }) => environment);
+      const reviewEnvironmentNames = [
+        ...new Set(
+          changes
+            .filter((change) => reviewEnvironments.includes(change.environment))
+            .map((change) => change.environmentName)
+        )
+      ];
+      const committedCount = changes.filter(
+        (change) =>
+          !reviewEnvironments.includes(change.environment) &&
+          !failedEnvironments.includes(change.environment)
+      ).length;
 
-  const handleDiscardAllUnsavedEdits = () => {
-    getUnsavedEdits().forEach((edit) => edit.discard());
+      if (committedCount > 0) {
+        createNotification({
+          type: "success",
+          text: `Committed ${committedCount} change${committedCount === 1 ? "" : "s"}`
+        });
+      }
+      if (reviewEnvironmentNames.length > 0) {
+        createNotification({
+          type: "info",
+          text: `Change request opened for ${reviewEnvironmentNames.join(", ")}`
+        });
+      }
+      return failedEnvironments.length < commits.length;
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+      return false;
+    }
   };
 
   const handleSecretDelete = async (
@@ -5685,10 +5709,11 @@ const OverviewPageContent = () => {
       {!isSingleEnvView && (
         <UnsavedEditsBar
           count={hasSelectedEntries ? 0 : unsavedEditsCount}
-          isSaving={isSavingUnsavedEdits}
+          isCommitting={isCommittingUnsavedEdits}
           portalContainer={layoutContainer}
-          onSaveAll={handleSaveAllUnsavedEdits}
-          onDiscardAll={handleDiscardAllUnsavedEdits}
+          getChanges={getUnsavedChanges}
+          onCommit={handleCommitUnsavedEdits}
+          onDiscardAll={() => getUnsavedEdits().forEach((edit) => edit.discard())}
         />
       )}
     </div>
