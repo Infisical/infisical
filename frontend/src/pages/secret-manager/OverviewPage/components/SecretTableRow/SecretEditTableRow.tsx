@@ -1177,7 +1177,7 @@ export const SecretEditTableRow = ({
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
 
-  useUnsavedEdit(isDirtyState && !isSubmitting, {
+  const isCommittingEdits = useUnsavedEdit(isDirtyState && !isSubmitting, {
     getChange: () => {
       const value = getValues("value");
       if (
@@ -1305,7 +1305,7 @@ export const SecretEditTableRow = ({
 
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
-    isDisabled: isSubmitting || isSavingPendingChange,
+    isDisabled: isSubmitting || isSavingPendingChange || isCommittingEdits,
     isSaveDisabled: isCreatable || isPendingCreate ? !canCreate : !canEditSecretValue,
     onSave: isBatchMode ? savePendingRow : submitForm,
     onUndo: handleFormReset
@@ -1915,8 +1915,8 @@ export const SecretEditTableRow = ({
                 "absolute z-20 px-0.5 py-0.5",
                 isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
               )}
-              isSaveDisabled={isSubmitting || !isAllowed}
-              isUndoDisabled={isSubmitting}
+              isSaveDisabled={isSubmitting || isCommittingEdits || !isAllowed}
+              isUndoDisabled={isSubmitting || isCommittingEdits}
               onSave={submitForm}
               onUndo={handleFormReset}
             />

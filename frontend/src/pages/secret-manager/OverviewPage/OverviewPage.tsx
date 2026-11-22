@@ -833,7 +833,11 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
-  const { count: unsavedEditsCount, getEdits: getUnsavedEdits } = useUnsavedEdits();
+  const {
+    count: unsavedEditsCount,
+    getEdits: getUnsavedEdits,
+    setCommitting: setCommittingUnsavedEdits
+  } = useUnsavedEdits();
   const { mutateAsync: createCommits, isPending: isCommittingUnsavedEdits } = useCreateCommits();
   const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
 
@@ -2285,6 +2289,28 @@ const OverviewPageContent = () => {
     });
   };
 
+  const ensureSecretFolder = async (env: string) => {
+    if (secretPath === "/") return;
+    const pathSegment = secretPath.split("/").filter(Boolean);
+    const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+    const folderName = pathSegment.at(-1);
+    const canCreateFolder = permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretFolders, {
+        environment: env,
+        secretPath: parentPath
+      })
+    );
+    if (folderName && parentPath && canCreateFolder) {
+      await getOrCreateFolder({
+        projectId,
+        path: parentPath,
+        environment: env,
+        name: folderName
+      });
+    }
+  };
+
   const handleSecretCreate = async (
     env: string,
     key: string,
@@ -2317,28 +2343,7 @@ const OverviewPageContent = () => {
       return;
     }
 
-    // create folder if not existing
-    if (secretPath !== "/") {
-      // /hello/world -> [hello","world"]
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: env,
-          secretPath: parentPath
-        })
-      );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment: env,
-          name: folderName
-        });
-      }
-    }
+    await ensureSecretFolder(env);
     const result = await observeOverviewRequest(
       overviewTelemetry,
       { action: "create", resourceType: "secret", source, countBucket: "1" },
@@ -2543,7 +2548,15 @@ const OverviewPageContent = () => {
     const changes = edits.map(({ change }) => change);
     if (!changes.length) return false;
 
+    setCommittingUnsavedEdits(true);
     try {
+      await Promise.all(
+        [
+          ...new Set(
+            changes.filter((change) => change.isCreate).map((change) => change.environment)
+          )
+        ].map(ensureSecretFolder)
+      );
       const { commits } = await createCommits({ projectId, secretPath, message, secrets: changes });
       const failedEnvironments = commits
         .filter(({ commit }) => !commit)
@@ -2597,6 +2610,8 @@ const OverviewPageContent = () => {
     } catch (error) {
       showSecretWriteErrors([{ error }]);
       return false;
+    } finally {
+      setCommittingUnsavedEdits(false);
     }
   };
 

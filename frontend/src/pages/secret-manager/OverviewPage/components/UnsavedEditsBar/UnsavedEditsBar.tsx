@@ -59,14 +59,17 @@ type TUnsavedEdit = {
 type TUnsavedEditsRegistry = {
   register: (id: string, edit: TUnsavedEdit) => () => void;
   getEdits: () => TUnsavedEdit[];
+  setCommitting: (isCommitting: boolean) => void;
 };
 
 const UnsavedEditsRegistryContext = createContext<TUnsavedEditsRegistry | null>(null);
 const UnsavedEditsCountContext = createContext(0);
+const UnsavedEditsCommittingContext = createContext(false);
 
 export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
   const editsRef = useRef(new Map<string, TUnsavedEdit>());
   const [count, setCount] = useState(0);
+  const [isCommitting, setCommitting] = useState(false);
 
   const registry = useMemo<TUnsavedEditsRegistry>(
     () => ({
@@ -78,7 +81,8 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
           setCount(editsRef.current.size);
         };
       },
-      getEdits: () => [...editsRef.current.values()]
+      getEdits: () => [...editsRef.current.values()],
+      setCommitting
     }),
     []
   );
@@ -86,7 +90,9 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
   return (
     <UnsavedEditsRegistryContext.Provider value={registry}>
       <UnsavedEditsCountContext.Provider value={count}>
-        {children}
+        <UnsavedEditsCommittingContext.Provider value={isCommitting}>
+          {children}
+        </UnsavedEditsCommittingContext.Provider>
       </UnsavedEditsCountContext.Provider>
     </UnsavedEditsRegistryContext.Provider>
   );
@@ -96,7 +102,11 @@ export const useUnsavedEdits = () => {
   const registry = useContext(UnsavedEditsRegistryContext);
   const count = useContext(UnsavedEditsCountContext);
   const getEdits = useCallback(() => registry?.getEdits() ?? [], [registry]);
-  return { count, getEdits };
+  const setCommitting = useCallback(
+    (isCommitting: boolean) => registry?.setCommitting(isCommitting),
+    [registry]
+  );
+  return { count, getEdits, setCommitting };
 };
 
 export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
@@ -116,6 +126,8 @@ export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
       discard: () => editRef.current.discard()
     });
   }, [registry, isDirty, id]);
+
+  return useContext(UnsavedEditsCommittingContext);
 };
 
 type Props = {
