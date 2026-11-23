@@ -19,6 +19,7 @@ import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { isValidFolderName } from "@app/lib/validator";
 import { BaseSecretNameSchema, GenericResourceNameSchema, SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getPermissionDenialDetails } from "@app/server/plugins/audit-log-permission-denied";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
@@ -26,6 +27,7 @@ import {
   SecretImportReferencesBehavior,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
+import { PostHogEventTypes, TSecretModifiedEvent } from "@app/services/telemetry/telemetry-types";
 
 const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The project ID, from list-projects.");
 // Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
@@ -125,6 +127,27 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
   const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.MCP };
   // Describe only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
+
+  // The product analytics event the tool's REST route sends, with MCP as the channel.
+  const sendSecretsEvent = (
+    event: TSecretModifiedEvent["event"],
+    { projectId, environmentSlug, secretPath }: z.output<typeof SecretLocationSchema>,
+    numberOfSecrets = 1
+  ) =>
+    server.services.telemetry.sendPostHogEvents({
+      event,
+      distinctId: getTelemetryDistinctId(req),
+      organizationId: req.permission.orgId,
+      properties: {
+        numberOfSecrets,
+        projectId,
+        environment: environmentSlug,
+        secretPath,
+        channel: UserAgentType.MCP,
+        ...auditLogInfo,
+        actorType: req.permission.type
+      }
+    });
 
   const submittedForApproval = async (
     approval: Pick<TSecretApprovalRequests, "id" | "slug" | "status" | "committerUserId">,
@@ -256,6 +279,18 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         type: ProjectType.SecretManager
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: project.orgId,
+          name: project.name,
+          projectType: ProjectType.SecretManager,
+          ...auditLogInfo
+        }
+      });
+
       await server.services.auditLog.createAuditLog({
         ...auditLogInfo,
         orgId: req.permission.orgId,
@@ -334,6 +369,13 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretFolderCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { projectId, environment: environmentSlug, folderPath: path, folderId: folder.id }
+      });
+
       return { id: folder.id, name: folder.name };
     }
   );
@@ -394,6 +436,12 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
           metadata: { environment: environmentSlug, secretPath, numberOfSecrets: secrets.length }
         }
       });
+
+      await sendSecretsEvent(
+        PostHogEventTypes.SecretPulled,
+        { projectId, environmentSlug, secretPath },
+        secrets.length
+      );
 
       return {
         secrets: secrets.map(toSecretOutput),
@@ -463,6 +511,8 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         }
       });
 
+      await sendSecretsEvent(PostHogEventTypes.SecretPulled, { projectId, environmentSlug, secretPath });
+
       return toSecretOutput(secret);
     }
   );
@@ -495,6 +545,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Create);
       }
 
+      await sendSecretsEvent(PostHogEventTypes.SecretCreated, args);
       return appliedSecretWrite(EventType.CREATE_SECRET, args, secretOperation.secret);
     }
   );
@@ -529,6 +580,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Update);
       }
 
+      await sendSecretsEvent(PostHogEventTypes.SecretUpdated, args);
       return appliedSecretWrite(EventType.UPDATE_SECRET, args, secretOperation.secret);
     }
   );
@@ -570,6 +622,8 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
           }
         }
       });
+
+      await sendSecretsEvent(PostHogEventTypes.SecretDeleted, args);
 
       return { id: secret.id, secretKey: secret.secretKey, deleted: true };
     }
