@@ -420,13 +420,17 @@ const PageContent = () => {
     return (
       <>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-normal text-foreground">Certificate Approval Request</h1>
+          <h1 className="text-2xl font-normal text-foreground">
+            {reqData.renewal
+              ? "Certificate Renewal Approval Request"
+              : "Certificate Approval Request"}
+          </h1>
           <Badge variant={getStatusBadgeVariant(request.status)}>
             {getStatusLabel(request.status)}
           </Badge>
         </div>
         <p className="mt-1 text-sm text-muted">
-          Certificate issuance request for{" "}
+          Certificate {reqData.renewal ? "renewal" : "issuance"} request for{" "}
           <span className="font-medium text-foreground-secondary">
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}

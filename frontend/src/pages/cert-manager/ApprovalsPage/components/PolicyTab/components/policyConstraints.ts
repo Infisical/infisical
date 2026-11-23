@@ -14,7 +14,7 @@ export const RENEWAL_APPROVAL_OPTIONS = [
     value: CertRequestRenewalApproval.OnChange,
     title: "When the renewal changes the certificate",
     description:
-      "Or any renewal of an imported or discovered certificate, even when nothing changes."
+      "Renewals with changes, as well as renewals of imported and discovered certificates, always need approval."
   },
   {
     value: CertRequestRenewalApproval.Always,
