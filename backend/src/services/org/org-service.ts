@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -84,7 +85,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -149,6 +149,7 @@ type TOrgServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -186,7 +187,8 @@ export const orgServiceFactory = ({
   gatewayV2Service,
   auditLogSettingsService,
   eventEmitter,
-  orgInviteQuota
+  orgInviteQuota,
+  instanceConfigService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -1146,7 +1148,7 @@ export const orgServiceFactory = ({
   };
 
   const $isEmailLoginEnabled = async () => {
-    const { enabledLoginMethods } = await getServerCfg();
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
     return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
   };
 

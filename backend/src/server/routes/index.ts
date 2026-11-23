@@ -1688,6 +1688,7 @@ export const registerRoutes = async (
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
   const orgService = orgServiceFactory({
+    instanceConfigService,
     orgInviteQuota,
     auditLogSettingsService,
     userAliasDAL,
