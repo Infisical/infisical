@@ -12,7 +12,7 @@ import { LightMyRequestResponse } from "fastify";
 
 import { OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
-import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 
@@ -24,17 +24,17 @@ import {
   cancelRevocationRequest,
   createActiveCertManagerProject,
   createApplicationWithApiProfile,
+  createApprovalPolicy,
   createCertificateProfile,
   createInternalRootCa,
-  createRevocationApprovalPolicy,
-  decideRevocationRequest,
+  decideApprovalRequest,
   deleteCertificateProfile,
   deleteInternalCa,
   detachApplicationProfile,
   getRevocationApprovalPolicy,
   getRevocationRequest,
   issueApplicationCertificate,
-  listApplicationRevocationRequests,
+  listApplicationApprovalRequests,
   listProjectRevocationRequests,
   revokeCertificate,
   updateRevocationApprovalPolicy
@@ -309,13 +309,15 @@ describe("Certificate revocation lifecycle per actor", () => {
     );
 
     const namedEntries = [approverOperator, approverAdmin, approverViaGroup, selfApprover].map((a) => a.entry);
-    await createRevocationApprovalPolicy({
+    await createApprovalPolicy({
+      policyType: ApprovalPolicyType.CertRevocation,
       applicationId: application.id,
       profileSlug: covered.slug,
       steps: [{ requiredApprovals: 1, approvers: namedEntries, notifyApprovers: true }],
       authToken: adminToken
     });
-    const configPolicy = await createRevocationApprovalPolicy({
+    const configPolicy = await createApprovalPolicy({
+      policyType: ApprovalPolicyType.CertRevocation,
       applicationId: application.id,
       profileSlug: configOnly.slug,
       steps: [{ requiredApprovals: 1, approvers: [approverOperator.entry] }],
@@ -347,7 +349,8 @@ describe("Certificate revocation lifecycle per actor", () => {
       try {
         // Stage 1: an Application Admin saves a policy step that names this actor, then edits one to name them.
         const policiesBefore = await policyCount();
-        const created = await createRevocationApprovalPolicy({
+        const created = await createApprovalPolicy({
+          policyType: ApprovalPolicyType.CertRevocation,
           applicationId: application.id,
           profileSlug: configOnly.slug,
           steps: [{ requiredApprovals: 1, approvers: [actor.entry] }],
@@ -400,7 +403,8 @@ describe("Certificate revocation lifecycle per actor", () => {
         const toCancel = await raiseAs(raiser);
 
         // Stage 3: see it.
-        const appList = await listApplicationRevocationRequests({
+        const appList = await listApplicationApprovalRequests({
+          policyType: ApprovalPolicyType.CertRevocation,
           applicationId: application.id,
           authToken: token
         }).raw();
@@ -426,7 +430,8 @@ describe("Certificate revocation lifecycle per actor", () => {
         }
 
         // Stage 4: decide.
-        const approveRes = await decideRevocationRequest({
+        const approveRes = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRevocation,
           requestId: toApprove.requestId,
           decision: "approve",
           authToken: token
@@ -442,7 +447,8 @@ describe("Certificate revocation lifecycle per actor", () => {
           actor.named ? "approved" : "pending",
           await requestStatus(toApprove.requestId)
         );
-        const rejectRes = await decideRevocationRequest({
+        const rejectRes = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRevocation,
           requestId: toReject.requestId,
           decision: "reject",
           authToken: token
@@ -467,14 +473,16 @@ describe("Certificate revocation lifecycle per actor", () => {
 
         // Stage 6: after a decision. Requests the actor couldn't decide are decided by a named approver first.
         if ((await requestStatus(toApprove.requestId)) === "pending") {
-          await decideRevocationRequest({
+          await decideApprovalRequest({
+            policyType: ApprovalPolicyType.CertRevocation,
             requestId: toApprove.requestId,
             decision: "approve",
             authToken: approverOperator.token
           });
         }
         if ((await requestStatus(toReject.requestId)) === "pending") {
-          await decideRevocationRequest({
+          await decideApprovalRequest({
+            policyType: ApprovalPolicyType.CertRevocation,
             requestId: toReject.requestId,
             decision: "reject",
             authToken: approverOperator.token
@@ -482,7 +490,8 @@ describe("Certificate revocation lifecycle per actor", () => {
         }
         for (const decision of ["approve", "reject"] as const) {
           for (const decided of [toApprove, toReject]) {
-            const again = await decideRevocationRequest({
+            const again = await decideApprovalRequest({
+              policyType: ApprovalPolicyType.CertRevocation,
               requestId: decided.requestId,
               decision,
               authToken: token
@@ -545,7 +554,8 @@ describe("Certificate revocation lifecycle per actor", () => {
         await deleteCertificateProfile({ profileId: profile.id, authToken: adminToken });
       }
       await deleteInternalCa({ caId, authToken: adminToken });
-      await decideRevocationRequest({
+      await decideApprovalRequest({
+        policyType: ApprovalPolicyType.CertRevocation,
         requestId: notified.requestId,
         decision: "approve",
         authToken: approverOperator.token

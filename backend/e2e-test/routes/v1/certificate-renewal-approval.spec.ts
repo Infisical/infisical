@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { OrgMembershipRole, ProjectMembershipRole, ResourceMembershipRole, TableName } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApprovalRequestStatus, CertRequestRenewalApproval } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  ApproverType,
+  CertRequestRenewalApproval
+} from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRequestStatus } from "@app/services/certificate-common/certificate-constants";
@@ -13,20 +18,16 @@ import { certificateAutoRenewalJob } from "e2e-test/fakes/certificate-v3-queue";
 
 import { flushAuditLogs, listAuditLogs, TAuditLog } from "../../testUtils/audit-logs";
 import {
-  approveCertRequestApproval,
-  createApplicationCertRequestPolicy,
-  listApplicationCertRequestApprovals,
-  rejectCertRequestApproval,
-  renewalApprovalsFor
-} from "../../testUtils/cert-approvals";
-import {
   addApplicationUsers,
   createActiveCertManagerProject,
   createApplicationWithApiProfile,
+  createApprovalPolicy,
   createCertificateProfile,
   createInternalRootCa,
+  decideApprovalRequest,
   getCertificate,
   issueApplicationCertificate,
+  listApplicationApprovalRequests,
   removeApplicationMember,
   renewCertificate,
   setCertificateRenewBeforeDays
@@ -102,11 +103,18 @@ const makeDueForAutoRenewal = async (ctx: TApplicationContext, certificateId: st
   await testDb(TableName.Certificate).where({ id: certificateId }).update({ renewBeforeDays: CERTIFICATE_TTL_DAYS });
 };
 
+const oneApprovalFrom = (...userIds: string[]) => [
+  { requiredApprovals: 1, approvers: userIds.map((id) => ({ type: ApproverType.User, id })) }
+];
+
 const renewalApprovals = async (ctx: TApplicationContext, certificateId: string) =>
-  renewalApprovalsFor(
-    await listApplicationCertRequestApprovals({ authToken: ctx.authToken, applicationId: ctx.app.applicationId }),
-    certificateId
-  );
+  (
+    await listApplicationApprovalRequests({
+      policyType: ApprovalPolicyType.CertRequest,
+      authToken: ctx.authToken,
+      applicationId: ctx.app.applicationId
+    })
+  ).filter((req) => req.requestData.requestData.renewal?.certificateId === certificateId);
 
 const pendingRenewalApprovals = async (ctx: TApplicationContext, certificateId: string) =>
   (await renewalApprovals(ctx, certificateId)).filter((req) => req.status === ApprovalRequestStatus.Pending);
@@ -167,11 +175,12 @@ describe("Certificate renewal approval", async () => {
       ctx = await setUpApplication("renewal-default");
       certificateId = await issue(ctx);
 
-      const policy = await createApplicationCertRequestPolicy({
+      const policy = await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
         authToken: ctx.authToken,
         applicationId: ctx.app.applicationId,
         profileSlug: ctx.app.profileSlug,
-        approverUserId: ctx.approverId
+        steps: oneApprovalFrom(ctx.approverId)
       });
       expect(policy.constraints.constraints.renewalApproval, "a policy without the setting approves on change").toBe(
         CertRequestRenewalApproval.OnChange
@@ -217,11 +226,12 @@ describe("Certificate renewal approval", async () => {
       certificateId = await issue(ctx);
       deletedRequesterCertificateId = await issue(ctx);
 
-      const policy = await createApplicationCertRequestPolicy({
+      const policy = await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
         authToken: ctx.authToken,
         applicationId: ctx.app.applicationId,
         profileSlug: ctx.app.profileSlug,
-        approverUserId: ctx.approverId,
+        steps: oneApprovalFrom(ctx.approverId),
         constraints: { renewalApproval: CertRequestRenewalApproval.Always }
       });
       expect(policy.constraints.constraints.renewalApproval).toBe(CertRequestRenewalApproval.Always);
@@ -246,7 +256,9 @@ describe("Certificate renewal approval", async () => {
         expect(pending, "one approval request names the certificate").toHaveLength(1);
         const [approvalRequest] = pending;
 
-        const approved = await approveCertRequestApproval({
+        const approved = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "approve",
           authToken: ctx.approverToken,
           requestId: approvalRequest.id,
           comment: "renewal approved"
@@ -307,7 +319,9 @@ describe("Certificate renewal approval", async () => {
         const stored = await testDb(TableName.ApprovalRequests).where({ id: approvalRequest.id }).first();
         expect(stored?.requesterId ?? null, "deleting the user cleared the request's requester").toBeNull();
 
-        const rejected = await rejectCertRequestApproval({
+        const rejected = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "reject",
           authToken: ctx.approverToken,
           requestId: approvalRequest.id
         });
@@ -331,11 +345,12 @@ describe("Certificate renewal approval", async () => {
       certificateIds.heldByHand = await issue(ctx);
       certificateIds.heldPastExpiry = await issue(ctx);
 
-      await createApplicationCertRequestPolicy({
+      await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
         authToken: ctx.authToken,
         applicationId: ctx.app.applicationId,
         profileSlug: ctx.app.profileSlug,
-        approverUserId: ctx.approverId,
+        steps: oneApprovalFrom(ctx.approverId),
         constraints: { renewalApproval: CertRequestRenewalApproval.Always }
       });
     });
@@ -362,7 +377,12 @@ describe("Certificate renewal approval", async () => {
         expect(await renewalApprovals(ctx, certificateId), "a second run raised no second request").toHaveLength(1);
         expect(await failedAutoRenewalsOf(ctx, certificateId), "neither run recorded a failed renewal").toHaveLength(0);
 
-        const approved = await approveCertRequestApproval({ authToken: ctx.approverToken, requestId: pending[0].id });
+        const approved = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "approve",
+          authToken: ctx.approverToken,
+          requestId: pending[0].id
+        });
         expect(approved.status).toBe(ApprovalRequestStatus.Approved);
 
         await expectRenewedBy(ctx, certificateId);
@@ -381,7 +401,9 @@ describe("Certificate renewal approval", async () => {
         const pending = await pendingRenewalApprovals(ctx, certificateId);
         expect(pending, "the job raised one approval request for the certificate").toHaveLength(1);
 
-        const rejected = await rejectCertRequestApproval({
+        const rejected = await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "reject",
           authToken: ctx.approverToken,
           requestId: pending[0].id,
           comment: "not this time"
@@ -464,11 +486,12 @@ describe("Certificate renewal approval", async () => {
     beforeAll(async () => {
       ctx = await setUpApplication("renewal-policy-switched");
       certificateId = await issue(ctx);
-      ({ id: policyId } = await createApplicationCertRequestPolicy({
+      ({ id: policyId } = await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
         authToken: ctx.authToken,
         applicationId: ctx.app.applicationId,
         profileSlug: ctx.app.profileSlug,
-        approverUserId: ctx.approverId,
+        steps: oneApprovalFrom(ctx.approverId),
         constraints: { renewalApproval: CertRequestRenewalApproval.Always }
       }));
     });
@@ -499,7 +522,12 @@ describe("Certificate renewal approval", async () => {
         expect(await renewalApprovals(ctx, certificateId), "the job raised no second request").toHaveLength(1);
         expect(await failedAutoRenewalsOf(ctx, certificateId), "the job recorded no failed renewal").toHaveLength(0);
 
-        await approveCertRequestApproval({ authToken: ctx.approverToken, requestId: pending.id });
+        await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "approve",
+          authToken: ctx.approverToken,
+          requestId: pending.id
+        });
         await expectRenewedBy(ctx, certificateId);
       },
       TEST_TIMEOUT_MS
@@ -532,12 +560,12 @@ describe("Certificate renewal approval", async () => {
       });
       removedApproverToken = await createUserAccessToken({ userId: removedApproverId, orgId: ctx.orgId });
 
-      await createApplicationCertRequestPolicy({
+      await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
         authToken: ctx.authToken,
         applicationId: ctx.app.applicationId,
         profileSlug: ctx.app.profileSlug,
-        approverUserId: ctx.approverId,
-        otherApproverUserIds: [removedApproverId],
+        steps: oneApprovalFrom(ctx.approverId, removedApproverId),
         constraints: { renewalApproval: CertRequestRenewalApproval.Always }
       });
     });
@@ -567,7 +595,12 @@ describe("Certificate renewal approval", async () => {
         });
         await testDb(TableName.CertificateAuthority).where({ id: ctx.app.caId }).update({ status: CaStatus.DISABLED });
 
-        await approveCertRequestApproval({ authToken: ctx.approverToken, requestId: approvalRequest.id });
+        await decideApprovalRequest({
+          policyType: ApprovalPolicyType.CertRequest,
+          decision: "approve",
+          authToken: ctx.approverToken,
+          requestId: approvalRequest.id
+        });
 
         // The requester always gets the notice, so once theirs arrives the whole batch is written.
         const [requesterNotice] = await pollUntil({

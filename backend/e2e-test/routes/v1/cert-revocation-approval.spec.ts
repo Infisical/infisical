@@ -8,6 +8,7 @@
 import { ProjectMembershipRole, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
 import {
+  ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
   ApprovalRequestStepStatus,
   ApproverType
@@ -20,21 +21,21 @@ import {
   addApplicationUsers,
   createActiveCertManagerProject,
   createApplicationWithApiProfile,
+  createApprovalPolicy,
   createCertificateProfile,
   createInternalRootCa,
-  createRevocationApprovalPolicy,
-  decideRevocationRequest,
+  decideApprovalRequest,
   deleteCertificateProfile,
   deleteInternalCa,
   detachApplicationProfile,
   getRevocationApprovalPolicy,
   getRevocationRequest,
   issueApplicationCertificate,
-  listApplicationRevocationRequests,
+  listApplicationApprovalRequests,
   listProjectRevocationRequests,
   removeApplicationMember,
   revokeCertificate,
-  TRevocationPolicyStep,
+  TApprovalPolicyStep,
   updateApplicationMemberRole,
   updateRevocationApprovalPolicy
 } from "../../testUtils/cert-manager";
@@ -104,7 +105,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   }: {
     approverVia: "user" | "group";
     approverRole?: ResourceMembershipRole;
-    steps: (ids: { approver: { type: ApproverType; id: string }; otherId: string }) => TRevocationPolicyStep[];
+    steps: (ids: { approver: { type: ApproverType; id: string }; otherId: string }) => TApprovalPolicyStep[];
     maxRequestTtl?: string;
   }) => {
     const caId = await createInternalRootCa({ projectId, authToken: adminToken });
@@ -142,7 +143,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       await addApplicationGroup({ applicationId: application.id, groupId, role: approverRole, authToken: adminToken });
     }
 
-    const policy = await createRevocationApprovalPolicy({
+    const policy = await createApprovalPolicy({
+      policyType: ApprovalPolicyType.CertRevocation,
       applicationId: application.id,
       profileSlug: profile.slug,
       steps: steps({
@@ -197,7 +199,12 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   ) => {
     for (const decision of ["approve", "reject"] as const) {
       // eslint-disable-next-line no-await-in-loop
-      await decideRevocationRequest({ requestId, decision, authToken: token }).expect((res) => {
+      await decideApprovalRequest({
+        policyType: ApprovalPolicyType.CertRevocation,
+        requestId,
+        decision,
+        authToken: token
+      }).expect((res) => {
         expect(res.statusCode, `${decision}: ${res.payload}`).toBe(expected.statusCode);
         if (expected.message) expect(res.json().message, decision).toBe(expected.message);
       });
@@ -213,7 +220,12 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   // and the revocation fails. The requester always gets the notice, so once theirs arrives the whole batch is written.
   const approveIntoFailure = async ({ other, deleteCa }: TFixture, requestId: string) => {
     await deleteCa();
-    const decided = await decideRevocationRequest({ requestId, decision: "approve", authToken: other.token });
+    const decided = await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
+      requestId,
+      decision: "approve",
+      authToken: other.token
+    });
     expect(decided.status).toBe("approved");
     await pollUntil({
       describe: `the requester's failure notice for request ${requestId}`,
@@ -229,7 +241,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     expect((await getRevocationRequest({ requestId: toApprove.requestId, authToken: approver.token })).canReview).toBe(
       true
     );
-    const approved = await decideRevocationRequest({
+    const approved = await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
       requestId: toApprove.requestId,
       decision: "approve",
       authToken: approver.token
@@ -237,7 +250,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     expect(approved.status).toBe("approved");
     expect(await certificateStatus(toApprove.certificateId)).toBe(CertStatus.REVOKED);
 
-    const rejected = await decideRevocationRequest({
+    const rejected = await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
       requestId: toReject.requestId,
       decision: "reject",
       authToken: approver.token
@@ -381,7 +395,12 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     const fixture = await setUp({ approverVia: "user", steps: oneStep });
     const { certificateId, requestId } = await fixture.raiseRequest();
 
-    await decideRevocationRequest({ requestId, decision: "reject", authToken: fixture.other.token });
+    await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
+      requestId,
+      decision: "reject",
+      authToken: fixture.other.token
+    });
 
     await expectRefused(requestId, fixture.approver.token, { statusCode: 400, message: "Request is not pending" });
     expect((await getRevocationRequest({ requestId, authToken: fixture.approver.token })).canReview).toBe(false);
@@ -397,7 +416,12 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       .update({ expiresAt: new Date(Date.now() - 60_000) });
 
     expect((await getRevocationRequest({ requestId, authToken: fixture.approver.token })).canReview).toBe(false);
-    await decideRevocationRequest({ requestId, decision, authToken: fixture.approver.token }).expect((res) => {
+    await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
+      requestId,
+      decision,
+      authToken: fixture.approver.token
+    }).expect((res) => {
       expect(res.statusCode, res.payload).toBe(400);
       expect(res.json().message).toBe("Request has expired");
     });
@@ -510,7 +534,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       }
 
       // The same body naming an Operator is accepted, so the refusal below is about the Auditor.
-      await createRevocationApprovalPolicy({
+      await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRevocation,
         applicationId: fixture.application.id,
         profileSlug: fixture.profile.slug,
         steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: fixture.other.userId }] }],
@@ -522,7 +547,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       const policiesBefore = await policyCount();
 
       const auditorRefusal = `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${kind}s ${auditorLabel}.`;
-      await createRevocationApprovalPolicy({
+      await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRevocation,
         applicationId: fixture.application.id,
         profileSlug: fixture.profile.slug,
         steps: [{ requiredApprovals: 1, approvers: [auditorEntry] }],
@@ -578,7 +604,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       expect(message).not.toContain(foreignGroupName);
     };
 
-    await createRevocationApprovalPolicy({
+    await createApprovalPolicy({
+      policyType: ApprovalPolicyType.CertRevocation,
       applicationId: fixture.application.id,
       profileSlug: fixture.profile.slug,
       steps: [{ requiredApprovals: 1, approvers }],
@@ -602,7 +629,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       authToken: adminToken
     });
 
-    await createRevocationApprovalPolicy({
+    await createApprovalPolicy({
+      policyType: ApprovalPolicyType.CertRevocation,
       applicationId: fixture.application.id,
       profileSlug: fixture.profile.slug,
       steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: elsewhere.userId }] }],
@@ -740,7 +768,11 @@ describe("Revocation approval when a saved approver's access changes", { timeout
 
   // The Application list is what the certificate pages read to decide whether Revoke can replace the request.
   const replaceableFlags = async (applicationId: string, requestId: string) => {
-    const listed = await listApplicationRevocationRequests({ applicationId, authToken: adminToken });
+    const listed = await listApplicationApprovalRequests({
+      policyType: ApprovalPolicyType.CertRevocation,
+      applicationId,
+      authToken: adminToken
+    });
     const fetched = await getRevocationRequest({ requestId, authToken: adminToken });
     return {
       listed: listed.find(({ id }) => id === requestId)?.approversCanNoLongerApprove,
@@ -776,7 +808,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       ]
     });
     const pending = await fixture.raiseRequest();
-    const approved = await decideRevocationRequest({
+    const approved = await decideApprovalRequest({
+      policyType: ApprovalPolicyType.CertRevocation,
       requestId: pending.requestId,
       decision: "approve",
       authToken: fixture.other.token
