@@ -3660,6 +3660,7 @@ export const registerRoutes = async (
   });
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
+    oidcIssuerService,
     eventEmitter: eventOutboxService,
     instanceConfigService,
     alertService,
@@ -3854,6 +3855,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    oidcIssuerService,
     instanceConfigService,
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
@@ -3967,6 +3969,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
+    oidcIssuerService,
     instanceConfigService,
     pkiApplicationDAL,
     certificateAuthorityDAL,
@@ -4198,6 +4201,7 @@ export const registerRoutes = async (
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
+    oidcIssuerService,
     instanceConfigService,
     certificateAuthorityDAL,
     appConnectionDAL,
