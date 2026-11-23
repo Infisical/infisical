@@ -177,14 +177,16 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb, postRejectionRoutine };
   };
 
-  it("hands the post-rejection routine the rejected request while a replica still shows it pending", async () => {
+  it("hands the post-rejection routine and the response the rejected request while a replica still shows it pending", async () => {
     const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], { completeDecision: true });
 
-    await ctx.service.rejectRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation);
+    const result = await ctx.service.rejectRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation);
 
     expect(ctx.postRejectionRoutine).toHaveBeenCalledWith(
       expect.objectContaining({ id: "revocation-1", status: ApprovalRequestStatus.Rejected })
     );
+    expect(result.request.status).toBe(ApprovalRequestStatus.Rejected);
+    expect(ctx.approvalRequestDAL.findStepsByRequestId).toHaveBeenLastCalledWith("revocation-1", ctx.primaryDb);
   });
 
   it("refuses the approval and leaves the certificate alone", async () => {
