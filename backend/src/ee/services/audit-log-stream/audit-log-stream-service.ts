@@ -158,7 +158,8 @@ export const auditLogStreamServiceFactory = ({
       OrgPermissionSubjects.AuditLogStreams
     );
 
-    if (receivesPamSessionActivity(logStream.filters) || receivesPamSessionActivity(filters)) {
+    const checkedPamAccess = receivesPamSessionActivity(logStream.filters) || receivesPamSessionActivity(filters);
+    if (checkedPamAccess) {
       await assertCanStreamPamSessionActivity(actor);
     }
 
@@ -248,7 +249,7 @@ export const auditLogStreamServiceFactory = ({
       kmsDataKeyService
     });
 
-    const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
+    const updates = {
       encryptedCredentials,
       // The credentials just passed validateCredentials, so start health tracking over. A stream that
       // is still broken then alerts again instead of staying silent behind its old failingSince.
@@ -258,6 +259,20 @@ export const auditLogStreamServiceFactory = ({
       ...(streamMode ? { streamMode } : {}),
       // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).
       ...(filters !== undefined ? { filters } : {})
+    };
+
+    const updatedLogStream = await auditLogStreamDAL.transaction(async (tx) => {
+      // Re-checked under a lock so session activity turned on during the credential test never reaches a destination no PAM admin approved.
+      const current = await auditLogStreamDAL.lockById(logStreamId, tx);
+      if (!current) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
+      if (!checkedPamAccess && receivesPamSessionActivity(current.filters)) {
+        throw new BadRequestError({
+          message:
+            "PAM session activity was turned on for this log stream while you were updating it. Reload the stream and try again."
+        });
+      }
+
+      return auditLogStreamDAL.updateById(logStreamId, updates, tx);
     });
 
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;

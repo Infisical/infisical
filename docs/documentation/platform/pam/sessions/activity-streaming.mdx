@@ -14,6 +14,8 @@ Infisical sends session activity through an [audit log stream](/documentation/pl
 - An [organization role](/documentation/platform/access-controls/role-based-access-controls) with the **Read** and **Edit** actions on the **Audit Log Streams** policy
 - The **Admin** role in PAM, which makes you a [product admin](/documentation/platform/pam/concepts/access-control) (only a product admin can turn on session activity for a stream, or change a stream that sends it)
 
+Deleting a stream doesn't need the PAM **Admin** role. Anyone with the **Edit** action on the **Audit Log Streams** policy can delete a stream, including one that sends session activity.
+
 ## Turn on session activity
 
 <Steps>
@@ -44,9 +46,9 @@ Infisical sends a session's activity in batches while the session runs, usually 
 | --- | --- | --- |
 | PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query | The database's response |
 | SSH | Each command, including commands run without a shell and SFTP file operations | The terminal output |
-| Kubernetes, GCP service account, Azure CLI | The method and URL of each request | Each response's status, and the request and response bodies |
+| Kubernetes, GCP service account, Azure CLI, AWS IAM through a Gateway | The method and URL of each request | Each response's status, and the request and response bodies |
 | Windows, Windows AD | Nothing, because the recording is a replay of the remote desktop | Nothing |
-| AWS IAM | Nothing, because connections don't go through the Gateway | Nothing |
+| AWS IAM without a Gateway | Nothing, because connections don't go through a Gateway | Nothing |
 
 Infisical doesn't send input that isn't a command, such as a password typed at a prompt or data piped into a command.
 

@@ -30,7 +30,7 @@ const ACCOUNT_TYPES_WITHOUT_ACTIVITY = new Set<string>([PamAccountType.Windows, 
 
 type TPamSessionActivityServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find">;
+  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "primaryNode">;
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueStreamEvents">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findById">;
   pamSessionChunkService: Pick<TPamSessionChunkServiceFactory, "readChunkEvents">;
@@ -50,8 +50,11 @@ export const pamSessionActivityServiceFactory = ({
   pamSessionDAL,
   pamSessionChunkService
 }: TPamSessionActivityServiceFactoryDep) => {
+  // From the primary, since a chunk skipped on a replica that hasn't seen a stream turn activity on is never revisited.
   const findActivityStreams = async (orgId: string) =>
-    (await auditLogStreamDAL.find({ orgId })).filter((stream) => getSessionActivityFilter(stream));
+    (await auditLogStreamDAL.find({ orgId }, { tx: auditLogStreamDAL.primaryNode() })).filter((stream) =>
+      getSessionActivityFilter(stream)
+    );
 
   // Errors fail the upload on purpose, so the gateway re-sends the chunk and this runs again.
   const queueChunkExport = async ({ orgId, sessionId, chunkIndex }: TChunkExport) => {

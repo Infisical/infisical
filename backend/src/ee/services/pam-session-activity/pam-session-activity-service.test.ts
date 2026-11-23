@@ -38,6 +38,8 @@ const stream = (id: string, filters: unknown) => ({ id, orgId: "org-1", provider
 
 type TRows = { stream: { id: string }; payload: TPamSessionActivityEvent }[];
 
+const primary = { node: "primary" };
+
 const buildService = (
   streams: ReturnType<typeof stream>[],
   {
@@ -54,7 +56,7 @@ const buildService = (
       handler = jobHandler;
     })
   };
-  const auditLogStreamDAL = { find: vi.fn(async () => streams) };
+  const auditLogStreamDAL = { find: vi.fn(async () => streams), primaryNode: vi.fn(() => primary) };
   const auditLogStreamOutboxService = { enqueueStreamEvents: vi.fn(async () => undefined) };
   const pamSessionDAL = { findById: vi.fn(async () => storedSession) };
   const pamSessionChunkService = { readChunkEvents: vi.fn(async () => chunk) };
@@ -72,7 +74,15 @@ const buildService = (
     handler!({ data, attemptsMade: 0 });
   const enqueuedRows = () => auditLogStreamOutboxService.enqueueStreamEvents.mock.calls[0] as unknown as [TRows];
 
-  return { service, queueService, auditLogStreamOutboxService, pamSessionChunkService, runJob, enqueuedRows };
+  return {
+    service,
+    queueService,
+    auditLogStreamDAL,
+    auditLogStreamOutboxService,
+    pamSessionChunkService,
+    runJob,
+    enqueuedRows
+  };
 };
 
 const job = { orgId: "org-1", sessionId: session.id, chunkIndex: 2 };
@@ -86,10 +96,11 @@ describe("pamSessionActivityService", () => {
   });
 
   test("queues a chunk export when a stream receives session activity", async () => {
-    const { service, queueService } = buildService([stream("s1", commandsOnly)]);
+    const { service, queueService, auditLogStreamDAL } = buildService([stream("s1", commandsOnly)]);
 
     await service.queueChunkExport(job);
 
+    expect(auditLogStreamDAL.find).toHaveBeenCalledWith({ orgId: job.orgId }, { tx: primary });
     expect(queueService.queue).toHaveBeenCalledWith(
       QueueName.PamSessionActivityExport,
       QueueJobs.PamSessionActivityExport,

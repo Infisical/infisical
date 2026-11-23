@@ -2,7 +2,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { PamProductRole } from "../pam/pam-enums";
 import { LogProvider, StreamMode } from "./audit-log-stream-enums";
@@ -44,6 +44,8 @@ const buildService = (permission: unknown = allowAll) => {
     })),
     updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk })),
     primaryNode: vi.fn(),
+    lockById: vi.fn(async () => ({ id: STREAM_ID, filters: null })),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
     find: vi.fn(async () => [])
   };
 
@@ -183,10 +185,12 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
 
   const buildPamService = ({
     pamRole,
-    storedFilters = null
+    storedFilters = null,
+    lockedFilters = storedFilters
   }: {
     pamRole: "admin" | "member" | "outsider";
     storedFilters?: unknown;
+    lockedFilters?: unknown;
   }) => {
     const auditLogStreamDAL = {
       findById: vi.fn(async () => ({
@@ -199,6 +203,8 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
       })),
       updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk })),
       primaryNode: vi.fn(),
+      lockById: vi.fn(async () => ({ id: STREAM_ID, filters: lockedFilters })),
+      transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
       create: vi.fn(async () => ({ id: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Splunk })),
       find: vi.fn(async () => [])
     };
@@ -248,6 +254,15 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
     await expect(
       service.updateById({ logStreamId: STREAM_ID, provider: LogProvider.Splunk, credentials }, actor)
     ).rejects.toThrow(ForbiddenRequestError);
+    expect(auditLogStreamDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("refuses an edit if session activity was turned on while its credentials were tested", async () => {
+    const { service, auditLogStreamDAL } = buildPamService({ pamRole: "member", lockedFilters: sessionActivity });
+
+    await expect(
+      service.updateById({ logStreamId: STREAM_ID, provider: LogProvider.Splunk, credentials }, actor)
+    ).rejects.toThrow(BadRequestError);
     expect(auditLogStreamDAL.updateById).not.toHaveBeenCalled();
   });
 
