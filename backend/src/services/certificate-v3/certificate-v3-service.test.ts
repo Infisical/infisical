@@ -2773,8 +2773,32 @@ describe("CertificateV3Service", () => {
           expect.objectContaining({
             requestData: expect.objectContaining({
               certificateRequest: expect.objectContaining({ commonName: "renamed.example.com" }),
-              renewal: expect.objectContaining({ attributes: { commonName: "renamed.example.com" } })
-            })
+              renewal: expect.objectContaining({
+                attributes: { commonName: "renamed.example.com" },
+                certificateName: mockOriginalCert.commonName
+              })
+            }),
+            justification: `Certificate renewal request for ${mockOriginalCert.commonName}`
+          })
+        );
+      });
+
+      it("names a held renewal of a certificate with no common name by its first SAN", async () => {
+        setupRenewal({
+          ...mockOriginalCert,
+          source: CertificateSource.Imported,
+          commonName: "",
+          altNames: "a.example.com, b.example.com"
+        });
+
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+        expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            requestData: expect.objectContaining({
+              renewal: expect.objectContaining({ certificateName: "a.example.com" })
+            }),
+            justification: "Certificate renewal request for a.example.com"
           })
         );
       });

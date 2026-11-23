@@ -134,7 +134,10 @@ export const RequestsTab = () => {
           request.requesterEmail?.toLowerCase().includes(search.toLowerCase()) ||
           request.justification?.toLowerCase().includes(search.toLowerCase()) ||
           requestData.profileName?.toLowerCase().includes(search.toLowerCase()) ||
-          requestData.certificateRequest?.commonName?.toLowerCase().includes(search.toLowerCase())
+          requestData.certificateRequest?.commonName
+            ?.toLowerCase()
+            .includes(search.toLowerCase()) ||
+          requestData.renewal?.certificateName?.toLowerCase().includes(search.toLowerCase())
         );
       });
     }
@@ -260,7 +263,11 @@ export const RequestsTab = () => {
                         </div>
                       </TableCell>
                       <TableCell>{requestData.profileName}</TableCell>
-                      <TableCell>{requestData.certificateRequest?.commonName || "-"}</TableCell>
+                      <TableCell>
+                        {requestData.renewal?.certificateName ||
+                          requestData.certificateRequest?.commonName ||
+                          "-"}
+                      </TableCell>
                       <TableCell>
                         {needsApproval ? (
                           <Badge variant="warning">
