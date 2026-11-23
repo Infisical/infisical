@@ -12,6 +12,7 @@ import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/age
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
 import { TAgentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
+import { TAgentVaultHookServiceFactory } from "@app/ee/services/agent-vault-hook/agent-vault-hook-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -409,6 +410,7 @@ declare module "fastify" {
     agentVaultFreeUsageNotice: TAgentVaultFreeUsageNoticeServiceFactory;
     agentVaultSession: TAgentVaultSessionServiceFactory;
     agentVaultSkill: TAgentVaultSkillServiceFactory;
+    agentVaultHook: TAgentVaultHookServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
     agentVaultDelegation: TAgentVaultDelegationServiceFactory;

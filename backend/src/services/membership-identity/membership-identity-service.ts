@@ -15,6 +15,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -62,7 +63,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "incrementSeededWithExpiry">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -251,6 +252,7 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { membership };
   };
@@ -552,6 +554,9 @@ export const membershipIdentityServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    if (scopeData.scope === AccessScope.Project) {
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
+    }
 
     if (needsRevocationBump && externalTx) {
       return {

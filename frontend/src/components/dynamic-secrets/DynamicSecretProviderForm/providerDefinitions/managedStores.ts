@@ -10,6 +10,7 @@ import { couchbaseDynamicSecretProvider } from "./couchbase";
 import { MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS } from "./managedStoresContract";
 import { mongoAtlasDynamicSecretProvider } from "./mongoAtlas";
 import { mongoDbDynamicSecretProvider } from "./mongoDb";
+import { neonDynamicSecretProvider } from "./neon";
 import { redisDynamicSecretProvider } from "./redis";
 
 const definitionsByProvider = {
@@ -18,7 +19,8 @@ const definitionsByProvider = {
   [DynamicSecretProviders.AwsMemoryDb]: awsMemoryDbDynamicSecretProvider,
   [DynamicSecretProviders.MongoAtlas]: mongoAtlasDynamicSecretProvider,
   [DynamicSecretProviders.MongoDB]: mongoDbDynamicSecretProvider,
-  [DynamicSecretProviders.Couchbase]: couchbaseDynamicSecretProvider
+  [DynamicSecretProviders.Couchbase]: couchbaseDynamicSecretProvider,
+  [DynamicSecretProviders.Neon]: neonDynamicSecretProvider
 } satisfies Record<
   (typeof MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS)[number],
   TRegisteredDynamicSecretProviderDefinition

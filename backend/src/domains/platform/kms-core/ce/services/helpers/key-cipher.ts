@@ -9,7 +9,10 @@ import { TExternalKmsHook, TKmsCoreStores, TKmsKeyStore } from "../dependencies"
 export type TAsyncEncryptor = (input: { plainText: Buffer }) => Promise<{ cipherTextBlob: Buffer<ArrayBuffer> }>;
 export type TAsyncDecryptor = (input: { cipherTextBlob: Buffer }) => Promise<Buffer<ArrayBuffer>>;
 
-type TKeyCipherStores = Pick<TKmsCoreStores, "kmsKeyStore" | "kmsKeyVersionStore" | "organizationKeyStore">;
+type TKeyCipherStores = Pick<
+  TKmsCoreStores,
+  "kmsKeyStore" | "kmsKeyVersionStore" | "organizationKeyStore" | "projectKeyStore"
+>;
 
 export const notFoundKey = (kmsId: string) => new EntityNotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
@@ -51,6 +54,7 @@ export class KeyCipher {
     }
     const provider = requireExternalKms(this.externalKms);
     const orgCipher = await this.existingOrgCipher(key.orgId, options);
+    await provider.assertInputsAllowed(ref, orgCipher, this.stores);
     return async ({ plainText }) => ({ cipherTextBlob: await provider.encrypt(ref, orgCipher, plainText) });
   }
 
@@ -79,6 +83,7 @@ export class KeyCipher {
     if (!ref) return key.decryptor(this.rootKey, () => this.listArchived(key, options));
     const provider = requireExternalKms(this.externalKms);
     const orgCipher = await this.existingOrgCipher(key.orgId, options);
+    await provider.assertInputsAllowed(ref, orgCipher, this.stores);
     return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
   }
 

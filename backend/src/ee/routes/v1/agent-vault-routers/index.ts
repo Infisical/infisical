@@ -1,5 +1,6 @@
 import { registerAgentVaultAccessBundleRouter } from "./agent-vault-access-bundle-router";
 import { registerAgentVaultDelegationRouter } from "./agent-vault-delegation-router";
+import { registerAgentVaultHookRouter } from "./agent-vault-hook-router";
 import { registerAgentVaultMembershipRouter } from "./agent-vault-membership-router";
 import { registerAgentVaultOauthRouter } from "./agent-vault-oauth-router";
 import { registerAgentVaultProxyAgentRouter } from "./agent-vault-proxy-agent-router";
@@ -22,6 +23,7 @@ export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
   await server.register(registerAgentVaultServiceRouter, { prefix: "/services" });
   await server.register(registerAgentVaultVariableRouter, { prefix: "/variables" });
   await server.register(registerAgentVaultSkillRouter, { prefix: "/skills" });
+  await server.register(registerAgentVaultHookRouter, { prefix: "/hooks" });
   await server.register(
     async (sessionServer) => {
       await sessionServer.register(registerAgentVaultSessionRouter);

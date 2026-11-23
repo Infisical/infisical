@@ -6,6 +6,7 @@ import {
   ClockAlertIcon,
   ClockIcon,
   FolderIcon,
+  FolderTreeIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -66,12 +67,13 @@ import { analytics, AnalyticsEvent, FolderAccessGrantSheetSource } from "@app/li
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   formatExpirationTime,
-  toIdentityActor,
-  toUserActor
+  grantStateOf,
+  isRootFolderPath
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { RemoveFolderAccessDialog } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/RemoveFolderAccessDialog";
 
 import { EditFolderAccessSheet } from "./EditFolderAccessSheet";
+import { toFolderAccessActor } from "./folder-access-section.utils";
 import { GrantFolderAccessSheet } from "./GrantFolderAccessSheet";
 import { TFolderAccessSectionActor } from "./types";
 
@@ -152,23 +154,16 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const dialogActor = (() => {
     if (!deleteTarget) return null;
-    if (actor.type === "user") {
-      return toUserActor({
-        userId: actor.id,
-        username: actor.username,
-        email: actor.email,
-        firstName: actor.firstName,
-        lastName: actor.lastName,
-        membership: { id: actor.membershipId, isProjectAdmin: false, roles: [] },
-        folderRBACAccess: deleteTarget
-      });
-    }
-    return toIdentityActor({
-      identityId: actor.id,
-      name: actor.name,
-      membership: { id: null, isProjectAdmin: false, roles: [] },
-      folderRBACAccess: deleteTarget
-    });
+    const inheritedAccess = isRootFolderPath(deleteTarget.secretPath)
+      ? null
+      : ((folderAccess ?? []).find(
+          (row) =>
+            row.environment === deleteTarget.environment &&
+            row.isPermissionRecursive &&
+            isRootFolderPath(row.secretPath) &&
+            grantStateOf(row) !== "expired"
+        ) ?? null);
+    return toFolderAccessActor(actor, deleteTarget, inheritedAccess);
   })();
 
   const handleDelete = async () => {
@@ -280,7 +275,24 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                           </div>
                         </TableCell>
                         <TableCell>{environmentNameOf(row.environment)}</TableCell>
-                        <TableCell>{FOLDER_ROLE_TIER_LABELS[row.permission]}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {FOLDER_ROLE_TIER_LABELS[row.permission]}
+                            {row.isPermissionRecursive && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="neutral" iconPosition="left">
+                                    <FolderTreeIcon />
+                                    Recursive
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Applies to {row.secretPath} and all of its subfolders
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {row.isTemporary ? (
                             <Tooltip>

@@ -24,7 +24,9 @@ export const GatewaysV2Schema = z.object({
   heartbeatTTL: z.number().nullable().optional(),
   capabilities: z.unknown().nullable().optional(),
   directAddress: z.string().nullable().optional(),
-  directHeartbeat: z.date().nullable().optional()
+  directHeartbeat: z.date().nullable().optional(),
+  cliVersion: z.string().nullable().optional(),
+  cliVersionReportedAt: z.date().nullable().optional()
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

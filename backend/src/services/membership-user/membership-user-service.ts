@@ -16,6 +16,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -25,6 +26,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 
@@ -101,6 +103,7 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit" | "getSeatPlan" | "assertSeatsForInvites">;
@@ -130,6 +133,7 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
+  keyStore,
   alertChannelRecipientDAL,
   eventEmitter,
   orgInviteQuota
@@ -476,6 +480,7 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -712,6 +717,9 @@ export const membershipUserServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    if (scopeData.scope === AccessScope.Project) {
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
+    }
     return { membership: membershipDoc };
   };
 
