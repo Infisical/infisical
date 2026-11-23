@@ -54,7 +54,7 @@ const googleResponds = ({ sts, iam }: { sts?: unknown; iam?: unknown } = {}) =>
   post.mockImplementation(async (url: string) => {
     if (url === STS_URL) {
       if (sts instanceof Error) throw sts;
-      return { data: sts ?? { access_token: "federated-token", expires_in: 297 } };
+      return { data: sts ?? { access_token: "federated-token", expires_in: 897 } };
     }
     if (iam instanceof Error) throw iam;
     return { data: iam ?? { accessToken: "sa-token", expireTime: SA_TOKEN_EXPIRY } };
@@ -122,7 +122,8 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
 
     expect(signToken).toHaveBeenCalledWith({
       appConnection: { ...CONNECTION, orgId: ORG_ID, projectId: PROJECT_ID },
-      audience: `https://iam.googleapis.com/${PROVIDER}`
+      audience: `https://iam.googleapis.com/${PROVIDER}`,
+      ttlSeconds: 15 * 60
     });
     expect(post).toHaveBeenNthCalledWith(
       1,
@@ -346,15 +347,15 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
     expect(update.mock.calls[0][0]).toEqual({ id: CONNECTION.id, encryptedCredentials: Buffer.from("encrypted") });
   });
 
-  test("reuses a federated token while it has more than three minutes left when there is no service account", async () => {
-    storeCredentials({ minutesLeft: 4 });
+  test("reuses a federated token while it has more than five minutes left when there is no service account", async () => {
+    storeCredentials({ minutesLeft: 10 });
 
     await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("cached-token");
     expect(signToken).not.toHaveBeenCalled();
   });
 
-  test("replaces a federated token with less than three minutes left, so an operation gets at least three", async () => {
-    storeCredentials({ minutesLeft: 2.5 });
+  test("replaces a federated token with less than five minutes left, so an operation gets at least five", async () => {
+    storeCredentials({ minutesLeft: 4 });
 
     await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("federated-token");
     expect(signToken).toHaveBeenCalledTimes(1);

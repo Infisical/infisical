@@ -966,6 +966,10 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   a provider can trust every connection in one project (GCP binds `principalSet://.../attribute.project_id/<id>`).
   Org-level connections send no `project_id`. GCP `workload-identity-federation` is the second consumer; it signs
   a new token for every exchange, because GCP rejects a token by when it was issued.
+- **Tokens last 5 minutes unless the consumer passes `ttlSeconds`** (capped at 1 hour). Raise it only for a
+  provider that gives its access token the signed token's expiry: GCP does, so it asks for 15 minutes, which is
+  how long one operation can run without a service account. Azure exchanges the token once for its own access
+  token, so it keeps the short default, as Microsoft recommends for assertions.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.

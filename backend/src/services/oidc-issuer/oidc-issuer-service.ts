@@ -22,6 +22,7 @@ import {
 import { TSignOidcIssuerTokenDTO } from "./oidc-issuer-types";
 
 const TOKEN_TTL_SECONDS = 5 * 60;
+const MAX_TOKEN_TTL_SECONDS = 60 * 60;
 const KEY_ROTATION_LOCK_TTL_MS = 30_000;
 const KEY_ROTATION_MAX_MS = 2 * 60_000;
 
@@ -168,7 +169,7 @@ export const oidcIssuerServiceFactory = ({
   };
 
   // Takes the connection rather than a subject, so a caller can only ever sign for a real connection
-  const signToken = async ({ appConnection, audience }: TSignOidcIssuerTokenDTO) => {
+  const signToken = async ({ appConnection, audience, ttlSeconds }: TSignOidcIssuerTokenDTO) => {
     const { orgId } = appConnection;
     const issuer = $getIssuerUrl(orgId);
     const { id: kmsId } = await $getSigningKey(orgId);
@@ -189,7 +190,7 @@ export const oidcIssuerServiceFactory = ({
         aud: audience,
         iat,
         nbf: iat,
-        exp: iat + TOKEN_TTL_SECONDS,
+        exp: iat + Math.min(ttlSeconds ?? TOKEN_TTL_SECONDS, MAX_TOKEN_TTL_SECONDS),
         jti: crypto.nativeCrypto.randomUUID(),
         // Lets a provider trust every connection in a project (GCP principalSet on attribute.project_id)
         ...(appConnection.projectId ? { project_id: appConnection.projectId } : {})

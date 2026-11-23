@@ -190,6 +190,9 @@ const getGcpImpersonationAccessToken = async (serviceAccountEmail: string) => {
 
 const GCP_SERVICE_ACCOUNT_TOKEN_LIFETIME_SECONDS = 3600;
 const GCP_TOKEN_REQUEST_TIMEOUT_MS = 30_000;
+// GCP gives a federated token the expiry of the token Infisical signed, so this is also the federated token's
+// lifetime. Without a service account it bounds how long one operation can run; longer runs need a service account.
+const GCP_WORKLOAD_IDENTITY_TOKEN_TTL_SECONDS = 15 * 60;
 
 type TGcpStsTokenResponse = { access_token: string; expires_in: number };
 type TGcpStsErrorResponse = { error?: string; error_description?: string };
@@ -252,7 +255,8 @@ const exchangeGcpWorkloadIdentityToken = async (
   // GCP judges a token by when it was issued, so each exchange gets a freshly signed one
   const subjectToken = await oidcIssuerService.signToken({
     appConnection,
-    audience: getGcpWorkloadIdentityAudience(workloadIdentityProvider)
+    audience: getGcpWorkloadIdentityAudience(workloadIdentityProvider),
+    ttlSeconds: GCP_WORKLOAD_IDENTITY_TOKEN_TTL_SECONDS
   });
 
   let federatedToken: TGcpStsTokenResponse;
@@ -353,11 +357,8 @@ const exchangeGcpWorkloadIdentityToken = async (
   }
 };
 
-// A federated token only lasts as long as the token Infisical signed (5 minutes), so the usual 5 minute
-// margin would never reuse one. Callers fetch one token per operation, so this is also the least time an
-// operation gets without a service account.
-const getWorkloadIdentityTokenRefreshMarginMs = (serviceAccountEmail?: string) =>
-  serviceAccountEmail ? 5 * 60 * 1000 : 3 * 60 * 1000;
+// Callers fetch one token per operation, so this is the least time an operation gets
+const GCP_TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
 const getGcpWorkloadIdentityAccessToken = async (
   connectionId: string,
@@ -378,7 +379,7 @@ const getGcpWorkloadIdentityAccessToken = async (
   if (
     credentials.accessToken &&
     credentials.expiresAt &&
-    credentials.expiresAt > Date.now() + getWorkloadIdentityTokenRefreshMarginMs(credentials.serviceAccountEmail)
+    credentials.expiresAt > Date.now() + GCP_TOKEN_REFRESH_MARGIN_MS
   ) {
     return credentials.accessToken;
   }
