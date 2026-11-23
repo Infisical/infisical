@@ -259,10 +259,7 @@ describe("allowedAmong", () => {
     ],
     ["nothing allowed", [[service({ serviceId: { $in: ids.slice(0, 5) } }, true)]]],
     ["uppercase ids match", [[service({ serviceId: { $in: ids.slice(0, 3).map((id) => id.toUpperCase()) } })]]],
-    [
-      "$eq beside $in allows only ids in both",
-      [[service({ serviceId: { $eq: ids[0], $in: [ids[0], ids[1]] } })]]
-    ],
+    ["$eq beside $in allows only ids in both", [[service({ serviceId: { $eq: ids[0], $in: [ids[0], ids[1]] } })]]],
     [
       "a deny with $eq beside $in takes back only ids in both",
       [[service()], [service({ serviceId: { $eq: ids[2], $in: [ids[3], ids[4]] } }, true)]]
