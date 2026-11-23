@@ -49,7 +49,8 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  CloudflareAccess = "cloudflare-access"
 }
 
 export enum OpenRouterLimitReset {
@@ -645,6 +646,14 @@ export type TDynamicSecretProvider =
         limit?: string | null;
         limitReset?: OpenRouterLimitReset | null;
         includeByokInLimit?: boolean;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.CloudflareAccess;
+      inputs: {
+        apiToken?: string;
+        accountId: string;
+        tags: { key: string; value: string }[];
       };
     }
   | {

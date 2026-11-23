@@ -8,6 +8,7 @@ export const IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS = [
   DynamicSecretProviders.Github,
   DynamicSecretProviders.Tailscale,
   DynamicSecretProviders.OpenRouter,
+  DynamicSecretProviders.CloudflareAccess,
   DynamicSecretProviders.OAuth2,
   DynamicSecretProviders.Ssh,
   DynamicSecretProviders.Ldap

@@ -834,7 +834,8 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  CloudflareAccess = "cloudflare-access"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -848,6 +849,47 @@ export const DynamicSecretIbmApiConnectSchema = z.object({
   appId: z.string().trim().min(1, "Application is required"),
   gatewayId: z.string().nullable().optional(),
   gatewayPoolId: z.string().nullable().optional()
+});
+
+const CLOUDFLARE_ACCOUNT_ID_REGEX = /^[a-f0-9]{32}$/;
+
+export const DynamicSecretCloudflareAccessSchema = z.object({
+  apiToken: z
+    .string()
+    .trim()
+    .min(1, "API token is required")
+    .max(1024)
+    .describe(
+      "Cloudflare API token with the Access: Service Tokens Write permission on the account, used to create and delete the service token issued for each lease."
+    ),
+  accountId: z
+    .string()
+    .trim()
+    .regex(CLOUDFLARE_ACCOUNT_ID_REGEX, "Must be a valid Cloudflare account ID")
+    .describe("ID of the Cloudflare account the service tokens are created in."),
+  tags: z
+    .array(
+      z.object({
+        key: z
+          .string()
+          .trim()
+          .min(1, "Tag key is required")
+          .max(256)
+          .regex(/^[\p{L}\p{N}_.-]+$/u, "Tag keys may only contain letters, digits, underscores, periods, and hyphens"),
+        value: z
+          .string()
+          .trim()
+          .min(1, "Tag value is required")
+          .max(256)
+          .refine((v) => !v.includes(","), "Tag values can't contain commas")
+      })
+    )
+    .min(1, "Add at least one tag, so an Access policy can admit the tokens by tag")
+    .max(5, "Cloudflare allows at most 5 tags per service token")
+    .refine((tags) => new Set(tags.map((tag) => tag.key)).size === tags.length, "Tag keys must be unique")
+    .describe(
+      "Tags set on each service token. A Service Auth policy with the Service Token Tag selector admits every token issued by this dynamic secret, without listing each one."
+    )
 });
 
 export enum OpenRouterLimitReset {
@@ -1327,7 +1369,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.CloudflareAccess), inputs: DynamicSecretCloudflareAccessSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

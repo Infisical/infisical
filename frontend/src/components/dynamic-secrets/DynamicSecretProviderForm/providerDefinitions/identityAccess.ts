@@ -4,6 +4,7 @@ import type { TRegisteredDynamicSecretProviderDefinition } from "../registry";
 import { defineDynamicSecretProviderModule } from "../registry";
 import { awsIamDynamicSecretProvider } from "./awsIam";
 import { azureEntraIdDynamicSecretProvider } from "./azureEntraId";
+import { cloudflareAccessDynamicSecretProvider } from "./cloudflareAccess";
 import { gcpIamDynamicSecretProvider } from "./gcpIam";
 import { githubDynamicSecretProvider } from "./github";
 import { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./identityAccessContract";
@@ -20,6 +21,7 @@ const definitionsByProvider = {
   [DynamicSecretProviders.Github]: githubDynamicSecretProvider,
   [DynamicSecretProviders.Tailscale]: tailscaleDynamicSecretProvider,
   [DynamicSecretProviders.OpenRouter]: openRouterDynamicSecretProvider,
+  [DynamicSecretProviders.CloudflareAccess]: cloudflareAccessDynamicSecretProvider,
   [DynamicSecretProviders.OAuth2]: oauth2DynamicSecretProvider,
   [DynamicSecretProviders.Ssh]: sshDynamicSecretProvider,
   [DynamicSecretProviders.Ldap]: ldapDynamicSecretProvider

@@ -1,0 +1,93 @@
+---
+title: "Cloudflare Access dynamic secrets"
+sidebarTitle: "Cloudflare Access"
+description: "Learn how to issue short-lived Cloudflare Access service tokens on demand."
+---
+
+The Cloudflare Access dynamic secret creates a new [Cloudflare Access service token](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/) each time someone creates a lease, and deletes the token when the lease ends. Use it to give an application, a CI job, or an AI agent its own short-lived token for an application behind Cloudflare Access, instead of sharing one long-lived token.
+
+To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- A Cloudflare [API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with the **Access: Service Tokens Write** permission on the account
+- An [Access application](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/) with a [**Service Auth** policy that uses the **Service Token Tag** selector](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/#authorize-service-tokens-by-tag), so it admits every token the dynamic secret creates
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **Cloudflare Access**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="API Token" type="string" required>
+      Your Cloudflare API token. When you edit the dynamic secret, leave this blank to keep the current token.
+    </ParamField>
+
+    <ParamField path="Account ID" type="string" required>
+      The ID of the Cloudflare account to create service tokens in.
+    </ParamField>
+
+    <ParamField path="Tags" type="string" required>
+      Comma-separated `key=value` tags set on each service token, such as `pool=agents`. Cloudflare allows at most 5 tags, and keys may only contain letters, digits, underscores, periods, and hyphens. Values can't contain commas. Use the same tag in the Service Auth policy of your Access application.
+    </ParamField>
+
+    <ParamField path="Token Name Template" type="string" default="{{randomUsername}}">
+      The name each service token gets in Cloudflare, under **Advanced**. The default gives each token a random name that starts with `infisical-`. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}`.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it checks that the API token can list service tokens in the account. If Cloudflare rejects the token, Infisical shows the error from Cloudflare and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `CLIENT_ID`: the value for the `CF-Access-Client-Id` header
+    - `CLIENT_SECRET`: the value for the `CF-Access-Client-Secret` header
+    - `TOKEN_ID`: the ID Cloudflare uses for the token in its API
+    - `TOKEN_NAME`: the name of the token in Cloudflare
+
+    <Warning>
+      Infisical shows the client secret only once. Copy it before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to delete its service token in Cloudflare before the lease expires. When a lease expires, Infisical deletes its service token automatically.
+
+Infisical also sets the duration of each service token to match the lease. If Infisical can't delete a token, Cloudflare still stops accepting it when the lease ends.
+
+Cloudflare Access leases can't be renewed. To keep access, create a new lease before the current one expires.

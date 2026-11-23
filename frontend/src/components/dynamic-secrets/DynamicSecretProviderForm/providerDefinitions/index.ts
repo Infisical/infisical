@@ -1,5 +1,6 @@
 export { awsIamDynamicSecretProvider } from "./awsIam";
 export { azureEntraIdDynamicSecretProvider } from "./azureEntraId";
+export { cloudflareAccessDynamicSecretProvider } from "./cloudflareAccess";
 export { dataProtocolDynamicSecretProviders } from "./dataProtocol";
 export { gcpIamDynamicSecretProvider } from "./gcpIam";
 export { githubDynamicSecretProvider } from "./github";
