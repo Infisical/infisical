@@ -1,6 +1,6 @@
 import { Impersonated, JWT } from "google-auth-library";
 
-import { getConfig } from "@app/lib/config/env";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 
@@ -24,12 +24,14 @@ export const mintGcpAccessToken = async ({
   authMethod,
   serviceAccountKeyJson,
   orgId,
+  instanceConfigService,
   ttlSeconds = 3600
 }: {
   serviceAccountEmail: string;
   authMethod: string;
   serviceAccountKeyJson?: string;
   orgId: string;
+  instanceConfigService: TInstanceConfigService;
   ttlSeconds?: number;
 }): Promise<string> => {
   let tokenResponse;
@@ -62,13 +64,13 @@ export const mintGcpAccessToken = async ({
         message: `GCP service account '${serviceAccountEmail}' can't be impersonated because its ID doesn't end with "${expectedAccountIdSuffix}", e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com`
       });
     }
-    const appCfg = getConfig();
-    if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
+    if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({
         message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
       });
     }
-    const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+    const sourceClient = buildGcpSourceCredential(INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
     try {
       tokenResponse = await new Impersonated({
         sourceClient,

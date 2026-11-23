@@ -2,14 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import { InstallProvider } from "@slack/oauth";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertChannelDALFactory } from "../alert/alert-channel-dal";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 import { fetchSlackChannels } from "./slack-fns";
@@ -37,7 +37,7 @@ type TSlackServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  kmsRootKeyService: TKmsRootKeyService;
+  instanceConfigService: TInstanceConfigService;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
   alertChannelDAL: Pick<TAlertChannelDALFactory, "countAlertsByWorkflowIntegrationId">;
 };
@@ -48,7 +48,7 @@ export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
   kmsDataKeyService,
-  kmsRootKeyService,
+  instanceConfigService,
   workflowIntegrationDAL,
   alertChannelDAL
 }: TSlackServiceFactoryDep) => {
@@ -141,20 +141,8 @@ export const slackServiceFactory = ({
 
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
-    const serverCfg = await getServerCfg();
-
-    let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
-    let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
-
-    const decrypt = kmsRootKeyService.decryptWithRootKey();
-
-    if (serverCfg.encryptedSlackClientId) {
-      slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
-    }
-
-    if (serverCfg.encryptedSlackClientSecret) {
-      slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
-    }
+    const { clientId: slackClientId, clientSecret: slackClientSecret } =
+      await instanceConfigService.getSlackCredentials();
 
     if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({

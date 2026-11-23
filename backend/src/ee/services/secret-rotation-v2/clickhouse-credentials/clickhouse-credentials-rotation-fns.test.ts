@@ -71,12 +71,13 @@ const makeFactory = (
       secretsMapping: { username: "CLICKHOUSE_DB_USERNAME", password: "CLICKHOUSE_DB_PASSWORD" },
       ...overrides
     } as unknown as TClickHouseCredentialsRotationWithConnection,
-    ...([{}, {}, {}, GATEWAY_POOL_SERVICE, {}] as unknown as [
+    ...([{}, {}, {}, GATEWAY_POOL_SERVICE, {}, {}] as unknown as [
       Parameters<typeof clickhouseCredentialsRotationFactory>[1],
       Parameters<typeof clickhouseCredentialsRotationFactory>[2],
       Parameters<typeof clickhouseCredentialsRotationFactory>[3],
       Parameters<typeof clickhouseCredentialsRotationFactory>[4],
-      Parameters<typeof clickhouseCredentialsRotationFactory>[5]
+      Parameters<typeof clickhouseCredentialsRotationFactory>[5],
+      Parameters<typeof clickhouseCredentialsRotationFactory>[6]
     ])
   );
 
