@@ -365,7 +365,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       const results = await bulkAct({
         projectId,
         action: BulkChangeRequestAction.Merge,
-        requestIds: selectedRequestList.map(({ id }) => id)
+        requestIds: [...selectedRequestList]
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .map(({ id }) => id)
       });
       handleBulkComplete(results);
       const failedCount = results.filter(({ isSuccess }) => !isSuccess).length;

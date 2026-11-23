@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BanIcon,
   CheckIcon,
@@ -124,18 +124,10 @@ const BulkReviewChangeRequestsSheetContent = ({
     )
   );
   const { user } = useUser();
-  const [existingDecisions] = useState(() =>
-    Object.fromEntries(
-      selectedRequests.flatMap((request) => {
-        const decision = getExistingDecision(request, user.id);
-        return decision ? [[request.id, decision] as const] : [];
-      })
-    )
-  );
-  const [decisions, setDecisions] = useState<Record<string, Decision>>(existingDecisions);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(Object.keys(existingDecisions).map((id) => [id, true]))
-  );
+  const [existingDecisions, setExistingDecisions] = useState<Record<string, Decision>>({});
+  const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const hasSeededDecisions = useRef(false);
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
 
@@ -149,6 +141,24 @@ const BulkReviewChangeRequestsSheetContent = ({
   );
   const isLoadingDetails = detailQueries.some(({ isPending }) => isPending);
   const hasAllDetails = detailQueries.every(({ data }) => Boolean(data));
+  const hasFreshDetails = detailQueries.every(({ data, isFetching }) => data && !isFetching);
+
+  useEffect(() => {
+    if (!hasFreshDetails || hasSeededDecisions.current) return;
+    hasSeededDecisions.current = true;
+    const baseline = Object.fromEntries(
+      requests.flatMap((request) => {
+        const decision = getExistingDecision(detailsById[request.id] ?? request, user.id);
+        return decision ? [[request.id, decision] as const] : [];
+      })
+    );
+    setExistingDecisions(baseline);
+    setDecisions((prev) => ({ ...baseline, ...prev }));
+    setCollapsed((prev) => ({
+      ...Object.fromEntries(Object.keys(baseline).map((id) => [id, true])),
+      ...prev
+    }));
+  }, [hasFreshDetails]);
 
   const groups = useMemo(() => {
     const byLocation = new Map<string, TSecretApprovalRequest[]>();
