@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { BREACHED_PASSWORD_ERROR_NAME } from "@app/lib/validator/breached-password";
 import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { authSignupServiceFactory } from "./auth-signup-service";
@@ -41,7 +42,7 @@ const completeEmailSignup = (user: { isAccepted: boolean }) => {
 
 beforeAll(async () => {
   process.env.FIPS_ENABLED = "false";
-  await crypto.initialize({} as never, {} as never, {} as never);
+  await crypto.initialize({} as never);
 });
 
 afterAll(() => {
@@ -57,7 +58,7 @@ test("signup refuses a breached password before completing the account", async (
   const { authDAL, result } = completeEmailSignup({ isAccepted: false });
 
   await expect(result).rejects.toMatchObject({
-    name: "BREACHED_PASSWORD",
+    name: BREACHED_PASSWORD_ERROR_NAME,
     message: "This password has appeared in a known data breach. Choose a different password."
   });
   expect(authDAL.transaction).not.toHaveBeenCalled();

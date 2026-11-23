@@ -26,7 +26,9 @@ const AwsConnectionAssumeRoleCredentialsSchema = z.object({
     .trim()
     .min(1)
     .optional()
-    .describe("AWS assume role external id for further security in authentication")
+    .describe(
+      "External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs."
+    )
 });
 
 const AwsConnectionAccessTokenCredentialsSchema = z.object({
@@ -123,7 +125,7 @@ export type TExternalKmsInputUpdateSchema = z.infer<typeof ExternalKmsInputUpdat
 // generic function shared by all provider
 export type TExternalKmsProviderFns = {
   validateConnection: () => Promise<boolean>;
-  encrypt: (data: Buffer) => Promise<{ encryptedBlob: Buffer }>;
+  encrypt: (data: Buffer) => Promise<{ encryptedBlob: Buffer<ArrayBuffer> }>;
   decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer<ArrayBuffer> }>;
   cleanup: () => Promise<void>;
 };

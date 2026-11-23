@@ -33,7 +33,7 @@ flowchart LR
 A Gateway in [direct listen mode](#network-security) accepts connections itself, so it doesn't use a relay.
 </Note>
 
-[AWS IAM accounts](/documentation/platform/pam/accounts/aws-iam) are the one account type that doesn't use a Gateway. Infisical gives the user temporary credentials for the IAM role, and [AWS CloudTrail records what the user does](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws).
+[AWS IAM accounts](/documentation/platform/pam/accounts/aws-iam) are the one account type that works without a Gateway. Without one, Infisical gives the user temporary credentials for the IAM role, and [AWS CloudTrail records what the user does](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws). If the account has a Gateway, CLI sessions go through the Gateway, as they do for every other account type.
 
 ## How a connection works
 

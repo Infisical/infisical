@@ -15,7 +15,8 @@ import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaul
 import {
   AgentVaultMemberType,
   AgentVaultOauthAuthorizationStatus,
-  AgentVaultVariableScope
+  AgentVaultVariableScope,
+  AgentVaultVariableType
 } from "./enums";
 import {
   createSessionLogChunkCache,
@@ -51,6 +52,8 @@ import {
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
+  TAgentVaultHook,
+  TAgentVaultHookPage,
   TAgentVaultSkillDetail,
   TAgentVaultSkillPage,
   TAgentVaultSkillVersion,
@@ -60,6 +63,7 @@ import {
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
   TListAgentVaultSessionsDTO,
+  TListAgentVaultHooksDTO,
   TListAgentVaultSkillsDTO,
   TListAgentVaultVariablesDTO
 } from "./types";
@@ -160,6 +164,8 @@ export const agentVaultKeys = {
     [...agentVaultKeys.all(orgId, projectId), "services"] as const,
   serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
     [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  allServicesRequiringSetup: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "all-requiring-setup"] as const,
   service: (orgId: string, projectId: string, serviceId: string) =>
     [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
@@ -174,6 +180,12 @@ export const agentVaultKeys = {
     [...agentVaultKeys.skill(orgId, projectId, skillId), "versions"] as const,
   skillVersion: (orgId: string, projectId: string, skillId: string, version: number) =>
     [...agentVaultKeys.skillVersions(orgId, projectId, skillId), version] as const,
+  hooks: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "hooks"] as const,
+  hookList: (orgId: string, projectId: string, params: TListAgentVaultHooksDTO) =>
+    [...agentVaultKeys.hooks(orgId, projectId), "list", params] as const,
+  hook: (orgId: string, projectId: string, hookId: string) =>
+    [...agentVaultKeys.hooks(orgId, projectId), "detail", hookId] as const,
   // Nested under accessBundle() so changes to the bundle refresh its skills too.
   accessBundleSkills: (orgId: string, projectId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(orgId, projectId, accessBundleId), "skills"] as const,
@@ -530,15 +542,21 @@ export const useListAgentVaultSessions = (
     ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, projectId, params),
     queryFn: async () => {
-      const { statuses, ...rest } = params ?? {};
+      const { statuses, metadata, ...rest } = params ?? {};
+      const metadataFilter = Object.entries(metadata ?? {}).map(
+        ([key, value]) => `${key}=${value}`
+      );
       const { data } = await apiRequest.get<TAgentVaultSessionList>(
         "/api/v1/agent-vault/sessions",
         {
           params: {
             ...rest,
             projectId,
-            status: statuses?.length ? statuses.join(",") : undefined
-          }
+            status: statuses?.length ? statuses.join(",") : undefined,
+            metadata: metadataFilter.length ? metadataFilter : undefined
+          },
+          // The API reads a repeated metadata=key=value, not axios's default metadata[]=.
+          paramsSerializer: { indexes: null }
         }
       );
       return data;
@@ -906,8 +924,15 @@ export const useAgentVaultVariableKeyStatus = (
   {
     enabled = true,
     isCached = true,
-    scope = AgentVaultVariableScope.Global
-  }: { enabled?: boolean; isCached?: boolean; scope?: AgentVaultVariableScope } = {}
+    scope = AgentVaultVariableScope.Global,
+    type
+  }: {
+    enabled?: boolean;
+    isCached?: boolean;
+    scope?: AgentVaultVariableScope;
+    /** Only variables of this type count as existing. A key held by another type is neither existing nor missing. */
+    type?: AgentVaultVariableType;
+  } = {}
 ) => {
   const { currentOrg } = useOrganization();
   const possibleKeys = [...new Set(keys.filter(isPossibleVariableKey))].sort();
@@ -915,14 +940,19 @@ export const useAgentVaultVariableKeyStatus = (
   const { data } = useQuery({
     queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, projectId, scope, possibleKeys),
     queryFn: async () => {
-      const found: string[] = [];
+      const found: [string, AgentVaultVariableType][] = [];
       for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables(projectId, {
           scope,
           keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
-        found.push(...page.variables.map((variable) => variable.key));
+        found.push(
+          ...page.variables.map((variable): [string, AgentVaultVariableType] => [
+            variable.key,
+            variable.type
+          ])
+        );
       }
       return { asked: possibleKeys, found };
     },
@@ -936,15 +966,22 @@ export const useAgentVaultVariableKeyStatus = (
   const keySignature = keys.join(",");
   return useMemo(() => {
     const asked = new Set(data?.asked);
-    const found = new Set(data?.found);
+    const typeOf = new Map(data?.found);
     const current = keySignature ? keySignature.split(",") : [];
+    const isOfType = (key: string) => !type || typeOf.get(key) === type;
     return {
-      existing: new Set(current.filter((key) => found.has(key))) as ReadonlySet<string>,
+      existing: new Set(
+        current.filter((key) => typeOf.has(key) && isOfType(key))
+      ) as ReadonlySet<string>,
+      /** Keys a variable of another type holds, which can't be used here or taken by a new one. */
+      ofOtherType: new Set(
+        current.filter((key) => typeOf.has(key) && !isOfType(key))
+      ) as ReadonlySet<string>,
       missing: new Set(
-        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !found.has(key)))
+        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !typeOf.has(key)))
       ) as ReadonlySet<string>
     };
-  }, [data, keySignature]);
+  }, [data, keySignature, type]);
 };
 
 export const useListAgentVaultServices = (
@@ -962,6 +999,44 @@ export const useListAgentVaultServices = (
         totalCount: number;
       }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
       return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+const SERVICES_REQUIRING_SETUP_PAGE_SIZE = 100;
+
+// Every service that still needs the caller's personal values, a page at a time, for a form that can pick any of the
+// project's services rather than only those on the first page.
+export const useListAllAgentVaultServicesRequiringSetup = (
+  projectId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.allServicesRequiringSetup(currentOrg.id, projectId),
+    queryFn: async () => {
+      const services: TAgentVaultProjectService[] = [];
+      let totalCount = Infinity;
+      while (services.length < totalCount) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await apiRequest.get<{
+          services: TAgentVaultProjectService[];
+          totalCount: number;
+        }>("/api/v1/agent-vault/services", {
+          params: {
+            projectId,
+            requiresSetup: true,
+            limit: SERVICES_REQUIRING_SETUP_PAGE_SIZE,
+            offset: services.length
+          }
+        });
+        services.push(...data.services);
+        totalCount = data.services.length ? data.totalCount : services.length;
+      }
+      return services;
     },
     placeholderData: keepPreviousInProject(projectId),
     enabled
@@ -1004,6 +1079,41 @@ export const useListAgentVaultSkills = (
     },
     placeholderData: keepPreviousInProject(projectId),
     enabled
+  });
+};
+
+export const useListAgentVaultHooks = (
+  projectId: string,
+  params: TListAgentVaultHooksDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.hookList(currentOrg.id, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultHookPage>("/api/v1/agent-vault/hooks", {
+        params: { ...params, projectId }
+      });
+      return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+export const useGetAgentVaultHook = (projectId: string, hookId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.hook(currentOrg.id, projectId, hookId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`
+      );
+      return data.hook;
+    },
+    enabled: Boolean(hookId)
   });
 };
 

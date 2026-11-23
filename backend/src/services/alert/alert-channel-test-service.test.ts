@@ -126,10 +126,11 @@ const buildDeps = (overrides?: {
       },
       alertChannelService: {
         validateRecipients: async () => {},
-        assertRecipientTypesAllowed: () => {}
+        assertRecipientTypesAllowed: () => {},
+        assertActorMayUseConfig: async () => {}
       },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: async () => ({
           encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
           decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

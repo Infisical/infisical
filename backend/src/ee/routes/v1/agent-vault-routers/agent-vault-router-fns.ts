@@ -1,14 +1,19 @@
 import { FastifyRequest } from "fastify";
 
+import { TOauthVariableConnected } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
-  AgentVaultServiceType
+  AgentVaultServiceType,
+  AgentVaultVariableType
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { TAgentVaultServiceTypeFields } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
 import { TGenericPermission } from "@app/lib/types";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const actorContext = (req: FastifyRequest): TGenericPermission => ({
   actorId: req.permission.id,
@@ -100,3 +105,51 @@ export const serviceTransformationNamesOf = (service: {
   customHeaderNames: service.customHeaders?.map((header) => header.name) ?? [],
   substitutionPlaceholders: service.substitutions?.map((substitution) => substitution.placeholder) ?? []
 });
+
+// The type of a variable an audit event names, and for an OAuth variable where its sign-in goes. Never a token.
+export const variableAuditFieldsOf = (variable: {
+  type: AgentVaultVariableType;
+  oauth: {
+    issuer: string | null;
+    tokenEndpoint: string | null;
+    scopes: string[];
+    connection: { issuer: string } | null;
+  } | null;
+}) => ({
+  type: variable.type,
+  ...(variable.oauth
+    ? {
+        oauthIssuer: variable.oauth.connection?.issuer ?? variable.oauth.issuer ?? undefined,
+        oauthTokenEndpoint: variable.oauth.tokenEndpoint ?? undefined,
+        oauthScopes: variable.oauth.scopes
+      }
+    : {})
+});
+
+// Every route through which an OAuth variable gets tokens records it the same way: a sign-in completing (the variable
+// routes or the dashboard's callback) and an import.
+export const recordOauthVariableConnected = async (
+  req: FastifyRequest,
+  projectId: string,
+  connected: TOauthVariableConnected
+) => {
+  await req.server.services.auditLog.createAuditLog({
+    ...req.auditLogInfo,
+    orgId: req.permission.orgId,
+    projectId,
+    event: {
+      type: EventType.AGENT_VAULT_OAUTH_VARIABLE_CONNECT,
+      metadata: {
+        variableId: connected.variableId,
+        key: connected.key,
+        method: connected.method,
+        oauthIssuer: connected.issuer,
+        oauthScopes: connected.scopes
+      }
+    }
+  });
+  emitAgentVaultTelemetry(req.server.services.telemetry, req, {
+    event: PostHogEventTypes.AgentVaultOauthVariableConnected,
+    properties: { variableId: connected.variableId, method: connected.method }
+  });
+};

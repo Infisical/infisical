@@ -40,7 +40,7 @@ const setup = async () => {
 
 beforeAll(async () => {
   process.env.FIPS_ENABLED = "false";
-  await crypto.initialize({} as never, {} as never, {} as never);
+  await crypto.initialize({} as never);
 });
 
 afterAll(() => {

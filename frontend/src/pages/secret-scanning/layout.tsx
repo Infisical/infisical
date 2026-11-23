@@ -53,6 +53,7 @@ export const Route = createFileRoute(
       project,
       implicitProjectId: projectId,
       implicitProductType: ProjectType.SecretScanning,
+      productType: ProjectType.SecretScanning,
       breadcrumbs: []
     };
   }

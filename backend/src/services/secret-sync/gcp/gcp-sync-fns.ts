@@ -48,7 +48,7 @@ const getProjectUrl = (secretSync: TGcpSyncWithCredentials) => {
   return `https://secretmanager.${destinationConfig.locationId}.rep.googleapis.com/v1/projects/${destinationConfig.projectId}/locations/${destinationConfig.locationId}`;
 };
 
-const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCredentials) => {
+const listGcpSecretKeys = async (accessToken: string, secretSync: TGcpSyncWithCredentials) => {
   let gcpSecrets: GCPSecret[] = [];
 
   const pageSize = 100;
@@ -81,12 +81,21 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
     pageToken = secretsRes.nextPageToken;
   }
 
+  return gcpSecrets.map((gcpSecret) => {
+    const arr = gcpSecret.name.split("/");
+    return arr[arr.length - 1];
+  });
+};
+
+const filterKeysForSchema = (keys: string[], secretSync: TGcpSyncWithCredentials) =>
+  keys.filter((key) => matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema));
+
+// Values are read only for the keys passed in, so customers can limit secretmanager.versions.access
+// to the secrets the sync manages (an IAM condition on the key schema's prefix).
+const getGcpSecretValues = async (accessToken: string, secretSync: TGcpSyncWithCredentials, keys: string[]) => {
   const res: { [key: string]: string } = {};
 
-  for await (const gcpSecret of gcpSecrets) {
-    const arr = gcpSecret.name.split("/");
-    const key = arr[arr.length - 1];
-
+  for await (const key of keys) {
     try {
       const { data: secretLatest } = await request.get<GCPLatestSecretVersionAccess>(
         `${getProjectUrl(secretSync)}/secrets/${key}/versions/latest:access`,
@@ -129,7 +138,15 @@ export const GcpSyncFns = {
     const { destinationConfig, connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
-    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
+    const gcpSecretKeys = await listGcpSecretKeys(accessToken, secretSync);
+    const existingKeys = new Set(gcpSecretKeys);
+    const managedKeys = filterKeysForSchema(gcpSecretKeys, secretSync);
+
+    const gcpSecrets = await getGcpSecretValues(
+      accessToken,
+      secretSync,
+      managedKeys.filter((key) => key in secretMap && secretMap[key].value)
+    );
 
     for await (const key of Object.keys(secretMap)) {
       try {
@@ -139,7 +156,7 @@ export const GcpSyncFns = {
           continue;
         }
 
-        if (!(key in gcpSecrets)) {
+        if (!existingKeys.has(key)) {
           // case: create secret
           await request.post(
             `${getProjectUrl(secretSync)}/secrets`,
@@ -183,10 +200,7 @@ export const GcpSyncFns = {
       }
     }
 
-    for await (const key of Object.keys(gcpSecrets)) {
-      // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
-
+    for await (const key of managedKeys) {
       try {
         if (!(key in secretMap) || !secretMap[key].value) {
           // eslint-disable-next-line no-continue
@@ -234,7 +248,12 @@ export const GcpSyncFns = {
     const { connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
-    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
+    // the caller drops keys outside the key schema, so reading their values would be wasted
+    const gcpSecrets = await getGcpSecretValues(
+      accessToken,
+      secretSync,
+      filterKeysForSchema(await listGcpSecretKeys(accessToken, secretSync), secretSync)
+    );
     return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
@@ -243,9 +262,9 @@ export const GcpSyncFns = {
     const { connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
-    const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
-    for await (const [key] of Object.entries(gcpSecrets)) {
-      if (key in secretMap) {
+    const gcpSecretKeys = await listGcpSecretKeys(accessToken, secretSync);
+    for await (const key of gcpSecretKeys) {
+      if (Object.hasOwn(secretMap, key)) {
         await request.delete(`${getProjectUrl(secretSync)}/secrets/${key}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,

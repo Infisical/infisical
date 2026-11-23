@@ -146,7 +146,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
         throw new UnauthorizedError({ message: "A proxy token is required" });
       }
-      await server.services.agentVaultUsageService.recordProxyUsage({ orgId: req.permission.orgId, ...req.body });
+      const crossings = await server.services.agentVaultUsageService.recordProxyUsage({
+        orgId: req.permission.orgId,
+        ...req.body
+      });
+      // Not awaited: the proxy's report is recorded either way, and a notice must never slow or fail it.
+      void server.services.agentVaultFreeUsageNotice.notify(crossings);
       return res.status(204).send("");
     }
   });
@@ -241,12 +246,30 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
                 .array(),
               personalValuesMissing: z.boolean(),
+              // The OAuth variable a session's own service used was deleted. Always with personalValuesMissing, which
+              // older proxies refuse on.
+              credentialRemoved: z.boolean().optional(),
+              // The OAuth variable the service sends isn't signed in. Always with personalValuesMissing, like
+              // credentialRemoved.
+              credentialNotConnected: z.boolean().optional(),
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.
               accessBundleId: z.string().uuid().nullable(),
-              // Proxies from before hooks ignore it and send the request without asking.
-              hook: z.object({ url: z.string(), secret: z.string() }).nullable()
+              // Asked before the requests its narrowing picks, or every request without one: each HTTP or MCP request,
+              // or each database or SSH connection. Proxies from before narrowing read only url and secret and ask about
+              // every request of the service, which checks more, never less.
+              hook: z
+                .object({
+                  id: z.string().uuid(),
+                  name: z.string(),
+                  url: z.string(),
+                  secret: z.string(),
+                  methods: z.string().array().optional(),
+                  paths: z.string().array().optional(),
+                  tools: z.string().array().optional()
+                })
+                .nullable()
             })
             .array(),
           sessionLogs: z.object({
@@ -255,6 +278,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
           }),
           session: z.object({
             label: z.string().nullable(),
+            metadata: z.record(z.string(), z.string()),
             actor: z.object({
               type: z.enum([AgentVaultMemberType.User, AgentVaultMemberType.MachineIdentity]),
               id: z.string().uuid(),
