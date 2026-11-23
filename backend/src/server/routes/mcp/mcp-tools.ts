@@ -128,6 +128,17 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
   // Describe only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
 
+  // The services behind list-projects and list-folders check membership but no ability, so the scopes never narrow
+  // them. Without this a write-only connection could list what it was not allowed to see.
+  const assertCanSeeProjectContents = () => {
+    if (!canReadSecretValues && !scopes.includes(OauthScope.SecretsDescribe)) {
+      throw new ForbiddenRequestError({
+        message:
+          "This connection wasn't granted access to see projects and folders. Reconnect and choose Describe only, Read-only or Full access."
+      });
+    }
+  };
+
   // Analytics must never turn a tool call that already succeeded into an error.
   const sendEvent = async (event: TPostHogEvent) => {
     try {
@@ -252,6 +263,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
       annotations: { readOnlyHint: true }
     },
     async () => {
+      assertCanSeeProjectContents();
       const { projects } = await server.services.project.getProjects({
         ...actor,
         includeRoles: false,
@@ -325,6 +337,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
       annotations: { readOnlyHint: true }
     },
     async ({ projectId, environmentSlug, path, recursive }) => {
+      assertCanSeeProjectContents();
       const folders = await server.services.folder.getFolders({
         ...actor,
         projectId,
