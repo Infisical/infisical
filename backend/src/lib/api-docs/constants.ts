@@ -3642,6 +3642,10 @@ export const SecretSyncs = {
     SPACELIFT: {
       writeOnly:
         "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
+    },
+    COOLIFY: {
+      autoRedeploy:
+        "Whether Infisical should automatically redeploy the configured Coolify resource upon secret changes."
     }
   },
   DESTINATION_CONFIG: {

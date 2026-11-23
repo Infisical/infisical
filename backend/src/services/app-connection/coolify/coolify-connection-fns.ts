@@ -22,7 +22,7 @@ import {
 } from "./coolify-connection-types";
 
 type TCoolifyRequest = {
-  method: "GET" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   data?: unknown;
 };

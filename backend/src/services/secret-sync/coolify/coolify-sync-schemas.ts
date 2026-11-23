@@ -44,7 +44,15 @@ const CoolifySyncDestinationConfigSchema = z
 
 const CoolifySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const CoolifySyncSchema = BaseSecretSyncSchema(SecretSync.Coolify, CoolifySyncOptionsConfig)
+const CoolifySyncOptionsSchema = z.object({
+  autoRedeploy: z.boolean().optional().describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.COOLIFY.autoRedeploy)
+});
+
+export const CoolifySyncSchema = BaseSecretSyncSchema(
+  SecretSync.Coolify,
+  CoolifySyncOptionsConfig,
+  CoolifySyncOptionsSchema
+)
   .extend({
     destination: z.literal(SecretSync.Coolify),
     destinationConfig: CoolifySyncDestinationConfigSchema
@@ -53,14 +61,16 @@ export const CoolifySyncSchema = BaseSecretSyncSchema(SecretSync.Coolify, Coolif
 
 export const CreateCoolifySyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Coolify,
-  CoolifySyncOptionsConfig
+  CoolifySyncOptionsConfig,
+  CoolifySyncOptionsSchema
 ).extend({
   destinationConfig: CoolifySyncDestinationConfigSchema
 });
 
 export const UpdateCoolifySyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.Coolify,
-  CoolifySyncOptionsConfig
+  CoolifySyncOptionsConfig,
+  CoolifySyncOptionsSchema
 ).extend({
   destinationConfig: CoolifySyncDestinationConfigSchema.optional()
 });
