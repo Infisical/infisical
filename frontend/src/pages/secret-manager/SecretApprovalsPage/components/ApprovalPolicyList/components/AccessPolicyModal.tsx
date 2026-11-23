@@ -709,6 +709,30 @@ const Form = ({
     />
   );
 
+  const requireJustificationField = (
+    <Controller
+      control={control}
+      name="requireJustification"
+      render={({ field: { value, onChange } }) => (
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>Require Justification</FieldTitle>
+            <FieldDescription>
+              Requesters must add a note explaining why they need access
+            </FieldDescription>
+          </FieldContent>
+          <Toggle
+            id="require-justification"
+            aria-label="Require justification"
+            variant="project"
+            checked={value ?? false}
+            onCheckedChange={onChange}
+          />
+        </Field>
+      )}
+    />
+  );
+
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
@@ -859,29 +883,6 @@ const Form = ({
           )}
         />
         {isAccessPolicyType && (
-          <Controller
-            control={control}
-            name="requireJustification"
-            render={({ field: { value, onChange } }) => (
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>Require Justification</FieldTitle>
-                  <FieldDescription>
-                    Requesters must add a note explaining why they need access
-                  </FieldDescription>
-                </FieldContent>
-                <Toggle
-                  id="require-justification"
-                  aria-label="Require justification"
-                  variant="project"
-                  checked={value ?? false}
-                  onCheckedChange={onChange}
-                />
-              </Field>
-            )}
-          />
-        )}
-        {isAccessPolicyType && (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
             <Controller
               control={control}
@@ -995,7 +996,10 @@ const Form = ({
           </>
         )}
         {isDelegatedMode ? (
-          <DelegatedApprovalFields control={control} watch={watch} setValue={setValue} />
+          <>
+            {requireJustificationField}
+            <DelegatedApprovalFields control={control} watch={watch} setValue={setValue} />
+          </>
         ) : (
           <>
             <div>
@@ -1276,6 +1280,7 @@ const Form = ({
                 )}
               </>
             )}
+            {isAccessPolicyType && requireJustificationField}
           </>
         )}
       </div>
