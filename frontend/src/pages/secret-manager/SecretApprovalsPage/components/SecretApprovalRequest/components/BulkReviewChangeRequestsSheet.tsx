@@ -35,7 +35,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useOrganization } from "@app/context";
+import { useOrganization, useUser } from "@app/context";
 import {
   useBulkActOnSecretApprovalRequests,
   useGetSecretApprovalRequestDetailsList
@@ -49,6 +49,10 @@ import { ApprovalStatus } from "@app/hooks/api/types";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
+import {
+  doesChangeRequestNeedUserReview,
+  isChangeRequestMergeable
+} from "./changeRequestReviewState";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 import { generateCommitText } from "./SecretApprovalRequestChanges";
 
@@ -72,6 +76,18 @@ const getApprovedCount = ({ policy, reviewers }: TSecretApprovalRequest) =>
       (reviewer) => reviewer.userId === userId && reviewer.status === ApprovalStatus.APPROVED
     )
   ).length;
+
+const getExistingDecision = (
+  request: TSecretApprovalRequest,
+  userId: string
+): Decision | undefined => {
+  const ownReview = request.reviewers.find((reviewer) => reviewer.userId === userId);
+  if (ownReview?.status === ApprovalStatus.APPROVED) return "approve";
+  if (ownReview?.status === ApprovalStatus.REJECTED) return "reject";
+  if (!doesChangeRequestNeedUserReview(request, userId) && isChangeRequestMergeable(request))
+    return "approve";
+  return undefined;
+};
 
 const getAuthorName = ({ committerUser, committerIdentity }: TSecretApprovalRequest) =>
   committerUser?.username ?? committerIdentity?.name ?? "Deleted User";
@@ -107,8 +123,19 @@ const BulkReviewChangeRequestsSheetContent = ({
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     )
   );
-  const [decisions, setDecisions] = useState<Record<string, Decision>>({});
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const { user } = useUser();
+  const [existingDecisions] = useState(() =>
+    Object.fromEntries(
+      selectedRequests.flatMap((request) => {
+        const decision = getExistingDecision(request, user.id);
+        return decision ? [[request.id, decision] as const] : [];
+      })
+    )
+  );
+  const [decisions, setDecisions] = useState<Record<string, Decision>>(existingDecisions);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(Object.keys(existingDecisions).map((id) => [id, true]))
+  );
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
 
@@ -168,6 +195,9 @@ const BulkReviewChangeRequestsSheetContent = ({
   const decidedCount = requests.filter(({ id }) => decisions[id]).length;
   const approveCount = requests.filter(({ id }) => decisions[id] === "approve").length;
   const isReadyToSubmit = hasAllDetails && decidedCount === requests.length;
+  const changedCount = requests.filter(
+    ({ id }) => decisions[id] && decisions[id] !== existingDecisions[id]
+  ).length;
 
   const decide = (requestId: string, decision: Decision) => {
     setDecisions((prev) => ({ ...prev, [requestId]: decision }));
@@ -189,10 +219,18 @@ const BulkReviewChangeRequestsSheetContent = ({
     setIsSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
-      const idsFor = (decision: Decision) =>
-        requests.filter(({ id }) => decisions[id] === decision).map(({ id }) => id);
-      const approveIds = idsFor("approve");
-      const rejectIds = idsFor("reject");
+      const idsFor = (decision: Decision, { isUnchanged }: { isUnchanged: boolean }) =>
+        requests
+          .filter(
+            ({ id }) =>
+              decisions[id] === decision && (existingDecisions[id] === decision) === isUnchanged
+          )
+          .map(({ id }) => id);
+      const approveIds = idsFor("approve", { isUnchanged: false });
+      const rejectIds = idsFor("reject", { isUnchanged: false });
+      const unchangedResults = (decision: Decision) =>
+        idsFor(decision, { isUnchanged: true }).map((id) => ({ id, isSuccess: true }));
+      const mergeIds = requests.filter(({ id }) => decisions[id] === "approve").map(({ id }) => id);
 
       [
         { decision: "approved" as const, count: approveIds.length },
@@ -218,28 +256,34 @@ const BulkReviewChangeRequestsSheetContent = ({
       let rejectResults: TBulkChangeRequestResult[];
       let mergeResults: TBulkChangeRequestResult[];
       try {
-        approveResults = approveIds.length
-          ? await bulkAct({
-              projectId,
-              action: BulkChangeRequestAction.Approve,
-              comment: reviewComment,
-              requestIds: approveIds
-            })
-          : [];
-        rejectResults = rejectIds.length
-          ? await bulkAct({
-              projectId,
-              action: BulkChangeRequestAction.Reject,
-              comment: reviewComment,
-              requestIds: rejectIds
-            })
-          : [];
+        approveResults = [
+          ...unchangedResults("approve"),
+          ...(approveIds.length
+            ? await bulkAct({
+                projectId,
+                action: BulkChangeRequestAction.Approve,
+                comment: reviewComment,
+                requestIds: approveIds
+              })
+            : [])
+        ];
+        rejectResults = [
+          ...unchangedResults("reject"),
+          ...(rejectIds.length
+            ? await bulkAct({
+                projectId,
+                action: BulkChangeRequestAction.Reject,
+                comment: reviewComment,
+                requestIds: rejectIds
+              })
+            : [])
+        ];
         mergeResults =
-          shouldMerge && approveIds.length
+          shouldMerge && mergeIds.length
             ? await bulkAct({
                 projectId,
                 action: BulkChangeRequestAction.Merge,
-                requestIds: approveIds
+                requestIds: mergeIds
               })
             : [];
       } catch {
@@ -498,6 +542,14 @@ const BulkReviewChangeRequestsSheetContent = ({
                       </span>
                       {renderConflicts(request.id)}
                       <div className="ml-auto flex items-center gap-2">
+                        {!outcomes &&
+                          !isSubmitting &&
+                          decision &&
+                          decision === existingDecisions[request.id] && (
+                            <span className="text-sm text-muted">
+                              Already {decision === "approve" ? "approved" : "rejected"}
+                            </span>
+                          )}
                         {outcomes || isSubmitting ? (
                           renderOutcome(request.id)
                         ) : (
@@ -673,7 +725,10 @@ const BulkReviewChangeRequestsSheetContent = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-72">
-                    <DropdownMenuItem onClick={() => handleSubmit(false)}>
+                    <DropdownMenuItem
+                      isDisabled={!changedCount}
+                      onClick={() => handleSubmit(false)}
+                    >
                       <div className="flex flex-col">
                         <span className="font-medium">Submit Reviews</span>
                         <span className="text-xs text-accent">
