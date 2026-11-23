@@ -43,9 +43,9 @@ When a certificate request is made through an enrollment method:
 
 ### Renewals
 
-If an approval policy covers the certificate's profile, the policy's **Renewals Requiring Approval** setting decides which [renewals](/documentation/platform/pki/applications/certificate-renewal) wait for approval:
+If an approval policy covers the certificate's profile, the policy's **Renewals Require Approval** setting decides which [renewals](/documentation/platform/pki/applications/certificate-renewal) wait for approval:
 
-- **When the renewal changes the certificate** (the default): a renewal waits if it uses a CSR, if the certificate was imported or discovered, or if it changes any of the certificate's details, such as its subject, SANs, key usages, algorithms, validity, or custom extensions
+- **When the certificate changes** (the default): a renewal waits if it uses a CSR, if the certificate was imported or discovered, or if it changes any of the certificate's details, such as its subject, SANs, key usages, algorithms, validity, or custom extensions
 - **Every renewal**: every renewal waits, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued
 
 The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
@@ -85,7 +85,7 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | **Max. Request TTL** | How long a request can remain pending before expiring |
     | **Policy Type** | **Issuance and Renewal** or **Revocation** (you can't change it after you create the policy) |
     | **Certificate Profiles** | Which profiles require approval |
-    | **Renewals Requiring Approval** | Which [renewals](#renewals) wait for approval: **When the renewal changes the certificate** or **Every renewal** (Issuance and Renewal policies only) |
+    | **Renewals Require Approval** | Which [renewals](#renewals) wait for approval: **When the certificate changes** or **Every renewal** (Issuance and Renewal policies only) |
     | **Bypass approval for machine identities** | Allow automated systems to skip approval (Issuance and Renewal policies only) |
   </Step>
   <Step title="Configure approval steps">
