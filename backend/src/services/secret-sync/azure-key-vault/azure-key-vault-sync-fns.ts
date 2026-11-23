@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -30,6 +31,7 @@ type TAzureKeyVaultSyncFactoryDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 // the effective gateway is resolved up front, so callers thread a connection that only carries a gatewayId
@@ -42,7 +44,8 @@ export const azureKeyVaultSyncFactory = ({
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
     accessToken: string,
@@ -149,7 +152,8 @@ export const azureKeyVaultSyncFactory = ({
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
@@ -298,7 +302,8 @@ export const azureKeyVaultSyncFactory = ({
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
@@ -336,7 +341,8 @@ export const azureKeyVaultSyncFactory = ({
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(

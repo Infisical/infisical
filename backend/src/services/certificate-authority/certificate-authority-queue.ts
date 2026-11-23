@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-await-in-loop */
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -42,6 +43,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -67,6 +69,7 @@ export const certificateAuthorityQueueFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   kmsDataKeyService,
+  instanceConfigService,
   kmsKeyService,
   queueService,
   cronJob,
@@ -93,6 +96,7 @@ export const certificateAuthorityQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     pkiSubscriberDAL,
     pkiSyncDAL,

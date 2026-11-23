@@ -2,6 +2,7 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -26,6 +27,7 @@ import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-
 export type TGitHubAppCredentialResolverDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type TResolvedGitHubAppCredentials = {
@@ -48,7 +50,7 @@ export const resolveGitHubAppCredentials = async (
     orgId: string;
     projectId?: string | null;
   },
-  { gitHubAppDAL, kmsDataKeyService }: TGitHubAppCredentialResolverDeps
+  { gitHubAppDAL, kmsDataKeyService, instanceConfigService }: TGitHubAppCredentialResolverDeps
 ): Promise<TResolvedGitHubAppCredentials> => {
   if (gitHubAppId) {
     const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
@@ -84,7 +86,7 @@ export const resolveGitHubAppCredentials = async (
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
     INF_APP_CONNECTION_GITHUB_APP_HOST
-  } = getConfig();
+  } = await instanceConfigService.getOverridableEnv();
 
   if (
     !INF_APP_CONNECTION_GITHUB_APP_ID ||
@@ -124,9 +126,13 @@ export const resolveGitHubAppCredentials = async (
   };
 };
 
-export const getGitHubConnectionListItem = () => {
-  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
-
+export const getGitHubConnectionListItem = ({
+  INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
+  INF_APP_CONNECTION_GITHUB_APP_SLUG
+}: {
+  INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID?: string;
+  INF_APP_CONNECTION_GITHUB_APP_SLUG?: string;
+}) => {
   return {
     name: "GitHub" as const,
     app: AppConnection.GitHub as const,
@@ -787,7 +793,8 @@ export const validateGitHubConnectionCredentials = async (
     }
   }
 
-  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET } = getConfig();
+  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET } =
+    await deps.instanceConfigService.getOverridableEnv();
 
   let clientId: string | undefined;
   let clientSecret: string | undefined;

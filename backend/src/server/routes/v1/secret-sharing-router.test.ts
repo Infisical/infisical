@@ -1,20 +1,16 @@
 import Fastify, { FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "@app/server/plugins/fastify-zod";
 
 import { registerSecretSharingRouter } from "./secret-sharing-router";
-
-vi.mock("@app/lib/config/env", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
-  getConfig: () => ({ DISABLE_PUBLIC_SECRET_SHARING: false })
-}));
 
 const URL = "/api/v1/shared-secrets";
 const SHARE_ID = "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c";
 const OTHER_SHARE_ID = "m1n2b3v4c5x6z7l8k9j0h1g2f3d4s5a6p7o8i9u0y1t";
 
-const buildServer = async (shareId = SHARE_ID) => {
+const buildServer = async (shareId = SHARE_ID, publicSharingDisabled = false) => {
   const sendPostHogEvents = vi.fn().mockResolvedValue(undefined);
   const share = {
     id: shareId,
@@ -35,7 +31,10 @@ const buildServer = async (shareId = SHARE_ID) => {
       createPublicSharedSecret: vi.fn().mockResolvedValue(share),
       accessSharedSecret: vi.fn().mockResolvedValue({ ...share, secretValue: "value" })
     },
-    telemetry: { sendPostHogEvents }
+    telemetry: { sendPostHogEvents },
+    instanceConfigService: new FakeInstanceConfigService({
+      env: { DISABLE_PUBLIC_SECRET_SHARING: publicSharingDisabled }
+    })
   } as never);
 
   await app.register(registerSecretSharingRouter as never, { prefix: URL });
@@ -65,6 +64,20 @@ describe("secret sharing routes", () => {
     expect(res.statusCode).toBe(200);
     expect(server.sendPostHogEvents).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(server.sendPostHogEvents.mock.calls)).not.toContain(SHARE_ID);
+  });
+
+  test("a public share is refused when public sharing is disabled for the instance", async () => {
+    const server = await buildServer(SHARE_ID, true);
+    app = server.app;
+
+    const res = await app.inject({
+      method: "POST",
+      url: `${URL}/public`,
+      body: { secretValue: "value", expiresIn: "1h" }
+    });
+
+    expect(res.json<{ message: string }>().message).toBe("Public secret sharing is disabled on this instance");
+    expect(server.sendPostHogEvents).not.toHaveBeenCalled();
   });
 
   test("a viewed share's id is not sent to analytics", async () => {

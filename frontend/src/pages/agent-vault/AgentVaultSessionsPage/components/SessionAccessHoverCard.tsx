@@ -15,7 +15,7 @@ import {
   TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 
-import { inlineServiceTarget } from "./sessionAccess";
+import { inlineServiceHookText, inlineServiceTarget } from "./sessionAccess";
 
 const ServiceListFrame = ({
   caption,
@@ -51,16 +51,22 @@ export const InlineServicesList = ({
   <ServiceListFrame caption="Sent with the session when it was created." label="Inline services">
     {services.map((service) => {
       const target = inlineServiceTarget(service);
+      const hookText = inlineServiceHookText(service);
       return (
-        <div key={service.id} className="flex min-w-0 items-center gap-2">
-          <ServiceIcon
-            hostPattern={hostPatternOf(service)}
-            serviceType={service.type}
-            className="size-5"
-          />
-          <span className="truncate">{service.name}</span>
-          {/* A service sent without a name goes by its host, which would only repeat here. */}
-          {target !== service.name && <span className="truncate text-xs text-muted">{target}</span>}
+        <div key={service.id} className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 items-center gap-2">
+            <ServiceIcon
+              hostPattern={hostPatternOf(service)}
+              serviceType={service.type}
+              className="size-5"
+            />
+            <span className="truncate">{service.name}</span>
+            {/* A service sent without a name goes by its host, which would only repeat here. */}
+            {target !== service.name && (
+              <span className="truncate text-xs text-muted">{target}</span>
+            )}
+          </div>
+          {hookText && <span className="truncate pl-7 text-xs text-muted">{hookText}</span>}
         </div>
       );
     })}

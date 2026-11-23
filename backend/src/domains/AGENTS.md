@@ -15,6 +15,7 @@ src/domains/
 ├── platform/                   # domains other products depend on
 │   ├── license/
 │   ├── kms-core/
+│   ├── instance-config-core/
 │   └── organizations-projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
@@ -25,7 +26,8 @@ src/domains/
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md).
+[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
+[instance-config-core](platform/instance-config-core/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
@@ -114,8 +116,8 @@ rule about it shows up.
 - If a module needs to read something before it can answer (the instance license), give it a private
   constructor and `static async create(deps)` (`LicenseModule.create`). Never a holder that throws until
   something fills it later.
-- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `routes/index.ts` calls
-  once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
+- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `main()` (`server/app.ts`)
+  calls once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
   gets its own method returning a handle that `routes/index.ts` stops on shutdown (`LicenseModule.startBackgroundSync`).
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.

@@ -10,7 +10,7 @@ product built on it.
 | `ce/models/`      | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KeyMaterial`, `RootKey`, `RootKeyConfig`, `RootKeyRing`, `KekHistoryEntry`, `OrganizationKey`, `ProjectKey`, `DataKey`, `EncryptedDataKey`, and the frozen formats (`KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey`) |
 | `ce/data-access/` | One store per entity, `kms-core-locks.ts` (the frozen lock ids), `kms-core-stores.ts` (`buildKmsCoreStoreAccess`), `project-data-key-cache.ts` (Redis)                                                                                                                                                           |
 | `ce/services/`    | `root-key/` (`KmsRootKeyService`, `RootKeyLoader`, `RootKeyWrappings`: the software or HSM wrapping per strategy), `kms-key/` (`KmsKeyService`), `data-key/` (`KmsDataKeyService`), `helpers/key-cipher.ts` (`KeyCipher`: internal or external key dispatch, one per store binding), `dependencies.ts` (store, cache and enterprise port types) |
-| `ee/`             | `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-key-cipher/` (`ExternalKeyCipherService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`; `services/external-kms/` (`ExternalKmsService`, key management) built by `ExternalKmsEeModule` |
+| `ee/`             | `models/` (`AwsProviderInputs`, `ExternalKmsProviderInputsVersion`), `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-key-cipher/` (`ExternalKeyCipherService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`; `services/external-kms/` (`ExternalKmsService`, key management) built by `ExternalKmsEeModule` |
 
 `KmsCoreModule.create` loads the root key (from the env key or the HSM, bootstrapping it on a new instance) before any
 service exists and passes the same `RootKey` to each, so a service never runs without it. The module exposes
@@ -83,14 +83,25 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
   using an existing external key is never gated.
 - **External KMS lives in `ee/`** but its rows are part of the `KmsKey` entity, owned by `KmsKeyStore`. It is two
   pieces built at different times, and nothing else in CE knows about external key management:
-  - `ExternalKeyCipherService` (the `TExternalKmsHook`: encrypt, decrypt) is built with `KmsCoreEeModule` *before*
-    KMS Core, which calls it whenever a data key sits behind AWS or GCP. It cannot hold KMS Core, so CE hands it the
-    org data-key cipher on every call.
+  - `ExternalKeyCipherService` (the `TExternalKmsHook`: assertInputsAllowed, encrypt, decrypt) is built with
+    `KmsCoreEeModule` *before* KMS Core, which calls it whenever a data key sits behind AWS or GCP. It cannot hold KMS
+    Core, so CE hands it the org data-key cipher on every call. `KeyCipher` awaits `assertInputsAllowed` before it
+    returns an encryptor or decryptor, never inside one: it reads the database, and a closure built on a caller's
+    transaction may run after that commits.
   - `ExternalKmsService` (`TExternalKmsService`: create, update, delete, read, list, GCP key listing) is built by
     `ExternalKmsEeModule` in `domains.ts` *after* KMS Core, from `kmsDataKeyService`. KMS Core never calls it; the
     type lives in CE only so legacy code can import it from `ce/module`.
   CE never imports `@app/ee/**` (lint). Without the hook, external keys and an HSM root config fail with a readable
   error.
+- **An AWS assume-role external ID is the organization ID** (`AwsProviderInputs` in `ee/models/`), or a role could be
+  pointed at another organization's trust policy. `external_kms.providerInputsVersion` records the rules a row was
+  saved under: `2` binds the ID to the org, `1` (the column default, so old pods stay legacy during a deploy) sends the
+  stored ID unless it names another organization or one of its projects. Every new key is written as `2`, and a
+  credential change moves a legacy row to `2`. Decide these through the model, never by comparing the version in a
+  service; `assertAwsInputsAllowed` (`ee/services/helpers/`) only runs the lookups the model asks for.
+  `ExternalKmsService.update` checks inputs outside the transaction, before AssumeRole, and again inside `run` on the
+  transaction's stores, because the project the ID names may be created meanwhile. `KmsKey.replaceProviderInputs`
+  takes the key as read and refuses with `StateConflictError` if the stored inputs or version changed since.
 - **Migrations and scripts** use `startStandaloneKmsCore` from `domains.ts`: every query runs on the connection it is
   given (a migration's own transaction, so KMS Core's transactions nest as savepoints), only the root key is loaded,
   and there is no cache. It returns the module; take the services from it.
@@ -104,6 +115,9 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
 - `kms_keys.orgId` and `kms_keys.projectId` cascade from `organizations` and `projects`: deleting an org or a CMEK
   project removes its keys without telling KMS Core.
 - `countProjectKeysInOrg` joins `projects` to count a product's keys for org stats.
+- `OrganizationKeyStore.isOrganization` and `ProjectKeyStore.findOrgIdIncludingPendingDeletion` read `organizations`
+  and `projects` for the external ID check. The hook gets the call's own stores as `TInfisicalIdLookup`, so a joined
+  call reads its caller's transaction.
 
 ## Tests
 

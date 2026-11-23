@@ -120,7 +120,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "getGroupById",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
+        id: z.string().trim().uuid().describe(GROUPS.GET_BY_ID.id)
       }),
       response: {
         200: GroupWithRoleSchema.extend({
@@ -181,7 +181,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "updateGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.UPDATE.id)
+        id: z.string().trim().uuid().describe(GROUPS.UPDATE.id)
       }),
       body: z
         .object({
@@ -246,7 +246,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.DELETE.id)
+        id: z.string().trim().uuid().describe(GROUPS.DELETE.id)
       }),
       response: {
         200: GroupsSchema
@@ -314,7 +314,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "listGroupUsers",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.LIST_USERS.id)
+        id: z.string().trim().uuid().describe(GROUPS.LIST_USERS.id)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_USERS.offset),
@@ -374,7 +374,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "listGroupMachineIdentities",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.LIST_MACHINE_IDENTITIES.id)
+        id: z.string().trim().uuid().describe(GROUPS.LIST_MACHINE_IDENTITIES.id)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MACHINE_IDENTITIES.offset),
@@ -428,7 +428,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "listGroupMembers",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.LIST_MEMBERS.id)
+        id: z.string().trim().uuid().describe(GROUPS.LIST_MEMBERS.id)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MEMBERS.offset),
@@ -519,7 +519,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "listGroupProjects",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.LIST_PROJECTS.id)
+        id: z.string().trim().uuid().describe(GROUPS.LIST_PROJECTS.id)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_PROJECTS.offset),
@@ -585,7 +585,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "addUserToGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.ADD_USER.id),
+        id: z.string().trim().uuid().describe(GROUPS.ADD_USER.id),
         username: z.string().trim().describe(GROUPS.ADD_USER.username)
       }),
       response: {
@@ -647,8 +647,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "addMachineIdentityToGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.ADD_MACHINE_IDENTITY.id),
-        machineIdentityId: z.string().trim().describe(GROUPS.ADD_MACHINE_IDENTITY.machineIdentityId)
+        id: z.string().trim().uuid().describe(GROUPS.ADD_MACHINE_IDENTITY.id),
+        machineIdentityId: z.string().trim().uuid().describe(GROUPS.ADD_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
         200: z.object({
@@ -704,7 +704,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "removeUserFromGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.DELETE_USER.id),
+        id: z.string().trim().uuid().describe(GROUPS.DELETE_USER.id),
         username: z.string().trim().describe(GROUPS.DELETE_USER.username)
       }),
       response: {
@@ -769,8 +769,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "removeMachineIdentityFromGroup",
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.DELETE_MACHINE_IDENTITY.id),
-        machineIdentityId: z.string().trim().describe(GROUPS.DELETE_MACHINE_IDENTITY.machineIdentityId)
+        id: z.string().trim().uuid().describe(GROUPS.DELETE_MACHINE_IDENTITY.id),
+        machineIdentityId: z.string().trim().uuid().describe(GROUPS.DELETE_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
         200: z.object({

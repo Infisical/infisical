@@ -1,6 +1,7 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
 import { ProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -15,12 +16,14 @@ export const createAcmClient = async ({
   appConnectionId,
   region,
   appConnectionDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -30,6 +33,7 @@ export const createAcmClient = async ({
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
   const awsConfig = await getAwsConnectionConfig(
     { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
     region
   );
 
