@@ -8,6 +8,7 @@ const ROUTE_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
 const ROUTE_DEVICE_POLICY = "camera=(self)";
 const API_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 const DOCUMENT_POLICY = "frame-ancestors 'self'; base-uri 'self'; object-src 'none'";
+const SVG_POLICY = `${API_POLICY}; style-src 'unsafe-inline'; sandbox`;
 const DEVICE_POLICY =
   "accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), " +
   "magnetometer=(), microphone=(), midi=(), serial=(), usb=(), xr-spatial-tracking=()";
@@ -19,6 +20,7 @@ beforeAll(async () => {
   await app.register(responsePolicyHeaders);
   app.get("/json", async () => ({ ok: true }));
   app.get("/page", async (_req, res) => res.type("text/html").send("<!doctype html>"));
+  app.get("/logo.svg", async (_req, res) => res.type("image/svg+xml").send("<svg/>"));
   app.get("/own-policy", async (_req, res) =>
     res.header("Content-Security-Policy", ROUTE_POLICY).header("Permissions-Policy", ROUTE_DEVICE_POLICY).send("ok")
   );
@@ -35,6 +37,11 @@ describe("responsePolicyHeaders", () => {
   test("sends only frame-ancestors, base-uri and object-src on HTML responses", async () => {
     const res = await app.inject({ url: "/page" });
     expect(res.headers["content-security-policy"]).toBe(DOCUMENT_POLICY);
+  });
+
+  test("lets SVG images use inline styles and sandboxes them", async () => {
+    const res = await app.inject({ url: "/logo.svg" });
+    expect(res.headers["content-security-policy"]).toBe(SVG_POLICY);
   });
 
   test("keeps the policies a route set itself", async () => {

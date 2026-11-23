@@ -1,11 +1,11 @@
 import fp from "fastify-plugin";
 
-const API_CONTENT_SECURITY_POLICY = [
-  "default-src 'none'",
-  "frame-ancestors 'none'",
-  "base-uri 'none'",
-  "form-action 'none'"
-].join("; ");
+const API_DIRECTIVES = ["default-src 'none'", "frame-ancestors 'none'", "base-uri 'none'", "form-action 'none'"];
+const API_CONTENT_SECURITY_POLICY = API_DIRECTIVES.join("; ");
+
+// Opened directly, an SVG is a document: its <style> blocks and style attributes need inline styles to render.
+// sandbox keeps it from running scripts, submitting forms or navigating.
+const SVG_CONTENT_SECURITY_POLICY = [...API_DIRECTIVES, "style-src 'unsafe-inline'", "sandbox"].join("; ");
 
 // The SPA keeps its allowlist in a meta tag; it is too large to send as a header.
 // frame-ancestors overrides X-Frame-Options, so keep it in line with helmet's frameguard.
@@ -27,17 +27,18 @@ const PERMISSIONS_POLICY = [
   "xr-spatial-tracking=()"
 ].join(", ");
 
+const contentSecurityPolicyFor = (contentType: string) => {
+  if (contentType.includes("text/html")) return DOCUMENT_CONTENT_SECURITY_POLICY;
+  if (contentType.includes("image/svg+xml")) return SVG_CONTENT_SECURITY_POLICY;
+  return API_CONTENT_SECURITY_POLICY;
+};
+
 export const responsePolicyHeaders = fp(async (fastify) => {
   fastify.addHook("onSend", async (_req, res, payload) => {
     if (res.statusCode === 304) return payload;
     if (!res.hasHeader("Content-Security-Policy")) {
-      const isHtml = String(res.getHeader("content-type") ?? "")
-        .toLowerCase()
-        .includes("text/html");
-      void res.header(
-        "Content-Security-Policy",
-        isHtml ? DOCUMENT_CONTENT_SECURITY_POLICY : API_CONTENT_SECURITY_POLICY
-      );
+      const contentType = String(res.getHeader("content-type") ?? "").toLowerCase();
+      void res.header("Content-Security-Policy", contentSecurityPolicyFor(contentType));
     }
     if (!res.hasHeader("Permissions-Policy")) {
       void res.header("Permissions-Policy", PERMISSIONS_POLICY);
