@@ -34,6 +34,7 @@ export const useCreateAccessApprovalPolicy = () => {
       approvalsRequired,
       maxTimePeriod,
       requestExpirationTime,
+      requireJustification,
       delegatedApproval
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
@@ -49,6 +50,7 @@ export const useCreateAccessApprovalPolicy = () => {
         approvalsRequired,
         maxTimePeriod,
         requestExpirationTime,
+        requireJustification,
         delegatedApproval
       });
       return data;
@@ -85,6 +87,7 @@ export const useUpdateAccessApprovalPolicy = () => {
       environments,
       maxTimePeriod,
       requestExpirationTime,
+      requireJustification,
       delegatedApproval
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
@@ -99,6 +102,7 @@ export const useUpdateAccessApprovalPolicy = () => {
         environments,
         maxTimePeriod,
         requestExpirationTime,
+        requireJustification,
         delegatedApproval
       });
       return data;

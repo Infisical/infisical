@@ -72,6 +72,7 @@ const requestExpirationTimeSchema = z
   });
 
 const accessApprovalPolicyPubSchema = sapPubSchema.extend({
+  requireJustification: z.boolean().optional(),
   delegatedApproval: DelegatedApprovalSchema.nullable().optional()
 });
 
@@ -145,6 +146,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .describe("Defaults to true, or to false when delegatedApproval is set."),
           maxTimePeriod: maxTimePeriodSchema,
           requestExpirationTime: requestExpirationTimeSchema,
+          requireJustification: z
+            .boolean()
+            .optional()
+            .describe(
+              "Refuse access requests that do not include a note explaining why access is needed. Defaults to false."
+            ),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Hand requests made against this policy to a delegated approval system."
           )
@@ -348,6 +355,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
         requestExpirationTime: requestExpirationTimeSchema,
+        requireJustification: z
+          .boolean()
+          .optional()
+          .describe(
+            "Refuse access requests that do not include a note explaining why access is needed. Leave out to keep the current setting."
+          ),
         delegatedApproval: DelegatedApprovalSchema.nullable()
           .optional()
           .describe(

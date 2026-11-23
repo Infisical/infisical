@@ -7,7 +7,8 @@ export const SecretAccessPolicyConditionsSchema = z.object({});
 export const SecretAccessPolicyConstraintsSchema = z.object({
   allowedSelfApprovals: z.boolean(),
   requestExpirationTime: z.string().nullable(),
-  maxTimePeriod: z.string().nullable().default(null)
+  maxTimePeriod: z.string().nullable().default(null),
+  requireJustification: z.boolean().default(false)
 });
 
 export const SecretAccessPolicyRequestDataSchema = z.object({

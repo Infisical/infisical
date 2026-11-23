@@ -454,6 +454,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     approvalsRequired,
     maxTimePeriod,
     requestExpirationTime,
+    requireJustification,
     delegatedApproval,
     orgActor
   }: TCreateAccessApprovalPolicy) => {
@@ -527,7 +528,8 @@ export const secretAccessApprovalPolicyServiceFactory = ({
             constraints: {
               allowedSelfApprovals,
               requestExpirationTime: requestExpirationTime ?? null,
-              maxTimePeriod: maxTimePeriod ?? null
+              maxTimePeriod: maxTimePeriod ?? null,
+              requireJustification: requireJustification ?? false
             }
           }
         },
@@ -562,6 +564,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       bypassForMachineIdentities: false,
       maxTimePeriod: maxTimePeriod ?? null,
       requestExpirationTime: requestExpirationTime ?? null,
+      requireJustification: requireJustification ?? false,
       environment: envs[0],
       environments: envs,
       projectId: project.id,
@@ -586,6 +589,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime,
+    requireJustification,
     delegatedApproval,
     orgActor
   }: TUpdateAccessApprovalPolicy) => {
@@ -683,7 +687,8 @@ export const secretAccessApprovalPolicyServiceFactory = ({
               allowedSelfApprovals,
               requestExpirationTime:
                 requestExpirationTime === undefined ? current.requestExpirationTime : requestExpirationTime,
-              maxTimePeriod: maxTimePeriod === undefined ? current.maxTimePeriod : maxTimePeriod
+              maxTimePeriod: maxTimePeriod === undefined ? current.maxTimePeriod : maxTimePeriod,
+              requireJustification: requireJustification ?? current.requireJustification
             }
           }
         },

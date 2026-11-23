@@ -483,6 +483,7 @@ export const composeSecretAccessRequestRows = ({
             deletedAt: null,
             maxTimePeriod: policy.maxTimePeriod,
             requestExpirationTime: policy.requestExpirationTime,
+            requireJustification: policy.requireJustification,
             approvers,
             bypassers,
             delegatedApproval: policy.delegatedApproval ? { type: policy.delegatedApproval.type } : null
@@ -560,6 +561,7 @@ export const toSecretAccessRequestListItem = (
       deletedAt: row.request.updatedAt,
       maxTimePeriod: null,
       requestExpirationTime: null,
+      requireJustification: false,
       approvers: [],
       bypassers: [],
       delegatedApproval: null

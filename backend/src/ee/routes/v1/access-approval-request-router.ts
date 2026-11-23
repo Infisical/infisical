@@ -195,6 +195,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               allowedSelfApprovals: z.boolean(),
               maxTimePeriod: z.string().nullable().optional(),
               requestExpirationTime: z.string().nullable().optional(),
+              requireJustification: z.boolean().optional(),
               delegatedApproval: DelegatedApprovalSchema.pick({ type: true }).nullable().optional()
             }),
             delegatedApproval: DelegatedApprovalRequestSchema.nullable().optional(),
