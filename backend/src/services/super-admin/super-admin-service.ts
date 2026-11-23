@@ -571,7 +571,7 @@ export const superAdminServiceFactory = ({
     const serverAdmin = await userDAL.findById(actor.id);
     const instancePlan = licenseService.getInstanceEntitlements().plan();
 
-    const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
+    const isEmailInvalid = isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
       throw new BadRequestError({
         message: "Disposable emails are not allowed",
