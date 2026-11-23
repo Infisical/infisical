@@ -103,7 +103,11 @@ describe("getGcpConnectionFederatedCredential", () => {
 
 describe("validateGcpConnectionCredentials with workload identity federation", () => {
   test("creates the connection without contacting GCP, which cannot trust a connection that does not exist yet", async () => {
-    const credentials = await validateGcpConnectionCredentials(wifConfig({ connection: undefined }), oidcIssuerService, instanceConfigService);
+    const credentials = await validateGcpConnectionCredentials(
+      wifConfig({ connection: undefined }),
+      oidcIssuerService,
+      instanceConfigService
+    );
 
     expect(credentials).toEqual({ workloadIdentityProvider: PROVIDER, serviceAccountEmail: SERVICE_ACCOUNT });
     expect(signToken).not.toHaveBeenCalled();
@@ -113,9 +117,9 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
   test("refuses when SITE_URL is not an https URL GCP can fetch the keys from", async () => {
     config.SITE_URL = "http://localhost:8080";
 
-    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)).rejects.toThrow(
-      /requires SITE_URL to be this instance's public https URL/
-    );
+    await expect(
+      validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)
+    ).rejects.toThrow(/requires SITE_URL to be this instance's public https URL/);
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -170,7 +174,9 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
       })
     });
 
-    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch((e: unknown) => e);
+    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch(
+      (e: unknown) => e
+    );
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect((error as BadRequestError).message).toBe(
@@ -183,7 +189,9 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
       iam: googleError(403, { error: { message: "Permission 'iam.serviceAccounts.getAccessToken' denied" } })
     });
 
-    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)).rejects.toThrow(
+    await expect(
+      validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)
+    ).rejects.toThrow(
       `GCP denied the connection access to service account '${SERVICE_ACCOUNT}'. Grant the Workload Identity User role (roles/iam.workloadIdentityUser) on the service account to the connection's principal, subject 'app-connection:${CONNECTION.id}'.`
     );
   });
@@ -209,7 +217,9 @@ describe("validateGcpConnectionCredentials when GCP fails rather than refuses", 
   test("reports a timeout as a gateway timeout", async () => {
     googleResponds({ sts: new AxiosError("timeout of 30000ms exceeded", AxiosError.ECONNABORTED) });
 
-    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch((e: unknown) => e);
+    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch(
+      (e: unknown) => e
+    );
 
     expect(error).toBeInstanceOf(GatewayTimeoutError);
     expect((error as Error).message).toBe(
