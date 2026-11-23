@@ -17,6 +17,7 @@ import {
   formatRulesJson,
   getActionState,
   getBuiltInAgentVaultPolicy,
+  AGENT_VAULT_MAX_IDS_PER_CONDITION,
   getDefaultItemLevel,
   getItemLevel,
   getPolicyWarning,
@@ -1641,5 +1642,33 @@ describe("subjects the API can't save a deny on", () => {
     ).toEqual([
       'Denies "role", which Infisical can\'t save as a deny, so it would allow it instead. Remove the rule, or leave the action out of an allow.'
     ]);
+  });
+});
+
+describe("a group of more ids than one condition can name", () => {
+  const ids = Array.from(
+    { length: 1200 },
+    (_, n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
+  );
+  const useEach = (count: number): TProjectPermission[] => [
+    { subject: SERVICES, action: ["use"], conditions: { serviceId: { $in: ids.slice(0, 600) } } },
+    {
+      subject: SERVICES,
+      action: ["use"],
+      conditions: { serviceId: { $in: ids.slice(600, count) } }
+    }
+  ];
+  const named = (rules: TProjectPermission[]) =>
+    rules
+      .filter((rule) => rule.subject === SERVICES && rule.conditions)
+      .map((rule) => (rule.conditions as { serviceId: { $in: string[] } }).serviceId.$in);
+
+  it("is written as several rules of at most the API's limit, on save and on Duplicate", () => {
+    const { policy } = rulesToPolicy(useEach(1200));
+    for (const rules of [policyToRules(policy), rulesForCopy(useEach(1200))]) {
+      const lists = named(rules);
+      expect(lists.map((list) => list.length)).toEqual([AGENT_VAULT_MAX_IDS_PER_CONDITION, 200]);
+      expect(lists.flat().sort()).toEqual([...ids].sort());
+    }
   });
 });

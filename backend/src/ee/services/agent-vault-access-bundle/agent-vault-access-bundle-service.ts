@@ -1416,6 +1416,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return permission;
   };
 
+  // For a write by id: no subject-wide check, since a caller with no rule on services would get a 403 for an id that
+  // exists and a 404 for one that doesn't. requireOnFoundService decides once the service is found.
+  const servicePermissionOf = async (dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] }) =>
+    (await getAgentVaultPermission({ permissionService }, dto)).permission;
+
   const requireOnService = (
     permission: TAgentVaultPermission["permission"],
     action: ProjectPermissionAgentVaultServiceActions,
@@ -1830,7 +1835,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     hook,
     ...rest
   }: TUpdateServiceDTO) => {
-    const permission = await requireServiceWrite(rest, ProjectPermissionAgentVaultServiceActions.Edit);
+    const permission = await servicePermissionOf(rest);
     assertOauthConnectedByUser(rest.ctx, credential);
 
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId });
@@ -2685,18 +2690,30 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   }: TListMcpToolsDTO) => {
     // Loading tools for a saved service uses its stored credential, so it takes edit on that service; for one not saved
     // yet, create.
-    const permission = await requireServiceWrite(
-      rest,
-      serviceId ? ProjectPermissionAgentVaultServiceActions.Edit : ProjectPermissionAgentVaultServiceActions.Create
-    );
-    if (serviceId) requireOnService(permission, ProjectPermissionAgentVaultServiceActions.Edit, serviceId);
+    const permission = serviceId
+      ? await servicePermissionOf(rest)
+      : await requireServiceWrite(rest, ProjectPermissionAgentVaultServiceActions.Create);
     assertOauthConnectedByUser(rest.ctx, credential);
     if (credential) assertCredentialTypeSupported(getAgentVaultServiceType(AgentVaultServiceType.Mcp), credential.type);
 
-    const service = serviceId
-      ? await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId })
-      : undefined;
+    // The service and its saved headers come from one locked read on the primary: a save that moves the service and
+    // replaces its values holds the same row lock, so the destination checked below always matches the values sent.
+    const { service, storedCustomHeaders } = serviceId
+      ? await agentVaultServiceDAL.transaction(async (tx) => {
+          const row = await agentVaultServiceDAL.lockByIdInProject({ id: serviceId, projectId: rest.projectId }, tx);
+          return {
+            service: row,
+            storedCustomHeaders: row ? await agentVaultServiceCustomHeaderDAL.findByServiceIds([row.id], tx) : []
+          };
+        })
+      : { service: undefined, storedCustomHeaders: [] };
     if (serviceId && !service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+    if (service) {
+      await requireOnFoundService(rest, permission, ProjectPermissionAgentVaultServiceActions.Edit, {
+        serviceId: service.id,
+        requestedId: serviceId!
+      });
+    }
     if (service && service.type !== AgentVaultServiceType.Mcp) {
       throw new BadRequestError({ message: `The service '${service.name}' isn't an MCP service, so it has no tools.` });
     }
@@ -2873,7 +2890,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: "Add the service's credential, then load the tools." });
     }
 
-    const storedCustomHeaders = service ? await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id]) : [];
     // Matched the way a save matches them, so the tools load with exactly the headers that save would store.
     const matchedHeaders = customHeaders
       ? matchTransformationRows({
@@ -2956,7 +2972,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // Deleting a service takes its links, its members' values and its child rows with it, through the cascade.
   const deleteService = async ({ serviceId, ...rest }: TDeleteServiceDTO) => {
-    const permission = await requireServiceWrite(rest, ProjectPermissionAgentVaultServiceActions.Delete);
+    const permission = await servicePermissionOf(rest);
 
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });

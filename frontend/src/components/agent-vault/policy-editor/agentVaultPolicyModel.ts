@@ -318,6 +318,10 @@ const actionsOfSubject = (
       .map(({ action }) => action)
   );
 
+// The API refuses a condition that names more ids than this (AGENT_VAULT_MAX_IDS_PER_CONDITION on the backend), so a
+// group that names more is written as several rules.
+export const AGENT_VAULT_MAX_IDS_PER_CONDITION = 1000;
+
 const groupedRules = (
   subject: ProjectPermissionSub,
   field: string,
@@ -337,12 +341,25 @@ const groupedRules = (
 
   return [...groups]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, { keys, ids }]) => ({
-      subject,
-      action: keys,
-      ...(isInverted ? { inverted: true } : {}),
-      conditions: { [field]: { [PermissionConditionOperators.$IN]: [...ids].sort() } }
-    }));
+    .flatMap(([, { keys, ids }]) => {
+      const sorted = [...ids].sort();
+      return Array.from(
+        { length: Math.ceil(sorted.length / AGENT_VAULT_MAX_IDS_PER_CONDITION) },
+        (_, chunk) => ({
+          subject,
+          action: keys,
+          ...(isInverted ? { inverted: true } : {}),
+          conditions: {
+            [field]: {
+              [PermissionConditionOperators.$IN]: sorted.slice(
+                chunk * AGENT_VAULT_MAX_IDS_PER_CONDITION,
+                (chunk + 1) * AGENT_VAULT_MAX_IDS_PER_CONDITION
+              )
+            }
+          }
+        })
+      );
+    });
 };
 
 /**

@@ -124,6 +124,7 @@ const buildService = ({
     updateById: vi.fn(),
     delete: vi.fn()
   });
+  const agentVaultServiceCustomHeaderDAL = transformationDAL();
   // The "sealed" bytes are the plaintext behind a marker, so a test can read what was sealed.
   const kmsDataKeyService = {
     createCipherPairWithDataKey: vi.fn().mockResolvedValue({
@@ -197,7 +198,7 @@ const buildService = ({
       lockByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID })
     },
     agentVaultServiceDAL,
-    agentVaultServiceCustomHeaderDAL: transformationDAL(),
+    agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL: transformationDAL(),
     agentVaultServiceVariableReferenceDAL,
     agentVaultVariableDAL,
@@ -232,7 +233,9 @@ const buildService = ({
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
   return {
     service,
+    tx,
     agentVaultServiceDAL,
+    agentVaultServiceCustomHeaderDAL,
     agentVaultVariableDAL,
     agentVaultServiceVariableReferenceDAL,
     agentVaultOauthService,
@@ -1049,6 +1052,32 @@ describe("an OAuth credential from an OAuth variable", () => {
     });
   });
 
+  test("tools for a saved service read the service and its saved headers under one row lock", async () => {
+    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
+    const built = buildService({
+      firstRead: mcpUsingVariable(VARIABLE_A),
+      locked: mcpUsingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+
+    await built.service.listMcpTools({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      serverUrl: "https://mcp.example.com/mcp",
+      transport: AgentVaultMcpTransport.StreamableHttp
+    });
+
+    // A save that moves the service holds the same lock, so the headers can't belong to another destination.
+    expect(built.agentVaultServiceDAL.lockByIdInProject).toHaveBeenCalledWith(
+      { id: SERVICE_ID, projectId: PROJECT_ID },
+      built.tx
+    );
+    expect(built.agentVaultServiceCustomHeaderDAL.findByServiceIds).toHaveBeenCalledWith([SERVICE_ID], built.tx);
+    expect(built.agentVaultServiceDAL.findByIdInProject).not.toHaveBeenCalled();
+  });
+
   test("tools for a saved service load from another server URL only once the variable is named again", async () => {
     listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
     const built = buildService({
@@ -1228,6 +1257,24 @@ describe("a service the caller may not act on", () => {
       NotFoundError
     );
     await expect(updateSsh(service, { description: "edited" })).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  test("is a 404 to edit or delete, whether or not it exists, with no rule on services at all", async () => {
+    const noServiceRules: RawRuleOf<MongoAbility>[] = [
+      { action: "read", subject: ProjectPermissionSub.AgentVaultProxies }
+    ];
+    const existing = build(noServiceRules);
+    const missing = build(noServiceRules);
+    missing.agentVaultServiceDAL.findByIdInProject.mockResolvedValue(undefined);
+    missing.agentVaultServiceDAL.lockByIdInProject.mockResolvedValue(undefined);
+    for (const { service } of [existing, missing]) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(service.deleteService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).rejects.toBeInstanceOf(
+        NotFoundError
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await expect(updateSsh(service, { description: "edited" })).rejects.toBeInstanceOf(NotFoundError);
+    }
   });
 
   test("is a 403 to edit or delete when the caller can see it", async () => {

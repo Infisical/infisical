@@ -106,6 +106,23 @@ export const agentVaultHookServiceFactory = ({
   };
 
   const hookNotFound = (hookId: string) => new NotFoundError({ message: `Hook with ID '${hookId}' not found` });
+
+  // By id, a hook the caller can't see answers like a missing one, so a 403 never confirms that an id exists; someone
+  // who can see hooks but not act on them still gets the 403.
+  const $authorizeById = async (
+    scoped: TAgentVaultHookScoped,
+    hookId: string,
+    action: ProjectPermissionAgentVaultHookActions
+  ) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, scoped);
+    if (permission.can(action, ProjectPermissionSub.AgentVaultHooks)) return;
+    if (permission.cannot(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)) {
+      throw hookNotFound(hookId);
+    }
+    const hook = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
+    if (!hook) throw hookNotFound(hookId);
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultHooks);
+  };
   const duplicateName = (name: string) => new ConflictError({ message: `A hook named '${name}' already exists.` });
 
   const listHooks = async ({ search, limit, offset, ...scoped }: TListHooksDTO) => {
@@ -120,6 +137,7 @@ export const agentVaultHookServiceFactory = ({
   };
 
   const getHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
+    await $authorizeById(scoped, hookId, ProjectPermissionAgentVaultHookActions.Read);
     const visibleServiceIds = await $authorizeRead(scoped);
     const hook = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!hook) throw hookNotFound(hookId);
@@ -153,7 +171,7 @@ export const agentVaultHookServiceFactory = ({
 
   // Changes reach every session whose services use the hook on the proxy's next resolve.
   const updateHook = async ({ hookId, name, description, url, secret, ...scoped }: TUpdateHookDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Edit);
+    await $authorizeById(scoped, hookId, ProjectPermissionAgentVaultHookActions.Edit);
     const visibleServiceIds = await $authorizeRead(scoped);
 
     const current = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
@@ -203,7 +221,7 @@ export const agentVaultHookServiceFactory = ({
   // them for the audit log. Services are locked before the hook (see the DAL's lock order), then read again under the
   // hook's lock, which keeps any further service from taking it.
   const deleteHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Delete);
+    await $authorizeById(scoped, hookId, ProjectPermissionAgentVaultHookActions.Delete);
     const view = await agentVaultHookDAL.transaction(async (tx) => {
       // Service writes take this lock before locking a service and then a hook; taking it first here keeps the order.
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(scoped.projectId)]);

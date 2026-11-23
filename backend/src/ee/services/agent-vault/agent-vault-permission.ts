@@ -89,14 +89,23 @@ const coverageOf = (permission: TAbility, action: string, subjectType: ProjectPe
 
 type TIdCondition = string | { $eq?: string; $in?: string[] } | undefined;
 
-// The ids a rule names one by one (a bare id, `$eq` or `$in`), or null when it isn't limited to named ids, as an
-// unconditioned rule isn't.
-const idsNamedBy = (rule: { conditions?: unknown }, field: string): string[] | null => {
+// Every id a rule mentions (a bare id, `$eq` or `$in`), or null when it isn't limited to named ids, as an unconditioned
+// rule isn't. A condition with both `$eq` and `$in` matches only ids in both, so this is a superset of what it allows:
+// fine for choosing candidates to check, never for deciding them.
+const idsMentionedBy = (rule: { conditions?: unknown }, field: string): string[] | null => {
   if (!rule.conditions) return null;
   const condition = (rule.conditions as Record<string, TIdCondition>)[field];
   if (typeof condition === "string") return [condition.toLowerCase()];
   if (!condition || Object.keys(condition).some((key) => key !== "$eq" && key !== "$in")) return null;
   return [...(condition.$eq ? [condition.$eq] : []), ...(condition.$in ?? [])].map((id) => id.toLowerCase());
+};
+
+// The ids a rule matches exactly, when it names them with a single operator; null otherwise, so the caller falls back
+// to a CASL check per id.
+const idsNamedBy = (rule: { conditions?: unknown }, field: string): string[] | null => {
+  const condition = rule.conditions ? (rule.conditions as Record<string, TIdCondition>)[field] : undefined;
+  if (condition && typeof condition === "object" && Object.keys(condition).length !== 1) return null;
+  return idsMentionedBy(rule, field);
 };
 
 type TIdRules = { action: string; subjectType: ProjectPermissionSub; field: string };
@@ -149,7 +158,7 @@ const idsAllowed = async (
   // When every allow names its ids, no other id can pass, so only those are looked up.
   const named = rulesOf(permission, action, subjectType)
     .filter((rule) => !rule.inverted)
-    .map((rule) => idsNamedBy(rule, field));
+    .map((rule) => idsMentionedBy(rule, field));
   const ids = named.every((namedIds) => namedIds !== null)
     ? await loadIds([...new Set(named.flatMap((namedIds) => namedIds ?? []))])
     : await loadIds();
@@ -226,7 +235,7 @@ export const idsPickedOutFor = (permission: TProjectPermissionResult["permission
   const picked = new Set(
     rulesOf(permission, rules.action, rules.subjectType)
       .filter((rule) => !rule.inverted)
-      .flatMap((rule) => idsNamedBy(rule, rules.field) ?? [])
+      .flatMap((rule) => idsMentionedBy(rule, rules.field) ?? [])
   );
   return allowedAmong(permission, rules, [...picked]);
 };

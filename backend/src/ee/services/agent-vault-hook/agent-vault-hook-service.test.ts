@@ -307,3 +307,32 @@ describe("reads", () => {
     );
   });
 });
+
+describe("a hook the caller can't see", () => {
+  const RANDOM_ID = "00000000-0000-4000-8000-0000000000bb";
+  const noHookRules: RawRuleOf<MongoAbility>[] = [{ action: "read", subject: "agent-vault-proxies" }];
+  const byId = (service: ReturnType<typeof buildService>["service"], hookId: string) => [
+    service.getHook({ projectId: PROJECT_ID, ctx, hookId }),
+    service.updateHook({ projectId: PROJECT_ID, ctx, hookId, name: "renamed" }),
+    service.deleteHook({ projectId: PROJECT_ID, ctx, hookId })
+  ];
+
+  test("answers 404 by id, whether or not it exists, so a 403 never confirms an id", async () => {
+    const existing = buildService({ rules: noHookRules });
+    const missing = buildService({ rules: noHookRules, stored: null });
+    for (const call of [...byId(existing.service, HOOK_ID), ...byId(missing.service, RANDOM_ID)]) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(call).rejects.toBeInstanceOf(NotFoundError);
+    }
+  });
+
+  test("answers 403 when the caller can see hooks but not change them", async () => {
+    const { service } = buildService({ rules: [{ action: "read", subject: "agent-vault-hooks" }] });
+    await expect(
+      service.updateHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID, name: "renamed" })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).rejects.toBeInstanceOf(
+      ForbiddenError
+    );
+  });
+});

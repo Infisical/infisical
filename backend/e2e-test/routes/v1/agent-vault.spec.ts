@@ -13077,6 +13077,31 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("with no rule on skills or services, editing or deleting one by id answers 404 whether or not it exists", async () => {
+      const projectId = await getProjectId();
+      const skill = await createNamedSkill(`no-rule-skill-${unique()}`);
+      const service = await createBearerService(`no-rule-service-${unique()}`);
+      const role = await createAgentVaultRole(projectId, `no-rule-${unique()}`, SESSION_RULES);
+      const caller = await createMemberIdentity(`no-rule-${unique()}`);
+      const randomId = "00000000-0000-4000-8000-00000000abcd";
+      try {
+        await setMemberRoles({ machineIdentityIds: [caller.id] }, [role.slug]);
+        for (const id of [skill.id, randomId]) {
+          // eslint-disable-next-line no-await-in-loop
+          expect((await caller.as("DELETE", `/api/v1/agent-vault/skills/${id}`)).statusCode).toBe(404);
+          // eslint-disable-next-line no-await-in-loop
+          expect((await caller.as("DELETE", `/api/v1/agent-vault/services/${id === skill.id ? service.id : id}`)).statusCode).toBe(404);
+          expect(
+            // eslint-disable-next-line no-await-in-loop
+            (await caller.as("PATCH", `/api/v1/agent-vault/services/${id === skill.id ? service.id : id}`, { type: "http", description: "edited" }))
+              .statusCode
+          ).toBe(404);
+        }
+      } finally {
+        await caller.cleanup();
+      }
+    });
+
     test("a role with only bundle rules can't add skills, and can remove them", async () => {
       const projectId = await getProjectId();
       const [own, elsewhere] = [

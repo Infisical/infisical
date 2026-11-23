@@ -132,15 +132,15 @@ export const agentVaultSkillServiceFactory = ({
     return { reachability, visibleSkillIds };
   };
 
-  // Checked on the skills subject first, then on the skill itself. The route already answers 404 for a skill that
-  // doesn't exist, so a refusal on one the caller can't see answers 404 too, or the 403 would confirm it exists.
+  // Checked on the skill itself, with no subject-wide check first. The route already answers 404 for a skill that
+  // doesn't exist, so a refusal on one the caller can't see answers 404 too, or the 403 would confirm it exists; that
+  // holds even for a caller with no rule on skills at all.
   const $authorizeSkill = async (
     scoped: TAgentVaultSkillScoped,
     action: ProjectPermissionAgentVaultSkillActions,
     skillId: string
   ) => {
     const permission = await $getPermission(scoped);
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
     if (permission.cannot(action, skillSubject(skillId))) {
       const { visibleSkillIds } = await $readScope(scoped);
       if (visibleSkillIds !== null && !visibleSkillIds.includes(skillId.toLowerCase())) throw skillNotFound(skillId);
