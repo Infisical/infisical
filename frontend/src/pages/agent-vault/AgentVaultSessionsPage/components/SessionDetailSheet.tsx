@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -15,9 +16,6 @@ import { hostPatternOf } from "@app/components/agent-vault/service-sheet/service
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
-  Detail,
-  DetailLabel,
-  DetailValue,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -73,8 +71,54 @@ const moreButton = (count: number) => (
   </button>
 );
 
+const DetailSection = ({
+  title,
+  children,
+  className
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) => (
+  <section
+    className={twMerge(
+      "flex min-w-0 flex-[1_1_15rem] flex-col gap-2 border-t border-l border-border px-4 py-3",
+      className
+    )}
+  >
+    <h3 className="text-xs font-medium text-muted">{title}</h3>
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5">
+      {children}
+    </dl>
+  </section>
+);
+
+const DetailRow = ({
+  label,
+  children,
+  className
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) => (
+  <div className="contents">
+    <dt className="truncate text-xs text-label">{label}</dt>
+    <dd className={twMerge("flex min-w-0 items-center gap-2 text-sm text-foreground", className)}>
+      {children}
+    </dd>
+  </div>
+);
+
+const MemberValue = ({ name, subtitle }: { name: string; subtitle?: string }) => (
+  <span className="flex min-w-0 flex-col">
+    <span className="truncate">{name}</span>
+    {subtitle && <span className="truncate text-xs text-muted">{subtitle}</span>}
+  </span>
+);
+
 // A session's skills, listed by name or inline: the first few by name, with the rest behind a hover card.
-const SkillsDetail = ({
+const SkillsRow = ({
   label,
   skills,
   isInline
@@ -85,32 +129,29 @@ const SkillsDetail = ({
 }) => {
   const more = skills.slice(SHOWN_SKILLS);
   return (
-    <Detail className="min-w-0">
-      <DetailLabel>{label}</DetailLabel>
-      <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {skills.slice(0, SHOWN_SKILLS).map((skill) => (
-          <Tooltip key={skill.id}>
-            <TooltipTrigger asChild>
-              <span className="flex min-w-0 items-center gap-2">
-                <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
-                <span className="truncate">{skill.name}</span>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">
-              {isInline
-                ? "Sent with this session when it was created"
-                : "A project skill picked when this session was created"}
-              <span className="block">{skill.description}</span>
-            </TooltipContent>
-          </Tooltip>
-        ))}
-        {more.length > 0 && (
-          <SessionAccessHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
-            {moreButton(more.length)}
-          </SessionAccessHoverCard>
-        )}
-      </DetailValue>
-    </Detail>
+    <DetailRow label={label} className="flex-wrap gap-x-4 gap-y-1">
+      {skills.slice(0, SHOWN_SKILLS).map((skill) => (
+        <Tooltip key={skill.id}>
+          <TooltipTrigger asChild>
+            <span className="flex min-w-0 items-center gap-2">
+              <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{skill.name}</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            {isInline
+              ? "Sent with this session when it was created"
+              : "A project skill picked when this session was created"}
+            <span className="block">{skill.description}</span>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+      {more.length > 0 && (
+        <SessionAccessHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
+          {moreButton(more.length)}
+        </SessionAccessHoverCard>
+      )}
+    </DetailRow>
   );
 };
 
@@ -150,6 +191,9 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   const moreServices = listedServices.slice(SHOWN_SERVICES);
   const listedSkills = session ? sessionListedSkills(session) : [];
   const inlineSkills = session ? sessionInlineSkills(session) : [];
+  const hasAccess =
+    Boolean(session?.accessBundle) ||
+    listedServices.length + inlineServices.length + listedSkills.length + inlineSkills.length > 0;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -177,253 +221,19 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
         )}
         {session && (
           <>
-            <SheetHeader>
-              <SheetTitle>Session Logs</SheetTitle>
-              <SheetDescription>Every request the agent made during this session.</SheetDescription>
-            </SheetHeader>
-
-            <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-              <div className="shrink-0 overflow-hidden rounded-md border border-border bg-container">
-                <div className="flex items-center gap-4 py-3 pr-4">
-                  {/* -ml-px pushes each row's leading divider past the clipped edge, so a wrapped row doesn't start with one */}
-                  <div className="-ml-px flex min-w-0 flex-1 flex-wrap gap-y-3 *:border-l *:border-border *:px-4">
-                    <Detail className="min-w-0">
-                      <DetailLabel>{isMachineIdentity ? "Machine Identity" : "User"}</DetailLabel>
-                      <DetailValue
-                        className={twMerge(
-                          "flex items-center gap-2",
-                          isOwnerDeleted && "text-muted"
-                        )}
-                      >
-                        {isMachineIdentity ? (
-                          <BotIcon className="size-4 shrink-0 text-muted" />
-                        ) : (
-                          <UserIcon className="size-4 shrink-0 text-muted" />
-                        )}
-                        <span className="truncate">
-                          {memberDisplayName(session.actor)}
-                          {isOwnerDeleted && " (deleted)"}
-                        </span>
-                        {!isMachineIdentity && (
-                          <span className="truncate text-muted">
-                            {memberSubtitle(session.actor)}
-                          </span>
-                        )}
-                      </DetailValue>
-                    </Detail>
-                    {session.onBehalfOf && (
-                      <Detail className="min-w-0">
-                        <DetailLabel>On Behalf Of</DetailLabel>
-                        <DetailValue
-                          className={twMerge(
-                            "flex items-center gap-2",
-                            !session.onBehalfOf.id && "text-muted"
-                          )}
-                        >
-                          <UserIcon className="size-4 shrink-0 text-muted" />
-                          <span className="truncate">
-                            {memberDisplayName(session.onBehalfOf)}
-                            {!session.onBehalfOf.id && " (deleted)"}
-                          </span>
-                          {session.onBehalfOf.id && (
-                            <span className="truncate text-muted">
-                              {memberSubtitle(session.onBehalfOf)}
-                            </span>
-                          )}
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {session.accessBundle && (
-                      <Detail className="min-w-0">
-                        <DetailLabel>Access Bundle</DetailLabel>
-                        <DetailValue className="flex min-w-0">
-                          {session.accessBundle.id ? (
-                            <Link
-                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                              params={{
-                                orgId: currentOrg.id,
-                                projectId,
-                                accessBundleId: session.accessBundle.id
-                              }}
-                              className="group flex min-w-0 items-center gap-2"
-                            >
-                              <PackageIcon className="size-4 shrink-0 text-muted" />
-                              <span className="truncate group-hover:underline group-hover:underline-offset-2">
-                                {session.accessBundle.name}
-                              </span>
-                            </Link>
-                          ) : (
-                            <span className="flex min-w-0 items-center gap-2 text-muted">
-                              <PackageIcon className="size-4 shrink-0" />
-                              <span className="truncate">
-                                {session.accessBundle.name} (deleted)
-                              </span>
-                            </span>
-                          )}
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {listedServices.length > 0 && (
-                      <Detail className="min-w-0">
-                        <DetailLabel>Services</DetailLabel>
-                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownServices.map((service) => (
-                            <Tooltip key={service.id}>
-                              <TooltipTrigger asChild>
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <ServiceIcon
-                                    hostPattern={service.hostPattern}
-                                    serviceType={service.type}
-                                    className="size-5"
-                                  />
-                                  <span className="truncate">{service.name}</span>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-sm">
-                                A project service picked when this session was created
-                                {service.description && (
-                                  <span className="block">{service.description}</span>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
-                          {moreServices.length > 0 && (
-                            <SessionAccessHoverCard
-                              content={<ServicesList services={moreServices} />}
-                            >
-                              {moreButton(moreServices.length)}
-                            </SessionAccessHoverCard>
-                          )}
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {inlineServices.length > 0 && (
-                      <Detail className="min-w-0">
-                        <DetailLabel>Inline Services</DetailLabel>
-                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownInlineServices.map((service) => {
-                            const hookText = inlineServiceHookText(service);
-                            return (
-                              <Tooltip key={service.id}>
-                                <TooltipTrigger asChild>
-                                  <span className="flex min-w-0 flex-col">
-                                    <span className="flex min-w-0 items-center gap-2">
-                                      <ServiceIcon
-                                        hostPattern={hostPatternOf(service)}
-                                        serviceType={service.type}
-                                        className="size-5"
-                                      />
-                                      <span className="truncate">{service.name}</span>
-                                    </span>
-                                    {hookText && (
-                                      <span className="truncate pl-7 text-xs text-muted">
-                                        {hookText}
-                                      </span>
-                                    )}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-sm">
-                                  Sent with this session when it was created, for{" "}
-                                  {inlineServiceTarget(service)}
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          })}
-                          {moreInlineServices.length > 0 && (
-                            <SessionAccessHoverCard
-                              content={<InlineServicesList services={moreInlineServices} />}
-                            >
-                              {moreButton(moreInlineServices.length)}
-                            </SessionAccessHoverCard>
-                          )}
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {listedSkills.length > 0 && (
-                      <SkillsDetail label="Skills" skills={listedSkills} isInline={false} />
-                    )}
-                    {inlineSkills.length > 0 && (
-                      <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />
-                    )}
-                    <Detail>
-                      <DetailLabel>Created</DetailLabel>
-                      <DetailValue>
-                        {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
-                      </DetailValue>
-                    </Detail>
-                    {session.revokedAt && (
-                      <Detail>
-                        <DetailLabel>Revoked</DetailLabel>
-                        <DetailValue>
-                          {format(new Date(session.revokedAt), "MMM d, yyyy h:mm a")}
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {session.status !== AgentVaultSessionStatus.Revoked && (
-                      <Detail>
-                        <DetailLabel>{hasExpired ? "Expired" : "Expires"}</DetailLabel>
-                        <DetailValue>
-                          <SessionExpiry expiresAt={session.expiresAt} />
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    {session.stats && (
-                      <Detail>
-                        <DetailLabel>Requests</DetailLabel>
-                        <DetailValue>
-                          <SessionRequestCount stats={session.stats} />
-                        </DetailValue>
-                      </Detail>
-                    )}
-                    <Detail className="items-start">
-                      <DetailLabel>Status</DetailLabel>
-                      <SessionStatusBadge status={session.status} />
-                    </Detail>
-                  </div>
-                  {session.status === AgentVaultSessionStatus.Active && canRevoke && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => onRevoke(session)}
-                    >
-                      <BanIcon />
-                      Revoke Session
-                    </Button>
-                  )}
-                </div>
-                <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-                  <div className="flex min-w-0 flex-1 flex-col gap-3">
-                    <Detail>
-                      <DetailLabel>Label</DetailLabel>
-                      <DetailValue
-                        className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
-                      >
-                        {session.label ?? "No label"}
-                      </DetailValue>
-                    </Detail>
-                    <Detail>
-                      <DetailLabel>Metadata</DetailLabel>
-                      <DetailValue className="min-w-0">
-                        {metadataEntries.length > 0 ? (
-                          <dl className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-                            {metadataEntries.map(([key, value]) => (
-                              <div key={key} className="flex min-w-0 gap-2">
-                                <dt className="max-w-1/2 shrink-0 text-muted">{key}</dt>
-                                <dd className="min-w-0 break-words">{value}</dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : (
-                          <span className="text-muted">No metadata</span>
-                        )}
-                      </DetailValue>
-                    </Detail>
-                  </div>
+            <SheetHeader className="flex-row items-start gap-4 pr-12">
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <SheetTitle
+                    className={twMerge("line-clamp-2 break-words", !session.label && "text-muted")}
+                  >
+                    {session.label ?? "Unlabeled session"}
+                  </SheetTitle>
                   {canEdit && (
                     <IconButton
                       variant="ghost"
                       size="xs"
+                      className="shrink-0"
                       aria-label="Edit session"
                       onClick={() => onEdit(session)}
                     >
@@ -431,6 +241,195 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                     </IconButton>
                   )}
                 </div>
+                <SheetDescription>
+                  Every request the agent made during this session.
+                </SheetDescription>
+              </div>
+              {session.status === AgentVaultSessionStatus.Active && canRevoke && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => onRevoke(session)}
+                >
+                  <BanIcon />
+                  Revoke Session
+                </Button>
+              )}
+            </SheetHeader>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+              {/* -ml-px and -mt-px push the dividers at the leading edge and top row past the clipped edge, so only dividers between sections show */}
+              <div className="flex shrink-0 flex-wrap overflow-hidden rounded-md border border-border bg-container *:-mt-px *:-ml-px">
+                <DetailSection title="Identity" className="basis-52">
+                  <DetailRow
+                    label={isMachineIdentity ? "Machine Identity" : "User"}
+                    className={twMerge(isOwnerDeleted && "text-muted")}
+                  >
+                    {isMachineIdentity ? (
+                      <BotIcon className="size-4 shrink-0 text-muted" />
+                    ) : (
+                      <UserIcon className="size-4 shrink-0 text-muted" />
+                    )}
+                    <MemberValue
+                      name={`${memberDisplayName(session.actor)}${isOwnerDeleted ? " (deleted)" : ""}`}
+                      subtitle={isMachineIdentity ? undefined : memberSubtitle(session.actor)}
+                    />
+                  </DetailRow>
+                  {session.onBehalfOf && (
+                    <DetailRow
+                      label="On Behalf Of"
+                      className={twMerge(!session.onBehalfOf.id && "text-muted")}
+                    >
+                      <UserIcon className="size-4 shrink-0 text-muted" />
+                      <MemberValue
+                        name={`${memberDisplayName(session.onBehalfOf)}${session.onBehalfOf.id ? "" : " (deleted)"}`}
+                        subtitle={
+                          session.onBehalfOf.id ? memberSubtitle(session.onBehalfOf) : undefined
+                        }
+                      />
+                    </DetailRow>
+                  )}
+                </DetailSection>
+
+                {hasAccess && (
+                  <DetailSection title="Access" className="basis-64">
+                    {session.accessBundle && (
+                      <DetailRow label="Access Bundle">
+                        {session.accessBundle.id ? (
+                          <Link
+                            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                            params={{
+                              orgId: currentOrg.id,
+                              projectId,
+                              accessBundleId: session.accessBundle.id
+                            }}
+                            className="group flex min-w-0 items-center gap-2"
+                          >
+                            <PackageIcon className="size-4 shrink-0 text-muted" />
+                            <span className="truncate group-hover:underline group-hover:underline-offset-2">
+                              {session.accessBundle.name}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 text-muted">
+                            <PackageIcon className="size-4 shrink-0" />
+                            <span className="truncate">{session.accessBundle.name} (deleted)</span>
+                          </span>
+                        )}
+                      </DetailRow>
+                    )}
+                    {listedServices.length > 0 && (
+                      <DetailRow label="Services" className="flex-wrap gap-x-4 gap-y-1">
+                        {shownServices.map((service) => (
+                          <Tooltip key={service.id}>
+                            <TooltipTrigger asChild>
+                              <span className="flex min-w-0 items-center gap-2">
+                                <ServiceIcon
+                                  hostPattern={service.hostPattern}
+                                  serviceType={service.type}
+                                  className="size-4"
+                                />
+                                <span className="truncate">{service.name}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              A project service picked when this session was created
+                              {service.description && (
+                                <span className="block">{service.description}</span>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                        {moreServices.length > 0 && (
+                          <SessionAccessHoverCard
+                            content={<ServicesList services={moreServices} />}
+                          >
+                            {moreButton(moreServices.length)}
+                          </SessionAccessHoverCard>
+                        )}
+                      </DetailRow>
+                    )}
+                    {inlineServices.length > 0 && (
+                      <DetailRow label="Inline Services" className="flex-wrap gap-x-4 gap-y-1">
+                        {shownInlineServices.map((service) => {
+                          const hookText = inlineServiceHookText(service);
+                          return (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={hostPatternOf(service)}
+                                    serviceType={service.type}
+                                    className="size-4"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                Sent with this session when it was created, for{" "}
+                                {inlineServiceTarget(service)}
+                                {hookText && <span className="block break-all">{hookText}</span>}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                        {moreInlineServices.length > 0 && (
+                          <SessionAccessHoverCard
+                            content={<InlineServicesList services={moreInlineServices} />}
+                          >
+                            {moreButton(moreInlineServices.length)}
+                          </SessionAccessHoverCard>
+                        )}
+                      </DetailRow>
+                    )}
+                    {listedSkills.length > 0 && (
+                      <SkillsRow label="Skills" skills={listedSkills} isInline={false} />
+                    )}
+                    {inlineSkills.length > 0 && (
+                      <SkillsRow label="Inline Skills" skills={inlineSkills} isInline />
+                    )}
+                  </DetailSection>
+                )}
+
+                <DetailSection title="Activity" className="basis-56">
+                  <DetailRow label="Status">
+                    <SessionStatusBadge status={session.status} />
+                  </DetailRow>
+                  <DetailRow label="Created">
+                    {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                  </DetailRow>
+                  {session.revokedAt && (
+                    <DetailRow label="Revoked">
+                      {format(new Date(session.revokedAt), "MMM d, yyyy h:mm a")}
+                    </DetailRow>
+                  )}
+                  {session.status !== AgentVaultSessionStatus.Revoked && (
+                    <DetailRow label={hasExpired ? "Expired" : "Expires"}>
+                      <SessionExpiry expiresAt={session.expiresAt} />
+                    </DetailRow>
+                  )}
+                  {session.stats && (
+                    <DetailRow label="Requests">
+                      <SessionRequestCount stats={session.stats} />
+                    </DetailRow>
+                  )}
+                </DetailSection>
+
+                {metadataEntries.length > 0 && (
+                  <DetailSection title="Metadata" className="grow-[1.5] basis-80">
+                    {metadataEntries.map(([key, value]) => (
+                      <DetailRow key={key} label={key}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate">{value}</span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-sm break-all">{value}</TooltipContent>
+                        </Tooltip>
+                      </DetailRow>
+                    ))}
+                  </DetailSection>
+                )}
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
