@@ -85,7 +85,7 @@ export const markPendingRequestFailed = async (
 
 type TApprovalLookupDeps = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById" | "primaryNode">;
 };
 
 export type TRecordCertificateRequestFailureDeps = Omit<
@@ -100,7 +100,12 @@ export type TRecordCertificateRequestFailureDeps = Omit<
 
 const $findApprovalRequest = async (deps: TApprovalLookupDeps, approvalRequestId?: string | null) => {
   if (!approvalRequestId) return undefined;
-  const approvalRequest = await deps.approvalRequestDAL.findById(approvalRequestId);
+  // A background job can fail an approved request moments after the approval commits, and a replica that hasn't
+  // caught up would still show it pending, so the failure notice would be skipped.
+  const approvalRequest = await deps.approvalRequestDAL.findById(
+    approvalRequestId,
+    deps.approvalPolicyDAL.primaryNode()
+  );
   if (!approvalRequest) return undefined;
   // The policy only labels audit events, so failing to read it mustn't drop the notice or the event.
   const policy = approvalRequest.policyId
@@ -207,7 +212,7 @@ export const recordCertificateRequestFailure = async (
 
 export type TRecordApprovedRenewalIssuedDeps = TApprovalLookupDeps & {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
 };
@@ -223,10 +228,11 @@ export const recordApprovedRenewalIssued = async (
     const approval = await $findApprovalRequest(deps, certificateRequest.approvalRequestId);
     if (!approval?.renewal) return;
 
-    // These only label the event, so a failed read leaves those labels out rather than losing the event.
+    // These only label the event, so a failed read leaves those labels out rather than losing the event. The CA
+    // module inserted the certificate just before attaching it, so it's read from the primary.
     const onLookupError = $warnLookupFailed(certificateRequest.id);
     const [certificate, profile, application] = await Promise.all([
-      deps.certificateDAL.findById(certificateId).catch(onLookupError),
+      deps.certificateDAL.findById(certificateId, deps.certificateDAL.primaryNode()).catch(onLookupError),
       certificateRequest.profileId
         ? deps.certificateProfileDAL.findById(certificateRequest.profileId).catch(onLookupError)
         : undefined,

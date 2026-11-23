@@ -58,7 +58,7 @@ import {
 
 type TCertificateRequestServiceFactoryDep = {
   certificateRequestDAL: TCertificateRequestDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;

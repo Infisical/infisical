@@ -54,8 +54,9 @@ describe("CertificateRequestService", () => {
     attachCertificateIfUnlinked: vi.fn() as any
   };
 
-  const mockCertificateDAL: Pick<TCertificateDALFactory, "findById"> = {
-    findById: vi.fn() as any
+  const mockCertificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode"> = {
+    findById: vi.fn() as any,
+    primaryNode: vi.fn().mockReturnValue("primary") as any
   };
 
   const mockCertificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey"> = {
@@ -79,12 +80,14 @@ describe("CertificateRequestService", () => {
   const mockAuditLogService = { createCollapsedAuditLog: vi.fn(), createAuditLog: vi.fn() };
   const mockDigicertFns = { cancelPendingRequest: vi.fn() };
   const mockApprovalRequestDAL = { findById: vi.fn() };
-  const mockApprovalPolicyDAL = { findById: vi.fn() };
+  const mockApprovalPolicyDAL = { findById: vi.fn(), primaryNode: vi.fn().mockReturnValue("primary") };
   const mockApprovalPolicyService = { notifyApprovedActionFailed: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockQueueService.cancelActiveJob.mockReturnValue(true);
+    (mockCertificateDAL.primaryNode as any).mockReturnValue("primary");
+    mockApprovalPolicyDAL.primaryNode.mockReturnValue("primary");
     service = certificateRequestServiceFactory({
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
@@ -883,6 +886,24 @@ describe("CertificateRequestService", () => {
         );
       });
 
+      it("tells the requester and approvers while a replica still shows the approval request pending", async () => {
+        mockApprovalRequestDAL.findById.mockImplementation(async (_id: string, tx?: unknown) =>
+          tx === "primary" ? approvalRequest : { ...approvalRequest, status: "pending" }
+        );
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage,
+          operation: CertificateIssuanceOperation.RENEW
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "Renewing the certificate at CA 'digicert-ca' (DigiCert CertCentral) failed: DigiCert order expired."
+        );
+      });
+
       it("uses the CA's own message instead of the job's prefixed reason", async () => {
         const caMessage = "A certificate template is required to issue through Active Directory Certificate Service";
         mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
@@ -1164,6 +1185,25 @@ describe("CertificateRequestService", () => {
             })
           }
         });
+      });
+
+      it("names the issued certificate when the replica the event reads hasn't caught up", async () => {
+        const issued = { id: "cert-new", serialNumber: "0a1b", renewedFromCertificateId: "cert-old" };
+        // replicaNode() picks a replica per query, so the existence check can find the row on one replica and the
+        // event's read miss it on another.
+        (mockCertificateDAL.findById as any)
+          .mockImplementation(async (_id: string, tx?: unknown) => (tx === "primary" ? issued : undefined))
+          .mockImplementationOnce(async () => issued);
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ serialNumber: "0a1b", newCertificateId: "cert-new" })
+            })
+          })
+        );
       });
 
       it("names the certificate the CA renewed when another renewal replaced the requested one meanwhile", async () => {
