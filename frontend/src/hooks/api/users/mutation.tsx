@@ -34,6 +34,7 @@ export const useAddUserToWsNonE2EE = () => {
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: [{ projectId }, "project-access-requests"] });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });

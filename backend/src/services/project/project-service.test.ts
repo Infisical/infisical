@@ -266,3 +266,62 @@ describe("certificate search with current status", () => {
     expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
   });
 });
+
+describe("listing a project's pending access requests", () => {
+  const buildService = (
+    rules: { action: string; subject: string }[],
+    projectType: ProjectType = ProjectType.SecretManager
+  ) => {
+    const projectDAL = { findById: vi.fn().mockResolvedValue({ id: "project", type: projectType }) };
+    const pending = [
+      { id: "req-1", requesterUserId: "requester", comment: "Need it for on-call", createdAt: new Date() }
+    ];
+    const projectAccessRequestDAL = { findPendingForProject: vi.fn().mockResolvedValue(pending) };
+    const permissionService = {
+      getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(rules) })
+    };
+    const service = projectServiceFactory({
+      projectAccessRequestDAL,
+      permissionService,
+      projectDAL
+    } as unknown as Parameters<typeof projectServiceFactory>[0]);
+    return { service, projectAccessRequestDAL, pending };
+  };
+
+  const permission = {
+    type: ActorType.USER,
+    id: "admin",
+    orgId: "root",
+    authMethod: null,
+    rootOrgId: "root",
+    parentOrgId: "root"
+  };
+
+  test("returns the pending requests for someone who can add members", async () => {
+    const { service, projectAccessRequestDAL, pending } = buildService([{ action: "create", subject: "member" }]);
+
+    await expect(
+      service.listProjectAccessRequests({ permission, projectId: "project", requesterUserId: "requester" })
+    ).resolves.toEqual({ requests: pending });
+    expect(projectAccessRequestDAL.findPendingForProject).toHaveBeenCalledWith("project", "requester");
+  });
+
+  test("refuses someone who cannot add members", async () => {
+    const { service, projectAccessRequestDAL } = buildService([{ action: "read", subject: "member" }]);
+
+    await expect(service.listProjectAccessRequests({ permission, projectId: "project" })).rejects.toThrow();
+    expect(projectAccessRequestDAL.findPendingForProject).not.toHaveBeenCalled();
+  });
+
+  test("refuses projects that are not Secrets Management", async () => {
+    const { service, projectAccessRequestDAL } = buildService(
+      [{ action: "create", subject: "member" }],
+      ProjectType.KMS
+    );
+
+    await expect(service.listProjectAccessRequests({ permission, projectId: "project" })).rejects.toThrow(
+      BadRequestError
+    );
+    expect(projectAccessRequestDAL.findPendingForProject).not.toHaveBeenCalled();
+  });
+});

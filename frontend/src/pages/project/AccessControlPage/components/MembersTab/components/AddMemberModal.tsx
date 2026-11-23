@@ -42,10 +42,11 @@ import {
   useAddUserToWsNonE2EE,
   useGetAvailableProjectUsers,
   useGetOrgUsers,
+  useGetProjectAccessRequests,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { TAvailableProjectUser } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
@@ -204,6 +205,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       : undefined;
     const requesterStatus = {
       isProjectUser: Boolean(requesterEmail) && wsUserUsernames.has(requesterEmail as string),
+      userId: requester?.id,
       userLabel: requester ? getUserLabel(requester) : "",
       hasRequester: Boolean(requester)
     };
@@ -221,6 +223,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     return { list, requesterStatus, knownUsernames };
   }, [availableUsers, members, orgUsers]);
+
+  const requesterUserId = projectInviteList.requesterStatus.userId;
+  const { data: requesterAccessRequests } = useGetProjectAccessRequests(
+    { projectId, requesterUserId },
+    {
+      enabled:
+        currentProject?.type === ProjectType.SecretManager &&
+        Boolean(requesterUserId) &&
+        !projectInviteList.requesterStatus.isProjectUser &&
+        canAddMembers
+    }
+  );
+  const requesterNote = requesterAccessRequests?.[0]?.comment;
 
   const selectedOrgMemberships = watch("orgMemberships");
   const selectedRoleSlugs = watch("projectRoleSlugs");
@@ -383,6 +398,11 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     Assign a role to provide access to requesting user{" "}
                     <b>{projectInviteList.requesterStatus.userLabel}</b>.
                   </p>
+                  {requesterNote && (
+                    <p className="mt-2 max-h-40 overflow-y-auto break-words whitespace-pre-wrap">
+                      <b>Justification:</b> {requesterNote}
+                    </p>
+                  )}
                 </AlertDescription>
               </Alert>
             )}

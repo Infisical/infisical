@@ -1400,6 +1400,43 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:projectId/project-access-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listProjectAccessRequests",
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        requesterUserId: z.string().uuid().optional()
+      }),
+      response: {
+        200: z.object({
+          requests: z
+            .object({
+              id: z.string().uuid(),
+              requesterUserId: z.string().uuid(),
+              comment: z.string().nullable(),
+              createdAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.project.listProjectAccessRequests({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        requesterUserId: req.query.requesterUserId
+      });
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/project-access",
     config: {

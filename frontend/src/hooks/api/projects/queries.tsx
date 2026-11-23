@@ -40,6 +40,7 @@ import {
   TGetIdentityPermissionAuditResponse,
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
+  TListProjectAccessRequestsResponse,
   TMyPendingProjectAccessRequestsResponse,
   TProjectNavigation,
   TSearchProjectsDTO,
@@ -188,6 +189,23 @@ export const useGetMyPendingProjectAccessRequests = (options?: { enabled?: boole
       return new Map(data.requests.map((r) => [r.projectId, new Date(r.createdAt)]));
     },
     ...options
+  });
+
+export const useGetProjectAccessRequests = (
+  { projectId, requesterUserId }: { projectId: string; requesterUserId?: string },
+  options?: { enabled?: boolean }
+) =>
+  useQuery({
+    queryKey: projectKeys.getProjectAccessRequests(projectId, requesterUserId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListProjectAccessRequestsResponse>(
+        `/api/v1/projects/${projectId}/project-access-requests`,
+        { params: { requesterUserId } }
+      );
+      return data.requests;
+    },
+    ...options,
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {

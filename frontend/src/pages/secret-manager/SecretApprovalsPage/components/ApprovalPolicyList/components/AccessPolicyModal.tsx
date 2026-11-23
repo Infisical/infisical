@@ -718,7 +718,7 @@ const Form = ({
           <FieldContent>
             <FieldTitle>Require Justification</FieldTitle>
             <FieldDescription>
-              Requesters must add a note explaining why they need access
+              Requesters must add a justification explaining why they need access
             </FieldDescription>
           </FieldContent>
           <Toggle

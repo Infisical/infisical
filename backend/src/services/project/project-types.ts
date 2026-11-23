@@ -251,6 +251,12 @@ export type TSearchProjectsDTO = {
   orderDirection?: SortDirection;
 };
 
+export type TListProjectAccessRequestsDTO = {
+  permission: OrgServiceActor;
+  projectId: string;
+  requesterUserId?: string;
+};
+
 export type TProjectAccessRequestDTO = {
   permission: OrgServiceActor;
   projectId: string;

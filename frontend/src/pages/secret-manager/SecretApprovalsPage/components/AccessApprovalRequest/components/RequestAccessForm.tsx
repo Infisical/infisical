@@ -88,7 +88,7 @@ import { AccessRequestPathInput } from "./AccessRequestPathInput";
 import { AccessRequestScope } from "./AccessRequestScope";
 
 const INVALID_DURATION_MESSAGE = "Enter a duration greater than 0.";
-const NOTE_REQUIRED_MESSAGE = "Add a note explaining why you need access";
+const NOTE_REQUIRED_MESSAGE = "Add a justification explaining why you need access";
 
 const policyMaxDurationMessage = (maxTimePeriod: string) =>
   `Requested access duration is limited to ${maxTimePeriod} by policy`;
@@ -920,7 +920,7 @@ export const RequestAccessForm = ({
           name="note"
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="note">Note</FieldLabel>
+              <FieldLabel htmlFor="note">Justification</FieldLabel>
               <TextArea
                 id="note"
                 {...field}
@@ -929,7 +929,7 @@ export const RequestAccessForm = ({
               />
               {matchedPolicy?.requireJustification && (
                 <FieldDescription>
-                  This path&apos;s access policy requires a note explaining why you need access.
+                  This path&apos;s access policy requires a justification explaining why you need access.
                 </FieldDescription>
               )}
               <FieldError errors={[error]} />

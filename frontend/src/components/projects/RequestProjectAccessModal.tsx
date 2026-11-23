@@ -51,7 +51,7 @@ const Content = ({ projectId, isNoteRequired, onComplete }: ContentProps) => {
   return (
     <form onSubmit={form.handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Field>
-        <FieldLabel htmlFor="note">Note</FieldLabel>
+        <FieldLabel htmlFor="note">Justification</FieldLabel>
         <TextArea id="note" rows={3} {...form.register("note")} />
       </Field>
       <AlertDialogFooter>
@@ -99,8 +99,8 @@ export const RequestProjectAccessModal = ({
           <AlertDialogDescription>
             {subTitle ??
               (isNoteRequired
-                ? `Requesting access to project ${project.name}. Include a note for project admins to review your request.`
-                : `Requesting access to project ${project.name}. You may include an optional note for project admins to review your request.`)}
+                ? `Requesting access to project ${project.name}. Include a justification for project admins to review your request.`
+                : `Requesting access to project ${project.name}. You may include an optional justification for project admins to review your request.`)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Content
