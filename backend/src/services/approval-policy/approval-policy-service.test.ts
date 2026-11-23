@@ -87,7 +87,8 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       steps = [{ stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }],
       replicaMemberships = applicationMemberships,
       groupIds = [],
-      replicaGroupIds = groupIds
+      replicaGroupIds = groupIds,
+      completeDecision = false
     }: {
       type?: ApprovalPolicyType;
       status?: ApprovalRequestStatus;
@@ -96,6 +97,8 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       replicaMemberships?: TApplicationMembership[];
       groupIds?: string[];
       replicaGroupIds?: string[];
+      // Runs the decision's transaction, after which the primary has the rejected request and a replica doesn't yet.
+      completeDecision?: boolean;
     } = {}
   ) => {
     const primaryDb = { node: "primary" };
@@ -113,12 +116,19 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       scopeType: ApprovalPolicyScope.PkiApplication,
       scopeId: "app-1"
     };
+    const rejected = { ...request, status: ApprovalRequestStatus.Rejected };
     const approvalRequestDAL = {
-      findById: vi.fn().mockResolvedValue(request),
+      findById: vi.fn(async (_id: string, db?: unknown) =>
+        completeDecision ? fromNode(db, rejected, request) : request
+      ),
       findStepsByRequestId: vi.fn().mockResolvedValue(steps),
       find: vi.fn().mockResolvedValue([request]),
       findStepsByRequestIds: vi.fn().mockResolvedValue({ [request.id]: steps }),
-      transaction: vi.fn().mockRejectedValue(new Error("reached the decision"))
+      transaction: completeDecision
+        ? vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run("tx"))
+        : vi.fn().mockRejectedValue(new Error("reached the decision")),
+      findByIdForUpdate: vi.fn().mockResolvedValue(request),
+      updateById: vi.fn().mockResolvedValue(rejected)
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
     const approvalPolicyDAL = { findByProjectId: vi.fn(), primaryNode: vi.fn().mockReturnValue(primaryDb) };
@@ -151,18 +161,31 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
+    const postRejectionRoutine = vi.fn();
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
       approvalPolicyDAL,
+      approvalRequestApprovalsDAL: { create: vi.fn() },
+      eventEmitter: { emit: vi.fn() },
       permissionService: {
         getOrgPermission: vi.fn().mockResolvedValue({}),
         getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
       },
       userGroupMembershipDAL,
-      resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
+      resources: { [ApprovalPolicyType.CertRevocation]: { ...revocationResource, postRejectionRoutine } }
     } as unknown as TDeps);
-    return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb };
+    return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb, postRejectionRoutine };
   };
+
+  it("hands the post-rejection routine the rejected request while a replica still shows it pending", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], { completeDecision: true });
+
+    await ctx.service.rejectRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation);
+
+    expect(ctx.postRejectionRoutine).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "revocation-1", status: ApprovalRequestStatus.Rejected })
+    );
+  });
 
   it("refuses the approval and leaves the certificate alone", async () => {
     const ctx = buildReviewingService([{ actorUserId: "someone-else", isActive: true }]);
