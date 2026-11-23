@@ -229,6 +229,49 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     );
   });
 
+  it.each([
+    [
+      "a renewal",
+      {
+        certificateRequestId: "cert-req-1",
+        renewal: { certificateId: "cert-1" },
+        certificateRequest: { commonName: "billing.local" }
+      },
+      {
+        body: "Automatic Renewal asked to renew the certificate 'billing.local'.",
+        title: "Certificate Renewal Approval Request",
+        requestType: "certificate renewal request"
+      }
+    ],
+    [
+      "an issuance",
+      { certificateRequestId: "cert-req-1", certificateRequest: { commonName: "billing.local" } },
+      {
+        body: "You have a new approval request for cert-request from Automatic Renewal.",
+        title: "Certificate Approval Request",
+        requestType: "certificate request"
+      }
+    ]
+  ])("words the new-request notification and email for %s", async (_label, requestData, expected) => {
+    const { resource } = setup(() => Promise.resolve());
+
+    const notification = await resource.buildNotification!({
+      event: ApprovalNotificationEvent.Requested,
+      request: {
+        id: "approval-1",
+        organizationId: "org-1",
+        type: "cert-request",
+        requesterName: "Automatic Renewal",
+        requestData: { requestData }
+      } as never
+    });
+
+    expect(notification?.inApp?.body).toBe(expected.body);
+    expect(notification?.email?.subjectLine).toBe(expected.title);
+    expect(notification?.email?.substitutions.title).toBe(expected.title);
+    expect(notification?.email?.substitutions.requestType).toBe(expected.requestType);
+  });
+
   it("words the failure notification for a renewal and names the certificate", async () => {
     const { resource } = setup(() => Promise.resolve());
 

@@ -103,11 +103,12 @@ export const certRequestApprovalResourceFactory = ({
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
   buildNotification: async ({ event, request, failureReason }) => {
+    const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
+      .requestData;
+    const certificateName = certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
+
     if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
-      const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
-        .requestData;
       const action = renewal ? "renewal" : "issuance";
-      const certificateName = certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
       const certificate = certificateName ? ` of the certificate '${certificateName}'` : "";
       return {
         inApp: {
@@ -123,23 +124,30 @@ export const certRequestApprovalResourceFactory = ({
 
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
+    const title = renewal ? "Certificate Renewal Approval Request" : "Certificate Approval Request";
+    let body = `You have a new approval request for ${request.type} from ${request.requesterName}.`;
+    if (renewal) {
+      body = certificateName
+        ? `${request.requesterName} asked to renew the certificate '${certificateName}'.`
+        : `${request.requesterName} asked to renew a certificate.`;
+    }
 
     return {
       inApp: {
         type: NotificationType.APPROVAL_REQUIRED,
         title: "Approval Required",
-        body: `You have a new approval request for ${request.type} from ${request.requesterName}.`,
+        body,
         link: approvalUrl
       },
       email: cfg.SITE_URL
         ? {
-            subjectLine: "Certificate Approval Request",
+            subjectLine: title,
             template: SmtpTemplates.PkiApprovalRequestNeedsReview,
             substitutions: {
               requesterName: request.requesterName,
               requesterEmail: request.requesterEmail || undefined,
-              title: "Certificate Approval Request",
-              requestType: "certificate request",
+              title,
+              requestType: renewal ? "certificate renewal request" : "certificate request",
               justification: request.justification || undefined,
               approvalUrl
             }
