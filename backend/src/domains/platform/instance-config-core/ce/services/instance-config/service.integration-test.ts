@@ -145,7 +145,9 @@ describe("InstanceConfigCoreModule.create", () => {
     expect(await instanceConfigService.getSettings()).toMatchObject({
       instanceId: "11111111-1111-4111-8111-111111111111",
       initialized: true,
-      allowSignUp: false,
+      allowSignUp: false
+    });
+    expect(await instanceConfigService.getOverridableEnv()).toMatchObject({
       CLIENT_ID_GITHUB_LOGIN: "old-override"
     });
     expect((await instanceConfigService.getSlackCredentials()).toJSON()).toEqual({
