@@ -6,6 +6,7 @@ import { apiRequest } from "@app/config/request";
 import {
   TDetailsDynamicSecretDTO,
   TDynamicSecret,
+  TDynamicSecretOidcFederation,
   TGetDynamicSecretsByEnvsDTO,
   TGetEntraIdUsersDTO,
   TGetIbmApiConnectOrgAppsDTO,
@@ -104,7 +105,10 @@ export const useGetDynamicSecretDetails = ({
     enabled: Boolean(projectSlug && environmentSlug && path && name),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        dynamicSecret: TDynamicSecret & { inputs: unknown };
+        dynamicSecret: TDynamicSecret & {
+          inputs: unknown;
+          oidcFederation?: TDynamicSecretOidcFederation | null;
+        };
       }>(`/api/v1/dynamic-secrets/${name}`, {
         params: {
           projectSlug,

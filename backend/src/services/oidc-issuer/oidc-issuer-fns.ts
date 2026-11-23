@@ -15,6 +15,9 @@ type TIssuerKey = { id: string; createdAt: Date };
 // credential set up for a future use of the issuer.
 export const getAppConnectionOidcSubject = (connectionId: string) => `app-connection:${connectionId}`;
 
+// Customers copy this into their provider as well, so its shape can never change either
+export const getDynamicSecretOidcSubject = (dynamicSecretId: string) => `dynamic-secret:${dynamicSecretId}`;
+
 export const getOidcIssuerUrl = (siteUrl: string, orgId: string) =>
   `${siteUrl}/api/v1/oidc-issuer/organizations/${orgId}`;
 

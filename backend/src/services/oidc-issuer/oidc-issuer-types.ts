@@ -3,3 +3,10 @@ export type TSignOidcIssuerTokenDTO = {
   audience: string;
   ttlSeconds?: number;
 };
+
+export type TSignDynamicSecretOidcTokenDTO = {
+  dynamicSecret: { id: string; name: string };
+  orgId: string;
+  projectId: string;
+  audience: string;
+};

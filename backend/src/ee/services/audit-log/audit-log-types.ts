@@ -8460,11 +8460,10 @@ interface OauthClientTokenExchangeEvent {
 
 interface IssueOidcTokenEvent {
   type: EventType.ISSUE_OIDC_TOKEN;
-  metadata: {
-    connectionId: string;
-    connectionName: string;
-    audience: string;
-  };
+  metadata: { audience: string } & (
+    | { connectionId: string; connectionName: string }
+    | { dynamicSecretId: string; dynamicSecretName: string }
+  );
 }
 
 interface CreateEmailDomainEvent {

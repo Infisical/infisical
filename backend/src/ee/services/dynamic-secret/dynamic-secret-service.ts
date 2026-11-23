@@ -30,6 +30,7 @@ import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
 import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { getNamespaceOidcFederation } from "./providers/namespace";
 import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
 
 type TDynamicSecretServiceFactoryDep = {
@@ -457,7 +458,8 @@ export const dynamicSecretServiceFactory = ({
     const isConnected = await selectedProvider.validateConnection(newInput, {
       projectId,
       defaultTTL: defaultTTL ?? dynamicSecretCfg.defaultTTL,
-      maxTTL: maxTTL === undefined ? dynamicSecretCfg.maxTTL : maxTTL
+      maxTTL: maxTTL === undefined ? dynamicSecretCfg.maxTTL : maxTTL,
+      dynamicSecret: { id: dynamicSecretCfg.id, name: dynamicSecretCfg.name }
     });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
@@ -688,6 +690,10 @@ export const dynamicSecretServiceFactory = ({
     return {
       ...dynamicSecretCfg,
       inputs: redactStoredInputs(dynamicSecretCfg.type as DynamicSecretProviders, providerInputs),
+      oidcFederation:
+        dynamicSecretCfg.type === DynamicSecretProviders.Namespace
+          ? getNamespaceOidcFederation(providerInputs, { id: dynamicSecretCfg.id, orgId: project.orgId })
+          : null,
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path

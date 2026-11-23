@@ -834,7 +834,8 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  Namespace = "namespace"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -1279,6 +1280,52 @@ export const DynamicSecretNeonSchema = z.discriminatedUnion("leaseType", [
   })
 ]);
 
+export enum NamespaceAuthType {
+  ProvisionerToken = "provisioner-token",
+  Federation = "federation"
+}
+
+export const NAMESPACE_DEFAULT_FEDERATION_AUDIENCE = "https://federation.namespaceapis.com";
+
+export const DynamicSecretNamespaceSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z
+      .literal(NamespaceAuthType.ProvisionerToken)
+      .describe("Each lease creates a revokable child token with the provisioner token."),
+    provisionerToken: z
+      .string()
+      .trim()
+      .max(4096)
+      .refine((value) => value.startsWith("nsrt_"), "Provisioner token must be a Namespace revokable token (nsrt_...)")
+      .describe(
+        "Namespace revokable token used to create and revoke a child token for each lease. It needs the token/revokable create and revoke grants and the ingress access grant."
+      )
+  }),
+  z.object({
+    method: z
+      .literal(NamespaceAuthType.Federation)
+      .describe(
+        "Each lease exchanges an OIDC token from the organization's Infisical issuer, with the subject dynamic-secret:<id>, for a tenant token."
+      ),
+    tenantId: z
+      .string()
+      .trim()
+      .max(256)
+      .regex(/^tenant_/, "Tenant ID must be a Namespace tenant ID (tenant_...)")
+      .describe("ID of the Namespace tenant whose trust relationship accepts this dynamic secret's OIDC token."),
+    audience: z
+      .string()
+      .trim()
+      .min(1)
+      .max(512)
+      .regex(/^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/, "Audience may only contain URL characters")
+      .default(NAMESPACE_DEFAULT_FEDERATION_AUDIENCE)
+      .describe(
+        "Audience of the OIDC token, which the trust relationship must match. Defaults to https://federation.namespaceapis.com."
+      )
+  })
+]);
+
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
@@ -1327,7 +1374,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Namespace), inputs: DynamicSecretNamespaceSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project
@@ -1365,7 +1413,12 @@ export type TDynamicProviderFns = {
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (
     inputs: unknown,
-    metadata: { projectId: string; defaultTTL?: string; maxTTL?: string | null }
+    metadata: {
+      projectId: string;
+      defaultTTL?: string;
+      maxTTL?: string | null;
+      dynamicSecret?: Pick<TDynamicSecrets, "id" | "name">;
+    }
   ) => Promise<boolean>;
   validateProviderInputs: (inputs: object, metadata: TDynamicProviderValidateMetadata) => Promise<unknown>;
   revoke: (

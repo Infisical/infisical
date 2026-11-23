@@ -1,5 +1,6 @@
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
@@ -23,6 +24,7 @@ import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
+import { NamespaceProvider } from "./namespace";
 import { NeonProvider } from "./neon";
 import { OAuth2Provider } from "./oauth2";
 import { OpenRouterProvider } from "./openrouter";
@@ -41,13 +43,15 @@ type TBuildDynamicSecretProviderDTO = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   instanceConfigService: TInstanceConfigService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signDynamicSecretToken">;
 };
 
 export const buildDynamicSecretProviders = ({
   gatewayV2Service,
   gatewayPoolService,
   projectDAL,
-  instanceConfigService
+  instanceConfigService,
+  oidcIssuerService
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayV2Service, gatewayPoolService }),
@@ -79,5 +83,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
   [DynamicSecretProviders.Kafka]: KafkaProvider(),
   [DynamicSecretProviders.OpenRouter]: OpenRouterProvider(),
-  [DynamicSecretProviders.Neon]: NeonProvider()
+  [DynamicSecretProviders.Neon]: NeonProvider(),
+  [DynamicSecretProviders.Namespace]: NamespaceProvider({ oidcIssuerService, projectDAL })
 });
