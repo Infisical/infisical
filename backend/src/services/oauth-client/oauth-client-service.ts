@@ -511,7 +511,10 @@ export const oauthClientServiceFactory = ({
 
     let document: unknown;
     try {
+      // Anyone can name this URL, without signing in. A proxy would resolve the host again and undo the address check.
       ({ data: document } = await safeRequest.get<unknown>(clientId, {
+        requirePublicAddress: true,
+        forceDirectEgress: true,
         timeout: 10_000,
         maxContentLength: 64 * 1024,
         headers: { Accept: "application/json" }

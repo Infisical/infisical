@@ -148,6 +148,21 @@ const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<str
   return [];
 };
 
+// The legacy secrets "read" action grants what describeSecret and readValue grant together. When a scope allows only
+// part of it, it is split first, so Describe only still lists names for a role that has only "read".
+const splitLegacySecretRead = (subject: string, actions: string[], allowedActions: Set<string>) =>
+  subject === ProjectPermissionSub.Secrets &&
+  actions.includes(ProjectPermissionSecretActions.DescribeAndReadValue) &&
+  !allowedActions.has(ProjectPermissionSecretActions.DescribeAndReadValue)
+    ? [
+        ...new Set([
+          ...actions,
+          ProjectPermissionSecretActions.DescribeSecret,
+          ProjectPermissionSecretActions.ReadValue
+        ])
+      ]
+    : actions;
+
 // Intersects a CASL rule set with the actions permitted by the granted scopes. This is purely
 // subtractive: allow-rules are dropped if their subject is out of scope, and otherwise narrowed to
 // the scope-permitted actions (conditions are preserved, so resource constraints still apply).
@@ -165,7 +180,7 @@ const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: 
         const allowedActions = allowed.get(subject) ?? new Set<string>();
         const newActions = grantsManage
           ? [...allowedActions]
-          : ruleActions.filter((action) => allowedActions.has(action));
+          : splitLegacySecretRead(subject, ruleActions, allowedActions).filter((action) => allowedActions.has(action));
         return newActions.length ? [{ ...rule, subject, action: newActions }] : [];
       })
     );

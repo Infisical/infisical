@@ -19,6 +19,7 @@ import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { isValidFolderName } from "@app/lib/validator";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
+import { getPermissionDenialDetails } from "@app/server/plugins/audit-log-permission-denied";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
   PersonalOverridesBehavior,
@@ -29,7 +30,9 @@ import {
 const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The project ID, from list-projects.");
 // Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
 const EnvironmentSlugSchema = z.string().trim().min(1).max(255).describe("The environment slug, from list-projects.");
-const SecretLookupNameSchema = BaseSecretNameSchema.max(255);
+// Secret keys are stored in a 500-character column.
+const SecretLookupNameSchema = BaseSecretNameSchema.max(500);
+const NewSecretNameSchema = SecretLookupNameSchema.pipe(SecretNameSchema);
 const PathSchema = z
   .string()
   .trim()
@@ -49,13 +52,14 @@ const SecretLocationSchema = EnvironmentSchema.extend({ secretPath: PathSchema }
 const toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
   // Every field written out in full: a schema reused for two fields would otherwise become a $ref, which some clients
   // do not follow.
-  const jsonSchema = () => zodToJsonSchema(schema, { $refStrategy: "none" }) as Record<string, unknown>;
+  const jsonSchema = () =>
+    zodToJsonSchema(schema, { $refStrategy: "none", pipeStrategy: "input" }) as Record<string, unknown>;
   return {
     "~standard": { ...schema["~standard"], jsonSchema: { input: jsonSchema, output: jsonSchema } }
   } as StandardSchemaWithJSON<z.input<T>, z.output<T>>;
 };
 
-const getToolErrorMessage = (error: unknown) => {
+const getToolErrorMessage = (error: unknown, toolName: string, actorId: string) => {
   if (error instanceof ForbiddenError) return `You are not allowed to ${error.action} on ${error.subjectType}`;
   if (
     error instanceof BadRequestError ||
@@ -67,7 +71,7 @@ const getToolErrorMessage = (error: unknown) => {
     return error.message;
   }
 
-  logger.error(error, "MCP tool call failed");
+  logger.error(error, `MCP tool call failed [tool=${toolName}] [actorId=${actorId}]`);
   return "Something went wrong while running this tool. Try again, and contact support if it keeps happening.";
 };
 
@@ -189,7 +193,21 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
 
         return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
       } catch (error) {
-        return { content: [{ type: "text" as const, text: getToolErrorMessage(error) }], isError: true };
+        // The error never reaches the route's onError hook, which records denials for REST routes.
+        const denial = getPermissionDenialDetails(error);
+        if (denial) {
+          void server.services.auditLog.recordPermissionDenied({
+            ...auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: (args as { projectId?: string }).projectId,
+            metadata: { ...denial, route: `MCP tool ${name}`, method: req.method }
+          });
+        }
+
+        return {
+          content: [{ type: "text" as const, text: getToolErrorMessage(error, name, req.permission.id) }],
+          isError: true
+        };
       }
     });
   };
@@ -420,7 +438,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
     {
       description: "Create a secret.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretNameSchema,
+        secretName: NewSecretNameSchema,
         secretValue: SecretValueSchema,
         secretComment: SecretCommentSchema.optional()
       }),
@@ -453,7 +471,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
       description: "Change a secret's value or comment, or rename it.",
       inputSchema: SecretLocationSchema.extend({
         secretName: SecretLookupNameSchema,
-        newSecretName: SecretNameSchema.optional(),
+        newSecretName: NewSecretNameSchema.optional(),
         secretValue: SecretValueSchema.optional(),
         secretComment: SecretCommentSchema.optional()
       }),

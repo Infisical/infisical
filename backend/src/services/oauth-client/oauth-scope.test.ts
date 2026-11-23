@@ -121,6 +121,15 @@ describe("applyOauthScopeToProjectRules", () => {
     expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
   });
 
+  test("secrets:describe keeps the describe half of a legacy read rule", () => {
+    const rules = [
+      { action: [ProjectPermissionSecretActions.DescribeAndReadValue], subject: ProjectPermissionSub.Secrets }
+    ];
+    const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]);
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
+  });
+
   test("secrets:write grants writes without reads", () => {
     const rules = [{ action: "manage", subject: ProjectPermissionSub.Secrets }];
     const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsWrite]);

@@ -36,7 +36,7 @@ const PRODUCT_ACCESS = [
         level: "full",
         title: "Full access",
         requires: "secrets:write",
-        scopes: ["secrets:read", "secrets:write"],
+        scopes: ["secrets:describe", "secrets:read", "secrets:write"],
         description:
           "Everything in Read-only, plus create, change and delete secrets, and create folders"
       },

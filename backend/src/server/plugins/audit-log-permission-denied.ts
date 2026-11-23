@@ -37,6 +37,24 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
+// The permission an RBAC denial (CASL ForbiddenError or PermissionBoundaryError) names, or undefined for any other error.
+export const getPermissionDenialDetails = (error: unknown) => {
+  if (error instanceof ForbiddenError) {
+    const caslError = error as ForbiddenError<AnyAbility>;
+    return {
+      permissionAction: caslError.action ? String(caslError.action) : undefined,
+      permissionSubject: caslError.subjectType ? String(caslError.subjectType) : undefined,
+      permissionSubjectDetails: pickSubjectDetails(caslError.subject),
+      errorName: error.name
+    };
+  }
+
+  if (error instanceof PermissionBoundaryError) {
+    const missing = readMissingPermission(error.details);
+    return { permissionAction: missing?.action, permissionSubject: missing?.subject, errorName: error.name };
+  }
+};
+
 // RBAC denials are CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
 // error handler, so this hook catches all of them. ForbiddenRequestError is skipped: it's mostly
 // auth-mode, plan, admin-only and ownership checks with no action/subject, so it'd just be noise.
@@ -44,15 +62,12 @@ const readProjectId = (source: unknown) => {
 // switch them to throwUnlessCan if you want them recorded.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
-    const isCaslDenial = error instanceof ForbiddenError;
-    if (!isCaslDenial && !(error instanceof PermissionBoundaryError)) return;
+    const denial = getPermissionDenialDetails(error);
+    if (!denial) return;
     if (!req.auth || !req.auditLogInfo?.actor) return;
 
     const orgId = req.auditLogInfo.orgId ?? req.permission?.orgId;
     if (!orgId) return;
-
-    const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
-    const missing = isCaslDenial ? undefined : readMissingPermission((error as PermissionBoundaryError).details);
 
     const { schema } = req.routeOptions;
     const projectId =
@@ -66,10 +81,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
       orgId,
       projectId,
       metadata: {
-        permissionAction: caslError?.action ? String(caslError.action) : missing?.action,
-        permissionSubject: caslError?.subjectType ? String(caslError.subjectType) : missing?.subject,
-        permissionSubjectDetails: pickSubjectDetails(caslError?.subject),
-        errorName: error.name,
+        ...denial,
         route: req.routeOptions.url,
         method: req.method
       }
