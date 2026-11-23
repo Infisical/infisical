@@ -21,12 +21,11 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { getAppConnectionOidcSubject, getOidcIssuerUrl } from "@app/services/oidc-issuer/oidc-issuer-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
-import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { generateClientAssertion } from "../shared/azure/generate-client-assertion";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault-connection-enums";
 import {
@@ -37,48 +36,6 @@ import {
   TAzureKeyVaultConnectionCredentials,
   TAzureKeyVaultConnectionManagedIdentityCredentials
 } from "./azure-key-vault-connection-types";
-
-// Entra only accepts federated tokens with this audience
-const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
-
-// Not stored with the credentials, so the issuer follows SITE_URL if it changes. Without SITE_URL there is no issuer,
-// but reading the connection must still work.
-export const getAzureKeyVaultConnectionFederatedCredential = ({ id, orgId }: { id: string; orgId: string }) => {
-  const { SITE_URL } = getConfig();
-
-  return {
-    issuerUrl: SITE_URL ? getOidcIssuerUrl(SITE_URL, orgId) : null,
-    subjectIdentifier: getAppConnectionOidcSubject(id),
-    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
-  };
-};
-
-const getManagedIdentityAccessToken = async (
-  {
-    appConnection,
-    tenantId,
-    clientId
-  }: { appConnection: TSignOidcIssuerTokenDTO["appConnection"]; tenantId: string; clientId: string },
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
-) => {
-  const clientAssertion = await oidcIssuerService.signToken({
-    appConnection,
-    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
-  });
-
-  const { data } = await request.post<ExchangeCodeAzureResponse>(
-    IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId),
-    new URLSearchParams({
-      grant_type: "client_credentials",
-      scope: `https://vault.azure.net/.default`,
-      client_id: clientId,
-      client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-      client_assertion: clientAssertion
-    })
-  );
-
-  return { accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
-};
 
 /**
  * Proxies an Azure Key Vault data-plane request through a gateway when the connection has one
@@ -364,11 +321,15 @@ export const getAzureConnectionAccessToken = async (
         return { accessToken: managedIdentityCredentials.accessToken };
       }
 
-      const managedIdentityToken = await getManagedIdentityAccessToken(
+      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
         {
           appConnection,
           tenantId: managedIdentityCredentials.tenantId,
-          clientId: managedIdentityCredentials.clientId
+          clientId: managedIdentityCredentials.clientId,
+          scope:
+            appConnection.app === AppConnection.AzureAppConfiguration
+              ? "https://azconfig.io/.default"
+              : "https://vault.azure.net/.default"
         },
         oidcIssuerService
       );
@@ -581,11 +542,12 @@ export const validateAzureKeyVaultConnectionCredentials = async (
       if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
 
       try {
-        const managedIdentityToken = await getManagedIdentityAccessToken(
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
           {
             appConnection: { ...connection, orgId, projectId },
             tenantId: managedIdentityTenantId,
-            clientId: managedIdentityClientId
+            clientId: managedIdentityClientId,
+            scope: "https://vault.azure.net/.default"
           },
           oidcIssuerService
         );

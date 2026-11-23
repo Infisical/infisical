@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault-connection-enums";
 
 export const AzureKeyVaultConnectionOAuthInputCredentialsSchema = z.object({
@@ -81,12 +82,6 @@ export const AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema = z.o
   clientId: z.string(),
   accessToken: z.string().optional(),
   expiresAt: z.number().optional()
-});
-
-export const AzureKeyVaultConnectionFederatedCredentialSchema = z.object({
-  issuerUrl: z.string().nullable(),
-  subjectIdentifier: z.string(),
-  audience: z.string()
 });
 
 export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -211,9 +206,7 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
       clientId: true,
       tenantId: true
     }).extend({
-      federatedCredential: AzureKeyVaultConnectionFederatedCredentialSchema.describe(
-        "The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set."
-      )
+      federatedCredential: AzureConnectionFederatedCredentialSchema
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Managed Identity)` }))
 ]);
