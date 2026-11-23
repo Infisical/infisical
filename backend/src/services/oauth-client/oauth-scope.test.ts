@@ -1,3 +1,5 @@
+import { createMongoAbility, subject } from "@casl/ability";
+
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 
 import { applyOauthScopeToProjectRules, isValidOauthScope, OauthScope, parseOauthScopeString } from "./oauth-scope";
@@ -128,6 +130,27 @@ describe("applyOauthScopeToProjectRules", () => {
     const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]);
     expect(scoped).toHaveLength(1);
     expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
+  });
+
+  test("secrets:describe keeps a legacy read deny in force", () => {
+    const rules = [
+      { action: [ProjectPermissionSecretActions.DescribeAndReadValue], subject: ProjectPermissionSub.Secrets },
+      {
+        action: [ProjectPermissionSecretActions.DescribeAndReadValue],
+        subject: ProjectPermissionSub.Secrets,
+        inverted: true,
+        conditions: { environment: "prod" }
+      }
+    ];
+    const ability = createMongoAbility(applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]));
+    const describe = (environment: string) =>
+      ability.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment })
+      );
+
+    expect(describe("dev")).toBe(true);
+    expect(describe("prod")).toBe(false);
   });
 
   test("secrets:write grants writes without reads", () => {
