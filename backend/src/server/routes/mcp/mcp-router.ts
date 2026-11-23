@@ -95,19 +95,17 @@ export const registerMcpRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      const { aud, scopes = [] } = req.auth.token;
       const { mcpResource } = getMcpOauthUrls();
-      if (req.auth.token.aud !== mcpResource) {
+      if (aud !== mcpResource) {
         throw new UnauthorizedError({
           message: "This token was not issued for the Infisical MCP server. Reconnect your MCP client to sign in again."
         });
       }
 
-      // The response is read whole before it is sent, which only works because nothing stays open: replies are JSON, and
-      // the one long-lived stream, a subscriptions/listen request, is refused straight away.
-      const mcpHandler = createMcpHandler(() => createMcpServer(server, req), {
-        responseMode: "json",
-        maxSubscriptions: 0
-      });
+      // The response is read whole before it is sent, which only works because nothing stays open: every reply ends with
+      // its result, and the one long-lived stream, a subscriptions/listen request, is refused straight away.
+      const mcpHandler = createMcpHandler(() => createMcpServer(server, req, scopes), { maxSubscriptions: 0 });
       try {
         const response = await mcpHandler.fetch(toWebRequest(req, mcpResource), { parsedBody: req.body });
         response.headers.forEach((value, name) => {

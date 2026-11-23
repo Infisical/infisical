@@ -55,7 +55,7 @@ import {
   TOauthTokenExchangeDTO,
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
-import { getOauthScopeDescriptions, MCP_ONLY_OAUTH_SCOPES, OauthScope, parseOauthScopeString } from "./oauth-scope";
+import { getOauthScopeDescriptions, OAUTH_SCOPE_DEFINITIONS, OauthScope, parseOauthScopeString } from "./oauth-scope";
 import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
@@ -580,14 +580,14 @@ export const oauthClientServiceFactory = ({
   };
 
   // Rejects any scope we don't recognize (RFC 6749 invalid_scope) rather than silently dropping it and issuing a token
-  // narrower than the client expects. `boundResource` is what assertValidAuthorizationRequest returned.
+  // narrower than the client expects.
   const parseRequestedScopes = (scope: string | undefined, boundResource: string | undefined) => {
     const { granted, invalid } = parseOauthScopeString(scope);
     if (invalid.length) {
       throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalid.join(", ")}` });
     }
 
-    const mcpOnlyScopes = granted.filter((grantedScope) => MCP_ONLY_OAUTH_SCOPES.includes(grantedScope));
+    const mcpOnlyScopes = granted.filter((grantedScope) => OAUTH_SCOPE_DEFINITIONS[grantedScope].mcpOnly);
     if (!boundResource && mcpOnlyScopes.length) {
       throw new BadRequestError({
         message: `The ${mcpOnlyScopes.join(", ")} scope(s) can only be granted to clients of the Infisical MCP server.`

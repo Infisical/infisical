@@ -32,11 +32,16 @@ export type TOauthScopeRule = {
 type TOauthScopeDefinition = {
   description: string;
   rules: TOauthScopeRule[];
+  // OAuth applications using the REST API have only ever been offered secrets:read. Scopes that serve only the MCP tools
+  // are granted only to tokens bound to the MCP endpoint; offering them to every OAuth application is a separate
+  // decision.
+  mcpOnly: boolean;
 };
 
 export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> = {
   [OauthScope.SecretsDescribe]: {
     description: "See projects, folders and secrets, without their values",
+    mcpOnly: true,
     rules: [
       // Not the legacy combined "read" action, which also grants secret values.
       {
@@ -50,6 +55,7 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
   },
   [OauthScope.SecretsWrite]: {
     description: "Create, change and delete secrets, and create folders",
+    mcpOnly: true,
     rules: [
       {
         level: "project",
@@ -65,6 +71,7 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
   },
   [OauthScope.SecretsRead]: {
     description: "Read secrets, folders, and imports",
+    mcpOnly: false,
     rules: [
       {
         level: "project",
@@ -80,11 +87,6 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
     ]
   }
 };
-
-// OAuth applications using the REST API have only ever been offered secrets:read. The other scopes serve the MCP tools,
-// so they are only granted to tokens bound to the MCP endpoint; offering them to every OAuth application is a separate
-// decision.
-export const MCP_ONLY_OAUTH_SCOPES: readonly OauthScope[] = [OauthScope.SecretsDescribe, OauthScope.SecretsWrite];
 
 export const isValidOauthScope = (value: string): value is OauthScope =>
   Object.prototype.hasOwnProperty.call(OAUTH_SCOPE_DEFINITIONS, value);

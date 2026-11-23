@@ -474,6 +474,7 @@ import { notificationQueueServiceFactory } from "@app/services/notification/noti
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 import { oauthClientDALFactory } from "@app/services/oauth-client/oauth-client-dal";
+import { MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { oauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { objectStorageServiceFactory } from "@app/services/object-storage/object-storage-service";
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
@@ -5275,7 +5276,7 @@ export const registerRoutes = async (
   // Its own run mode so agent traffic can be served by a separate pool; the OAuth pages it relies on stay with the API.
   if (envConfig.isMcpRunModeEnabled) {
     await server.register(registerMcpResourceMetadataRouter, { prefix: "/.well-known/oauth-protected-resource" });
-    await server.register(registerMcpRouter, { prefix: "/api/mcp" });
+    await server.register(registerMcpRouter, { prefix: MCP_ENDPOINT_PATH });
   }
 
   // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but

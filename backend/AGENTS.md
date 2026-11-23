@@ -445,8 +445,8 @@ PKCE or redirect-URI mismatch, `invalid_scope`, `invalid_target`).
 public client such as Claude, described by an OAuth Client ID Metadata Document fetched through `safeRequest` on every
 authorization request: no row, no secret, PKCE required, and it is granted the consenting session's org. A public client
 can only be granted the MCP endpoint (`resource` = `getMcpOauthUrls().mcpResource`), and the token carries that
-resource as `aud`. The scopes in `MCP_ONLY_OAUTH_SCOPES` are only granted with that resource, so OAuth applications
-using the REST API still only get `secrets:read`. `inject-identity.ts` rejects a token with `aud` everywhere but `MCP_ENDPOINT_PATH`, the Go
+resource as `aud`. Scopes marked `mcpOnly` in `OAUTH_SCOPE_DEFINITIONS` are only granted with that resource, so OAuth
+applications using the REST API still only get `secrets:read`. `inject-identity.ts` rejects a token with `aud` everywhere but `MCP_ENDPOINT_PATH`, the Go
 authenticator rejects any `aud`, and the MCP route rejects OAuth tokens without it; keep all three, or an MCP client
 becomes a delegated client of the whole API. The MCP route accepts user logins only (`AuthMode.OAUTH`), so a tool may
 only do what a route accepting `AuthMode.OAUTH` does. The tools (`server/routes/mcp/mcp-tools.ts`) call services

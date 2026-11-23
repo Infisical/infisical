@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import { McpServer, StandardSchemaWithJSON, ToolAnnotations } from "@modelcontextprotocol/server";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -17,10 +16,9 @@ import {
 } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { isValidFolderName } from "@app/lib/validator";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
   PersonalOverridesBehavior,
@@ -41,12 +39,10 @@ const PathSchema = z
   .transform(removeTrailingSlash)
   .describe("The folder path, such as / or /app/database.");
 const SecretValueSchema = z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()));
+const SecretCommentSchema = z.string().trim().max(10_000);
 
-const SecretLocationSchema = z.object({
-  projectId: ProjectIdSchema,
-  environmentSlug: EnvironmentSlugSchema,
-  secretPath: PathSchema
-});
+const EnvironmentSchema = z.object({ projectId: ProjectIdSchema, environmentSlug: EnvironmentSlugSchema });
+const SecretLocationSchema = EnvironmentSchema.extend({ secretPath: PathSchema });
 
 // The SDK validates arguments through Standard Schema, which zod 3 implements, and advertises them in tools/list
 // as JSON Schema, which zod 3 cannot produce on its own.
@@ -102,11 +98,11 @@ const toSecretOutput = ({
   version
 });
 
-type TSecretLocation = { projectId: string; environmentSlug: string; secretPath: string; secretName: string };
+type TSecretLocation = z.output<typeof SecretLocationSchema> & { secretName: string };
 
-// One server per request, holding the caller's identity. Each tool does what the REST route behind it does: the
-// same service call, audit log and read tracking, with the audit log marked as coming from MCP.
-export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest) => {
+// Each tool does what the REST route behind it does: the same service call, audit log and read tracking, with the
+// audit log marked as coming from MCP.
+export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest, scopes: string[]) => {
   const mcpServer = new McpServer(
     { name: "infisical", version: "1.0.0" },
     {
@@ -124,8 +120,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
   };
   const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.MCP };
   // Describe only grants names and metadata; values also need the user's consent to secrets:read.
-  const canReadSecretValues =
-    req.auth.authMode === AuthMode.OAUTH && Boolean(req.auth.token.scopes?.includes(OauthScope.SecretsRead));
+  const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
 
   const submittedForApproval = async (
     approval: Pick<TSecretApprovalRequests, "id" | "slug" | "status" | "committerUserId">,
@@ -155,32 +150,48 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     };
   };
 
+  const appliedSecretWrite = async (
+    type: EventType.CREATE_SECRET | EventType.UPDATE_SECRET,
+    { projectId, environmentSlug, secretPath, secretName }: TSecretLocation,
+    secret: { id: string; secretKey: string; version: number; tags?: { name: string }[] }
+  ) => {
+    await server.services.auditLog.createAuditLog({
+      ...auditLogInfo,
+      projectId,
+      event: {
+        type,
+        metadata: {
+          environment: environmentSlug,
+          secretPath,
+          secretId: secret.id,
+          secretKey: secretName,
+          secretVersion: secret.version,
+          secretTags: secret.tags?.map((tag) => tag.name)
+        }
+      }
+    });
+
+    return { id: secret.id, secretKey: secret.secretKey, version: secret.version };
+  };
+
   const registerTool = <T extends z.ZodTypeAny>(
     name: string,
     config: { description: string; inputSchema: T; annotations: ToolAnnotations },
     run: (args: z.output<T>) => Promise<unknown>
   ) => {
-    mcpServer.registerTool(
-      name,
-      {
-        description: config.description,
-        inputSchema: toToolInput(config.inputSchema),
-        annotations: config.annotations
-      },
-      async (args) => {
-        try {
-          // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
-          // change in how the SDK dispatches tools ever loses it.
-          if (!requestContext.get(RequestContextKey.OauthScopes)) {
-            throw new Error("OAuth scopes missing from the request context");
-          }
-
-          return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
-        } catch (error) {
-          return { content: [{ type: "text" as const, text: getToolErrorMessage(error) }], isError: true };
+    mcpServer.registerTool(name, { ...config, inputSchema: toToolInput(config.inputSchema) }, async (args) => {
+      try {
+        // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
+        // change in how the SDK dispatches tools ever loses it.
+        if (!isScopeNarrowedRequest()) {
+          throw new Error("OAuth scopes missing from the request context");
         }
+
+        return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
+      } catch (error) {
+        return { content: [{ type: "text" as const, text: getToolErrorMessage(error) }], isError: true };
       }
-    );
+    });
   };
 
   registerTool(
@@ -211,9 +222,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     "list-folders",
     {
       description: "List the folders in a folder.",
-      inputSchema: z.object({
-        projectId: ProjectIdSchema,
-        environmentSlug: EnvironmentSlugSchema,
+      inputSchema: EnvironmentSchema.extend({
         path: PathSchema,
         recursive: z.boolean().default(false).describe("Include folders in all subfolders.")
       }),
@@ -236,9 +245,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     "create-folder",
     {
       description: "Create a folder.",
-      inputSchema: z.object({
-        projectId: ProjectIdSchema,
-        environmentSlug: EnvironmentSlugSchema,
+      inputSchema: EnvironmentSchema.extend({
         path: PathSchema.describe("The folder to create it in, such as / or /app."),
         name: z
           .string()
@@ -415,7 +422,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
       inputSchema: SecretLocationSchema.extend({
         secretName: SecretNameSchema,
         secretValue: SecretValueSchema,
-        secretComment: z.string().trim().max(10_000).optional()
+        secretComment: SecretCommentSchema.optional()
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
@@ -436,24 +443,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Create);
       }
 
-      const { secret } = secretOperation;
-      await server.services.auditLog.createAuditLog({
-        ...auditLogInfo,
-        projectId,
-        event: {
-          type: EventType.CREATE_SECRET,
-          metadata: {
-            environment: environmentSlug,
-            secretPath,
-            secretId: secret.id,
-            secretKey: secretName,
-            secretVersion: secret.version,
-            secretTags: secret.tags?.map((tag) => tag.name)
-          }
-        }
-      });
-
-      return { id: secret.id, secretKey: secret.secretKey, version: secret.version };
+      return appliedSecretWrite(EventType.CREATE_SECRET, args, secretOperation.secret);
     }
   );
 
@@ -465,7 +455,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         secretName: SecretLookupNameSchema,
         newSecretName: SecretNameSchema.optional(),
         secretValue: SecretValueSchema.optional(),
-        secretComment: z.string().trim().max(10_000).optional()
+        secretComment: SecretCommentSchema.optional()
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
@@ -487,24 +477,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Update);
       }
 
-      const { secret } = secretOperation;
-      await server.services.auditLog.createAuditLog({
-        ...auditLogInfo,
-        projectId,
-        event: {
-          type: EventType.UPDATE_SECRET,
-          metadata: {
-            environment: environmentSlug,
-            secretPath,
-            secretId: secret.id,
-            secretKey: secretName,
-            secretVersion: secret.version,
-            secretTags: secret.tags?.map((tag) => tag.name)
-          }
-        }
-      });
-
-      return { id: secret.id, secretKey: secret.secretKey, version: secret.version };
+      return appliedSecretWrite(EventType.UPDATE_SECRET, args, secretOperation.secret);
     }
   );
 
