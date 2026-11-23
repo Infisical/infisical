@@ -273,6 +273,7 @@ import {
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
+  ParentFolderTableRow,
   ProxiedServiceTableRow,
   QuickAddSecretRow,
   ResourceCount,
@@ -3246,7 +3247,7 @@ const OverviewPageContent = () => {
     ]
   );
 
-  const handleFolderClick = (path: string) => {
+  const navigateToFolder = (folderPath: string) => {
     if (isOverviewFetching) return;
     overviewTelemetry.interaction({
       action: "folder-navigation",
@@ -3258,13 +3259,16 @@ const OverviewPageContent = () => {
     navigate({
       search: (prev) => ({
         ...prev,
-        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        secretPath: folderPath
       })
     }).then(() => {
       setFilter(DEFAULT_FILTER_STATE);
       setSearchFilter("");
     });
   };
+
+  const handleFolderClick = (path: string) =>
+    navigateToFolder(`${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`);
 
   const handleClearTags = useCallback(() => {
     overviewTelemetry.interaction({ action: "clear-tags", source: "header" });
@@ -4658,6 +4662,14 @@ const OverviewPageContent = () => {
                       ))
                     ) : (
                       <>
+                        {secretPath !== "/" && tableView === "table" && page === 1 && (
+                          <ParentFolderTableRow
+                            secretPath={secretPath}
+                            isNavigationDisabled={isOverviewPending}
+                            environments={visibleEnvs}
+                            onClick={navigateToFolder}
+                          />
+                        )}
                         {visibleEnvs.length > 0 &&
                           tableView === "table" &&
                           canCreateSecretsInAllVisibleEnvs &&
