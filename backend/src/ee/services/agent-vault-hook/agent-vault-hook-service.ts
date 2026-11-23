@@ -11,12 +11,17 @@ import {
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
 
+import type { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   getAgentVaultPermission,
   getAgentVaultReachability,
-  TAgentVaultReachDep
+  TAgentVaultReachDep,
+  unionWithin,
+  usableServiceIdsOf,
+  visibleIdsWithin
 } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
 import { assertAgentVaultHooksOnPlan } from "./agent-vault-hook-fns";
 import {
@@ -34,7 +39,8 @@ type TAgentVaultHookServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
-  agentVaultReachDAL: TAgentVaultReachDep;
+  agentVaultReachDAL: TAgentVaultReachDep & Pick<TAgentVaultReachDALFactory, "findServiceIdsInAnyBundle">;
+  agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findIdsInBundles">;
 };
 
 export type TAgentVaultHookServiceFactory = ReturnType<typeof agentVaultHookServiceFactory>;
@@ -55,7 +61,8 @@ export const agentVaultHookServiceFactory = ({
   permissionService,
   kmsDataKeyService,
   licenseService,
-  agentVaultReachDAL
+  agentVaultReachDAL,
+  agentVaultServiceDAL
 }: TAgentVaultHookServiceFactoryDep) => {
   const $authorize = async (scoped: TAgentVaultHookScoped, action: ProjectPermissionAgentVaultHookActions) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, scoped);
@@ -71,23 +78,28 @@ export const agentVaultHookServiceFactory = ({
     return encryptor({ plainText: Buffer.from(JSON.stringify({ value: secret })) }).cipherTextBlob;
   };
 
-  // A caller who can read hooks but not every bundle sees only the services they reach, as with a variable's services.
+  // A hook's Used By lists the services the caller can see, the same set the services list shows: those their roles
+  // read or use, and those in a bundle they can use. Null when they can see every service.
   const $authorizeRead = async (scoped: TAgentVaultHookScoped) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, agentVaultReachDAL },
-      scoped
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
+    ForbiddenError.from(reachability.permission).throwUnlessCan(
       ProjectPermissionAgentVaultHookActions.Read,
       ProjectPermissionSub.AgentVaultHooks
     );
-    return accessBundleIds;
+    return unionWithin(
+      await visibleIdsWithin(reachability.permission, {
+        subjectType: ProjectPermissionSub.AgentVaultServices,
+        field: "serviceId",
+        loadIds: () => agentVaultReachDAL.findServiceIds(scoped.projectId)
+      }),
+      await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, scoped.projectId)
+    );
   };
 
-  const $toHooks = async (rows: TAgentVaultHookRow[], accessBundleIds: string[] | null, tx?: Knex) => {
+  const $toHooks = async (rows: TAgentVaultHookRow[], visibleServiceIds: string[] | null, tx?: Knex) => {
     const usedBy = await agentVaultHookDAL.findUsedBy(
       rows.map((row) => row.id),
-      accessBundleIds,
+      visibleServiceIds,
       tx
     );
     return rows.map((row) => toAgentVaultHook(row, usedBy.get(row.id) ?? []));
@@ -97,21 +109,21 @@ export const agentVaultHookServiceFactory = ({
   const duplicateName = (name: string) => new ConflictError({ message: `A hook named '${name}' already exists.` });
 
   const listHooks = async ({ search, limit, offset, ...scoped }: TListHooksDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
+    const visibleServiceIds = await $authorizeRead(scoped);
     const { hooks, totalCount } = await agentVaultHookDAL.findForList({
       projectId: scoped.projectId,
       search,
       limit,
       offset
     });
-    return { hooks: await $toHooks(hooks, accessBundleIds), totalCount };
+    return { hooks: await $toHooks(hooks, visibleServiceIds), totalCount };
   };
 
   const getHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
+    const visibleServiceIds = await $authorizeRead(scoped);
     const hook = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!hook) throw hookNotFound(hookId);
-    const [view] = await $toHooks([hook], accessBundleIds);
+    const [view] = await $toHooks([hook], visibleServiceIds);
     return { hook: view };
   };
 
@@ -142,7 +154,7 @@ export const agentVaultHookServiceFactory = ({
   // Changes reach every session whose services use the hook on the proxy's next resolve.
   const updateHook = async ({ hookId, name, description, url, secret, ...scoped }: TUpdateHookDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Edit);
-    const accessBundleIds = await $authorizeRead(scoped);
+    const visibleServiceIds = await $authorizeRead(scoped);
 
     const current = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!current) throw hookNotFound(hookId);
@@ -177,7 +189,7 @@ export const agentVaultHookServiceFactory = ({
           },
           tx
         );
-        return $toHooks([updated], accessBundleIds, tx);
+        return $toHooks([updated], visibleServiceIds, tx);
       });
     } catch (error) {
       if (isUniqueViolation(error) && name !== undefined) throw duplicateName(name);

@@ -138,6 +138,28 @@ export const canUseAgentVaultSkill = (
   canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, skill.id) ||
   isInUsableBundle(permission, skill);
 
+// Picking a service or skill for a session on its own is refused when a role denies Use on it, even though a bundle that
+// holds it still gives it.
+export const canPickAgentVaultService = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  service: TBundledItem
+) =>
+  canUseAgentVaultService(permission, service) &&
+  !permission.relevantRuleFor(
+    ProjectPermissionAgentVaultServiceActions.Use,
+    subject(ProjectPermissionSub.AgentVaultServices, { serviceId: service.id })
+  )?.inverted;
+
+export const canPickAgentVaultSkill = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  skill: TBundledItem
+) =>
+  canUseAgentVaultSkill(permission, skill) &&
+  !permission.relevantRuleFor(
+    ProjectPermissionAgentVaultSkillActions.Use,
+    subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skill.id })
+  )?.inverted;
+
 // Adding a service or skill to a bundle takes Use on the item from the caller's own roles. Reaching it through another
 // bundle doesn't count: that would let someone copy a wildcard service out of a bundle that narrows one of its hosts,
 // and so escape the narrower service's limits.
@@ -158,6 +180,17 @@ export const canAddSkillToAgentVaultBundle = (
 export const canUseNewAgentVaultSkill = (permission: MongoAbility<ProjectPermissionSet>) => {
   const decidingRule = permission
     .rulesFor(ProjectPermissionAgentVaultSkillActions.Use, ProjectPermissionSub.AgentVaultSkills)
+    .find((rule) => !rule.conditions);
+  return Boolean(decidingRule && !decidingRule.inverted);
+};
+
+// Creating a service straight into a bundle puts it in that bundle, which takes using it, the same way as for a skill.
+export const canUseNewAgentVaultService = (permission: MongoAbility<ProjectPermissionSet>) => {
+  const decidingRule = permission
+    .rulesFor(
+      ProjectPermissionAgentVaultServiceActions.Use,
+      ProjectPermissionSub.AgentVaultServices
+    )
     .find((rule) => !rule.conditions);
   return Boolean(decidingRule && !decidingRule.inverted);
 };

@@ -5,6 +5,7 @@ import { rulesForCopy } from "@app/components/agent-vault/roles/roleSchema";
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
+import { SUBJECTS_WITHOUT_DENY } from "./agentVaultPermissionCatalog";
 import {
   addResourceItems,
   AGENT_VAULT_ROLE_TEMPLATES,
@@ -394,9 +395,10 @@ describe("round trips", () => {
         row.key !== "skills"
     ).map((row) => [row.label, row] as const)
   )("reads back every allow and deny set of %s", (_label, row) => {
-    everySplit(row.actions.map(({ key }) => key)).forEach((sets) =>
-      expectRoundTrip(withRow(row.key, sets))
-    );
+    const canDeny = row.actions.every(({ subject }) => !SUBJECTS_WITHOUT_DENY.has(subject));
+    everySplit(row.actions.map(({ key }) => key))
+      .filter((sets) => canDeny || sets.deny.length === 0)
+      .forEach((sets) => expectRoundTrip(withRow(row.key, sets)));
   });
 
   it("reads back allow and deny sets across the members row", () => {
@@ -485,11 +487,11 @@ describe("round trips", () => {
         allow: ["users.read", "identities.read", "identities.get-token"],
         deny: ["groups.delete"]
       },
-      roles: { allow: ["read"], deny: ["edit"] },
+      roles: { allow: ["read"], deny: [] },
       appConnections: { allow: ["read-app-connections", "connect-app-connections"], deny: [] },
       sessionLogSettings: { allow: ["read"], deny: [] },
       auditLogs: { allow: ["read", "edit"], deny: [] },
-      project: { allow: ["edit"], deny: ["delete"] }
+      project: { allow: ["edit"], deny: [] }
     });
   });
 
@@ -566,7 +568,6 @@ describe("rulesToPolicy", () => {
   it("hides the actions nothing in Agent Vault offers, and writes them back unchanged", () => {
     const { policy, unsupported } = rulesToPolicy([
       { subject: "settings", action: ["create", "delete"] },
-      { subject: "settings", action: ["delete"], inverted: true },
       { subject: BUNDLES, action: ["read"] }
     ]);
 
@@ -577,8 +578,7 @@ describe("rulesToPolicy", () => {
     });
     expect(policyToRules(policy)).toEqual([
       { subject: BUNDLES, action: ["read"] },
-      { subject: "settings", action: ["create", "delete"] },
-      { subject: "settings", action: ["delete"], inverted: true }
+      { subject: "settings", action: ["create", "delete"] }
     ]);
   });
 
@@ -806,16 +806,14 @@ describe("rulesToPolicy", () => {
         inverted: true,
         conditions: { skillId: { $in: [SKILL] } }
       },
-      { subject: "role", action: ["edit", "delete"], inverted: true },
       { subject: "member", action: ["delete"], inverted: true }
     ]);
 
     expect(unsupported).toEqual([]);
     expect(policy.services.deny).toEqual(["read", "use", "edit", "delete"]);
     expect(policy.skills.items).toEqual([{ id: SKILL, allow: [], deny: ["use"] }]);
-    expect(policy.roles).toEqual({ allow: [], deny: ["edit", "delete"] });
     expect(policy.members).toEqual({ allow: [], deny: ["users.delete"] });
-    expect(getRowLevel(policy, "roles")).toBe(CUSTOM_LEVEL);
+    expect(getRowLevel(policy, "members")).toBe(CUSTOM_LEVEL);
   });
 
   it("names a level only for exactly its actions with no denies", () => {
@@ -1615,5 +1613,33 @@ describe("members and roles", () => {
       { subject: "member", action: ["read", "grant-privileges"] }
     ]).policy;
     expect(isActionListed(holding, { rowKey: "members" }, legacy)).toBe(true);
+  });
+});
+
+describe("subjects the API can't save a deny on", () => {
+  const roles = { rowKey: "roles" as TPermissionRowKey };
+
+  it("never ticks Deny there, and says why", () => {
+    const policy = setRowLevel(empty(), "roles", "manage");
+    expect(setActionDenied(policy, roles, "edit", true)).toBe(policy);
+    expect(getActionState(policy, roles, "edit").denyLock).toBe(
+      "This permission can't be denied. Leave Allow unticked instead."
+    );
+  });
+
+  it("never writes an inverted rule for them, even from a stored deny", () => {
+    const policy = withRow("roles", { allow: ["read"], deny: ["edit"] });
+    const written = policyToRules(policy).filter((rule) =>
+      ["role", "settings", "audit-logs", "workspace"].includes(rule.subject as string)
+    );
+    expect(written.some((rule) => rule.inverted)).toBe(false);
+  });
+
+  it("refuses a deny on them in JSON, since the API would save it as an allow", () => {
+    expect(
+      reasonsOf([{ subject: "role", action: ["edit"], inverted: true } as TProjectPermission])
+    ).toEqual([
+      'Denies "role", which Infisical can\'t save as a deny, so it would allow it instead. Remove the rule, or leave the action out of an allow.'
+    ]);
   });
 });

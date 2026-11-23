@@ -42,7 +42,10 @@ import {
   useProjectPermission,
   useProject
 } from "@app/context";
-import { canOnAgentVaultAccessBundle } from "@app/helpers/agentVaultPermissions";
+import {
+  canOnAgentVaultAccessBundle,
+  canUseNewAgentVaultService
+} from "@app/helpers/agentVaultPermissions";
 import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
@@ -137,12 +140,13 @@ export const SessionLogsPanel = ({ session }: Props) => {
     canReadSessionLogSettings
   );
   const { accessBundle } = session;
-  // The service is created into the session's bundle: a service create and an edit of that bundle.
+  // The service is created into the session's bundle: a service create, an edit of that bundle, and using a new service.
   const canAddService =
     permission.can(
       ProjectPermissionAgentVaultServiceActions.Create,
       ProjectPermissionSub.AgentVaultServices
     ) &&
+    canUseNewAgentVaultService(permission) &&
     Boolean(accessBundle?.id) &&
     canOnAgentVaultAccessBundle(
       permission,

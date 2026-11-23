@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import {
+  findDroppedDenySubjects,
+  PROJECT_SUBJECTS_WITHOUT_DENY_V1
+} from "@app/ee/services/permission/dropped-deny-fns";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import {
   backfillPermissionV1SchemaToV2Schema,
@@ -22,6 +26,18 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 // check.
 const assertValidPermissionCombination = (permissions: z.infer<typeof ProjectPermissionV1Schema>[]) =>
   checkForInvalidPermissionCombination(permissions as Parameters<typeof checkForInvalidPermissionCombination>[0]);
+
+// Read from the raw body before parsing, which drops `inverted` on subjects whose schema lacks it.
+const droppedDeniesByRequest = new WeakMap<object, string[]>();
+const recordDroppedDenies = async (req: { body: unknown }) => {
+  droppedDeniesByRequest.set(
+    req,
+    findDroppedDenySubjects(
+      (req.body as { permissions?: unknown } | null)?.permissions,
+      PROJECT_SUBJECTS_WITHOUT_DENY_V1
+    )
+  );
+};
 
 export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -58,6 +74,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
       assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = JSON.stringify(
@@ -69,6 +86,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         orgId: req.permission.orgId
       });
       const role = await server.services.role.createRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
@@ -149,6 +167,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
       if (req.body.permissions) assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = req.body.permissions
@@ -161,6 +180,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const role = await server.services.role.updateRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,

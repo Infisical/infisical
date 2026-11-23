@@ -62,6 +62,18 @@ export const agentVaultServiceSubject = (serviceId: string) =>
 export const agentVaultSkillSubject = (skillId: string) =>
   subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skillId.toLowerCase() });
 
+// A bundle gives everything it holds whatever a role says on the item, so a deny on a service or skill only stops it
+// being named on its own. True when a role explicitly denies `use` on this one.
+export const deniesUseOnItsOwn = (permission: TAbility, kind: "service" | "skill", id: string) =>
+  kind === "service"
+    ? Boolean(
+        permission.relevantRuleFor(ProjectPermissionAgentVaultServiceActions.Use, agentVaultServiceSubject(id))
+          ?.inverted
+      )
+    : Boolean(
+        permission.relevantRuleFor(ProjectPermissionAgentVaultSkillActions.Use, agentVaultSkillSubject(id))?.inverted
+      );
+
 // rulesFor's typing pairs each subject with its own actions; the action here is checked by the callers.
 const rulesOf = (permission: TAbility, action: string, subjectType: ProjectPermissionSub) =>
   (permission as unknown as MongoAbility).rulesFor(action, subjectType);

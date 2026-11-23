@@ -124,7 +124,7 @@ export const resolveOnBehalfOfUser = async (
 
   const { accessBundleIds, serviceIds, skillIds } = reachability;
   const reach: TAgentVaultReach = { accessBundleIds, serviceIds, skillIds };
-  return { user, identifier, reach };
+  return { user, identifier, reach, permission: reachability.permission };
 };
 
 // What a session on the user's behalf could use: what both the user and the caller reach. Like minting that session, it

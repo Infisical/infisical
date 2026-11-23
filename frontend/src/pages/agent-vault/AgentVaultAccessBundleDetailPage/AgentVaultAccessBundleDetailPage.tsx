@@ -47,7 +47,8 @@ import {
 import {
   canOnAgentVaultAccessBundle,
   canOnAgentVaultService,
-  canUseAgentVaultAccessBundle
+  canUseAgentVaultAccessBundle,
+  canUseNewAgentVaultService
 } from "@app/helpers/agentVaultPermissions";
 import {
   AgentVaultSessionScope,
@@ -82,13 +83,14 @@ export const AgentVaultAccessBundleDetailPage = () => {
     ProjectPermissionAgentVaultAccessBundleActions.Delete,
     accessBundleId
   );
-  // A service created here goes straight into this bundle, so it takes a bundle edit as well.
+  // A service created here goes straight into this bundle, so it takes a bundle edit as well, and using a new service.
   const canCreateServices =
     canEditBundle &&
     permission.can(
       ProjectPermissionAgentVaultServiceActions.Create,
       ProjectPermissionSub.AgentVaultServices
-    );
+    ) &&
+    canUseNewAgentVaultService(permission);
   const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   const canReadAnySession = permission.can(
     ProjectPermissionAgentVaultSessionActions.ReadAny,

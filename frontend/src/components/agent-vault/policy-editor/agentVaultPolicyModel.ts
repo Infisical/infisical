@@ -15,6 +15,7 @@ import {
   PERMISSION_ROWS,
   RESOURCE_NOUNS,
   SUBJECT_RULES,
+  SUBJECTS_WITHOUT_DENY,
   TActionSets,
   TAgentVaultPolicy,
   TPermissionAction,
@@ -382,7 +383,9 @@ export const policyToRules = (policy: TAgentVaultPolicy): TProjectPermission[] =
       );
     }
 
-    const denied = actionsOfSubject(normalized, subject, "deny");
+    const denied = SUBJECTS_WITHOUT_DENY.has(subject)
+      ? []
+      : actionsOfSubject(normalized, subject, "deny");
     if (denied.length) rules.push({ subject, action: denied, inverted: true });
     if (resourceKey && field) {
       rules.push(
@@ -443,6 +446,10 @@ const normalizeRule = (rule: unknown): TNormalizedRule | string => {
 
   if (inverted !== undefined && typeof inverted !== "boolean") {
     return `Sets "inverted" on "${subjects[0]}" to something other than true or false.`;
+  }
+
+  if (inverted === true && SUBJECTS_WITHOUT_DENY.has(subjects[0])) {
+    return `Denies "${subjects[0]}", which Infisical can't save as a deny, so it would allow it instead. Remove the rule, or leave the action out of an allow.`;
   }
 
   if (fields !== undefined && fields !== null) {
@@ -717,12 +724,13 @@ const denyKey = (policy: TAgentVaultPolicy, scope: TPermissionScope, key: string
   withRelated(scope, key, "neededBy").reduce((next, owner) => {
     const target = relatedScope(scope, owner);
     const sets = getSets(next, target);
+    const canDeny = !SUBJECTS_WITHOUT_DENY.has(owner.action.subject);
     return withSets(
       next,
       target,
       canonicalLegacy(target.rowKey, {
         allow: without(sets.allow, [owner.action.key]),
-        deny: unique([...sets.deny, owner.action.key])
+        deny: canDeny ? unique([...sets.deny, owner.action.key]) : sets.deny
       })
     );
   }, policy);
@@ -745,7 +753,11 @@ export const setActionDenied = (
   key: string,
   isDenied: boolean
 ) => {
-  if (isDenied) return denyKey(policy, scope, key);
+  if (isDenied) {
+    const action = actionOf(scope.rowKey, key);
+    if (action && SUBJECTS_WITHOUT_DENY.has(action.subject)) return policy;
+    return denyKey(policy, scope, key);
+  }
   const sets = getSets(policy, scope);
   return withSets(policy, scope, { ...sets, deny: without(sets.deny, [key]) });
 };
@@ -819,7 +831,14 @@ export const getActionState = (
     isAllowed: isAllowInherited || sets.allow.includes(key),
     isDenied: isDenyInherited || sets.deny.includes(key),
     allowLock,
-    denyLock: isDenyInherited ? `Denied for all ${plural}` : legacy.denyLock
+    denyLock: (() => {
+      if (isDenyInherited) return `Denied for all ${plural}`;
+      const subject = actionOf(scope.rowKey, key)?.subject;
+      if (subject && SUBJECTS_WITHOUT_DENY.has(subject)) {
+        return "This permission can't be denied. Leave Allow unticked instead.";
+      }
+      return legacy.denyLock;
+    })()
   };
 };
 

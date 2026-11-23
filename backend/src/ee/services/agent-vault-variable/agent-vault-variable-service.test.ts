@@ -28,6 +28,12 @@ import { TAgentVaultOauthVariableConfig, TAgentVaultOauthVariableConnection } fr
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
+const oauthScopes = vi.hoisted(() => ({ narrowed: false }));
+vi.mock("@app/services/oauth-client/oauth-scope", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/oauth-client/oauth-scope")>()),
+  isOauthScopeNarrowedRequest: () => oauthScopes.narrowed
+}));
+
 const PROJECT_ID = "project-1";
 const OAUTH_ID = "11111111-1111-4111-8111-111111111111";
 const TEXT_ID = "22222222-2222-4222-8222-222222222222";
@@ -644,5 +650,28 @@ describe("createVariable with a sign-in", () => {
     expect(created.signInError).toBe(
       "The variable was created, but its sign-in couldn't be started. Start a new sign-in for it."
     );
+  });
+});
+
+describe("personal variables under a scope-narrowed OAuth token", () => {
+  const personalRow = (): TAgentVaultVariable => ({ ...textRow(), userId: "user-1" });
+
+  test("its owner reads the value on a first-party session, and a scoped OAuth token can't", async () => {
+    const { service } = buildService({ rows: [personalRow()], rules: [] });
+
+    const { value } = await service.getVariableValue({ projectId: PROJECT_ID, ctx, variableId: TEXT_ID });
+    expect(value).toBe("ghp_1");
+
+    oauthScopes.narrowed = true;
+    try {
+      await expect(service.getVariableValue({ projectId: PROJECT_ID, ctx, variableId: TEXT_ID })).rejects.toThrow(
+        `Variable with ID '${TEXT_ID}' not found`
+      );
+      await expect(
+        service.listVariables({ projectId: PROJECT_ID, ctx, scope: AgentVaultVariableScope.Personal } as never)
+      ).rejects.toThrow("OAuth scopes don't cover Agent Vault variables");
+    } finally {
+      oauthScopes.narrowed = false;
+    }
   });
 });

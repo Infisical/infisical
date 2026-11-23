@@ -93,7 +93,14 @@ const buildService = ({
         memberships: []
       })
     },
-    agentVaultReachDAL: agentVaultTestReachDAL({ accessBundleIds: ["bundle-granted", "bundle-other"] })
+    agentVaultReachDAL: agentVaultTestReachDAL({
+      accessBundleIds: ["bundle-granted", "bundle-other"],
+      serviceIds: ["service-in-granted", "service-read", "service-other"]
+    }),
+    agentVaultServiceDAL: {
+      findIdsInBundles: async (bundleIds: string[]) =>
+        bundleIds.includes("bundle-granted") ? ["service-in-granted"] : []
+    }
   } as unknown as Parameters<typeof agentVaultHookServiceFactory>[0]);
   return { service, agentVaultHookDAL, licenseService, tx };
 };
@@ -271,10 +278,21 @@ describe("reads", () => {
     );
   });
 
-  test("usedBy lists only the services in bundles the caller reaches, and every service for one who reaches all", async () => {
+  test("usedBy lists only the services the caller can see, and every service for one who sees all", async () => {
     const member = buildService({ rules: memberRules, reachesEveryBundle: false });
     await member.service.listHooks({ projectId: PROJECT_ID, ctx, limit: 20, offset: 0 });
-    expect(member.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["bundle-granted"], undefined);
+    expect(member.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["service-in-granted"], undefined);
+
+    // A role that reads a service directly, through no bundle, sees it too.
+    const reader = buildService({
+      rules: [
+        { action: "read", subject: "agent-vault-hooks" },
+        { action: "read", subject: "agent-vault-services", conditions: { serviceId: { $in: ["service-read"] } } }
+      ],
+      reachesEveryBundle: false
+    });
+    await reader.service.listHooks({ projectId: PROJECT_ID, ctx, limit: 20, offset: 0 });
+    expect(reader.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["service-read"], undefined);
 
     const admin = buildService();
     await admin.service.getHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });

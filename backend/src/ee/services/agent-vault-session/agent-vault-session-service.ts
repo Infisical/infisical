@@ -43,6 +43,7 @@ import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fn
 import { isForeignKeyViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import {
+  deniesUseOnItsOwn,
   getAgentVaultPermission,
   getAgentVaultReachability,
   intersectReach,
@@ -470,15 +471,23 @@ export const agentVaultSessionServiceFactory = ({
       ? await agentVaultServiceDAL.findCatalogByNames({ projectId, names: serviceEntries.map(({ name }) => name) })
       : [];
     const servicesByName = new Map(listedServices.map((service) => [service.name, service]));
-    // A service can be listed by anyone who can use it, directly or through a bundle that holds it. An unknown name
-    // reads like one out of reach, so the error never confirms that a service exists.
-    const firstUnreachableService = async (reach: TAgentVaultReach) => {
+    // A service can be listed by anyone who can use it, directly or through a bundle that holds it, unless one of their
+    // roles denies it: a deny doesn't reach inside a bundle, but it does stop naming the service on its own. An unknown
+    // name reads like one out of reach, so the error never confirms that a service exists.
+    const firstUnreachableService = async (
+      reach: TAgentVaultReach,
+      namerPermission?: TAgentVaultPermission["permission"]
+    ) => {
       if (!serviceEntries.length) return undefined;
       const reachableIds = await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reach, projectId);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
       return serviceEntries.find(({ name }) => {
         const service = servicesByName.get(name);
-        return !service || (reachable !== null && !reachable.has(service.id));
+        return (
+          !service ||
+          (reachable !== null && !reachable.has(service.id)) ||
+          (namerPermission !== undefined && deniesUseOnItsOwn(namerPermission, "service", service.id))
+        );
       })?.name;
     };
 
@@ -487,13 +496,20 @@ export const agentVaultSessionServiceFactory = ({
       : [];
     const skillsByName = new Map(listedSkills.map((skill) => [skill.name, skill]));
     // The same reach as a listed service.
-    const firstUnreachableSkill = async (reach: TAgentVaultReach) => {
+    const firstUnreachableSkill = async (
+      reach: TAgentVaultReach,
+      namerPermission?: TAgentVaultPermission["permission"]
+    ) => {
       if (!skillEntries.length) return undefined;
       const reachableIds = await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reach, projectId);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
       return skillEntries.find(({ name }) => {
         const skill = skillsByName.get(name);
-        return !skill || (reachable !== null && !reachable.has(skill.id));
+        return (
+          !skill ||
+          (reachable !== null && !reachable.has(skill.id)) ||
+          (namerPermission !== undefined && deniesUseOnItsOwn(namerPermission, "skill", skill.id))
+        );
       })?.name;
     };
 
@@ -516,14 +532,20 @@ export const agentVaultSessionServiceFactory = ({
           message: `This machine identity can't use an access bundle named '${notUsableByIdentity}'. A session on behalf of a user can use only bundles both the user and the machine identity can use, so check the name, or ask an Agent Vault admin to give the machine identity a role that can use the bundle.`
         });
       }
-      const serviceOutOfIdentityReach = await firstUnreachableService(identityReachability);
+      const serviceOutOfIdentityReach = await firstUnreachableService(
+        identityReachability,
+        identityReachability.permission
+      );
       if (serviceOutOfIdentityReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `This machine identity can't use a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can use only services both the user and the machine identity can use, so check the name, or ask an Agent Vault admin to give the machine identity a role that can use it.`
         });
       }
-      const skillOutOfIdentityReach = await firstUnreachableSkill(identityReachability);
+      const skillOutOfIdentityReach = await firstUnreachableSkill(
+        identityReachability,
+        identityReachability.permission
+      );
       if (skillOutOfIdentityReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
@@ -556,14 +578,14 @@ export const agentVaultSessionServiceFactory = ({
           message: `'${onBehalfOfUser.identifier}' can't use an access bundle named '${notUsableByUser}'. Check the name, or ask an Agent Vault admin to give them a role that can use it.`
         });
       }
-      const serviceOutOfUserReach = await firstUnreachableService(userReach);
+      const serviceOutOfUserReach = await firstUnreachableService(userReach, onBehalfOfUser.permission);
       if (serviceOutOfUserReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `'${onBehalfOfUser.identifier}' can't use a service called '${serviceOutOfUserReach}'. Check the name, or ask an Agent Vault admin to give them a role that can use it.`
         });
       }
-      const skillOutOfUserReach = await firstUnreachableSkill(userReach);
+      const skillOutOfUserReach = await firstUnreachableSkill(userReach, onBehalfOfUser.permission);
       if (skillOutOfUserReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
@@ -588,7 +610,11 @@ export const agentVaultSessionServiceFactory = ({
         });
       }
     } else {
-      ownerReach = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+      const ownerReachability = await getAgentVaultReachability(
+        { permissionService, agentVaultReachDAL },
+        { projectId, ctx }
+      );
+      ownerReach = ownerReachability;
       const notUsable = firstUnreachable(ownerReach);
       if (notUsable) {
         throw new BadRequestError({
@@ -596,14 +622,14 @@ export const agentVaultSessionServiceFactory = ({
           message: `You can't use an access bundle named '${notUsable}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
         });
       }
-      const serviceOutOfReach = await firstUnreachableService(ownerReach);
+      const serviceOutOfReach = await firstUnreachableService(ownerReach, ownerReachability.permission);
       if (serviceOutOfReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `You can't use a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
         });
       }
-      const skillOutOfReach = await firstUnreachableSkill(ownerReach);
+      const skillOutOfReach = await firstUnreachableSkill(ownerReach, ownerReachability.permission);
       if (skillOutOfReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",

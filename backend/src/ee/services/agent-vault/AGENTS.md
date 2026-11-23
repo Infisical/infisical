@@ -180,6 +180,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
   session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
   be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
+- **An Agent Vault role can't carry a deny on a subject whose rule schema has no `inverted`** (`PROJECT_SUBJECTS_WITHOUT_DENY`
+  in `dropped-deny-fns.ts`): parsing would drop the flag and save an allow, so the role routes read the raw body
+  (`preValidation`) and `role-service` refuses it.
 - **An Agent Vault project's name and delete protection go by edit on the project** (`workspace`), not Settings, which in
   Agent Vault means session log settings (`updateProject`).
 - Keep each refusal's error type when a gate changes: an id you may not act on stays a 404. A by-id read answers 404
@@ -191,7 +194,8 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 
 - **What an actor can put in a session comes from their roles' `use` rules** on `agent-vault-access-bundles`,
   `agent-vault-services` and `agent-vault-skills`. Using a bundle covers its services and skills, so a role that uses a
-  bundle needs nothing on what it holds, whatever a role says on the item: a deny on a service or skill only stops its direct use, and a bundle that holds it still gives it. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
+  bundle needs nothing on what it holds, whatever a role says on the item: a deny on a service or skill only stops its direct use, and a bundle that holds it still gives it. Naming such an
+  item on its own at mint is refused (`deniesUseOnItsOwn`), for both sides of an on-behalf-of session. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
   into a `TAgentVaultReach`: a list of ids per kind, null when the rules cover every one, ones created later included.
   Mint, resolve, the skills fetch, member-facing reads and delegations all go through it, so they can't disagree.
 - **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with one of `$eq` or `$in`;
@@ -728,7 +732,7 @@ does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical store
 resolve.
 
 - **A hook is a project resource with no rules of its own** (`agent_vault_hooks`: name, description, URL, sealed
-  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the project's services that use it. There are no
+  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the services that use it that the caller can see, the same set the services list shows. There are no
   session-level or inline hooks; if inline hooks come back, add them to saved and inline services together.
 - **A service has at most one hook, stored on its row**: `hookId` (FK, `ON DELETE SET NULL`) plus the narrowing
   `hookMethods`/`hookPaths` (HTTP) or `hookTools` (MCP), null meaning every request or connection. No link table, so the
@@ -864,7 +868,9 @@ sign-in rather than text and is never expanded into a field; see [OAuth variable
   service they can't see counts it without naming it. Every value is sealed and no response but the value route
   (`read-value`) returns one. That route is a GET with no-store headers and one audit event per read.
 - Personal variables need nothing but a project membership, like personal values: they are the caller's own, so a
-  member who lost every role that uses something can still list and delete theirs.
+  member who lost every role that uses something can still list and delete theirs. A delegated OAuth token that carries
+  scopes can't reach them (`isOauthScopeNarrowedRequest`): they come with the membership, which no scope narrows, and no
+  scope grants Agent Vault access.
 
 ## Member-provided values
 

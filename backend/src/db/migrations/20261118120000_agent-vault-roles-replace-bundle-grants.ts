@@ -314,6 +314,8 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.AgentVaultAccessBundle, (t) => {
       t.uuid("grantRoleId").nullable();
       t.foreign("grantRoleId").references("id").inTable(TableName.Role).onDelete("SET NULL");
+      // Deleting a role sets this to null, which without an index scans every bundle.
+      t.index("grantRoleId");
     });
   }
   for await (const [accessBundleId, roleId] of roleIdByBundle) {

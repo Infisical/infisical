@@ -16,12 +16,15 @@ import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 import {
   canAddServiceToAgentVaultBundle,
   canAddSkillToAgentVaultBundle,
+  canPickAgentVaultService,
+  canPickAgentVaultSkill,
   canReadEveryAgentVaultMember,
   canUseAgentVaultAccessBundle,
   canUseAgentVaultAccessBundles,
   canUseAgentVaultService,
   canUseAgentVaultSkill,
   canUseAgentVaultSkills,
+  canUseNewAgentVaultService,
   canUseNewAgentVaultSkill
 } from "./agentVaultPermissions";
 
@@ -250,5 +253,67 @@ describe("canReadEveryAgentVaultMember", () => {
       )
     ).toBe(false);
     expect(canReadEveryAgentVaultMember(abilityOf([readIdentities()]))).toBe(false);
+  });
+});
+
+describe("canUseNewAgentVaultService", () => {
+  const useServices = (conditions?: Record<string, unknown>, inverted = false): TRule => ({
+    action: ProjectPermissionAgentVaultServiceActions.Use,
+    subject: ProjectPermissionSub.AgentVaultServices,
+    ...(conditions ? { conditions } : {}),
+    ...(inverted ? { inverted } : {})
+  });
+
+  it("is true only when the caller's roles let them use every new service", () => {
+    expect(canUseNewAgentVaultService(abilityOf([useServices()]))).toBe(true);
+    expect(
+      canUseNewAgentVaultService(abilityOf([useServices({ serviceId: { $in: [SERVICE] } })]))
+    ).toBe(false);
+    expect(
+      canUseNewAgentVaultService(abilityOf([useServices(), useServices(undefined, true)]))
+    ).toBe(false);
+    expect(
+      canUseNewAgentVaultService(
+        abilityOf([useServices(), useServices({ serviceId: { $eq: OTHER_SERVICE } }, true)])
+      )
+    ).toBe(true);
+  });
+});
+
+describe("canPickAgentVaultService and canPickAgentVaultSkill", () => {
+  const useTheBundle: TRule = {
+    action: ProjectPermissionAgentVaultAccessBundleActions.Use,
+    subject: ProjectPermissionSub.AgentVaultAccessBundles,
+    conditions: { accessBundleId: { $eq: BUNDLE } }
+  };
+  const service = { id: SERVICE, accessBundles: [{ id: BUNDLE }] };
+  const skill = { id: SKILL, accessBundles: [{ id: BUNDLE }] };
+
+  it("leaves out an item a role denies, though the bundle still gives it", () => {
+    const permission = abilityOf([
+      useTheBundle,
+      {
+        action: ProjectPermissionAgentVaultServiceActions.Use,
+        subject: ProjectPermissionSub.AgentVaultServices,
+        conditions: { serviceId: { $eq: SERVICE } },
+        inverted: true
+      },
+      {
+        action: ProjectPermissionAgentVaultSkillActions.Use,
+        subject: ProjectPermissionSub.AgentVaultSkills,
+        conditions: { skillId: { $eq: SKILL } },
+        inverted: true
+      }
+    ]);
+    expect(canUseAgentVaultService(permission, service as never)).toBe(true);
+    expect(canPickAgentVaultService(permission, service as never)).toBe(false);
+    expect(canUseAgentVaultSkill(permission, skill as never)).toBe(true);
+    expect(canPickAgentVaultSkill(permission, skill as never)).toBe(false);
+  });
+
+  it("offers an item the bundle gives when nothing denies it", () => {
+    const permission = abilityOf([useTheBundle]);
+    expect(canPickAgentVaultService(permission, service as never)).toBe(true);
+    expect(canPickAgentVaultSkill(permission, skill as never)).toBe(true);
   });
 });

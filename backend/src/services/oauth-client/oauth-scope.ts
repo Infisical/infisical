@@ -1,8 +1,11 @@
+import { requestContext } from "@fastify/request-context";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
 // Coarse, named OAuth delegation scopes. A delegated OAuth access token can never do more than the
 // underlying user; scopes only *narrow* that ability (effective = userPermissions ∩ grantedScopes).
@@ -138,3 +141,7 @@ export const applyOauthScopeToOrgRules = <T extends TCaslRuleLike>(rules: T[], s
 
 export const applyOauthScopeToProjectRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
   intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "project"));
+
+// Whether this request runs on a delegated OAuth token whose scopes narrow what it can do. Access that comes from a
+// membership rather than a permission rule has no rule for the scopes to narrow, so it checks this instead.
+export const isOauthScopeNarrowedRequest = () => Boolean(requestContext.get(RequestContextKey.OauthScopes));

@@ -77,6 +77,16 @@ export const DENIED_LEVEL = "denied";
 export const NONE_LEVEL = "none";
 
 const Sub = ProjectPermissionSub;
+
+// The API's rule schema for these subjects has no `inverted`, so it drops the flag and a deny would save as an allow.
+// The editor never writes a deny on them.
+export const SUBJECTS_WITHOUT_DENY: ReadonlySet<string> = new Set([
+  Sub.Role,
+  Sub.Settings,
+  Sub.AuditLogs,
+  Sub.Project
+]);
+
 // Access bundles and skills take the same action names as services.
 const ResourceAction = ProjectPermissionAgentVaultServiceActions;
 const SessionAction = ProjectPermissionAgentVaultSessionActions;

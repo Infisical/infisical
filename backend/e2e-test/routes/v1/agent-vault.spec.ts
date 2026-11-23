@@ -12270,6 +12270,28 @@ describe("Agent Vault V1 Router", async () => {
       ]);
       expect(slugs).toEqual(expect.arrayContaining(own));
     });
+
+    test("a deny the API can't store is refused instead of saved as an allow", async () => {
+      const projectId = await getProjectId();
+      const slug = `deny-dropped-${Date.now()}`;
+      const permissions = [
+        { subject: "agent-vault-proxies", action: ["read"] },
+        { subject: "role", action: ["edit"], inverted: true }
+      ];
+      const created = await inject("POST", `/api/v1/projects/${projectId}/roles`, { slug, name: slug, permissions });
+      expect(created.statusCode).toBe(400);
+      expect(created.json().message).toContain("An Agent Vault role can't deny role");
+      expect(await testDb("roles").where({ projectId, slug }).first()).toBeUndefined();
+
+      const role = await createAgentVaultRole(projectId, slug, [{ subject: "agent-vault-proxies", action: ["read"] }]);
+      try {
+        const updated = await inject("PATCH", `/api/v1/projects/${projectId}/roles/${role.id}`, { permissions });
+        expect(updated.statusCode).toBe(400);
+        expect(updated.json().message).toContain("An Agent Vault role can't deny role");
+      } finally {
+        await inject("DELETE", `/api/v1/projects/${projectId}/roles/${role.id}`);
+      }
+    });
   });
 
   describe("permission boundaries", async () => {
@@ -15129,6 +15151,27 @@ describe("Agent Vault V1 Router", async () => {
           expect(await resolve()).toEqual([keptName, deniedName].sort());
           expect((await sessionSkillNames(token)).sort()).toEqual([keptSkill.name, deniedSkill.name].sort());
 
+          // The deny stops naming the item on its own, as a session without the bundle would carry it.
+          const namedService = await member.as("POST", "/api/v1/agent-vault/sessions", {
+            services: [deniedName],
+            ttl: "1h"
+          });
+          expect(namedService.statusCode).toBe(400);
+          expect(namedService.json().message).toBe(
+            `You can't use a service called '${deniedName}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
+          );
+          const namedSkill = await member.as("POST", "/api/v1/agent-vault/sessions", {
+            accessBundle: bundle.name,
+            skills: [deniedSkill.name],
+            ttl: "1h"
+          });
+          expect(namedSkill.statusCode).toBe(400);
+          expect(namedSkill.json().message).toBe(
+            `You can't use a skill called '${deniedSkill.name}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
+          );
+          const namedKept = await member.as("POST", "/api/v1/agent-vault/sessions", { services: [keptName], ttl: "1h" });
+          expect(namedKept.statusCode, namedKept.payload).toBe(200);
+
           expect(await roleSlugsAt(`${servicesUrl}/${keptId}/roles`)).toContain(role.slug);
           expect(await roleSlugsAt(`${servicesUrl}/${deniedId}/roles`)).toContain(role.slug);
           expect(await roleSlugsAt(`/api/v1/agent-vault/skills/${deniedSkill.id}/roles`)).toContain(role.slug);
@@ -15188,6 +15231,9 @@ describe("Agent Vault V1 Router", async () => {
         );
         // Adding to a delegation is what the available list is for, so reading the identity isn't enough.
         expect((await reader.as("GET", availableUrl)).statusCode).toBe(403);
+        // A role's conditions compare ids exactly, so an id in another case still names identity B.
+        expect((await reader.as("GET", `/api/v1/agent-vault/delegations/${botB.id}`)).statusCode).toBe(403);
+        expect((await reader.as("GET", `/api/v1/agent-vault/delegations/${botB.id.toUpperCase()}`)).statusCode).toBe(403);
 
         const readsMembers = await createAgentVaultRole(projectId, `deleg-reads-members-${unique()}`, [
           ...SESSION_RULES,

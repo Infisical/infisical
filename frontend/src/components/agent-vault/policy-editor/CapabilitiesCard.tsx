@@ -118,7 +118,7 @@ export const CapabilitiesCard = ({
                       ) : undefined
                     }))}
                     ariaLabel={row.label}
-                    className="w-44"
+                    className="w-56"
                     isDisabled={isReadOnly}
                     onLevelChange={(next) => {
                       onScopeOpenChange(row.key, false);
@@ -135,7 +135,7 @@ export const CapabilitiesCard = ({
                   scopeLabel={row.label}
                   isReadOnly={isReadOnly}
                   onChange={onChange}
-                  accessClassName="w-44"
+                  accessClassName="w-56"
                 />
               )}
             </Fragment>

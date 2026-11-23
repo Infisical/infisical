@@ -2,6 +2,11 @@ import { useState } from "react";
 import { linkOptions } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { DeleteHookDialog } from "@app/components/agent-vault/hooks/DeleteHookDialog";
 import { HookSheet } from "@app/components/agent-vault/hooks/HookSheet";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -17,7 +22,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Empty,
@@ -153,10 +157,13 @@ export const HooksCard = () => {
           allows it. Pick a hook on a service to check that service&apos;s requests in every
           session.
         </CardDescription>
-        {canCreate && (
-          <CardAction>
+        <CardAction>
+          <DisabledReasonTooltip
+            disabledReason={deniedReason(canCreate, "You don't have permission to create hooks")}
+          >
             <Button
               variant="av"
+              isDisabled={!canCreate}
               onClick={() =>
                 isOnPlan
                   ? setIsCreateOpen(true)
@@ -169,8 +176,8 @@ export const HooksCard = () => {
               <PlusIcon />
               Create Hook
             </Button>
-          </CardAction>
-        )}
+          </DisabledReasonTooltip>
+        </CardAction>
       </CardHeader>
 
       {hasHooks && (
@@ -194,9 +201,11 @@ export const HooksCard = () => {
             <EmptyHeader>
               <EmptyTitle>{hasHooks ? "No hooks match your search" : "No hooks yet"}</EmptyTitle>
               <EmptyDescription>
-                {hasHooks
-                  ? "Try a different search term."
-                  : "Create a hook, then pick it on a service."}
+                {hasHooks && "Try a different search term."}
+                {!hasHooks &&
+                  (canCreate
+                    ? "Create a hook, then pick it on a service."
+                    : "Someone who can create hooks can add them here.")}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -266,42 +275,46 @@ export const HooksCard = () => {
                     <UsedByBadges usedBy={hook.usedBy} />
                   </TableCell>
                   <TableCell variant="action">
-                    {(canEdit || canDelete) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Open hook actions"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          sideOffset={2}
-                          align="end"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          aria-label="Open hook actions"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {canEdit && (
-                            <DropdownMenuItem onClick={() => openSheet(hook.id)}>
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        sideOffset={2}
+                        align="end"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canEdit,
+                            "You don't have permission to edit hooks"
                           )}
-                          {canEdit && canDelete && <DropdownMenuSeparator />}
-                          {canDelete && (
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setHookToDelete(hook)}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
+                          onClick={() => openSheet(hook.id)}
+                        >
+                          <PencilIcon />
+                          Edit
+                        </DisabledReasonMenuItem>
+                        <DropdownMenuSeparator />
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={deniedReason(
+                            canDelete,
+                            "You don't have permission to delete hooks"
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                          onClick={() => setHookToDelete(hook)}
+                        >
+                          <TrashIcon />
+                          Delete
+                        </DisabledReasonMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

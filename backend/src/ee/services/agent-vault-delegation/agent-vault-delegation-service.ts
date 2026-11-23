@@ -150,7 +150,7 @@ export const agentVaultDelegationServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       action,
       machineIdentityId
-        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
+        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId.toLowerCase() })
         : ProjectPermissionSub.Identity
     );
     if (action !== ProjectPermissionIdentityActions.Read) {

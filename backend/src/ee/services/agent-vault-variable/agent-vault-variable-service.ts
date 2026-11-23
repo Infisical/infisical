@@ -12,6 +12,7 @@ import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } 
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
+import { isOauthScopeNarrowedRequest } from "@app/services/oauth-client/oauth-scope";
 
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import {
@@ -135,6 +136,13 @@ export const agentVaultVariableServiceFactory = ({
   const getProjectCipher = (projectId: string) =>
     kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
+  // Personal variables come with the membership, not a role, so no OAuth scope narrows them; and no scope grants
+  // Agent Vault access, so a delegated token that carries scopes doesn't reach them.
+  const personalVariablesOutOfScope = () =>
+    new ForbiddenRequestError({
+      message: "This token's OAuth scopes don't cover Agent Vault variables, so it can't use your personal variables."
+    });
+
   /**
    * Global variables take their own permission, reads included: a member can use a service without seeing what it is
    * built from. Personal variables are the caller's own, and any member of the project keeps them whatever their
@@ -150,6 +158,7 @@ export const agentVaultVariableServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultVariables);
       return { projectId, owner: null };
     }
+    if (isOauthScopeNarrowedRequest()) throw personalVariablesOutOfScope();
     return { projectId, owner: ownerOf(ctx) };
   };
 
@@ -167,7 +176,7 @@ export const agentVaultVariableServiceFactory = ({
       owners.push(null);
     }
     const owner = ownerOrNullOf(ctx);
-    if (owner) owners.push(owner);
+    if (owner && !isOauthScopeNarrowedRequest()) owners.push(owner);
     if (!owners.length) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionAgentVaultVariableActions.Read,
@@ -191,7 +200,7 @@ export const agentVaultVariableServiceFactory = ({
     if (!variable) throw notFound(variableId);
     if (isPersonal(variable)) {
       const owner = ownerOf(ctx);
-      if (!isOwnedBy(variable, owner)) throw notFound(variableId);
+      if (!isOwnedBy(variable, owner) || isOauthScopeNarrowedRequest()) throw notFound(variableId);
       return { variable, scope: { projectId, owner } };
     }
     if (permission.cannot(action, ProjectPermissionSub.AgentVaultVariables)) {

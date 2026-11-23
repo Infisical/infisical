@@ -18,6 +18,8 @@ export interface TRoleScopeFactory {
 export type TCreateRoleDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
+  // Subjects the request denied that parsing turned into allows (findDroppedDenySubjects).
+  droppedDenySubjects?: string[];
   data: {
     name: string;
     description?: string | null;
@@ -29,6 +31,7 @@ export type TCreateRoleDTO = {
 export type TUpdateRoleDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
+  droppedDenySubjects?: string[];
   selector: {
     id: string;
   };

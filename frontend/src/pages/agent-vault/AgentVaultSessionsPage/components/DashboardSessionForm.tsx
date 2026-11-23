@@ -29,9 +29,9 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import {
-  canUseAgentVaultService,
+  canPickAgentVaultService,
   canUseAgentVaultServices,
-  canUseAgentVaultSkill,
+  canPickAgentVaultSkill,
   canUseAgentVaultSkills
 } from "@app/helpers/agentVaultPermissions";
 import { useDebounce } from "@app/hooks";
@@ -189,7 +189,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     { enabled: canUseAgentVaultServices(permission) }
   );
   const usableServices = (pickableServices?.services ?? []).filter((service) =>
-    canUseAgentVaultService(permission, service)
+    canPickAgentVaultService(permission, service)
   );
 
   const [skillSearch, setSkillSearch] = useState("");
@@ -203,7 +203,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     { enabled: canUseAgentVaultSkills(permission) }
   );
   const usableSkills = (pickableSkills?.skills ?? []).filter((skill) =>
-    canUseAgentVaultSkill(permission, skill)
+    canPickAgentVaultSkill(permission, skill)
   );
 
   const { data: bundleDetails } = useGetAgentVaultAccessBundle(projectId, accessBundle?.id ?? "");

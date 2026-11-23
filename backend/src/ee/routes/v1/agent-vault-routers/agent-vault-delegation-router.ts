@@ -98,7 +98,8 @@ const SubjectChangeBodySchema = (docs: { userIds: string; groupIds: string }) =>
 const projectQuery = z.object({ projectId: AgentVaultProjectIdSchema });
 
 const machineIdentityParams = z.object({
-  machineIdentityId: z.string().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
+  // A role's conditions compare ids exactly, so the id reaches them in the case the database returns.
+  machineIdentityId: z.string().toLowerCase().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
 });
 
 const auditDelegationFields = (delegation: z.infer<typeof DelegationSchema>) => ({

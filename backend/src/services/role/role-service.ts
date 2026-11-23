@@ -92,10 +92,28 @@ export const roleServiceFactory = ({
     [AccessScope.Project]: projectRoleFactory
   };
 
+  // A deny on a subject whose schema can't keep it reaches here as an allow. Agent Vault's role editor offers a deny on
+  // every row, so a role there is refused rather than saved granting what it was meant to deny.
+  const assertNoDroppedDenies = async (
+    scopeData: TCreateRoleDTO["scopeData"],
+    droppedDenySubjects: string[] | undefined
+  ) => {
+    if (!droppedDenySubjects?.length || scopeData.scope !== AccessScope.Project) return;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.AgentVault) return;
+    throw new BadRequestError({
+      message: `An Agent Vault role can't deny ${droppedDenySubjects.join(", ")}: these permissions can only be allowed, so a deny would be saved as an allow. Remove the deny, and leave the permission out instead.`
+    });
+  };
+
   const createRole = async (dto: TCreateRoleDTO) => {
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
+    await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
@@ -135,6 +153,7 @@ export const roleServiceFactory = ({
     const scope = factory.getScopeField(scopeData);
 
     await factory.onUpdateRoleGuard(dto);
+    await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
