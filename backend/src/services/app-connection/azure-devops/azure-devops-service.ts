@@ -2,6 +2,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -68,12 +69,14 @@ const listAzureDevOpsProjects = async (
   appConnection: TAzureDevOpsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ): Promise<TAzureDevOpsProject[]> => {
   const accessToken = await getAzureDevopsConnection(
     appConnection.id,
     appConnectionDAL,
     kmsDataKeyService,
+    instanceConfigService,
     oidcIssuerService
   );
 
@@ -113,6 +116,7 @@ export const azureDevOpsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
@@ -122,6 +126,7 @@ export const azureDevOpsConnectionService = (
       appConnection,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       oidcIssuerService
     );
 

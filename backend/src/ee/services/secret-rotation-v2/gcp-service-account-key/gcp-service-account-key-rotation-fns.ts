@@ -49,7 +49,15 @@ const getErrorStatus = (error: unknown) => (error instanceof AxiosError ? error.
 export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   TGcpServiceAccountKeyRotationWithConnection,
   TGcpServiceAccountKeyRotationGeneratedCredentials
-> = (secretRotation) => {
+> = (
+  secretRotation,
+  _appConnectionDAL,
+  _kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  _keyStore,
+  instanceConfigService
+) => {
   const {
     connection,
     parameters: { serviceAccountEmail },
@@ -175,7 +183,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   const issueCredentials: TRotationFactoryIssueCredentials<TGcpServiceAccountKeyRotationGeneratedCredentials> = async (
     callback
   ) => {
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     const credentials = await $createKey(accessToken);
 
@@ -187,7 +195,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   > = async (credentials, callback) => {
     if (!credentials?.length) return callback();
 
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     // The key apps are using is deleted last, so a failure part way through leaves the rotation and its
     // secret in place with a key that still works, rather than one that is already gone.
@@ -207,7 +215,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TGcpServiceAccountKeyRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     // The new key is created before the previous one is deleted, so a failed create can't leave the service
     // account with fewer working keys than before. The cost is room for a third key under GCP's 10 key limit

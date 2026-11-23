@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
@@ -22,12 +23,14 @@ const listAzureRegisteredApps = async (
   appConnection: TAzureClientSecretsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const accessToken = await getAzureConnectionAccessToken(
     appConnection.id,
     appConnectionDAL,
     kmsDataKeyService,
+    instanceConfigService,
     oidcIssuerService
   );
 
@@ -56,12 +59,19 @@ export const azureClientSecretsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureClientSecrets, connectionId, actor);
 
-    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, kmsDataKeyService, oidcIssuerService);
+    const apps = await listAzureRegisteredApps(
+      appConnection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService,
+      oidcIssuerService
+    );
 
     return apps.map((app) => ({
       id: app.id,

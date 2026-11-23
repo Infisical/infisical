@@ -68,6 +68,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   _gatewayV2Service,
   _gatewayPoolService,
   _keyStore,
+  instanceConfigService,
   oidcIssuerService
 ) => {
   const {
@@ -85,6 +86,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       oidcIssuerService
     );
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/addPassword`;
@@ -147,6 +149,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       oidcIssuerService
     );
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/passwordCredentials`;
@@ -180,6 +183,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       connection.id,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       oidcIssuerService
     );
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;

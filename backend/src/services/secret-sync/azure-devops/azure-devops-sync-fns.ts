@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -14,6 +15,7 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -38,6 +40,7 @@ interface AzureDevOpsVariableGroupList {
 export const azureDevOpsSyncFactory = ({
   kmsDataKeyService,
   appConnectionDAL,
+  instanceConfigService,
   oidcIssuerService
 }: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
@@ -55,6 +58,7 @@ export const azureDevOpsSyncFactory = ({
       secretSync.connectionId,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       oidcIssuerService
     );
 

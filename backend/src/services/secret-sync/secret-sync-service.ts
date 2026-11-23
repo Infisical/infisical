@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -77,6 +78,7 @@ type TSecretSyncServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -110,6 +112,7 @@ export const secretSyncServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   kmsDataKeyService,
+  instanceConfigService,
   permissionService,
   orgDAL,
   projectBotService,
@@ -575,7 +578,8 @@ export const secretSyncServiceFactory = ({
                 connectionId: connectionId ?? null,
                 destinationConfig
               },
-              decryptConnection
+              decryptConnection,
+              instanceConfigService
             });
             return isDuplicate ? sync : null;
           } catch {

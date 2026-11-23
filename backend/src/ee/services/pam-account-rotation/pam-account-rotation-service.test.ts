@@ -102,7 +102,7 @@ const buildService = (
 
 describe("rotateScheduledAccount recovery probe", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never);
+    await crypto.initialize(async () => null);
   });
 
   test("promotes the pending credential when it authenticates, without re-applying", async () => {
@@ -498,7 +498,7 @@ describe("sqlRotationHandler.validateTarget", () => {
 
 describe("rotation gateway binding check", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never);
+    await crypto.initialize(async () => null);
   });
 
   test.each([

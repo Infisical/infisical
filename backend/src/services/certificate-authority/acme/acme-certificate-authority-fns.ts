@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -166,6 +167,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  instanceConfigService: TInstanceConfigService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -182,6 +184,7 @@ type TOrderCertificateDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  instanceConfigService: TInstanceConfigService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -384,6 +387,7 @@ export const executeAcmeOrder = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
+    instanceConfigService,
     oidcIssuerService
   } = deps;
 
@@ -496,13 +500,18 @@ export const executeAcmeOrder = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Set ACME challenge TXT record"
-          });
+          await route53UpsertRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            {
+              name: recordName,
+              type: "TXT",
+              value: recordValue,
+              ttl: 30,
+              comment: "Set ACME challenge TXT record"
+            },
+            instanceConfigService
+          );
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -550,6 +559,7 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             keyStore,
+            instanceConfigService,
             abortSignal
           );
           break;
@@ -588,13 +598,18 @@ export const executeAcmeOrder = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Delete ACME challenge TXT record"
-          });
+          await route53DeleteRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            {
+              name: recordName,
+              type: "TXT",
+              value: recordValue,
+              ttl: 30,
+              comment: "Delete ACME challenge TXT record"
+            },
+            instanceConfigService
+          );
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -641,7 +656,8 @@ export const executeAcmeOrder = async (
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
-            keyStore
+            keyStore,
+            instanceConfigService
           );
           break;
         }
@@ -775,6 +791,7 @@ export const AcmeCertificateAuthorityFns = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  instanceConfigService,
   oidcIssuerService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
@@ -1033,6 +1050,7 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        instanceConfigService,
         oidcIssuerService
       }
     );
@@ -1107,6 +1125,7 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        instanceConfigService,
         oidcIssuerService
       }
     );

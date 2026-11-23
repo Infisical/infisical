@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -16,9 +17,11 @@ import {
   TAzureAppConfigurationConnectionConfig
 } from "./azure-app-configuration-connection-types";
 
-export const getAzureAppConfigurationConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID } = getConfig();
-
+export const getAzureAppConfigurationConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure App Configuration" as const,
     app: AppConnection.AzureAppConfiguration as const,
@@ -33,15 +36,16 @@ export const getAzureAppConfigurationConnectionListItem = () => {
 
 export const validateAzureAppConfigurationConnectionCredentials = async (
   config: TAzureAppConfigurationConnectionConfig,
+  instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const {
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET
+  } = await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureAppConfigurationConnectionMethod.OAuth:

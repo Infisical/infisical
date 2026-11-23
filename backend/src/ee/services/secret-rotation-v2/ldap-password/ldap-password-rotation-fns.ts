@@ -118,6 +118,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   gatewayV2Service,
   gatewayPoolService,
   _keyStore,
+  _instanceConfigService,
   _oidcIssuerService,
   passwordValidationContext
 ) => {
