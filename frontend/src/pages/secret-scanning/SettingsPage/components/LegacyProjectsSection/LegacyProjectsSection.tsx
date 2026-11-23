@@ -33,7 +33,7 @@ import {
   useGetSecretScanningInstanceState
 } from "@app/hooks/api/secretScanningV2";
 
-export const OrgSecretScanningTab = () => {
+export const LegacyProjectsSection = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -54,7 +54,7 @@ export const OrgSecretScanningTab = () => {
         <CardHeader>
           <CardTitle>
             <RadarIcon className="size-4 text-accent" />
-            Secret Scanning
+            Projects
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -90,7 +90,7 @@ export const OrgSecretScanningTab = () => {
       <CardHeader>
         <CardTitle>
           <RadarIcon className="size-4 text-accent" />
-          Secret Scanning
+          Projects
         </CardTitle>
       </CardHeader>
       <CardContent>
