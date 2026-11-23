@@ -2783,6 +2783,18 @@ describe("CertificateV3Service", () => {
         );
       });
 
+      it("names a held renewal of a certificate with no common name or SANs by its profile", async () => {
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported, commonName: "", altNames: "" });
+
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+        const [{ requestData, justification }] = mockApprovalPolicyService.createRequestFromPolicy.mock.calls[0] as [
+          { requestData: { renewal: { certificateName?: string } }; justification: string }
+        ];
+        expect(requestData.renewal.certificateName).toBeUndefined();
+        expect(justification).toBe(`Certificate renewal request for ${mockProfile.slug}`);
+      });
+
       it("names a held renewal of a certificate with no common name by its first SAN", async () => {
         setupRenewal({
           ...mockOriginalCert,

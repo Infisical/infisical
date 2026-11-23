@@ -111,7 +111,7 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
     return {
       typeLabel: "Revocation",
       commonName: data.commonName || data.serialNumber,
-      requestedCommonName: "",
+      renewedCertificateName: "",
       displayName: data.commonName || truncateSerialNumber(data.serialNumber),
       profileName: data.profileName
     };
@@ -119,12 +119,11 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
 
   const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
   const renewal = data && "renewal" in data ? data.renewal : undefined;
-  const requestedCommonName = data?.certificateRequest?.commonName ?? "";
-  const commonName = renewal?.certificateName || requestedCommonName;
+  const commonName = data?.certificateRequest?.commonName ?? "";
   return {
     typeLabel: renewal ? "Renewal" : "Issuance",
     commonName,
-    requestedCommonName,
+    renewedCertificateName: renewal?.certificateName ?? "",
     displayName: commonName,
     profileName: data?.profileName ?? ""
   };
@@ -254,12 +253,12 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const { typeLabel, commonName, requestedCommonName, profileName } =
+        const { typeLabel, commonName, renewedCertificateName, profileName } =
           getApplicationRequestSummary(r);
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return (
           commonName.toLowerCase().includes(norm) ||
-          requestedCommonName.toLowerCase().includes(norm) ||
+          renewedCertificateName.toLowerCase().includes(norm) ||
           profileName.toLowerCase().includes(norm) ||
           typeLabel.toLowerCase().includes(norm) ||
           requester.toLowerCase().includes(norm)

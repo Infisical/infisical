@@ -263,11 +263,7 @@ export const RequestsTab = () => {
                         </div>
                       </TableCell>
                       <TableCell>{requestData.profileName}</TableCell>
-                      <TableCell>
-                        {requestData.renewal?.certificateName ||
-                          requestData.certificateRequest?.commonName ||
-                          "-"}
-                      </TableCell>
+                      <TableCell>{requestData.certificateRequest?.commonName || "-"}</TableCell>
                       <TableCell>
                         {needsApproval ? (
                           <Badge variant="warning">
