@@ -139,10 +139,16 @@ export const KeyStorePrefixes = {
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
-  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string, page: string) =>
-    `project-folder-access-marker:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessMarker: (
+    projectId: string,
+    rosterVersion: string,
+    folderId: string,
+    actorType: string,
+    page: string
+  ) => `project-folder-access-marker:${projectId}:${rosterVersion}:${folderId}:${actorType}:${page}` as const,
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessRosterVersion: (projectId: string) => `project-folder-access-roster-version:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
@@ -296,6 +302,7 @@ export const KeyStoreTtls = {
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
+  ProjectFolderAccessRosterVersionTtlSeconds: 600, // 10 minutes, must outlive the marker
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
