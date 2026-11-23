@@ -55,7 +55,7 @@ import {
   TOauthTokenExchangeDTO,
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
-import { getOauthScopeDescriptions, MCP_ONLY_OAUTH_SCOPES, parseOauthScopeString } from "./oauth-scope";
+import { getOauthScopeDescriptions, MCP_ONLY_OAUTH_SCOPES, OauthScope, parseOauthScopeString } from "./oauth-scope";
 import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
@@ -594,6 +594,12 @@ export const oauthClientServiceFactory = ({
       });
     }
 
+    if (boundResource && !granted.length) {
+      throw new BadRequestError({
+        message: `The Infisical MCP server needs at least one scope. Request ${OauthScope.SecretsDescribe}, ${OauthScope.SecretsRead} or ${OauthScope.SecretsWrite}.`
+      });
+    }
+
     return granted;
   };
 
@@ -695,7 +701,7 @@ export const oauthClientServiceFactory = ({
     callbackUrl.searchParams.set("code", code);
     if (dto.state) callbackUrl.searchParams.set("state", dto.state);
 
-    return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId };
+    return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId, scopes: grantedScopes, resource };
   };
 
   const authenticateClient = async (clientId?: string, clientSecret?: string) => {

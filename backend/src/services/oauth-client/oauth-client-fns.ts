@@ -70,6 +70,9 @@ export const isAllowedRedirectUri = (uri: string) => {
 // so the format must stay in sync between session creation and revocation.
 export const getOauthClientSessionUserAgent = (clientId: string) => `Infisical OAuth - ${clientId}`;
 
+// The longest client ID whose session label still fits auth_token_sessions.userAgent (varchar 255).
+export const MAX_OAUTH_CLIENT_ID_LENGTH = 255 - getOauthClientSessionUserAgent("").length;
+
 type TOauthClientAuthority = Pick<
   TOauthClients,
   "clientSecretHash" | "grantTypes" | "tokenExchangeAudience" | "tokenExchangeIdpSatisfiesMfa"

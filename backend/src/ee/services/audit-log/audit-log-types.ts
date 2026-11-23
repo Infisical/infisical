@@ -8444,6 +8444,8 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+    scopes: string[];
+    resource?: string;
   };
 }
 

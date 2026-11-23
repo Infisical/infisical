@@ -19,7 +19,7 @@ import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { isValidFolderName } from "@app/lib/validator";
-import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
@@ -29,9 +29,9 @@ import {
 } from "@app/services/secret/secret-types";
 
 const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The project ID, from list-projects.");
-const EnvironmentSlugSchema = slugSchema({ field: "Environment slug" }).describe(
-  "The environment slug, from list-projects."
-);
+// Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
+const EnvironmentSlugSchema = z.string().trim().min(1).max(255).describe("The environment slug, from list-projects.");
+const SecretLookupNameSchema = BaseSecretNameSchema.max(255);
 const PathSchema = z
   .string()
   .trim()
@@ -51,7 +51,9 @@ const SecretLocationSchema = z.object({
 // The SDK validates arguments through Standard Schema, which zod 3 implements, and advertises them in tools/list
 // as JSON Schema, which zod 3 cannot produce on its own.
 const toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
-  const jsonSchema = () => zodToJsonSchema(schema) as Record<string, unknown>;
+  // Every field written out in full: a schema reused for two fields would otherwise become a $ref, which some clients
+  // do not follow.
+  const jsonSchema = () => zodToJsonSchema(schema, { $refStrategy: "none" }) as Record<string, unknown>;
   return {
     "~standard": { ...schema["~standard"], jsonSchema: { input: jsonSchema, output: jsonSchema } }
   } as StandardSchemaWithJSON<z.input<T>, z.output<T>>;
@@ -300,6 +302,8 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         expandSecretReferences,
         includeImports,
         viewSecretValue: canReadSecretValues,
+        // A secret whose value the user can't read comes back with its value hidden instead of failing the whole list.
+        throwOnMissingReadValuePermission: false,
         personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
         secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative
       });
@@ -350,7 +354,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         ? "Get a secret by name, with its value if you have permission to read it."
         : "Get a secret by name, without its value, because this connection was not granted secrets:read.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretNameSchema,
+        secretName: SecretLookupNameSchema,
         expandSecretReferences: z.boolean().default(true),
         includeImports: z.boolean().default(true)
       }),
@@ -458,7 +462,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     {
       description: "Change a secret's value or comment, or rename it.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretNameSchema,
+        secretName: SecretLookupNameSchema,
         newSecretName: SecretNameSchema.optional(),
         secretValue: SecretValueSchema.optional(),
         secretComment: z.string().trim().max(10_000).optional()
@@ -508,7 +512,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     "delete-secret",
     {
       description: "Delete a secret from one environment and folder.",
-      inputSchema: SecretLocationSchema.extend({ secretName: SecretNameSchema }),
+      inputSchema: SecretLocationSchema.extend({ secretName: SecretLookupNameSchema }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
     async (args) => {

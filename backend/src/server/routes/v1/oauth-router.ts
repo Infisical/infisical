@@ -9,6 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   getMcpOauthUrls,
   isAllowedRedirectUri,
+  MAX_OAUTH_CLIENT_ID_LENGTH,
   parseBasicAuthHeader
 } from "@app/services/oauth-client/oauth-client-fns";
 import {
@@ -335,7 +336,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         response_type: z.literal("code"),
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
         state: z.string().optional(),
         code_challenge: z.string().optional(),
@@ -377,7 +378,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
         scope: z.string().optional(),
         resource: resourceSchema
@@ -418,7 +419,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
         state: z.string().optional(),
         code_challenge: z.string().optional(),
@@ -436,7 +437,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.authMode !== AuthMode.JWT) throw new BadRequestError({ message: "Invalid auth mode" });
 
-      const { callbackUrl, clientName, orgId } = await server.services.oauthClient.authorizeConsent({
+      const { callbackUrl, clientName, orgId, scopes, resource } = await server.services.oauthClient.authorizeConsent({
         clientId: req.body.client_id,
         redirectUri: req.body.redirect_uri,
         state: req.body.state,
@@ -461,7 +462,9 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           type: EventType.OAUTH_CLIENT_AUTHORIZE,
           metadata: {
             clientId: req.body.client_id,
-            clientName
+            clientName,
+            scopes,
+            resource
           }
         }
       });
