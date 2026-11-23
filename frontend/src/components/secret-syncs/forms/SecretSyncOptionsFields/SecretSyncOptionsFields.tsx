@@ -42,6 +42,7 @@ import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptio
 import { AzureKeyVaultSyncOptionsFields } from "./AzureKeyVaultSyncOptionsFields";
 import { CloudflarePagesSyncOptionsFields } from "./CloudflarePagesSyncOptionsFields";
 import { CloudflareWorkersSyncOptionsFields } from "./CloudflareWorkersSyncOptionsFields";
+import { CoolifySyncOptionsFields } from "./CoolifySyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { QoverySyncOptionsFields } from "./QoverySyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
@@ -162,11 +163,13 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Daytona:
     case SecretSync.Keeper:
     case SecretSync.Jenkins:
-    case SecretSync.Coolify:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     case SecretSync.Spacelift:
       AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsFields />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsFieldsComponent = <CoolifySyncOptionsFields />;
       break;
     default:
       throw new Error(`Unhandled Additional Sync Options Fields: ${destination}`);

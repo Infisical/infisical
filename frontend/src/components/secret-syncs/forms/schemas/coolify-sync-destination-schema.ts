@@ -5,7 +5,11 @@ import { CoolifyResourceType } from "@app/hooks/api/appConnections/coolify/types
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 
-export const CoolifySyncDestinationSchema = BaseSecretSyncSchema().merge(
+export const CoolifySyncDestinationSchema = BaseSecretSyncSchema(
+  z.object({
+    autoRedeploy: z.boolean().optional()
+  })
+).merge(
   z.object({
     destination: z.literal(SecretSync.Coolify),
     destinationConfig: z.object({
