@@ -175,13 +175,10 @@ const verifyAzureDnsSubscriptionAccess = async (subscriptionId: string, getAcces
     }
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const data = error.response?.data as { error?: { message?: string }; error_description?: string } | undefined;
       throw new BadRequestError({
         message: `Failed to validate credentials: ${
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          error.response?.data?.error?.message ||
-          error.response?.data?.error_description ||
-          error.message ||
-          "Unknown error"
+          data?.error?.message || data?.error_description || error.message || "Unknown error"
         }`
       });
     }
