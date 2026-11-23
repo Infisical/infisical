@@ -24,8 +24,6 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 - An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for your computers' domain (use an LDAPS URL on port 636 if your domain controllers require LDAP signing)
 - The `Connect` action on `App Connections` for that LDAP connection
 
-If the certificate authority's key is an elliptic curve key in AWS KMS, the certificate policy must allow the algorithm that key signs with instead of the profile's default signature algorithm: ECDSA with SHA-256, SHA-384 or SHA-512 for a P-256, P-384 or P-521 key.
-
 ### In Active Directory
 
 - Read access to `userAccountControl` and `tokenGroups` on computer objects for the LDAP connection's account
@@ -202,24 +200,12 @@ Windows keeps the enrollment policy for up to 8 hours, so a change to the enroll
 
 ## Certificate contents
 
-Each certificate is built from the profile, whatever the computer puts in its request:
+Each certificate is built from the [profile](/documentation/platform/pki/settings/profiles) like any other, with these differences:
 
-- **Validity**: the profile's default TTL, or, if the profile has none, one year (the same as the AD CS computer templates) or the policy's maximum validity, whichever is shorter
-- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile sets no key usages, or no extended key usages, the certificate gets the ones the computer asks for in its request, and the request is refused if the certificate policy doesn't allow them)
-- **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16) (if the certificate policy restricts custom extensions, it must allow this OID and the SID must meet its rule)
-- **Key type**: the profile's default key algorithm, RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521), or RSA 2048 if the profile has none
-- **Signature**: Windows signs its request with the hash of the profile's default signature algorithm (SHA-256, SHA-384 or SHA-512), or SHA-256 if the profile has none
-
-If the profile's default TTL is longer than the policy's maximum validity, every request is refused until you change the profile.
-
-While the method is on, these changes are refused:
-
-- A profile change that leaves the CA's key type mismatched with the profile's default key algorithm
-- A profile change that leaves a default key algorithm or signature algorithm that the certificate policy doesn't allow (RSA 2048 and SHA-256 count as the defaults if the profile has none)
-- A certificate policy change that stops allowing the profile's key algorithm or signature algorithm
-- A certificate policy change that stops allowing the **AD SID security extension** or **Certificate template information**
-
-If the CA's key is an elliptic curve key in AWS KMS, the signature algorithm that's checked is the one that key signs with, as [Prerequisites](#in-infisical) describes.
+- **Names**: the common name and DNS name are the computer's `dNSHostName` in Active Directory, whatever the computer puts in its request
+- **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16)
+- **Validity**: if the profile has no default TTL, one year (the same as the AD CS computer templates) or the policy's maximum validity, whichever is shorter
+- **Key and signature**: Windows generates its key with the profile's default key algorithm and signs its request with the hash of the profile's default signature algorithm, or RSA 2048 and SHA-256 if the profile has none
 
 ## Re-enroll computers
 
@@ -229,15 +215,7 @@ Changing the enrollment method doesn't replace the certificates computers alread
 
 If an [approval policy](/documentation/platform/pki/applications/approvals) covers the profile, the computer's request waits for approval. Windows checks the request again on each autoenrollment run, installs the certificate after the request is approved, and drops the request if it's rejected. Windows only checks requests made through an enrollment policy URL that's in Group Policy.
 
-Approvers find the request in your Application's **Certificate Requests** tab. To approve it, select its **Pending Approval** status, then select **Approve Request**. When a request is approved, the computer is checked in Active Directory again. The certificate isn't issued if any of these is true:
-
-- Microsoft Autoenrollment was turned off for the profile
-- The computer was deleted or disabled in Active Directory
-- The computer is no longer in an allowed group
-- The computer's DNS host name in Active Directory changed or was cleared
-- The certificate the request renews was deleted or revoked
-
-To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt.
+When a request is approved, the computer is checked in Active Directory again, and the certificate isn't issued if the computer no longer qualifies: the method was turned off, the computer was deleted, disabled, removed from the allowed groups or had its DNS host name changed, or the certificate it renews was deleted or revoked. To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt.
 
 ## Turn off Microsoft Autoenrollment
 

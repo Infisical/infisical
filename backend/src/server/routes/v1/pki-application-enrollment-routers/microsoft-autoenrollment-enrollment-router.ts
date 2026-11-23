@@ -75,7 +75,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setMicrosoftAutoenrollmentEnrollment({
         actor: req.permission.type,
