@@ -1,5 +1,3 @@
-import { TEnvConfig } from "@app/lib/config/env";
-
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -60,16 +58,6 @@ export type TResendOrgInviteDTO = {
   membershipId: string;
 };
 
-export enum LoginMethod {
-  EMAIL = "email",
-  GOOGLE = "google",
-  GITHUB = "github",
-  GITLAB = "gitlab",
-  SAML = "saml",
-  LDAP = "ldap",
-  OIDC = "oidc"
-}
-
 export enum SuperAdminErrorCode {
   AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
 }
@@ -77,30 +65,4 @@ export enum SuperAdminErrorCode {
 export enum CacheType {
   ALL = "all",
   SECRETS = "secrets"
-}
-
-export type TAdminIntegrationConfig = {
-  slack: {
-    clientSecret: string;
-    clientId: string;
-  };
-  microsoftTeams: {
-    appId: string;
-    clientSecret: string;
-    botId: string;
-  };
-  gitHubAppConnection: {
-    clientId: string;
-    clientSecret: string;
-    appSlug: string;
-    appId: string;
-    privateKey: string;
-  };
-};
-
-export interface EnvOverrides {
-  [key: string]: {
-    name: string;
-    fields: { key: keyof TEnvConfig; value: string; hasEnvEntry: boolean; description?: string }[];
-  };
 }

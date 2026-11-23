@@ -9,7 +9,13 @@ export const agentVaultSkillSheetSearchParams = z.object({
   skillId: z.string().uuid().optional().catch(undefined)
 });
 
-export const useAgentVaultSheetState = (param: "sessionId" | "skillId" = "sessionId") => {
+export const agentVaultHookSheetSearchParams = z.object({
+  hookId: z.string().uuid().optional().catch(undefined)
+});
+
+export const useAgentVaultSheetState = (
+  param: "sessionId" | "skillId" | "hookId" = "sessionId"
+) => {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const id = search[param] as string | undefined;

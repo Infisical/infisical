@@ -49,6 +49,9 @@ You add the MCP server to your agent with its real URL and no credentials. When 
     </Frame>
   </Step>
   <Step>
+    Optionally, on the **Hook** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks this service's calls, and the tools it checks. Select **Continue**.
+  </Step>
+  <Step>
     On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
 
     <Frame>
@@ -171,7 +174,7 @@ Infisical won't save a custom header with the same name as the credential's head
 By default, agents can call every tool the MCP server offers. To keep agents away from tools they shouldn't use, such as tools that delete data, allow only the tools you select. The list applies to every session that uses the service.
 
 <Tip>
-To allow or refuse each call with your own rules, such as rules based on the tool's arguments, add a [hook](/documentation/platform/agent-vault/hooks) to the service.
+To allow or refuse each call with your own rules, such as rules based on the tool's arguments, attach a [hook](/documentation/platform/agent-vault/hooks) to the service.
 </Tip>
 
 <Steps>

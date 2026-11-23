@@ -16,9 +16,9 @@ What a recording contains depends on the [account type](/documentation/platform/
 | --- | --- |
 | PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query or command, and the database's response |
 | SSH | Terminal input and output, commands run without a shell, and SFTP file operations |
-| Kubernetes, GCP service account, Azure CLI | Each HTTP request to the provider's API, and its response |
+| Kubernetes, GCP service account, Azure CLI, AWS IAM through a Gateway | Each HTTP request to the provider's API, and its response |
 | Windows, Windows AD | A replay of the remote desktop |
-| AWS IAM | Nothing, because connections don't go through the Gateway (use [AWS CloudTrail](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws) instead) |
+| AWS IAM without a Gateway | Nothing, because connections don't go through a Gateway (use [AWS CloudTrail](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws) instead) |
 
 ## View a recording
 

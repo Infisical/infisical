@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
@@ -196,7 +197,7 @@ const issueOauthRefreshToken = async (member: TMember) => {
 describe("Org scope of user tokens after root membership deactivation", () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   });
 
   afterEach(async () => {

@@ -820,12 +820,13 @@ export const permissionServiceFactory = ({
       // immediately instead of waiting for the cached blob to be refetched.
       const folderScopedPrivileges: TProjectFolderScopedPrivilege[] = cached.folderScopedPrivileges
         .filter(isActiveRole)
-        .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+        .map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
           id,
           folderId,
           role,
           environmentSlug,
-          secretPath
+          secretPath,
+          appliesToSubfolders: Boolean(appliesToSubfolders)
         }));
 
       const projectDetailsCtx = {
@@ -1230,13 +1231,16 @@ export const permissionServiceFactory = ({
     const folderAccessByActorId = new Map(
       [...folderScopedPrivilegesByActorId].map(([actorId, privileges]) => [
         actorId,
-        privileges.filter(isActiveRole).map(({ id, folderId, role, environmentSlug, secretPath }) => ({
-          id,
-          folderId,
-          role,
-          environmentSlug,
-          secretPath
-        }))
+        privileges
+          .filter(isActiveRole)
+          .map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
+            id,
+            folderId,
+            role,
+            environmentSlug,
+            secretPath,
+            appliesToSubfolders: Boolean(appliesToSubfolders)
+          }))
       ])
     );
 

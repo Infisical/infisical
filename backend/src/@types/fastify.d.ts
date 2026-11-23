@@ -4,6 +4,7 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
@@ -12,6 +13,7 @@ import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/age
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
 import { TAgentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
+import { TAgentVaultHookServiceFactory } from "@app/ee/services/agent-vault-hook/agent-vault-hook-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -410,6 +412,7 @@ declare module "fastify" {
     agentVaultFreeUsageNotice: TAgentVaultFreeUsageNoticeServiceFactory;
     agentVaultSession: TAgentVaultSessionServiceFactory;
     agentVaultSkill: TAgentVaultSkillServiceFactory;
+    agentVaultHook: TAgentVaultHookServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
     agentVaultDelegation: TAgentVaultDelegationServiceFactory;
@@ -432,6 +435,7 @@ declare module "fastify" {
     licenseService: TLicenseService;
     kmsDataKeyService: TKmsDataKeyService;
     kmsRootKeyService: TKmsRootKeyService;
+    instanceConfigService: TInstanceConfigService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

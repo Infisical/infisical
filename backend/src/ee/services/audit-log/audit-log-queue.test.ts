@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { QueueName } from "@app/queue";
 
@@ -13,7 +14,6 @@ const mockConfig = {
   CLICKHOUSE_AUDIT_LOG_TABLE_NAME: "audit_logs",
   CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: {},
   AUDIT_LOG_STREAMS_ENABLED: false,
-  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false,
   isGeneralWorkerRunModeEnabled: true
 };
 
@@ -55,7 +55,12 @@ const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => (
   lastId
 });
 
-const createHarness = async ({ clickhouse = false, streamsEnabled = false, generalWorkers = true } = {}) => {
+const createHarness = async ({
+  clickhouse = false,
+  streamsEnabled = false,
+  generalWorkers = true,
+  postgresStorageDisabled = false
+} = {}) => {
   mockConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = clickhouse;
   mockConfig.AUDIT_LOG_STREAMS_ENABLED = streamsEnabled;
   mockConfig.isGeneralWorkerRunModeEnabled = generalWorkers;
@@ -88,7 +93,14 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     >(async () => ({ release }))
   };
 
-  const auditLogDAL = { batchCreate: vi.fn<(logs: Record<string, unknown>[]) => Promise<void>>(async () => undefined) };
+  const auditLogDAL = {
+    batchCreate: vi.fn<(logs: Record<string, unknown>[], isPostgresStorageDisabled: boolean) => Promise<void>>(
+      async () => undefined
+    )
+  };
+  const instanceConfigService = new FakeInstanceConfigService({
+    env: { DISABLE_POSTGRES_AUDIT_LOG_STORAGE: postgresStorageDisabled }
+  });
   const projectDAL = {
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
@@ -112,6 +124,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
 
   const service = await auditLogQueueServiceFactory({
     auditLogDAL: auditLogDAL as never,
+    instanceConfigService,
     queueService: queueService as never,
     projectDAL: projectDAL as never,
     licenseService,
@@ -398,7 +411,17 @@ describe("audit-log-queue unified consumer", () => {
     expect(rows[0].ipAddress).toBeNull();
     expect(rows[0].projectName).toBe("proj");
     expect(rows[0].orgId).toBe("org-1");
+    expect(auditLogDAL.batchCreate.mock.calls[0][1]).toBe(false);
     expect(keyStore.streamTrim).toHaveBeenCalledWith(STREAM_KEY, "9-0", true);
+  });
+
+  test("postgres branch tells the DAL when postgres storage is disabled", async () => {
+    const { consumer, auditLogDAL, keyStore } = await createHarness({ postgresStorageDisabled: true });
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry()]));
+
+    await consumer();
+
+    expect(auditLogDAL.batchCreate.mock.calls[0][1]).toBe(true);
   });
 
   test("clickhouse branch inserts with empty-string empties and no projectName", async () => {

@@ -21,6 +21,8 @@ export type TFolderAccessActor = {
   // with access: only the roles granting access on this folder; without access: every role
   roles: TFolderAccessRole[];
   access: TFolderAccess | null;
+  // the active recursive grant on the environment's root folder, when this is a nested folder
+  inheritedAccess: TFolderAccess | null;
 };
 
 const sortRoles = (roles: TFolderAccessRole[]) =>
@@ -38,7 +40,8 @@ export const toUserActor = (user: TFolderAccessUser): TFolderAccessActor => {
     initials: getInitials(name),
     isProjectAdmin: user.membership.isProjectAdmin,
     roles: sortRoles(user.membership.roles),
-    access: user.folderRBACAccess
+    access: user.folderRBACAccess,
+    inheritedAccess: user.inheritedFolderRBACAccess
   };
 };
 
@@ -51,7 +54,8 @@ export const toIdentityActor = (identity: TFolderAccessIdentity): TFolderAccessA
   initials: getInitials(identity.name),
   isProjectAdmin: identity.membership.isProjectAdmin,
   roles: sortRoles(identity.membership.roles),
-  access: identity.folderRBACAccess
+  access: identity.folderRBACAccess,
+  inheritedAccess: identity.inheritedFolderRBACAccess
 });
 
 // organization members outside the project have no membership, roles, or grant here yet
@@ -68,7 +72,8 @@ export const toOrgUserActor = ({ user, inviteEmail, status }: OrgUser): TFolderA
     initials: getInitials(name),
     isProjectAdmin: false,
     roles: [],
-    access: null
+    access: null,
+    inheritedAccess: null
   };
 };
 
@@ -87,7 +92,8 @@ export const toOrgIdentityActor = ({
   initials: getInitials(name),
   isProjectAdmin: false,
   roles: [],
-  access: null
+  access: null,
+  inheritedAccess: null
 });
 
 export const byName = (a: TFolderAccessActor, b: TFolderAccessActor) =>
@@ -161,3 +167,5 @@ export const normalizeFolderPath = (path: string) => {
   const segments = path.trim().split("/").filter(Boolean);
   return segments.length ? `/${segments.join("/")}` : "/";
 };
+
+export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";

@@ -88,6 +88,10 @@ const SUMMARY_COLUMNS = [
   "credentialConfig",
   "secretsDeletedAt",
   "hookUrl",
+  "hookId",
+  "hookMethods",
+  "hookPaths",
+  "hookTools",
   "createdAt",
   "updatedAt"
 ] as const;
