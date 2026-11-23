@@ -23,6 +23,7 @@ import { getCertificateOcspStatus } from "@app/services/certificate/certificate-
 import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -45,7 +46,7 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findWithAssociatedCa">;
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findActiveDigiCertCertsByOrderIds" | "findActiveDigiCertCertsByCaId" | "updateById"
+    "findActiveDigiCertCertsByOrderIds" | "findActiveDigiCertCertsByCaId" | "updateById" | "findByIdForUpdate"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -54,6 +55,7 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
+  signerService: Pick<TSignerServiceFactory, "revokeWithCertificate">;
 };
 
 export type TDigiCertRevocationSyncQueueFactory = ReturnType<typeof digicertRevocationSyncQueueFactory>;
@@ -68,7 +70,8 @@ export const digicertRevocationSyncQueueFactory = ({
   kmsKeyService,
   auditLogService,
   pkiAlertV2Queue,
-  certificateAlertEventEmitter
+  certificateAlertEventEmitter,
+  signerService
 }: TDigiCertRevocationSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -83,11 +86,23 @@ export const digicertRevocationSyncQueueFactory = ({
     },
     revokedAt = new Date()
   ) => {
-    await certificateDAL.updateById(cert.id, {
-      status: CertStatus.REVOKED,
-      revokedAt,
-      revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
+    const revocation = await signerService.revokeWithCertificate(cert.id, async (tx) => {
+      const lockedCertificate = await certificateDAL.findByIdForUpdate(cert.id, tx);
+      if (!lockedCertificate || lockedCertificate.status === CertStatus.REVOKED) return false;
+      await certificateDAL.updateById(
+        cert.id,
+        { status: CertStatus.REVOKED, revokedAt, revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED) },
+        tx
+      );
+      return true;
     });
+    if (!revocation) {
+      logger.info(
+        `digicert-revocation-sync: skipped, a signer of the certificate is being changed [certId=${cert.id}]`
+      );
+      return false;
+    }
+    if (!revocation.isCertificateRevoked) return false;
 
     if (!cert.deletedAt) {
       await certificateAlertEventEmitter.notify({
@@ -112,7 +127,30 @@ export const digicertRevocationSyncQueueFactory = ({
       }
     });
 
-    if (cert.deletedAt) return;
+    for (const signer of revocation.revokedSigners) {
+      try {
+        await auditLogService.createAuditLog({
+          projectId: cert.projectId,
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA,
+            metadata: {
+              signerId: signer.id,
+              name: signer.name,
+              certificateId: cert.id,
+              certificateCommonName: cert.commonName,
+              serialNumber: cert.serialNumber,
+              previousStatus: signer.previousStatus,
+              status: signer.status
+            }
+          }
+        });
+      } catch (err) {
+        logger.error(err, `digicert-revocation-sync: failed to audit the revoked signer [signerId=${signer.id}]`);
+      }
+    }
+
+    if (cert.deletedAt) return true;
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
@@ -124,6 +162,7 @@ export const digicertRevocationSyncQueueFactory = ({
     } catch {
       logger.debug(`digicert-revocation-sync: failed to queue PKI revocation alert event [certId=${cert.id}]`);
     }
+    return true;
   };
 
   const loadCertificateAndIssuer = async (
@@ -182,7 +221,7 @@ export const digicertRevocationSyncQueueFactory = ({
             const { status, revokedAt } = await getCertificateOcspStatus(certificateAndIssuer);
             if (status !== OcspCertStatus.Revoked) return "checked" as const;
 
-            await markCertificateRevokedLocally(cert, revokedAt);
+            if (!(await markCertificateRevokedLocally(cert, revokedAt))) return "checked" as const;
             logger.info(
               `digicert-revocation-sync: marked revoked from OCSP [caId=${caId}] [certId=${cert.id}] [serial=${cert.serialNumber}]`
             );
@@ -226,7 +265,7 @@ export const digicertRevocationSyncQueueFactory = ({
 
       for (const cert of certsToReconcile) {
         try {
-          await markCertificateRevokedLocally(cert);
+          if (!(await markCertificateRevokedLocally(cert))) continue;
           reconciledCertificateIds.add(cert.id);
           logger.info(
             `digicert-revocation-sync: marked revoked [caId=${ca.id}] [certId=${cert.id}] [serial=${cert.serialNumber}]`

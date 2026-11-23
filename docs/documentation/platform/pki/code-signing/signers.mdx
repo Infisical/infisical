@@ -126,7 +126,7 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 | **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry Issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
 | **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew the certificate from **Options → Renew Certificate**. If the Signer has no CA, choose one in **Options → Edit Settings**, and the Signer requests a new certificate when you save. |
-| **Revocation Pending** | A revoke started, and signing is blocked until it finishes. If DigiCert requires approval, the Signer stays here until an administrator approves the request (the Signer becomes **Revoked**) or rejects it (the Signer goes back to **Active**, or **Disabled** if it was disabled). If the revoke didn't finish, hover the badge for the reason and revoke the certificate again. |
+| **Revocation Pending** | A revoke started, and signing is blocked until it finishes. If DigiCert requires approval, the Signer stays here until an administrator approves the request (the Signer becomes **Revoked**) or rejects it (the Signer goes back to **Active**, or **Disabled** if it was disabled). If the certificate is revoked in CertCentral in the meantime, the daily check marks the Signer **Revoked**. If the revoke didn't finish, hover the badge for the reason and revoke the certificate again. |
 | **Revoked** | The certificate was revoked, and signing is blocked. To sign again, select **Options → Reissue Certificate**, which issues the certificate with a new key. |
 
 ## Edit a signer
@@ -206,6 +206,7 @@ If the Signer uses a DigiCert CA:
 - **Reissue Certificate** on a revoked Signer places a new order with a new key
 - If your CertCentral account requires approval for revocations, the Signer shows **Revocation Pending** and can't sign while an administrator reviews the request (if the request is rejected, the CA has refused the revoke, as described in [Renew or revoke the certificate](#renew-or-revoke-the-certificate))
 - If a pending reissue can't be canceled, the revoke fails and shows the order number (cancel the reissue in CertCentral, then revoke again)
+- If the certificate is revoked in CertCentral, a daily check marks the Signer **Revoked** and cancels any renewal or reissue still open for it
 
 ### Update signtool after a renewal
 
