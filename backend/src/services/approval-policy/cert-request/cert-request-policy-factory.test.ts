@@ -272,6 +272,36 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     expect(notification?.email?.substitutions.requestType).toBe(expected.requestType);
   });
 
+  it.each([
+    [ApprovalNotificationEvent.Requested, "Automatic Renewal asked to renew the certificate 'old.example.com'."],
+    [
+      ApprovalNotificationEvent.ApprovedActionFailed,
+      "The approved renewal of the certificate 'old.example.com' didn't complete. Reason: CA is disabled."
+    ]
+  ])("names the certificate being renewed, not the new common name, on %s", async (event, body) => {
+    const { resource } = setup(() => Promise.resolve());
+
+    const notification = await resource.buildNotification!({
+      event,
+      request: {
+        id: "approval-1",
+        organizationId: "org-1",
+        type: "cert-request",
+        requesterName: "Automatic Renewal",
+        requestData: {
+          requestData: {
+            certificateRequestId: "cert-req-1",
+            renewal: { certificateId: "cert-1", certificateName: "old.example.com" },
+            certificateRequest: { commonName: "new.example.com" }
+          }
+        }
+      } as never,
+      failureReason: "CA is disabled."
+    });
+
+    expect(notification?.inApp?.body).toBe(body);
+  });
+
   it("words the failure notification for a renewal and names the certificate", async () => {
     const { resource } = setup(() => Promise.resolve());
 

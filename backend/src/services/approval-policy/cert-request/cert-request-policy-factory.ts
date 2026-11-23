@@ -105,7 +105,8 @@ export const certRequestApprovalResourceFactory = ({
   buildNotification: async ({ event, request, failureReason }) => {
     const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
       .requestData;
-    const certificateName = certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
+    const certificateName =
+      renewal?.certificateName || certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
 
     if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
       const action = renewal ? "renewal" : "issuance";

@@ -1445,7 +1445,8 @@ export const certificateRenewalServiceFactory = ({
             attributes,
             caId,
             ...(externalConfiguration && { externalConfiguration }),
-            raisedByAutoRenewal: actorCtx.actor === ActorType.PLATFORM
+            raisedByAutoRenewal: actorCtx.actor === ActorType.PLATFORM,
+            certificateName: originalCert.commonName || originalCert.altNames?.split(",")[0]?.trim() || undefined
           }
         },
         justification: `Certificate renewal request for ${certificateRequest.commonName || profile.slug}`,

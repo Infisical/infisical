@@ -85,7 +85,10 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       externalConfiguration: z.object({ reissue: z.boolean().optional() }).optional(),
       // Whether the daily auto-renewal job raised the request. Requester columns can't tell: deleting a user clears
       // them on their requests. Absent on requests raised before it existed.
-      raisedByAutoRenewal: z.boolean().optional()
+      raisedByAutoRenewal: z.boolean().optional(),
+      // The certificate being renewed, which certificateRequest can't name when the renewal changes the common name.
+      // Absent on requests raised before it existed.
+      certificateName: z.string().optional()
     })
     .optional()
 });
