@@ -124,7 +124,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/memberships/:membershipId",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
       operationId: "getOrgMembership",
@@ -404,7 +404,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/memberships/:membershipId/project-memberships",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
       operationId: "listProjectMembershipsByOrgMembership",
