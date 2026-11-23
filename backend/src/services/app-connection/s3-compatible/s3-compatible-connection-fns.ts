@@ -42,7 +42,7 @@ export const getS3CompatibleConnectionConfig = async (
   },
   instanceConfigService: TInstanceConfigService
 ) => {
-  const { allowedStorageHostnames } = await instanceConfigService.getInstanceConfig();
+  const { allowedStorageHostnames } = await instanceConfigService.getSettings();
   const parsed = parseS3CompatibleEndpoint(credentials.endpoint, allowedStorageHostnames ?? [], credentials.region);
   if (!parsed) {
     throw new BadRequestError({ message: S3_COMPATIBLE_ENDPOINT_ERROR });

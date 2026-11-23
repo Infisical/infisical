@@ -63,7 +63,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
       instanceConfigService
     });
   const $appRequestConfig = async () => {
-    const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getOverridableEnv();
     return getStripeAppRequestConfig(accountId, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
   };
 

@@ -202,7 +202,7 @@ export const getAzureConnectionAccessToken = async (
   switch (appConnection.method) {
     case AzureKeyVaultConnectionMethod.OAuth:
       const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET } =
-        await instanceConfigService.getInstanceConfig();
+        await instanceConfigService.getOverridableEnv();
       if (!INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || !INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
@@ -419,7 +419,7 @@ export const validateAzureKeyVaultConnectionCredentials = async (
   const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL } = getConfig();
 
   switch (method) {

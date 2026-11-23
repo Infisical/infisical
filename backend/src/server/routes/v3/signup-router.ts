@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { SignUpRefusal } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { matchesAllowedEmailDomain, normalizeEmail } from "@app/lib/validator";
+import { normalizeEmail } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -44,20 +45,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { email } = req.body;
 
-      const { allowSignUp, allowedSignUpDomain } = await server.services.instanceConfigService.getInstanceConfig();
-      if (!allowSignUp) {
+      const signUpPolicy = await server.services.instanceConfigService.getSignUpPolicy();
+      const signUpRefusal = signUpPolicy.refusalFor(email);
+      if (signUpRefusal === SignUpRefusal.Closed) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
       }
-
-      if (allowedSignUpDomain) {
-        const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, allowedSignUpDomain)) {
-          throw new ForbiddenRequestError({
-            message: `Email with a domain (@${domain}) is not supported`
-          });
-        }
+      if (signUpRefusal === SignUpRefusal.DomainNotAllowed) {
+        throw new ForbiddenRequestError({
+          message: `Email with a domain (@${email.split("@")[1]}) is not supported`
+        });
       }
       const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess({
         email,
@@ -94,8 +92,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { allowSignUp } = await server.services.instanceConfigService.getInstanceConfig();
-      if (!allowSignUp) {
+      const signUpPolicy = await server.services.instanceConfigService.getSignUpPolicy();
+      if (!signUpPolicy.isOpen()) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });

@@ -366,7 +366,7 @@ export const auditLogServiceFactory = ({
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);
     const auditLogGenerationDisabled = Boolean(appCfg.DISABLE_AUDIT_LOG_GENERATION);
-    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getInstanceConfig();
+    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
     const postgresAuditLogStorageDisabled = Boolean(DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
     const auditLogRowCount = await auditLogDAL.getApproximateRowCount();
 
@@ -380,7 +380,7 @@ export const auditLogServiceFactory = ({
 
   const checkPostgresAuditLogVolumeMigrationAlert = async () => {
     const appCfg = getConfig();
-    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getInstanceConfig();
+    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
     const isClickHouseConfigured = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
     if (
       isClickHouseConfigured ||

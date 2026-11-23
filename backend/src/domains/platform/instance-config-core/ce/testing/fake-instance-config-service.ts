@@ -62,7 +62,13 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
     );
   }
 
-  getInstanceConfig = async () => ({ ...(await this.service.getInstanceConfig()), ...this.env });
+  getSettings = () => this.service.getSettings();
+
+  getOverridableEnv = async () => this.env;
+
+  getLoginPolicy = () => this.service.getLoginPolicy();
+
+  getSignUpPolicy = () => this.service.getSignUpPolicy();
 
   isInstanceAdminIdentity = (identityId: string) => this.service.isInstanceAdminIdentity(identityId);
 

@@ -135,7 +135,7 @@ export const getGcpConnectionAuthToken = async (
   appConnection: TGcpConnectionConfig,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
   if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
       message: `Environment variables have not been configured for GCP ${getAppConnectionMethodName(

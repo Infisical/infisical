@@ -36,7 +36,7 @@ export const getGitHubRadarClient = async (
   instanceConfigService: TInstanceConfigService
 ) => {
   const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
 
   const { method, credentials } = appConnection;
 
@@ -89,7 +89,7 @@ export const validateGitHubRadarConnectionCredentials = async (
   const { credentials, method } = config;
 
   const { INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL } = getConfig();
 
   if (!INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID || !INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) {

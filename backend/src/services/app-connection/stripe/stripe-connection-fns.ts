@@ -144,7 +144,7 @@ export const validateStripeConnectionCredentials = async (
   config: TStripeConnectionConfig,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getOverridableEnv();
   const credentials = await exchangeStripeOAuthCode(config.credentials.code, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
 
   await assertCanManageApiKeys(credentials.accountId, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
@@ -186,7 +186,7 @@ const getStoredStripeConnection = async (
 const refreshStripeConnection = async (connectionId: string, deps: TStripeConnectionAuthorizationDeps) => {
   const { appConnection, credentials } = await getStoredStripeConnection(connectionId, deps);
   const { accountId } = credentials;
-  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await deps.instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await deps.instanceConfigService.getOverridableEnv();
 
   let data: TStripeOAuthTokenResponse;
 

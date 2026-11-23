@@ -81,7 +81,7 @@ export const refreshGitLabToken = async (
   instanceUrl?: string
 ): Promise<string> => {
   const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL, isCloud } = getConfig();
   if (
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||
@@ -187,7 +187,7 @@ export const exchangeGitLabOAuthCode = async (
   instanceUrl?: string
 ): Promise<GitLabOAuthTokenResponse> => {
   const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL, isCloud } = getConfig();
   if (
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||

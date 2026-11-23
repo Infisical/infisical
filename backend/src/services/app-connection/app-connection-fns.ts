@@ -470,7 +470,7 @@ export const listAppConnectionOptions = async (
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID,
     INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
     INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
-  } = await instanceConfigService.getInstanceConfig();
+  } = await instanceConfigService.getOverridableEnv();
 
   return [
     getAwsConnectionListItem({ INF_APP_CONNECTION_AWS_ACCESS_KEY_ID }),

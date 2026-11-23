@@ -118,7 +118,7 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
     if (String(checkRun.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(
@@ -143,7 +143,7 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
     if (String(checkSuite.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(
@@ -167,7 +167,7 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
     if (String(checkRun.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(

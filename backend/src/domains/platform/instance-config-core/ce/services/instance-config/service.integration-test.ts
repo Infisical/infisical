@@ -48,7 +48,7 @@ describe("InstanceConfigService.updateConfig", () => {
       allowedStorageHostnames: ["a.example.com"]
     });
     expect((await instanceConfigService.getSlackCredentials()).clientId).toBe("slack-id");
-    expect(await instanceConfigService.getInstanceConfig()).toMatchObject({
+    expect(await instanceConfigService.getSettings()).toMatchObject({
       authConsentContent: "consent",
       pageFrameContent: "frame",
       allowedSignUpDomain: "example.com"
@@ -89,7 +89,7 @@ describe("InstanceConfigService.updateConfig", () => {
     // Assert
     const row = await h.db(TableName.SuperAdmin).first();
     expect(row?.encryptedEnvOverrides?.toString()).not.toContain("from-admin");
-    expect((await instanceConfigService.getInstanceConfig()).CLIENT_ID_GITHUB_LOGIN).toBe("from-admin");
+    expect((await instanceConfigService.getOverridableEnv()).CLIENT_ID_GITHUB_LOGIN).toBe("from-admin");
   });
 });
 
@@ -142,7 +142,7 @@ describe("InstanceConfigCoreModule.create", () => {
 
     // Assert
     expect(await h.db(TableName.SuperAdmin)).toHaveLength(1);
-    expect(await instanceConfigService.getInstanceConfig()).toMatchObject({
+    expect(await instanceConfigService.getSettings()).toMatchObject({
       instanceId: "11111111-1111-4111-8111-111111111111",
       initialized: true,
       allowSignUp: false,
@@ -176,7 +176,7 @@ describe("InstanceConfigCoreModule.create", () => {
     // Assert
     const rows = await h.db(TableName.SuperAdmin);
     expect(rows).toHaveLength(1);
-    const served = await Promise.all(modules.map((m) => m.instanceConfigService.getInstanceConfig()));
+    const served = await Promise.all(modules.map((m) => m.instanceConfigService.getSettings()));
     expect(new Set(served.map((config) => config.instanceId))).toEqual(new Set([rows[0].instanceId]));
   });
 });
@@ -247,6 +247,6 @@ describe("InstanceConfigService.within", () => {
     // Assert
     await expect(result).rejects.toThrow("creating the first organization failed");
     expect(await h.db(TableName.SuperAdmin).first()).toMatchObject({ initialized: false, adminIdentityIds: null });
-    expect((await instanceConfigService.getInstanceConfig()).initialized).toBe(false);
+    expect((await instanceConfigService.getSettings()).initialized).toBe(false);
   });
 });

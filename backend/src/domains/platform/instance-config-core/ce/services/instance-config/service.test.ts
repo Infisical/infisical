@@ -6,6 +6,7 @@ import { InstanceConfigCache } from "../../data-access/instance-config-cache";
 import { ResolvedEnvCache } from "../../data-access/resolved-env-cache";
 import { EnvOverrides } from "../../models/env-overrides";
 import { InstanceConfig } from "../../models/instance-config";
+import { LoginMethod } from "../../models/login-policy";
 import { buildInstanceConfigCore } from "../../testing/build-instance-config-core";
 import { InMemoryInstanceConfigStore } from "../../testing/in-memory-instance-config-store";
 import { TInstanceConfigStore } from "../dependencies";
@@ -43,21 +44,23 @@ const setUpInstance = async (
   await module.instanceConfigService.refreshSharedCopy();
 };
 
-describe("InstanceConfigService.getInstanceConfig", () => {
-  test("should return the settings merged with the resolved env", async () => {
+describe("InstanceConfigService.getSettings and getOverridableEnv", () => {
+  test("should return the settings and the resolved env apart", async () => {
     // Setup
     const { module } = await buildInstanceConfigCore();
 
     // Action
-    const config = await module.instanceConfigService.getInstanceConfig();
+    const settings = await module.instanceConfigService.getSettings();
+    const env = await module.instanceConfigService.getOverridableEnv();
 
     // Assert
-    expect(config).toMatchObject({
-      initialized: false,
-      allowSignUp: true,
+    expect(settings).toMatchObject({ initialized: false, allowSignUp: true });
+    expect(settings).not.toHaveProperty("DISABLE_PUBLIC_SECRET_SHARING");
+    expect(env).toMatchObject({
       DISABLE_PUBLIC_SECRET_SHARING: false,
       CLIENT_GITLAB_LOGIN_URL: "https://gitlab.com"
     });
+    expect(env).not.toHaveProperty("initialized");
   });
 
   test("should return the override in place of the env value", async () => {
@@ -69,7 +72,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
     });
 
     // Action
-    const config = await service.getInstanceConfig();
+    const config = await service.getOverridableEnv();
 
     // Assert
     expect(config.CLIENT_ID_GITHUB_LOGIN).toBe("from-admin");
@@ -92,11 +95,11 @@ describe("InstanceConfigService.getInstanceConfig", () => {
     );
 
     // Action
-    const config = await module.instanceConfigService.getInstanceConfig();
+    const env = await module.instanceConfigService.getOverridableEnv();
 
     // Assert
-    expect(config.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
-    expect(config.initialized).toBe(false);
+    expect(env.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
+    expect((await module.instanceConfigService.getSettings()).initialized).toBe(false);
   });
 
   test("should read the primary when the replica has not got the row yet", async () => {
@@ -113,7 +116,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
     await keyStore.deleteItem(CACHE_KEY);
 
     // Action
-    const config = await service.getInstanceConfig();
+    const config = await service.getSettings();
 
     // Assert
     expect(config.id).toBeDefined();
@@ -129,7 +132,7 @@ describe("InstanceConfigService.updateConfig", () => {
     // Action
     const settings = await module.instanceConfigService.updateConfig({
       allowSignUp: false,
-      enabledLoginMethods: ["email"],
+      enabledLoginMethods: [LoginMethod.EMAIL],
       authConsentContent: "consent"
     });
 
@@ -139,7 +142,7 @@ describe("InstanceConfigService.updateConfig", () => {
       enabledLoginMethods: ["email"],
       authConsentContent: "consent"
     });
-    expect(await module.instanceConfigService.getInstanceConfig()).toMatchObject({ allowSignUp: false });
+    expect(await module.instanceConfigService.getSettings()).toMatchObject({ allowSignUp: false });
   });
 
   test.each([[{}], [{ allowSignUp: undefined }], [{ envOverrides: undefined }]])(
@@ -147,14 +150,14 @@ describe("InstanceConfigService.updateConfig", () => {
     async (patch) => {
       // Setup
       const { module } = await buildInstanceConfigCore();
-      const before = await module.instanceConfigService.getInstanceConfig();
+      const before = await module.instanceConfigService.getSettings();
 
       // Action
       const result = module.instanceConfigService.updateConfig(patch);
 
       // Assert
       await expect(result).rejects.toThrow(EMPTY_PATCH_MESSAGE);
-      expect(await module.instanceConfigService.getInstanceConfig()).toEqual(before);
+      expect(await module.instanceConfigService.getSettings()).toEqual(before);
     }
   );
 
@@ -178,19 +181,19 @@ describe("InstanceConfigService.updateConfig", () => {
     // Setup
     const podA = await buildInstanceConfigCore();
     const podB = await buildInstanceConfigCore({ memory: podA.memory, keyStore: podA.keyStore, kmsCore: podA.kmsCore });
-    await podB.module.instanceConfigService.getInstanceConfig();
+    await podB.module.instanceConfigService.getSettings();
 
     // Action
     await podA.module.instanceConfigService.updateConfig({ pageFrameContent: "from pod a" });
 
     // Assert
-    expect((await podB.module.instanceConfigService.getInstanceConfig()).pageFrameContent).toBe("from pod a");
+    expect((await podB.module.instanceConfigService.getSettings()).pageFrameContent).toBe("from pod a");
   });
 
   test("should leave the shared copy untouched when the update fails", async () => {
     // Setup
     const { module, keyStore } = await buildInstanceConfigCore();
-    await module.instanceConfigService.getInstanceConfig();
+    await module.instanceConfigService.getSettings();
     const cached = await keyStore.getItem(CACHE_KEY);
 
     // Action
@@ -199,7 +202,7 @@ describe("InstanceConfigService.updateConfig", () => {
     // Assert
     await expect(result).rejects.toThrow("At least one login method should be enabled.");
     expect(await keyStore.getItem(CACHE_KEY)).toBe(cached);
-    expect((await module.instanceConfigService.getInstanceConfig()).allowSignUp).toBe(true);
+    expect((await module.instanceConfigService.getSettings()).allowSignUp).toBe(true);
   });
 
   test("should return the slug and sso method of the default auth org it names", async () => {
@@ -256,7 +259,7 @@ describe("InstanceConfigService.getMicrosoftTeamsCredentials", () => {
     // Setup
     const { module, memory, kmsCore } = await buildInstanceConfigCore();
     const service = module.instanceConfigService;
-    await service.getInstanceConfig();
+    await service.getSettings();
     const row = await memory.instanceConfigStore.find();
     if (!row) throw new Error("row missing");
     row.changeMicrosoftTeamsCredentials(
@@ -303,7 +306,7 @@ describe("InstanceConfigService.within", () => {
     await setUpInstance(core, { closeSignUp: true, adminIdentityId: "identity-1" });
 
     // Assert
-    expect(await core.module.instanceConfigService.getInstanceConfig()).toMatchObject({
+    expect(await core.module.instanceConfigService.getSettings()).toMatchObject({
       initialized: true,
       allowSignUp: false,
       adminIdentityIds: ["identity-1"]
@@ -318,7 +321,7 @@ describe("InstanceConfigService.within", () => {
     await setUpInstance(core, { closeSignUp: false });
 
     // Assert
-    const config = await core.module.instanceConfigService.getInstanceConfig();
+    const config = await core.module.instanceConfigService.getSettings();
     expect(config.initialized).toBe(true);
     expect(config.allowSignUp).toBe(true);
     expect(config.adminIdentityIds).toBeNull();
@@ -356,7 +359,7 @@ describe("InstanceConfigService.within", () => {
 
     // Assert
     await expect(result).rejects.toThrow("creating the first organization failed");
-    expect(await module.instanceConfigService.getInstanceConfig()).toMatchObject({
+    expect(await module.instanceConfigService.getSettings()).toMatchObject({
       initialized: false,
       allowSignUp: true,
       adminIdentityIds: null
@@ -456,34 +459,34 @@ describe("InstanceConfigService.refreshSharedCopy", () => {
   test("should show a setup committed in a caller's transaction on another pod", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods();
-    await podB.module.instanceConfigService.getInstanceConfig();
+    await podB.module.instanceConfigService.getSettings();
     await podA.memory.transactionRunner.run(({ tx }) =>
       podA.module.instanceConfigService.within(tx).completeSetup({ closeSignUp: true })
     );
-    const beforeRefresh = await podB.module.instanceConfigService.getInstanceConfig();
+    const beforeRefresh = await podB.module.instanceConfigService.getSettings();
 
     // Action
     await podA.module.instanceConfigService.refreshSharedCopy();
 
     // Assert
     expect(beforeRefresh.initialized).toBe(false);
-    expect((await podB.module.instanceConfigService.getInstanceConfig()).initialized).toBe(true);
+    expect((await podB.module.instanceConfigService.getSettings()).initialized).toBe(true);
   });
 });
 
-describe("InstanceConfigService.getInstanceConfig", () => {
+describe("InstanceConfigService.getOverridableEnv", () => {
   test("should show overrides another pod changed once the shared copy changes", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods({ CLIENT_ID_GITHUB_LOGIN: "from-env" });
-    const before = await podB.module.instanceConfigService.getInstanceConfig();
+    const before = await podB.module.instanceConfigService.getOverridableEnv();
 
     // Action
     await podA.module.instanceConfigService.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "first" } });
-    const afterFirst = await podB.module.instanceConfigService.getInstanceConfig();
+    const afterFirst = await podB.module.instanceConfigService.getOverridableEnv();
     await podA.module.instanceConfigService.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "second" } });
-    const afterSecond = await podB.module.instanceConfigService.getInstanceConfig();
+    const afterSecond = await podB.module.instanceConfigService.getOverridableEnv();
     await podA.module.instanceConfigService.updateConfig({ envOverrides: {} });
-    const afterClear = await podB.module.instanceConfigService.getInstanceConfig();
+    const afterClear = await podB.module.instanceConfigService.getOverridableEnv();
 
     // Assert
     expect(before.CLIENT_ID_GITHUB_LOGIN).toBe("from-env");
@@ -495,7 +498,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
   test("should show overrides a previous release pod wrote to the shared copy", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods();
-    await podB.module.instanceConfigService.getInstanceConfig();
+    await podB.module.instanceConfigService.getSettings();
     const row = await podA.memory.instanceConfigStore.find();
     if (!row) throw new Error("row missing");
     const encrypt = podA.kmsCore.kmsRootKeyService.encryptWithRootKey();
@@ -506,7 +509,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
 
     // Action
     await podA.keyStore.setItemWithExpiry(CACHE_KEY, 60, previousReleaseEntry);
-    const config = await podB.module.instanceConfigService.getInstanceConfig();
+    const config = await podB.module.instanceConfigService.getOverridableEnv();
 
     // Assert
     expect(config.DISABLE_PUBLIC_SECRET_SHARING).toBe(true);
@@ -515,7 +518,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
   test("should show overrides changed in the row once the shared copy expires", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods();
-    await podB.module.instanceConfigService.getInstanceConfig();
+    await podB.module.instanceConfigService.getSettings();
     const row = await podA.memory.instanceConfigStore.find();
     if (!row) throw new Error("row missing");
     row.replaceEnvOverrides(
@@ -523,11 +526,11 @@ describe("InstanceConfigService.getInstanceConfig", () => {
       podA.kmsCore.kmsRootKeyService.encryptWithRootKey()
     );
     await podA.memory.instanceConfigStore.save(row);
-    const stale = await podB.module.instanceConfigService.getInstanceConfig();
+    const stale = await podB.module.instanceConfigService.getOverridableEnv();
 
     // Action
     await podA.keyStore.deleteItem(CACHE_KEY);
-    const fresh = await podB.module.instanceConfigService.getInstanceConfig();
+    const fresh = await podB.module.instanceConfigService.getOverridableEnv();
 
     // Assert
     expect(stale.CLIENT_ID_GOOGLE_LOGIN).toBeUndefined();
@@ -550,7 +553,7 @@ describe("InstanceConfigService.updateConfig", () => {
     // Assert
     const row = await memory.instanceConfigStore.find();
     expect(row?.envOverrides(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({});
-    const config = await service.getInstanceConfig();
+    const config = await service.getOverridableEnv();
     expect(config.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
     expect(config.DISABLE_PUBLIC_SECRET_SHARING).toBe(false);
   });
@@ -574,9 +577,8 @@ describe("InstanceConfigService.updateConfig", () => {
     await expect(result).rejects.toThrow("Slack client ID cannot be empty");
     expect((await memory.instanceConfigStore.find())?.toJSON()).toEqual(rowBefore);
     expect(await keyStore.getItem(CACHE_KEY)).toBe(cachedBefore);
-    const config = await service.getInstanceConfig();
-    expect(config.CLIENT_ID_GITHUB_LOGIN).toBe("kept");
-    expect(config.pageFrameContent).toBeNull();
+    expect((await service.getOverridableEnv()).CLIENT_ID_GITHUB_LOGIN).toBe("kept");
+    expect((await service.getSettings()).pageFrameContent).toBeNull();
   });
 });
 

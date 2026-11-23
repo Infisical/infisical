@@ -75,7 +75,7 @@ export const getAzureConnectionAccessToken = async (
       const {
         INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
         INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
-      } = await instanceConfigService.getInstanceConfig();
+      } = await instanceConfigService.getOverridableEnv();
       if (
         !INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID ||
         !INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
@@ -209,7 +209,7 @@ export const validateAzureClientSecretsConnectionCredentials = async (
   const { credentials: inputCredentials, method } = config;
 
   const { INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL } = getConfig();
 
   switch (method) {

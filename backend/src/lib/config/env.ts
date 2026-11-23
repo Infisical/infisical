@@ -766,7 +766,7 @@ const envSchema = z
   }));
 
 // The values an instance admin can override from the admin console are not here: Instance Config Core parses them
-// from the process env and serves them through instanceConfigService.getInstanceConfig().
+// from the process env and serves them through instanceConfigService.getOverridableEnv().
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
 let envCfg: TEnvConfig;
 let originalEnvConfig: TEnvConfig;

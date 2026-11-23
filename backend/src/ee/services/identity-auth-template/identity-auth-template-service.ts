@@ -454,7 +454,7 @@ export const identityAuthTemplateServiceFactory = ({
     const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
 
     if (linkedIdentities.length > 0 && !isActorSuperAdmin) {
-      const { adminIdentityIds } = await instanceConfigService.getInstanceConfig();
+      const { adminIdentityIds } = await instanceConfigService.getSettings();
       const adminIdentity = linkedIdentities.find(({ identityId }) => adminIdentityIds?.includes(identityId));
       if (adminIdentity) {
         throw new ForbiddenRequestError({

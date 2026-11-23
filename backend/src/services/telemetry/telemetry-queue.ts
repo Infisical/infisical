@@ -53,7 +53,7 @@ export const telemetryQueueServiceFactory = ({
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
-        const { instanceId } = await instanceConfigService.getInstanceConfig();
+        const { instanceId } = await instanceConfigService.getSettings();
         const telemetryStats = await telemetryDAL.getTelemetryInstanceStats();
         const numberOfSecretOperationsMade = parseInt(
           (await keyStore.getItem(TELEMETRY_SECRET_OPERATIONS_KEY)) || "0",

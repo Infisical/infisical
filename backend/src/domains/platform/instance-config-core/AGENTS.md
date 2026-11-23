@@ -22,11 +22,18 @@ env overrides) shared by every pod through Redis, and every env value an instanc
 
 - **One origin for overridable env values.** The keys an instance admin can override (`EnvOverrides.KEYS`, plus the
   derived `isGithubRadarConfigured`) are not in `lib/config/env.ts` at all: `EnvOverrides` parses them from the process
-  env, `domains.ts` passes a boot snapshot of `process.env` in as `processEnv`, and `getInstanceConfig()` returns them
-  with the settings, resolved once per stored overrides. A new overridable key is added to `OVERRIDE_GROUPS` and the
+  env, `domains.ts` passes a boot snapshot of `process.env` in as `processEnv`, and `getOverridableEnv()` returns them,
+  resolved once per stored overrides. A new overridable key is added to `OVERRIDE_GROUPS` and the
   schema in `models/env-overrides.ts`, never to `envSchema`; the shared Azure app, the legacy Heroku app and
   `URL_GITLAB_LOGIN` are parsed there too because only these keys fall back to them.
-- **Read per use and destructure.** `getInstanceConfig()` holds plaintext secrets: never spread it into a response, log
+- **Settings and env are separate reads.** `getSettings()` returns the row's settings and `getOverridableEnv()` the
+  env values, so code that needs one never holds the other.
+- **Ask the policy, don't read its columns.** Whether a login method is enabled or an email may sign up is answered
+  by `(await getLoginPolicy()).allows(LoginMethod.X)` and `(await getSignUpPolicy()).refusalFor(email)`. Never test
+  `enabledLoginMethods` (null means every method) or `allowSignUp` / `allowedSignUpDomain` in a consumer; those
+  fields are in the settings for the admin console's response. `refusalFor` returns a `SignUpRefusal` rather than
+  throwing because each flow words and codes the refusal itself.
+- **Read per use and destructure.** `getOverridableEnv()` holds plaintext secrets: never spread it into a response, log
   it or pass the whole object on. Routes that return settings list their fields (`GET /api/v1/admin/config`).
 - **Bad overrides never break reads.** Stored overrides that cannot be decrypted, parsed or accepted by the schema are
   logged and the process env is used instead, as applying them always did.

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { EnvOverrides } from "../models/env-overrides";
 import { InstanceConfig } from "../models/instance-config";
+import { LoginMethod } from "../models/login-policy";
 import { TInstanceConfigStore } from "../services/dependencies";
 
 type TSetup = () => Promise<{
@@ -80,7 +81,7 @@ export const describeInstanceConfigStoreContract = (name: string, setup: TSetup)
       if (!config) throw new Error("row missing");
       config.changeSignUpPolicy({ allowSignUp: false, allowedSignUpDomain: "example.com" });
       config.changeTrustLdapEmails(true);
-      config.changeLoginMethods(["email", "github"]);
+      config.changeLoginMethods([LoginMethod.EMAIL, LoginMethod.GITHUB]);
       config.changeDefaultAuthOrg(org.id);
       config.changeBranding({ authConsentContent: "consent", pageFrameContent: "frame" });
       config.changeAllowedStorageHostnames(["a.example.com", "b.example.com"]);

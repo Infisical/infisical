@@ -1,6 +1,6 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
-import { LoginPolicy } from "./login-policy";
+import { LoginMethod, LoginPolicy } from "./login-policy";
 
 const policy = () =>
   LoginPolicy.restore({
@@ -12,10 +12,52 @@ const policy = () =>
     defaultAuthOrgAuthMethod: "oidc"
   });
 
+describe("LoginPolicy.allows", () => {
+  test("should allow only the methods in the list", () => {
+    // Action
+    const loginPolicy = policy();
+
+    // Assert
+    expect(loginPolicy.allows(LoginMethod.EMAIL)).toBe(true);
+    expect(loginPolicy.allows(LoginMethod.SAML)).toBe(false);
+  });
+
+  test.each([[null], [undefined]])("should allow every method when the stored list is %s", (enabledLoginMethods) => {
+    // Action
+    const loginPolicy = LoginPolicy.restore({ enabledLoginMethods });
+
+    // Assert
+    expect(Object.values(LoginMethod).every((method) => loginPolicy.allows(method))).toBe(true);
+  });
+});
+
+describe("LoginPolicy.trustsLdapEmails", () => {
+  test.each([
+    [true, true],
+    [false, false],
+    [null, false]
+  ])("should read a stored %s as %s", (trustLdapEmails, expected) => {
+    // Action
+    const loginPolicy = LoginPolicy.restore({ trustLdapEmails });
+
+    // Assert
+    expect(loginPolicy.trustsLdapEmails()).toBe(expected);
+  });
+});
+
 describe("LoginPolicy.changeLoginMethods", () => {
+  test("should refuse a method that does not exist", () => {
+    // Action
+    const act = () => policy().changeLoginMethods([LoginMethod.EMAIL, "carrier-pigeon" as LoginMethod]);
+
+    // Assert
+    expect(act).toThrow(RuleViolationError);
+    expect(act).toThrow("Unknown login method: carrier-pigeon");
+  });
+
   test("should replace the enabled methods", () => {
     // Action
-    const changed = policy().changeLoginMethods(["email", "ldap"]);
+    const changed = policy().changeLoginMethods([LoginMethod.EMAIL, LoginMethod.LDAP]);
 
     // Assert
     expect(changed.toJSON().enabledLoginMethods).toEqual(["email", "ldap"]);

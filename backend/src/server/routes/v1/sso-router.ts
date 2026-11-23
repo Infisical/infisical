@@ -15,7 +15,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { z } from "zod";
 
-import type { TInstanceConfig } from "@app/domains/platform/instance-config-core/ce/module";
+import type { TOverridableEnvConfig } from "@app/domains/platform/instance-config-core/ce/module";
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -38,7 +38,7 @@ import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/ser
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
 type TOauthLoginConfig = Pick<
-  TInstanceConfig,
+  TOverridableEnvConfig,
   | "CLIENT_ID_GOOGLE_LOGIN"
   | "CLIENT_SECRET_GOOGLE_LOGIN"
   | "CLIENT_ID_GITHUB_LOGIN"
@@ -447,7 +447,7 @@ const ensureOauthStrategies = async (server: FastifyZodProvider) => {
     CLIENT_ID_GITLAB_LOGIN,
     CLIENT_SECRET_GITLAB_LOGIN,
     CLIENT_GITLAB_LOGIN_URL
-  } = await server.services.instanceConfigService.getInstanceConfig();
+  } = await server.services.instanceConfigService.getOverridableEnv();
 
   registerOauthMiddlewares(server, {
     CLIENT_ID_GOOGLE_LOGIN,
@@ -609,7 +609,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-      const { defaultAuthOrgId } = await server.services.instanceConfigService.getInstanceConfig();
+      const { defaultAuthOrgId } = await server.services.instanceConfigService.getSettings();
       const signupUrl = new URL("/signup/sso", reqOrigin);
       signupUrl.searchParams.set("token", passportResult.signupToken);
       if (defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");

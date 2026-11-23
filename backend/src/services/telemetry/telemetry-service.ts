@@ -151,7 +151,7 @@ export const telemetryServiceFactory = ({
     if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
     if (!instanceIdPromise) {
       instanceIdPromise = instanceConfigService
-        .getInstanceConfig()
+        .getSettings()
         .then(({ instanceId }) => instanceId)
         .catch(() => {
           instanceIdPromise = undefined;

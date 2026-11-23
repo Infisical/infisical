@@ -2,6 +2,18 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { DefaultAuthOrg, TDefaultAuthOrgRecord } from "./default-auth-org";
 
+export enum LoginMethod {
+  EMAIL = "email",
+  GOOGLE = "google",
+  GITHUB = "github",
+  GITLAB = "gitlab",
+  SAML = "saml",
+  LDAP = "ldap",
+  OIDC = "oidc"
+}
+
+const LOGIN_METHODS: readonly string[] = Object.values(LoginMethod);
+
 // Field names match the super_admin row, so restore() takes the row as it is.
 export type TLoginPolicyRecord = TDefaultAuthOrgRecord & {
   enabledLoginMethods?: string[] | null;
@@ -25,9 +37,28 @@ export class LoginPolicy {
     );
   }
 
-  changeLoginMethods(methods: string[]): LoginPolicy {
+  // The org whose SSO the login page offers, if the instance names one.
+  get defaultAuthOrgId(): string | null {
+    return this.defaultAuthOrg.id;
+  }
+
+  // No list stored means every method is enabled.
+  allows(method: LoginMethod): boolean {
+    return !this.enabledLoginMethods || this.enabledLoginMethods.includes(method);
+  }
+
+  // Whether an LDAP login skips email verification because the instance admin trusts the directory's emails.
+  trustsLdapEmails(): boolean {
+    return Boolean(this.trustLdapEmails);
+  }
+
+  changeLoginMethods(methods: LoginMethod[]): LoginPolicy {
     if (methods.length === 0) {
       throw new RuleViolationError({ message: "At least one login method should be enabled." });
+    }
+    const unknown = methods.filter((method) => !LOGIN_METHODS.includes(method));
+    if (unknown.length > 0) {
+      throw new RuleViolationError({ message: `Unknown login method: ${unknown.join(", ")}` });
     }
     return new LoginPolicy([...methods], this.trustLdapEmails, this.defaultAuthOrg);
   }

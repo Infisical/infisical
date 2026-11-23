@@ -122,11 +122,11 @@ Secret Scanning has one active project per organization (the newest). Like Certi
 ### Instance Config
 
 The `super_admin` row (instance settings, Slack, Teams and GitHub app credentials, env overrides) belongs to Instance
-Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getInstanceConfig()`,
+Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getSettings()`, `getLoginPolicy()`, `getSignUpPolicy()`,
 `isInstanceAdminIdentity()` and the credential getters; change it through `updateConfig()` and the other intent
 methods. Never query `super_admin` or decrypt its columns elsewhere; its cached value is shared with pods of the
 previous release. The env values an instance admin can override (`EnvOverrides.KEYS` in Instance Config Core) are not
-in `lib/config/env.ts` and never go back into `envSchema`: read them from `getInstanceConfig()` per use, never at boot,
+in `lib/config/env.ts` and never go back into `envSchema`: read them from `getOverridableEnv()` per use, never at boot,
 and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
 
 ### Service Factory + Manual DI (Backend)

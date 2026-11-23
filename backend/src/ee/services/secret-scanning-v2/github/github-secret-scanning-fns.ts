@@ -123,7 +123,7 @@ export const getGitHubRadarInstallationOctokit = async (
   instanceConfigService: TInstanceConfigService
 ) => {
   const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
 
   return new ProbotOctokit({
     auth: {
@@ -527,7 +527,7 @@ export const createSkippedPullRequestCheckRun = async ({
   instanceConfigService: TInstanceConfigService;
 }) => {
   const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
-  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data: existing } = await octokit.checks.listForRef({

@@ -8,7 +8,7 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
-import { OVERRIDABLE_ENV_KEYS } from "@app/domains/platform/instance-config-core/ce/module";
+import { LoginMethod, OVERRIDABLE_ENV_KEYS } from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -30,7 +30,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
-import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -105,9 +105,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         createdAt,
         trustLdapEmails,
         onboardingCompleted,
-        adminIdentityIds,
-        DISABLE_PUBLIC_SECRET_SHARING
-      } = await server.services.instanceConfigService.getInstanceConfig();
+        adminIdentityIds
+      } = await server.services.instanceConfigService.getSettings();
+      const { DISABLE_PUBLIC_SECRET_SHARING } = await server.services.instanceConfigService.getOverridableEnv();
       const serverEnvs = getConfig();
 
       const hasOfflineLicense = server.services.licenseService.hasOfflineLicenseKey();
@@ -888,7 +888,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const { initialized } = await server.services.instanceConfigService.getInstanceConfig();
+      const { initialized } = await server.services.instanceConfigService.getSettings();
       if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,

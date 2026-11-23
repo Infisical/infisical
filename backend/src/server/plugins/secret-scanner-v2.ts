@@ -83,7 +83,7 @@ export const registerSecretScanningV2Webhooks = async (
         INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
         INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
         INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET
-      } = await instanceConfigService.getInstanceConfig();
+      } = await instanceConfigService.getOverridableEnv();
 
       if (!isGithubRadarConfigured) return res.callNotFound();
 

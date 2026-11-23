@@ -43,7 +43,7 @@ export const refreshHerokuToken = async (
   kmsDataKeyService: TKmsDataKeyService,
   instanceConfigService: TInstanceConfigService
 ): Promise<string> => {
-  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getOverridableEnv();
 
   const payload = {
     grant_type: "refresh_token",
@@ -81,7 +81,7 @@ export const exchangeHerokuOAuthCode = async (
   code: string,
   instanceConfigService: TInstanceConfigService
 ): Promise<HerokuOAuthTokenResponse> => {
-  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getInstanceConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getOverridableEnv();
 
   try {
     const response = await request.post<HerokuOAuthTokenResponse>(

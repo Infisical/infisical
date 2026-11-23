@@ -64,7 +64,7 @@ export const mintGcpAccessToken = async ({
         message: `GCP service account '${serviceAccountEmail}' can't be impersonated because its ID doesn't end with "${expectedAccountIdSuffix}", e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com`
       });
     }
-    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
     if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({
         message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"

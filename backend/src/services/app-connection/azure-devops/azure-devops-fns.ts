@@ -65,7 +65,7 @@ export const getAzureDevopsConnection = async (
   switch (appConnection.method) {
     case AzureDevOpsConnectionMethod.OAuth:
       const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
-        await instanceConfigService.getInstanceConfig();
+        await instanceConfigService.getOverridableEnv();
       if (!INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
@@ -182,7 +182,7 @@ export const validateAzureDevOpsConnectionCredentials = async (
   const { credentials: inputCredentials, method } = config;
 
   const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
-    await instanceConfigService.getInstanceConfig();
+    await instanceConfigService.getOverridableEnv();
   const { SITE_URL } = getConfig();
 
   switch (method) {

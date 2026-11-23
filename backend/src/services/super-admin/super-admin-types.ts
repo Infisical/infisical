@@ -58,16 +58,6 @@ export type TResendOrgInviteDTO = {
   membershipId: string;
 };
 
-export enum LoginMethod {
-  EMAIL = "email",
-  GOOGLE = "google",
-  GITHUB = "github",
-  GITLAB = "gitlab",
-  SAML = "saml",
-  LDAP = "ldap",
-  OIDC = "oidc"
-}
-
 export enum SuperAdminErrorCode {
   AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
 }

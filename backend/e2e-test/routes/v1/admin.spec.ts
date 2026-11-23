@@ -2,11 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import {
-  OVERRIDABLE_ENV_KEYS,
-  type TInstanceConfigService
-} from "@app/domains/platform/instance-config-core/ce/module";
-import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
+import { LoginMethod, OVERRIDABLE_ENV_KEYS, type TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 
 // registerRoutes publishes its services for the e2e suite; writes through the service also refresh the shared cache.
 const instanceConfig = () =>
@@ -147,7 +144,7 @@ describe("Admin V1 Router", () => {
       expect(payload.organization.name).toBe(organizationName);
       expect(payload.identity.credentials.token).toEqual(expect.any(String));
       expect(await instanceConfig().isInstanceAdminIdentity(payload.identity.id)).toBe(true);
-      expect((await instanceConfig().getInstanceConfig()).initialized).toBe(true);
+      expect((await instanceConfig().getSettings()).initialized).toBe(true);
 
       const second = await testServer.inject({
         method: "POST",

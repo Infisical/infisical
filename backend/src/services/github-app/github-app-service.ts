@@ -220,7 +220,7 @@ export const gitHubAppServiceFactory = ({
       INF_APP_CONNECTION_GITHUB_APP_SLUG,
       INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
       INF_APP_CONNECTION_GITHUB_APP_HOST
-    } = await instanceConfigService.getInstanceConfig();
+    } = await instanceConfigService.getOverridableEnv();
 
     const sharedApp: TSanitizedGitHubApp | null =
       INF_APP_CONNECTION_GITHUB_APP_ID && INF_APP_CONNECTION_GITHUB_APP_SLUG

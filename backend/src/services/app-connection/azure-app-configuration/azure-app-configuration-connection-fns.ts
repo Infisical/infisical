@@ -40,7 +40,7 @@ export const validateAzureAppConfigurationConnectionCredentials = async (
   const {
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET
-  } = await instanceConfigService.getInstanceConfig();
+  } = await instanceConfigService.getOverridableEnv();
   const { SITE_URL } = getConfig();
 
   switch (method) {

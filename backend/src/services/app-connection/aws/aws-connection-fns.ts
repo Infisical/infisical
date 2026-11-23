@@ -88,7 +88,7 @@ export const getAwsConnectionConfig = async (
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
       const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID, INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY } =
-        await instanceConfigService.getInstanceConfig();
+        await instanceConfigService.getOverridableEnv();
       const stsRegion = getStsSigningRegion(credentials.stsEndpoint);
 
       const client = new STSClient({

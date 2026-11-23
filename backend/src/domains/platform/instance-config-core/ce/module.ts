@@ -16,7 +16,11 @@ import { TInstanceConfigStore, TInstanceConfigStores } from "./services/dependen
 import { InstanceConfigService, TInstanceConfigService } from "./services/instance-config/service";
 
 export { ReadFrom } from "@app/domains/lib/data-access";
-export type { TInstanceConfig, TInstanceConfigPatch, TInstanceConfigService } from "./services/instance-config/service";
+export type { TOverridableEnvConfig } from "./models/env-overrides";
+export type { TInstanceConfigSettings } from "./models/instance-config";
+export { LoginMethod, LoginPolicy } from "./models/login-policy";
+export { SignUpPolicy, SignUpRefusal } from "./models/sign-up-policy";
+export type { TInstanceConfigPatch, TInstanceConfigService } from "./services/instance-config/service";
 
 // The env values an instance admin can override, for request schemas that accept them.
 export const OVERRIDABLE_ENV_KEYS = EnvOverrides.KEYS;

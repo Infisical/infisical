@@ -9,7 +9,7 @@ import { EncryptedSlackCredentials } from "./encrypted-slack-credentials";
 import { EnvOverrides } from "./env-overrides";
 import { GitHubAppCredentials } from "./github-app-credentials";
 import { InstanceSetup } from "./instance-setup";
-import { LoginPolicy } from "./login-policy";
+import { LoginMethod, LoginPolicy } from "./login-policy";
 import { MicrosoftTeamsAppCredentials } from "./microsoft-teams-app-credentials";
 import { SignUpPolicy } from "./sign-up-policy";
 import { SlackAppCredentials } from "./slack-app-credentials";
@@ -109,11 +109,19 @@ export class InstanceConfig {
     return this.setup.isAdminIdentity(identityId);
   }
 
+  loginPolicy(): LoginPolicy {
+    return this.login;
+  }
+
+  signUpPolicy(): SignUpPolicy {
+    return this.signUp;
+  }
+
   changeSignUpPolicy(policy: { allowSignUp?: boolean; allowedSignUpDomain?: string | null }): void {
     this.signUp = this.signUp.change(policy);
   }
 
-  changeLoginMethods(methods: string[]): void {
+  changeLoginMethods(methods: LoginMethod[]): void {
     this.login = this.login.changeLoginMethods(methods);
   }
 

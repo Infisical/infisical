@@ -13,7 +13,7 @@ const CONNECT_SRC_DIRECTIVE = new RE2("(connect-src\\s+[^;]+)(;)");
 // browsers download session recordings straight from storage hosts a server admin allowed
 const withAllowedStorageHostnames = async (instanceConfigService: TInstanceConfigService, indexHtml: string) => {
   try {
-    const { allowedStorageHostnames } = await instanceConfigService.getInstanceConfig();
+    const { allowedStorageHostnames } = await instanceConfigService.getSettings();
     if (!allowedStorageHostnames?.length) return indexHtml;
     const hosts = allowedStorageHostnames.map((hostname) => `https://${hostname}`).join(" ");
     return indexHtml.replace(CONNECT_SRC_DIRECTIVE, `$1 ${hosts}$2`);

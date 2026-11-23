@@ -254,7 +254,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const { DISABLE_PUBLIC_SECRET_SHARING } = await req.server.services.instanceConfigService.getInstanceConfig();
+      const { DISABLE_PUBLIC_SECRET_SHARING } = await req.server.services.instanceConfigService.getOverridableEnv();
       if (DISABLE_PUBLIC_SECRET_SHARING) {
         throw new BadRequestError({ message: "Public secret sharing is disabled on this instance" });
       }

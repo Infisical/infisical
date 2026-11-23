@@ -104,7 +104,7 @@ const connection = {
 const appConnectionDAL = { findById: async () => connection } as never;
 const kmsDataKeyService = {} as never;
 // No platform AWS credentials, as the env this test mocks has none.
-const instanceConfigService = { getInstanceConfig: async () => ({}) } as never;
+const instanceConfigService = { getOverridableEnv: async () => ({}) } as never;
 const stopAfterClientIsBuilt = async () => {
   throw new Error("stop after the client is built");
 };

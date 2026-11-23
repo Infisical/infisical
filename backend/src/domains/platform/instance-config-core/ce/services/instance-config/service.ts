@@ -13,14 +13,12 @@ import {
 } from "../../models/env-overrides";
 import { GitHubAppCredentials } from "../../models/github-app-credentials";
 import { InstanceConfig, TInstanceConfigSettings } from "../../models/instance-config";
+import { LoginMethod, LoginPolicy } from "../../models/login-policy";
 import { MicrosoftTeamsAppCredentials } from "../../models/microsoft-teams-app-credentials";
+import { SignUpPolicy } from "../../models/sign-up-policy";
 import { SlackAppCredentials } from "../../models/slack-app-credentials";
 import { TInstanceConfigCache, TInstanceConfigStore, TInstanceConfigStores, TResolvedEnvCache } from "../dependencies";
 import { configNotFound, InstanceConfigTransaction, TInstanceConfigTransaction } from "./instance-config-transaction";
-
-// The instance's settings and every env value an instance admin can override, resolved: the override when one is
-// stored, otherwise the process env.
-export type TInstanceConfig = TInstanceConfigSettings & TOverridableEnvConfig;
 
 // What an instance admin can change from the admin console. Credentials and overrides are plain text here.
 export type TInstanceConfigPatch = {
@@ -29,7 +27,7 @@ export type TInstanceConfigPatch = {
   trustLdapEmails?: boolean;
   onboardingCompleted?: boolean;
   defaultAuthOrgId?: string | null;
-  enabledLoginMethods?: string[];
+  enabledLoginMethods?: LoginMethod[];
   authConsentContent?: string;
   pageFrameContent?: string;
   allowedStorageHostnames?: string[];
@@ -59,8 +57,14 @@ export type TIntegrationCredentials = {
 };
 
 export type TInstanceConfigService = {
-  // Read from the copy every pod shares (60s), so another pod's change shows within that.
-  getInstanceConfig(): Promise<TInstanceConfig>;
+  // Every read below comes from the copy every pod shares (60s), so another pod's change shows within that.
+  getSettings(): Promise<TInstanceConfigSettings>;
+  // Every env value an instance admin can override, resolved: the override when one is stored, otherwise the process
+  // env. Holds plaintext secrets: destructure the keys you need.
+  getOverridableEnv(): Promise<TOverridableEnvConfig>;
+  // Ask these whether a login method is enabled or an email may sign up, instead of reading the settings.
+  getLoginPolicy(): Promise<LoginPolicy>;
+  getSignUpPolicy(): Promise<SignUpPolicy>;
   isInstanceAdminIdentity(identityId: string): Promise<boolean>;
   getSlackCredentials(): Promise<SlackAppCredentials>;
   // Pass { readFrom: ReadFrom.Primary } to read the committed row instead of the shared copy, as after your own update.
@@ -86,9 +90,24 @@ export class InstanceConfigService implements TInstanceConfigService {
     private readonly processEnv: TProcessEnv
   ) {}
 
-  async getInstanceConfig(): Promise<TInstanceConfig> {
+  async getSettings(): Promise<TInstanceConfigSettings> {
     const config = await this.readConfig();
-    return { ...config.toSettings(), ...this.resolveOverridableEnv(config) };
+    return config.toSettings();
+  }
+
+  async getOverridableEnv(): Promise<TOverridableEnvConfig> {
+    const config = await this.readConfig();
+    return this.resolveOverridableEnv(config);
+  }
+
+  async getLoginPolicy(): Promise<LoginPolicy> {
+    const config = await this.readConfig();
+    return config.loginPolicy();
+  }
+
+  async getSignUpPolicy(): Promise<SignUpPolicy> {
+    const config = await this.readConfig();
+    return config.signUpPolicy();
   }
 
   async isInstanceAdminIdentity(identityId: string): Promise<boolean> {

@@ -5,7 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -63,7 +63,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -262,9 +261,9 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     idpMfa
   }: TOidcLoginDTO) => {
-    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
-    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.OIDC)) {
+    if (!loginPolicy.allows(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({
         message: "Login with OIDC is disabled by administrator."
       });

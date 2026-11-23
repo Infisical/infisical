@@ -54,7 +54,7 @@ export const GcpIamProvider = ({ projectDAL, instanceConfigService }: TGcpIamPro
   };
 
   const $getToken = async (serviceAccountEmail: string, ttl: number, tokenScopes: string[]): Promise<string> => {
-    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getInstanceConfig();
+    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
     if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({
         message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"

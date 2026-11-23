@@ -1,8 +1,15 @@
+import { matchesAllowedEmailDomain } from "@app/lib/validator";
+
 // Field names match the super_admin columns, so restore() takes the row as it is.
 export type TSignUpPolicyRecord = {
   allowSignUp?: boolean | null;
   allowedSignUpDomain?: string | null;
 };
+
+export enum SignUpRefusal {
+  Closed = "closed",
+  DomainNotAllowed = "domain-not-allowed"
+}
 
 // Who may create an account on the instance.
 export class SignUpPolicy {
@@ -13,6 +20,19 @@ export class SignUpPolicy {
 
   static restore(record: TSignUpPolicyRecord): SignUpPolicy {
     return new SignUpPolicy(record.allowSignUp ?? null, record.allowedSignUpDomain ?? null);
+  }
+
+  // Why this email may not create an account, or null when it may. Callers word the refusal for their own flow.
+  refusalFor(email: string): SignUpRefusal | null {
+    if (!this.allowSignUp) return SignUpRefusal.Closed;
+    if (this.allowedSignUpDomain && !matchesAllowedEmailDomain(email, this.allowedSignUpDomain)) {
+      return SignUpRefusal.DomainNotAllowed;
+    }
+    return null;
+  }
+
+  isOpen(): boolean {
+    return Boolean(this.allowSignUp);
   }
 
   // Values left undefined stay as they are.

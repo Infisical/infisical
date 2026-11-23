@@ -86,7 +86,7 @@ export const resolveGitHubAppCredentials = async (
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
     INF_APP_CONNECTION_GITHUB_APP_HOST
-  } = await instanceConfigService.getInstanceConfig();
+  } = await instanceConfigService.getOverridableEnv();
 
   if (
     !INF_APP_CONNECTION_GITHUB_APP_ID ||
@@ -794,7 +794,7 @@ export const validateGitHubConnectionCredentials = async (
   }
 
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET } =
-    await deps.instanceConfigService.getInstanceConfig();
+    await deps.instanceConfigService.getOverridableEnv();
 
   let clientId: string | undefined;
   let clientSecret: string | undefined;

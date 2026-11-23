@@ -177,7 +177,7 @@ export const auditLogQueueServiceFactory = async ({
         format: "JSONEachRow"
       });
     } else {
-      const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getInstanceConfig();
+      const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
       await auditLogDAL.batchCreate(logs, DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
     }
   };

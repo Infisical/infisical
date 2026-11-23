@@ -10,7 +10,7 @@ export type TDefaultAuthOrgRecord = {
 // belong to the org and its SSO configs, so they are read-only here.
 export class DefaultAuthOrg {
   private constructor(
-    private readonly id: string | null,
+    readonly id: string | null,
     private readonly slug: string | null,
     private readonly authEnforced: boolean | null,
     private readonly authMethod: string | null

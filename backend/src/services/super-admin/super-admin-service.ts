@@ -1,6 +1,7 @@
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus, TUsers } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import {
+  LoginMethod,
   ReadFrom,
   TInstanceConfigPatch,
   TInstanceConfigService
@@ -57,7 +58,6 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import {
   CacheType,
-  LoginMethod,
   SuperAdminErrorCode,
   TAdminBootstrapInstanceDTO,
   TAdminCreateEmailDomainDTO,
@@ -170,9 +170,7 @@ export const superAdminServiceFactory = ({
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
-          loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
-            superAdminUser.authMethods?.includes(authMethod)
-          )
+          loginMethodToAuthMethod[loginMethod].some((authMethod) => superAdminUser.authMethods?.includes(authMethod))
         ) ||
         isUserSamlAccessEnabled ||
         isUserOidcAccessEnabled;
@@ -220,7 +218,7 @@ export const superAdminServiceFactory = ({
 
     await assertPasswordNotBreached(password);
     // The lookup can take seconds, so another admin signup may have finished meanwhile.
-    const { initialized } = await instanceConfigService.getInstanceConfig();
+    const { initialized } = await instanceConfigService.getSettings();
     if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
@@ -275,7 +273,7 @@ export const superAdminServiceFactory = ({
   const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const sanitizedEmail = email.trim().toLowerCase();
-    const { initialized } = await instanceConfigService.getInstanceConfig();
+    const { initialized } = await instanceConfigService.getSettings();
     if (initialized) {
       throw new BadRequestError({ message: "Instance has already been set up" });
     }
@@ -875,7 +873,7 @@ export const superAdminServiceFactory = ({
       searchTerm,
       sortBy: "name"
     });
-    const { adminIdentityIds } = await instanceConfigService.getInstanceConfig();
+    const { adminIdentityIds } = await instanceConfigService.getSettings();
 
     return {
       identities: result.identities.map((identity) => ({

@@ -103,7 +103,7 @@ export const GitHubSecretScanningFactory = ({ instanceConfigService }: TSecretSc
     tempFolder
   }) => {
     const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
-      await instanceConfigService.getInstanceConfig();
+      await instanceConfigService.getOverridableEnv();
     const {
       connection: {
         credentials: { installationId }

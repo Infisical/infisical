@@ -2,6 +2,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { EnvOverrides } from "./env-overrides";
 import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigRecord } from "./instance-config";
+import { LoginMethod } from "./login-policy";
 
 const encrypt = (plainText: Buffer) => Buffer.from(`encrypted:${plainText.toString()}`);
 const decrypt = (cipherText: Buffer) => Buffer.from(cipherText.toString().replace(/^encrypted:/, ""));
@@ -129,7 +130,7 @@ describe("InstanceConfig.changeLoginMethods", () => {
     const config = freshConfig();
 
     // Action
-    config.changeLoginMethods(["email", "google"]);
+    config.changeLoginMethods([LoginMethod.EMAIL, LoginMethod.GOOGLE]);
 
     // Assert
     expect(config.toSettings().enabledLoginMethods).toEqual(["email", "google"]);

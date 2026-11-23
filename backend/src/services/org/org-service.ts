@@ -12,7 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -85,7 +85,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -1148,8 +1147,8 @@ export const orgServiceFactory = ({
   };
 
   const $isEmailLoginEnabled = async () => {
-    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
-    return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    return loginPolicy.allows(LoginMethod.EMAIL);
   };
 
   const resendOrgMemberInvitation = async ({

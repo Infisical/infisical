@@ -5254,7 +5254,8 @@ export const registerRoutes = async (
     },
     handler: async () => {
       const cfg = getConfig();
-      const { allowSignUp, DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getInstanceConfig();
+      const { allowSignUp } = await instanceConfigService.getSettings();
+      const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
 
       const meanLagMs = histogram.mean / 1e6;
       const maxLagMs = histogram.max / 1e6;
