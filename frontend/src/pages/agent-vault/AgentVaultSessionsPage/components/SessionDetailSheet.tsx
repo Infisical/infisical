@@ -59,7 +59,6 @@ import { SessionStatusBadge } from "./SessionStatusBadge";
 const SHOWN_INLINE_SERVICES = 1;
 const SHOWN_SERVICES = 2;
 const SHOWN_SKILLS = 2;
-const SHOWN_METADATA = 2;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
 // One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
@@ -72,22 +71,25 @@ const moreButton = (count: number) => (
   </button>
 );
 
-const ROWS_PER_COLUMN = 2;
+// A session with this many fields or fewer shows them in one row; more use two.
+const SINGLE_ROW_MAX_FIELDS = 5;
 
-// Rows past ROWS_PER_COLUMN start a new column beside the first, so the details block never grows taller than two rows.
+// Rows past rowsPerColumn start a new column beside the first, so the block never grows taller than rowsPerColumn.
 const DetailSection = ({
   label,
+  rowsPerColumn,
   children,
   className
 }: {
   label: string;
+  rowsPerColumn: number;
   children: ReactNode;
   className?: string;
 }) => {
   const rows = Children.toArray(children);
   const columns: ReactNode[][] = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_COLUMN) {
-    columns.push(rows.slice(i, i + ROWS_PER_COLUMN));
+  for (let i = 0; i < rows.length; i += rowsPerColumn) {
+    columns.push(rows.slice(i, i + rowsPerColumn));
   }
   return (
     <div
@@ -217,8 +219,6 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
   const metadataEntries = Object.entries(session?.metadata ?? {});
-  const shownMetadata = metadataEntries.slice(0, SHOWN_METADATA);
-  const moreMetadata = metadataEntries.slice(SHOWN_METADATA);
   const inlineServices = session ? sessionInlineServices(session) : [];
   const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
   const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
@@ -230,6 +230,25 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   const hasAccess =
     Boolean(session?.accessBundle) ||
     listedServices.length + inlineServices.length + listedSkills.length + inlineSkills.length > 0;
+  const fieldCount = session
+    ? [
+        true,
+        session.onBehalfOf,
+        session.accessBundle,
+        listedServices.length,
+        inlineServices.length,
+        listedSkills.length,
+        inlineSkills.length,
+        true,
+        session.revokedAt,
+        session.status !== AgentVaultSessionStatus.Revoked,
+        session.stats,
+        metadataEntries.length
+      ].filter(Boolean).length
+    : 0;
+  const rowsPerColumn = fieldCount <= SINGLE_ROW_MAX_FIELDS ? 1 : 2;
+  const shownMetadata = metadataEntries.slice(0, rowsPerColumn);
+  const moreMetadata = metadataEntries.slice(rowsPerColumn);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -298,7 +317,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
             <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
               {/* -ml-px and -mt-px push the dividers at the leading edge and top row past the clipped edge, so only dividers between sections show */}
               <div className="flex shrink-0 flex-wrap overflow-hidden rounded-md border border-border bg-container *:-mt-px *:-ml-px">
-                <DetailSection label="Identity">
+                <DetailSection label="Identity" rowsPerColumn={rowsPerColumn}>
                   <DetailRow
                     label={isMachineIdentity ? "Machine Identity" : "User"}
                     className={twMerge(isOwnerDeleted && "text-muted")}
@@ -330,7 +349,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {hasAccess && (
-                  <DetailSection label="Access">
+                  <DetailSection label="Access" rowsPerColumn={rowsPerColumn}>
                     {session.accessBundle && (
                       <DetailRow label="Access Bundle">
                         {session.accessBundle.id ? (
@@ -429,7 +448,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   </DetailSection>
                 )}
 
-                <DetailSection label="Activity">
+                <DetailSection label="Activity" rowsPerColumn={rowsPerColumn}>
                   <DetailRow label="Created">
                     {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
                   </DetailRow>
@@ -451,7 +470,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {metadataEntries.length > 0 && (
-                  <DetailSection label="Metadata" className="flex-[1_1_12rem]">
+                  <DetailSection
+                    label="Metadata"
+                    rowsPerColumn={rowsPerColumn}
+                    className="flex-[1_1_12rem]"
+                  >
                     {shownMetadata.map(([key, value], index) => (
                       <DetailRow key={key} label={key} labelClassName="font-mono">
                         <MetadataValue value={value} />
