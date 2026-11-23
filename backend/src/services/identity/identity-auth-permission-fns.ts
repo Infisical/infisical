@@ -1,10 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -61,7 +68,7 @@ export const assertIdentityAuthAccessAllowed = async (
   );
 
   if (projectId) {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole, projectType } = await permissionService.getProjectPermission({
       actionProjectType: ActionProjectType.Any,
       actor,
       actorId,
@@ -74,6 +81,25 @@ export const assertIdentityAuthAccessAllowed = async (
       PROJECT_ACTION_BY_ORG_ACTION[action],
       subject(ProjectPermissionSub.Identity, { identityId })
     );
+
+    // In Agent Vault only an admin can make someone an admin, and logging in as an admin machine identity would get
+    // around that, so only an admin can manage such an identity's credentials or auth.
+    if (projectType === ProjectType.AgentVault && !hasRole(ProjectMembershipRole.Admin)) {
+      const target = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor: ActorType.IDENTITY,
+        actorId: identityId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      if (target.hasRole(ProjectMembershipRole.Admin)) {
+        throw new ForbiddenRequestError({
+          message:
+            "Only an Agent Vault admin can manage the credentials or authentication of a machine identity that has the Admin role."
+        });
+      }
+    }
     if (shouldUseNewPrivilegeSystem) return;
 
     assertRoleSetBoundary({

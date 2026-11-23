@@ -16,6 +16,11 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import {
@@ -321,10 +326,22 @@ export const ServicesCard = ({
   let emptyDescription = "Try a different search term or filter.";
   if (!isNarrowed && emptyDescriptionOverride) emptyDescription = emptyDescriptionOverride;
   else if (!isNarrowed) {
-    emptyDescription = isBundle
-      ? "Add services to give this bundle access to external hosts."
-      : "Add a service for each API, MCP server, database or SSH server agents need.";
+    if (canAdd) {
+      emptyDescription = isBundle
+        ? "Add services to give this bundle access to external hosts."
+        : "Add a service for each API, MCP server, database or SSH server agents need.";
+    } else {
+      emptyDescription = isBundle
+        ? "This bundle has no services yet. Someone who can edit it can add them."
+        : "Someone who can create services can add them here.";
+    }
   }
+  const addDisabledReason = deniedReason(
+    canAdd,
+    isBundle
+      ? "You don't have permission to add services to this access bundle"
+      : "You don't have permission to create services"
+  );
 
   const handleDelete = async () => {
     try {
@@ -359,14 +376,14 @@ export const ServicesCard = ({
             ? "The services agents can reach with this bundle. Each one is defined once in the project and can be in any number of bundles."
             : `A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it.${canAdd ? " Add it to access bundles to give agents access." : ""}`}
         </CardDescription>
-        {canAdd && (
-          <CardAction>
-            <Button variant="av" onClick={onAdd}>
+        <CardAction>
+          <DisabledReasonTooltip disabledReason={addDisabledReason}>
+            <Button variant="av" isDisabled={!canAdd} onClick={onAdd}>
               <PlusIcon />
               Add Service
             </Button>
-          </CardAction>
-        )}
+          </DisabledReasonTooltip>
+        </CardAction>
       </CardHeader>
 
       {hasAny && (
@@ -562,58 +579,63 @@ export const ServicesCard = ({
                     </div>
                   </TableCell>
                   <TableCell variant="action">
-                    {(service.personalValues ||
-                      canEditService(service) ||
-                      canRemoveService(service) ||
-                      (canReadRoles && canOpenService(service))) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton variant="ghost" size="xs" aria-label="Open service actions">
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          {service.personalValues && (
-                            <DropdownMenuItem onClick={() => onSetUp(service)}>
-                              <KeyIcon />
-                              {service.personalValues.isConfigured
-                                ? "Update My Personal Values"
-                                : "Set Up My Personal Values"}
-                            </DropdownMenuItem>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" aria-label="Open service actions">
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent sideOffset={2} align="end">
+                        {service.personalValues && (
+                          <DropdownMenuItem onClick={() => onSetUp(service)}>
+                            <KeyIcon />
+                            {service.personalValues.isConfigured
+                              ? "Update My Personal Values"
+                              : "Set Up My Personal Values"}
+                          </DropdownMenuItem>
+                        )}
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canEditService(service),
+                            "You don't have permission to edit this service"
                           )}
-                          {canEditService(service) && (
-                            <DropdownMenuItem onClick={() => onEdit(service)}>
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
+                          onClick={() => onEdit(service)}
+                        >
+                          <PencilIcon />
+                          Edit
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canReadRoles && canOpenService(service),
+                            "You don't have permission to see who can use this service"
                           )}
-                          {canReadRoles && canOpenService(service) && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setWhoCanUse({
-                                  kind: "service",
-                                  id: service.id,
-                                  name: service.name
-                                });
-                                setIsWhoCanUseOpen(true);
-                              }}
-                            >
-                              <UsersIcon />
-                              Who Can Use
-                            </DropdownMenuItem>
+                          onClick={() => {
+                            setWhoCanUse({
+                              kind: "service",
+                              id: service.id,
+                              name: service.name
+                            });
+                            setIsWhoCanUseOpen(true);
+                          }}
+                        >
+                          <UsersIcon />
+                          Who Can Use
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={deniedReason(
+                            canRemoveService(service),
+                            isBundle
+                              ? "You don't have permission to edit this access bundle"
+                              : "You don't have permission to delete this service"
                           )}
-                          {canRemoveService(service) && (
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setServiceToDelete(service)}
-                            >
-                              {isBundle ? <UnlinkIcon /> : <TrashIcon />}
-                              {isBundle ? "Remove From Bundle" : "Delete"}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                          onClick={() => setServiceToDelete(service)}
+                        >
+                          {isBundle ? <UnlinkIcon /> : <TrashIcon />}
+                          {isBundle ? "Remove From Bundle" : "Delete"}
+                        </DisabledReasonMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

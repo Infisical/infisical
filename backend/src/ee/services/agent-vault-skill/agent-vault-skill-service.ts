@@ -110,18 +110,10 @@ export const agentVaultSkillServiceFactory = ({
   const skillSubject = agentVaultSkillSubject;
   const bundleSubject = agentVaultAccessBundleSubject;
 
-  // Checked on the skills subject first, so an id the caller could never act on doesn't get a 404 that confirms it
-  // exists, then on the skill itself.
-  const $authorizeSkill = async (
-    scoped: TAgentVaultSkillScoped,
-    action: ProjectPermissionAgentVaultSkillActions,
-    skillId: string
-  ) => {
-    const permission = await $getPermission(scoped);
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
-    ForbiddenError.from(permission).throwUnlessCan(action, skillSubject(skillId));
-    return permission;
-  };
+  const skillNotFound = (skillId: string) => new NotFoundError({ message: `Skill with ID '${skillId}' not found` });
+
+  const bundleNotFound = (accessBundleId: string) =>
+    new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
   // The skills the caller can see: those they can read or use, and those a bundle they can use holds (null for all of
   // them). A read by id uses it as is, so a skill the caller can't see is a 404 whatever their roles, never a 403 that
@@ -138,6 +130,23 @@ export const agentVaultSkillServiceFactory = ({
       await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reachability, scoped.projectId)
     );
     return { reachability, visibleSkillIds };
+  };
+
+  // Checked on the skills subject first, then on the skill itself. The route already answers 404 for a skill that
+  // doesn't exist, so a refusal on one the caller can't see answers 404 too, or the 403 would confirm it exists.
+  const $authorizeSkill = async (
+    scoped: TAgentVaultSkillScoped,
+    action: ProjectPermissionAgentVaultSkillActions,
+    skillId: string
+  ) => {
+    const permission = await $getPermission(scoped);
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
+    if (permission.cannot(action, skillSubject(skillId))) {
+      const { visibleSkillIds } = await $readScope(scoped);
+      if (visibleSkillIds !== null && !visibleSkillIds.includes(skillId.toLowerCase())) throw skillNotFound(skillId);
+      ForbiddenError.from(permission).throwUnlessCan(action, skillSubject(skillId));
+    }
+    return permission;
   };
 
   // A list: someone who can't read or use any skill, or use any bundle, gets a 403 rather than an empty list.
@@ -162,12 +171,19 @@ export const agentVaultSkillServiceFactory = ({
 
   // Adding or removing a skill changes what a bundle hands out, so it is an edit of that bundle, as linking a service is.
   // addToBundle also checks each skill it adds.
+  // A bundle the caller can't see answers 404, as a missing one does, so the refusal can't confirm it exists.
   const $authorizeBundleLink = async (scoped: TAgentVaultSkillScoped, accessBundleId: string) => {
     const permission = await $getPermission(scoped);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      bundleSubject(accessBundleId)
-    );
+    const target = bundleSubject(accessBundleId);
+    if (permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Edit, target)) {
+      if (
+        permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Read, target) &&
+        permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Use, target)
+      ) {
+        throw bundleNotFound(accessBundleId);
+      }
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionAgentVaultAccessBundleActions.Edit, target);
+    }
   };
 
   const projectSkill = (row: TAgentVaultSkillSummaryRow): TAgentVaultSkill => ({
@@ -187,11 +203,6 @@ export const agentVaultSkillServiceFactory = ({
     fileCount: row.fileCount,
     createdAt: row.createdAt
   });
-
-  const skillNotFound = (skillId: string) => new NotFoundError({ message: `Skill with ID '${skillId}' not found` });
-
-  const bundleNotFound = (accessBundleId: string) =>
-    new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
   const duplicateNameMessage = (name: string) => `A skill named '${name}' already exists.`;
 
@@ -636,14 +647,10 @@ export const agentVaultSkillServiceFactory = ({
   const addToBundle = async ({ accessBundleId, skillIds, ...scoped }: TAddBundleSkillsDTO) => {
     await $authorizeBundleLink(scoped, accessBundleId);
     const requestedIds = [...new Set(skillIds.map((id) => id.toLowerCase()))];
-    // Everyone who can use the bundle gets its skills, so adding a skill takes being able to use it already, directly or
-    // through another bundle: a bundle editor can't hand out a skill they couldn't use themselves.
-    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
-    const usableIds = await usableSkillIdsOf(
-      { agentVaultSkillBundleDAL, agentVaultReachDAL },
-      reachability,
-      scoped.projectId
-    );
+    // Everyone who can use the bundle gets every skill in it, so adding a skill takes a role that lets the caller use it
+    // directly. Using it through another bundle doesn't count: that bundle may hand it out only beside others that limit
+    // it, and copying it alone would drop them.
+    const { reachability, visibleSkillIds } = await $readScope(scoped);
 
     const add = () =>
       agentVaultSkillDAL.transaction(async (tx) => {
@@ -659,13 +666,11 @@ export const agentVaultSkillServiceFactory = ({
           // eslint-disable-next-line no-await-in-loop
           const skill = await agentVaultSkillDAL.lockByIdInProject({ id, projectId: scoped.projectId }, tx);
           if (!skill) throw skillNotFound(id);
-          if (usableIds !== null && !usableIds.includes(skill.id)) {
+          if (reachability.permission.cannot(ProjectPermissionAgentVaultSkillActions.Use, skillSubject(skill.id))) {
             // One the caller can't see answers as a missing one would, so the request can't confirm the id exists.
-            if (reachability.permission.cannot(ProjectPermissionAgentVaultSkillActions.Read, skillSubject(skill.id))) {
-              throw skillNotFound(id);
-            }
+            if (visibleSkillIds !== null && !visibleSkillIds.includes(skill.id)) throw skillNotFound(id);
             throw new ForbiddenRequestError({
-              message: `You can't add the skill '${skill.name}' to an access bundle, because you can't use it yourself.`
+              message: `You can't add the skill '${skill.name}' to an access bundle, because none of your roles lets you use it directly. Using it through another access bundle doesn't count.`
             });
           }
           lockedById.set(id, skill);

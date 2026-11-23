@@ -3,6 +3,10 @@ import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { PendingInvitationBadge } from "@app/components/agent-vault/PendingInvitationBadge";
 import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
@@ -136,10 +140,14 @@ export const MembersTab = () => {
         </InputGroup>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsInviteOpen(true)}>
-              <PlusIcon />
-              Add Users
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(isAllowed, "You don't have permission to add users")}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsInviteOpen(true)}>
+                <PlusIcon />
+                Add Users
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -208,7 +216,7 @@ export const MembersTab = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <ProductRoleBadges roles={member.roles} />
+                      <ProductRoleBadges roles={member.roles} roleDetails={member.roleDetails} />
                     </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-2">

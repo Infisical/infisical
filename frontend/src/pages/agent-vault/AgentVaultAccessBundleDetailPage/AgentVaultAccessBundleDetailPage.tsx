@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import { deniedReason } from "@app/components/agent-vault/DisabledReasonTooltip";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServicesCard } from "@app/components/agent-vault/ServicesCard";
@@ -24,7 +26,6 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -173,36 +174,44 @@ export const AgentVaultAccessBundleDetailPage = () => {
           </Link>
         }
       >
-        {(canReadRoles || canEditBundle || canDeleteBundle) && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                Options
-                <EllipsisIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canEditBundle && (
-                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-                  <PencilIcon />
-                  Edit Access Bundle
-                </DropdownMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              Options
+              <EllipsisIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DisabledReasonMenuItem
+              disabledReason={deniedReason(
+                canEditBundle,
+                "You don't have permission to edit this access bundle"
               )}
-              {canReadRoles && (
-                <DropdownMenuItem onClick={() => setIsWhoCanUseOpen(true)}>
-                  <UsersIcon />
-                  Who Can Use
-                </DropdownMenuItem>
+              onClick={() => setIsEditOpen(true)}
+            >
+              <PencilIcon />
+              Edit Access Bundle
+            </DisabledReasonMenuItem>
+            <DisabledReasonMenuItem
+              disabledReason={deniedReason(canReadRoles, "You don't have permission to view roles")}
+              onClick={() => setIsWhoCanUseOpen(true)}
+            >
+              <UsersIcon />
+              Who Can Use
+            </DisabledReasonMenuItem>
+            <DisabledReasonMenuItem
+              variant="danger"
+              disabledReason={deniedReason(
+                canDeleteBundle,
+                "You don't have permission to delete this access bundle"
               )}
-              {canDeleteBundle && (
-                <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
-                  <TrashIcon />
-                  Delete Access Bundle
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              onClick={() => setIsDeleteOpen(true)}
+            >
+              <TrashIcon />
+              Delete Access Bundle
+            </DisabledReasonMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       {needsSetup.length > 0 && (

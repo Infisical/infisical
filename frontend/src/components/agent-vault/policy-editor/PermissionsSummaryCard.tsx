@@ -136,7 +136,7 @@ export const PermissionsSummaryCard = ({
         {notGranted.length > 0 && (
           <Accordion type="single" collapsible variant="ghost">
             <AccordionItem value="not-granted">
-              <AccordionTrigger>Not granted ({notGranted.length})</AccordionTrigger>
+              <AccordionTrigger>No Access ({notGranted.length})</AccordionTrigger>
               <AccordionContent>
                 <ul className="flex flex-col gap-1 pl-6 text-xs text-muted">
                   {notGranted.map(({ row }) => (

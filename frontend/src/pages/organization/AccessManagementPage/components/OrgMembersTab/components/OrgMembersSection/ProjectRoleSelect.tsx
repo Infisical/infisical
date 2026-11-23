@@ -14,7 +14,8 @@ export const DEFAULT_PROJECT_ROLE: TProjectRoleOption = { slug: "member", name: 
 // Agent Vault has no built-in Member role, so someone added without another pick gets nothing until a role gives it.
 const AGENT_VAULT_DEFAULT_PROJECT_ROLE: TProjectRoleOption = {
   slug: "no-access",
-  name: "No Access"
+  name: "No Access",
+  description: "No access until given a role"
 };
 
 export const getDefaultProjectRole = (productType?: ProjectType) =>
@@ -34,6 +35,8 @@ const PREDEFINED_PROJECT_ROLES: (TProjectRoleOption & { type?: ProjectType })[] 
   { slug: "viewer", name: "Viewer", description: "Only read role in a project" },
   { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
 ];
+
+const BUILT_IN_SLUGS = PREDEFINED_PROJECT_ROLES.map(({ slug }) => slug);
 
 const getBuiltInProjectRoles = (productType?: ProjectType) =>
   PREDEFINED_PROJECT_ROLES.filter((role) => !role.type || role.type === productType);
@@ -99,15 +102,30 @@ export const ProjectRoleSelect = ({
     singleSelectedProjectId ?? ""
   );
 
-  const projectRoles: TProjectRoleOption[] =
-    fixedRoles ??
-    (fetchedProjectRoles?.length
-      ? fetchedProjectRoles.map((role) => ({
-          slug: role.slug,
-          name: role.name,
-          description: role.description ?? undefined
-        }))
-      : getBuiltInProjectRoles(productType));
+  const fetchedCustomRoles: TProjectRoleOption[] = (fetchedProjectRoles ?? [])
+    .filter((role) => !BUILT_IN_SLUGS.includes(role.slug))
+    .map((role) => ({
+      slug: role.slug,
+      name: role.name,
+      description: role.description || role.slug
+    }));
+
+  let projectRoles: TProjectRoleOption[];
+  if (productType === ProjectType.AgentVault) {
+    // Agent Vault's built-in roles keep their fixed wording, and with one project picked its custom roles join them,
+    // since a custom role is how Agent Vault gives anything less than Admin.
+    projectRoles = [...AGENT_VAULT_ROLES, ...(singleSelectedProjectId ? fetchedCustomRoles : [])];
+  } else {
+    projectRoles =
+      fixedRoles ??
+      (fetchedProjectRoles?.length
+        ? fetchedProjectRoles.map((role) => ({
+            slug: role.slug,
+            name: role.name,
+            description: role.description ?? undefined
+          }))
+        : getBuiltInProjectRoles(productType));
+  }
 
   return (
     <Combobox

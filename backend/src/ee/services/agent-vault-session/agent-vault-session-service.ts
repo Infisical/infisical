@@ -39,8 +39,6 @@ import {
   getAgentVaultPermission,
   getAgentVaultReachability,
   intersectReach,
-  serviceVisibilityOf,
-  skillVisibilityOf,
   TAgentVaultPermission,
   TAgentVaultReach,
   usableServiceIdsOf,
@@ -229,9 +227,8 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   // Each session's services or skills, listed by name or sent inline, as one list in the order they were sent. A listed
-  // one is read from the live catalog, so one the reader can't see is left out, the same as a deleted one: its later
-  // name, description and hosts are the catalog's to show, not the session's. Visibility is read only when a session
-  // lists something.
+  // one is read from the live catalog, so a deleted one is left out. Anyone who can read the session sees every one it
+  // used, whatever they can see of the catalog, so a session read tells an auditor everything the session could reach.
   const findSessionEntries = async <
     TInlineRow extends { sessionId: string; position: number },
     TListedRow extends { sessionId: string; position: number; id: string },
@@ -240,20 +237,16 @@ export const agentVaultSessionServiceFactory = ({
     sessionIds,
     loadInline,
     loadListed,
-    loadIsVisible,
     fromInline,
     fromListed
   }: {
     sessionIds: string[];
     loadInline: (sessionIds: string[]) => Promise<TInlineRow[]>;
     loadListed: (sessionIds: string[]) => Promise<TListedRow[]>;
-    loadIsVisible: () => Promise<(id: string) => boolean>;
     fromInline: (row: TInlineRow) => TEntry;
     fromListed: (row: TListedRow) => TEntry;
   }) => {
-    const [inlineRows, allListedRows] = await Promise.all([loadInline(sessionIds), loadListed(sessionIds)]);
-    const isVisible = allListedRows.length ? await loadIsVisible() : null;
-    const listedRows = isVisible ? allListedRows.filter((row) => isVisible(row.id)) : allListedRows;
+    const [inlineRows, listedRows] = await Promise.all([loadInline(sessionIds), loadListed(sessionIds)]);
     const bySession = new Map<string, { position: number; entry: TEntry }[]>();
     const add = (sessionId: string, position: number, entry: TEntry) => {
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, entry }]);
@@ -280,7 +273,6 @@ export const agentVaultSessionServiceFactory = ({
         return rows;
       },
       loadListed: (ids) => agentVaultSessionServiceDAL.findSummariesBySessionIds(ids),
-      loadIsVisible: () => serviceVisibilityOf({ agentVaultServiceDAL, agentVaultReachDAL }, reader),
       fromInline: (row): TAgentVaultSessionServiceSummary => ({
         ...toInlineServiceSummary(row, oauthVariables),
         isInline: true
@@ -296,12 +288,11 @@ export const agentVaultSessionServiceFactory = ({
     });
   };
 
-  const findSessionSkills = (sessionIds: string[], reader: TSessionReader) =>
+  const findSessionSkills = (sessionIds: string[]) =>
     findSessionEntries({
       sessionIds,
       loadInline: (ids) => agentVaultSessionInlineSkillDAL.findSummariesBySessionIds(ids),
       loadListed: (ids) => agentVaultSessionSkillDAL.findSummariesBySessionIds(ids),
-      loadIsVisible: () => skillVisibilityOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reader),
       fromInline: (row): TAgentVaultSessionSkillSummary => toInlineSkillSummary(row),
       fromListed: ({ id, name, description }): TAgentVaultSessionSkillSummary => ({
         id,
@@ -315,7 +306,7 @@ export const agentVaultSessionServiceFactory = ({
     const sessionIds = sessions.map((session) => session.id);
     const [servicesOf, skillsOf] = await Promise.all([
       findSessionServices(sessionIds, reader),
-      findSessionSkills(sessionIds, reader)
+      findSessionSkills(sessionIds)
     ]);
     return sessions.map((session) => ({ ...session, services: servicesOf(session.id), skills: skillsOf(session.id) }));
   };
@@ -658,7 +649,6 @@ export const agentVaultSessionServiceFactory = ({
           {
             projectId,
             accessBundleIds: ownerReach.accessBundleIds,
-            deniedServiceIds: ownerReach.deniedServiceIds,
             services: freshServices
               .filter(({ id }) => !throughBundleIds.has(id) && !directIds.has(id))
               .map(({ id, hostPattern }) => ({ id, hostPattern: hostPattern ?? null }))

@@ -13,6 +13,7 @@ import { cn } from "@app/components/v3/utils";
 import {
   getActionState,
   getPermissionRow,
+  isActionListed,
   setActionAllowed,
   setActionDenied,
   TAgentVaultPolicy,
@@ -82,8 +83,8 @@ export const ActionRows = ({
   hasTrailingCell = false,
   accessClassName = "w-40"
 }: Props) => {
-  const actions = getPermissionRow(scope.rowKey).actions.filter(
-    (action) => !(scope.itemId && action.isAllOnly)
+  const actions = getPermissionRow(scope.rowKey).actions.filter((action) =>
+    isActionListed(policy, scope, action)
   );
   const groups = [...new Set(actions.map((action) => action.group ?? ""))];
   const trailing = hasTrailingCell && <TableCell />;

@@ -147,7 +147,10 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   (`assertRoleBoundary` in the membership service): `assign-role` on that kind of member, and on the legacy privilege
   system every permission of each role involved. The change actions alone would let a role that only manages
   identities add or promote an admin. On top of that, only an admin can give the admin role or change or remove an
-  admin (`assertAdminOnlyChange`), so a custom role that manages members can't make or unmake one.
+  admin (`assertAdminOnlyChange`), so a custom role that manages members can't make or unmake one. Nothing else can act as an admin either: Agent Vault has
+  no Assume Privileges (the Admin rule set leaves it out and `assumeProjectPrivileges` refuses an Agent Vault project),
+  and only an admin can manage the credentials or auth of a machine identity that holds Admin
+  (`assertIdentityAuthAccessAllowed`).
 - **Members take a list of roles** (`roles`, at most `AGENT_VAULT_MAX_MEMBER_ROLES`, resolved by
   `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The generic
   membership routes apply the same limits (`assertAgentVaultRoleLimits`), including refusing other products' built-in
@@ -158,13 +161,15 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   admin and boundary checks, which an admin passes whatever the targets hold. Every change or removal through the
   generic user, group and identity routes, the bulk user removal (`deleteProjectMemberships`) and deleting a project's
   own machine identity included, takes the same lock first thing in its transaction, an admin's too
-  (`findAgentVaultRoleChange` before it, `lockAgentVaultRoleChange` inside it). For a non-admin the guard reads the
+  (`findAgentVaultRoleChange` before it, `lockAgentVaultRoleChange` inside it). Join as Admin (`grantProjectAdminAccess`)
+  takes it too. For a non-admin the guard reads the
   target's roles on the primary (`readTargetForAgentVaultRecheck`), and the write repeats the admin rule under the lock
   and answers 409 if the target's roles changed at all.
   The deprecated `role` field still takes admin or member, where member is the Member role the migration made, and keeps
   the member's bundle roles (`keepBundleRoles`), since it never touched grants. The kept roles count toward
-  `AGENT_VAULT_MAX_MEMBER_ROLES` (`assertAgentVaultKeptRolesWithinLimit`), as a grant does. Responses carry `roles` and the
-  deprecated `role` (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old
+  `AGENT_VAULT_MAX_MEMBER_ROLES` (`assertAgentVaultKeptRolesWithinLimit`), as a grant does. Responses carry `roles`, `roleDetails` (each role's slug and
+  name, `withRoleDetails`, so a caller who can't read roles still sees names) and the deprecated `role`
+  (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old
   clients keep working. It finds the Member role by its derived id (`findMemberRoleSlug`), never by slug: the migration
   may have suffixed it, an admin may rename it, and a project made since can hold an unrelated `member-role`.
   The generic project membership routes read `member` and `viewer` for an Agent Vault project as the Member role too
@@ -174,19 +179,18 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
   session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
   be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
+- **An Agent Vault project's name and delete protection go by edit on the project** (`workspace`), not Settings, which in
+  Agent Vault means session log settings (`updateProject`).
 - Keep each refusal's error type when a gate changes: an id you may not act on stays a 404. A by-id read answers 404
   even for a role with nothing on that subject (`getService`, the skill reads), since a 403 there would confirm the id
-  exists; only a list answers 403 for a role that can see none of it.
+  exists; only a list answers 403 for a role that can see none of it. Skills do the same: `$authorizeSkill` and
+  `$authorizeBundleLink` answer 404 for a skill or bundle the caller can't see.
 
 ## Access bundles, roles and reach
 
 - **What an actor can put in a session comes from their roles' `use` rules** on `agent-vault-access-bundles`,
   `agent-vault-services` and `agent-vault-skills`. Using a bundle covers its services and skills, so a role that uses a
-  bundle needs nothing on what it holds, unless a role denies `use` on one of them: a deny holds inside a bundle too.
-  The reach carries the denied ids (`deniedServiceIds`, `deniedSkillIds`, "all" for an unconditioned deny), and
-  `usableServiceIdsOf`, `usableSkillIdsOf` and resolve leave them out. Resolve also leaves out a service whose wildcard
-  covers a host of a denied one, unless the owner can use it directly, since dropping only the narrower service would
-  widen the wildcard. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
+  bundle needs nothing on what it holds, whatever a role says on the item: a deny on a service or skill only stops its direct use, and a bundle that holds it still gives it. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
   into a `TAgentVaultReach`: a list of ids per kind, null when the rules cover every one, ones created later included.
   Mint, resolve, the skills fetch, member-facing reads and delegations all go through it, so they can't disagree.
 - **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with one of `$eq` or `$in`;
@@ -199,8 +203,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **Usable and visible are different sets.** Usable services and skills are those with `use` plus those a usable
   bundle holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
   (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator
-  can't find. A read of something that names services or skills (a session, a delegation, Used By) leaves out the ones
-  the reader can't see, the way it leaves out deleted ones. Every response that returns a service, writes included,
+  can't find. A read of something that names services or skills (a delegation, Used By) leaves out the ones the reader
+  can't see, the way it leaves out deleted ones. A session read names every service and skill the session used, to
+  anyone who can read the session. Every response that returns a service, writes included,
   goes through `hideVariables` and `hideSetup` (or `viewService`): a role can edit services without reading variables,
   and delete them without editing them.
 - **A role change reaches a cached permission within 10 seconds.** Reach is read through the platform's permission
@@ -222,7 +227,7 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   the members API does.
   They are hidden from the API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
-  bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. It counts their roles under the
+  bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles or hold No Access, read fresh under the lock. It counts their roles under the
   project's `LastAdminGuard` lock, like every role change. Only a creator with a direct project membership gets one:
   the role on a group's membership would reach the whole group.
 - **Deleting a bundle deletes its own role while the role grants only that bundle** (`hasOnlyBundleRoleRules`): it
@@ -230,11 +235,11 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   everyone holding it, giving No Access to anyone left with no live role, under the project's role-change lock and then
   the bundle row lock. A bundle role an admin changed stays, like every other role that names the bundle: a rule that
   picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
-  Renaming a bundle renames its role's name and description while they still read as made, never its slug.
+  Renaming a bundle renames its role's name and description while they still read as made, never its slug,
+  and takes the project's role-change lock before the bundle row, as the role's delete does.
 - `GET /access-bundles/:id/roles`, `GET /services/:id/roles` and `GET /skills/:id/roles` (`findRolesThatCanUse`) answer
   who can use something: admin and every custom role whose rules allow `use` on it or, for a service or skill, on a
-  bundle that holds it, unless the role denies `use` on the service or skill itself, with member counts. Each role is
-  judged alone, so a deny in another role a member holds isn't seen. They take role `read` and an item the caller can
+  bundle that holds it, with member counts. They take role `read` and an item the caller can
   see (a 404 otherwise).
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
   its profile) plus what the membership adds (`roles`, `addedAt`, `grantedAt`). There is no membership id:
@@ -413,6 +418,9 @@ keyed by the service, so a member sets them once however many bundles give them 
   bundle (`requireBundleEdits`, where a bundle the caller can't see is a 404 too), since it changes what everyone who
   uses the bundle reaches. A service's setup (its OAuth sign-in state and hook) is shown only to a role that can edit it
   (`canSeeSetup`).
+- **Adding an existing service or skill to a bundle takes `use` on it from the caller's own roles**; use through
+  another bundle doesn't count, since that bundle may hand it out only beside a narrower service that limits it on one
+  of its hosts. Creating a service into bundles takes a role that could use any new service (`canUseNewItem`).
 - **A save that changes where a service connects, or weakens a database's TLS, sends every sealed value again**
   (`serviceMoveOf`, checked in
   `updateService` before the write and again under the lock): the credential, each custom header value and each

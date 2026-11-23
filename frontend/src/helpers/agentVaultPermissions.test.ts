@@ -14,6 +14,8 @@ import {
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
+  canAddServiceToAgentVaultBundle,
+  canAddSkillToAgentVaultBundle,
   canReadEveryAgentVaultMember,
   canUseAgentVaultAccessBundle,
   canUseAgentVaultAccessBundles,
@@ -125,7 +127,7 @@ describe("what a session can carry", () => {
     ).toBe(false);
   });
 
-  it("keeps out a service or skill a role denies, even inside a bundle the role uses", () => {
+  it("gives everything in a usable bundle, even a service or skill a role denies on its own", () => {
     const permission = abilityOf([
       useBundle(BUNDLE),
       {
@@ -142,13 +144,34 @@ describe("what a session can carry", () => {
     ]);
     expect(
       canUseAgentVaultService(permission, { id: SERVICE, accessBundles: [{ id: BUNDLE }] })
-    ).toBe(false);
-    expect(
-      canUseAgentVaultService(permission, { id: OTHER_SERVICE, accessBundles: [{ id: BUNDLE }] })
     ).toBe(true);
     expect(canUseAgentVaultSkill(permission, { id: SKILL, accessBundles: [{ id: BUNDLE }] })).toBe(
-      false
+      true
     );
+    expect(canUseAgentVaultService(permission, { id: SERVICE, accessBundles: [] })).toBe(false);
+  });
+});
+
+describe("adding to a bundle", () => {
+  it("needs Use on the item from the caller's own roles, not through a bundle", () => {
+    const throughBundle = abilityOf([useBundle(BUNDLE)]);
+    expect(canAddServiceToAgentVaultBundle(throughBundle, SERVICE)).toBe(false);
+    expect(canAddSkillToAgentVaultBundle(throughBundle, SKILL)).toBe(false);
+
+    const direct = abilityOf([
+      {
+        action: ProjectPermissionAgentVaultServiceActions.Use,
+        subject: ProjectPermissionSub.AgentVaultServices,
+        conditions: { serviceId: { $in: [SERVICE] } }
+      },
+      {
+        action: ProjectPermissionAgentVaultSkillActions.Use,
+        subject: ProjectPermissionSub.AgentVaultSkills
+      }
+    ]);
+    expect(canAddServiceToAgentVaultBundle(direct, SERVICE)).toBe(true);
+    expect(canAddServiceToAgentVaultBundle(direct, OTHER_SERVICE)).toBe(false);
+    expect(canAddSkillToAgentVaultBundle(direct, SKILL)).toBe(true);
   });
 });
 

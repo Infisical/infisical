@@ -26,11 +26,7 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { ownerColumns, ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import {
-  getAgentVaultReachability,
-  TAgentVaultDeniedIds,
-  usableServiceIdsOf
-} from "../agent-vault/agent-vault-permission";
+import { getAgentVaultReachability, usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { getServiceServerUrl, serviceMoveOf } from "../agent-vault/agent-vault-service-type-fns";
 import {
@@ -192,27 +188,16 @@ export const agentVaultPersonalValueServiceFactory = ({
    * The caller's status for every service in these bundles that takes values from members. No permission check: the
    * access bundle service calls it for what it has already resolved the caller's reach to. Without variable references,
    * each field's list is empty. `includeUnlinked` adds the services no bundle holds, for a caller who reaches every
-   * service (null `accessBundleIds`), and `directServiceIds` the services the caller uses directly. A service a role
-   * denies `use` on (`deniedServiceIds`) needs no setup, since no bundle gives it.
+   * service (null `accessBundleIds`), and `directServiceIds` the services the caller uses directly.
    */
-  const findStatusesForOwner = async ({
-    deniedServiceIds,
-    ...args
-  }: {
+  const findStatusesForOwner = (args: {
     projectId: string;
     owner: TAgentVaultOwner;
     accessBundleIds: string[] | null;
     includeUnlinked?: boolean;
     directServiceIds?: string[];
     withVariableReferences?: boolean;
-    deniedServiceIds?: TAgentVaultDeniedIds;
-  }) => {
-    if (deniedServiceIds === "all") return [];
-    const statuses = await loadServices(args);
-    if (!deniedServiceIds?.length) return statuses;
-    const denied = new Set(deniedServiceIds);
-    return statuses.filter((status) => !denied.has(status.serviceId));
-  };
+  }) => loadServices(args);
 
   const serviceNotFound = (serviceId: string) =>
     new NotFoundError({ message: `Service with ID '${serviceId}' not found` });

@@ -2062,8 +2062,16 @@ const deprecatedRoleSchema = z.string().describe(AGENT_VAULT.MEMBERSHIP.roleRead
 
 const addedAtSchema = z.date().describe(AGENT_VAULT.MEMBERSHIP.addedAt);
 
+// The members routes always send it; the deprecated access bundle member list doesn't.
+const roleDetailsSchema = z
+  .object({ slug: z.string(), name: z.string() })
+  .array()
+  .optional()
+  .describe(AGENT_VAULT.MEMBERSHIP.roleDetails);
+
 const productMemberFields = {
   roles: productRolesSchema,
+  roleDetails: roleDetailsSchema,
   role: deprecatedRoleSchema,
   isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
   addedAt: addedAtSchema
@@ -2077,7 +2085,12 @@ export const AgentVaultProductMemberSchema = z.discriminatedUnion("type", [
   groupActorSchema.extend(productMemberFields)
 ]);
 
-const productMemberRefFields = { roles: productRolesSchema, role: deprecatedRoleSchema, addedAt: addedAtSchema };
+const productMemberRefFields = {
+  roles: productRolesSchema,
+  roleDetails: roleDetailsSchema,
+  role: deprecatedRoleSchema,
+  addedAt: addedAtSchema
+};
 
 export const AgentVaultProductMemberRefSchema = z.discriminatedUnion("type", [
   actorRefSchemas.user.extend(productMemberRefFields),

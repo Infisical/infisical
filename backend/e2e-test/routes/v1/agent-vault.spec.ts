@@ -5636,22 +5636,13 @@ describe("Agent Vault V1 Router", async () => {
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await sessionServiceNames(token)).toEqual([]);
 
-          // Session reads show a listed service only while the reader reaches it, so its later changes stay with the
-          // services API.
-          const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as { id: string };
-          expect(
-            (await inject("PATCH", `${servicesUrl}/${granted.id}`, { type: "http", description: "changed after the revoke" }))
-              .statusCode
-          ).toBe(200);
-          const ownRead = await member.as("GET", `${sessionsUrl}/${sessionId}`);
-          expect(ownRead.statusCode).toBe(200);
-          expect(ownRead.json().session.services).toEqual([]);
-          expect(ownRead.payload).not.toContain("changed after the revoke");
+          // A session read still names every service the session listed, so it says what the session could reach.
+          expect(await servicesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
           const ownList = await member.as("GET", `${sessionsUrl}?limit=100`);
-          const listed = (ownList.json().sessions as { id: string; services: unknown[] }[]).find(
+          const listed = (ownList.json().sessions as { id: string; services: { name: string }[] }[]).find(
             (row) => row.id === sessionId
           );
-          expect(listed?.services).toEqual([]);
+          expect(listed?.services.map((entry) => entry.name)).toEqual(["ns-granted"]);
           expect(await servicesIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
         } finally {
           await member.cleanup();
@@ -11359,8 +11350,11 @@ describe("Agent Vault V1 Router", async () => {
           });
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await deliveredNames(token)).toEqual(["ss-member-own"]);
-          // Session reads show a listed skill only while the reader reaches it; an admin still sees it.
-          expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-member-own"]);
+          // A session read still names every skill the session listed, so it says what the session could reach.
+          expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual([
+            "ss-granted",
+            "ss-member-own"
+          ]);
           expect(await skillNamesIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-granted", "ss-member-own"]);
         } finally {
           await member.cleanup();
@@ -12871,24 +12865,45 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("adding a service or skill to a bundle takes being able to use it", async () => {
+    test("adding a service or skill to a bundle takes a role that uses it directly, not through another bundle", async () => {
       const projectId = await getProjectId();
       const [own, elsewhere] = [
         await createAccessBundle(`link-own-${unique()}`),
         await createAccessBundle(`link-elsewhere-${unique()}`)
       ];
-      const readable = await createBearerService(`link-readable-${unique()}`);
+      const usable = await createBearerService(`link-usable-${unique()}`);
       const hidden = await createBearerService(`link-hidden-${unique()}`);
-      const throughBundle = await createBearerService(`link-through-${unique()}`, [elsewhere.id]);
-      const readableSkill = await createNamedSkill(`link-skill-${unique()}`);
+      // A bundle that hands out a wildcard only beside a GET-only service for one of its hosts.
+      const wildcardName = `link-wildcard-${unique()}`;
+      const wildcard = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [elsewhere.id],
+        type: "http",
+        name: wildcardName,
+        hostPattern: `*.${wildcardName}.example.com`,
+        credential: { type: "bearer", value: "sk-wildcard" }
+      });
+      expect(wildcard.statusCode, wildcard.payload).toBe(200);
+      const wildcardId = (wildcard.json().service as { id: string }).id;
+      const narrow = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [elsewhere.id],
+        type: "http",
+        name: `link-narrow-${unique()}`,
+        hostPattern: `api.${wildcardName}.example.com`,
+        allowedMethods: ["GET"],
+        credential: { type: "bearer", value: "sk-wildcard" }
+      });
+      expect(narrow.statusCode, narrow.payload).toBe(200);
+      const usableSkill = await createNamedSkill(`link-skill-${unique()}`);
       const skillThroughBundle = await createNamedSkill(`link-skill-through-${unique()}`, [elsewhere.id]);
       const role = await createAgentVaultRole(projectId, `link-editor-${unique()}`, [
         ...SESSION_RULES,
         { subject: "agent-vault-access-bundles", action: ["read", "use", "edit"], conditions: { accessBundleId: own.id } },
         { subject: "agent-vault-access-bundles", action: ["read", "use"], conditions: { accessBundleId: elsewhere.id } },
         { subject: "agent-vault-services", action: ["read"] },
+        { subject: "agent-vault-services", action: ["use"], conditions: { serviceId: usable.id } },
         { subject: "agent-vault-services", action: ["read"], conditions: { serviceId: hidden.id }, inverted: true },
-        { subject: "agent-vault-skills", action: ["read"] }
+        { subject: "agent-vault-skills", action: ["read"] },
+        { subject: "agent-vault-skills", action: ["use"], conditions: { skillId: usableSkill.id } }
       ]);
       const editor = await createMemberIdentity(`link-editor-${unique()}`);
       const addServices = (serviceIds: string[]) =>
@@ -12899,32 +12914,84 @@ describe("Agent Vault V1 Router", async () => {
       try {
         await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
 
-        const refused = await addServices([readable.id]);
+        // Copying the wildcard alone would drop the GET-only limit its bundle puts on one of its hosts.
+        const refused = await addServices([wildcardId]);
         expect(refused.statusCode).toBe(403);
         expect(refused.json().message).toBe(
-          `You can't add the service '${readable.name}' to an access bundle, because you can't use it yourself.`
+          `You can't add the service '${wildcardName}' to an access bundle, because none of your roles lets you use it directly. Using it through another access bundle doesn't count.`
         );
         // One the role can't see is answered as a missing one.
         expect((await addServices([hidden.id])).statusCode).toBe(404);
-        // All or nothing: the usable one beside them didn't go in either.
-        expect((await addServices([throughBundle.id, readable.id])).statusCode).toBe(403);
+        // All or nothing: the usable one beside it didn't go in either.
+        expect((await addServices([usable.id, wildcardId])).statusCode).toBe(403);
         expect((await servicesInBundle(own.id)).map((service) => service.id)).toEqual([]);
 
-        expect((await addServices([throughBundle.id])).statusCode).toBe(200);
-        expect((await servicesInBundle(own.id)).map((service) => service.id)).toEqual([throughBundle.id]);
+        expect((await addServices([usable.id])).statusCode).toBe(200);
+        expect((await servicesInBundle(own.id)).map((service) => service.id)).toEqual([usable.id]);
 
-        const refusedSkill = await addSkills([readableSkill.id]);
+        const refusedSkill = await addSkills([skillThroughBundle.id]);
         expect(refusedSkill.statusCode).toBe(403);
         expect(refusedSkill.json().message).toBe(
-          `You can't add the skill '${readableSkill.name}' to an access bundle, because you can't use it yourself.`
+          `You can't add the skill '${skillThroughBundle.name}' to an access bundle, because none of your roles lets you use it directly. Using it through another access bundle doesn't count.`
         );
-        expect((await addSkills([skillThroughBundle.id])).statusCode).toBe(200);
+        expect((await addSkills([usableSkill.id])).statusCode).toBe(200);
       } finally {
         await editor.cleanup();
       }
     });
 
-    test("a role with only bundle rules can add the skills it uses through its bundles, and remove them", async () => {
+    test("a host clash in a bundle or with a service the editor can't see names neither", async () => {
+      const projectId = await getProjectId();
+      const hiddenBundle = await createAccessBundle(`clash-hidden-${unique()}`);
+      const editable = await createBearerService(`clash-editable-${unique()}`, [hiddenBundle.id]);
+      const taken = await createBearerService(`clash-taken-${unique()}`, [hiddenBundle.id]);
+      const takenHost = `${taken.name}.boundary.example.com`;
+      const role = await createAgentVaultRole(projectId, `clash-editor-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-services", action: ["read", "edit"], conditions: { serviceId: editable.id } }
+      ]);
+      const editor = await createMemberIdentity(`clash-editor-${unique()}`);
+      try {
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+        const moved = await editor.as("PATCH", `/api/v1/agent-vault/services/${editable.id}`, {
+          type: "http",
+          hostPattern: takenHost,
+          credential: { type: "bearer", value: "sk-moved" }
+        });
+        expect(moved.statusCode).toBe(400);
+        expect(moved.json().message).toBe(
+          `Another service in one of this service's access bundles already covers ${takenHost}:443. A bundle can't hold two services for the same host.`
+        );
+        expect(moved.payload).not.toContain(`'${taken.name}'`);
+        expect(moved.payload).not.toContain(hiddenBundle.name);
+      } finally {
+        await editor.cleanup();
+      }
+    });
+
+    test("a skill the caller can't see answers 404 on its routes and its bundle links, as a missing one does", async () => {
+      const projectId = await getProjectId();
+      const hiddenBundle = await createAccessBundle(`skill-404-bundle-${unique()}`);
+      const hidden = await createNamedSkill(`skill-404-${unique()}`);
+      const role = await createAgentVaultRole(projectId, `skill-404-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-skills", action: ["create", "edit", "delete"] },
+        { subject: "agent-vault-skills", action: ["edit", "delete"], conditions: { skillId: hidden.id }, inverted: true }
+      ]);
+      const caller = await createMemberIdentity(`skill-404-${unique()}`);
+      try {
+        await setMemberRoles({ machineIdentityIds: [caller.id] }, [role.slug]);
+        expect((await caller.as("DELETE", `/api/v1/agent-vault/skills/${hidden.id}`)).statusCode).toBe(404);
+        expect(
+          (await caller.as("POST", `/api/v1/agent-vault/access-bundles/${hiddenBundle.id}/skills`, { skillIds: [hidden.id] }))
+            .statusCode
+        ).toBe(404);
+      } finally {
+        await caller.cleanup();
+      }
+    });
+
+    test("a role with only bundle rules can't add skills, and can remove them", async () => {
       const projectId = await getProjectId();
       const [own, elsewhere] = [
         await createAccessBundle(`skill-link-own-${unique()}`),
@@ -12946,11 +13013,10 @@ describe("Agent Vault V1 Router", async () => {
       try {
         await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
 
-        const added = await editor.as("POST", skillsUrl, { skillIds: [throughBundle.id] });
-        expect(added.statusCode, added.payload).toBe(200);
+        expect((await editor.as("POST", skillsUrl, { skillIds: [throughBundle.id] })).statusCode).toBe(403);
         // One it can neither use nor see answers as a missing one would.
         expect((await editor.as("POST", skillsUrl, { skillIds: [unseen.id] })).statusCode).toBe(404);
-        expect(await skillIdsInBundle()).toEqual([alreadyIn.id, throughBundle.id].sort());
+        expect(await skillIdsInBundle()).toEqual([alreadyIn.id]);
 
         const removed = await editor.as("DELETE", `${skillsUrl}/${alreadyIn.id}`);
         expect(removed.statusCode, removed.payload).toBe(200);
@@ -12958,7 +13024,7 @@ describe("Agent Vault V1 Router", async () => {
         const outside = await editor.as("DELETE", `${skillsUrl}/${unseen.id}`);
         expect(outside.statusCode).toBe(404);
         expect(outside.json().message).toBe(`Skill with ID '${unseen.id}' isn't in the access bundle '${own.name}'.`);
-        expect(await skillIdsInBundle()).toEqual([throughBundle.id]);
+        expect(await skillIdsInBundle()).toEqual([]);
       } finally {
         await editor.cleanup();
       }
@@ -14806,7 +14872,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    describe("a role's deny on a service or skill holds inside a bundle", async () => {
+    describe("a usable bundle gives everything it holds, whatever a role denies on an item", async () => {
       const createBundleSkill = async (name: string, accessBundleId: string) => {
         const created = await inject("POST", "/api/v1/agent-vault/skills", {
           files: [
@@ -14859,7 +14925,7 @@ describe("Agent Vault V1 Router", async () => {
         return (res.json().roles as { slug: string }[]).map((role) => role.slug);
       };
 
-      test("a session with the bundle gets its other services and skills, and the lists and Who Can Use agree", async () => {
+      test("a session with the bundle gets a service and skill a role denies, and the lists and Who Can Use agree", async () => {
         const projectId = await getProjectId();
         const bundle = await createAccessBundle(`deny-in-${unique()}`);
         const keptName = `deny-kept-${unique()}`;
@@ -14881,69 +14947,30 @@ describe("Agent Vault V1 Router", async () => {
           const services = await member.as("GET", `${servicesUrl}?limit=100`);
           expect(services.statusCode, services.payload).toBe(200);
           const serviceIds = (services.json().services as { id: string }[]).map((service) => service.id);
-          expect(serviceIds).toContain(keptId);
-          expect(serviceIds).not.toContain(deniedId);
+          expect(serviceIds).toEqual(expect.arrayContaining([keptId, deniedId]));
           const skills = await member.as("GET", "/api/v1/agent-vault/skills?limit=100");
           expect(skills.statusCode, skills.payload).toBe(200);
           const skillIds = (skills.json().skills as { id: string }[]).map((skill) => skill.id);
-          expect(skillIds).toContain(keptSkill.id);
-          expect(skillIds).not.toContain(deniedSkill.id);
-
-          const named = await member.as("POST", "/api/v1/agent-vault/sessions", { ttl: "1h", services: [deniedName] });
-          expect(named.statusCode).toBe(400);
+          expect(skillIds).toEqual(expect.arrayContaining([keptSkill.id, deniedSkill.id]));
+          // A member who uses the bundle can open what it holds.
+          expect((await member.as("GET", `/api/v1/agent-vault/skills/${deniedSkill.id}`)).statusCode).toBe(200);
 
           const mint = await member.as("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
           expect(mint.statusCode, mint.payload).toBe(200);
           const { token } = mint.json().session as { token: string };
           const resolve = await resolverFor(token);
-          expect(await resolve()).toEqual([keptName]);
-          expect(await sessionSkillNames(token)).toEqual([keptSkill.name]);
+          expect(await resolve()).toEqual([keptName, deniedName].sort());
+          expect((await sessionSkillNames(token)).sort()).toEqual([keptSkill.name, deniedSkill.name].sort());
 
           expect(await roleSlugsAt(`${servicesUrl}/${keptId}/roles`)).toContain(role.slug);
-          expect(await roleSlugsAt(`${servicesUrl}/${deniedId}/roles`)).not.toContain(role.slug);
-          expect(await roleSlugsAt(`/api/v1/agent-vault/skills/${keptSkill.id}/roles`)).toContain(role.slug);
-          expect(await roleSlugsAt(`/api/v1/agent-vault/skills/${deniedSkill.id}/roles`)).not.toContain(role.slug);
+          expect(await roleSlugsAt(`${servicesUrl}/${deniedId}/roles`)).toContain(role.slug);
+          expect(await roleSlugsAt(`/api/v1/agent-vault/skills/${deniedSkill.id}/roles`)).toContain(role.slug);
         } finally {
           await member.cleanup();
           await inject("DELETE", `/api/v1/agent-vault/skills/${keptSkill.id}`);
           await inject("DELETE", `/api/v1/agent-vault/skills/${deniedSkill.id}`);
           await inject("DELETE", `${servicesUrl}/${keptId}`);
           await inject("DELETE", `${servicesUrl}/${deniedId}`);
-        }
-      });
-
-      test("denying a service that narrows a wildcard leaves the wildcard out too, so its hosts don't widen", async () => {
-        const projectId = await getProjectId();
-        const domain = `narrow-${unique()}.example.com`;
-        const bundle = await createAccessBundle(`deny-narrow-${unique()}`);
-        const wildcardName = `deny-wild-${unique()}`;
-        const narrowName = `deny-narrow-${unique()}`;
-        const otherName = `deny-other-${unique()}`;
-        const wildcardId = await createHttpService(wildcardName, {
-          accessBundleIds: [bundle.id],
-          hostPattern: `*.${domain}`
-        });
-        const narrowId = await createHttpService(narrowName, {
-          accessBundleIds: [bundle.id],
-          hostPattern: `api.${domain}`,
-          allowedMethods: ["GET"]
-        });
-        const otherId = await createHttpService(otherName, { accessBundleIds: [bundle.id] });
-        const role = await createAgentVaultRole(projectId, `deny-narrow-${unique()}`, [
-          ...SESSION_RULES,
-          { subject: "agent-vault-access-bundles", action: ["read", "use"], conditions: { accessBundleId: bundle.id } },
-          { subject: "agent-vault-services", action: ["use"], conditions: { serviceId: narrowId }, inverted: true }
-        ]);
-        const member = await createMemberIdentity(`deny-narrow-${unique()}`);
-        try {
-          await setMemberRoles({ machineIdentityIds: [member.id] }, [role.slug]);
-          const mint = await member.as("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
-          expect(mint.statusCode, mint.payload).toBe(200);
-          const resolve = await resolverFor((mint.json().session as { token: string }).token);
-          expect(await resolve()).toEqual([otherName]);
-        } finally {
-          await member.cleanup();
-          await Promise.all([wildcardId, narrowId, otherId].map((id) => inject("DELETE", `${servicesUrl}/${id}`)));
         }
       });
     });

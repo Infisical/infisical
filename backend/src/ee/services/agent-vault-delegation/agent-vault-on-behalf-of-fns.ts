@@ -122,8 +122,8 @@ export const resolveOnBehalfOfUser = async (
     });
   }
 
-  const { accessBundleIds, serviceIds, skillIds, deniedServiceIds, deniedSkillIds } = reachability;
-  const reach: TAgentVaultReach = { accessBundleIds, serviceIds, skillIds, deniedServiceIds, deniedSkillIds };
+  const { accessBundleIds, serviceIds, skillIds } = reachability;
+  const reach: TAgentVaultReach = { accessBundleIds, serviceIds, skillIds };
   return { user, identifier, reach };
 };
 

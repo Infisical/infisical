@@ -34,7 +34,12 @@ export type TCapabilityRowKey =
 export type TPermissionRowKey = TResourceRowKey | TCapabilityRowKey;
 
 export type TAgentVaultPolicy = Record<TResourceRowKey, TResourcePermissions> &
-  Record<TCapabilityRowKey, TActionSets>;
+  Record<TCapabilityRowKey, TActionSets> & {
+    // Rules for the actions the editor never shows (each subject's `ignored`), kept as read so a save writes them back
+    // unchanged. A deny there can still matter: the backend widens one on assign-additional-privileges to a deny on
+    // grant-privileges, and the workflow integration delete route checks settings delete.
+    hidden?: { subject: ProjectPermissionSub; action: string[]; inverted?: boolean }[];
+  };
 
 export type TPermissionScope = { rowKey: TPermissionRowKey; itemId?: string };
 
@@ -91,9 +96,10 @@ export type TSubjectRules = {
   idField?: string;
 };
 
-// What holds for a subject whichever row shows its actions. The ignored actions are ones the built-in admin role still
-// carries but nothing in Agent Vault checks: session log settings can only be read and changed. They are never shown or
-// written, so a copy of admin stays editable.
+// What holds for a subject whichever row shows its actions. The ignored actions are ones a role can carry but nothing in
+// Agent Vault offers: session log settings can only be read and changed, and Agent Vault refuses to assume another
+// member's privileges. They are never shown, and a save writes back whatever a role held of them, so a copy of admin
+// stays editable.
 export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>> = {
   [Sub.AgentVaultAccessBundles]: { readAction: BundleAction.Read, idField: "accessBundleId" },
   [Sub.AgentVaultServices]: { readAction: ResourceAction.Read, idField: "serviceId" },
@@ -113,7 +119,7 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   // Agent Vault gives access through roles alone, so nothing there checks additional privileges.
   [Sub.Member]: {
     readAction: MemberAction.Read,
-    ignored: [MemberAction.AssignAdditionalPrivileges],
+    ignored: [MemberAction.AssignAdditionalPrivileges, MemberAction.AssumePrivileges],
     legacy: { action: MemberAction.GrantPrivileges, replacedBy: [MemberAction.AssignRole] }
   },
   [Sub.Groups]: {
@@ -122,7 +128,7 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   },
   [Sub.Identity]: {
     readAction: IdentityAction.Read,
-    ignored: [IdentityAction.AssignAdditionalPrivileges],
+    ignored: [IdentityAction.AssignAdditionalPrivileges, IdentityAction.AssumePrivileges],
     legacy: { action: IdentityAction.GrantPrivileges, replacedBy: [IdentityAction.AssignRole] }
   },
   [Sub.Role]: { readAction: GeneralAction.Read },
@@ -138,8 +144,8 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
 const RESOURCE_COPY = {
   accessBundles: {
     read: "See the bundle and the services and skills in it.",
-    use: "Start sessions from the bundle, with the services and skills in it that no role denies.",
-    edit: "Rename the bundle and change which services and skills are in it.",
+    use: "Start sessions from the bundle, with every service and skill in it.",
+    edit: "Rename the bundle and change which services and skills are in it. Adding one also takes Use on it.",
     delete: "Delete the bundle. Its services and skills stay in the project.",
     create: "Add new access bundles to the project."
   },
@@ -290,15 +296,6 @@ const directoryBasics = (group: TDirectoryGroup) => [
   )
 ];
 
-const directoryPrivileges = (group: TDirectoryGroup) => [
-  directoryAction(
-    group,
-    MemberAction.AssumePrivileges,
-    "Assume Privileges",
-    `Act in this project with the permissions of ${group.one}.`
-  )
-];
-
 const directoryLegacy = (group: TDirectoryGroup, replacedBy: string) =>
   directoryAction(
     group,
@@ -309,12 +306,10 @@ const directoryLegacy = (group: TDirectoryGroup, replacedBy: string) =>
 
 const DIRECTORY_ACTIONS: TPermissionAction[] = [
   ...directoryBasics(USERS),
-  ...directoryPrivileges(USERS),
   directoryLegacy(USERS, "Assign Roles"),
   ...directoryBasics(GROUPS),
   directoryLegacy(GROUPS, "Assign Roles"),
   ...directoryBasics(IDENTITIES),
-  ...directoryPrivileges(IDENTITIES),
   directoryAction(
     IDENTITIES,
     IdentityAction.GetToken,
@@ -366,7 +361,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "services",
     label: "Services",
     description:
-      "Use puts a service in a session. Use and Edit can also change what agents can do with its credential, such as its allowed paths and tools. Pointing it somewhere else or weakening its TLS takes entering the credential again. Denied overrides every other role, and holds inside access bundles too.",
+      "Use puts a service in a session. Use and Edit can also change what agents can do with its credential, such as its allowed paths and tools. Pointing it somewhere else or weakening its TLS takes entering the credential again. Denied overrides every other role, but not an access bundle that holds the service.",
     actions: resourceActions(Sub.AgentVaultServices, RESOURCE_COPY.services),
     levels: RESOURCE_LEVELS
   },
@@ -374,7 +369,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "skills",
     label: "Skills",
     description:
-      "Use puts a skill in a session. Use and Edit can also change a skill's files, which every session that loads it runs. Denied overrides every other role, and holds inside access bundles too.",
+      "Use puts a skill in a session. Use and Edit can also change a skill's files, which every session that loads it runs. Denied overrides every other role, but not an access bundle that holds the skill.",
     actions: resourceActions(Sub.AgentVaultSkills, RESOURCE_COPY.skills),
     levels: RESOURCE_LEVELS
   },
@@ -382,7 +377,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "accessBundles",
     label: "Access Bundles",
     description:
-      "Use starts sessions from a bundle and reaches the services and skills in it without Use on them under Services or Skills, except any a role denies. Use and Edit can also change what a bundle holds. Denied overrides every other role.",
+      "Use starts sessions from a bundle with every service and skill in it, whatever Services or Skills say. Use and Edit can also change what a bundle holds, and adding a service or skill takes Use on it under Services or Skills. Denied overrides every other role.",
     actions: resourceActions(Sub.AgentVaultAccessBundles, RESOURCE_COPY.accessBundles),
     levels: RESOURCE_LEVELS
   },
@@ -657,7 +652,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
       },
       {
         value: "manage",
-        label: "Manage",
+        label: "Add and Remove",
         summary: "View, add, edit and remove users, groups and machine identities",
         allow: directoryKeys([
           MemberAction.Read,
@@ -668,8 +663,9 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
       },
       {
         value: "full",
-        label: "Full Control",
-        summary: "Everything, including assigning roles",
+        label: "Manage and Assign Roles",
+        summary:
+          "Everything, including assigning roles and managing machine identities' tokens and sign-in methods",
         // The API refuses the legacy action next to the ones that replaced it, so everything leaves it out.
         allow: DIRECTORY_ACTIONS.map(({ key }) => key).filter(
           (key) => !DIRECTORY_LEGACY_KEYS.includes(key)
@@ -681,7 +677,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
         (key) => !DIRECTORY_READ_KEYS.includes(key)
       ),
       message:
-        "Can add anyone to this project and give them any role except Admin, which only an admin can give."
+        "Can add anyone to this project and give them any role except Admin, which only an admin can give. Tokens and sign-in methods of a machine identity that holds Admin stay with admins too."
     }
   },
   {

@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 
 import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
 import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import { createNotification } from "@app/components/notifications";
@@ -182,10 +186,17 @@ export const IdentitiesTab = () => {
           a={ProjectPermissionSub.Identity}
         >
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
-              <PlusIcon />
-              Add Machine Identity
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                isAllowed,
+                "You don't have permission to add machine identities"
+              )}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
+                <PlusIcon />
+                Add Machine Identity
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -244,7 +255,7 @@ export const IdentitiesTab = () => {
                     </RowLink>
                   </TableCell>
                   <TableCell>
-                    <ProductRoleBadges roles={identity.roles} />
+                    <ProductRoleBadges roles={identity.roles} roleDetails={identity.roleDetails} />
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
                   <TableCell variant="action">

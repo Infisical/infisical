@@ -26,10 +26,9 @@ export const bundleUseTargets = (accessBundleIds: string[]): TAgentVaultUseTarge
 
 /**
  * Who can use something: Admin, and every custom role whose rules allow `use` on any of the targets, with how many
- * members hold each. A service or skill passes itself and every bundle that holds it, since using a bundle covers what
- * it holds, unless the role denies `use` on the service or skill itself. Only roles count, because Agent Vault leaves
- * additional privileges out of its permissions. Each role is judged alone, so a deny in another role a member holds
- * isn't seen here.
+ * members hold each. A service or skill passes itself and every bundle that holds it, since using a bundle covers
+ * everything it holds, whatever a role says on the item. Only roles count, because Agent Vault leaves additional
+ * privileges out of its permissions.
  */
 export const findRolesThatCanUse = async (
   {
@@ -56,18 +55,8 @@ export const findRolesThatCanUse = async (
     );
     const subjectOf = (target: TAgentVaultUseTarget) =>
       subject(target.subjectType, { [target.field]: target.id }) as never;
-    // A bundle that holds a service doesn't give it to a role that denies it, as in a session.
-    const deniesItem = targets.some(
-      (target) =>
-        target.subjectType !== ProjectPermissionSub.AgentVaultAccessBundles &&
-        ability.relevantRuleFor(ProjectPermissionAgentVaultAccessBundleActions.Use as never, subjectOf(target))
-          ?.inverted
-    );
-    return (
-      !deniesItem &&
-      targets.some((target) =>
-        ability.can(ProjectPermissionAgentVaultAccessBundleActions.Use as never, subjectOf(target))
-      )
+    return targets.some((target) =>
+      ability.can(ProjectPermissionAgentVaultAccessBundleActions.Use as never, subjectOf(target))
     );
   };
 

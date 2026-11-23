@@ -403,34 +403,4 @@ describe("findStatusesForOwner", () => {
     expect(status.isConfigured).toBe(true);
     expect(status.fields[0]).toEqual(expect.objectContaining({ isSet: true, oauth: null }));
   });
-
-  test("leaves out a service a role denies use on, since no bundle gives it", async () => {
-    const bearerField = [AgentVaultVariableReferenceField.CredentialValue];
-    const withDenied = (deniedServiceIds: string[] | "all") =>
-      agentVaultPersonalValueServiceFactory({
-        agentVaultPersonalValueDAL: {
-          findServicesNeedingValues: vi.fn(async () => [
-            serviceRow(SERVICE_ID, AgentVaultCredentialType.Bearer, bearerField),
-            serviceRow(OTHER_SERVICE_ID, AgentVaultCredentialType.Bearer, bearerField)
-          ]),
-          findForOwner: vi.fn(async () => [])
-        } as never,
-        agentVaultPersonalValueReferenceDAL: {} as never,
-        agentVaultVariableDAL: {} as never,
-        agentVaultServiceDAL: {} as never,
-        agentVaultOauthService: {} as never,
-        permissionService: {} as never,
-        agentVaultReachDAL: {} as never,
-        kmsDataKeyService: {} as never
-      }).findStatusesForOwner({
-        projectId: PROJECT_ID,
-        owner: { userId: USER_ID },
-        accessBundleIds: [BUNDLE_ID],
-        withVariableReferences: false,
-        deniedServiceIds
-      });
-
-    expect((await withDenied([SERVICE_ID])).map((entry) => entry.serviceId)).toEqual([OTHER_SERVICE_ID]);
-    expect(await withDenied("all")).toEqual([]);
-  });
 });

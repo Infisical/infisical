@@ -897,6 +897,7 @@ export const permissionServiceFactory = ({
 
       const result = {
         permission,
+        projectType: projectDetails.type as ProjectType,
         memberships: permissionData,
         hasRole,
         hasProjectEnforcement: $checkProjectEnforcement(projectDetails),

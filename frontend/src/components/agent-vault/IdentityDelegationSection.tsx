@@ -36,6 +36,7 @@ import { useGetAgentVaultDelegation } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { deniedReason, DisabledReasonTooltip } from "./DisabledReasonTooltip";
 import { ManageDelegationSheet, TDelegationSubjectRow } from "./ManageDelegationSheet";
 import { memberDisplayName, MemberName } from "./MemberName";
 import { MissingAccessBundlesHint } from "./MissingAccessBundlesHint";
@@ -196,12 +197,23 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           Lets this machine identity start sessions on behalf of these users and groups, using each
           user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
-        {canEditDelegation && !isPending && !isLoadError && (
+        {!isPending && !isLoadError && (
           <CardAction>
-            <Button variant="av" onClick={() => setIsManageOpen(true)}>
-              <UserCogIcon />
-              Manage Delegation
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                canEditDelegation,
+                "You don't have permission to manage this machine identity's delegation"
+              )}
+            >
+              <Button
+                variant="av"
+                isDisabled={!canEditDelegation}
+                onClick={() => setIsManageOpen(true)}
+              >
+                <UserCogIcon />
+                Manage Delegation
+              </Button>
+            </DisabledReasonTooltip>
           </CardAction>
         )}
       </CardHeader>

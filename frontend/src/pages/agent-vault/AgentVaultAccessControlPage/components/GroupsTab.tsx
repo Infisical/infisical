@@ -2,6 +2,10 @@ import { useState } from "react";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
 import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import { createNotification } from "@app/components/notifications";
@@ -109,10 +113,14 @@ export const GroupsTab = () => {
         </InputGroup>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Groups}>
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
-              <PlusIcon />
-              Add Group
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(isAllowed, "You don't have permission to add groups")}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
+                <PlusIcon />
+                Add Group
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -163,7 +171,7 @@ export const GroupsTab = () => {
                     <HighlightText text={row.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
-                    <ProductRoleBadges roles={row.roles} />
+                    <ProductRoleBadges roles={row.roles} roleDetails={row.roleDetails} />
                   </TableCell>
                   <TableCell variant="action">
                     <DropdownMenu>

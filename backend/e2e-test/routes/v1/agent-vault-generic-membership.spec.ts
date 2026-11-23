@@ -482,6 +482,120 @@ describe("Agent Vault through the generic membership routes", () => {
     });
   });
 
+  describe("nobody but an admin acts as an admin", () => {
+    const ADMIN_IDENTITY_AUTH =
+      "Only an Agent Vault admin can manage the credentials or authentication of a machine identity that has the Admin role.";
+
+    test("assuming another member's privileges is refused in Agent Vault, even for an admin", async () => {
+      const res = await asAdmin("POST", `/api/v1/projects/${projectId}/assume-privileges`, {
+        actorType: "identity",
+        actorId: managerIdentityId
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toBe("Agent Vault projects don't support assuming another member's privileges.");
+    });
+
+    test("only an admin manages the auth of a machine identity that holds Admin", async () => {
+      const role = await asAdmin("POST", `/api/v1/projects/${projectId}/roles`, {
+        slug: `credential-manager-${Date.now()}`,
+        name: "credential-manager",
+        permissions: [
+          {
+            subject: "identity",
+            action: ["read", "edit-auth", "revoke-auth", "create-token", "get-token", "delete-token"]
+          }
+        ]
+      });
+      expect(role.statusCode, role.payload).toBe(200);
+      const credentialManager = await createIdentityActor({
+        orgId,
+        authToken: adminToken,
+        name: `av-credential-manager-${Date.now()}`
+      });
+      const added = await asAdmin("POST", identityPath(credentialManager.identityId), {
+        roles: [{ role: role.json().role.slug }]
+      });
+      expect(added.statusCode, added.payload).toBe(200);
+      const asCredentialManager = requester(() => credentialManager.authToken);
+
+      const makeProjectIdentity = async (name: string, roleSlug: string) => {
+        const created = await asAdmin("POST", `/api/v1/projects/${projectId}/identities`, {
+          name: `${name}-${Date.now()}`,
+          roles: [{ role: roleSlug }]
+        });
+        expect(created.statusCode, created.payload).toBe(200);
+        return created.json().identity.id as string;
+      };
+      const attachBody = { accessTokenTTL: 3600, accessTokenMaxTTL: 3600, accessTokenNumUsesLimit: 0 };
+      const adminIdentity = await makeProjectIdentity("av-auth-admin", ProjectMembershipRole.Admin);
+      const otherIdentity = await makeProjectIdentity("av-auth-other", "membership-manager");
+
+      const onAdmin = await asCredentialManager("POST", `/api/v1/auth/universal-auth/identities/${adminIdentity}`, attachBody);
+      expect(onAdmin.statusCode).toBe(403);
+      expect(onAdmin.json().message).toBe(ADMIN_IDENTITY_AUTH);
+
+      const onOther = await asCredentialManager("POST", `/api/v1/auth/universal-auth/identities/${otherIdentity}`, attachBody);
+      expect(onOther.statusCode, onOther.payload).toBe(200);
+
+      const byAdmin = await asAdmin("POST", `/api/v1/auth/universal-auth/identities/${adminIdentity}`, attachBody);
+      expect(byAdmin.statusCode, byAdmin.payload).toBe(200);
+      const secret = await asCredentialManager(
+        "POST",
+        `/api/v1/auth/universal-auth/identities/${adminIdentity}/client-secrets`,
+        {}
+      );
+      expect(secret.statusCode).toBe(403);
+      expect(secret.json().message).toBe(ADMIN_IDENTITY_AUTH);
+    });
+
+    test("Join as Admin waits for the project's role-change lock", async () => {
+      const joined = await runBehindLock(() =>
+        asAdmin("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)
+      );
+      expect(joined.statusCode, joined.payload).toBe(200);
+    });
+  });
+
+  describe("an Agent Vault project's name and delete protection go by edit on the project", () => {
+    test("edit on settings alone can't rename it, and edit on the project can", async () => {
+      const roleFor = async (slug: string, permissions: Record<string, unknown>[]) => {
+        const res = await asAdmin("POST", `/api/v1/projects/${projectId}/roles`, { slug, name: slug, permissions });
+        expect(res.statusCode, res.payload).toBe(200);
+        return slug;
+      };
+      const actorWith = async (roleSlug: string) => {
+        const actor = await createIdentityActor({ orgId, authToken: adminToken, name: `${roleSlug}-actor` });
+        const added = await asAdmin("POST", identityPath(actor.identityId), { roles: [{ role: roleSlug }] });
+        expect(added.statusCode, added.payload).toBe(200);
+        return requester(() => actor.authToken);
+      };
+      const stamp = Date.now();
+      const settingsOnly = await actorWith(
+        await roleFor(`settings-editor-${stamp}`, [{ subject: "settings", action: ["read", "edit"] }])
+      );
+      const projectEditor = await actorWith(
+        await roleFor(`project-editor-${stamp}`, [{ subject: "workspace", action: ["edit"] }])
+      );
+
+      const bySettings = await settingsOnly("PATCH", `/api/v1/projects/${projectId}`, { name: `renamed-${stamp}` });
+      expect(bySettings.statusCode).toBe(403);
+      const byProject = await projectEditor("PATCH", `/api/v1/projects/${projectId}`, { name: `renamed-${stamp}` });
+      expect(byProject.statusCode, byProject.payload).toBe(200);
+    });
+  });
+
+  describe("member responses name each role", () => {
+    test("each role comes with its name, built-in ones included", async () => {
+      const res = await asAdmin("GET", `/api/v1/agent-vault/members?projectId=${projectId}&limit=100`);
+      expect(res.statusCode, res.payload).toBe(200);
+      const members = res.json().members as { id: string; roles: string[]; roleDetails: { slug: string; name: string }[] }[];
+      const manager = members.find((member) => member.id === managerIdentityId);
+      expect(manager?.roleDetails).toEqual([{ slug: "membership-manager", name: "membership-manager" }]);
+      const admin = members.find((member) => member.roles.includes(ProjectMembershipRole.Admin));
+      expect(admin?.roleDetails).toEqual([{ slug: ProjectMembershipRole.Admin, name: "Admin" }]);
+    });
+  });
+
   describe("nobody changes their own roles here, as on the members API", () => {
     test("a machine identity can't change its own roles", async () => {
       const res = await asManager("PATCH", identityPath(managerIdentityId), {

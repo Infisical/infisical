@@ -60,7 +60,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ctx: actorContext(req)
       });
       const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
-      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
+      const described = await server.services.agentVaultMembership.withRoleDetails(projectId, members);
+      return { members: described.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 
@@ -153,7 +154,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         })
       );
 
-      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
+      const described = await server.services.agentVaultMembership.withRoleDetails(projectId, members);
+      return { members: described.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 
@@ -215,7 +217,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         })
       );
 
-      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
+      const described = await server.services.agentVaultMembership.withRoleDetails(projectId, members);
+      return { members: described.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 

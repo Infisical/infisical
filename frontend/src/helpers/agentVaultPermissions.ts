@@ -119,34 +119,37 @@ export const canUseAgentVaultAccessBundle = (
 
 type TBundledItem = { id: string; accessBundles: { id: string }[] };
 
-// A role's deny on a service or skill holds even inside a bundle the caller can use, so only an item no rule denies
-// comes through a bundle.
+// A bundle is a package: using it gives everything in it, whatever a role says about one of its services or skills. A
+// deny on the item only stops using it on its own.
 const isInUsableBundle = (permission: MongoAbility<ProjectPermissionSet>, item: TBundledItem) =>
   item.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
 
 export const canUseAgentVaultService = (
   permission: MongoAbility<ProjectPermissionSet>,
   service: TBundledItem
-) => {
-  const target = subject(ProjectPermissionSub.AgentVaultServices, { serviceId: service.id });
-  return (
-    permission.can(ProjectPermissionAgentVaultServiceActions.Use, target) ||
-    (!permission.relevantRuleFor(ProjectPermissionAgentVaultServiceActions.Use, target)?.inverted &&
-      isInUsableBundle(permission, service))
-  );
-};
+) =>
+  canOnAgentVaultService(permission, ProjectPermissionAgentVaultServiceActions.Use, service.id) ||
+  isInUsableBundle(permission, service);
 
 export const canUseAgentVaultSkill = (
   permission: MongoAbility<ProjectPermissionSet>,
   skill: TBundledItem
-) => {
-  const target = subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skill.id });
-  return (
-    permission.can(ProjectPermissionAgentVaultSkillActions.Use, target) ||
-    (!permission.relevantRuleFor(ProjectPermissionAgentVaultSkillActions.Use, target)?.inverted &&
-      isInUsableBundle(permission, skill))
-  );
-};
+) =>
+  canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, skill.id) ||
+  isInUsableBundle(permission, skill);
+
+// Adding a service or skill to a bundle takes Use on the item from the caller's own roles. Reaching it through another
+// bundle doesn't count: that would let someone copy a wildcard service out of a bundle that narrows one of its hosts,
+// and so escape the narrower service's limits.
+export const canAddServiceToAgentVaultBundle = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  serviceId: string
+) => canOnAgentVaultService(permission, ProjectPermissionAgentVaultServiceActions.Use, serviceId);
+
+export const canAddSkillToAgentVaultBundle = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  skillId: string
+) => canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, skillId);
 
 // Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet. A rule can name
 // only ids that already exist, so for a new skill only the rules without conditions count, and the first of those

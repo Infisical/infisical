@@ -16,6 +16,11 @@ import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { PageTitle } from "@app/components/PageTitle";
@@ -34,7 +39,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -233,16 +237,25 @@ const AgentVaultAccessBundlesPageContent = () => {
           </CardTitle>
           <CardDescription>
             Each bundle is a named set of services and skills. A role that can use a bundle can
-            start sessions from it with the services and skills in it that no role denies.
+            start sessions from it with every service and skill in it.
           </CardDescription>
-          {canCreateBundles && (
-            <CardAction>
-              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+          <CardAction>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                canCreateBundles,
+                "You don't have permission to create access bundles"
+              )}
+            >
+              <Button
+                variant="av"
+                isDisabled={!canCreateBundles}
+                onClick={() => setIsCreateOpen(true)}
+              >
                 <PlusIcon />
                 Create Access Bundle
               </Button>
-            </CardAction>
-          )}
+            </DisabledReasonTooltip>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <InputGroup>
@@ -382,61 +395,65 @@ const AgentVaultAccessBundlesPageContent = () => {
                       </div>
                     </TableCell>
                     <TableCell variant="action">
-                      {(canReadRoles || canEditBundle(bundle.id) || canDeleteBundle(bundle.id)) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="Open access bundle actions"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {canEditBundle(bundle.id) && (
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToEdit(bundle);
-                                }}
-                              >
-                                <PencilIcon />
-                                Edit
-                              </DropdownMenuItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Open access bundle actions"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canEditBundle(bundle.id),
+                              "You don't have permission to edit this access bundle"
                             )}
-                            {canReadRoles && (
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setWhoCanUse({
-                                    kind: "accessBundle",
-                                    id: bundle.id,
-                                    name: bundle.name
-                                  });
-                                  setIsWhoCanUseOpen(true);
-                                }}
-                              >
-                                <UsersIcon />
-                                Who Can Use
-                              </DropdownMenuItem>
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setBundleToEdit(bundle);
+                            }}
+                          >
+                            <PencilIcon />
+                            Edit
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canReadRoles,
+                              "You don't have permission to view roles"
                             )}
-                            {canDeleteBundle(bundle.id) && (
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToDelete(bundle);
-                                }}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setWhoCanUse({
+                                kind: "accessBundle",
+                                id: bundle.id,
+                                name: bundle.name
+                              });
+                              setIsWhoCanUseOpen(true);
+                            }}
+                          >
+                            <UsersIcon />
+                            Who Can Use
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            variant="danger"
+                            disabledReason={deniedReason(
+                              canDeleteBundle(bundle.id),
+                              "You don't have permission to delete this access bundle"
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setBundleToDelete(bundle);
+                            }}
+                          >
+                            <TrashIcon />
+                            Delete
+                          </DisabledReasonMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

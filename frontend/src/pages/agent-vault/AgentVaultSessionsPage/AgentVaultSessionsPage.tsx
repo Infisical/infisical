@@ -20,6 +20,11 @@ import {
 
 import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -429,14 +434,21 @@ const AgentVaultSessionsPageContent = () => {
               A session defines who holds it, the services it can reach, and when it expires.
             </CardDescription>
             <CardAction>
-              <Button
-                variant="av"
-                isDisabled={!canStartSession}
-                onClick={() => setIsCreateDialogOpen(true)}
+              <DisabledReasonTooltip
+                disabledReason={deniedReason(
+                  canStartSession,
+                  "You don't have a role that can use an access bundle, a service or a skill"
+                )}
               >
-                <PlusIcon />
-                Create Session
-              </Button>
+                <Button
+                  variant="av"
+                  isDisabled={!canStartSession}
+                  onClick={() => setIsCreateDialogOpen(true)}
+                >
+                  <PlusIcon />
+                  Create Session
+                </Button>
+              </DisabledReasonTooltip>
             </CardAction>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
@@ -671,29 +683,30 @@ const AgentVaultSessionsPageContent = () => {
                                 View Session Logs
                               </DropdownMenuItem>
                               {/* The API refuses edits once the session's owner, or the user it acts on behalf of, is deleted */}
-                              {session.actor.id !== null &&
-                                session.onBehalfOf?.id !== null &&
-                                canActOnAgentVaultSession(permission, user.id, session, "edit") && (
-                                  <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
-                                    <PencilIcon />
-                                    Edit Session
-                                  </DropdownMenuItem>
-                                )}
-                              {canActOnAgentVaultSession(
-                                permission,
-                                user.id,
-                                session,
-                                "revoke"
-                              ) && (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={session.status !== AgentVaultSessionStatus.Active}
-                                  onClick={() => setSessionToRevoke(session)}
+                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
+                                <DisabledReasonMenuItem
+                                  disabledReason={deniedReason(
+                                    canActOnAgentVaultSession(permission, user.id, session, "edit"),
+                                    "You don't have permission to edit this session"
+                                  )}
+                                  onClick={() => setSessionToEdit(session)}
                                 >
-                                  <BanIcon />
-                                  Revoke Session
-                                </DropdownMenuItem>
+                                  <PencilIcon />
+                                  Edit Session
+                                </DisabledReasonMenuItem>
                               )}
+                              <DisabledReasonMenuItem
+                                variant="danger"
+                                disabledReason={deniedReason(
+                                  canActOnAgentVaultSession(permission, user.id, session, "revoke"),
+                                  "You don't have permission to revoke this session"
+                                )}
+                                isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                                onClick={() => setSessionToRevoke(session)}
+                              >
+                                <BanIcon />
+                                Revoke Session
+                              </DisabledReasonMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

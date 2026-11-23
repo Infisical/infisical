@@ -1336,6 +1336,7 @@ const buildBundleService = ({
     findByIdInProject: vi.fn().mockResolvedValue(bundle),
     lockByIdInProject: vi.fn().mockResolvedValue(bundle),
     lockBundleRole: vi.fn().mockResolvedValue(bundleRole),
+    create: vi.fn(async (columns: Record<string, unknown>) => ({ ...bundle, ...columns, grantRoleId: null })),
     findOne: vi.fn().mockResolvedValue(undefined),
     updateById: vi.fn(async (_id: string, columns: Record<string, unknown>) => ({ ...bundle, ...columns })),
     deleteById: vi.fn().mockResolvedValue(bundle),
@@ -1568,17 +1569,44 @@ describe("deleteAccessBundle, the bundle's own role", () => {
 
 describe("updateAccessBundle, renaming", () => {
   test("renames the bundle's role while it still has the name it was made with, and keeps its slug", async () => {
-    const { service, roleDAL, tx } = buildBundleService({
+    const { service, roleDAL, tx, agentVaultAccessBundleDAL } = buildBundleService({
       rules: [{ action: "manage", subject: "all" }],
       isAdmin: true
     });
 
     await service.updateAccessBundle({ projectId: PROJECT_ID, ctx, accessBundleId: BUNDLE_ID, name: "platform" });
 
+    // The project's role-change lock comes before the bundle row, the order a delete of the role takes them in.
+    expect(tx.raw.mock.invocationCallOrder[0]).toBeLessThan(
+      agentVaultAccessBundleDAL.lockByIdInProject.mock.invocationCallOrder[0]
+    );
     expect(roleDAL.updateById).toHaveBeenCalledWith(
       BUNDLE_ROLE_ID,
       { name: "platform users", description: "Use the access bundle 'platform'." },
       tx
     );
+  });
+});
+
+describe("createAccessBundle, a creator set to No Access", () => {
+  test("creates the bundle but gives the creator no role, so an admin's No Access stays", async () => {
+    const { service, membershipRoleDAL, roleDAL, tx } = buildBundleService({
+      rules: [
+        {
+          action: ProjectPermissionAgentVaultAccessBundleActions.Create,
+          subject: ProjectPermissionSub.AgentVaultAccessBundles
+        }
+      ]
+    });
+    membershipRoleDAL.find.mockResolvedValue([
+      { membershipId: TARGET_MEMBERSHIP_ID, role: "no-access", isTemporary: false }
+    ]);
+
+    const result = await service.createAccessBundle({ projectId: PROJECT_ID, ctx, name: "deploy" } as never);
+
+    expect(result.role).toBeNull();
+    expect(membershipRoleDAL.find).toHaveBeenCalledWith({ membershipId: TARGET_MEMBERSHIP_ID }, { tx });
+    expect(roleDAL.create).not.toHaveBeenCalled();
+    expect(membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
 });

@@ -17,7 +17,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
-import { canUseAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
+import { canAddSkillToAgentVaultBundle } from "@app/helpers/agentVaultPermissions";
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
 import { useDebounce } from "@app/hooks";
 import {
@@ -59,13 +59,13 @@ export const AddBundleSkillDialog = ({
     { enabled: isOpen }
   );
 
-  // Adding a skill takes being able to use it, so one the caller can only read isn't offered.
+  // Adding a skill takes Use on it from the caller's own roles, so one they reach only through a bundle shows disabled
+  // with the reason.
   const options = useMemo(() => {
     const inBundle = new Set(bundleSkillIds);
-    return (data?.skills ?? []).filter(
-      (option) => !inBundle.has(option.id) && canUseAgentVaultSkill(permission, option)
-    );
-  }, [data, bundleSkillIds, permission]);
+    return (data?.skills ?? []).filter((option) => !inBundle.has(option.id));
+  }, [data, bundleSkillIds]);
+  const canAdd = (skillId: string) => canAddSkillToAgentVaultBundle(permission, skillId);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.skills.length ?? 0);
   const roomLeft = Math.max(0, AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - bundleSkillIds.length);
@@ -130,10 +130,15 @@ export const AddBundleSkillDialog = ({
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
               getOptionKeywords={(option) => [option.description]}
+              isOptionDisabled={(option) => !canAdd(option.id)}
               renderOption={(option) => (
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{option.name}</span>
-                  <span className="truncate text-xs text-muted">{option.description}</span>
+                  <span className="truncate text-xs text-muted">
+                    {canAdd(option.id)
+                      ? option.description
+                      : "You don't have permission to use this skill"}
+                  </span>
                 </div>
               )}
               placeholder="Pick skills"

@@ -20,6 +20,7 @@ import {
   getItemLevel,
   getPolicyWarning,
   getRowLevel,
+  isActionListed,
   getRowRisk,
   getRowSummary,
   getRowWarnings,
@@ -96,8 +97,7 @@ const ADMIN_RULES: TProjectPermission[] = [
       "read",
       "grant-privileges",
       "assign-role",
-      "assign-additional-privileges",
-      "assume-privileges"
+      "assign-additional-privileges"
     ]
   },
   {
@@ -114,7 +114,6 @@ const ADMIN_RULES: TProjectPermission[] = [
       "grant-privileges",
       "assign-role",
       "assign-additional-privileges",
-      "assume-privileges",
       "get-token",
       "create-token",
       "delete-token",
@@ -400,7 +399,7 @@ describe("round trips", () => {
   it("reads back allow and deny sets across the members row", () => {
     const row = PERMISSION_ROWS.find(({ key }) => key === "members");
     const keys = row?.actions.map(({ key }) => key) ?? [];
-    expect(keys).toHaveLength(25);
+    expect(keys).toHaveLength(23);
 
     keys.forEach((key) => {
       expectRoundTrip(withRow("members", { allow: [key], deny: [] }));
@@ -512,7 +511,13 @@ describe("built-in roles", () => {
   });
 
   it("builds the admin policy the API answers with other rules for", () => {
-    expect(createFullAgentVaultPolicy()).toEqual(rulesToPolicy(ADMIN_RULES).policy);
+    const adminPolicy = rulesToPolicy(ADMIN_RULES).policy;
+    expect(createFullAgentVaultPolicy()).toEqual(adminPolicy);
+    expect(
+      adminPolicy.hidden
+        ?.flatMap(({ subject, action }) => action.map((name) => `${subject}|${name}`))
+        .sort()
+    ).toEqual([...IGNORED_ACTIONS].sort());
     expect(canonicalRulesKey(policyToRules(createFullAgentVaultPolicy()))).toBe(
       canonicalRulesKey(ADMIN_RULES)
     );
@@ -528,7 +533,10 @@ describe("built-in roles", () => {
       (action as string[]).map((name) => `${subject}|${name}`)
     );
 
-    expect(written.filter((id) => IGNORED_ACTIONS.includes(id))).toEqual([]);
+    // The actions the editor hides go back as they were, so a copy of admin keeps them.
+    expect(written.filter((id) => IGNORED_ACTIONS.includes(id)).sort()).toEqual(
+      [...IGNORED_ACTIONS].sort()
+    );
     expect(written.filter((id) => id.endsWith("|grant-privileges"))).toEqual([]);
     expect(rules.every((rule) => !rule.inverted && !rule.conditions)).toBe(true);
     expect(rulesToPolicy(rules)).toEqual({ policy, unsupported: [] });
@@ -551,7 +559,7 @@ describe("rulesToPolicy", () => {
     expect(rulesToPolicy([])).toEqual({ policy: empty(), unsupported: [] });
   });
 
-  it("ignores the actions nothing in Agent Vault checks, in allows and denies", () => {
+  it("hides the actions nothing in Agent Vault offers, and writes them back unchanged", () => {
     const { policy, unsupported } = rulesToPolicy([
       { subject: "settings", action: ["create", "delete"] },
       { subject: "settings", action: ["delete"], inverted: true },
@@ -559,8 +567,31 @@ describe("rulesToPolicy", () => {
     ]);
 
     expect(unsupported).toEqual([]);
-    expect(policy).toEqual(withRow("accessBundles", { allow: ["read"], deny: [] }));
-    expect(policyToRules(policy)).toEqual([{ subject: BUNDLES, action: ["read"] }]);
+    expect({ ...policy, hidden: undefined }).toEqual({
+      ...withRow("accessBundles", { allow: ["read"], deny: [] }),
+      hidden: undefined
+    });
+    expect(policyToRules(policy)).toEqual([
+      { subject: BUNDLES, action: ["read"] },
+      { subject: "settings", action: ["create", "delete"] },
+      { subject: "settings", action: ["delete"], inverted: true }
+    ]);
+  });
+
+  it("keeps a hidden deny through an edit in the visual editor, so a role can't widen on save", () => {
+    // The backend widens a deny on assign-additional-privileges into a deny on grant-privileges.
+    const rules: TProjectPermission[] = [
+      { subject: "member", action: ["read", "grant-privileges"] },
+      { subject: "member", action: ["assign-additional-privileges"], inverted: true }
+    ];
+    const { policy } = rulesToPolicy(rules);
+    const edited = setRowLevel(policy, "proxies", "view");
+
+    expect(policyToRules(edited)).toContainEqual({
+      subject: "member",
+      action: ["assign-additional-privileges"],
+      inverted: true
+    });
   });
 
   it("reports manage-members, which access bundles no longer take", () => {
@@ -1553,5 +1584,28 @@ describe("formatRulesJson", () => {
       "inverted",
       "note"
     ]);
+  });
+});
+
+describe("members and roles", () => {
+  it("allows viewing roles along with assigning them, so the role picker has roles to show", () => {
+    const policy = setRowLevel(empty(), "members", "full");
+    expect(policy.roles.allow).toContain("read");
+    expect(
+      setActionAllowed(empty(), { rowKey: "members" }, "groups.assign-role", true).roles.allow
+    ).toEqual(["read"]);
+  });
+
+  it("lists the legacy Grant Privileges action only while a role holds it", () => {
+    const legacy = PERMISSION_ROWS.find(({ key }) => key === "members")?.actions.find(
+      ({ key }) => key === "users.grant-privileges"
+    );
+    if (!legacy) throw new Error("users.grant-privileges is missing from the catalog");
+
+    expect(isActionListed(empty(), { rowKey: "members" }, legacy)).toBe(false);
+    const holding = rulesToPolicy([
+      { subject: "member", action: ["read", "grant-privileges"] }
+    ]).policy;
+    expect(isActionListed(holding, { rowKey: "members" }, legacy)).toBe(true);
   });
 });

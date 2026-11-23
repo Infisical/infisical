@@ -1,7 +1,9 @@
 import {
   PermissionConditionOperators,
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectMembershipRole, TProjectPermission } from "@app/hooks/api/roles/types";
@@ -41,6 +43,17 @@ export const isResourceRowKey = (rowKey: TPermissionRowKey): rowKey is TResource
 const ownerId = (subject: string, action: string) => `${subject}|${action}`;
 
 type TActionOwner = { rowKey: TPermissionRowKey; action: TPermissionAction };
+
+// Actions that need one on another subject. Assigning roles works only for someone who can see the roles to pick from,
+// so allowing it also allows viewing roles.
+const CROSS_SUBJECT_NEEDS = new Map<string, string[]>(
+  [ProjectPermissionSub.Member, ProjectPermissionSub.Groups, ProjectPermissionSub.Identity].map(
+    (subject) => [
+      ownerId(subject, ProjectPermissionMemberActions.AssignRole),
+      [ownerId(ProjectPermissionSub.Role, ProjectPermissionActions.Read)]
+    ]
+  )
+);
 
 const ACTION_OWNERS = new Map<string, TActionOwner>(
   PERMISSION_ROWS.flatMap((row) =>
@@ -168,9 +181,12 @@ const withRelated = (
     pick === "needs"
       ? allPrerequisites(action.subject, action.action)
       : allDependents(action.subject, action.action);
+  const crossSubject =
+    pick === "needs" ? (CROSS_SUBJECT_NEEDS.get(ownerId(action.subject, action.action)) ?? []) : [];
   return [
     { rowKey: scope.rowKey, action },
-    ...related.flatMap((name) => ACTION_OWNERS.get(ownerId(action.subject, name)) ?? [])
+    ...related.flatMap((name) => ACTION_OWNERS.get(ownerId(action.subject, name)) ?? []),
+    ...crossSubject.flatMap((id) => ACTION_OWNERS.get(id) ?? [])
   ].filter((owner) => !(scope.itemId && owner.action.isAllOnly));
 };
 
@@ -279,6 +295,7 @@ export const normalizeAgentVaultPolicy = (policy: TAgentVaultPolicy): TAgentVaul
       normalized[row.key] = normalizeSets(row.key, policy[row.key]);
     }
   });
+  if (policy.hidden?.length) normalized.hidden = policy.hidden;
   return normalized;
 };
 
@@ -379,7 +396,13 @@ export const policyToRules = (policy: TAgentVaultPolicy): TProjectPermission[] =
     }
 
     return rules;
-  });
+  }).concat(
+    (normalized.hidden ?? []).map(({ subject, action, inverted }) => ({
+      subject,
+      action,
+      ...(inverted ? { inverted } : {})
+    }))
+  );
 };
 
 export type TUnsupportedRule = { rule: TProjectPermission; reason: string };
@@ -529,6 +552,13 @@ export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPol
     }
 
     const effect = normalized.isInverted ? "deny" : "allow";
+    const hiddenActions = normalized.actions.filter((name) => subjectRules.ignored?.includes(name));
+    if (hiddenActions.length && !ids) {
+      policy.hidden = [
+        ...(policy.hidden ?? []),
+        { subject, action: hiddenActions, ...(normalized.isInverted ? { inverted: true } : {}) }
+      ];
+    }
     normalized.actions.forEach((name) => {
       if (subjectRules.ignored?.includes(name)) return;
       const owner = ACTION_OWNERS.get(ownerId(subject, name));
@@ -743,6 +773,21 @@ const legacyLocks = (sets: TActionSets, action?: TPermissionAction) => {
       ? `Already denied through ${labelsOf(replacements)}`
       : undefined
   };
+};
+
+/**
+ * Whether the editor lists an action for a scope. A legacy action does what its replacements do, so it is listed only
+ * while the scope already holds it, where it can still be cleared.
+ */
+export const isActionListed = (
+  policy: TAgentVaultPolicy,
+  scope: TPermissionScope,
+  action: TPermissionAction
+) => {
+  if (scope.itemId && action.isAllOnly) return false;
+  if (SUBJECT_RULES[action.subject]?.legacy?.action !== action.action) return true;
+  const sets = getSets(policy, scope);
+  return sets.allow.includes(action.key) || sets.deny.includes(action.key);
 };
 
 /** What the Allow and Deny boxes of one action show, and why one of them can't be changed. */
@@ -1140,8 +1185,24 @@ export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
 ];
 
 /** Every action the editor shows, allowed everywhere: what the built-in Admin role can do. */
-export const createFullAgentVaultPolicy = (): TAgentVaultPolicy =>
-  PERMISSION_ROWS.reduce((policy, row) => {
+// The actions the built-in admin role holds that the editor hides, so a copy of admin keeps them.
+const ADMIN_HIDDEN_RULES: NonNullable<TAgentVaultPolicy["hidden"]> = [
+  {
+    subject: ProjectPermissionSub.Member,
+    action: [ProjectPermissionMemberActions.AssignAdditionalPrivileges]
+  },
+  {
+    subject: ProjectPermissionSub.Identity,
+    action: [ProjectPermissionMemberActions.AssignAdditionalPrivileges]
+  },
+  {
+    subject: ProjectPermissionSub.Settings,
+    action: [ProjectPermissionActions.Create, ProjectPermissionActions.Delete]
+  }
+];
+
+export const createFullAgentVaultPolicy = (): TAgentVaultPolicy => ({
+  ...PERMISSION_ROWS.reduce((policy, row) => {
     const top = row.levels[row.levels.length - 1];
     const withTop = setRowLevel(policy, row.key, top.value);
     return row.actions
@@ -1150,7 +1211,9 @@ export const createFullAgentVaultPolicy = (): TAgentVaultPolicy =>
         (next, action) => setActionAllowed(next, { rowKey: row.key }, action.key, true),
         withTop
       );
-  }, createEmptyAgentVaultPolicy());
+  }, createEmptyAgentVaultPolicy()),
+  hidden: ADMIN_HIDDEN_RULES
+});
 
 /**
  * What a built-in role grants in Agent Vault, or undefined for a custom one. The roles API answers a built-in role

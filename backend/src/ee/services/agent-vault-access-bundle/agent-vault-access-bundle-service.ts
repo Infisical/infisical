@@ -16,7 +16,7 @@ import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/c
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertRoleSetBoundary, isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -122,6 +122,7 @@ import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
 import {
   agentVaultAccessBundleSubject,
   agentVaultServiceSubject,
+  canUseNewItem,
   getAgentVaultPermission,
   getAgentVaultReachability,
   idsPickedOutFor,
@@ -1073,12 +1074,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let scopeIds: string[] | null;
     let excludeIds: string[] = [];
     let owner: ReturnType<typeof ownerOrNullOf>;
-    let { deniedServiceIds } = reachability;
     if (onBehalfOf) {
       const scope = await $onBehalfOfListScope({ projectId, ctx, onBehalfOf, callerReach: reachability });
       scopeIds = scope.reach.accessBundleIds;
       owner = scope.owner;
-      deniedServiceIds = scope.reach.deniedServiceIds;
     } else {
       owner = ownerOrNullOf(ctx);
       const assignedIds = idsPickedOutFor(permission, {
@@ -1100,8 +1099,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         projectId,
         owner,
         accessBundleIds: bundleIds,
-        withVariableReferences: false,
-        deniedServiceIds
+        withVariableReferences: false
       });
       statuses.forEach((status) => {
         const bundleId = status.accessBundleId;
@@ -1144,7 +1142,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
-    const { bundle, permission, deniedServiceIds } = await resolveReachableBundle(dto);
+    const { bundle, permission } = await resolveReachableBundle(dto);
     const { canReadVariables, canSeeSetup } = serviceFieldVisibilityOf(permission);
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
@@ -1156,8 +1154,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ? await agentVaultPersonalValueService.findStatusesForOwner({
           projectId: dto.projectId,
           owner,
-          accessBundleIds: [bundle.id],
-          deniedServiceIds
+          accessBundleIds: [bundle.id]
         })
       : [];
 
@@ -1201,7 +1198,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
     // A creator whose roles don't already let them use the new bundle gets its role, so whoever builds a bundle can try
-    // it. One who already holds the most roles a member can goes without. Returns the role it made, if any.
+    // it. One who already holds the most roles a member can, or holds No Access, goes without. Returns the role it made,
+    // if any.
     const create = () =>
       agentVaultAccessBundleDAL.transaction(async (tx) => {
         const accessBundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
@@ -1220,6 +1218,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           tx
         );
         if (!direct) return { accessBundle, role: null };
+        // Read fresh under the lock rather than trusting the cached permission: an admin who just set the creator to No
+        // Access must not have that undone by the creator's own request.
+        const liveRoles = (await membershipRoleDAL.find({ membershipId: direct.id }, { tx })).filter(isActiveRole);
+        if (!liveRoles.length || liveRoles.some((row) => row.role === ProjectMembershipRole.NoAccess)) {
+          return { accessBundle, role: null };
+        }
         const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, accessBundle, tx);
         await giveBundleRole(
           { membershipDAL, membershipRoleDAL },
@@ -1259,6 +1263,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     try {
       return await agentVaultAccessBundleDAL.transaction(async (tx) => {
+        // A rename may update the bundle's role, so it takes the project's role-change lock before the bundle row, the
+        // order a delete of that role takes them in, or the two could each hold a lock the other waits for.
+        await lockProjectRoleChanges(rest.projectId, tx);
         const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: bundle.id, projectId: rest.projectId },
           tx
@@ -1318,13 +1325,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       accessBundles,
       hostPattern,
       excludeServiceId,
-      addingName
+      addingName,
+      viewer
     }: {
       accessBundles: { id: string; name: string }[];
       hostPattern: string | null;
       excludeServiceId?: string;
       // Names the service being added, for a request that adds several.
       addingName?: string;
+      // What the caller can see. A clash in a bundle or with a service they can't see is described without names, so
+      // guessing hosts can't reveal what exists.
+      viewer?: { permission: TAgentVaultPermission["permission"]; visibleServiceIds: string[] | null };
     },
     // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
     tx?: Knex
@@ -1338,7 +1349,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         siblings.filter((candidate) => candidate.id !== excludeServiceId)
       );
       if (conflicts.length) {
-        const message = describeConflict(conflicts[0], bundle.name);
+        const clashing = siblings.find((candidate) => candidate.name === conflicts[0].serviceName);
+        const hidden =
+          viewer &&
+          (!canSeeBundle(viewer.permission, bundle.id) ||
+            (viewer.visibleServiceIds !== null && (!clashing || !viewer.visibleServiceIds.includes(clashing.id))));
+        const message = hidden
+          ? `Another service in one of this service's access bundles already covers ${conflicts[0].patterns.join(", ")}. A bundle can't hold two services for the same host.`
+          : describeConflict(conflicts[0], bundle.name);
         throw new BadRequestError({ message: addingName ? `Can't add '${addingName}': ${message}` : message });
       }
     }
@@ -1397,6 +1415,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId)
     );
 
+  // What a host clash may name for this caller (see checkHostPatternConflicts).
+  const clashViewerOf = async (
+    dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] },
+    permission: TAgentVaultPermission["permission"]
+  ) => ({
+    permission,
+    visibleServiceIds: await $visibleServiceIds(
+      await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, dto),
+      dto.projectId
+    )
+  });
+
   // For a service that was found: one the caller may not act on and can't see answers as a missing one would, so the
   // request can't confirm the id exists. One they can see is a 403.
   const requireOnFoundService = async (
@@ -1452,6 +1482,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (hook) await assertAgentVaultHooksOnPlan(licenseService, rest.ctx.actorOrgId);
     const bundles = await findBundlesInProject(rest.projectId, accessBundleIds);
     requireBundleEdits(permission, bundles);
+    // Everyone who can use these bundles gets the service, so creating it into them takes a role that would let the caller
+    // use it directly, as adding an existing one does.
+    if (bundles.length && !canUseNewItem(permission, ProjectPermissionSub.AgentVaultServices)) {
+      throw new ForbiddenRequestError({
+        message:
+          "You can't create a service into an access bundle, because none of your roles lets you use every new service. Create it on its own, or ask an Agent Vault admin for a role that can use services."
+      });
+    }
 
     const serviceType = getAgentVaultServiceType(type);
     assertOauthCredentialFitsType(serviceType.type, credential);
@@ -1484,7 +1522,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw serviceNameTaken(name);
     }
 
-    await checkHostPatternConflicts({ accessBundles: bundles, hostPattern });
+    const clashViewer = await clashViewerOf(rest, permission);
+    await checkHostPatternConflicts({ accessBundles: bundles, hostPattern, viewer: clashViewer });
 
     const { idOfKey, variableIds } = await loadProjectVariables({ projectId: rest.projectId, permission }, [
       ...credentialReferenceTexts(credential),
@@ -1582,7 +1621,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           );
           if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${bundle.id}' not found` });
         }
-        await checkHostPatternConflicts({ accessBundles: bundles, hostPattern }, tx);
+        await checkHostPatternConflicts({ accessBundles: bundles, hostPattern, viewer: clashViewer }, tx);
 
         const created = await agentVaultServiceDAL.create(
           {
@@ -1722,6 +1761,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
     const bundlesOf = async (tx?: Knex) =>
       (await agentVaultServiceDAL.findBundlesForServices([service.id], null, tx)).get(service.id) ?? [];
+    const clashViewer = await clashViewerOf(rest, permission);
 
     const serviceType = getAgentVaultServiceType(service.type);
     if (type !== service.type) {
@@ -1844,7 +1884,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       await checkHostPatternConflicts({
         accessBundles: await bundlesOf(),
         hostPattern,
-        excludeServiceId: service.id
+        excludeServiceId: service.id,
+        viewer: clashViewer
       });
     }
 
@@ -2265,7 +2306,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // Only when the pattern actually changes, against the siblings read under the lock.
         if (reconciled.hostPattern && reconciled.hostPattern !== locked.hostPattern) {
           await checkHostPatternConflicts(
-            { accessBundles: bundles, hostPattern: reconciled.hostPattern, excludeServiceId: service.id },
+            {
+              accessBundles: bundles,
+              hostPattern: reconciled.hostPattern,
+              excludeServiceId: service.id,
+              viewer: clashViewer
+            },
             tx
           );
         }
@@ -2871,12 +2917,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const statusScopeOf = (reach: TAgentVaultReach) =>
     reach.serviceIds === null
       ? { accessBundleIds: null, includeUnlinked: true }
-      : {
-          accessBundleIds: reach.accessBundleIds,
-          includeUnlinked: false,
-          directServiceIds: reach.serviceIds,
-          deniedServiceIds: reach.deniedServiceIds
-        };
+      : { accessBundleIds: reach.accessBundleIds, includeUnlinked: false, directServiceIds: reach.serviceIds };
 
   // The services the caller can see, each with the bundles they reach it through and their own setup status.
   // personalValues describe the owner's values: the caller's, or the user a session on their behalf would be for.
@@ -2975,8 +3016,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
               subjectType: ProjectPermissionSub.AgentVaultServices,
               field: "serviceId"
             }),
-            skillIds: [],
-            deniedServiceIds: reachability.deniedServiceIds
+            skillIds: []
           },
           projectId
         )) ?? [];
@@ -3048,13 +3088,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       bundleSubject(bundle.id)
     );
     const requestedIds = [...new Set(serviceIds.map((id) => id.toLowerCase()))];
-    // Everyone who can use the bundle can use what it holds, so adding a service takes being able to use it already,
-    // directly or through another bundle: a bundle editor can't hand out a service they couldn't use themselves.
-    const usableIds = await usableServiceIdsOf(
-      { agentVaultServiceDAL, agentVaultReachDAL },
-      reachability,
-      rest.projectId
-    );
+    // Everyone who can use the bundle gets every service in it, so adding a service takes a role that lets the caller
+    // use it directly. Using it through another bundle doesn't count: that bundle may hand it out only beside services
+    // that limit it on some hosts, and copying it alone would drop those limits.
+    const visibleIds = await $visibleServiceIds(reachability, rest.projectId);
 
     const add = () =>
       agentVaultServiceDAL.transaction(async (tx) => {
@@ -3071,13 +3108,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           // eslint-disable-next-line no-await-in-loop
           const service = await agentVaultServiceDAL.lockByIdInProject({ id, projectId: rest.projectId }, tx);
           if (!service) throw new NotFoundError({ message: `Service with ID '${id}' not found` });
-          if (usableIds !== null && !usableIds.includes(service.id)) {
+          if (permission.cannot(ProjectPermissionAgentVaultServiceActions.Use, serviceSubject(service.id))) {
             // One the caller can't see answers as a missing one would, so the request can't confirm the id exists.
-            if (permission.cannot(ProjectPermissionAgentVaultServiceActions.Read, serviceSubject(service.id))) {
+            if (visibleIds !== null && !visibleIds.includes(service.id)) {
               throw new NotFoundError({ message: `Service with ID '${id}' not found` });
             }
             throw new ForbiddenRequestError({
-              message: `You can't add the service '${service.name}' to an access bundle, because you can't use it yourself.`
+              message: `You can't add the service '${service.name}' to an access bundle, because none of your roles lets you use it directly. Using it through another access bundle doesn't count.`
             });
           }
           lockedById.set(id, service);
@@ -3100,7 +3137,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
               accessBundles: [bundle],
               hostPattern: service.hostPattern ?? null,
               excludeServiceId: service.id,
-              addingName: requestedIds.length > 1 ? service.name : undefined
+              addingName: requestedIds.length > 1 ? service.name : undefined,
+              viewer: { permission, visibleServiceIds: visibleIds }
             },
             tx
           );

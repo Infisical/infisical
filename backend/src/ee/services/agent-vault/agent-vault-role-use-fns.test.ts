@@ -52,13 +52,18 @@ describe("findRolesThatCanUse", () => {
 
   test("lists Admin, a role that uses the service directly, and one that uses a bundle holding it", async () => {
     const found = await find([service, ...bundleUseTargets(["b1"])]);
-    expect(found.map((entry) => entry.slug)).toEqual(["admin", "through-bundle", "uses-service"]);
-    expect(found.map((entry) => entry.memberCount)).toEqual([1, 2, 0]);
+    expect(found.map((entry) => entry.slug)).toEqual(["admin", "through-bundle", "denies-service", "uses-service"]);
+    expect(found.map((entry) => entry.memberCount)).toEqual([1, 2, 0, 0]);
   });
 
-  test("leaves out a role that uses the bundle but denies the service in it", async () => {
+  test("lists a role that uses the bundle even though it denies the service, since the bundle gives all it holds", async () => {
     const found = await find([service, ...bundleUseTargets(["b1"])]);
-    expect(found.map((entry) => entry.slug)).not.toContain("denies-service");
+    expect(found.map((entry) => entry.slug)).toContain("denies-service");
+  });
+
+  test("leaves out that role when the service is in none of its bundles", async () => {
+    const found = await find([service]);
+    expect(found.map((entry) => entry.slug)).toEqual(["admin", "uses-service"]);
   });
 
   test("a deny on a service doesn't take the bundle itself away", async () => {

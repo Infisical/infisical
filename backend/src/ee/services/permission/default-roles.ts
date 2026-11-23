@@ -895,8 +895,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionMemberActions.Read,
       ProjectPermissionMemberActions.GrantPrivileges,
       ProjectPermissionMemberActions.AssignRole,
-      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-      ProjectPermissionMemberActions.AssumePrivileges
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges
     ],
     ProjectPermissionSub.Member
   );
@@ -922,7 +921,6 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.GrantPrivileges,
       ProjectPermissionIdentityActions.AssignRole,
       ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
-      ProjectPermissionIdentityActions.AssumePrivileges,
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
       ProjectPermissionIdentityActions.DeleteToken,

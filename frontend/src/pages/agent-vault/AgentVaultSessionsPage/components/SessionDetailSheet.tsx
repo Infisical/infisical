@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -129,10 +133,10 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
 
   const isOwnerDeleted = session?.actor.id === null;
   // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
-  const canEdit =
-    !isOwnerDeleted &&
-    session?.onBehalfOf?.id !== null &&
-    Boolean(session && canActOnAgentVaultSession(permission, user.id, session, "edit"));
+  const isEditable = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
+  const canEdit = Boolean(
+    session && canActOnAgentVaultSession(permission, user.id, session, "edit")
+  );
   const canRevoke = Boolean(
     session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
   );
@@ -374,16 +378,24 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       <SessionStatusBadge status={session.status} />
                     </Detail>
                   </div>
-                  {session.status === AgentVaultSessionStatus.Active && canRevoke && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => onRevoke(session)}
+                  {session.status === AgentVaultSessionStatus.Active && (
+                    <DisabledReasonTooltip
+                      disabledReason={deniedReason(
+                        canRevoke,
+                        "You don't have permission to revoke this session"
+                      )}
                     >
-                      <BanIcon />
-                      Revoke Session
-                    </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="shrink-0"
+                        isDisabled={!canRevoke}
+                        onClick={() => onRevoke(session)}
+                      >
+                        <BanIcon />
+                        Revoke Session
+                      </Button>
+                    </DisabledReasonTooltip>
                   )}
                 </div>
                 <div className="flex items-start gap-2 border-t border-border px-4 py-3">
@@ -414,15 +426,23 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       </DetailValue>
                     </Detail>
                   </div>
-                  {canEdit && (
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      aria-label="Edit session"
-                      onClick={() => onEdit(session)}
+                  {isEditable && (
+                    <DisabledReasonTooltip
+                      disabledReason={deniedReason(
+                        canEdit,
+                        "You don't have permission to edit this session"
+                      )}
                     >
-                      <PencilIcon />
-                    </IconButton>
+                      <IconButton
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Edit session"
+                        isDisabled={!canEdit}
+                        onClick={() => onEdit(session)}
+                      >
+                        <PencilIcon />
+                      </IconButton>
+                    </DisabledReasonTooltip>
                   )}
                 </div>
               </div>

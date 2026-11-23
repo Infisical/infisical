@@ -135,29 +135,29 @@ describe("a deny in one role holds against another", () => {
     expect((await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p")).accessBundleIds).toEqual(["b2"]);
   });
 
-  test("a bundle doesn't give a service another role denies", async () => {
+  test("a usable bundle still gives a service a role denies, since the deny only stops its direct use", async () => {
     const permission = permissionOfRoles(
-      [useBundle("b1")],
+      [useBundle("b1"), { action: ["use"], subject: ProjectPermissionSub.AgentVaultServices }],
       [denyUse(ProjectPermissionSub.AgentVaultServices, { serviceId: "s1" })]
     );
     const reach = await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p");
-    expect(reach.deniedServiceIds).toEqual(["s1"]);
+    expect(reach.serviceIds).toEqual(["s2"]);
 
     const usable = await usableServiceIdsOf(
       {
-        agentVaultServiceDAL: { findIdsInBundles: async () => ["s1", "s2"] },
+        agentVaultServiceDAL: { findIdsInBundles: async () => ["s1"] },
         agentVaultReachDAL: reachDAL
       },
       reach,
       "p"
     );
-    expect(usable).toEqual(["s2"]);
+    expect(usable?.sort()).toEqual(["s1", "s2"]);
   });
 
-  test("a deny on every skill leaves none in any bundle", async () => {
+  test("a deny on every skill still leaves the skills a usable bundle holds", async () => {
     const permission = permissionOfRoles([useBundle("b1")], [denyUse(ProjectPermissionSub.AgentVaultSkills)]);
     const reach = await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p");
-    expect(reach.deniedSkillIds).toBe("all");
+    expect(reach.skillIds).toEqual([]);
 
     const usable = await usableSkillIdsOf(
       {
@@ -167,17 +167,7 @@ describe("a deny in one role holds against another", () => {
       reach,
       "p"
     );
-    expect(usable).toEqual([]);
-  });
-
-  test("a deny on the all-zero id takes back only that id, since a rule may name any id", async () => {
-    const zeroId = "00000000-0000-0000-0000-000000000000";
-    const permission = permissionOfRoles(
-      [useBundle("b1")],
-      [denyUse(ProjectPermissionSub.AgentVaultServices, { serviceId: zeroId })]
-    );
-    const reach = await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p");
-    expect(reach.deniedServiceIds).toEqual([zeroId]);
+    expect(usable).toEqual(["k1"]);
   });
 
   test("a deny that a later allow overrides takes nothing back", async () => {
@@ -193,17 +183,6 @@ describe("a deny in one role holds against another", () => {
     ]);
     const reach = await reachOf(ability as never, { agentVaultReachDAL: reachDAL }, "p");
     expect(reach.serviceIds).toEqual(["s1"]);
-    expect(reach.deniedServiceIds).toBeUndefined();
-  });
-
-  test("a session on a user's behalf keeps either side's deny", () => {
-    const base = { accessBundleIds: null, serviceIds: [], skillIds: [] };
-    expect(
-      intersectReach({ ...base, deniedServiceIds: ["s1"] }, { ...base, deniedServiceIds: ["s2"] }).deniedServiceIds
-    ).toEqual(["s1", "s2"]);
-    expect(intersectReach({ ...base, deniedSkillIds: "all" }, { ...base, deniedSkillIds: ["k1"] }).deniedSkillIds).toBe(
-      "all"
-    );
   });
 });
 

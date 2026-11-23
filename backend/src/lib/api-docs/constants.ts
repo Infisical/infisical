@@ -5309,6 +5309,7 @@ export const AGENT_VAULT = {
       "The roles to give, by slug: admin, no-access, or one of the project's custom roles. No Access can't be combined with another role.",
     role: "Deprecated: use roles. admin or member, where member is the project's Member role. The member keeps the roles they hold for access bundles.",
     rolesRead: "The member's roles, by slug.",
+    roleDetails: "The member's roles, each with its slug and its name.",
     roleRead: "Deprecated: use roles. admin or member when the member holds either, and otherwise their first role.",
     isActive: "Whether the member can currently reach the project.",
     addedAt: "When the member was added to the project.",

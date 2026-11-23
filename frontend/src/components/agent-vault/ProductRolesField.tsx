@@ -66,7 +66,10 @@ export const ProductRolesField = ({ projectId, value, onChange, id, isError }: P
         getOptionKeywords={(role) => [role.slug, role.description]}
         getOptionGroup={(role) => (role.isCustom ? "Custom" : "Built-In")}
         isOptionDisabled={(role) => !canAddAgentVaultRole(value, role.slug)}
-        renderOption={(role) => <RoleOptionContent role={role} />}
+        // A role without a description shows its slug, as the Roles tab does.
+        renderOption={(role) => (
+          <RoleOptionContent role={{ ...role, description: role.description || role.slug }} />
+        )}
         placeholder="Pick roles"
         searchAriaLabel="Search roles"
         emptyMessage="No roles match your search"

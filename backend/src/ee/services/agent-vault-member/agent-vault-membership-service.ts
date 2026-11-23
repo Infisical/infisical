@@ -168,6 +168,11 @@ const memberTypesOf = ({
   return types.length ? types : ALL_ACTOR_TYPES;
 };
 
+const AGENT_VAULT_BUILT_IN_ROLE_NAMES: Record<string, string> = {
+  [ProjectMembershipRole.Admin]: "Admin",
+  [ProjectMembershipRole.NoAccess]: "No Access"
+};
+
 export const agentVaultMembershipServiceFactory = ({
   agentVaultMemberDAL,
   membershipDAL,
@@ -1007,12 +1012,29 @@ export const agentVaultMembershipServiceFactory = ({
   const findMemberRoleSlug = async (projectId: string) =>
     (await findAgentVaultMemberRole(roleDAL, projectId))?.slug ?? null;
 
+  // Each member's roles with their names, so a caller who can't read roles still sees what each one is called.
+  const withRoleDetails = async <T extends { roles: string[] }>(projectId: string, members: T[]) => {
+    const customSlugs = [...new Set(members.flatMap((member) => member.roles))].filter(
+      (slug) => !(slug in AGENT_VAULT_BUILT_IN_ROLE_NAMES)
+    );
+    const customRoles = customSlugs.length ? await roleDAL.find({ projectId, $in: { slug: customSlugs } }) : [];
+    const nameOf = new Map<string, string>([
+      ...Object.entries(AGENT_VAULT_BUILT_IN_ROLE_NAMES),
+      ...customRoles.map((role): [string, string] => [role.slug, role.name])
+    ]);
+    return members.map((member) => ({
+      ...member,
+      roleDetails: member.roles.map((slug) => ({ slug, name: nameOf.get(slug) ?? slug }))
+    }));
+  };
+
   return {
     listProductMembers,
     listAvailableProductMembers,
     addProductMembers,
     updateProductMemberRoles,
     revokeProductMembers,
-    findMemberRoleSlug
+    findMemberRoleSlug,
+    withRoleDetails
   };
 };

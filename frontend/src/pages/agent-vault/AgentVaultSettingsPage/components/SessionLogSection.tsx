@@ -3,6 +3,11 @@ import { subject } from "@casl/ability";
 import { useQueryClient } from "@tanstack/react-query";
 import { AsteriskIcon, ChevronDownIcon, PlugIcon } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import {
   Badge,
   Button,
@@ -151,11 +156,20 @@ export const SessionLogSection = () => {
           </CardDescription>
           <CardAction>
             <ButtonGroup>
-              {canEditSettings && (
-                <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
+              <DisabledReasonTooltip
+                disabledReason={deniedReason(
+                  canEditSettings,
+                  "You don't have permission to change session log settings"
+                )}
+              >
+                <Button
+                  variant="av"
+                  isDisabled={isPending || !canEditSettings}
+                  onClick={() => setIsModalOpen(true)}
+                >
                   {settings ? "Configure" : "Set Up Session Logs"}
                 </Button>
-              )}
+              </DisabledReasonTooltip>
               {hasConnectionMenu && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -189,12 +203,16 @@ export const SessionLogSection = () => {
                         )}
                       </Tooltip>
                     )}
-                    {canReadAppConnections && (
-                      <DropdownMenuItem onClick={() => setIsConnectionsSheetOpen(true)}>
-                        <PlugIcon />
-                        Manage Connections
-                      </DropdownMenuItem>
-                    )}
+                    <DisabledReasonMenuItem
+                      disabledReason={deniedReason(
+                        canReadAppConnections,
+                        "You don't have permission to view app connections"
+                      )}
+                      onClick={() => setIsConnectionsSheetOpen(true)}
+                    >
+                      <PlugIcon />
+                      Manage Connections
+                    </DisabledReasonMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

@@ -285,9 +285,13 @@ export type TAgentVaultProductActor =
     })
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
+export type TAgentVaultRoleDetail = { slug: string; name: string };
+
 export type TAgentVaultProductMember = TAgentVaultProductActor & {
   /** Role slugs, oldest first: `admin`, `no-access`, or a custom role's slug. */
   roles: string[];
+  /** Each role's name beside its slug, so a caller who can't read roles still sees names. */
+  roleDetails?: TAgentVaultRoleDetail[];
   isActive: boolean;
   addedAt: string;
 };

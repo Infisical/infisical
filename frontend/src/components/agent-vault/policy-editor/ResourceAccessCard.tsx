@@ -82,7 +82,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
   accessBundles: {
     [NONE_LEVEL]: "Only the access bundles picked below",
     view: "See it and what it holds",
-    use: "Start sessions from it, with the services and skills in it that no role denies",
+    use: "Start sessions from it, with every service and skill in it",
     edit: "Also change what it holds",
     manage: "Also delete it",
     [DENIED_LEVEL]: "Overrides every other role"

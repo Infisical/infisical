@@ -15,7 +15,7 @@ import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls
 
 const PARAGRAPHS = [
   "Run AI agents with the access, context, and capabilities they need to do work. Today that means secure access to the services they call: LLM providers, GitHub, Slack, and more.",
-  "You describe what an agent may reach in an access bundle, and give whoever runs agents a role that can use it. They create a session to launch with, and a proxy in your network attaches the real credential on the way out, only for the services you allowed and only until the session expires."
+  "You describe what an agent may reach in an access bundle, and choose who can use it. They create a session to launch with, and a proxy in your network attaches the real credential on the way out, only for the services you allowed and only until the session expires."
 ];
 
 const LINKS = [
