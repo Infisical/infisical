@@ -407,6 +407,10 @@ export type TJenkinsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Jenkins;
 };
 
+export type TCoolifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Coolify;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -505,7 +509,8 @@ export type TAppConnectionOption =
   | TJiraConnectionOption
   | TClickHouseConnectionOption
   | TIncidentIoConnectionOption
-  | TJenkinsConnectionOption;
+  | TJenkinsConnectionOption
+  | TCoolifyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -606,4 +611,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ClickHouse]: TClickHouseConnectionOption;
   [AppConnection.IncidentIo]: TIncidentIoConnectionOption;
   [AppConnection.Jenkins]: TJenkinsConnectionOption;
+  [AppConnection.Coolify]: TCoolifyConnectionOption;
 };

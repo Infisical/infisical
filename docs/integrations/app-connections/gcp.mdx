@@ -337,6 +337,8 @@ With service account impersonation, Infisical's own service account impersonates
             <Tab title="Secret Sync">
                 Add the **Secret Manager Admin** (`roles/secretmanager.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles for [secret syncs](/integrations/secret-syncs/gcp-secret-manager). Secret Manager Admin lets Infisical manage the synced secrets. Service Usage Viewer lets Infisical check which projects have the Secret Manager API enabled, so those projects appear in the sync form. Service Usage Admin also works, but Infisical doesn't need its extra permissions.
                 ![Assign Service Account Permission](/images/app-connections/gcp/service-account-secret-sync-permission.png)
+
+                Instead of Secret Manager Admin on the whole project, you can [limit the service account to the secrets a GCP Secret Manager sync manages](/integrations/secret-syncs/gcp-secret-manager#least-privilege-permissions).
             </Tab>
             <Tab title="Certificate Sync">
                 Add the required permissions for [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager):

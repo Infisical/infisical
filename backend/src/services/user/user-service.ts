@@ -25,7 +25,12 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { getRequiredMfaMethod } from "../auth/auth-fns";
+import {
+  getOrgAllowedMfaMethods,
+  getUserAllowedMfaMethods,
+  MFA_METHOD_PRIORITY,
+  resolveMfaChallenge
+} from "../auth/auth-fns";
 import {
   ActorAuthMethod,
   ActorType,
@@ -176,13 +181,14 @@ export const userServiceFactory = ({
     return credentials.length > 0;
   };
 
-  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) => {
-    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
-      (method) => method !== excludeMethod
-    );
-    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
-    return fallbackOrder.find((_, index) => configured[index]) ?? null;
+  // Strongest first. Email counts when the account has an address and SMTP can deliver to it.
+  const getEnrolledMfaMethods = async (user: { id: string; email?: string | null }): Promise<MfaMethod[]> => {
+    const configured = await Promise.all(MFA_METHOD_PRIORITY.map((method) => isMfaMethodConfigured(user, method)));
+    return MFA_METHOD_PRIORITY.filter((_, index) => configured[index]);
   };
+
+  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) =>
+    (await getEnrolledMfaMethods(user)).find((method) => method !== excludeMethod) ?? null;
 
   // A method can only be selected/activated once the user has actually configured
   // that factor. EMAIL uses the account email, so it needs no enrollment, but it
@@ -655,24 +661,14 @@ export const userServiceFactory = ({
     };
   };
 
-  // Resolves the MFA method a step-up challenge must use, from the current org
-  // context. Recovery codes bypass the org-required method at login, so the step-up
-  // that gates them must challenge that same method rather than the user's personal
-  // preference (which could be weaker, e.g. email while the org enforces passkeys).
-  // Mirrors login via the shared getRequiredMfaMethod: the root org enforcing MFA dictates
-  // the method, otherwise the user's own preference applies. Reaching a step-up-gated
-  // route already proves membership of this org, so no permission check is needed.
+  // Picks the step-up method by the login rule (resolveMfaChallenge) for the current org. Reaching a
+  // step-up-gated route already proves membership, so no permission check is needed.
   //
-  // Removing a factor never challenges that same factor, it's usually the lost one.
-  // Another configured factor stands in, or the required method if there's nothing else
-  // (e.g. no SMTP on self-hosted). Exception: a factor one of the user's orgs enforces is
-  // still challenged, that org already ruled the alternatives out, and a lost device goes
-  // through recovery-code login instead. All orgs are checked so org switching can't
-  // bypass it.
+  // Removing a factor challenges a substitute instead, since the removed one is usually lost. Every enforcing
+  // org that accepts the removed factor must accept the substitute too, or a weaker org's session could strip it
+  // and enroll its own to get into the stricter org. With no such substitute, the factor itself is challenged.
   //
-  // `accepted` is every factor a prior proof may carry for this action: the required
-  // method, plus the substitute when one is challenged. Other actions never accept the
-  // substitute.
+  // `accepted` lists every factor a prior proof may carry for this action; only removals accept a substitute.
   const getStepUpMfaMethod = async (
     userId: string,
     orgId: string | undefined,
@@ -686,54 +682,62 @@ export const userServiceFactory = ({
       sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
         ? await orgDAL.findById(sessionOrg.rootOrgId)
         : sessionOrg;
-    const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
-    if (!user || !excludeMethod) return asRequired;
 
+    const allowedMethods = getUserAllowedMfaMethods(org ?? {}, user ?? {});
+    const enrolledMethods = user ? await getEnrolledMfaMethods(user) : [];
+    const { usableMethods, challengeMethod } = resolveMfaChallenge({
+      allowedMethods,
+      enrolledMethods,
+      preferredMethod: user?.selectedMfaMethod
+    });
+    const challenge = challengeMethod ?? allowedMethods[0];
+    const asResolved = { challenge, accepted: usableMethods.length ? usableMethods : [challenge] };
+    if (!user || !excludeMethod) return asResolved;
+
+    const remainingMethods = enrolledMethods.filter((method) => method !== excludeMethod);
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
-    if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
-      return { challenge: excludeMethod, accepted: [excludeMethod] };
-    }
-    if (requiredMfaMethod !== excludeMethod) return asRequired;
+    const affectedOrgsAllowedMethods = enforcingOrgs
+      .map((enforcingOrg) => getOrgAllowedMfaMethods(enforcingOrg))
+      .filter((orgAllowedMethods) => orgAllowedMethods.includes(excludeMethod));
 
-    const replacement = await findReplacementMfaMethod(user, excludeMethod);
-    if (!replacement) return asRequired;
-    return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
+    if (affectedOrgsAllowedMethods.length) {
+      const acceptedMethodsForAffectedOrgs = enrolledMethods.filter((method) =>
+        affectedOrgsAllowedMethods.every((orgAllowedMethods) => orgAllowedMethods.includes(method))
+      );
+      const substituteMethods = acceptedMethodsForAffectedOrgs.filter((method) => method !== excludeMethod);
+
+      if (!substituteMethods.length) return { challenge: excludeMethod, accepted: [excludeMethod] };
+
+      const substituteMethod =
+        substituteMethods.find((method) => method === challenge) ??
+        substituteMethods.find((method) => method === user.selectedMfaMethod) ??
+        substituteMethods[0];
+      return { challenge: substituteMethod, accepted: acceptedMethodsForAffectedOrgs };
+    }
+
+    if (challenge !== excludeMethod) return asResolved;
+
+    const replacement = usableMethods.find((method) => method !== excludeMethod) ?? remainingMethods[0] ?? null;
+    if (!replacement) return asResolved;
+    return { challenge: replacement, accepted: unique([...asResolved.accepted, replacement]) };
   };
 
-  // Adding a factor must be proven with one the account already has, or a password-only
-  // session could plant its own. A new factor of a kind the user already has passes every
-  // login that asks for that kind, so only that kind can prove it; otherwise a weaker factor
-  // could open an org that enforces the stronger one. Mirrors removal (getStepUpMfaMethod).
-  // The first factor of a kind takes any of the user's factors, and an account with none
-  // gets null so enforced-MFA onboarding at login still works.
+  /**
+   * Adding a factor must be proven with the strongest one the account already has (passkey,
+   * TOTP, then email), or a session holding a weaker factor could plant one
+   * that opens an org enforcing the stronger kind.
+   */
   const getFactorEnrollmentStepUpMfaMethods = async (
-    userId: string,
-    enrollingMethod: MfaMethod
+    userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
 
-    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
-      isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
-      isMfaMethodConfigured(user, MfaMethod.TOTP),
-      findMfaEnforcingOrgs(userId)
-    ]);
-    const isEmailRequiredAtLogin =
-      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
-      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
-    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
+    const userFactors = await getEnrolledMfaMethods(user);
+    const strongestUserFactor = userFactors[0];
+    if (!strongestUserFactor) return null;
 
-    const userFactors = [
-      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
-      ...(hasTotp ? [MfaMethod.TOTP] : []),
-      ...(hasEmail ? [MfaMethod.EMAIL] : [])
-    ];
-    if (!userFactors.length) return null;
-    if (userFactors.includes(enrollingMethod)) return { challenge: enrollingMethod, accepted: [enrollingMethod] };
-
-    const preferred = userFactors.find((method) => method === user.selectedMfaMethod);
-    return { challenge: preferred ?? userFactors[0], accepted: userFactors };
+    return { challenge: strongestUserFactor, accepted: [strongestUserFactor] };
   };
 
   const $formatOrgNames = (orgs: { name: string }[]) => {
@@ -1054,6 +1058,7 @@ export const userServiceFactory = ({
     getMyDeletionEligibility,
     getMe,
     getStepUpMfaMethod,
+    getEnrolledMfaMethods,
     getFactorEnrollmentStepUpMfaMethods,
     isStepUpMfaRequired,
     resolveMfaMethodAfterRemoval,

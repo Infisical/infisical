@@ -17,9 +17,9 @@ export const SignupPreviewLayout = ({
   children,
   headerAction
 }: SignupPreviewLayoutProps) => (
-  <div className="relative min-h-screen overflow-hidden bg-page">
+  <div className="relative min-h-dvh overflow-hidden bg-page">
     <SignupDashboardPreview />
-    <div className="relative z-10 flex min-h-screen flex-col">
+    <div className="relative z-10 flex min-h-dvh flex-col">
       <AuthPageHeader>
         {headerAction}
         <Button asChild variant="outline" size="sm">

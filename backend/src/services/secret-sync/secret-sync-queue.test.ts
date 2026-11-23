@@ -9,6 +9,7 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "./secret-sync-enums";
 import { SecretSyncError } from "./secret-sync-errors";
 import { SecretSyncFns } from "./secret-sync-fns";
 import { secretSyncQueueFactory } from "./secret-sync-queue";
+import { SecretSyncAction } from "./secret-sync-types";
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
@@ -113,9 +114,14 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     >(async () => [])
   };
 
+  const projectDAL = { findById: vi.fn(async () => undefined) };
+  const notificationService = { createUserNotifications: vi.fn(async () => undefined) };
+
   const queue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
+    projectDAL,
+    notificationService,
     keyStore: {
       acquireLock: vi.fn(async () => {
         if (lockFails) throw new Error("locked");
@@ -158,6 +164,8 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     eventEmitter,
     alertService,
     queueService,
+    projectDAL,
+    notificationService,
     queue
   };
 };
@@ -461,5 +469,25 @@ describe("secret sync job deduplication", () => {
     expect(data).toEqual({ syncId: "sync-1", failedToAcquireLockCount: 4 });
     expect(opts.deduplication).toEqual({ id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true });
     expect(opts.delay).toBeGreaterThan(0);
+  });
+});
+
+describe("secret sync failed notifications", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("skips without throwing when the project is not found, such as one pending deletion", async () => {
+    const { runJob, state, projectDAL, notificationService } = createHarness(failed);
+
+    await expect(
+      runJob(QueueJobs.SecretSyncSendActionFailedNotifications, {
+        secretSync: state,
+        action: SecretSyncAction.SyncSecrets
+      })
+    ).resolves.toBeUndefined();
+
+    expect(projectDAL.findById).toHaveBeenCalledWith("project-1");
+    expect(notificationService.createUserNotifications).not.toHaveBeenCalled();
   });
 });

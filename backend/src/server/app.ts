@@ -4,7 +4,6 @@ import path from "node:path";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
-import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
@@ -28,6 +27,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
+import { etag } from "./plugins/etag";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
@@ -118,7 +118,7 @@ export const main = async ({
   });
 
   try {
-    await server.register(fastifyEtag);
+    await server.register(etag);
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,

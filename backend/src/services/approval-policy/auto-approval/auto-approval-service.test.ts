@@ -1,9 +1,12 @@
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { autoApprovalServiceFactory } from "./auto-approval-service";
 import {
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   TStoredAutoApproval
@@ -77,7 +80,11 @@ const setup = (runJudge: (args: { deadline?: number }) => Promise<TAiJudgeResult
     aiService: aiService as never,
     kmsDataKeyService: {} as never,
     gatewayV2Service: {} as never,
-    gatewayPoolService: {} as never
+    gatewayPoolService: {} as never,
+    membershipDAL: {} as never,
+    userDAL: {} as never,
+    groupDAL: {} as never,
+    userGroupMembershipDAL: {} as never
   });
 
   const evaluate = (rules: TStoredAutoApproval["rules"]) =>
@@ -87,6 +94,7 @@ const setup = (runJudge: (args: { deadline?: number }) => Promise<TAiJudgeResult
       isRecordUsed: async () => false,
       orgId: "org-1",
       projectId: "project-1",
+      requesterId: "user-1",
       ctx: { requester: { email: "dev@acme.com" } }
     });
 
@@ -164,5 +172,177 @@ describe("autoApprovalService.evaluate AI conditions", () => {
       passed: false,
       reason: "Not reviewed because the AI ran out of time on earlier rules"
     });
+  });
+});
+
+describe("autoApprovalService requester checks", () => {
+  const alice = "6f2f0c1e-6a0e-4c1e-9a43-3f1b6d1f2a01";
+  const bob = "6f2f0c1e-6a0e-4c1e-9a43-3f1b6d1f2a02";
+  const carol = "6f2f0c1e-6a0e-4c1e-9a43-3f1b6d1f2a03";
+  const engineering = "0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e01";
+  const operations = "0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e02";
+  const user = (id: string) => `${ApproverType.User}:${id}`;
+  const group = (id: string) => `${ApproverType.Group}:${id}`;
+
+  const requesterCheck = (id: string, values: string[]): TCondition => ({
+    id,
+    inputId: null,
+    connectionId: null,
+    subject: AUTO_APPROVAL_REQUESTER_SUBJECT,
+    constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+    values,
+    prompt: null,
+    contextConnectionIds: []
+  });
+
+  const setupRequesterChecks = ({
+    requesterGroupIds = [] as string[],
+    projectGroupIds = [engineering, operations],
+    // alice is a direct project member and bob is one through a group
+    directProjectUserIds = [alice],
+    groupProjectUserIds = [bob]
+  } = {}) => {
+    const service = autoApprovalServiceFactory({
+      approvalPolicyAutoApprovalDAL: {} as never,
+      appConnectionDAL: {} as never,
+      appConnectionService: {} as never,
+      aiService: { getOrgAiModel: vi.fn(), runJudge: vi.fn() } as never,
+      kmsDataKeyService: {} as never,
+      gatewayV2Service: {} as never,
+      gatewayPoolService: {} as never,
+      membershipDAL: {
+        find: async ({ $in }: { $in: { actorUserId?: string[]; actorGroupId?: string[] } }) => [
+          ...($in.actorUserId ?? [])
+            .filter((id) => directProjectUserIds.includes(id))
+            .map((actorUserId) => ({ actorUserId })),
+          ...($in.actorGroupId ?? [])
+            .filter((id) => projectGroupIds.includes(id))
+            .map((actorGroupId) => ({ actorGroupId }))
+        ]
+      } as never,
+      userDAL: {
+        find: async () => [
+          { id: alice, firstName: "Alice", lastName: "Smith", email: "alice@acme.com", username: "alice" },
+          { id: bob, firstName: null, lastName: null, email: "bob@acme.com", username: "bob" }
+        ]
+      } as never,
+      groupDAL: {
+        find: async () => [
+          { id: engineering, name: "Engineering" },
+          { id: operations, name: "Operations" }
+        ]
+      } as never,
+      userGroupMembershipDAL: {
+        find: async ({ $in }: { $in: { groupId: string[] } }) =>
+          $in.groupId.filter((id) => requesterGroupIds.includes(id)).map((groupId) => ({ groupId })),
+        findUserGroupMembershipsInProjectByUserIds: async (userIds: string[]) =>
+          userIds.filter((id) => groupProjectUserIds.includes(id))
+      } as never
+    });
+
+    const evaluate = (requesterId: string, conditions: TCondition[]) =>
+      service.evaluate({
+        stored: { inputs: [], rules: [{ id: "rule-1", name: "Direct access", conditions }] },
+        parsedInputs: [],
+        isRecordUsed: async () => false,
+        orgId: "org-1",
+        projectId: "project-1",
+        requesterId,
+        ctx: { requester: { email: "dev@acme.com" } }
+      });
+
+    const validate = (conditions: { constraint: string; values: string[] }[]) =>
+      service.validateConfig({
+        projectId: "project-1",
+        actor: { id: "admin-1", type: ActorType.USER, orgId: "org-1" } as never,
+        config: {
+          inputs: [],
+          rules: [
+            {
+              name: "Direct access",
+              conditions: conditions.map((condition) => ({
+                subject: AUTO_APPROVAL_REQUESTER_SUBJECT,
+                ...condition
+              }))
+            }
+          ]
+        }
+      });
+
+    return { evaluate, validate };
+  };
+
+  test("approves a user the check names or a member of a group it names, and describes them by name", async () => {
+    const check = requesterCheck("c-1", [user(alice), group(engineering), user(bob)]);
+
+    const asUser = await setupRequesterChecks().evaluate(alice, [check]);
+    expect(asUser.approvedByRuleId).toBe("rule-1");
+    expect(conditionResult(asUser, "c-1")).toMatchObject({
+      passed: true,
+      description: "Requester is Alice Smith or bob@acme.com or a member of Engineering"
+    });
+
+    const asMember = await setupRequesterChecks({ requesterGroupIds: [engineering] }).evaluate(carol, [check]);
+    expect(asMember.approvedByRuleId).toBe("rule-1");
+
+    const refused = await setupRequesterChecks().evaluate(carol, [check]);
+    expect(refused.approvedByRuleId).toBeNull();
+    expect(conditionResult(refused, "c-1")).toMatchObject({
+      passed: false,
+      reason: "The requester isn't Alice Smith or bob@acme.com or a member of Engineering"
+    });
+  });
+
+  test("approves a member of a group the rule names while the group is a member of the project", async () => {
+    const check = requesterCheck("c-1", [group(engineering), group(operations)]);
+
+    const approved = await setupRequesterChecks({ requesterGroupIds: [operations] }).evaluate(carol, [check]);
+    expect(approved.approvedByRuleId).toBe("rule-1");
+    expect(conditionResult(approved, "c-1")).toMatchObject({
+      description: "Requester is a member of Engineering or Operations"
+    });
+
+    const removed = await setupRequesterChecks({
+      requesterGroupIds: [operations],
+      projectGroupIds: [engineering]
+    }).evaluate(carol, [check]);
+    expect(removed.approvedByRuleId).toBeNull();
+    expect(conditionResult(removed, "c-1")).toMatchObject({
+      passed: false,
+      reason: "The requester isn't a member of Engineering or Operations"
+    });
+  });
+
+  test("saves checks without a connection, and refuses values that aren't the project's users or groups", async () => {
+    const { validate } = setupRequesterChecks();
+
+    const config = await validate([
+      {
+        constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+        values: [user(alice), ` ${user(alice)}`, user(bob), group(engineering)]
+      }
+    ]);
+    expect(config.rules[0].conditions).toMatchObject([
+      {
+        connectionId: null,
+        constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+        values: [user(alice), user(bob), group(engineering)]
+      }
+    ]);
+
+    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [alice] }])).rejects.toThrow(
+      `'Requester is' takes users as 'user:<id>' and groups as 'group:<id>', and '${alice}' is neither`
+    );
+    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [user(carol)] }])).rejects.toThrow(
+      `checks for user '${carol}', who isn't a member of the policy's project`
+    );
+    await expect(
+      validate([
+        { constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [group("0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e09")] }
+      ])
+    ).rejects.toThrow("which isn't a member of the policy's project");
+    await expect(validate([{ constraint: "on-call", values: [user(alice)] }])).rejects.toThrow(
+      "which is not a check on the requester's Infisical user or groups"
+    );
   });
 });

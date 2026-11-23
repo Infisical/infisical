@@ -153,7 +153,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
 
   if (step === "error") {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
+      <div className="flex h-dvh w-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-base">Access Failed</CardTitle>
@@ -171,7 +171,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
 
   if (step === "mfa") {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
+      <div className="flex h-dvh w-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="flex items-center gap-3">
             <ShieldCheck className="size-6 shrink-0 text-product-pam" />
@@ -204,7 +204,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
   const canSubmit = !policy.requireReason || trimmed.length > 0;
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
+    <div className="flex h-dvh w-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-base">Before you continue</CardTitle>

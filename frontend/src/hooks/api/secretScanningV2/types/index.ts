@@ -219,7 +219,20 @@ export type TSecretScanningFinding = {
   triagedByUserId?: string | null;
   triagedAt?: string | null;
   resolvedAt?: string | null;
+  locationCount: number;
+  projectId: string;
+  lastDetectedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TSecretScanningFindingLocation = {
+  id: string;
+  findingId: string;
+  resourceId: string;
+  scanId: string;
   fingerprint: string;
+  rule: string;
   // TODO scott: this will need to be type differentiated once we add other scan types
   details: {
     description: string;
@@ -240,10 +253,12 @@ export type TSecretScanningFinding = {
     ruleID: string;
     fingerprint: string;
   };
-  projectId: string;
-  scanId: string;
   createdAt: string;
-  updatedAt: string;
+};
+
+export type TListSecretScanningFindingLocationsResponse = {
+  locations: TSecretScanningFindingLocation[];
+  totalCount: number;
 };
 
 export type TListSecretScanningFindingsDTO = {
@@ -251,6 +266,7 @@ export type TListSecretScanningFindingsDTO = {
   status?: SecretScanningFindingStatus;
   dataSourceId?: string;
   resourceId?: string;
+  scanId?: string;
   orderBy: SecretScanningFindingOrderBy;
   orderDirection: OrderByDirection;
   offset: number;

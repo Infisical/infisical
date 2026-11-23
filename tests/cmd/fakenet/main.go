@@ -30,6 +30,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/fakes/oci"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
+	"github.com/Infisical/infisical/tests/fakes/pwnedpasswords"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fakes/vercel"
@@ -57,13 +58,14 @@ func main() {
 		webhook.Service,
 		webhook.Slack,
 		webhook.Splunk,
-		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
+		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation, aws.KMS,
 		vercel.Service,
 		oauth.Google, oauth.GitHub, oauth.GitLab,
 		kubernetes.Service, azure.Service, alicloud.Service, oci.Service,
 		ldap.Service,
 		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
 		gcp.STS, gcp.IAMCredentials,
+		pwnedpasswords.Service,
 	)
 
 	go func() { log.Fatalf("fakenet: ldap listener: %v", ldap.Serve(fmt.Sprintf(":%d", ldap.Port), srv)) }()

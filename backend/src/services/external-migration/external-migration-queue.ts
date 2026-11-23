@@ -167,7 +167,7 @@ export const externalMigrationQueueFactory = ({
         resourceMetadataDAL
       });
       // The import committed its projects in one transaction, so the plan's cached project count is stale.
-      await licenseService.invalidatePlan(decryptedJson.actorOrgId);
+      await licenseService.refreshWorkspacesUsed(decryptedJson.actorOrgId);
 
       if (projectsNotImported.length) {
         logger.info(

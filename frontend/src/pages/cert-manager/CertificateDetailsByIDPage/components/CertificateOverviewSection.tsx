@@ -1,4 +1,5 @@
 /* eslint-disable no-nested-ternary */
+import type { ReactNode } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
@@ -34,6 +35,7 @@ import { CertificateMetadataSection } from "./CertificateMetadataSection";
 
 type Props = {
   certificateId: string;
+  pendingRevocationBadge?: ReactNode;
 };
 
 const formatDateUTC = (dateString: string) => {
@@ -74,7 +76,7 @@ const getProviderReference = (metadata?: TCertificateExternalMetadata | null) =>
   }
 };
 
-export const CertificateOverviewSection = ({ certificateId }: Props) => {
+export const CertificateOverviewSection = ({ certificateId, pendingRevocationBadge }: Props) => {
   const { orgId } = useParams({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
   });
@@ -152,6 +154,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                   {certificate.deletedAt && certificate.status === CertStatus.REVOKED && (
                     <Badge variant="danger">Revoked</Badge>
                   )}
+                  {pendingRevocationBadge}
                 </div>
               </DetailValue>
             </Detail>

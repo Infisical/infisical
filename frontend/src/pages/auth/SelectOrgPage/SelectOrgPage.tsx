@@ -452,7 +452,7 @@ export const SelectOrgPage = () => {
     return (
       <>
         <PageTitle title={t("page-titles.select-organization")} />
-        <div className="h-screen w-screen bg-page">
+        <div className="h-dvh w-screen bg-page">
           <PageLoader />
         </div>
       </>
@@ -481,6 +481,15 @@ export const SelectOrgPage = () => {
           }}
           method={requiredMfaMethod as MfaMethod}
           onChangeAccount={handleLogout}
+          onSessionExpired={async () => {
+            toggleShowMfa.off();
+            if (!mfaOrgInfo.current) return;
+            createNotification({
+              text: "Your verification session expired, so we started a new one.",
+              type: "info"
+            });
+            await handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+          }}
         />
       </>
     );

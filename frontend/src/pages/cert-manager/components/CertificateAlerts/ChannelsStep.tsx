@@ -32,6 +32,7 @@ import {
 type TChannelField = FieldArrayWithId<TCertificateAlertForm, "channels">;
 
 const ENTERPRISE_CHANNEL_TYPES = [
+  AlertChannelType.SlackApp,
   AlertChannelType.Slack,
   AlertChannelType.Webhook,
   AlertChannelType.PagerDuty

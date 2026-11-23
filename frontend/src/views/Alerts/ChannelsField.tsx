@@ -30,7 +30,9 @@ const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelF
   url: "",
   signingSecret: "",
   headers: [],
-  integrationKey: ""
+  integrationKey: "",
+  workflowIntegrationId: "",
+  slackChannels: []
 });
 
 export const buildNextChannel = (existing: { name: string }[], channelType: AlertChannelType) => {

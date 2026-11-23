@@ -98,6 +98,15 @@ export class ProjectKeyStore implements TProjectKeyStore {
     }
   }
 
+  async findOrgIdIncludingPendingDeletion(projectId: string, options?: TReadOptions): Promise<string | null> {
+    try {
+      const project = await this.connection.reader(options)(TableName.Project).where({ id: projectId }).first("orgId");
+      return project?.orgId ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project org" });
+    }
+  }
+
   private static async hasDeleteAfterColumn(knex: Knex): Promise<boolean> {
     if (ProjectKeyStore.deleteAfterColumnSeen) return true;
     const exists = await knex.schema.hasColumn(TableName.Project, "deleteAfter");

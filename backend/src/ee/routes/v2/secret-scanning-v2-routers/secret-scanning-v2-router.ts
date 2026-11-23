@@ -11,6 +11,7 @@ import {
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningFindingLocationSchema } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import {
   SecretScanningDataSourceSchema,
   SecretScanningFindingSchema
@@ -223,9 +224,10 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.LIST.status),
         dataSourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.dataSourceId),
         resourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.resourceId),
+        scanId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.scanId),
         orderBy: z
           .nativeEnum(SecretScanningFindingOrderBy)
-          .default(SecretScanningFindingOrderBy.CreatedAt)
+          .default(SecretScanningFindingOrderBy.LastDetectedAt)
           .describe(SecretScanningFindings.LIST.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
@@ -242,11 +244,11 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { permission } = req;
       const projectId = req.internalSecretScanningProjectId;
-      const { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit } = req.query;
+      const { status, dataSourceId, resourceId, scanId, orderBy, orderDirection, offset, limit } = req.query;
 
       const { findings, totalCount } = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
         projectId,
-        { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit },
+        { status, dataSourceId, resourceId, scanId, orderBy, orderDirection, offset, limit },
         permission
       );
 
@@ -263,6 +265,67 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       });
 
       return { findings, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/findings/:findingId/locations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listSecretScanningFindingLocations",
+      tags: [ApiDocsTags.SecretScanning],
+      description: "List the places the specified Secret Scanning Finding's secret was found.",
+      params: z.object({
+        findingId: z.string().trim().uuid().describe(SecretScanningFindings.LIST_LOCATIONS.findingId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).default(0).describe(SecretScanningFindings.LIST_LOCATIONS.offset),
+        limit: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .default(100)
+          .describe(SecretScanningFindings.LIST_LOCATIONS.limit)
+      }),
+      response: {
+        200: z.object({ locations: SecretScanningFindingLocationSchema.array(), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const {
+        params: { findingId },
+        query: { offset, limit },
+        permission
+      } = req;
+
+      const { locations, totalCount, finding } =
+        await server.services.secretScanningV2.listSecretScanningFindingLocations(
+          { findingId, offset, limit },
+          permission
+        );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: finding.projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_FINDING_LOCATION_LIST,
+          metadata: {
+            findingId,
+            findingRule: finding.rule,
+            resourceId: finding.resourceId,
+            resourceName: finding.resourceName,
+            count: locations.length
+          }
+        }
+      });
+
+      return { locations, totalCount };
     }
   });
 
@@ -306,6 +369,9 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           type: EventType.SECRET_SCANNING_FINDING_UPDATE,
           metadata: {
             findingId,
+            findingRule: finding.rule,
+            resourceId: finding.resourceId,
+            resourceName: finding.resourceName,
             ...body
           }
         }
@@ -353,7 +419,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           projectId,
           event: {
             type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-            metadata: findingUpdatePayload
+            metadata: {
+              ...findingUpdatePayload,
+              findingRule: finding.rule,
+              resourceId: finding.resourceId,
+              resourceName: finding.resourceName
+            }
           }
         });
 
