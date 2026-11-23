@@ -5,7 +5,6 @@ import { AxiosError, HttpStatusCode } from "axios";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -111,7 +110,7 @@ export const refreshGitLabToken = async (
 
   try {
     const url = await getGitLabInstanceUrl(instanceUrl);
-    const { data } = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const { data } = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -216,7 +215,7 @@ export const exchangeGitLabOAuthCode = async (
     });
     const url = await getGitLabInstanceUrl(instanceUrl);
 
-    const response = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const response = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
