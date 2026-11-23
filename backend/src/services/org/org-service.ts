@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -147,6 +148,7 @@ type TOrgServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -184,7 +186,8 @@ export const orgServiceFactory = ({
   gatewayV2Service,
   auditLogSettingsService,
   eventEmitter,
-  orgInviteQuota
+  orgInviteQuota,
+  instanceConfigService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -875,10 +878,12 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
-    if (!trx) await usageMeteringService.syncSeats(organization.id);
-
-    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    // Seat sync calls the License Server and the usage event enqueues a job, so both wait for commit. A caller that
+    // passed a tx runs them after its own commit.
+    if (!trx) {
+      await usageMeteringService.syncSeats(organization.id);
+      usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    }
 
     return organization;
   };
@@ -1141,6 +1146,11 @@ export const orgServiceFactory = ({
     return `${appCfg.SITE_URL}/login`;
   };
 
+  const $isEmailLoginEnabled = async () => {
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    return loginPolicy.allows(LoginMethod.EMAIL);
+  };
+
   const resendOrgMemberInvitation = async ({
     orgId,
     actorId,
@@ -1171,10 +1181,43 @@ export const orgServiceFactory = ({
       [`${TableName.Membership}.id` as "id"]: membershipId
     });
 
+    if (!inviteeOrgMembership) {
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
+    }
+
     if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
       throw new BadRequestError({
         message: "Organization invitation already accepted"
       });
+    }
+
+    const inviteePermissions = await permissionService.getActorGrantAbilities({
+      scopeData: { scope: AccessScope.Organization, orgId },
+      actorId: inviteeOrgMembership.actorUserId as string,
+      actorType: ActorType.USER
+    });
+    if (inviteePermissions.length) {
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+        orgDAL.findById(orgId)
+      );
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: inviteePermissions,
+        baseMessage: "Failed to resend the invitation of this org member"
+      });
+    }
+
+    if (!org?.authEnforced && !(await $isEmailLoginEnabled())) {
+      const inviteeRole = await membershipRoleDAL.findOne({ membershipId: inviteeOrgMembership.id });
+      if (inviteeRole?.role !== OrgMembershipRole.Admin) {
+        throw new BadRequestError({
+          message:
+            "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
+        });
+      }
     }
 
     // Only a mailed invitation counts: without SMTP the caller gets the link instead. A step that fails before
@@ -1319,10 +1362,13 @@ export const orgServiceFactory = ({
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
-    if (
-      organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
-    ) {
+    const isAdminInvite = membershipRole.role === OrgMembershipRole.Admin;
+
+    if (!isAdminInvite && !(await $isEmailLoginEnabled())) {
+      return { user, organizationName: organization.name };
+    }
+
+    if (organization.authEnforced && !(organization.bypassOrgAuthEnabled && isAdminInvite)) {
       return { user, organizationName: organization.name };
     }
 

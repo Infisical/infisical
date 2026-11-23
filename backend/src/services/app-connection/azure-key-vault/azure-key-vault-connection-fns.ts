@@ -2,6 +2,7 @@
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -179,7 +180,8 @@ export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  instanceConfigService: TInstanceConfigService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -199,11 +201,9 @@ export const getAzureConnectionAccessToken = async (
 
   switch (appConnection.method) {
     case AzureKeyVaultConnectionMethod.OAuth:
-      const appCfg = getConfig();
-      if (
-        !appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID ||
-        !appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET
-      ) {
+      const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET } =
+        await instanceConfigService.getOverridableEnv();
+      if (!INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || !INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
         });
@@ -221,8 +221,8 @@ export const getAzureConnectionAccessToken = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `openid offline_access https://vault.azure.net/.default`,
-          client_id: appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID,
-          client_secret: appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET,
+          client_id: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID,
+          client_secret: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET,
           refresh_token: oauthCredentials.refreshToken
         })
       );
@@ -393,9 +393,11 @@ export const getAzureConnectionAccessToken = async (
   }
 };
 
-export const getAzureKeyVaultConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID } = getConfig();
-
+export const getAzureKeyVaultConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure Key Vault" as const,
     app: AppConnection.AzureKeyVault as const,
@@ -411,12 +413,14 @@ export const getAzureKeyVaultConnectionListItem = () => {
 
 export const validateAzureKeyVaultConnectionCredentials = async (
   config: TAzureKeyVaultConnectionConfig,
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  instanceConfigService: TInstanceConfigService
 ) => {
   const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
-  const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET, SITE_URL } =
-    getConfig();
+  const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureKeyVaultConnectionMethod.OAuth:

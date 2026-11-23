@@ -1,0 +1,87 @@
+version: v0.167.13
+releasedAt: 2026-11-19T09:52:49+02:00
+sourceTag: v0.167.13
+previousTag: v0.167.12
+impactLevel: low
+summary: Database migrations add Agent Vault and honey token alert tables and
+  indexes. Startup will apply them automatically; one rollback path has a strict
+  mixed-version requirement for Agent Vault OAuth variables.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Agent Vault OAuth variables
+    description: Agent Vault adds OAuth variable columns and related service
+      constraints. The migration is additive and also relaxes encryptedValue to
+      allow unsigned OAuth variables.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261118120000_agent-vault-oauth-variables.ts
+        path: backend/src/db/migrations/20261118120000_agent-vault-oauth-variables.ts
+        description: Adds type and oauthConfig columns
+  - title: Agent Vault session resources
+    description: Agent Vault adds session service and session skill tables, plus
+      inline skill columns and indexes for session-linked history.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261113150000_agent-vault-session-services.ts
+        path: backend/src/db/migrations/20261113150000_agent-vault-session-services.ts
+        description: Creates agent_vault_session_services table
+      - type: file
+        ref: backend/src/db/migrations/20261113170000_agent-vault-session-skills.ts
+        path: backend/src/db/migrations/20261113170000_agent-vault-session-skills.ts
+        description: Creates agent_vault_session_skills table
+  - title: Honey token trigger alerts
+    description: Honey token trigger notifications move into the shared alerts
+      system. Startup backfills alert, channel, membership, and recipient
+      records for non-revoked honey tokens.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261112190000_add-honey-token-trigger-alerts.ts
+        path: backend/src/db/migrations/20261112190000_add-honey-token-trigger-alerts.ts
+        description: Backfills alerts for live honey tokens
+  - title: Projects active type index
+    description: A concurrent partial index is added on projects for active org
+      workspace counting. It is additive and intended to reduce plan-check query
+      cost.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261118230000_add-projects-active-org-type-index.ts
+        path: backend/src/db/migrations/20261118230000_add-projects-active-org-type-index.ts
+        description: Creates concurrent partial projects index
+configChanges: []
+deploymentNotes: []
+knownIssues:
+  - title: Agent Vault OAuth rollback
+    description: Rolling back after newer servers create OAuth variables or inline
+      OAuth services can fail. The rollback explicitly stops if mixed-version
+      writes continue during downgrade.
+    action: Before rollback, stop servers running the newer version. Then retry the
+      rollback after older servers are the only writers.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261118120000_agent-vault-oauth-variables.ts
+        path: backend/src/db/migrations/20261118120000_agent-vault-oauth-variables.ts
+        description: Rollback error instructs stopping newer servers
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-19T08:29:48.505Z
+  sourceRange:
+    from: v0.167.12
+    to: v0.167.13

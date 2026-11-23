@@ -4,6 +4,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { assertPasswordNotBreached } from "@app/lib/validator/breached-password";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -42,6 +43,12 @@ export const authPaswordServiceFactory = ({
 
     if (type === ResetPasswordV2Type.Recovery) {
       if (!recoveryTokenJti || !recoveryTokenExpiresAt) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
+      // Before the claim, so the same link can be retried.
+      await assertPasswordNotBreached(newPassword);
+      // The lookup can outlast the token.
+      if (recoveryTokenExpiresAt <= Math.floor(Date.now() / 1000)) {
         throw new UnauthorizedError({ message: "Invalid recovery token" });
       }
       // Marker TTL tracks the token's own remaining lifetime so non-default JWT_SIGNUP_LIFETIME
@@ -83,6 +90,8 @@ export const authPaswordServiceFactory = ({
       if (!isValid) {
         throw new BadRequestError({ message: "Incorrect current password." });
       }
+
+      await assertPasswordNotBreached(newPassword);
     }
 
     const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
@@ -127,6 +136,9 @@ export const authPaswordServiceFactory = ({
   };
 
   const setupPassword = async ({ password, token }: TSetupPasswordViaBackupKeyDTO, actor: OrgServiceActor) => {
+    // Before token validation, which consumes the token.
+    await assertPasswordNotBreached(password);
+
     try {
       await tokenService.validateTokenForUser({
         type: TokenType.TOKEN_EMAIL_PASSWORD_SETUP,

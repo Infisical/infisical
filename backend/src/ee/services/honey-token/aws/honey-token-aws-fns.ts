@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -46,6 +47,7 @@ type TConfigProviderDep = {
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
@@ -70,13 +72,15 @@ export const verifyAwsStackDeployment = async ({
   stackName,
   awsRegion,
   appConnectionDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   connectionId: string;
   stackName: string;
   awsRegion: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<{ deployed: boolean; status: string | null }> => {
   try {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -86,7 +90,7 @@ export const verifyAwsStackDeployment = async ({
 
     const decryptedConnection = await decryptAppConnection(appConnection, kmsDataKeyService);
     const awsConfig = parseAwsConnectionConfig(decryptedConnection);
-    const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
+    const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig, instanceConfigService);
 
     const cfn = new CloudFormationClient({ credentials: awsCredentials, region: awsRegion });
     const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
@@ -210,18 +214,21 @@ const getManagedIamClient = async () => {
   }
 };
 
-const getIamClient = async (target: THoneyTokenCredentialTarget) => {
+const getIamClient = async (target: THoneyTokenCredentialTarget, instanceConfigService: TInstanceConfigService) => {
   if (target.managedBy === HoneyTokenManagedBy.Instance) {
     return getManagedIamClient();
   }
 
   const awsConfig = parseAwsConnectionConfig(target.appConnection);
-  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
+  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig, instanceConfigService);
   return { iam: new IAMClient({ credentials: awsCredentials, region }), path: undefined };
 };
 
-export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCredentialTarget) => {
-  const { iam, path } = await getIamClient(target);
+export const createAwsIamHoneyTokenCredentials = async (
+  target: THoneyTokenCredentialTarget,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { iam, path } = await getIamClient(target, instanceConfigService);
 
   const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
   try {
@@ -263,13 +270,15 @@ export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCrede
 export const revokeAwsIamHoneyTokenCredentials = async ({
   target,
   iamUserName,
-  accessKeyId
+  accessKeyId,
+  instanceConfigService
 }: {
   target: THoneyTokenCredentialTarget;
   iamUserName: string;
   accessKeyId: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const { iam } = await getIamClient(target);
+  const { iam } = await getIamClient(target, instanceConfigService);
 
   // NoSuchEntity means a previous attempt or a manual cleanup already removed it. Anything else
   // (throttling, a role that lost iam:DeleteUser) has to surface so the caller can retry, or the IAM user is
@@ -304,7 +313,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
   kmsDataKeyService,
   licenseService,
-  appConnectionDAL
+  appConnectionDAL,
+  instanceConfigService
 }: TConfigProviderDep) => {
   const upsertConfig = async ({
     orgId,
@@ -332,7 +342,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: validatedConfig.stackName,
       awsRegion: validatedConfig.awsRegion,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
     const derivedStatus = stackDeployment.deployed
       ? HoneyTokenConfigStatus.Complete
@@ -394,7 +405,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: storedConfig.stackName,
       awsRegion: storedConfig.awsRegion,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     await honeyTokenConfigDAL.updateById(config.id, {

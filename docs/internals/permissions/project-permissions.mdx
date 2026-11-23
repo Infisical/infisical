@@ -561,6 +561,15 @@ These actions cover [global variables](/documentation/platform/agent-vault/varia
 | `issue-token` | [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token)                   |
 | `revoke`      | Revoke a proxy's access, so the proxy stops adding credentials to requests                                    |
 
+#### Subject: `agent-vault-hooks`
+
+| Action   | Description                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
+| `read`   | View the project's [hooks](/documentation/platform/agent-vault/hooks) (also needed to pick a hook on a service) |
+| `create` | Create hooks                                                                                                  |
+| `edit`   | Change a hook's name, description, URL, or secret                                                             |
+| `delete` | Delete hooks, which takes them off every service that uses them                                               |
+
 #### Shared subjects in Agent Vault projects
 
 A role in an Agent Vault project also uses these subjects from [core platform and access control](#core-platform-&-access-control). A rule for any other subject has no effect in an Agent Vault project.
@@ -568,9 +577,9 @@ A role in an Agent Vault project also uses these subjects from [core platform an
 | Subject                                          | Actions that apply in Agent Vault                                                                                                   |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [`role`](#subject-role)                       | Every action                                                                                                                        |
-| [`member`](#subject-member)                   | Every action except `assign-additional-privileges`                                                                                  |
+| [`member`](#subject-member)                   | Every action except `assign-additional-privileges` and `assume-privileges`                                                          |
 | [`groups`](#subject-groups)                   | Every action                                                                                                                        |
-| [`identity`](#subject-identity)               | Every action except `assign-additional-privileges`                                                                                  |
+| [`identity`](#subject-identity)               | Every action except `assign-additional-privileges` and `assume-privileges`                                                          |
 | [`app-connections`](#subject-app-connections) | Every action, for the app connection that [stores session logs externally](/documentation/platform/agent-vault/external-log-storage) |
 | [`settings`](#subject-settings)               | `read` and `edit`, for [session log settings](/documentation/platform/agent-vault/session-logs#managing-session-logs)               |
 | [`audit-logs`](#subject-audit-logs)           | Every action                                                                                                                        |

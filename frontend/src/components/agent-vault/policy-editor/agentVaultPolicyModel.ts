@@ -118,6 +118,7 @@ export const createEmptyAgentVaultPolicy = (): TAgentVaultPolicy => ({
   delegations: emptySets(),
   variables: emptySets(),
   proxies: emptySets(),
+  hooks: emptySets(),
   members: emptySets(),
   roles: emptySets(),
   appConnections: emptySets(),
@@ -1139,14 +1140,15 @@ const withLevels = (levels: Partial<Record<TPermissionRowKey, string>>) =>
     createEmptyAgentVaultPolicy()
   );
 
-// What a role that starts sessions needs: its own sessions, with skills sent along, and viewing proxies.
+// What a role that starts sessions needs: its own sessions, with skills sent along, and viewing proxies and hooks.
 const SESSION_USER_LEVELS: Partial<Record<TPermissionRowKey, string>> = {
   sessions: "own",
   inlineSkills: "yes",
-  proxies: "view"
+  proxies: "view",
+  hooks: "view"
 };
 
-const BASICS = "Their own sessions, and viewing proxies";
+const BASICS = "Their own sessions, and viewing proxies and hooks";
 
 export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
   {

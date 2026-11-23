@@ -51,7 +51,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Modal](https://modal.com) account, with a [Modal token](https://modal.com/docs/reference/cli/token) on the machine that runs your code (run `modal setup`, or set `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`)
 - The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) package for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
-- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
+- The Infisical SDK for your language: the [Python SDK](/sdks/languages/python), the [Node.js SDK](/sdks/languages/node), or the [Go SDK](/sdks/languages/go)
 
 ## Step 1: Set up Agent Vault
 
@@ -391,16 +391,14 @@ export async function runAgent(prompt: string): Promise<string> {
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"time"
 
+	infisical "github.com/infisical/go-sdk"
 	modal "github.com/modal-labs/modal-client/go"
 )
 
@@ -433,72 +431,31 @@ var agentEnv = map[string]string{
 	"DISABLE_AUTOUPDATER":                      "1",
 }
 
-func infisical(ctx context.Context, path, token string, body, out any) error {
-	var reader io.Reader
-	if body != nil {
-		encoded, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		reader = bytes.NewReader(encoded)
-	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, infisicalURL+path, reader)
-	if err != nil {
-		return err
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		text, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("infisical returned %d: %s", resp.StatusCode, text)
-	}
-	if out == nil {
-		return nil
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
-}
-
 func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *modal.Image, prompt string) (output string, err error) {
+	// Cancelling the context stops the Infisical client's token refresh when the run ends.
+	clientCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// The machine identity's credentials stay here and never enter the sandbox.
-	var login struct {
-		AccessToken string `json:"accessToken"`
-	}
-	err = infisical(ctx, "/api/v1/auth/universal-auth/login", "", map[string]string{
-		"clientId":     os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"),
-		"clientSecret": os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"),
-	}, &login)
+	infisicalClient := infisical.NewInfisicalClient(clientCtx, infisical.Config{SiteUrl: infisicalURL})
+	_, err = infisicalClient.Auth().UniversalAuthLogin(
+		os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"),
+		os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"),
+	)
 	if err != nil {
 		return "", err
 	}
 
 	// One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
 	// the agent can't lose access mid-run.
-	var created struct {
-		Session struct {
-			ID    string `json:"id"`
-			Token string `json:"token"`
-		} `json:"session"`
-	}
-	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
-		"projectId":    projectID,
-		"accessBundle": accessBundle,
-		"ttl":          "20m",
-	}, &created)
+	session, err := infisicalClient.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+		ProjectID:    projectID,
+		AccessBundle: accessBundle,
+		TTL:          "20m",
+	})
 	if err != nil {
 		return "", err
 	}
-	session := created.Session
 
 	var sandbox *modal.Sandbox
 	// Deferred calls run last-in, first-out, so the session is revoked first
@@ -510,7 +467,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 		}
 	}()
 	defer func() {
-		revokeErr := infisical(context.Background(), "/api/v1/agent-vault/sessions/"+session.ID+"/revoke", login.AccessToken, nil, nil)
+		_, revokeErr := infisicalClient.AgentVault().Sessions().Revoke(session.ID)
 		err = errors.Join(err, revokeErr)
 	}()
 

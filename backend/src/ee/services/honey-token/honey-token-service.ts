@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -98,6 +99,7 @@ export type THoneyTokenServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -154,6 +156,7 @@ export const honeyTokenServiceFactory = ({
   permissionService,
   licenseService,
   kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL,
   appConnectionService,
   projectDAL,
@@ -180,6 +183,7 @@ export const honeyTokenServiceFactory = ({
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     kmsDataKeyService,
+    instanceConfigService,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL

@@ -14,12 +14,14 @@ import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/m
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -88,6 +90,7 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
@@ -113,6 +116,7 @@ export const projectMembershipServiceFactory = ({
   membershipRoleDAL,
   applicationMembershipCleanupService,
   usageMeteringService,
+  keyStore,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
@@ -605,6 +609,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    await invalidateFolderAccessCache(keyStore, projectId);
     return memberships;
   };
 
@@ -699,6 +704,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+    await invalidateFolderAccessCache(keyStore, projectId);
     return deletedMembership;
   };
 

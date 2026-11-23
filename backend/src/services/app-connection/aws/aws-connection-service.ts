@@ -12,6 +12,7 @@ import {
   ListAliasesCommand
 } from "@aws-sdk/client-kms";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -33,9 +34,10 @@ type TGetAppConnectionFunc = (
 
 const listAwsKmsKeys = async (
   appConnection: TAwsConnection,
-  { region, destination }: Pick<TListAwsConnectionKmsKeys, "region" | "destination">
+  { region, destination }: Pick<TListAwsConnectionKmsKeys, "region" | "destination">,
+  instanceConfigService: TInstanceConfigService
 ) => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const { credentials } = await getAwsConnectionConfig(appConnection, instanceConfigService, region);
 
   const awsKms = new KMSClient({
     credentials,
@@ -88,8 +90,8 @@ const listAwsKmsKeys = async (
   return kmsKeys;
 };
 
-const listAwsIamUsers = async (appConnection: TAwsConnection) => {
-  const { region, credentials } = await getAwsConnectionConfig(appConnection);
+const listAwsIamUsers = async (appConnection: TAwsConnection, instanceConfigService: TInstanceConfigService) => {
+  const { region, credentials } = await getAwsConnectionConfig(appConnection, instanceConfigService);
 
   const iam = new IAMClient({ credentials, region });
 
@@ -129,9 +131,10 @@ export type TAwsListenerInfo = {
 
 const listAwsLoadBalancers = async (
   appConnection: TAwsConnection,
-  { region }: { region: AWSRegion }
+  { region }: { region: AWSRegion },
+  instanceConfigService: TInstanceConfigService
 ): Promise<TAwsLoadBalancerInfo[]> => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const { credentials } = await getAwsConnectionConfig(appConnection, instanceConfigService, region);
 
   const elbClient = new ElasticLoadBalancingV2Client({
     credentials,
@@ -175,9 +178,10 @@ const listAwsLoadBalancers = async (
 
 const listAwsListeners = async (
   appConnection: TAwsConnection,
-  { region, loadBalancerArn }: { region: AWSRegion; loadBalancerArn: string }
+  { region, loadBalancerArn }: { region: AWSRegion; loadBalancerArn: string },
+  instanceConfigService: TInstanceConfigService
 ): Promise<TAwsListenerInfo[]> => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const { credentials } = await getAwsConnectionConfig(appConnection, instanceConfigService, region);
 
   const elbClient = new ElasticLoadBalancingV2Client({
     credentials,
@@ -225,14 +229,17 @@ const listAwsListeners = async (
   return listeners;
 };
 
-export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
+export const awsConnectionService = (
+  getAppConnection: TGetAppConnectionFunc,
+  instanceConfigService: TInstanceConfigService
+) => {
   const listKmsKeys = async (
     { connectionId, region, destination }: TListAwsConnectionKmsKeys,
     actor: OrgServiceActor
   ) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
-    const kmsKeys = await listAwsKmsKeys(appConnection, { region, destination });
+    const kmsKeys = await listAwsKmsKeys(appConnection, { region, destination }, instanceConfigService);
 
     return kmsKeys;
   };
@@ -240,7 +247,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   const listIamUsers = async ({ connectionId }: TListAwsConnectionIamUsers, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
-    const iamUsers = await listAwsIamUsers(appConnection);
+    const iamUsers = await listAwsIamUsers(appConnection, instanceConfigService);
 
     return iamUsers;
   };
@@ -251,7 +258,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   ) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
-    const loadBalancers = await listAwsLoadBalancers(appConnection, { region });
+    const loadBalancers = await listAwsLoadBalancers(appConnection, { region }, instanceConfigService);
 
     return loadBalancers;
   };
@@ -262,7 +269,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   ) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
-    const listeners = await listAwsListeners(appConnection, { region, loadBalancerArn });
+    const listeners = await listAwsListeners(appConnection, { region, loadBalancerArn }, instanceConfigService);
 
     return listeners;
   };

@@ -50,7 +50,7 @@ export const isAgentVaultSelf = (actor: { type: AgentVaultMemberType; id: string
 export const AGENT_VAULT_MEMBER_ROLE_ALIAS = ProjectMembershipRole.Member as string;
 export const AGENT_VAULT_MEMBER_ROLE_SLUG = "member-role";
 
-export const AGENT_VAULT_MEMBER_ROLE_DESCRIPTION = "Start and manage their own sessions, and view proxies.";
+export const AGENT_VAULT_MEMBER_ROLE_DESCRIPTION = "Start and manage their own sessions, and view proxies and hooks.";
 
 // The role migration gives the Member role an id derived from its project's, so the alias finds it whatever an admin
 // renames, re-describes or narrows on it, and no other role can pass for it. The migration derives it with the same

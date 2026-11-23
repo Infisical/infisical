@@ -317,6 +317,13 @@ export enum ProjectPermissionAgentVaultSkillActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionAgentVaultHookActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 // Use lets a session reach the service; Read only shows it.
 export enum ProjectPermissionAgentVaultServiceActions {
   Read = "read",
@@ -518,6 +525,7 @@ export enum ProjectPermissionSub {
   AgentVaultSkills = "agent-vault-skills",
   AgentVaultServices = "agent-vault-services",
   AgentVaultVariables = "agent-vault-variables",
+  AgentVaultHooks = "agent-vault-hooks",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -836,6 +844,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
+  | [ProjectPermissionAgentVaultHookActions, ProjectPermissionSub.AgentVaultHooks]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

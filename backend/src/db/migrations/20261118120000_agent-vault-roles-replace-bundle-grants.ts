@@ -27,11 +27,12 @@ const RESOURCE_SCOPE = "resource";
 // saw only the bundles granted to them and the skills in those, which the bundle roles below now give.
 const MEMBER_PERMISSIONS = [
   ["read,create,edit,revoke,create-with-inline-skills", "agent-vault-sessions"],
-  ["read", "agent-vault-proxies"]
+  ["read", "agent-vault-proxies"],
+  ["read", "agent-vault-hooks"]
 ];
 const MEMBER_ROLE_NAME = "Member";
 const MEMBER_ROLE_SLUG = "member-role";
-const MEMBER_ROLE_DESCRIPTION = "Start and manage their own sessions, and view proxies.";
+const MEMBER_ROLE_DESCRIPTION = "Start and manage their own sessions, and view proxies and hooks.";
 // The Member role's id is derived from the project's, as agentVaultMemberRoleIdOf derives it at runtime, so the legacy
 // `member` alias finds the role this makes whatever an admin later edits on it.
 const MEMBER_ROLE_ID_NAMESPACE = "8f4f5a2e-61b4-4c2e-9d0e-3b7a1c9e5d42";

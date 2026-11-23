@@ -2,6 +2,7 @@
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
@@ -58,6 +59,7 @@ type TGcpCertificateManagerPkiSyncFactoryDeps = {
     | "updateSyncStatus"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type TPlannedCertificate = { skipReason: string } | { target: TUploadTarget };
@@ -118,7 +120,8 @@ const GCP_MAP_ENTRY_OPERATION: Record<GcpCertificateManagerAction, string> = {
 
 export const gcpCertificateManagerPkiSyncFactory = ({
   certificateSyncDAL,
-  certificateDAL
+  certificateDAL,
+  instanceConfigService
 }: TGcpCertificateManagerPkiSyncFactoryDeps) => {
   const sameCertificateSet = (current: string[] | undefined, desired: string[]) => {
     if ((current?.length ?? 0) !== desired.length) return false;
@@ -641,7 +644,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
     const userLabels = syncOptions?.labels;
 
-    const accessToken = await getGcpAccessToken(pkiSync);
+    const accessToken = await getGcpAccessToken(pkiSync, instanceConfigService);
     const client = createGcpCertificateManagerClient({ accessToken, gcpProjectId, location, syncId: pkiSync.id });
 
     if (certificateMapBinding) {
@@ -819,7 +822,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
   ) => {
     const { gcpProjectId, location, certificateMapBinding } = getConfig(pkiSync);
 
-    const accessToken = await getGcpAccessToken(pkiSync);
+    const accessToken = await getGcpAccessToken(pkiSync, instanceConfigService);
     const client = createGcpCertificateManagerClient({ accessToken, gcpProjectId, location, syncId: pkiSync.id });
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);

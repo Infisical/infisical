@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
@@ -20,6 +21,7 @@ export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;

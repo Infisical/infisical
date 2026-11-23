@@ -1,6 +1,7 @@
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
@@ -25,6 +26,7 @@ export type TCapabilityRowKey =
   | "delegations"
   | "variables"
   | "proxies"
+  | "hooks"
   | "members"
   | "roles"
   | "appConnections"
@@ -81,6 +83,7 @@ const SessionAction = ProjectPermissionAgentVaultSessionActions;
 const BundleAction = ProjectPermissionAgentVaultAccessBundleActions;
 const VariableAction = ProjectPermissionAgentVaultVariableActions;
 const ProxyAction = ProjectPermissionAgentVaultProxyActions;
+const HookAction = ProjectPermissionAgentVaultHookActions;
 const ConnectionAction = ProjectPermissionAppConnectionActions;
 const MemberAction = ProjectPermissionMemberActions;
 const GroupAction = ProjectPermissionGroupActions;
@@ -116,6 +119,7 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   },
   [Sub.AgentVaultVariables]: { readAction: VariableAction.Read },
   [Sub.AgentVaultProxies]: { readAction: ProxyAction.Read },
+  [Sub.AgentVaultHooks]: { readAction: HookAction.Read },
   // Agent Vault gives access through roles alone, so nothing there checks additional privileges.
   [Sub.Member]: {
     readAction: MemberAction.Read,
@@ -636,6 +640,43 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
         ]
       }
     ]
+  },
+  {
+    key: "hooks",
+    label: "Hooks",
+    description:
+      "Saved hooks: servers of yours that the proxy asks before it lets a request or connection through. Picking a hook on a service also takes editing that service.",
+    actions: [
+      single(
+        Sub.AgentVaultHooks,
+        HookAction.Read,
+        "View",
+        "See the project's hooks and pick one on a service."
+      ),
+      single(Sub.AgentVaultHooks, HookAction.Create, "Create", "Add hooks."),
+      single(Sub.AgentVaultHooks, HookAction.Edit, "Edit", "Change a hook's name, URL or secret."),
+      single(
+        Sub.AgentVaultHooks,
+        HookAction.Delete,
+        "Delete",
+        "Delete hooks, which takes them off every service."
+      )
+    ],
+    levels: [
+      { value: NONE_LEVEL, label: "No Access", summary: "", allow: [] },
+      { value: "view", label: "View", summary: "View", allow: [HookAction.Read] },
+      {
+        value: "manage",
+        label: "Manage",
+        summary: "View, create, edit and delete",
+        allow: [HookAction.Read, HookAction.Create, HookAction.Edit, HookAction.Delete]
+      }
+    ],
+    risk: {
+      actions: [HookAction.Edit],
+      message:
+        "Can point a hook at another server, which then sees the requests of every service that uses it."
+    }
   },
   {
     key: "members",

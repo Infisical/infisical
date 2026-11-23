@@ -118,7 +118,8 @@ export const convertAgentVaultMemberRows = async (projectId: string) => {
         projectId,
         permissions: JSON.stringify([
           ["read,create,edit,revoke,create-with-inline-skills", "agent-vault-sessions"],
-          ["read", "agent-vault-proxies"]
+          ["read", "agent-vault-proxies"],
+          ["read", "agent-vault-hooks"]
         ])
       } as never)
       .returning("id")) as { id: string }[];

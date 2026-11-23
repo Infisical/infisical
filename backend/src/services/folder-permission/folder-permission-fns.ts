@@ -1,14 +1,20 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
+import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretFolderActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { conditionsMatcher } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -16,6 +22,24 @@ import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import { TFolderGrant, TFolderGrantActor, TFolderGrantTypeInput, TResolvedFolder } from "./folder-permission-types";
+
+export const invalidateFolderAccessCache = async (
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">,
+  projectId: string
+) => {
+  try {
+    await keyStore.incrementSeededWithExpiry(
+      KeyStorePrefixes.ProjectFolderAccessRosterVersion(projectId),
+      Date.now(),
+      KeyStoreTtls.ProjectFolderAccessRosterVersionTtlSeconds
+    );
+  } catch (err) {
+    logger.warn(
+      { err, projectId },
+      `invalidateFolderAccessCache: failed to clear folder access roster cache. projectId: ${projectId}`
+    );
+  }
+};
 
 export const computeTemporaryFields = (type: TFolderGrantTypeInput | undefined) => {
   if (!type?.isTemporary) {
@@ -64,7 +88,7 @@ export const resolveFolder = async (
   if (folder.isReserved) {
     throw new BadRequestError({ message: "Folder access cannot be granted on a reserved system folder." });
   }
-  return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug };
+  return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug, envId: folder.envId };
 };
 
 // fetched before the folder is resolved so a caller without project access gets a permission error
@@ -113,6 +137,42 @@ export const assertManageFolderAccess = (
       secretPath: folder.path
     })
   );
+};
+
+export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
+  if (folder.path !== "/") {
+    throw new BadRequestError({
+      message: `Folder access on '${folder.path}' in environment with slug '${folder.environmentSlug}' cannot apply to subfolders. Only folder access on the root folder '/' can apply to subfolders. Grant access on this folder only, or grant it on '/'.`
+    });
+  }
+};
+
+export const assertManageFolderSubtree = (
+  callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
+  folder: TResolvedFolder,
+  operation: "apply" | "remove" = "apply"
+) => {
+  const subtreeManageAccess = createMongoAbility<ProjectPermissionSet>(
+    [
+      {
+        action: ProjectPermissionSecretFolderActions.ManageAccess,
+        subject: ProjectPermissionSub.SecretFolders,
+        conditions: { environment: folder.environmentSlug, secretPath: { $glob: recursiveFolderPathGlob(folder.path) } }
+      }
+    ] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+    { conditionsMatcher }
+  );
+  const { isValid } = validatePermissionBoundary(callerPermission, subtreeManageAccess);
+  if (!isValid) {
+    logger.warn({ callerPermission, subtreeManageAccess }, "assertManageFolderSubtree: invalid permission boundary");
+    throw new ForbiddenRequestError({
+      name: "RecursiveFolderAccessNotAllowed",
+      message:
+        operation === "remove"
+          ? `Removing folder access that applies to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Ask someone who can manage access on all of its subfolders to remove it.`
+          : `Applying folder access to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Grant access on this folder only, or ask someone who can manage access on all of its subfolders.`
+    });
+  }
 };
 
 // Access can be inherited from a group, so this cannot be a membership lookup on
@@ -189,11 +249,12 @@ export const toFolderGrant = (
     | "temporaryRange"
     | "temporaryAccessStartTime"
     | "temporaryAccessEndTime"
+    | "appliesToSubfolders"
     | "createdAt"
     | "updatedAt"
   >,
   projectId: string,
-  folder: TResolvedFolder
+  folder: Pick<TResolvedFolder, "id" | "path" | "environmentSlug">
 ): TFolderGrant => ({
   id: row.id,
   projectId,
@@ -206,6 +267,7 @@ export const toFolderGrant = (
   temporaryRange: row.temporaryRange ?? null,
   temporaryAccessStartTime: row.temporaryAccessStartTime ?? null,
   temporaryAccessEndTime: row.temporaryAccessEndTime ?? null,
+  isPermissionRecursive: row.appliesToSubfolders ?? false,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
 });

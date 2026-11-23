@@ -9,7 +9,8 @@ import {
   Package,
   Server,
   Settings,
-  Shield
+  Shield,
+  Webhook
 } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
@@ -26,6 +27,7 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub,
   useProjectPermission,
@@ -109,6 +111,15 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       icon: BookOpenText,
       pathSuffix: "skills",
       hidden: !canReadAgentVaultSkills(permission)
+    },
+    {
+      label: "Hooks",
+      icon: Webhook,
+      pathSuffix: "hooks",
+      hidden: !permission.can(
+        ProjectPermissionAgentVaultHookActions.Read,
+        ProjectPermissionSub.AgentVaultHooks
+      )
     }
   ];
 

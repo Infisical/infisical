@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { createS3Client } from "@app/lib/aws/s3";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -33,10 +34,11 @@ export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S
 
 export const resolveS3RecordingAccess = async (
   appConnection: TAppConnection,
-  region: string | undefined
+  region: string | undefined,
+  instanceConfigService: TInstanceConfigService
 ): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "getHttpsAgent" | "awsCredentials">> => {
   if (appConnection.app === AppConnection.S3Compatible) {
-    const s3Config = await getS3CompatibleConnectionConfig(appConnection);
+    const s3Config = await getS3CompatibleConnectionConfig(appConnection, instanceConfigService);
     return {
       region: s3Config.region,
       endpoint: s3Config.endpoint,
@@ -55,7 +57,11 @@ export const resolveS3RecordingAccess = async (
     throw new BadRequestError({ message: "Select the AWS region of the recording bucket" });
   }
 
-  const awsConfig = await getAwsConnectionConfig(appConnection as unknown as TAwsConnectionConfig, region as AWSRegion);
+  const awsConfig = await getAwsConnectionConfig(
+    appConnection as unknown as TAwsConnectionConfig,
+    instanceConfigService,
+    region as AWSRegion
+  );
   return { region, awsCredentials: awsConfig.credentials };
 };
 

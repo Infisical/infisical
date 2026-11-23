@@ -17,6 +17,7 @@ import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permiss
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
@@ -52,6 +53,11 @@ const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
       `variables ${action}`,
       ability.can(action, ProjectPermissionSub.AgentVaultVariables)
     ]),
+    ...[
+      ProjectPermissionAgentVaultHookActions.Create,
+      ProjectPermissionAgentVaultHookActions.Edit,
+      ProjectPermissionAgentVaultHookActions.Delete
+    ].map((action) => [`hooks ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultHooks)]),
     ["settings read", ability.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)],
     ["settings edit", ability.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)],
     ["proxies edit", ability.can(ProjectPermissionAgentVaultProxyActions.Edit, ProjectPermissionSub.AgentVaultProxies)],
@@ -116,6 +122,7 @@ describe("agent vault project roles", () => {
     ).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Create, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Delete, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
+    expect(admin.can(ProjectPermissionAgentVaultHookActions.Edit, ProjectPermissionSub.AgentVaultHooks)).toBe(true);
 
     expect(admin.can(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek)).toBe(false);
     expect(admin.can(ProjectPermissionSecretSyncActions.Create, ProjectPermissionSub.SecretSyncs)).toBe(false);

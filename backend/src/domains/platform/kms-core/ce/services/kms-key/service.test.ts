@@ -21,7 +21,7 @@ const setup = (options: { withHook?: boolean } = {}) => {
     Buffer.concat([Buffer.from("ext:"), plainText])
   );
   const decrypt = vi.fn(async (_ref: unknown, _cipher: TCipherPair, blob: Buffer) => Buffer.from(blob.subarray(4)));
-  const hook: TExternalKmsHook = { encrypt, decrypt };
+  const hook: TExternalKmsHook = { assertInputsAllowed: async () => {}, encrypt, decrypt };
 
   const service = new KmsKeyService(
     memory.transactionRunner,
@@ -41,7 +41,13 @@ const setup = (options: { withHook?: boolean } = {}) => {
   };
 
   const seedExternalKey = async (orgId: string, name = "aws-key") => {
-    const key = KmsKey.createExternal({ orgId, name, provider: "aws", encryptedProviderInputs: Buffer.alloc(1) });
+    const key = KmsKey.createExternal({
+      orgId,
+      name,
+      provider: "aws",
+      encryptedProviderInputs: Buffer.alloc(1),
+      providerInputsVersion: 2
+    });
     await memory.kmsKeyStore.insert(key);
     return key;
   };

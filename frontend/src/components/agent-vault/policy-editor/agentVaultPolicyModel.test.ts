@@ -55,6 +55,7 @@ const SESSIONS = "agent-vault-sessions";
 const BUNDLES = "agent-vault-access-bundles";
 const PROXIES = "agent-vault-proxies";
 const VARIABLES = "agent-vault-variables";
+const HOOKS = "agent-vault-hooks";
 
 // Mirrors buildAgentVaultProjectAdminPermissionRules in backend/src/ee/services/permission/default-roles.ts.
 const ADMIN_RULES: TProjectPermission[] = [
@@ -78,6 +79,7 @@ const ADMIN_RULES: TProjectPermission[] = [
   { subject: SKILLS, action: ["read", "use", "create", "edit", "delete"] },
   { subject: SERVICES, action: ["read", "use", "create", "edit", "delete"] },
   { subject: VARIABLES, action: ["read", "create", "edit", "delete", "read-value"] },
+  { subject: HOOKS, action: ["read", "create", "edit", "delete"] },
   {
     subject: "app-connections",
     action: [
@@ -127,10 +129,11 @@ const ADMIN_RULES: TProjectPermission[] = [
   { subject: "audit-logs", action: ["read", "edit"] }
 ];
 
-// The Member role the role migration makes: own sessions, with skills sent along, and viewing proxies.
+// The Member role the role migration makes: own sessions, with skills sent along, and viewing proxies and hooks.
 const MEMBER_RULES: TProjectPermission[] = [
   { subject: SESSIONS, action: ["read", "create", "edit", "revoke", "create-with-inline-skills"] },
-  { subject: PROXIES, action: ["read"] }
+  { subject: PROXIES, action: ["read"] },
+  { subject: HOOKS, action: ["read"] }
 ];
 
 // Agent Vault checks neither: session log settings are only read and changed, and it gives access through roles alone.
@@ -477,6 +480,7 @@ describe("round trips", () => {
       delegations: { allow: [], deny: [] },
       variables: { allow: ["read", "read-value"], deny: ["delete"] },
       proxies: { allow: ["read", "issue-token"], deny: [] },
+      hooks: { allow: ["read"], deny: [] },
       members: {
         allow: ["users.read", "identities.read", "identities.get-token"],
         deny: ["groups.delete"]
@@ -1480,13 +1484,15 @@ describe("templates", () => {
     const ownSessions = ["read", "create", "edit", "revoke", "create-with-inline-skills"];
     expect(policyToRules(template("service-user"))).toEqual([
       { subject: SESSIONS, action: ownSessions },
-      { subject: PROXIES, action: ["read"] }
+      { subject: PROXIES, action: ["read"] },
+      { subject: HOOKS, action: ["read"] }
     ]);
     expect(policyToRules(template("builder"))).toEqual([
       { subject: SERVICES, action: ["read", "use", "edit", "create"] },
       { subject: BUNDLES, action: ["read", "use", "edit", "create"] },
       { subject: SESSIONS, action: ownSessions },
-      { subject: PROXIES, action: ["read"] }
+      { subject: PROXIES, action: ["read"] },
+      { subject: HOOKS, action: ["read"] }
     ]);
     expect(policyToRules(template("auditor"))).toEqual([
       {
@@ -1494,6 +1500,7 @@ describe("templates", () => {
         action: ["read", "create", "edit", "revoke", "read-any", "create-with-inline-skills"]
       },
       { subject: PROXIES, action: ["read"] },
+      { subject: HOOKS, action: ["read"] },
       { subject: "member", action: ["read"] },
       { subject: "groups", action: ["read"] },
       { subject: "identity", action: ["read"] },
@@ -1511,7 +1518,7 @@ describe("templates", () => {
 });
 
 describe("a Member role", () => {
-  it("reads as own sessions with skills sent along, and viewing proxies", () => {
+  it("reads as own sessions with skills sent along, and viewing proxies and hooks", () => {
     const { policy, unsupported } = rulesToPolicy(MEMBER_RULES);
     const levels = Object.fromEntries(
       PERMISSION_ROWS.map((row) => [row.key, getRowLevel(policy, row.key)])
@@ -1528,6 +1535,7 @@ describe("a Member role", () => {
       delegations: NONE_LEVEL,
       variables: NONE_LEVEL,
       proxies: "view",
+      hooks: "view",
       members: NONE_LEVEL,
       roles: NONE_LEVEL,
       appConnections: NONE_LEVEL,
