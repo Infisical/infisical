@@ -12,14 +12,13 @@ export const getPolicyRenewalApproval = (policy: Pick<TApprovalPolicy, "constrai
 export const RENEWAL_APPROVAL_OPTIONS = [
   {
     value: CertRequestRenewalApproval.OnChange,
-    title: "When the renewal changes the certificate",
-    description:
-      "Renewals with changes, as well as renewals of imported and discovered certificates, need approval."
+    title: "When the certificate changes",
+    description: "Imported and discovered certificates always require renewal approval."
   },
   {
     value: CertRequestRenewalApproval.Always,
     title: "Every renewal",
-    description: "Includes automatic renewals."
+    description: "Even when the certificate remains unchanged."
   }
 ] as const;
 

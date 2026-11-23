@@ -70,7 +70,7 @@ export const PolicyReviewStep = () => {
           {!isRevocationPolicy && (
             <>
               <ReviewField
-                label="Renewals Requiring Approval"
+                label="Renewals Require Approval"
                 value={
                   RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
                     ?.title ?? "Not set"

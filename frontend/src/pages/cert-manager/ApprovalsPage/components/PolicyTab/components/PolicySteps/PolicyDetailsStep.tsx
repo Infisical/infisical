@@ -274,11 +274,11 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
             name="renewalApproval"
             render={({ field: { value, onChange } }) => (
               <Field>
-                <FieldLabel>Renewals Requiring Approval</FieldLabel>
+                <FieldLabel>Renewals Require Approval</FieldLabel>
                 <RadioGroup
                   value={value}
                   onValueChange={onChange}
-                  aria-label="Renewals requiring approval"
+                  aria-label="Renewals require approval"
                 >
                   {RENEWAL_APPROVAL_OPTIONS.map((option) => (
                     <FieldLabel
