@@ -12,7 +12,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -112,6 +112,9 @@ export const newProjectMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.data.identityId}' not found` });
+    }
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
     }
@@ -191,6 +194,9 @@ export const newProjectMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
       identityDAL.findById(dto.selector.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.selector.identityId}' not found` });
+    }
     if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
     }
@@ -272,6 +278,9 @@ export const newProjectMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
       identityDAL.findById(dto.selector.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.selector.identityId}' not found` });
+    }
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
     }
