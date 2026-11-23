@@ -7,7 +7,10 @@ import {
   buildFileTree,
   Button,
   FileTreeNode,
-  Spinner
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { getSecretSyncRelativeFolder } from "@app/helpers/secretSyncs";
 import {
@@ -111,19 +114,36 @@ export const SecretSyncSourceFolderTree = ({
             <AnimatedCollapse isOpen={isReviewOpen}>
               <div className="flex flex-col gap-2 px-4 pb-3 text-xs text-label">
                 <p>
-                  Turn on Mirror folder structure in the next step to keep each one at its own path.
-                  To flatten instead, rename or move one secret in each pair first.
+                  Turn on Mirror folder structure in the Destination step to keep each one at its
+                  own path. To continue without folder structure mirroring, please resolve the
+                  conflicts as listed below.
                 </p>
                 <ul className="flex flex-col gap-1.5">
                   {conflicts.map((conflict) => (
                     <li key={conflict.key}>
-                      <span className="font-mono font-semibold">{conflict.key}</span> in{" "}
-                      {conflict.paths.map((path, index) => (
-                        <span key={path}>
-                          {index > 0 && ", "}
-                          <span className="font-mono">{path}</span>
-                        </span>
-                      ))}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-default text-left underline decoration-dotted underline-offset-2"
+                          >
+                            Secret key{" "}
+                            <span className="font-mono font-semibold">{conflict.key}</span> is
+                            duplicated {conflict.paths.length}{" "}
+                            {conflict.paths.length > 1 ? "times" : "time"}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start">
+                          <p className="mb-1 text-muted">Found in</p>
+                          <ul className="flex flex-col gap-0.5">
+                            {conflict.paths.map((path) => (
+                              <li key={path} className={path === "/" ? undefined : "font-mono"}>
+                                {path === "/" ? "/ (Root folder)" : path}
+                              </li>
+                            ))}
+                          </ul>
+                        </TooltipContent>
+                      </Tooltip>
                     </li>
                   ))}
                 </ul>
