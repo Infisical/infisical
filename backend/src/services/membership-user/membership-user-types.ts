@@ -1,11 +1,18 @@
+import { Knex } from "knex";
+
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
 
 export interface TMembershipUserScopeFactory {
   onCreateMembershipUserGuard: (
     arg: TCreateMembershipUserDTO,
-    newMembers: { id: string; email?: string | null }[]
+    newMembers: { id: string; email?: string | null }[],
+    newUserEmails: string[]
   ) => Promise<void>;
+  onCreateMembershipReserve?: (
+    arg: TCreateMembershipUserDTO,
+    newMemberCount: number
+  ) => Promise<TMembershipReservation | undefined>;
   onCreateMembershipComplete: (
     arg: TCreateMembershipUserDTO,
     newMembers: { id: string; email?: string | null }[]
@@ -23,6 +30,11 @@ export interface TMembershipUserScopeFactory {
   };
   isCustomRole: (role: string) => boolean;
 }
+
+export type TMembershipReservation = {
+  release: (count?: number) => Promise<void>;
+  checkInTransaction: (tx: Knex) => Promise<void>;
+};
 
 export type TCreateMembershipUserDTO = {
   permission: OrgServiceActor;

@@ -8,6 +8,7 @@ import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
+import { BREACHED_PASSWORD_ERROR } from "./errors";
 // Re-export from refresh.ts to maintain backwards compatibility
 // The actual implementation lives in refresh.ts to avoid circular imports with request.ts
 import { fetchAuthToken } from "./refresh";
@@ -144,6 +145,7 @@ export const completeAccountSignup = async (details: CompleteAccountSignupDTO) =
 
 export const useCompleteAccountSignup = () => {
   return useMutation({
+    meta: { handledErrorCodes: [BREACHED_PASSWORD_ERROR] },
     mutationFn: completeAccountSignup
   });
 };
@@ -236,6 +238,7 @@ export const useVerifySignupEmailVerificationCode = () => {
 
 export const useResetPasswordV2 = () => {
   return useMutation({
+    meta: { handledErrorCodes: [BREACHED_PASSWORD_ERROR] },
     mutationFn: async (details: ResetPasswordV2DTO) => {
       await apiRequest.post("/api/v2/password/password-reset", details, {
         headers: {
@@ -248,6 +251,7 @@ export const useResetPasswordV2 = () => {
 
 export const useResetUserPasswordV2 = () => {
   return useMutation({
+    meta: { handledErrorCodes: [BREACHED_PASSWORD_ERROR] },
     mutationFn: async (details: ResetUserPasswordV2DTO) => {
       await apiRequest.post("/api/v2/password/user/password-reset", details);
     }
@@ -265,18 +269,14 @@ export const useGetAuthToken = () =>
     retry: 0
   });
 
-export const checkUserTotpMfa = async () => {
-  const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v2/auth/mfa/check/totp");
+export const getMfaMethods = async () => {
+  const { data } = await apiRequest.get<{
+    challengeMethod: MfaMethod;
+    usableMethods: MfaMethod[];
+    enrollableMethods: MfaMethod[];
+  }>("/api/v2/auth/mfa/methods");
 
-  return data.isVerified;
-};
-
-export const checkUserWebAuthnMfa = async () => {
-  const { data } = await apiRequest.get<{ hasPasskeys: boolean }>(
-    "/api/v2/auth/mfa/check/webauthn"
-  );
-
-  return data.hasPasskeys;
+  return data;
 };
 
 export const useMfaGenerateAuthenticationOptions = () =>
@@ -313,6 +313,7 @@ export const useSendPasswordSetupEmail = () => {
 
 export const useSetupPassword = () => {
   return useMutation({
+    meta: { handledErrorCodes: [BREACHED_PASSWORD_ERROR] },
     mutationFn: async (payload: SetupPasswordDTO) => {
       const { data } = await apiRequest.post("/api/v1/password/password-setup", payload);
 

@@ -88,6 +88,7 @@ export const testFeatures = (): TInstanceFeatures => ({
   maxWildcardCertificates: null,
   maxSansPerCertificate: null,
   pam: null,
+  agentVault: null,
   certManager: null,
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,

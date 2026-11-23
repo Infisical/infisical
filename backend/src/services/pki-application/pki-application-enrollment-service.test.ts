@@ -42,10 +42,6 @@ vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal
   decryptAppConnection: vi.fn().mockResolvedValue({})
 }));
 
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-id")
-}));
-
 const APPLICATION_ID = "5b0f7a52-1f43-4c55-9a8e-0f6b8f2f6a11";
 const PROFILE_ID = "8d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a";
 const OTHER_PROFILE_ID = "1d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a";
@@ -104,7 +100,8 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     certificatePolicyService: { validateRequestAgainstPolicy: vi.fn() },
     certificateAuthorityDAL: { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() },
     certificateAuthoritySecretDAL: { findOne: vi.fn() },
-    kmsService: { encryptWithKmsKey: vi.fn(), decryptWithKmsKey: vi.fn() },
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-id") },
+    kmsKeyService: { encryptWithKmsKey: vi.fn(), decryptWithKmsKey: vi.fn() },
     permissionService: { getResourcePermission: vi.fn() },
     keyStore: { getItem: vi.fn() }
   };
@@ -168,10 +165,10 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       credentials: { provider: LdapProvider.ActiveDirectory }
     });
     deps.appConnectionDAL.findById.mockResolvedValue({ id: CONNECTION_ID, name: "corp-ad" });
-    deps.kmsService.encryptWithKmsKey.mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({
+    deps.kmsKeyService.encryptWithKmsKey.mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({
       cipherTextBlob: Buffer.concat([Buffer.from("encrypted:"), plainText])
     }));
-    deps.kmsService.decryptWithKmsKey.mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>
+    deps.kmsKeyService.decryptWithKmsKey.mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>
       Buffer.concat([Buffer.from("decrypted:"), cipherTextBlob])
     );
     deps.microsoftAutoenrollmentEnrollmentConfigDAL.create.mockResolvedValue({ id: "new-config-id" });
@@ -427,8 +424,8 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
         }),
         "tx"
       );
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
-      expect(deps.kmsService.encryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.encryptWithKmsKey).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         keytabSource: MicrosoftAutoenrollmentKeytabSource.Reused,
         reusedFromProfileId: OTHER_PROFILE_ID,
@@ -446,7 +443,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
         OTHER_PROFILE_ID,
         "primary"
       );
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
     });
 
@@ -604,12 +601,12 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     test("treats a re-upload of the stored keytab as no change", async () => {
       withExistingConfig();
       const sameKeytab = encodeKeytab([3]);
-      deps.kmsService.decryptWithKmsKey.mockResolvedValue(async () => Buffer.from(sameKeytab, "base64"));
+      deps.kmsKeyService.decryptWithKmsKey.mockResolvedValue(async () => Buffer.from(sameKeytab, "base64"));
 
       const result = await set({ keytab: sameKeytab });
 
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.update).not.toHaveBeenCalled();
-      expect(deps.kmsService.encryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.encryptWithKmsKey).not.toHaveBeenCalled();
       expect(result).toMatchObject({ isChanged: false, keytabSource: MicrosoftAutoenrollmentKeytabSource.Unchanged });
     });
 

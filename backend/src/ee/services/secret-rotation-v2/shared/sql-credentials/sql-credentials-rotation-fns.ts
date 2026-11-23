@@ -67,10 +67,11 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 > = (
   secretRotation,
   _appConnectionDAL,
-  _kmsService,
+  _dataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   _keyStore,
+  _instanceConfigService,
   passwordValidationContext
 ) => {
   const {

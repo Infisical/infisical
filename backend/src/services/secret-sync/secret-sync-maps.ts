@@ -38,10 +38,12 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
   [SecretSync.CloudflareSecretsStore]: "Cloudflare Secrets Store",
+  [SecretSync.Convex]: "Convex",
   [SecretSync.Supabase]: "Supabase",
   [SecretSync.Rundeck]: "Rundeck",
   [SecretSync.Portainer]: "Portainer",
   [SecretSync.Jenkins]: "Jenkins",
+  [SecretSync.Coolify]: "Coolify",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly",
@@ -94,10 +96,12 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
+  [SecretSync.Convex]: AppConnection.Convex,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Portainer]: AppConnection.Portainer,
   [SecretSync.Jenkins]: AppConnection.Jenkins,
+  [SecretSync.Coolify]: AppConnection.Coolify,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -150,10 +154,12 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareSecretsStore]: SecretSyncPlanType.Regular,
+  [SecretSync.Convex]: SecretSyncPlanType.Regular,
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
   [SecretSync.Portainer]: SecretSyncPlanType.Regular,
   [SecretSync.Jenkins]: SecretSyncPlanType.Regular,
+  [SecretSync.Coolify]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
@@ -217,10 +223,12 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.CloudflarePages]: ["variableType"],
   [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
+  [SecretSync.Convex]: [],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
   [SecretSync.Portainer]: [],
   [SecretSync.Jenkins]: [],
+  [SecretSync.Coolify]: ["resourceName"],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
   [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
   [SecretSync.Checkly]: ["groupName", "accountName"],
@@ -307,7 +315,12 @@ const jenkinsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync
   );
 };
 
-const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({
+  existingSync,
+  newSync,
+  decryptConnection,
+  instanceConfigService
+}) => {
   if (!newSync.connectionId) return true;
 
   if (existingSync.connectionId === newSync.connectionId) {
@@ -325,8 +338,8 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   const newAwsConn = newConn as TAwsConnection;
 
   const [existingAccountId, newAccountId] = await Promise.all([
-    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
-    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials), instanceConfigService),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials), instanceConfigService)
   ]);
 
   if (!existingAccountId || !newAccountId) return false;
@@ -421,10 +434,12 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.CloudflarePages]: defaultDuplicateCheck,
   [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
   [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
+  [SecretSync.Convex]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
   [SecretSync.Portainer]: portainerDuplicateCheck,
   [SecretSync.Jenkins]: jenkinsDuplicateCheck,
+  [SecretSync.Coolify]: defaultDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
   [SecretSync.Railway]: defaultDuplicateCheck,
   [SecretSync.Checkly]: defaultDuplicateCheck,

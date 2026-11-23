@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { RateLimitError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -8,10 +9,15 @@ import { gitlabConnectionService } from "./gitlab-connection-service";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
 vi.mock("@app/lib/validator", () => ({ blockLocalAndPrivateIpAddresses: vi.fn() }));
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getConfig: () => ({})
+}));
 vi.mock("@app/lib/config/request", () => ({ request: {} }));
 vi.mock("@app/lib/fn", () => ({ removeTrailingSlash: (url: string) => url.replace(/\/$/, "") }));
-vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
 vi.mock("@app/services/app-connection/app-connection-fns", () => ({
   encryptAppConnectionCredentials: vi.fn()
 }));
@@ -29,7 +35,10 @@ describe("GitLab list retry handling", () => {
   const service = gitlabConnectionService(
     vi.fn().mockResolvedValue(connection),
     { updateById: vi.fn() },
-    { createCipherPairWithDataKey: vi.fn() }
+    {
+      createCipherPairWithDataKey: vi.fn()
+    } as never,
+    new FakeInstanceConfigService()
   );
 
   beforeEach(() => {

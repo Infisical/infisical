@@ -90,6 +90,8 @@ output-options:
     - getSecretApprovalRequestCount
     - getSecretApprovalRequest
     - reviewSecretApprovalRequest
+    - batchReviewSecretApprovalRequests
+    - batchMergeSecretApprovalRequests
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
     - createAccessApprovalPolicy
@@ -380,6 +382,7 @@ output-options:
     - requestProjectAccess
     - resetHoneyToken
     - restoreEnvironment
+    - restoreProject
     - resyncSecretImportReplication
     - revealSecretRequestValue
     - revertFolderCommit

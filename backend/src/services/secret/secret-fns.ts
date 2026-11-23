@@ -4,10 +4,12 @@ import RE2 from "re2";
 
 import {
   ActionProjectType,
+  ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
   TableName,
+  TProjects,
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
@@ -29,13 +31,11 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
-import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -735,7 +735,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   folderCommitService,
   eventEmitter,
-  kmsService,
+  kmsDataKeyService,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -755,11 +755,12 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const { encryptor: secretManagerEncryptor } = projectCipher;
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -929,7 +930,7 @@ export const updateManySecretsRawFnFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  kmsService
+  kmsDataKeyService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -949,11 +950,12 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const { encryptor: secretManagerEncryptor } = projectCipher;
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1200,16 +1202,16 @@ export const decryptSecretWithBot = (
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
+// Decides by project version alone: a legacy project whose bot can no longer be created must not
+// block deleting it or its org.
 export const fnDeleteProjectSecretReminders = async (
-  projectId: string,
-  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { id: projectId, version }: Pick<TProjects, "id" | "version">,
+  { secretDAL, reminderService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
-  const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
-  if (shouldUseSecretV2Bridge) return;
+  if (version === ProjectVersion.V3) return;
 
   const projectFolders = await folderDAL.findByProjectId(projectId);
   const projectSecrets = await secretDAL.find({

@@ -173,7 +173,7 @@ Each sub-organization runs its own Certificate Authorities, policies, profiles, 
 
 - **CA, policy, and profile administration is organization-wide.** Product Admins administer all of them, and that scope covers every CA and every environment. Where one environment's operators must be kept away from another environment's CA, use a sub-organization.
 - **Audit logs are read by Product Admins and cover the whole product.** Reading them takes the Product Admin role, and an admin who opens them sees all of it, every CA and every Application. The export carries CA and Application in event metadata, so a reviewer can narrow an exported set.
-- **Approvals cover issuance.** Approval policies gate certificate issuance and code signing. CA lifecycle actions such as create, renew, and revoke fall outside approvals today.
+- **Approvals cover issuance and revocation.** Approval policies gate certificate issuance, certificate revocation, and code signing. CA lifecycle actions such as creating, renewing, or revoking a CA fall outside approvals today.
 
 ## Next steps
 

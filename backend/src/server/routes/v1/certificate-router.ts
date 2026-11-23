@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
-import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATES, PROJECTS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
@@ -39,12 +39,23 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import {
+  CertificateSearchResultSchema,
+  SanitizedCertificateSchema
+} from "@app/services/certificate/certificate-schemas";
+import {
+  CertificateRevocationStatus,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CertStatus,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
+import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
+import { RevokeCertResponseSchemas, sendRevocationPendingApproval } from "./certificate-revoke-response";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
 
@@ -798,6 +809,135 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         })),
         totalCount
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "searchCertificates",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Search and filter certificates.",
+      body: z.object({
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(Number.MAX_SAFE_INTEGER)
+          .default(0)
+          .describe(PROJECTS.SEARCH_CERTIFICATES.offset),
+        limit: z.number().int().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
+        search: z.string().trim().max(4096).optional().describe(CERTIFICATES.SEARCH.search),
+        commonName: z.string().trim().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
+        status: z
+          .array(z.nativeEnum(CertStatus))
+          .min(1)
+          .max(Object.values(CertStatus).length)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.status),
+        profileIds: z
+          .array(z.string().uuid())
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
+        caIds: z.array(z.string().uuid()).min(1).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
+        applicationIds: z
+          .array(z.string().uuid())
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.applicationIds),
+        enrollmentTypes: z
+          .array(z.nativeEnum(EnrollmentType))
+          .min(1)
+          .max(Object.values(EnrollmentType).length)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.enrollmentTypes),
+        source: z
+          .array(z.nativeEnum(CertificateSource))
+          .min(1)
+          .max(Object.values(CertificateSource).length)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.source),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .min(1)
+          .max(10, "You can only filter by up to 10 metadata fields")
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.metadata),
+        keyAlgorithm: z
+          .array(z.string().trim().min(1).max(255))
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.keyAlgorithm),
+        keySizes: z
+          .array(z.number().int().positive())
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
+        signatureAlgorithm: z
+          .string()
+          .trim()
+          .max(255)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.signatureAlgorithm),
+        extendedKeyUsage: z.string().trim().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.extendedKeyUsage),
+        createdAtFrom: z.coerce.date().optional().describe(CERTIFICATES.SEARCH.createdAtFrom),
+        createdAtTo: z.coerce.date().optional().describe(CERTIFICATES.SEARCH.createdAtTo),
+        notBeforeFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeFrom),
+        notBeforeTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeTo),
+        notAfterFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterFrom),
+        notAfterTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterTo),
+        sortBy: z
+          .enum(["notAfter", "notBefore", "createdAt", "commonName", "keyAlgorithm", "status"])
+          .optional()
+          .describe(CERTIFICATES.SEARCH.sortBy),
+        sortOrder: z.enum(["asc", "desc"]).optional().describe(PROJECTS.SEARCH_CERTIFICATES.sortOrder)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            CertificateSearchResultSchema.omit({ friendlyName: true }).extend({
+              status: z.nativeEnum(CertStatus).describe(CERTIFICATES.SEARCH.statusRes)
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { metadata, sortBy, sortOrder, createdAtFrom, createdAtTo, ...filters } = req.body;
+      return server.services.project.searchCertificatesWithCurrentStatus({
+        filter: {
+          projectId: req.internalCertManagerProjectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...filters,
+        fromDate: createdAtFrom,
+        toDate: createdAtTo,
+        metadataFilter: metadata,
+        sortBy,
+        sortOrder,
+        excludeFriendlyNameFromSearch: true
+      });
     }
   });
 
@@ -1869,18 +2009,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
-      response: {
-        200: z.object({
-          message: z.string().trim(),
-          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
-          crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
-        })
-      }
+      response: RevokeCertResponseSchemas
     },
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { id: identifier } = req.params;
-      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
+      const result = await server.services.certificate.revokeCert({
         ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1888,6 +2021,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+      if (result.status === CertificateRevocationStatus.PendingApproval) {
+        return sendRevocationPendingApproval(server, req, reply, result);
+      }
+
+      const { cert, applicationName, ca } = result;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1900,7 +2038,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             serialNumber: cert.serialNumber,
             applicationId: cert.applicationId,
             applicationName,
-            revocationReason: req.body.revocationReason
+            revocationReason: req.body.revocationReason,
+            crlWarning: result.crlWarning
           }
         }
       });
@@ -1918,11 +2057,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully revoked certificate",
+        status: result.status,
         serialNumber: cert.serialNumber,
-        applicationId: cert.applicationId,
-        applicationName,
-        revokedAt,
-        crlWarning
+        revokedAt: result.revokedAt,
+        crlWarning: result.crlWarning
       };
     }
   });

@@ -3,85 +3,110 @@ import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types
 import { Probot } from "probot";
 import { z } from "zod";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TBitbucketPushEvent } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-types";
 import { TGitLabDataSourcePushEventPayload } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { GitLabWebHookEvent } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
-import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 
-export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvider) => {
-  const appCfg = getConfig();
+type TRadarProbotKey = { appId: string; privateKey: string; secret: string };
 
-  if (appCfg.isGithubRadarConfigured) {
-    const probotApp = (app: Probot) => {
-      app.on("installation.deleted", async (context) => {
-        const { payload } = context;
-        const { installation } = payload;
+export const registerSecretScanningV2Webhooks = async (
+  server: FastifyZodProvider,
+  { instanceConfigService }: { instanceConfigService: TInstanceConfigService }
+) => {
+  const probotApp = (app: Probot) => {
+    app.on("installation.deleted", async (context) => {
+      const { payload } = context;
+      const { installation } = payload;
 
-        await server.services.secretScanningV2.github.handleInstallationDeletedEvent(installation.id);
-      });
-
-      app.on("installation", async (context) => {
-        const { payload } = context;
-        logger.info({ repositories: payload.repositories }, "Installed secret scanner to");
-      });
-
-      app.on("push", async (context) => {
-        const { payload } = context;
-        await server.services.secretScanningV2.github.handlePushEvent(payload as PushEvent);
-      });
-
-      app.on(["pull_request.opened", "pull_request.synchronize", "pull_request.reopened"], async (context) => {
-        await server.services.secretScanningV2.github.handlePullRequestEvent(context.payload, context.id);
-      });
-
-      app.on("check_run.rerequested", async (context) => {
-        await server.services.secretScanningV2.github.handleCheckRunRerequestedEvent(context.payload, context.id);
-      });
-
-      app.on("check_suite.rerequested", async (context) => {
-        await server.services.secretScanningV2.github.handleCheckSuiteRerequestedEvent(context.payload, context.id);
-      });
-
-      app.on("check_run.requested_action", async (context) => {
-        await server.services.secretScanningV2.github.handleCheckRunRequestedActionEvent(context.payload, context.id);
-      });
-    };
-
-    const probot = new Probot({
-      appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID as string,
-      privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY as string,
-      secret: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET as string
+      await server.services.secretScanningV2.github.handleInstallationDeletedEvent(installation.id);
     });
 
+    app.on("installation", async (context) => {
+      const { payload } = context;
+      logger.info({ repositories: payload.repositories }, "Installed secret scanner to");
+    });
+
+    app.on("push", async (context) => {
+      const { payload } = context;
+      await server.services.secretScanningV2.github.handlePushEvent(payload as PushEvent);
+    });
+
+    app.on(["pull_request.opened", "pull_request.synchronize", "pull_request.reopened"], async (context) => {
+      await server.services.secretScanningV2.github.handlePullRequestEvent(context.payload, context.id);
+    });
+
+    app.on("check_run.rerequested", async (context) => {
+      await server.services.secretScanningV2.github.handleCheckRunRerequestedEvent(context.payload, context.id);
+    });
+
+    app.on("check_suite.rerequested", async (context) => {
+      await server.services.secretScanningV2.github.handleCheckSuiteRerequestedEvent(context.payload, context.id);
+    });
+
+    app.on("check_run.requested_action", async (context) => {
+      await server.services.secretScanningV2.github.handleCheckRunRequestedActionEvent(context.payload, context.id);
+    });
+  };
+
+  let cachedProbot: { key: TRadarProbotKey; probot: Probot } | undefined;
+
+  const getProbot = async (key: TRadarProbotKey) => {
+    if (
+      cachedProbot &&
+      cachedProbot.key.appId === key.appId &&
+      cachedProbot.key.privateKey === key.privateKey &&
+      cachedProbot.key.secret === key.secret
+    ) {
+      return cachedProbot.probot;
+    }
+
+    const probot = new Probot(key);
     await probot.load(probotApp);
+    cachedProbot = { key, probot };
 
-    // github push event webhook
-    server.route({
-      method: "POST",
-      url: "/github",
-      config: {
-        rateLimit: writeLimit
-      },
-      handler: async (req, res) => {
-        const eventName = req.headers["x-github-event"] as EmitterWebhookEventName;
-        const signatureSHA256 = req.headers["x-hub-signature-256"] as string;
-        const id = req.headers["x-github-delivery"] as string;
+    return probot;
+  };
 
-        await probot.webhooks.verifyAndReceive({
-          id,
-          name: eventName,
-          payload: JSON.stringify(req.body),
-          signature: signatureSHA256
-        });
+  // github push event webhook
+  server.route({
+    method: "POST",
+    url: "/github",
+    config: {
+      rateLimit: writeLimit
+    },
+    handler: async (req, res) => {
+      const {
+        isGithubRadarConfigured,
+        INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
+        INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
+        INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET
+      } = await instanceConfigService.getOverridableEnv();
 
-        return res.send("ok");
-      }
-    });
-  } else {
-    logger.info("GitHub Radar app is not configured. Skipping registration of the GitHub secret scanning webhook.");
-  }
+      if (!isGithubRadarConfigured) return res.callNotFound();
+
+      const probot = await getProbot({
+        appId: INF_APP_CONNECTION_GITHUB_RADAR_APP_ID as string,
+        privateKey: INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY as string,
+        secret: INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET as string
+      });
+
+      const eventName = req.headers["x-github-event"] as EmitterWebhookEventName;
+      const signatureSHA256 = req.headers["x-hub-signature-256"] as string;
+      const id = req.headers["x-github-delivery"] as string;
+
+      await probot.webhooks.verifyAndReceive({
+        id,
+        name: eventName,
+        payload: JSON.stringify(req.body),
+        signature: signatureSHA256
+      });
+
+      return res.send("ok");
+    }
+  });
 
   // bitbucket push event webhook
   server.route({

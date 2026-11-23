@@ -40,10 +40,6 @@ vi.mock("@app/lib/config/env", () => ({ getConfig: () => instanceConfig }));
 
 vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn(), error: vi.fn() } }));
 
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-id")
-}));
-
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", async (importOriginal) => ({
   assertCaInProfileProject: (
     await importOriginal<typeof import("@app/services/certificate-authority/certificate-authority-fns")>()
@@ -183,8 +179,9 @@ describe("microsoftAutoenrollmentService", () => {
     certificateBodyDAL: { findOne: vi.fn() },
     resourceMetadataDAL: { find: vi.fn() },
     certificateV3Service: { signCertificateFromProfile: vi.fn() },
-    projectDAL: { findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() },
-    kmsService: { decryptWithKmsKey: vi.fn(), generateKmsKey: vi.fn(), createCipherPairWithDataKey: vi.fn() },
+    projectDAL: { findOne: vi.fn() },
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-id") },
+    kmsKeyService: { decryptWithKmsKey: vi.fn() },
     appConnectionDAL: { findById: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
@@ -288,7 +285,7 @@ describe("microsoftAutoenrollmentService", () => {
       internalCa: { activeCaCertId: "ca-cert-id" }
     });
     deps.projectDAL.findOne.mockResolvedValue({ id: "project-id", orgId: "org-id" });
-    deps.kmsService.decryptWithKmsKey.mockResolvedValue(async () => keytab);
+    deps.kmsKeyService.decryptWithKmsKey.mockResolvedValue(async () => keytab);
     deps.keyStore.setItemWithExpiryNX.mockImplementation(async (key: string) => {
       if (usedReplayKeys.has(key)) return null;
       usedReplayKeys.add(key);
@@ -330,7 +327,7 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(401);
       expect(response.headers["WWW-Authenticate"]).toBe("Negotiate");
       expect(deps.auditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
       expect(learnServerChannelBindings).not.toHaveBeenCalled();
     });
 
@@ -339,7 +336,7 @@ describe("microsoftAutoenrollmentService", () => {
 
       expect(response.statusCode).toBe(401);
       expect(refusalReasons()).toEqual([KerberosFailureReason.NoTicket]);
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
     });
 
     test("records a refusal for a Negotiate Authorization header that carries no token", async () => {
@@ -379,7 +376,7 @@ describe("microsoftAutoenrollmentService", () => {
       );
 
       expect(response.statusCode).toBe(401);
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.kmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
       expect(learnServerChannelBindings).not.toHaveBeenCalled();
     });
   });
@@ -1115,7 +1112,7 @@ describe("microsoftAutoenrollmentService", () => {
         encryptedCertificate: Buffer.from("certificate"),
         encryptedCertificateChain: null
       });
-      deps.kmsService.decryptWithKmsKey.mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>
+      deps.kmsKeyService.decryptWithKmsKey.mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>
         cipherTextBlob.equals(config.encryptedKeytab) ? keytab : Buffer.from(caCertificate.rawData)
       );
 

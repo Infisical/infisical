@@ -7,9 +7,6 @@ const { postMock, decryptMock, encryptMock } = vi.hoisted(() => ({
   encryptMock: vi.fn(async ({ credentials }: { credentials: unknown }) => ({ encrypted: credentials }))
 }));
 
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
-}));
 vi.mock("@app/lib/config/request", () => ({
   request: { post: postMock, get: vi.fn() }
 }));
@@ -22,9 +19,16 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+
+// eslint-disable-next-line import/first
 import { AppConnection } from "../app-connection-enums";
 // eslint-disable-next-line import/first
 import { assertStripeConnectionAuthorized, validateStripeConnectionCredentials } from "./stripe-connection-fns";
+
+const instanceConfigService = new FakeInstanceConfigService({
+  env: { INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" }
+});
 
 type TStored = { accountId: string; refreshToken: string };
 
@@ -76,8 +80,9 @@ let keyStore: ReturnType<typeof makeKeyStore>;
 const authorize = () =>
   assertStripeConnectionAuthorized("connection-id", {
     appConnectionDAL: appConnectionDAL as never,
-    kmsService: {} as never,
-    keyStore: keyStore as never
+    kmsDataKeyService: {} as never,
+    keyStore: keyStore as never,
+    instanceConfigService
   });
 
 const oauthError = (status: number, error: string, description: string) =>
@@ -209,9 +214,12 @@ describe("validateStripeConnectionCredentials", () => {
   it("does not echo the rejected authorization code back to the user", async () => {
     postMock.mockRejectedValue(oauthError(400, "invalid_grant", "Authorization code does not exist: ac_secret"));
 
-    const error = (await validateStripeConnectionCredentials({
-      credentials: { code: "ac_secret" }
-    } as never).catch((e: Error) => e)) as Error;
+    const error = (await validateStripeConnectionCredentials(
+      {
+        credentials: { code: "ac_secret" }
+      } as never,
+      instanceConfigService
+    ).catch((e: Error) => e)) as Error;
 
     expect(error.message).toBe(
       "The Stripe authorization expired or was already used. Install the app from Stripe again to reconnect."

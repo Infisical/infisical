@@ -292,7 +292,7 @@ describe("service responses", () => {
         })
       );
       expect(keysOf(parsed)).toEqual(
-        ["id", "name", "description", "hook", "type", ...fields, ...inlineFields, "credential"].sort()
+        ["id", "name", "description", "type", ...fields, ...inlineFields, "credential"].sort()
       );
     }
   );
@@ -314,7 +314,6 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "analytics",
       description: null,
-      hook: null,
       ...postgresFields,
       credential: BASIC,
       customHeaders: [{ name: "X-Team", prefix: "" }],
@@ -337,7 +336,6 @@ describe("service responses", () => {
   });
 
   test.each([
-    [AgentVaultServiceType.Http, { type: AgentVaultCredentialType.OAuth, issuer: "https://auth.example.com" }],
     [AgentVaultServiceType.Http, { ...SSH_KEY }],
     [AgentVaultServiceType.Mcp, { type: AgentVaultCredentialType.Passthrough }],
     [AgentVaultServiceType.Mcp, { ...BASIC }],
@@ -367,7 +365,6 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "service",
       description: null,
-      hook: null,
       ...toServiceTypeFields(row),
       credential,
       customHeaders: [],
@@ -404,7 +401,6 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "bastion",
       description: null,
-      hook: null,
       type: AgentVaultServiceType.Ssh,
       host: "bastion.internal",
       port: 22,
@@ -423,74 +419,30 @@ describe("service responses", () => {
   });
 });
 
-describe("hooks", () => {
-  const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
-  const ssh = (extra: Record<string, unknown> = {}) => ({
-    type: "ssh",
-    name: "bastion",
-    host: "bastion.internal",
-    credential: { type: "basic", username: "agent", password: "p" },
-    ...extra
+describe("a service's hook", () => {
+  test("is named on create and update, and null on update removes it", () => {
+    expect(
+      AgentVaultCreateServiceBodySchema.parse(httpService({ hook: { name: "approvals", paths: ["/charges/"] } }))
+    ).toHaveProperty("hook", { name: "approvals", paths: ["/charges"] });
+    expect(AgentVaultUpdateServiceBodySchema.parse({ type: "http", hook: null })).toHaveProperty("hook", null);
   });
 
-  test.each([
-    ["http", httpService({ hook })],
-    ["mcp", mcpService({ hook })],
-    ["postgres", postgres({ hook })],
-    ["mysql", postgres({ type: "mysql", hook })],
-    ["ssh", ssh({ hook })]
-  ])("a %s service can be created with one", (_type, body) => {
-    expect(createMessages(body)).toEqual([]);
-    expect(AgentVaultCreateServiceBodySchema.parse(body).hook).toEqual(hook);
+  test("a hook sent by URL and signing secret is refused", () => {
+    const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
+    expect(AgentVaultCreateServiceBodySchema.safeParse(httpService({ hook })).success).toBe(false);
   });
 
-  test("create refuses a hook without a signing secret or with a bad URL, at the field", () => {
-    expect(createIssues(httpService({ hook: { url: hook.url } }))).toEqual([
-      expect.objectContaining({ path: ["hook", "signingSecret"] })
-    ]);
-    expect(createIssues(httpService({ hook: { ...hook, url: "https://hooks.example.com/?a=1" } }))).toEqual([
-      expect.objectContaining({ path: ["hook", "url"], message: "Hook URLs can't include a query string." })
-    ]);
-  });
-
-  test.each(["http", "mcp", "postgres", "mysql", "ssh"])(
-    "a %s service's update takes null, a URL alone, or both, each on its own",
-    (type) => {
-      expect(updateMessages({ type, hook: null })).toEqual([]);
-      expect(updateMessages({ type, hook: { url: hook.url } })).toEqual([]);
-      expect(updateMessages({ type, hook })).toEqual([]);
-      expect(AgentVaultUpdateServiceBodySchema.parse({ type, hook: null }).hook).toBeNull();
-    }
-  );
-
-  test("a bundle service's read carries the URL, null, or nothing, and never a secret", () => {
+  test("a read carries the hook and its narrowing, and leaves the field out when the caller can't read hooks", () => {
     const row = toServiceTypeFields(STORED_TYPES[0]);
-    const read = (extra: Record<string, unknown>) =>
-      AgentVaultServiceSchema.parse(
-        bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough }, ...extra })
-      );
-    expect(read({ hook: { url: hook.url } }).hook).toEqual({ url: hook.url });
-    expect(read({ hook: null }).hook).toBeNull();
-    expect(read({})).not.toHaveProperty("hook");
-    expect(read({ hook: { url: hook.url, secret: "x", signingSecret: "y" } }).hook).toEqual({ url: hook.url });
-  });
-
-  test("a session's own service always carries its hook", () => {
-    const inline = (extra: Record<string, unknown>) =>
-      AgentVaultInlineServiceSchema.safeParse({
-        id: "00000000-0000-4000-8000-000000000001",
-        name: "bastion",
-        description: null,
-        type: AgentVaultServiceType.Ssh,
-        host: "bastion.internal",
-        port: 22,
-        credential: SSH_KEY,
-        ...extra
-      });
-    expect(inline({}).success).toBe(false);
-    expect(inline({ hook: null }).success).toBe(true);
-    const parsed = inline({ hook: { url: hook.url, secret: "x" } });
-    expect(parsed.success && parsed.data.hook).toEqual({ url: hook.url });
+    const hook = { id: "00000000-0000-4000-8000-0000000000aa", name: "approvals", methods: ["POST"] };
+    const withHook = AgentVaultServiceSchema.parse(
+      bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough }, hook })
+    );
+    expect(withHook).toHaveProperty("hook", hook);
+    const without = AgentVaultServiceSchema.parse(
+      bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough } })
+    );
+    expect(without).not.toHaveProperty("hook");
   });
 });
 
@@ -578,5 +530,79 @@ describe("credential titles", () => {
     [AgentVaultServiceType.Postgres, AgentVaultServiceType.Mysql, AgentVaultServiceType.Ssh].forEach((type) =>
       expect(credentialTitlesOf(AgentVaultServiceSchema, type).basic).toBe("Username and Password")
     );
+  });
+});
+
+describe("an OAuth credential from an OAuth variable", () => {
+  const VARIABLE_ID = "00000000-0000-4000-8000-000000000077";
+  const http = (credential: Record<string, unknown>) => ({
+    type: "http",
+    name: "gdrive",
+    hostPattern: "www.googleapis.com",
+    credential
+  });
+  const mcp = (credential: Record<string, unknown>) => ({
+    type: "mcp",
+    name: "drive",
+    serverUrl: "https://mcp.example.com/mcp",
+    transport: "streamable-http",
+    credential
+  });
+
+  test("an HTTP or MCP service takes one by key, on create and update", () => {
+    expect(createMessages(http({ type: "oauth", variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(updateMessages({ type: "http", credential: { type: "oauth", variable: "GDRIVE_U123" } })).toEqual([]);
+  });
+
+  test("a variable can't be sent with a sign-in, members' sign-ins or a client", () => {
+    expect(
+      createMessages(
+        mcp({ type: "oauth", variable: "GDRIVE_U123", authorizationId: "00000000-0000-4000-8000-000000000001" })
+      )
+    ).toEqual(["Send either 'variable' or 'authorizationId', not both."]);
+    expect(
+      createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123", memberProvidedFields: ["credential-value"] }))
+    ).toEqual(["Send either 'variable' or memberProvidedFields: an OAuth variable's sign-in is shared."]);
+    expect(createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123", clientId: "client-1" }))).toEqual([
+      "Leave 'clientId' out: the OAuth variable holds its own client."
+    ]);
+    expect(createMessages(http({ type: "oauth", variable: "not a key" }))).not.toEqual([]);
+  });
+
+  test("an HTTP service's response carries the variable and its status", () => {
+    const parsed = AgentVaultServiceSchema.parse(
+      bundleService({
+        ...toServiceTypeFields(STORED_TYPES[0]),
+        credential: {
+          type: AgentVaultCredentialType.OAuth,
+          source: "variable",
+          memberProvidedFields: [],
+          variable: { id: VARIABLE_ID, key: "GDRIVE_U123" },
+          status: "not-connected",
+          grantedScopes: [],
+          requiredScopes: []
+        }
+      })
+    );
+    expect(parsed).toMatchObject({ credential: { source: "variable", variable: { key: "GDRIVE_U123" } } });
+    expect(parsed).not.toHaveProperty("credential.issuer");
+  });
+
+  test("a session's own service takes a variable or tokens, and returns neither token", () => {
+    const parsed = AgentVaultInlineServiceSchema.parse({
+      id: "00000000-0000-4000-8000-000000000001",
+      name: "gdrive",
+      description: null,
+      ...toServiceTypeFields(STORED_TYPES[0]),
+      customHeaders: [],
+      substitutions: [],
+      credential: { type: AgentVaultCredentialType.OAuth, source: "inline", issuer: "https://accounts.google.com" }
+    });
+    expect(parsed).toHaveProperty("credential", {
+      type: AgentVaultCredentialType.OAuth,
+      source: "inline",
+      issuer: "https://accounts.google.com"
+    });
   });
 });

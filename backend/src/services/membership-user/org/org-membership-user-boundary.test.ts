@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
@@ -101,9 +102,11 @@ const createGuard = ({
     smtpService: {} as never,
     userGroupMembershipDAL: {} as never,
     licenseService: new FakeLicenseService(),
+    instanceConfigService: new FakeInstanceConfigService(),
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
-    samlConfigDAL: {} as never
+    samlConfigDAL: {} as never,
+    orgInviteQuota: { admit: vi.fn(), getSeatPlan: vi.fn(), assertSeatsForInvites: vi.fn() }
   });
 
   return () =>
@@ -320,6 +323,7 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
           .mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem, authEnforced: false, rootOrgId: null })
       } as never,
       licenseService: new FakeLicenseService(),
+      instanceConfigService: new FakeInstanceConfigService(),
       membershipUserDAL: { find: vi.fn(), getUserById: vi.fn() } as never,
       tokenService: {} as never,
       userDAL: {} as never,
@@ -327,7 +331,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
       userGroupMembershipDAL: {} as never,
       emailDomainDAL: { find: vi.fn().mockResolvedValue([]) } as never,
       oidcConfigDAL: {} as never,
-      samlConfigDAL: {} as never
+      samlConfigDAL: {} as never,
+      orgInviteQuota: { admit: vi.fn(), getSeatPlan: vi.fn(), assertSeatsForInvites: vi.fn() }
     });
 
     return () =>
@@ -337,7 +342,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
           scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
           data: { roles: incomingRoles.map((role) => ({ role, isTemporary: false })) }
         } as never,
-        [{ id: "invitee-id", email: "invitee@example.com" }] as never
+        [{ id: "invitee-id", email: "invitee@example.com" }] as never,
+        []
       );
   };
 

@@ -30,7 +30,7 @@ type TMicrosoftAutoenrollmentEligibilityDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TAppConnectionServiceFactoryDep["kmsDataKeyService"];
 } & TLdapDirectoryGatewayServices;
 
 const refuse = (reason: string): never => {
@@ -61,7 +61,7 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
     resourceMetadataDAL,
     certificateDAL,
     appConnectionDAL,
-    kmsService,
+    kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService
   }: TMicrosoftAutoenrollmentEligibilityDeps
@@ -94,7 +94,7 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
   }
 
   const gatewayServices = { gatewayV2Service, gatewayPoolService };
-  const lookup = await loadLdapConnectionConfig(config.appConnectionId, { appConnectionDAL, kmsService })
+  const lookup = await loadLdapConnectionConfig(config.appConnectionId, { appConnectionDAL, kmsDataKeyService })
     .then(async (ldapConfig) => ({
       computer: await findDirectoryComputerBySid({ config: ldapConfig, sid: computerSid }, gatewayServices),
       groupSids: config.allowedGroups.length

@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -46,11 +47,9 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentEnrollmentConfigDALFactory } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TChannelBindingCache, TExpectedChannelBindings } from "./microsoft-autoenrollment-channel-binding-cache";
@@ -112,8 +111,9 @@ type TMicrosoftAutoenrollmentServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -180,7 +180,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
   resourceMetadataDAL,
   certificateV3Service,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
@@ -219,12 +220,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
   type TProfileContext = NonNullable<Awaited<ReturnType<typeof $loadContext>>>;
 
   const $decryptKeytab = async (profileContext: TProfileContext) => {
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: await getProjectKmsCertificateKeyId({
-        projectId: profileContext.profile.projectId,
-        projectDAL,
-        kmsService
-      })
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(profileContext.profile.projectId)
     });
     const keytabEntries = parseKeytab(await kmsDecryptor({ cipherTextBlob: profileContext.config.encryptedKeytab }));
     return { ...profileContext, kmsDecryptor, keytabEntries };
@@ -409,8 +406,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const templateOid = buildTemplateOid(context.junction.id);
@@ -440,7 +437,10 @@ export const microsoftAutoenrollmentServiceFactory = ({
       return { refusal: message };
     };
 
-    const lookup = await loadLdapConnectionConfig(context.config.appConnectionId, { appConnectionDAL, kmsService })
+    const lookup = await loadLdapConnectionConfig(context.config.appConnectionId, {
+      appConnectionDAL,
+      kmsDataKeyService
+    })
       .then(async (config) => ({
         computer: await findDirectoryComputerBySid(
           { config, sid: identity.accountSid },
@@ -498,8 +498,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
       certificateDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       shouldThrowLookupErrors: true
     });
     const storedCertificate = isCurrentCertificateValid

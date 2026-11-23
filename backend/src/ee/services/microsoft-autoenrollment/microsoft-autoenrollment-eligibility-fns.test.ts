@@ -38,7 +38,7 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
     resourceMetadataDAL: { find: vi.fn() },
     certificateDAL: { findById: vi.fn(), primaryNode: vi.fn(() => "primary") },
     appConnectionDAL: { findById: vi.fn() },
-    kmsService: {},
+    kmsDataKeyService: {},
     gatewayV2Service: {},
     gatewayPoolService: {}
   };

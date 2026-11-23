@@ -4,7 +4,6 @@ import path from "node:path";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
-import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
@@ -15,24 +14,26 @@ import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { createDomains } from "@app/domains/domains";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
+import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { Redlock } from "@app/lib/red-lock";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
+import { etag } from "./plugins/etag";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
+import { responsePolicyHeaders } from "./plugins/response-policy-headers";
 import { registerResponseSchemaHooks } from "./plugins/response-schema-hooks";
 import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
@@ -48,26 +49,10 @@ type TMain = {
   redis: Redis | Cluster;
   clickhouse: ClickHouseClient | null;
   envConfig: TEnvConfig;
-  superAdminDAL: TSuperAdminDALFactory;
-  hsmService: THsmServiceFactory;
-  kmsRootConfigDAL: TKmsRootConfigDALFactory;
 };
 
 // Run the server!
-export const main = async ({
-  db,
-  auditLogDb,
-  smtp,
-  logger,
-  queue,
-  keyStore,
-  redis,
-  clickhouse,
-  envConfig,
-  superAdminDAL,
-  hsmService,
-  kmsRootConfigDAL
-}: TMain) => {
+export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redis, clickhouse, envConfig }: TMain) => {
   const appCfg = getConfig();
 
   // Infisical Cloud request IDs carry a region segment (req-us-, req-eu-) so an ID's
@@ -124,7 +109,7 @@ export const main = async ({
   });
 
   try {
-    await server.register(fastifyEtag);
+    await server.register(etag);
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
@@ -161,6 +146,7 @@ export const main = async ({
     }
 
     await server.register(helmet, { contentSecurityPolicy: false });
+    await server.register(responsePolicyHeaders);
 
     await server.register(maintenanceMode);
 
@@ -174,22 +160,38 @@ export const main = async ({
       })
     });
 
+    const redlock = new Redlock([redis], { retryCount: 0 });
+    const cronJob = cronJobFactory({
+      redis,
+      redlock,
+      schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled,
+      maxJitterMs: envConfig.isDevelopmentMode ? 0 : undefined
+    });
+    if (envConfig.isGeneralWorkerRunModeEnabled) {
+      cronJob.start();
+    }
+
+    // Before the routes: legacy services depend on the domains, and queue workers read the license as soon as they
+    // start. Built here rather than in registerRoutes so plugins registered beside it (serve-ui) can use them too.
+    const domains = await createDomains({ db, keyStore, queueService: queue, cronJob, envConfig });
+    domains.license.start();
+    domains.kmsCore.start(cronJob);
+
     await server.register(registerRoutes, {
       smtp,
       queue,
       db,
       auditLogDb,
       keyStore,
-      redis,
       clickhouse,
-      hsmService,
       envConfig,
-      superAdminDAL,
-      kmsRootConfigDAL
+      domains,
+      cronJob
     });
 
     if (appCfg.isApiRunModeEnabled) {
       await server.register(registerServeUI, {
+        instanceConfigService: domains.instanceConfigCore.instanceConfigService,
         standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
         dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
       });

@@ -64,14 +64,14 @@ export const loadLdapConnectionConfig = async (
   appConnectionId: string,
   {
     appConnectionDAL,
-    kmsService
+    kmsDataKeyService
   }: {
     appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-    kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+    kmsDataKeyService: TAppConnectionServiceFactoryDep["kmsDataKeyService"];
   }
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
-  return (await decryptAppConnection(appConnection, kmsService)) as unknown as TLdapConnectionConfig;
+  return (await decryptAppConnection(appConnection, kmsDataKeyService)) as unknown as TLdapConnectionConfig;
 };
 
 const MAX_STORED_KEY_VERSION = 2147483647;

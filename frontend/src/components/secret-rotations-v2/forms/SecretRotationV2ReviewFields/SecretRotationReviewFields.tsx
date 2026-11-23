@@ -106,10 +106,15 @@ const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
     .map(({ principalType, count }) => describeRecipientType(principalType, count))
     .join(", ");
 
+const describeSlackChannels = (channels: { name: string }[] = []) =>
+  channels.map((slackChannel) => `#${slackChannel.name}`).join(", ");
+
 const describeChannel = (channel: TChannelForm) => {
   switch (channel.channelType) {
     case AlertChannelType.Email:
       return describeRecipients(channel.recipients);
+    case AlertChannelType.SlackApp:
+      return describeSlackChannels(channel.slackChannels);
     case AlertChannelType.Slack:
       return "Slack incoming webhook";
     case AlertChannelType.Webhook:

@@ -23,7 +23,19 @@
     "eyebrows": "breadcrumbs"
   },
   "thumbnails": {
-    "appearance": "light"
+    "preset": "classic",
+    "appearance": "light",
+    "background": "https://infisical.com/docs/images/docs-preview-yellow.png",
+    "fonts": {
+      "family": "Alliance",
+      "source": "/fonts/AllianceNo2-Regular.woff",
+      "format": "woff"
+    },
+    "eyebrow": {
+      "source": "group",
+      "style": "plain",
+      "color": "#000000"
+    }
   },
   "icons": {
     "library": "lucide"
@@ -211,6 +223,7 @@
                       "documentation/platform/dynamic-secrets/mongo-atlas",
                       "documentation/platform/dynamic-secrets/mssql",
                       "documentation/platform/dynamic-secrets/mysql",
+                      "documentation/platform/dynamic-secrets/neon",
                       "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/openrouter",
                       "documentation/platform/dynamic-secrets/oracle",
@@ -304,7 +317,8 @@
                                 "pages": [
                                   "integrations/platforms/kubernetes/infisical-connection-crd",
                                   "integrations/platforms/kubernetes/infisical-auth-crd",
-                                  "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                                  "integrations/platforms/kubernetes/infisical-static-secret-crd",
+                                  "integrations/platforms/kubernetes/infisical-static-secret-push-crd"
                                 ]
                               },
                               {
@@ -348,6 +362,8 @@
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
+                      "integrations/secret-syncs/convex",
+                      "integrations/secret-syncs/coolify",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
                       "integrations/secret-syncs/devin",
@@ -726,36 +742,75 @@
                 ]
               },
               {
-                "group": "Concepts",
+                "group": "Defining resources",
                 "pages": [
-                  "documentation/platform/agent-vault/projects",
-                  "documentation/platform/agent-vault/access-bundles",
                   {
                     "group": "Services",
                     "root": "documentation/platform/agent-vault/services",
+                    "expanded": true,
                     "pages": [
                       "documentation/platform/agent-vault/http-apis",
                       "documentation/platform/agent-vault/mcp-servers",
-                      "documentation/platform/agent-vault/databases-and-ssh",
-                      "documentation/platform/agent-vault/hooks"
+                      {
+                        "group": "Databases and SSH",
+                        "root": "documentation/platform/agent-vault/databases-and-ssh",
+                        "pages": [
+                          "documentation/platform/agent-vault/postgresql",
+                          "documentation/platform/agent-vault/mysql",
+                          "documentation/platform/agent-vault/ssh"
+                        ]
+                      }
                     ]
                   },
-                  "documentation/platform/agent-vault/variables",
-                  "documentation/platform/agent-vault/skills",
-                  "documentation/platform/agent-vault/service-discovery",
+                  {
+                    "group": "Variables",
+                    "root": "documentation/platform/agent-vault/variables",
+                    "pages": [
+                      "documentation/platform/agent-vault/text-variables",
+                      "documentation/platform/agent-vault/oauth-variables"
+                    ]
+                  },
+                  "documentation/platform/agent-vault/skills"
+                ]
+              },
+              {
+                "group": "Granting access",
+                "pages": [
+                  {
+                    "group": "Access control",
+                    "root": "documentation/platform/agent-vault/access-control",
+                    "pages": [
+                      "documentation/platform/agent-vault/projects",
+                      "documentation/platform/agent-vault/access-bundles"
+                    ]
+                  },
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
-                      "documentation/platform/agent-vault/sessions-cli",
-                      "documentation/platform/agent-vault/sessions-api",
+                      "documentation/platform/agent-vault/create-a-session",
+                      "documentation/platform/agent-vault/revoke-a-session",
                       "documentation/platform/agent-vault/sessions-on-behalf-of-users",
-                      "documentation/platform/agent-vault/inline-services",
-                      "documentation/platform/agent-vault/session-logs"
+                      "documentation/platform/agent-vault/inline-services"
                     ]
                   },
-                  "documentation/platform/agent-vault/proxies",
-                  "documentation/platform/agent-vault/access-control"
+                  {
+                    "group": "Proxies",
+                    "root": "documentation/platform/agent-vault/proxies",
+                    "pages": [
+                      "documentation/platform/agent-vault/certificate-trust",
+                      "documentation/platform/agent-vault/socks5"
+                    ]
+                  },
+                  "documentation/platform/agent-vault/hooks",
+                  "documentation/platform/agent-vault/service-discovery"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
+                  "documentation/platform/agent-vault/session-logs",
+                  "documentation/platform/agent-vault/external-log-storage"
                 ]
               }
             ]
@@ -1074,6 +1129,7 @@
                   "integrations/app-connections/cloud-66",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/convex",
+                  "integrations/app-connections/coolify",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/datadog",
                   "integrations/app-connections/daytona",
@@ -1097,6 +1153,7 @@
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/imperva",
+                  "integrations/app-connections/incident-io",
                   "integrations/app-connections/jenkins",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
@@ -1888,6 +1945,18 @@
                         ]
                       },
                       {
+                        "group": "Coolify",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/coolify/list",
+                          "api-reference/endpoints/app-connections/coolify/available",
+                          "api-reference/endpoints/app-connections/coolify/get-by-id",
+                          "api-reference/endpoints/app-connections/coolify/get-by-name",
+                          "api-reference/endpoints/app-connections/coolify/create",
+                          "api-reference/endpoints/app-connections/coolify/update",
+                          "api-reference/endpoints/app-connections/coolify/delete"
+                        ]
+                      },
+                      {
                         "group": "Databricks",
                         "pages": [
                           "api-reference/endpoints/app-connections/databricks/list",
@@ -2140,6 +2209,18 @@
                         ]
                       },
                       {
+                        "group": "incident.io",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/incident-io/list",
+                          "api-reference/endpoints/app-connections/incident-io/available",
+                          "api-reference/endpoints/app-connections/incident-io/get-by-id",
+                          "api-reference/endpoints/app-connections/incident-io/get-by-name",
+                          "api-reference/endpoints/app-connections/incident-io/create",
+                          "api-reference/endpoints/app-connections/incident-io/update",
+                          "api-reference/endpoints/app-connections/incident-io/delete"
+                        ]
+                      },
+                      {
                         "group": "Infisical",
                         "pages": [
                           "api-reference/endpoints/app-connections/external-infisical/list",
@@ -2189,11 +2270,15 @@
                       },
                       {
                         "group": "Imperva",
-                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                        "pages": [
+                          "api-reference/endpoints/app-connections/imperva/create"
+                        ]
                       },
                       {
                         "group": "Kemp LoadMaster",
-                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
+                        "pages": [
+                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
+                        ]
                       },
                       {
                         "group": "Laravel Forge",
@@ -3579,6 +3664,34 @@
                         ]
                       },
                       {
+                        "group": "Convex",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/convex/list",
+                          "api-reference/endpoints/secret-syncs/convex/get-by-id",
+                          "api-reference/endpoints/secret-syncs/convex/get-by-name",
+                          "api-reference/endpoints/secret-syncs/convex/create",
+                          "api-reference/endpoints/secret-syncs/convex/update",
+                          "api-reference/endpoints/secret-syncs/convex/delete",
+                          "api-reference/endpoints/secret-syncs/convex/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/convex/import-secrets",
+                          "api-reference/endpoints/secret-syncs/convex/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Coolify",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/coolify/list",
+                          "api-reference/endpoints/secret-syncs/coolify/get-by-id",
+                          "api-reference/endpoints/secret-syncs/coolify/get-by-name",
+                          "api-reference/endpoints/secret-syncs/coolify/create",
+                          "api-reference/endpoints/secret-syncs/coolify/update",
+                          "api-reference/endpoints/secret-syncs/coolify/delete",
+                          "api-reference/endpoints/secret-syncs/coolify/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/coolify/import-secrets",
+                          "api-reference/endpoints/secret-syncs/coolify/remove-secrets"
+                        ]
+                      },
+                      {
                         "group": "Databricks",
                         "pages": [
                           "api-reference/endpoints/secret-syncs/databricks/list",
@@ -4539,6 +4652,8 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/renew-certificate",
+                          "api-reference/endpoints/code-signing/signers/revoke-certificate",
                           "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]
@@ -4644,7 +4759,9 @@
                       "api-reference/endpoints/agent-vault-variables/create",
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
-                      "api-reference/endpoints/agent-vault-variables/get-value"
+                      "api-reference/endpoints/agent-vault-variables/get-value",
+                      "api-reference/endpoints/agent-vault-variables/start-oauth-sign-in",
+                      "api-reference/endpoints/agent-vault-variables/complete-oauth-sign-in"
                     ]
                   },
                   {
@@ -4660,6 +4777,16 @@
                       "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
                       "api-reference/endpoints/agent-vault-skills/list-session-skills"
+                    ]
+                  },
+                  {
+                    "group": "Hooks",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-hooks/list",
+                      "api-reference/endpoints/agent-vault-hooks/get",
+                      "api-reference/endpoints/agent-vault-hooks/create",
+                      "api-reference/endpoints/agent-vault-hooks/update",
+                      "api-reference/endpoints/agent-vault-hooks/delete"
                     ]
                   },
                   {
@@ -5105,6 +5232,14 @@
     {
       "source": "/api-reference/endpoints/agent-vault-skills/list-bundle-skills",
       "destination": "/api-reference/endpoints/agent-vault-access-bundles/list-skills"
+    },
+    {
+      "source": "/documentation/platform/agent-vault/sessions-cli",
+      "destination": "/documentation/platform/agent-vault/create-a-session"
+    },
+    {
+      "source": "/documentation/platform/agent-vault/sessions-api",
+      "destination": "/documentation/platform/agent-vault/create-a-session"
     },
     {
       "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",

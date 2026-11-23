@@ -32,7 +32,15 @@ const STRIPE_KEY_NAME_MAX_LENGTH = 100;
 export const stripeApiKeyRotationFactory: TRotationFactory<
   TStripeApiKeyRotationWithConnection,
   TStripeApiKeyRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayV2Service, _gatewayPoolService, keyStore) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  keyStore,
+  instanceConfigService
+) => {
   const {
     connection,
     parameters: { permissions, keyName },
@@ -48,7 +56,16 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   // Runs once at the start of each operation, not per request, so the cleanup a failed operation
   // does (expiring a key it just created) never fails on authorization half way through.
   const $assertAuthorized = () =>
-    assertStripeConnectionAuthorized(connection.id, { appConnectionDAL, kmsService, keyStore });
+    assertStripeConnectionAuthorized(connection.id, {
+      appConnectionDAL,
+      kmsDataKeyService,
+      keyStore,
+      instanceConfigService
+    });
+  const $appRequestConfig = async () => {
+    const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getOverridableEnv();
+    return getStripeAppRequestConfig(accountId, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
+  };
 
   /** No 404 on a double expire has ever been observed, so a non-404 failure on retiring a key that
    *  was already expired can't be told apart from a real failure by status code alone. This is only
@@ -58,7 +75,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
    */
   const $keyExists = async (keyId: string): Promise<boolean> => {
     try {
-      await request.get(`${STRIPE_API_KEYS_URL}/${keyId}`, getStripeAppRequestConfig(accountId));
+      await request.get(`${STRIPE_API_KEYS_URL}/${keyId}`, await $appRequestConfig());
       return true;
     } catch (error) {
       if (getStripeErrorStatus(error) === 404) return false;
@@ -69,11 +86,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   const $tryRetireKey = async (keyId: string): Promise<{ retired: true } | { retired: false; error: unknown }> => {
     try {
-      await request.post(
-        `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
-        {},
-        withIdempotencyKey(getStripeAppRequestConfig(accountId))
-      );
+      await request.post(`${STRIPE_API_KEYS_URL}/${keyId}/expire`, {}, withIdempotencyKey(await $appRequestConfig()));
       return { retired: true };
     } catch (expireError) {
       if (getStripeErrorStatus(expireError) === 404) return { retired: true };
@@ -138,7 +151,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
           permissions,
           public_key: { pem_key: { data: publicKey, algorithm: "RSA" } }
         },
-        withIdempotencyKey(getStripeAppRequestConfig(accountId))
+        withIdempotencyKey(await $appRequestConfig())
       ));
     } catch (error) {
       return throwStripeApiKeyManagementError(accountId, error);

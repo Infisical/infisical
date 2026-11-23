@@ -1,5 +1,4 @@
-import RE2 from "re2";
-
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -8,6 +7,7 @@ import {
   getJiraErrorMessage,
   getJiraIssue,
   isJiraNotFoundError,
+  JIRA_ISSUE_KEY_REGEX,
   listJiraIssueApprovals,
   listJiraIssueTypes,
   listJiraProjects,
@@ -17,6 +17,7 @@ import {
   TJiraIssue
 } from "@app/services/app-connection/jira";
 
+import { anyOf, AUTO_APPROVAL_MAX_OPTIONS as MAX_OPTIONS } from "../auto-approval-fns";
 import {
   AutoApprovalConstraintValue,
   TAutoApprovalContext,
@@ -51,15 +52,11 @@ export type TJiraTicketFacts = {
 };
 
 const JIRA_TICKET_FIELDS = ["status", "project", "issuetype", "labels", "assignee"];
-const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const MAX_TICKET_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
-const MAX_OPTIONS = 100;
 const MAX_SIBLING_PROJECTS = 5;
 
 const TICKET_FORMAT_MESSAGE = "Enter a Jira ticket key like PAY-123, or a link to the ticket";
-
-const anyOf = (values: string[]) => values.join(" or ");
 
 const includesIgnoreCase = (values: string[], value: string | null) =>
   value !== null && values.some((candidate) => candidate.toLowerCase() === value.toLowerCase());
@@ -168,7 +165,8 @@ const readLatestApproval = async (
         reason: `${key} isn't a Jira Service Management request, or the Jira connection can't see its approvals`
       };
     }
-    if (error instanceof BadRequestError) return { approved: false, reason: error.message };
+    if (error instanceof BadRequestError || error instanceof RuleViolationError)
+      return { approved: false, reason: error.message };
     logger.warn({ err: error }, `Couldn't read Jira approvals [issueKey=${key}]`);
     return { approved: false, reason: `Couldn't read Jira approvals on ${key}` };
   }
@@ -188,7 +186,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
         parse: parseJiraTicket,
         getUrl: (id, conn) => `${removeTrailingSlash(conn.credentials.instanceUrl)}/browse/${encodeURIComponent(id)}`
       },
-      resolve: async (conn, id, ctx, constraintIds, deps): Promise<TJiraTicketFacts> => {
+      resolve: async (conn, id, ctx, valuesByConstraint, deps): Promise<TJiraTicketFacts> => {
         if (!id) throw new BadRequestError({ message: "No Jira ticket was provided" });
 
         let issue: TJiraIssue;
@@ -200,17 +198,17 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
               message: `Jira ticket ${id} doesn't exist, or the Jira connection can't see it`
             });
           }
-          if (error instanceof BadRequestError) throw error;
+          if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
           logger.warn({ err: error }, `Couldn't read Jira ticket [issueKey=${id}]`);
           throw new BadRequestError({ message: `Couldn't read Jira ticket ${id}` });
         }
 
         const key = issue.key || id;
         const [assignee, approval] = await Promise.all([
-          constraintIds.includes(JiraTicketConstraint.AssignedToRequester)
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.AssignedToRequester)
             ? matchAssigneeToRequester({ ...issue, key }, ctx)
             : null,
-          constraintIds.includes(JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
         ]);
 
         return {

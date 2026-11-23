@@ -1,6 +1,8 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -11,7 +13,6 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -25,9 +26,11 @@ import {
   TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
 
-export const getAzureClientSecretsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID } = getConfig();
-
+export const getAzureClientSecretsConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure Client Secrets" as const,
     app: AppConnection.AzureClientSecrets as const,
@@ -43,9 +46,9 @@ export const getAzureClientSecretsConnectionListItem = () => {
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ) => {
-  const appCfg = getConfig();
   const appConnection = await appConnectionDAL.findById(connectionId);
 
   if (!appConnection) {
@@ -60,7 +63,7 @@ export const getAzureConnectionAccessToken = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials
   })) as TAzureClientSecretsConnectionCredentials;
@@ -69,9 +72,13 @@ export const getAzureConnectionAccessToken = async (
   const currentTime = Date.now();
   switch (appConnection.method) {
     case AzureClientSecretsConnectionMethod.OAuth: {
+      const {
+        INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
+        INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
+      } = await instanceConfigService.getOverridableEnv();
       if (
-        !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID ||
-        !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
+        !INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID ||
+        !INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
       ) {
         throw new BadRequestError({
           message: `Azure OAuth environment variables have not been configured`
@@ -82,8 +89,8 @@ export const getAzureConnectionAccessToken = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `openid offline_access https://graph.microsoft.com/.default`,
-          client_id: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
-          client_secret: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET,
+          client_id: INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
+          client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET,
           refresh_token: refreshToken
         })
       );
@@ -99,7 +106,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
@@ -110,7 +117,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionClientSecretCredentials;
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
@@ -138,7 +145,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
@@ -150,7 +157,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionCertificateCredentials;
       const { accessToken, expiresAt, clientId, tenantId, certificateBody, privateKey } = accessTokenCredentials;
@@ -180,7 +187,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
@@ -195,14 +202,15 @@ export const getAzureConnectionAccessToken = async (
   }
 };
 
-export const validateAzureClientSecretsConnectionCredentials = async (config: TAzureClientSecretsConnectionConfig) => {
+export const validateAzureClientSecretsConnectionCredentials = async (
+  config: TAzureClientSecretsConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { credentials: inputCredentials, method } = config;
 
-  const {
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureClientSecretsConnectionMethod.OAuth: {

@@ -92,7 +92,7 @@ export const ErrorPageFrame = ({
     <div
       ref={containerRef}
       className={`relative flex items-center justify-center p-4 ${
-        isFullScreen ? "min-h-screen bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
+        isFullScreen ? "min-h-dvh bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
       }`}
     >
       <PageTitle title={pageTitle} />

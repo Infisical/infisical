@@ -14,6 +14,8 @@ export type TCreateSkillDTO = TAgentVaultSkillScoped & { files: TAgentVaultSkill
 export type TListSkillsDTO = TAgentVaultSkillScoped & {
   search?: string;
   name?: string;
+  // The skills a session on this user's behalf could name. Exactly one of the two names the user.
+  onBehalfOf?: { userId?: string; userEmail?: string };
   limit: number;
   offset: number;
 };

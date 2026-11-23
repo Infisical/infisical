@@ -1,4 +1,5 @@
 import { TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -20,9 +21,6 @@ import {
   TMicrosoftAutoenrollmentAllowedGroup,
   TMicrosoftAutoenrollmentEnrollmentConfigDALFactory
 } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { readChannelBindingStatus } from "./microsoft-autoenrollment-channel-binding-fns";
 import { buildPolicyUrl, mergeAllowedGroups, readUploadedKeytab } from "./microsoft-autoenrollment-fns";
@@ -188,12 +186,8 @@ export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
   return mergeAllowedGroups(allowedGroupSids, resolvedNames, storedGroups);
 };
 
-const encryptKeytab = async (
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey">,
-  certificateManagerKmsId: string,
-  keytabFile: Buffer
-) => {
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+const encryptKeytab = async (kmsKeyService: TKmsKeyService, certificateManagerKmsId: string, keytabFile: Buffer) => {
+  const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   return kmsEncryptor({ plainText: keytabFile });
 };
 
@@ -217,26 +211,26 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
   },
   {
     microsoftAutoenrollmentEnrollmentConfigDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   }: {
     microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
       TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
       "findKeytabByApplicationAndProfile" | "primaryNode"
     >;
-    kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-    projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+    kmsDataKeyService: TKmsDataKeyService;
+    kmsKeyService: TKmsKeyService;
   }
 ) => {
   if (keytab) {
     const keytabFile = Buffer.from(keytab, "base64");
     const { servicePrincipalName, keyVersion } = readUploadedKeytab(keytabFile);
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     if (storedEncryptedKeytab) {
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
       if (keytabFile.equals(await kmsDecryptor({ cipherTextBlob: storedEncryptedKeytab }))) return null;
     }
-    const { cipherTextBlob } = await encryptKeytab(kmsService, certificateManagerKmsId, keytabFile);
+    const { cipherTextBlob } = await encryptKeytab(kmsKeyService, certificateManagerKmsId, keytabFile);
     return {
       source: MicrosoftAutoenrollmentKeytabSource.Uploaded,
       encryptedKeytab: cipherTextBlob,

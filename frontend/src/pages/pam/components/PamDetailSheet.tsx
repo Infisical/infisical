@@ -28,6 +28,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { cn } from "@app/components/v3/utils";
 import { PamAccountType } from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
@@ -64,6 +65,7 @@ type Props = {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   isDirty?: boolean;
+  isWide?: boolean;
   children?: ReactNode;
 };
 
@@ -129,6 +131,7 @@ export const PamDetailSheet = ({
   activeTab,
   onTabChange,
   isDirty,
+  isWide,
   children
 }: Props) => {
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
@@ -147,7 +150,7 @@ export const PamDetailSheet = ({
     <>
       <Sheet open={isOpen} onOpenChange={handleOpenChange}>
         <SheetContent
-          className="w-full !max-w-5xl overflow-hidden"
+          className={cn("w-full overflow-hidden", isWide ? "!max-w-7xl" : "!max-w-5xl")}
           aria-describedby={subtitle && !isLoading ? descriptionId : undefined}
         >
           {isLoading ? (

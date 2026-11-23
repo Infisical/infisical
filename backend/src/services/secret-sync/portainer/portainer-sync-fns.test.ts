@@ -28,6 +28,7 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
 }));
 
 /* eslint-disable import/first */
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { PortainerStackType } from "@app/services/app-connection/portainer";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -350,6 +351,16 @@ describe("PortainerSyncFns", () => {
     await PortainerSyncFns.syncSecrets(secretSync, payloadOf({ A: "2" }) as any, gatewayV2Service, gatewayPoolService);
 
     expect(requestsMade()).toEqual(["GET /api/stacks/4", "POST /api/stacks/4/git?endpointId=1"]);
+  });
+
+  it("reports a domain rule violation as its own message without a retry", async () => {
+    respondWith({ "GET /api/stacks/4": [new RuleViolationError({ message: "The KMS key is disabled" })] });
+
+    await expect(PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService)).rejects.toMatchObject({
+      name: "SecretSyncError",
+      message: "The KMS key is disabled",
+      shouldRetry: false
+    });
   });
 
   it("rejects a Kubernetes stack with a non-retryable error", async () => {
