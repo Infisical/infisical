@@ -738,7 +738,7 @@ The command reads the project the same way as [infisical agent-vault skills push
 - `--client-secret <string>`: The client secret of the machine identity to pull as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 - `--force`: Replace the folder if it already exists. The folder then holds only the skill's files, so the command deletes every other file in it, including hidden files such as `.git`.
 - `--project-id <string>`: The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skill. If you leave it out, the CLI reads `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
-- `--version <int>`: The version of the skill to download, instead of the latest. Only an admin of the project can download a version other than the latest.
+- `--version <int>`: The version of the skill to download, instead of the latest. Downloading a version other than the latest needs edit access to the skill.
 
 ### Environment variables
 
