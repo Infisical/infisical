@@ -102,6 +102,8 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       };
     };
 
+    if (canReadRoles && !roles) return;
+
     if (identity) {
       reset({
         name: identity.name,
