@@ -256,8 +256,14 @@ declare module "@fastify/request-context" {
         resourceName: string;
       };
     };
-    identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
-    assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
+    identityPermissionMetadata?: Record<string, unknown>; // filled by withProjectAuditContext
+    assumedPrivilegeDetails?: {
+      requesterId: string;
+      actorId: string;
+      actorType: ActorType;
+      projectId: string;
+      actorName: string;
+    };
     memoizer?: RequestMemoizer;
   }
 }

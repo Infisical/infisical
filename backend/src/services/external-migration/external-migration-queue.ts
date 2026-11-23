@@ -166,7 +166,8 @@ export const externalMigrationQueueFactory = ({
             type: decryptedJson.actor as ActorType.USER | ActorType.IDENTITY,
             id: decryptedJson.actorId
           },
-          orgId: decryptedJson.actorOrgId
+          orgId: decryptedJson.actorOrgId,
+          authMethod: decryptedJson.actorAuthMethod
         }
       );
       const { projectsNotImported } = await importDataIntoInfisicalFn({

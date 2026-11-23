@@ -1,4 +1,4 @@
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { ActorContextMemo, TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError, RuleViolationError, EntityNotFoundError } from "@app/domains/lib/errors";
 import {
@@ -13,7 +13,6 @@ import { ActorType } from "@app/lib/auth/actor-types";
 
 import { OrgPermission } from "../../models/org-permission";
 import { OrgPermissionSet } from "../../models/org-permission-set";
-import { OrgRoles } from "../../models/org-roles";
 import { Organization } from "../../models/organization";
 
 export type TGetOrgPermissionInput = {
@@ -96,7 +95,9 @@ export class OrgPermissionService implements TOrgPermissionService {
     roles: string[];
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TOrgRolePermission[]> {
-    const customSlugs = roles.filter((slug) => !OrgRoles.isBuiltIn(slug));
+    // "custom" counts as built in, so it resolves to no rules rather than to a custom role of that slug.
+    const isBuiltIn = (slug: string) => Object.values(OrgMembershipRole).includes(slug as OrgMembershipRole);
+    const customSlugs = roles.filter((slug) => !isBuiltIn(slug));
     const customRoles = await this.roleService.findRolesBySlugs({ owner: { orgId }, slugs: customSlugs });
     const bySlug = new Map(customRoles.map((role) => [role.slug, role]));
     const missing = customSlugs.filter((slug) => !bySlug.has(slug));
@@ -106,7 +107,7 @@ export class OrgPermissionService implements TOrgPermissionService {
       });
     }
     return roles.flatMap((slug): TOrgRolePermission[] => {
-      if (OrgRoles.isBuiltIn(slug)) return [{ permission: OrgPermission.forGrant({ grant: Grant.restore({ slug }) }) }];
+      if (isBuiltIn(slug)) return [{ permission: OrgPermission.forGrant({ grant: Grant.restore({ slug }) }) }];
       const role = bySlug.get(slug);
       if (!role) return [];
       return [{ permission: OrgPermission.forGrant({ grant: role.toGrant() }), role: role.toJSON() }];

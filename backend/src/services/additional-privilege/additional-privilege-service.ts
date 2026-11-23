@@ -4,7 +4,7 @@ import { packRules } from "@casl/ability/extra";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
-import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -30,7 +30,7 @@ import { newProjectAdditionalPrivilegesFactory } from "./project/project-additio
 
 type TAdditionalPrivilegeServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   actorContextService: TActorContextService;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -42,7 +42,7 @@ export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPri
 
 export const additionalPrivilegeServiceFactory = ({
   additionalPrivilegeDAL,
-  projectPermissionService,
+  secretsPermissionService,
   actorContextService,
   membershipDAL,
   userDAL,
@@ -54,7 +54,7 @@ export const additionalPrivilegeServiceFactory = ({
     [AccessScope.Project]: newProjectAdditionalPrivilegesFactory({
       additionalPrivilegeDAL,
       membershipDAL,
-      projectPermissionService,
+      secretsPermissionService,
       actorContextService,
       userDAL,
       identityDAL,

@@ -7,9 +7,8 @@ import {
   TRuleSource,
   RuleIdentity
 } from "@app/domains/platform/access-control/ce/module";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { OauthScope } from "@app/lib/auth/oauth-scopes";
-import type { TPrincipal } from "@app/lib/auth/principal";
+import { delegatedOauthScopesOf, TPrincipal } from "@app/lib/auth/principal";
 
 import { OrgPermissionSet, OrgPermissionSsoActions, OrgPermissionSubjects } from "./org-permission-set";
 import { OrgRoles } from "./org-roles";
@@ -48,7 +47,7 @@ export class OrgPermission extends Permission<OrgPermissionSet> {
   // full roles decide everything else (SSO bypass included), since they belong to the user, not to the client.
   static fromGrants({ grants, principal }: { grants: ActorGrants; principal?: TPrincipal }): OrgPermission {
     const rules = RuleSet.merge(grants.active().map((grant) => OrgRoles.rulesFor(grant)));
-    const scopes = principal?.type === ActorType.USER ? principal.oauth?.scopes : undefined;
+    const scopes = delegatedOauthScopesOf(principal);
     return new OrgPermission(scopes ? rules.narrowTo(oauthAllowlist(scopes)) : rules, grants, Boolean(scopes));
   }
 

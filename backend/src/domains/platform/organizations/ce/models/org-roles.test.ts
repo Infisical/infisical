@@ -56,19 +56,6 @@ describe("OrgRoles.rulesFor", () => {
   });
 });
 
-describe("OrgRoles.isBuiltIn", () => {
-  test("should know the built-in slugs and nothing else", () => {
-    // Setup
-    const slugs = [OrgMembershipRole.Admin, OrgMembershipRole.Member, OrgMembershipRole.NoAccess, "custom", "ghost"];
-
-    // Action
-    const builtIn = slugs.map((slug) => OrgRoles.isBuiltIn(slug));
-
-    // Assert
-    expect(builtIn).toEqual([true, true, true, false, false]);
-  });
-});
-
 describe("OrgPermissionSubjects.AuditLogStreams", () => {
   test("should let the admin manage audit log streams, let a member read them, and be written by the role API", () => {
     // Setup

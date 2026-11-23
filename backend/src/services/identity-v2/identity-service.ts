@@ -27,6 +27,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -67,6 +68,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   instanceConfigService: TInstanceConfigService;
@@ -90,6 +92,7 @@ export const identityV2ServiceFactory = ({
   identityMembershipV2DAL,
   orgPermissionService,
   projectPermissionService,
+  secretsPermissionService,
   licenseService,
   usageMeteringService,
   instanceConfigService,
@@ -108,6 +111,7 @@ export const identityV2ServiceFactory = ({
   });
   const projectFactory = newProjectIdentityFactory({
     projectPermissionService,
+    secretsPermissionService,
     membershipIdentityDAL
   });
 
@@ -140,7 +144,7 @@ export const identityV2ServiceFactory = ({
         throw new BadRequestError({ message: "Identity must have at least one permanent role" });
       }
 
-      const actorPermission = await projectPermissionService.getProjectPermission({
+      const actorPermission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scopeData.projectId
       });
@@ -516,7 +520,10 @@ export const identityV2ServiceFactory = ({
         const projectAccessChecks = await Promise.all(
           candidateProjectIds.map(async (projectId) => {
             try {
-              const projectPermission = await projectPermissionService.getProjectPermission({ actor, projectId });
+              const projectPermission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+                actor,
+                projectId
+              });
               // Broad `can(Read, Identity)` returns true for conditional rules too. We keep the
               // project here and use the per-row check below to honor `identityId` conditions.
               return projectPermission.can({

@@ -49,6 +49,12 @@ const pamRoles = (): TProjectRoles =>
     [ProjectMembershipRole.Member]: readOnlyMember
   });
 
+// Like the PAM product's roles: the built-in admin gets admin rules, every other grant (privileges included) member rules.
+const adminOrMemberRoles = (): TProjectRoles => ({
+  projectType: ProjectType.PAM,
+  rulesFor: (grant) => (grant.isBuiltIn(ProjectMembershipRole.Admin) ? genericProjectRoles.admin : readOnlyMember)
+});
+
 const arrange = ({
   type = ProjectType.SecretManager,
   projectRoles = []
@@ -228,6 +234,29 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     expect(permission.can(createMember)).toBe(false);
     expect(permission.hasRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.isAdmin).toBe(false);
+  });
+
+  test("should narrow an identity's permission built during a delegated OAuth request to the request's scopes", async () => {
+    // Setup
+    const { service, as, addRole, projectId } = arrange();
+    const identityId = randomUUID();
+    await addRole(ProjectMembershipRole.Admin, { who: { identityId } });
+
+    // Action
+    const permission = await service.getProjectPermission({
+      actor: as({
+        type: ActorType.IDENTITY,
+        id: identityId,
+        name: "bot",
+        isInstanceAdmin: false,
+        oauth: { clientId: "client", scopes: ["secrets:read"] }
+      }),
+      projectId
+    });
+
+    // Assert
+    expect(permission.can(readValueAt("/"))).toBe(true);
+    expect(permission.can(createMember)).toBe(false);
   });
 
   test("should use the assumed actor's grants inside its project and fill in the assumed actor's name", async () => {
@@ -621,6 +650,27 @@ describe("ProjectPermissionService.getGrantPermissions", () => {
     // Assert
     expect(permissions).toHaveLength(2);
   });
+  test("should read roles with the project's product roles but privileges with the generic tables", async () => {
+    // Setup
+    const { service, seed, addRole, orgId, projectId, userId } = arrange({
+      type: ProjectType.PAM,
+      projectRoles: [adminOrMemberRoles()]
+    });
+    await addRole(ProjectMembershipRole.Member);
+    await seed.privilege({ actor: { userId }, projectId, permissions: packRules([editTags]) });
+
+    // Action
+    const [role, privilege] = await service.getGrantPermissions({
+      actor: { type: ActorType.USER, id: userId, name: "ada" },
+      orgId,
+      projectId
+    });
+
+    // Assert
+    expect(role.can(readMember)).toBe(true);
+    expect(role.can(editTags)).toBe(false);
+    expect(privilege.can(editTags)).toBe(true);
+  });
 });
 
 describe("ProjectPermissionService.getPermissionAuditSources", () => {
@@ -713,5 +763,26 @@ describe("ProjectPermissionService.getPermissionAuditSources", () => {
     await expect(result).rejects.toThrow(
       `Target identity with ID '${targetId}' is not a member of project with ID '${projectId}' [targetIdentityId=${targetId}] [projectId=${projectId}]`
     );
+  });
+
+  test("should list sources with the generic tables, whatever the project's product roles", async () => {
+    // Setup
+    const { service, seed, addRoles, orgId, projectId, userId } = arrange({
+      type: ProjectType.PAM,
+      projectRoles: [adminOrMemberRoles()]
+    });
+    const [member] = (await addRoles([{ role: ProjectMembershipRole.Member }])).roles;
+    const privilege = await seed.privilege({ actor: { userId }, projectId, permissions: packRules([editTags]) });
+
+    // Action
+    const { sources } = await service.getPermissionAuditSources({
+      target: { type: ActorType.USER, id: userId },
+      orgId,
+      projectId
+    });
+
+    // Assert
+    expect(sources.find(({ id }) => id === member.id)?.permissions).toEqual(packRules(genericProjectRoles.member));
+    expect(sources.find(({ id }) => id === privilege.id)?.permissions).toEqual(packRules([editTags]));
   });
 });

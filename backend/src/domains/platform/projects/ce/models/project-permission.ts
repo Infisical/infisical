@@ -7,8 +7,7 @@ import {
   RuleIdentity,
   RuleSet
 } from "@app/domains/platform/access-control/ce/module";
-import { ActorType } from "@app/lib/auth/actor-types";
-import type { TPrincipal } from "@app/lib/auth/principal";
+import { delegatedOauthScopesOf, TPrincipal } from "@app/lib/auth/principal";
 
 import { Project } from "./project";
 import { projectOauthAllowlist } from "./project-oauth-scopes";
@@ -43,7 +42,7 @@ export class ProjectPermission extends Permission<ProjectPermissionSet> {
     identity: RuleIdentity;
   }): ProjectPermission {
     const interpolated = rules.interpolate(identity.toContext());
-    const scopes = principal.type === ActorType.USER ? principal.oauth?.scopes : undefined;
+    const scopes = delegatedOauthScopesOf(principal);
     return new ProjectPermission(
       scopes ? interpolated.narrowTo(projectOauthAllowlist(scopes)) : interpolated,
       project,

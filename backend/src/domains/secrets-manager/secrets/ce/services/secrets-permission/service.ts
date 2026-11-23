@@ -150,7 +150,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
       folderGrants,
       names,
       groups,
-      standardRoles: projectRoles,
+      standardRoles: StandardProjectRoles.generic(project?.type ?? ProjectType.SecretManager),
       projectRoles,
       now: new Date()
     });

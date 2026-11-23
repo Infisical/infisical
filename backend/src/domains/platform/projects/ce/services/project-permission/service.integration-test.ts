@@ -177,6 +177,20 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     await expect(result).rejects.toThrow(`Project with ${tenant.project.id} not found`);
   });
 
+  test("should refuse a project deleted after its permission was built as not found", async () => {
+    // Setup
+    const { tenant, user, actor, service } = await arrange();
+    await h.factories.projectMembership({ orgId: tenant.org.id, projectId: tenant.project.id, userId: user.id });
+    await service.getProjectPermission({ actor: await actor(), projectId: tenant.project.id });
+    await h.db(TableName.Project).where({ id: tenant.project.id }).delete();
+
+    // Action
+    const result = service.getProjectPermission({ actor: await actor(), projectId: tenant.project.id });
+
+    // Assert
+    await expect(result).rejects.toThrow(`Project with ${tenant.project.id} not found`);
+  });
+
   test("should refuse another org's project", async () => {
     // Setup
     const { user, actor, service } = await arrange();

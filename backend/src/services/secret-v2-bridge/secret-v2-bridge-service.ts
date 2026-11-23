@@ -16,6 +16,7 @@ import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-chan
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { effectiveActorForProject } from "@app/lib/auth/principal";
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
@@ -1289,7 +1290,8 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (principal.type === ActorType.USER || principal.type === ActorType.IDENTITY) {
-      const grantActor = { type: principal.type, id: principal.id };
+      const { actorType, actorId: grantActorId } = effectiveActorForProject(principal, projectId);
+      const grantActor = { type: actorType, id: grantActorId };
       // The fingerprint of the permission this request is answered with, read from the permission cache's own
       // marker. It gates only the ETag cache; the real check is still getSecretsPermission below. It includes the
       // project's folder version, so folder grants are covered, at the cost of any folder change churning the ETag.

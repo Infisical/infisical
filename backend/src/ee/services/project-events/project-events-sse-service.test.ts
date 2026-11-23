@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { ProjectType } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
@@ -31,34 +30,19 @@ const subscribeToCreation: TPermissionRule<ProjectPermissionSet>[] = [
 
 // The plan refuses event subscriptions, so a subscribe that passes the permission checks stops there, before any
 // connection or stream is opened.
-const buildService = ({
-  projectType,
-  projectRules,
-  secretsRules = []
-}: {
-  projectType: ProjectType;
-  projectRules: TPermissionRule<ProjectPermissionSet>[];
-  secretsRules?: TPermissionRule<ProjectPermissionSet>[];
-}) => {
-  const projectPermissionService = {
-    getProjectAccess: vi.fn(async () => ({
-      project: { type: projectType },
-      toPermission: () => Permission.fromRules({ rules: projectRules })
-    }))
-  };
+const buildService = ({ rules }: { rules: TPermissionRule<ProjectPermissionSet>[] }) => {
   const secretsPermissionService = {
-    getSecretsPermission: vi.fn(async () => ({ permission: Permission.fromRules({ rules: secretsRules }) }))
+    getProjectPermissionWithFolderGrants: vi.fn(async () => Permission.fromRules({ rules }))
   };
   const service = projectEventsSSEServiceFactory({
     projectEventsService: { subscribe: vi.fn() },
-    projectPermissionService,
     secretsPermissionService,
     actorContextService: {},
     licenseService: { getPlan: vi.fn(async () => ({ has: () => false })) },
     keyStore: {},
     projectEnvDAL: { find: vi.fn(async () => []) }
   } as unknown as Parameters<typeof projectEventsSSEServiceFactory>[0]);
-  return { service, projectPermissionService, secretsPermissionService };
+  return { service, secretsPermissionService };
 };
 
 const subscribe = (service: ReturnType<typeof buildService>["service"]) =>
@@ -76,39 +60,25 @@ describe("projectEventsSSEService.subscribe", () => {
     close = undefined;
   });
 
-  test("should check a project that is not Secret Manager against its own project permission", async () => {
+  test("should check the subscription against the project permission with the actor's folder grants", async () => {
     // Setup
-    const { service, secretsPermissionService } = buildService({
-      projectType: ProjectType.PAM,
-      projectRules: subscribeToCreation
-    });
+    const { service, secretsPermissionService } = buildService({ rules: subscribeToCreation });
     close = service.close;
 
     // Action and assert
     await expect(subscribe(service)).rejects.toThrow(BadRequestError);
-    expect(secretsPermissionService.getSecretsPermission).not.toHaveBeenCalled();
+    expect(secretsPermissionService.getProjectPermissionWithFolderGrants).toHaveBeenCalledWith({
+      actor,
+      projectId: PROJECT_ID
+    });
   });
 
-  test("should refuse a project that is not Secret Manager when its permission lacks the subscription", async () => {
+  test("should refuse a subscription the permission lacks", async () => {
     // Setup
-    const { service } = buildService({ projectType: ProjectType.PAM, projectRules: [] });
+    const { service } = buildService({ rules: [] });
     close = service.close;
 
     // Action and assert
     await expect(subscribe(service)).rejects.toThrow(PermissionDeniedError);
-  });
-
-  test("should check a Secret Manager project through Secrets, so folder grants apply", async () => {
-    // Setup
-    const { service, secretsPermissionService } = buildService({
-      projectType: ProjectType.SecretManager,
-      projectRules: [],
-      secretsRules: subscribeToCreation
-    });
-    close = service.close;
-
-    // Action and assert
-    await expect(subscribe(service)).rejects.toThrow(BadRequestError);
-    expect(secretsPermissionService.getSecretsPermission).toHaveBeenCalledWith({ actor, projectId: PROJECT_ID });
   });
 });

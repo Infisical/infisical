@@ -10,6 +10,7 @@ import {
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TActorContextService, TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -62,6 +63,7 @@ type TMembershipGroupServiceFactoryDep = {
   roleDAL: Pick<TRoleDALFactory, "find">;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   actorContextService: TActorContextService;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
@@ -96,6 +98,7 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   orgPermissionService,
   projectPermissionService,
+  secretsPermissionService,
   actorContextService,
   groupDAL,
   licenseService,
@@ -124,6 +127,7 @@ export const membershipGroupServiceFactory = ({
     [AccessScope.Project]: newProjectMembershipGroupFactory({
       membershipGroupDAL,
       projectPermissionService,
+      secretsPermissionService,
       groupDAL,
       projectDAL
     })

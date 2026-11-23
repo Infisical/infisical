@@ -18,8 +18,8 @@ export const secretScanningV2InstanceServiceFactory = ({
   orgPermissionService,
   secretScanningV2ProjectResolver
 }: TSecretScanningV2InstanceServiceDeps) => {
-  // Token validation only checks membership, so this is what applies SSO enforcement and the other
-  // org access rules before anything is read or lazily created.
+  // Token validation only checks membership, so this is what applies the org access rules before anything is read
+  // or lazily created.
   const $assertOrgAccess = async ({ actor }: TActorInput) => {
     await orgPermissionService.getOrgPermission({ actor });
   };

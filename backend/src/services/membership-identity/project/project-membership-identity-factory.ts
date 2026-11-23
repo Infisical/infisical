@@ -5,6 +5,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -22,6 +23,7 @@ import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TProjectMembershipIdentityScopeFactoryDep = {
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findActorsWithActiveOrgAccess">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
@@ -30,6 +32,7 @@ type TProjectMembershipIdentityScopeFactoryDep = {
 
 export const newProjectMembershipIdentityFactory = ({
   projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   identityDAL,
   projectDAL,
@@ -66,7 +69,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -126,7 +129,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -211,7 +214,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -255,7 +258,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -273,7 +276,7 @@ export const newProjectMembershipIdentityFactory = ({
   const onGetMembershipIdentityByIdentityIdGuard: TMembershipIdentityScopeFactory["onGetMembershipIdentityByIdentityIdGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scope.value
       });

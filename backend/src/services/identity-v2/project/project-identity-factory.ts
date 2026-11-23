@@ -4,6 +4,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs, toBoundsTargets } from "@app/services/membership/membership-fns";
@@ -12,11 +13,13 @@ import { TIdentityV2Factory } from "../identity-types";
 
 type TProjectIdentityFactoryDep = {
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
 };
 
 export const newProjectIdentityFactory = ({
   projectPermissionService,
+  secretsPermissionService,
   membershipIdentityDAL
 }: TProjectIdentityFactoryDep): TIdentityV2Factory => {
   const getScopeField: TIdentityV2Factory["getScopeField"] = (scopeData) => {
@@ -28,7 +31,7 @@ export const newProjectIdentityFactory = ({
 
   const onCreateIdentityGuard: TIdentityV2Factory["onCreateIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -37,7 +40,7 @@ export const newProjectIdentityFactory = ({
 
   const onUpdateIdentityGuard: TIdentityV2Factory["onUpdateIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -50,7 +53,7 @@ export const newProjectIdentityFactory = ({
 
   const onDeleteIdentityGuard: TIdentityV2Factory["onDeleteIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -83,7 +86,7 @@ export const newProjectIdentityFactory = ({
 
   const onListIdentityGuard: TIdentityV2Factory["onListIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -99,7 +102,7 @@ export const newProjectIdentityFactory = ({
 
   const onGetIdentityByIdGuard: TIdentityV2Factory["onGetIdentityByIdGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });

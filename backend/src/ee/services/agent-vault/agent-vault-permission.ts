@@ -1,7 +1,7 @@
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import type { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import type { TUserPrincipal } from "@app/lib/auth/principal";
+import { delegatedOauthOf, TUserPrincipal } from "@app/lib/auth/principal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -44,8 +44,8 @@ export const agentVaultUserPrincipal = (
 });
 
 // The context for checking another actor's Agent Vault access (a session's owner, the user an identity acts for, a
-// member a delegation covers). It carries none of the caller's OAuth scopes or assumed privilege, and no auth method,
-// since the session row stores none.
+// member a delegation covers). It carries the requester's delegated OAuth scopes when given one, but never its
+// assumed privilege, and no auth method, since the session row stores none.
 export const agentVaultActorContext = async (
   {
     actorContextService,
@@ -56,15 +56,19 @@ export const agentVaultActorContext = async (
     userDAL: Pick<TUserDALFactory, "findById">;
     identityDAL: Pick<TIdentityDALFactory, "findById">;
   },
-  { actor, orgId }: { actor: TAgentVaultGrantActor; orgId: string }
+  { actor, orgId, requester }: { actor: TAgentVaultGrantActor; orgId: string; requester?: TActorContext }
 ): Promise<TActorContext> => {
+  const oauth = delegatedOauthOf(requester?.principal);
   if (actor.type === ActorType.USER) {
     const user = await userDAL.findById(actor.id);
-    return actorContextService.forPrincipal({ principal: agentVaultUserPrincipal(user, actor.id), orgId });
+    return actorContextService.forPrincipal({
+      principal: { ...agentVaultUserPrincipal(user, actor.id), oauth },
+      orgId
+    });
   }
   const identity = await identityDAL.findById(actor.id);
   return actorContextService.forPrincipal({
-    principal: { type: ActorType.IDENTITY, id: actor.id, name: identity?.name ?? "", isInstanceAdmin: false },
+    principal: { type: ActorType.IDENTITY, id: actor.id, name: identity?.name ?? "", isInstanceAdmin: false, oauth },
     orgId
   });
 };

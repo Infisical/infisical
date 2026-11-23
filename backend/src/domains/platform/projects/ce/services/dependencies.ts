@@ -8,7 +8,8 @@ import { Project } from "../models/project";
 export type TProjectStore = {
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
   findById(projectId: string, options?: TReadOptions): Promise<Project | null>;
-  // When the project is scheduled for deletion, or "" when it is not.
+  // When the project is scheduled for deletion, "" when it is not, and "missing" when it does not exist, so a cached
+  // project that is deleted outright is noticed too.
   findDeletionState(projectId: string, options?: TReadOptions): Promise<string>;
 };
 

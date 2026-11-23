@@ -58,7 +58,9 @@ export class InMemoryProjectStore implements TProjectStore {
   }
 
   async findDeletionState(projectId: string): Promise<string> {
-    return this.projects.get(projectId)?.deleteAfter?.toISOString() ?? "";
+    const stored = this.projects.get(projectId);
+    if (!stored) return "missing";
+    return stored.deleteAfter?.toISOString() ?? "";
   }
 
   private static toProject({ deleteAfter: _deleteAfter, rootOrgId: _rootOrgId, ...record }: TStoredProject): Project {

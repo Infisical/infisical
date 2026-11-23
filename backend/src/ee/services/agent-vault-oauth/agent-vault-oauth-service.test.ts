@@ -154,7 +154,7 @@ const setup = ({
     ...structuredClone({ ...row, encryptedValue: null }),
     encryptedValue: row.encryptedValue ? Buffer.from(row.encryptedValue) : null
   });
-  const permissions = { canEditVariables, canReadVariables };
+  const permissions = { canEditVariables, canReadVariables, isProjectMember: true };
   // Built on every call, since a test can take a variable permission away after setup.
   const permissionOf = () =>
     Permission.fromRules({
@@ -521,7 +521,15 @@ const setup = ({
     },
     projectDAL: { findById: async () => ({ name: "Acme Support" }) as never },
     accessBundlePermissionService: {
-      getAgentVaultPermission: async () => ({ permission: permissionOf() }),
+      getAgentVaultPermission: async () => {
+        if (!permissions.isProjectMember) {
+          throw new PermissionDeniedError({
+            name: "ProjectMembershipNotFound",
+            message: "You are not a member of this project"
+          });
+        }
+        return { permission: permissionOf() };
+      },
       getAccessBundlePermission: async () => ({
         permission: permissionOf(),
         reachesEveryBundle: isAdmin,
@@ -2945,6 +2953,20 @@ describe("completing an OAuth variable's sign-in", () => {
     await expect(refused).rejects.toThrow(/no longer read variables/);
     expect(env.variableRows.get(VARIABLE_ID)!.encryptedValue).toBeNull();
     await expect(completeVariableSignIn(env, state)).rejects.toThrow(ForbiddenRequestError);
+  });
+
+  test("an actor no longer in the project is refused, and a repeat is still refused without writing", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    env.permissions.isProjectMember = false;
+    const state = stateOf(authorization!.authorizeUrl);
+
+    await expect(completeVariableSignIn(env, state)).rejects.toThrow(/not a member of this project/);
+    env.permissions.isProjectMember = true;
+
+    await expect(completeVariableSignIn(env, state)).rejects.toThrow(ForbiddenRequestError);
+    expect(env.variableRows.get(VARIABLE_ID)!.encryptedValue).toBeNull();
   });
 
   test("the provider's refusal is a 400 with its reason", async () => {

@@ -55,7 +55,8 @@ export class ProjectStore implements TProjectStore {
         .reader(options)(TableName.Project)
         .where({ id: projectId })
         .first("deleteAfter");
-      return row?.deleteAfter ? new Date(row.deleteAfter).toISOString() : "";
+      if (!row) return "missing";
+      return row.deleteAfter ? new Date(row.deleteAfter).toISOString() : "";
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project deletion state" });
     }

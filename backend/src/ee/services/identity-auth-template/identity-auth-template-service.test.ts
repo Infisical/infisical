@@ -134,8 +134,11 @@ const createService = ({
       getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: orgRules })),
       getGrantPermissions: vi.fn().mockResolvedValue([])
     },
-    projectPermissionService: { getProjectPermission, getGrantPermissions: vi.fn().mockResolvedValue([]) },
-    secretsPermissionService: { getFolderGrantPermissions: vi.fn().mockResolvedValue([]) },
+    projectPermissionService: { getGrantPermissions: vi.fn().mockResolvedValue([]) },
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: getProjectPermission,
+      getFolderGrantPermissions: vi.fn().mockResolvedValue([])
+    },
     actorGrantsService: { getActorGrants: vi.fn() },
     kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -913,11 +914,14 @@ export const agentVaultOauthServiceFactory = ({
 
   // What a variable write refuses with is worded for the user, so a dashboard sign-in shows it as its failure.
   const isVariableWriteRefusal = (error: unknown) =>
-    error instanceof NotFoundError || error instanceof ConflictError || error instanceof ForbiddenRequestError;
+    error instanceof NotFoundError ||
+    error instanceof ConflictError ||
+    error instanceof ForbiddenRequestError ||
+    error instanceof PermissionDeniedError;
 
   const errorStatusOf = (error: unknown): TAgentVaultOauthAuthorizationErrorStatus => {
     if (error instanceof ConflictError) return "conflict";
-    if (error instanceof ForbiddenRequestError) return "forbidden";
+    if (error instanceof ForbiddenRequestError || error instanceof PermissionDeniedError) return "forbidden";
     if (error instanceof NotFoundError) return "not-found";
     return "bad-request";
   };

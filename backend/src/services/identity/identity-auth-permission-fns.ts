@@ -56,7 +56,7 @@ export const assertIdentityAuthAccessAllowed = async (
   const target = { type: ActorType.IDENTITY, id: identityId } as const;
 
   if (projectId) {
-    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({ actor, projectId });
 
     permission.assert({
       action: PROJECT_ACTION_BY_ORG_ACTION[action],

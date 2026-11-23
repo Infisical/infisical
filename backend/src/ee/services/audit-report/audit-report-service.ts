@@ -9,6 +9,7 @@ import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/dom
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { delegatedOauthOf } from "@app/lib/auth/principal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -110,7 +111,7 @@ export const auditReportServiceFactory = ({
   };
 
   // A recipient is checked as the user it is, not as the requester, so it gets a context of its own.
-  const $recipientContext = async (recipientUserId: string, orgId: string) => {
+  const $recipientContext = async (recipientUserId: string, requester: TAuditReportServiceActor) => {
     const user = await userDAL.findById(recipientUserId);
     return actorContextService.forPrincipal({
       principal: {
@@ -119,9 +120,10 @@ export const auditReportServiceFactory = ({
         username: user?.username ?? "",
         email: user?.email ?? null,
         authMethod: null,
-        isSuperAdmin: false
+        isSuperAdmin: false,
+        oauth: delegatedOauthOf(requester.principal)
       },
-      orgId
+      orgId: requester.org.id
     });
   };
 
@@ -185,7 +187,7 @@ export const auditReportServiceFactory = ({
     const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
       try {
         const { permission: recipientPermission } = await secretsPermissionService.getSecretsPermission({
-          actor: await $recipientContext(recipientUserId, actor.org.id),
+          actor: await $recipientContext(recipientUserId, actor),
           projectId: dto.projectId
         });
         return recipientPermission.can({
@@ -341,7 +343,7 @@ export const auditReportServiceFactory = ({
     const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
       try {
         const recipientPermission = await orgPermissionService.getOrgPermission({
-          actor: await $recipientContext(recipientUserId, actor.org.id)
+          actor: await $recipientContext(recipientUserId, actor)
         });
         return recipientPermission.can({
           action: OrgPermissionSecretsManagementInsightsActions.Read,

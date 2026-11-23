@@ -81,7 +81,7 @@ describe("ProjectStore.findDeletionState", () => {
 
   const store = () => new ProjectStore(poolStoreConnection(h.db));
 
-  test("should give when a project is scheduled for deletion, and nothing for a live or missing one", async () => {
+  test("should give when a project is scheduled for deletion, nothing for a live one, and mark a missing one", async () => {
     // Setup
     const org = await h.factories.organization();
     const deleteAfter = new Date("2030-01-02T03:04:05.000Z");
@@ -94,6 +94,6 @@ describe("ProjectStore.findDeletionState", () => {
     );
 
     // Assert
-    expect(states).toEqual([deleteAfter.toISOString(), "", ""]);
+    expect(states).toEqual([deleteAfter.toISOString(), "", "missing"]);
   });
 });

@@ -33,6 +33,8 @@ export type TIdentityPrincipal = {
   // What the identity authenticated with (OIDC claims, Kubernetes namespace, and so on), read by
   // `{{identity.auth.*}}` conditions. Present only for the identity making the request.
   authInfo?: Record<string, unknown>;
+  // A delegated OAuth requester's scopes, when this identity's permission is built during that request.
+  oauth?: { clientId: string; scopes?: string[] };
   assumed?: TAssumedPrincipal;
 };
 
@@ -56,6 +58,15 @@ export type TPrincipal =
   | TDeployedComponentPrincipal<ActorType.KMIP_SERVER>
   | TDeployedComponentPrincipal<ActorType.AGENT_VAULT_PROXY>
   | TPlatformPrincipal;
+
+// The delegated OAuth grant a request carries; it narrows every permission built during that request, the
+// requester's own and any built for another actor.
+export const delegatedOauthOf = (principal: TPrincipal | undefined): TUserPrincipal["oauth"] =>
+  principal?.type === ActorType.USER || principal?.type === ActorType.IDENTITY ? principal.oauth : undefined;
+
+// The scopes a permission built for this principal is narrowed to; undefined means not narrowed.
+export const delegatedOauthScopesOf = (principal: TPrincipal | undefined): string[] | undefined =>
+  delegatedOauthOf(principal)?.scopes;
 
 export const platformPrincipal = (): TPlatformPrincipal => ({ type: ActorType.PLATFORM, id: "platform" });
 

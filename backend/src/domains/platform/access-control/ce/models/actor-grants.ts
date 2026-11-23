@@ -50,8 +50,15 @@ export class ActorGrants {
   // What a privilege boundary compares an actor against: each distinct role it holds now (by the slug it is known
   // by), leaving out no-access, then each privilege in force.
   distinctActiveGrants(now: Date = new Date()): Grant[] {
+    return this.distinctActiveRoleGrants(now).concat(
+      this.activePrivileges(now).map((privilege) => privilege.toGrant())
+    );
+  }
+
+  // The roles half of distinctActiveGrants, for an owner that reads roles and privileges with different tables.
+  distinctActiveRoleGrants(now: Date = new Date()): Grant[] {
     const seen = new Set<string>();
-    const roles = this.memberships
+    return this.memberships
       .flatMap((membership) => membership.activeRoles(now))
       .filter((role) => {
         const slug = role.effectiveSlug;
@@ -60,7 +67,6 @@ export class ActorGrants {
         return true;
       })
       .map((role) => role.toGrant());
-    return roles.concat(this.activePrivileges(now).map((privilege) => privilege.toGrant()));
   }
 
   activePrivileges(now: Date = new Date()): Privilege[] {

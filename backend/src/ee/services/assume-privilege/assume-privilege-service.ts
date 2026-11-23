@@ -57,21 +57,25 @@ export const assumePrivilegeServiceFactory = ({
       });
     }
 
-    // check entity is  part of project; only membership is read here, so the principal needs no profile
-    const targetActor = await actorContextService.forPrincipal({
-      principal:
-        targetActorType === ActorType.USER
-          ? {
+    // check entity is  part of project; only membership is read here, so the principal needs no profile. A user
+    // target is checked against the org's sign-in policy with the requester's sign-in method.
+    const targetActor =
+      targetActorType === ActorType.USER
+        ? await actorContextService.forSession({
+            principal: {
               type: ActorType.USER,
               id: targetActorId,
               username: "",
               email: null,
-              authMethod: null,
+              authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
               isSuperAdmin: false
-            }
-          : { type: ActorType.IDENTITY, id: targetActorId, name: "", isInstanceAdmin: false },
-      orgId: actor.org.id
-    });
+            },
+            orgId: actor.org.id
+          })
+        : await actorContextService.forPrincipal({
+            principal: { type: ActorType.IDENTITY, id: targetActorId, name: "", isInstanceAdmin: false },
+            orgId: actor.org.id
+          });
     await projectPermissionService.getProjectPermission({ actor: targetActor, projectId });
 
     if (targetActorType === ActorType.USER) {
@@ -138,7 +142,11 @@ export const assumePrivilegeServiceFactory = ({
       });
     }
 
-    return decodedToken;
+    const actorName =
+      decodedToken.actorType === ActorType.USER
+        ? ((await userDAL.findById(decodedToken.actorId))?.username ?? "")
+        : ((await identityDAL.findById(decodedToken.actorId))?.name ?? "");
+    return { ...decodedToken, actorName };
   };
 
   return {

@@ -6,6 +6,7 @@ import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/erro
 import { ActorGrants, TActorGrantsService } from "@app/domains/platform/access-control/ce/module";
 import type { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { delegatedOauthScopesOf } from "@app/lib/auth/principal";
 
 import { ProjectResourcePermission, TResourceRoles } from "../../models/project-resource-permission";
 import { TProjectPermissionService } from "../project-permission/service";
@@ -51,7 +52,7 @@ export class ProjectResourcePermissionService implements TProjectResourcePermiss
       throw new RuleViolationError({ message: "Invalid actor provided", name: "Get resource permission" });
     }
     // No OAuth scope covers resource memberships, so a delegated token gets nothing on a resource.
-    if (principal.type === ActorType.USER && principal.oauth?.scopes) return ProjectResourcePermission.none<TSet>();
+    if (delegatedOauthScopesOf(principal)) return ProjectResourcePermission.none<TSet>();
 
     const access = await this.projectPermissionService.findProjectAccess({ actor, projectId, type });
     // Someone who is not a project member may still hold a role on one of its resources, as long as they are in

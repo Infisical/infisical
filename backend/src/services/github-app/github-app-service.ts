@@ -57,7 +57,7 @@ type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
-  actorContextService: Pick<TActorContextService, "forPrincipal">;
+  actorContextService: Pick<TActorContextService, "forPrincipal" | "forSession">;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: TLicenseService;
@@ -513,7 +513,7 @@ export const gitHubAppServiceFactory = ({
       if (!stateUser) {
         throw new BadRequestError({ message: "Invalid actor provided", name: "Get permission" });
       }
-      const actor = await actorContextService.forPrincipal({
+      const actor = await actorContextService.forSession({
         principal: {
           type: ActorType.USER,
           id: stateUser.id,

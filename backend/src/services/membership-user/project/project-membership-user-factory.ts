@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -30,6 +31,7 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findActorsWithActiveOrgAccess" | "findActorsWithOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
@@ -40,6 +42,7 @@ type TProjectMembershipUserScopeFactoryDep = {
 
 export const newProjectMembershipUserFactory = ({
   projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   projectDAL,
   membershipUserDAL,
@@ -70,7 +73,7 @@ export const newProjectMembershipUserFactory = ({
     newUserEmails
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -206,7 +209,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -283,7 +286,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onDeleteMembershipUserGuard: TMembershipUserScopeFactory["onDeleteMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -313,7 +316,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -324,7 +327,7 @@ export const newProjectMembershipUserFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });

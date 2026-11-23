@@ -13,8 +13,9 @@ const PROJECT_ID = "project-1";
 // Only the collaborators reached before the role check; anything later is left undefined so a guard
 // that fails to reject shows up as a crash rather than a silent pass.
 const buildDeps = (projectType: ProjectType) => ({
-  projectPermissionService: {
-    getProjectPermission: vi
+  projectPermissionService: {},
+  secretsPermissionService: {
+    getProjectPermissionWithFolderGrants: vi
       .fn()
       .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never }))
   },

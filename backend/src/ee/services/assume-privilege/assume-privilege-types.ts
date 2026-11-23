@@ -32,5 +32,6 @@ export interface TAssumePrivilegeServiceFactory {
     requesterId: string;
     actorType: ActorType;
     actorId: string;
+    actorName: string;
   }>;
 }

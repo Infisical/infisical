@@ -38,7 +38,8 @@ const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: s
               ? {
                   projectId: assumed.projectId,
                   actorType: assumed.actorType as ActorType.USER | ActorType.IDENTITY,
-                  actorId: assumed.actorId
+                  actorId: assumed.actorId,
+                  actorName: assumed.actorName
                 }
               : undefined
         }
@@ -91,6 +92,10 @@ export const injectPermission = fp(async (server) => {
       principal,
       orgId: req.auth.orgId
     });
+    // A user token minted without a sign-in method can't be held to the org's sign-in policy.
+    if (principal.type === ActorType.USER && principal.authMethod === undefined && req.auth.orgId) {
+      throw new UnauthorizedError({ name: "No auth method defined" });
+    }
     // A session the org's sign-in policy no longer allows is turned away like an expired one.
     if (ssoRefusal) throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
     const flat: OrgServiceActor = {

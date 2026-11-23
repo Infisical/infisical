@@ -97,11 +97,13 @@ const runBoundary = async ({
         grantPermissions({ scope: AccessScope.Organization, orgId: input.orgId }, input.actor)
     },
     projectPermissionService: {
-      getProjectPermission: () => Promise.resolve(toPermission(actorPermission)),
       getGrantPermissions: (input: TGrantInput) =>
         grantPermissions({ scope: AccessScope.Project, orgId: input.orgId, projectId: input.projectId }, input.actor)
     },
-    secretsPermissionService: { getFolderGrantPermissions: () => Promise.resolve([]) },
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: () => Promise.resolve(toPermission(actorPermission)),
+      getFolderGrantPermissions: () => Promise.resolve([])
+    },
     actorGrantsService: { getActorGrants: () => Promise.resolve({}) }
   } as unknown as Parameters<typeof assertIdentityAuthAccessAllowed>[0];
 

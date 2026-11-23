@@ -14,7 +14,8 @@ import { Permission, TemporaryAccess } from "@app/domains/platform/access-contro
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import type { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { ActorType } from "@app/lib/auth/actor-types";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { delegatedOauthOf } from "@app/lib/auth/principal";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -164,23 +165,26 @@ export const assertProductWillRetainAdmin = async ({
 };
 
 type TMemberActorContextDeps = {
-  actorContextService: Pick<TActorContextService, "forPrincipal">;
+  actorContextService: Pick<TActorContextService, "forPrincipal" | "forSession">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 // The actor context of a user or identity in the org, to build that member's own permission. A requester's sign-in
-// method and delegated OAuth scopes carry over to it, as they did when the legacy permission engine built it.
+// method (or the one given, for work queued from a request) and delegated OAuth scopes carry over to a user, and a
+// sign-in method is checked against the org's sign-in policy.
 export const buildMemberActorContext = async (
   { actorContextService, userDAL, identityDAL }: TMemberActorContextDeps,
   {
     target,
     orgId,
-    requester
+    requester,
+    authMethod
   }: {
     target: { type: ActorType.USER | ActorType.IDENTITY; id: string };
     orgId: string;
     requester?: TActorContext;
+    authMethod?: ActorAuthMethod;
   }
 ): Promise<TActorContext> => {
   if (requester && requester.principal.type === target.type && requester.principal.id === target.id) {
@@ -188,25 +192,33 @@ export const buildMemberActorContext = async (
   }
   if (target.type === ActorType.USER) {
     const requestingUser = requester?.principal.type === ActorType.USER ? requester.principal : undefined;
+    const oauth = delegatedOauthOf(requester?.principal);
     const user = await requestMemoize(requestMemoKeys.userFindById(target.id), () => userDAL.findById(target.id));
-    return actorContextService.forPrincipal({
-      principal: {
-        type: ActorType.USER,
-        id: target.id,
-        username: user?.username ?? "",
-        email: user?.email ?? null,
-        authMethod: requestingUser?.authMethod ?? null,
-        isSuperAdmin: Boolean(user?.superAdmin),
-        oauth: requestingUser?.oauth
-      },
-      orgId
-    });
+    const userAuthMethod = requestingUser?.authMethod ?? authMethod ?? null;
+    const principal = {
+      type: ActorType.USER as const,
+      id: target.id,
+      username: user?.username ?? "",
+      email: user?.email ?? null,
+      authMethod: userAuthMethod,
+      isSuperAdmin: Boolean(user?.superAdmin),
+      oauth
+    };
+    return userAuthMethod
+      ? actorContextService.forSession({ principal, orgId })
+      : actorContextService.forPrincipal({ principal, orgId });
   }
   const identity = await requestMemoize(requestMemoKeys.identityFindById(target.id), () =>
     identityDAL.findById(target.id)
   );
   return actorContextService.forPrincipal({
-    principal: { type: ActorType.IDENTITY, id: target.id, name: identity?.name ?? "", isInstanceAdmin: false },
+    principal: {
+      type: ActorType.IDENTITY,
+      id: target.id,
+      name: identity?.name ?? "",
+      isInstanceAdmin: false,
+      oauth: delegatedOauthOf(requester?.principal)
+    },
     orgId
   });
 };

@@ -26,8 +26,8 @@ const createFactory = (actorRules: Rule[]) => {
   const actorPermission = withMembership(Permission.fromRules({ rules: actorRules }), ACTOR_ID);
   const targetPermission = withMembership(Permission.none<ProjectPermissionSet>(), TARGET_ID);
 
-  const projectPermissionService = {
-    getProjectPermission: vi
+  const secretsPermissionService = {
+    getProjectPermissionWithFolderGrants: vi
       .fn()
       .mockImplementation(({ actor }: { actor: TActorContext }) =>
         Promise.resolve(actor.principal.id === TARGET_ID ? targetPermission : actorPermission)
@@ -35,7 +35,7 @@ const createFactory = (actorRules: Rule[]) => {
   };
 
   return newProjectAdditionalPrivilegesFactory({
-    projectPermissionService,
+    secretsPermissionService,
     actorContextService: {
       forPrincipal: vi
         .fn()

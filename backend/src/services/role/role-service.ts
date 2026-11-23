@@ -5,6 +5,7 @@ import { Membership } from "@app/domains/platform/access-control/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -47,6 +48,7 @@ type TRoleServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: Pick<TSecretsPermissionService, "getProjectPermissionWithFolderGrants">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -59,6 +61,7 @@ export const roleServiceFactory = ({
   roleDAL,
   orgPermissionService,
   projectPermissionService,
+  secretsPermissionService,
   projectDAL,
   identityDAL,
   userDAL,
@@ -309,7 +312,7 @@ export const roleServiceFactory = ({
     }
 
     if (dto.scopeData.scope === AccessScope.Project) {
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: dto.scopeData.projectId
       });

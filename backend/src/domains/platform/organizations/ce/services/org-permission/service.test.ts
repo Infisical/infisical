@@ -307,6 +307,20 @@ describe("OrgPermissionService.getOrgPermissionByRoles", () => {
     // Assert
     expect(result).toEqual([]);
   });
+
+  test('should give the stored "custom" slug no rules, even when a custom role is named custom', async () => {
+    // Setup
+    const { service, addCustomRole, orgId } = arrange();
+    await addCustomRole([createMember], "custom");
+
+    // Action
+    const result = await service.getOrgPermissionByRoles({ orgId, roles: [OrgMembershipRole.Custom] });
+
+    // Assert
+    expect(result).toHaveLength(1);
+    expect(result[0].role).toBeUndefined();
+    expect(result[0].permission.can(createMember)).toBe(false);
+  });
 });
 
 describe("OrgPermissionService.getGrantPermissions", () => {

@@ -88,10 +88,12 @@ const createService = ({
           roles.length ? [{ permission: Permission.none() }] : []
         )
     } as never,
-    projectPermissionService: {
-      getProjectPermission: vi
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never })),
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never }))
+    } as never,
+    projectPermissionService: {
       getProjectPermissionByRoles: vi
         .fn()
         .mockImplementation(async ({ roles }: { roles: string[] }) =>

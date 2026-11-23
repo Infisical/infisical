@@ -22,10 +22,10 @@ vi.mock("@app/lib/logger", () => ({
 
 type Rule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
 
+const toContext = async ({ principal }: { principal: unknown }) => ({ principal, org: { id: "org-1" } });
 const actorContextService = {
-  forPrincipal: vi
-    .fn()
-    .mockImplementation(async ({ principal }: { principal: unknown }) => ({ principal, org: { id: "org-1" } }))
+  forPrincipal: vi.fn().mockImplementation(toContext),
+  forSession: vi.fn().mockImplementation(toContext)
 };
 
 const USERS: Record<string, string> = { "junior-user": "junior@example.com", "admin-user": "admin@example.com" };
@@ -35,7 +35,11 @@ const createService = (requesterRules: Rule[]) => {
   return assumePrivilegeServiceFactory({
     projectPermissionService: { getProjectPermission: vi.fn().mockResolvedValue(permission) },
     actorContextService,
-    userDAL: { findById: vi.fn().mockImplementation((id: string) => Promise.resolve({ id, email: USERS[id] })) },
+    userDAL: {
+      findById: vi
+        .fn()
+        .mockImplementation((id: string) => Promise.resolve({ id, email: USERS[id], username: `${id}-name` }))
+    },
     identityDAL: { findById: vi.fn() }
   } as never);
 };
@@ -96,6 +100,34 @@ describe("assume member privileges", () => {
     await expect(
       service.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", "org-1")
     ).resolves.toMatchObject({ actorId: "junior-user" });
+  });
+
+  test("a user target is refused when the org's sign-in policy refuses the requester's sign-in method for it", async () => {
+    // Setup
+    const service = createService([
+      { action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }
+    ]);
+    actorContextService.forSession.mockRejectedValueOnce(new PermissionDeniedError({ message: "SSO required" }));
+
+    // Action
+    const result = assume(service, "junior-user");
+
+    // Assert
+    await expect(result).rejects.toThrow("SSO required");
+  });
+
+  test("a verified token names the assumed user, for {{identity.username}} conditions", async () => {
+    // Setup
+    const service = createService([
+      { action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }
+    ]);
+    const { assumePrivilegesToken } = await assume(service, "junior-user");
+
+    // Action
+    const result = await service.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", "org-1");
+
+    // Assert
+    expect(result).toMatchObject({ actorId: "junior-user", actorName: "junior-user-name" });
   });
 
   test("the target's email is not looked up when the target is not in the project", async () => {

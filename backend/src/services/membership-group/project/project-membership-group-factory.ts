@@ -5,6 +5,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -21,6 +22,7 @@ import { TMembershipGroupScopeFactory } from "../membership-group-types";
 
 type TProjectMembershipGroupScopeFactoryDep = {
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne" | "getGroupById">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -28,6 +30,7 @@ type TProjectMembershipGroupScopeFactoryDep = {
 
 export const newProjectMembershipGroupFactory = ({
   projectPermissionService,
+  secretsPermissionService,
   membershipGroupDAL,
   groupDAL,
   projectDAL
@@ -50,7 +53,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -109,7 +112,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -189,7 +192,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -225,7 +228,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onListMembershipGroupGuard: TMembershipGroupScopeFactory["onListMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -237,7 +240,7 @@ export const newProjectMembershipGroupFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });

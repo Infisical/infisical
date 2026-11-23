@@ -218,15 +218,18 @@ export const agentVaultDelegationServiceFactory = ({
   // Users and the identity go through the same reachability as mint, so the view can't disagree with what mint allows.
   const reachOf = async ({
     projectId,
-    orgId,
+    requester,
     actor
   }: {
     projectId: string;
-    orgId: string;
+    requester: TActorContext;
     actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
   }) => {
     try {
-      const actorCtx = await agentVaultActorContext({ actorContextService, userDAL, identityDAL }, { actor, orgId });
+      const actorCtx = await agentVaultActorContext(
+        { actorContextService, userDAL, identityDAL },
+        { actor, orgId: requester.org.id, requester }
+      );
       const { accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
         actor: actorCtx,
         projectId
@@ -294,7 +297,7 @@ export const agentVaultDelegationServiceFactory = ({
   }) => {
     const identityReach = await reachOf({
       projectId,
-      orgId: ctx.org.id,
+      requester: ctx,
       actor: { type: ActorType.IDENTITY, id: delegation.machineIdentity.id }
     });
     const lacking: TMissingAccessBundle[] =
@@ -310,7 +313,7 @@ export const agentVaultDelegationServiceFactory = ({
       ? await Promise.all([
           Promise.all(
             delegation.users.map((user) =>
-              reachOf({ projectId, orgId: ctx.org.id, actor: { type: ActorType.USER, id: user.id } })
+              reachOf({ projectId, requester: ctx, actor: { type: ActorType.USER, id: user.id } })
             )
           ),
           groupReachOf({ projectId, groupIds: delegation.groups.map((group) => group.id) })

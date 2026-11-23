@@ -94,8 +94,10 @@ const createProjectGuard = ({
   targetRole?: string;
 }) => {
   const factory = newProjectIdentityFactory({
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi.fn().mockResolvedValue(toPermission(actorPermission))
+    } as never,
     projectPermissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
       getProjectPermissionByRoles: vi
         .fn()
         .mockImplementation(({ roles }: { roles: string[] }) =>

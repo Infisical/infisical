@@ -206,13 +206,20 @@ export class ProjectPermissionService implements TProjectPermissionService {
         scope: { scope: AccessScope.Project, orgId, projectId }
       })
     ]);
-    const roles = project
-      ? this.getProjectRoles({ projectType: project.type })
-      : StandardProjectRoles.generic(ProjectType.SecretManager);
+    const projectType = project?.type ?? ProjectType.SecretManager;
+    // Roles read as the project's product defines them; privileges with the generic tables, as the legacy engine
+    // built them.
+    const roles = project ? this.getProjectRoles({ projectType }) : StandardProjectRoles.generic(projectType);
+    const generic = StandardProjectRoles.generic(projectType);
     const identity = RuleIdentity.create({ id: actor.id, username: actor.name, metadata: grants.attributeMap() });
-    return grants.distinctActiveGrants().map((grant) =>
+    const now = new Date();
+    const held: [Grant, TProjectRoles][] = [
+      ...grants.distinctActiveRoleGrants(now).map((grant): [Grant, TProjectRoles] => [grant, roles]),
+      ...grants.activePrivileges(now).map((privilege): [Grant, TProjectRoles] => [privilege.toGrant(), generic])
+    ];
+    return held.map(([grant, table]) =>
       Permission.fromRules<ProjectPermissionSet>({
-        rules: ProjectAccess.rulesOf([grant], roles).interpolateStored(identity.toContext())
+        rules: ProjectAccess.rulesOf([grant], table).interpolateStored(identity.toContext())
       })
     );
   }
@@ -237,9 +244,8 @@ export class ProjectPermissionService implements TProjectPermissionService {
         message: `Target ${label} with ID '${target.id}' is not a member of project with ID '${projectId}' [${idName}=${target.id}] [projectId=${projectId}]`
       });
     }
-    const roles = project
-      ? this.getProjectRoles({ projectType: project.type })
-      : StandardProjectRoles.generic(ProjectType.SecretManager);
+    // Generic tables whatever the project type, as the legacy audit built its sources.
+    const roles = StandardProjectRoles.generic(project?.type ?? ProjectType.SecretManager);
     const groupIds = [
       ...new Set(grants.memberships.flatMap((membership) => (membership.viaGroupId ? [membership.viaGroupId] : [])))
     ];

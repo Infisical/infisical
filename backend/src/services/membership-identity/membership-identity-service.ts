@@ -4,6 +4,7 @@ import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershi
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -50,6 +51,7 @@ type TMembershipIdentityServiceFactoryDep = {
   roleDAL: Pick<TRoleDALFactory, "find">;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -81,6 +83,7 @@ export const membershipIdentityServiceFactory = ({
   membershipRoleDAL,
   orgPermissionService,
   projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
@@ -107,6 +110,7 @@ export const membershipIdentityServiceFactory = ({
       membershipIdentityDAL,
       orgDAL,
       projectPermissionService,
+      secretsPermissionService,
       identityDAL,
       projectDAL
     })

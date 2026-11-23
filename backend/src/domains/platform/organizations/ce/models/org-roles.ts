@@ -19,10 +19,6 @@ const BUILT_IN_ROLES: Record<string, TOrgRule[]> = {
 
 // What org roles grant: the built-in ones as defined, a custom role or privilege as its own rules.
 export class OrgRoles {
-  static isBuiltIn(slug: string): boolean {
-    return Object.hasOwn(BUILT_IN_ROLES, slug);
-  }
-
   // Refuses a slug that is neither built in nor custom.
   static rulesFor(grant: Grant): TOrgRule[] {
     if (grant.isCustom()) return grant.customRules<TOrgRule>();

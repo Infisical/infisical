@@ -64,8 +64,12 @@ const createGuard = ({
   };
 
   const factory = newProjectMembershipUserFactory({
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi
+        .fn()
+        .mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never }))
+    } as never,
     projectPermissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
       getProjectPermissionByRoles: vi.fn().mockImplementation(({ roles }: { roles: string[] }) =>
         roles.map((role) => ({
           permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }),

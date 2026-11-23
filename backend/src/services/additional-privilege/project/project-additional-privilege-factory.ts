@@ -9,9 +9,9 @@ import {
   ProjectPermission,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
-  ProjectPermissionSub,
-  TProjectPermissionService
+  ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
@@ -32,7 +32,7 @@ type TPermissionRule = RawRule & {
 };
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
-  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   actorContextService: TActorContextService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
@@ -42,7 +42,7 @@ type TProjectAdditionalPrivilegesScopeFactoryDep = {
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
-  projectPermissionService,
+  secretsPermissionService,
   actorContextService,
   additionalPrivilegeDAL,
   membershipDAL,
@@ -59,7 +59,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       { actorContextService, userDAL, identityDAL },
       { target, orgId: actor.org.id, requester: actor }
     );
-    return projectPermissionService.getProjectPermission({ actor: targetActor, projectId });
+    return secretsPermissionService.getProjectPermissionWithFolderGrants({ actor: targetActor, projectId });
   };
 
   const getScopeField: TAdditionalPrivilegesScopeFactory["getScopeField"] = (dto) => {
@@ -439,7 +439,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.data;
 
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scope.value
       });
@@ -494,7 +494,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.selector;
 
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scope.value
       });
@@ -558,7 +558,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType } = dto.selector;
 
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scope.value
       });
@@ -587,7 +587,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       actorType === ActorType.USER
         ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
         : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-    const permission = await projectPermissionService.getProjectPermission({
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
       actor: dto.actor,
       projectId: scope.value
     });
@@ -611,7 +611,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-      const permission = await projectPermissionService.getProjectPermission({
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
         actor: dto.actor,
         projectId: scope.value
       });
