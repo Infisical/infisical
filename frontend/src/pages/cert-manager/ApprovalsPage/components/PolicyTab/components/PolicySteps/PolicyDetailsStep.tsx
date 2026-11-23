@@ -32,7 +32,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
-import { RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
+import { CERT_POLICY_TYPE_LABEL, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 type ProfileOption = {
@@ -202,14 +202,18 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ApprovalPolicyType.CertRequest}>Issuance</SelectItem>
-                    <SelectItem value={ApprovalPolicyType.CertRevocation}>Revocation</SelectItem>
+                    <SelectItem value={ApprovalPolicyType.CertRequest}>
+                      {CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRequest]}
+                    </SelectItem>
+                    <SelectItem value={ApprovalPolicyType.CertRevocation}>
+                      {CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRevocation]}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FieldDescription>
-                  {isEditing
-                    ? "A policy's type can't be changed after it's created."
-                    : "Issuance covers new certificates and renewals. Revocation covers revoking certificates."}
+                  Issuance and renewal covers new certificates and renewals. Revocation covers
+                  revoking certificates.
+                  {isEditing && " A policy's type can't be changed after it's created."}
                 </FieldDescription>
               </FieldContent>
             </Field>

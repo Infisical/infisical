@@ -87,6 +87,7 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { getCertPolicyTypeLabel } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/policyConstraints";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CertificateAlertsCard } from "@app/pages/cert-manager/components/CertificateAlerts/CertificateAlertsCard";
 import { CertificateAlertScopeKind } from "@app/pages/cert-manager/components/CertificateAlerts/types";
@@ -263,9 +264,7 @@ const ApplicationPoliciesTable = ({
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell className="text-accent">
-                  {policy.type === ApprovalPolicyType.CertRevocation ? "Revocation" : "Issuance"}
-                </TableCell>
+                <TableCell className="text-accent">{getCertPolicyTypeLabel(policy.type)}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">
                     {profileNames.slice(0, 3).map((name) => (

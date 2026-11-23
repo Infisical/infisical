@@ -1,3 +1,4 @@
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   CertRequestPolicyConstraints,
   CertRequestRenewalApproval,
@@ -12,7 +13,8 @@ export const RENEWAL_APPROVAL_OPTIONS = [
   {
     value: CertRequestRenewalApproval.OnChange,
     title: "When the renewal changes the certificate",
-    description: "Renewals of imported or discovered certificates also need approval."
+    description:
+      "Or any renewal of an imported or discovered certificate, even when nothing changes."
   },
   {
     value: CertRequestRenewalApproval.Always,
@@ -20,3 +22,13 @@ export const RENEWAL_APPROVAL_OPTIONS = [
     description: "Includes automatic renewals."
   }
 ] as const;
+
+export const CERT_POLICY_TYPE_LABEL = {
+  [ApprovalPolicyType.CertRequest]: "Issuance and renewal",
+  [ApprovalPolicyType.CertRevocation]: "Revocation"
+} as const;
+
+export const getCertPolicyTypeLabel = (type: ApprovalPolicyType) =>
+  type === ApprovalPolicyType.CertRevocation
+    ? CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRevocation]
+    : CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRequest];

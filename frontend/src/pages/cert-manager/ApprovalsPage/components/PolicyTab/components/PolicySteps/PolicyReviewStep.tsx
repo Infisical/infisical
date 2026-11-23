@@ -7,7 +7,7 @@ import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 
-import { RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
+import { getCertPolicyTypeLabel, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
@@ -59,7 +59,7 @@ export const PolicyReviewStep = () => {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Policy Type" value={isRevocationPolicy ? "Revocation" : "Issuance"} />
+          <ReviewField label="Policy Type" value={getCertPolicyTypeLabel(policyType)} />
           <ReviewField label="Max. Request TTL" value={maxRequestTtl || "Not set"} />
           <ReviewField
             label="Certificate Profiles"
