@@ -102,7 +102,12 @@ export const registerMcpRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const mcpHandler = createMcpHandler(() => createMcpServer(server, req), { responseMode: "json" });
+      // The response is read whole before it is sent, which only works because nothing stays open: replies are JSON, and
+      // the one long-lived stream, a subscriptions/listen request, is refused straight away.
+      const mcpHandler = createMcpHandler(() => createMcpServer(server, req), {
+        responseMode: "json",
+        maxSubscriptions: 0
+      });
       try {
         const response = await mcpHandler.fetch(toWebRequest(req, mcpResource), { parsedBody: req.body });
         response.headers.forEach((value, name) => {

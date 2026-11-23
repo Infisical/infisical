@@ -107,7 +107,11 @@ type TSecretLocation = { projectId: string; environmentSlug: string; secretPath:
 export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest) => {
   const mcpServer = new McpServer(
     { name: "infisical", version: "1.0.0" },
-    { instructions: "Call list-projects first to find project IDs and environment slugs." }
+    {
+      instructions: "Call list-projects first to find project IDs and environment slugs.",
+      // A token's tools never change, so clients have no list changes to subscribe to.
+      capabilities: { tools: { listChanged: false } }
+    }
   );
 
   const actor = {
