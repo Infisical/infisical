@@ -105,6 +105,20 @@ describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
     });
   });
 
+  test("labels the renewed certificate apart from the name the renewal requests", () => {
+    expect(
+      getApprovalRequestSubjectMetadata(
+        certRequest({ renewal: { certificateId: "cert-1", certificateName: "old.example.com" } })
+      )
+    ).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-1",
+      certificateName: "old.example.com",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
   test("names no certificate for a new issuance", () => {
     expect(getApprovalRequestSubjectMetadata(certRequest({}))).toEqual({
       certificateRequestId: "cert-req-1",

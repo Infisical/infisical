@@ -403,6 +403,7 @@ export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TAppr
 export type TApprovalRequestSubjectMetadata = {
   certificateRequestId?: string;
   certificateId?: string;
+  certificateName?: string;
   commonName?: string;
   profileName?: string;
   signerId?: string;

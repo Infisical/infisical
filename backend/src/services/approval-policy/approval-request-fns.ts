@@ -259,6 +259,7 @@ export const getApprovalRequestSubjectMetadata = (
     return {
       certificateRequestId,
       ...(renewal && { certificateId: renewal.certificateId }),
+      ...(renewal?.certificateName && { certificateName: renewal.certificateName }),
       commonName: certificateRequest?.commonName,
       profileName
     };
