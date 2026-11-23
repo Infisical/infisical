@@ -158,7 +158,7 @@ const describeDirectoryLookupFailure = (err: unknown) => {
 const MAX_FAILURE_REASON_LENGTH = 256;
 
 const CHANNEL_BINDING_OPT_OUT_HINT =
-  "If this deployment cannot support the check, an admin can turn on Accept any TLS channel binding in the profile's Microsoft Autoenrollment settings.";
+  "If this deployment cannot support the check, an admin can turn on Skip the channel binding check in the profile's Microsoft Autoenrollment settings.";
 
 type TChannelBindingCheck = { expected: TExpectedChannelBindings | null; unverifiableReason?: string };
 

@@ -567,7 +567,7 @@ describe("microsoftAutoenrollmentService", () => {
       expect(learnServerChannelBindings).not.toHaveBeenCalled();
       expect(refusalReasons()).toEqual([MicrosoftAutoenrollmentFailureReason.ChannelBindingUnverifiable]);
       expect(refusalMessage()).toContain("FIPS mode");
-      expect(refusalMessage()).toContain("Accept any TLS channel binding");
+      expect(refusalMessage()).toContain("Skip the channel binding check");
     });
 
     test("refuses when SITE_URL is not https, saying why", async () => {

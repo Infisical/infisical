@@ -40,7 +40,7 @@ If the certificate authority's key is an elliptic curve key in AWS KMS, the cert
 - No proxy that inspects HTTPS between the computers and Infisical
 - Your instance sees the same TLS certificate at its host name that the computers see (to check, see [Network requirements for TLS channel binding](#network-requirements-for-tls-channel-binding))
 
-If a proxy inspects HTTPS on the way, or your instance can't see the same certificate as the computers, turn on **Accept any TLS channel binding** in [Step 2](#step-2-configure-the-enrollment-method).
+If a proxy inspects HTTPS on the way, or your instance can't see the same certificate as the computers, turn on **Skip the channel binding check** in [Step 2](#step-2-configure-the-enrollment-method).
 
 If you self-host Infisical behind a reverse proxy that routes requests by path, route `/cep/` and `/ces/` to Infisical as well as `/api/`.
 
@@ -87,11 +87,11 @@ Fill in the rest of the panel, then select **Enable**:
 
 - **LDAP connection**: the Active Directory connection used to look up each computer's DNS name
 - **AD groups (optional)**: the Active Directory security groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
-- **Accept any TLS channel binding**: accept a request bound to any TLS certificate (off by default)
+- **Skip the channel binding check**: accept a request bound to any TLS certificate (off by default)
 - **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42)
 
 <Warning>
-  Turn on **Accept any TLS channel binding** only if computers reach your instance through a proxy that inspects HTTPS, or, if you self-host Infisical, your instance can't check bindings (such as in FIPS mode). While it's on, a site that gets a computer to sign in to it can enroll as that computer.
+  Turn on **Skip the channel binding check** only if computers reach your instance through a proxy that inspects HTTPS, or, if you self-host Infisical, your instance can't check bindings (such as in FIPS mode). While it's on, a site that gets a computer to sign in to it can enroll as that computer.
 </Warning>
 
 Windows renews a certificate only when the renewal period is more than 8 hours and less than 20% of the certificate's validity. A value outside that range is moved into it, and the panel shows the value Windows uses when it differs. A certificate valid for 40 hours or less is never renewed, so computers request a new one instead.
@@ -310,7 +310,7 @@ The two fingerprints must match. If they don't, see [Requests are refused with a
     - `SITE_URL` isn't an HTTPS address
     - Your instance can't read the certificate it serves at its host name, and read none in the last day (until then, requests are checked against the certificates it read last)
 
-    Fix the cause if you can, such as letting your instance reach its own host name over HTTPS. If your deployment can't support the check, turn on **Accept any TLS channel binding** in the profile's Microsoft Autoenrollment panel. While it's on, a site that gets a computer to sign in to it can enroll as that computer.
+    Fix the cause if you can, such as letting your instance reach its own host name over HTTPS. If your deployment can't support the check, turn on **Skip the channel binding check** in the profile's Microsoft Autoenrollment panel. While it's on, a site that gets a computer to sign in to it can enroll as that computer.
   </Accordion>
   <Accordion title="A computer doesn't get a certificate">
     Windows records an error in the computer's Application event log under the source `CertificateServicesClient-CertEnroll`, but the error never says why the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), where each refusal is one of these events:

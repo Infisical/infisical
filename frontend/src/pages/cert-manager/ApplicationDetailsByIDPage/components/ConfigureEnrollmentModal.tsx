@@ -287,7 +287,7 @@ const DisableEnrollmentButton = ({
   <ConfirmActionButton
     label="Disable"
     title={`Disable ${method === "Microsoft Autoenrollment" ? method : `${method} enrollment`} for this profile?`}
-    description={`Clients using ${method} against this profile via this application will stop being able to request certificates. Existing certificates remain valid.${consequence ? ` ${consequence}` : ""}`}
+    description={`Clients using ${method} against this profile via this application will stop being able to request certificates.${consequence ? ` ${consequence}` : ""}`}
     confirmLabel="Disable Enrollment"
     confirmVariant="danger"
     onConfirmed={onConfirmed}
@@ -2007,6 +2007,11 @@ const MicrosoftAutoenrollmentPanel = ({
           />
         </SectionCard>
         <SectionCard title="TLS Channel Binding">
+          <p className="text-sm text-accent">
+            Windows ties each sign-in to the HTTPS certificate the computer sees. Sign-ins tied to a
+            different certificate are refused, so a sign-in captured by another site can&apos;t be
+            used to get certificates here.
+          </p>
           {!allowAnyChannelBinding &&
           channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable ? (
             <Alert variant="warning">
@@ -2016,7 +2021,7 @@ const MicrosoftAutoenrollmentPanel = ({
                 <p>
                   {isCloud
                     ? "Infisical can't check TLS channel bindings right now, so requests are refused. Contact Infisical support."
-                    : `${initial?.channelBinding.reason} Requests are refused. If this can't be fixed, turn on Accept any TLS channel binding below.`}
+                    : `${initial?.channelBinding.reason} Requests are refused. If this can't be fixed, turn on Skip the channel binding check below.`}
                 </p>
               </AlertDescription>
             </Alert>
@@ -2028,14 +2033,14 @@ const MicrosoftAutoenrollmentPanel = ({
               <Field orientation="horizontal">
                 <FieldContent>
                   <Label htmlFor="microsoft-autoenrollment-allow-any-channel-binding">
-                    Accept any TLS channel binding
+                    Skip the channel binding check
                   </Label>
                   <FieldDescription>
                     {isCloud
-                      ? "Turn on only when a proxy inspects HTTPS between your computers and Infisical."
-                      : "Turn on only when a proxy inspects HTTPS or bindings can't be checked."}{" "}
-                    While on, a site that gets a computer to sign in to it can enroll as that
-                    computer.
+                      ? "Turn on only if computers reach Infisical through a proxy that inspects HTTPS."
+                      : "Turn on only if computers reach Infisical through a proxy that inspects HTTPS, or this instance can't check bindings."}{" "}
+                    While it&apos;s on, a site that gets a computer to sign in to it can request
+                    certificates as that computer.
                   </FieldDescription>
                   {!isCloud &&
                   !allowAnyChannelBinding &&
@@ -2124,7 +2129,7 @@ const MicrosoftAutoenrollmentPanel = ({
         {enabled && (
           <DisableEnrollmentButton
             method="Microsoft Autoenrollment"
-            consequence="Computers keep asking this profile for certificates until you remove its enrollment policy URL from Group Policy, and approved requests that computers haven't picked up yet can no longer be collected. The stored keytab, allowed groups and renewal setting are deleted, so turning it back on needs a keytab again, uploaded or reused from another profile."
+            consequence="Computers keep asking this profile for certificates until you remove its enrollment policy URL from Group Policy, and approved requests that computers haven't picked up yet can no longer be collected."
             onConfirmed={onDisable}
             isPending={isPending}
           />
@@ -2181,12 +2186,7 @@ const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
         </>
       );
     case "microsoft-autoenrollment":
-      return (
-        <>
-          Enroll domain-joined Windows computers through Group Policy with {docLink}, the same way
-          AD CS does.
-        </>
-      );
+      return <>Enroll domain-joined Windows computers through Group Policy with {docLink}.</>;
     default:
       return null;
   }
