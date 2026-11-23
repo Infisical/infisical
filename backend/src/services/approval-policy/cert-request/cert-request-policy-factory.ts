@@ -190,10 +190,10 @@ export const certRequestApprovalResourceFactory = ({
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Issuance and renewal mark their own request failed before rethrowing, so a failed request is still this
       // failure to report. Any other state (issued, because something threw after the renewal committed, or gone)
-      // means there's no failure to report.
+      // means there's no failure to report. It's read from the primary, since a replica may not show that write yet.
       const failedRequest =
         (await certificateRequestDAL.transitionFromPending(certReqId, CertificateRequestStatus.FAILED, errorMessage)) ??
-        (await certificateRequestDAL.findById(certReqId));
+        (await certificateRequestDAL.findById(certReqId, approvalPolicyDAL.primaryNode()));
       if (failedRequest?.status !== CertificateRequestStatus.FAILED) {
         logger.error(
           { error, certificateRequestId: certReqId, approvalRequestId: request.id },

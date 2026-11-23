@@ -32,7 +32,11 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
   const setup = (issueCertificate: () => Promise<unknown>) => {
     const failedRequest = { id: "cert-req-1", status: CertificateRequestStatus.FAILED };
     const deps = {
-      approvalPolicyDAL: { findByProjectId: vi.fn(), findById: vi.fn().mockResolvedValue({ name: "prod renewals" }) },
+      approvalPolicyDAL: {
+        findByProjectId: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ name: "prod renewals" }),
+        primaryNode: vi.fn().mockReturnValue("primary")
+      },
       approvalPolicyService: { notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined) },
       auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
       certificateApprovalService: { issueCertificate: vi.fn(issueCertificate) },
@@ -180,6 +184,20 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     const { deps, failedRequest, resource } = setup(() => Promise.reject(error));
     deps.certificateRequestDAL.transitionFromPending.mockResolvedValue(null);
     deps.certificateRequestDAL.findById.mockResolvedValue(failedRequest);
+
+    await resource.postApprovalRoutine!(request);
+
+    expect(deps.certificateRequestService.recordIssuanceFailure).toHaveBeenCalledWith(failedRequest, { error });
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(request, "CA is not active.");
+  });
+
+  it("reports a failure the issuance already marked while a replica still shows the request pending", async () => {
+    const error = new BadRequestError({ message: "CA is not active" });
+    const { deps, failedRequest, resource } = setup(() => Promise.reject(error));
+    deps.certificateRequestDAL.transitionFromPending.mockResolvedValue(null);
+    deps.certificateRequestDAL.findById.mockImplementation(async (_id: string, tx?: unknown) =>
+      tx === "primary" ? failedRequest : { ...failedRequest, status: CertificateRequestStatus.PENDING }
+    );
 
     await resource.postApprovalRoutine!(request);
 
