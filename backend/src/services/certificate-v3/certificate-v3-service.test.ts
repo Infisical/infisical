@@ -3047,6 +3047,20 @@ describe("CertificateV3Service", () => {
         );
       });
 
+      it("records the name of the certificate being renewed on a held renewal", async () => {
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+        expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            requestData: expect.objectContaining({
+              renewal: expect.objectContaining({ certificateName: mockOriginalCert.commonName })
+            })
+          })
+        );
+      });
+
       it("refuses an approved renewal that no longer matches what was reviewed", async () => {
         setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
         const reviewedCertificateRequest = await holdAndReadSnapshot();
@@ -3088,6 +3102,54 @@ describe("CertificateV3Service", () => {
             reviewedCertificateRequest
           })
         ).rejects.toThrow(/renewed or revoked while this renewal waited/);
+      });
+
+      it("refuses an approved renewal from a certificate authority once the certificate has expired", async () => {
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        const reviewedCertificateRequest = await holdAndReadSnapshot();
+        const shift = mockOriginalCert.notAfter.getTime() - new Date("2024-01-20").getTime();
+        setupRenewal({
+          ...mockOriginalCert,
+          source: CertificateSource.Imported,
+          notBefore: new Date(mockOriginalCert.notBefore.getTime() - shift),
+          notAfter: new Date(mockOriginalCert.notAfter.getTime() - shift)
+        });
+
+        await expect(
+          service.renewApprovedCertificate({
+            certificateRequestId: "held-req-1",
+            organizationId: "org-123",
+            renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New, caId: "ca-123" },
+            reviewedCertificateRequest
+          })
+        ).rejects.toThrow(/already expired/);
+        expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+      });
+
+      it("renews an approved self-signed certificate that expired while the renewal waited", async () => {
+        const selfSignedProfile = { ...mockProfile, issuerType: IssuerType.SELF_SIGNED, caId: null } as never;
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(selfSignedProfile);
+        const reviewedCertificateRequest = await holdAndReadSnapshot();
+        const shift = mockOriginalCert.notAfter.getTime() - new Date("2024-01-20").getTime();
+        setupRenewal({
+          ...mockOriginalCert,
+          source: CertificateSource.Imported,
+          notBefore: new Date(mockOriginalCert.notBefore.getTime() - shift),
+          notAfter: new Date(mockOriginalCert.notAfter.getTime() - shift)
+        });
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(selfSignedProfile);
+        vi.mocked(mockCertificateDAL.create).mockResolvedValue({ ...mockOriginalCert, id: "cert-456" } as never);
+        mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "held-req-1", createdAt: new Date() });
+
+        const result = await service.renewApprovedCertificate({
+          certificateRequestId: "held-req-1",
+          organizationId: "org-123",
+          renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New },
+          reviewedCertificateRequest
+        });
+
+        expect(result.status).toBe(CertificateRequestStatus.ISSUED);
       });
 
       it("stops automatic renewal of an imported certificate when its renewal is rejected", async () => {
