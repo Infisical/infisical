@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { Children, isValidElement, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -59,7 +59,7 @@ import { SessionStatusBadge } from "./SessionStatusBadge";
 const SHOWN_INLINE_SERVICES = 1;
 const SHOWN_SERVICES = 2;
 const SHOWN_SKILLS = 2;
-const SHOWN_METADATA = 3;
+const SHOWN_METADATA = 2;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
 // One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
@@ -72,6 +72,9 @@ const moreButton = (count: number) => (
   </button>
 );
 
+const ROWS_PER_COLUMN = 2;
+
+// Rows past ROWS_PER_COLUMN start a new column beside the first, so the details block never grows taller than two rows.
 const DetailSection = ({
   label,
   children,
@@ -80,17 +83,32 @@ const DetailSection = ({
   label: string;
   children: ReactNode;
   className?: string;
-}) => (
-  <dl
-    aria-label={label}
-    className={twMerge(
-      "grid min-w-0 flex-[1_1_12rem] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5 border-t border-l border-border px-4 py-2.5",
-      className
-    )}
-  >
-    {children}
-  </dl>
-);
+}) => {
+  const rows = Children.toArray(children);
+  const columns: ReactNode[][] = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_COLUMN) {
+    columns.push(rows.slice(i, i + ROWS_PER_COLUMN));
+  }
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className={twMerge(
+        "flex min-w-0 flex-[0_1_auto] gap-x-6 border-t border-l border-border px-4 py-2.5",
+        className
+      )}
+    >
+      {columns.map((column) => (
+        <dl
+          key={isValidElement(column[0]) ? column[0].key : undefined}
+          className="grid min-w-0 flex-[1_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5"
+        >
+          {column}
+        </dl>
+      ))}
+    </div>
+  );
+};
 
 const MetadataValue = ({ value }: { value: string }) => (
   <Tooltip>
@@ -125,10 +143,11 @@ const DetailRow = ({
   </div>
 );
 
+// The subtitle shrinks faster than the name, so a narrow column cuts the email before the name.
 const MemberValue = ({ name, subtitle }: { name: string; subtitle?: string }) => (
-  <span className="flex min-w-0 flex-col">
+  <span className="flex min-w-0 items-baseline gap-2">
     <span className="truncate">{name}</span>
-    {subtitle && <span className="truncate text-xs leading-4 text-muted">{subtitle}</span>}
+    {subtitle && <span className="shrink-[4] truncate text-muted">{subtitle}</span>}
   </span>
 );
 
@@ -144,7 +163,7 @@ const SkillsRow = ({
 }) => {
   const more = skills.slice(SHOWN_SKILLS);
   return (
-    <DetailRow label={label} className="flex-wrap gap-x-4 gap-y-1">
+    <DetailRow label={label} className="gap-x-3">
       {skills.slice(0, SHOWN_SKILLS).map((skill) => (
         <Tooltip key={skill.id}>
           <TooltipTrigger asChild>
@@ -198,6 +217,8 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
   const metadataEntries = Object.entries(session?.metadata ?? {});
+  const shownMetadata = metadataEntries.slice(0, SHOWN_METADATA);
+  const moreMetadata = metadataEntries.slice(SHOWN_METADATA);
   const inlineServices = session ? sessionInlineServices(session) : [];
   const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
   const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
@@ -280,12 +301,12 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 <DetailSection label="Identity">
                   <DetailRow
                     label={isMachineIdentity ? "Machine Identity" : "User"}
-                    className={twMerge("items-start", isOwnerDeleted && "text-muted")}
+                    className={twMerge(isOwnerDeleted && "text-muted")}
                   >
                     {isMachineIdentity ? (
-                      <BotIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                      <BotIcon className="size-4 shrink-0 text-muted" />
                     ) : (
-                      <UserIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                      <UserIcon className="size-4 shrink-0 text-muted" />
                     )}
                     <MemberValue
                       name={`${memberDisplayName(session.actor)}${isOwnerDeleted ? " (deleted)" : ""}`}
@@ -295,9 +316,9 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   {session.onBehalfOf && (
                     <DetailRow
                       label="On Behalf Of"
-                      className={twMerge("items-start", !session.onBehalfOf.id && "text-muted")}
+                      className={twMerge(!session.onBehalfOf.id && "text-muted")}
                     >
-                      <UserIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                      <UserIcon className="size-4 shrink-0 text-muted" />
                       <MemberValue
                         name={`${memberDisplayName(session.onBehalfOf)}${session.onBehalfOf.id ? "" : " (deleted)"}`}
                         subtitle={
@@ -309,7 +330,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {hasAccess && (
-                  <DetailSection label="Access" className="basis-56">
+                  <DetailSection label="Access">
                     {session.accessBundle && (
                       <DetailRow label="Access Bundle">
                         {session.accessBundle.id ? (
@@ -336,7 +357,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       </DetailRow>
                     )}
                     {listedServices.length > 0 && (
-                      <DetailRow label="Services" className="flex-wrap gap-x-4 gap-y-1">
+                      <DetailRow label="Services" className="gap-x-3">
                         {shownServices.map((service) => (
                           <Tooltip key={service.id}>
                             <TooltipTrigger asChild>
@@ -367,7 +388,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       </DetailRow>
                     )}
                     {inlineServices.length > 0 && (
-                      <DetailRow label="Inline Services" className="flex-wrap gap-x-4 gap-y-1">
+                      <DetailRow label="Inline Services" className="gap-x-3">
                         {shownInlineServices.map((service) => {
                           const hookText = inlineServiceHookText(service);
                           return (
@@ -430,30 +451,30 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {metadataEntries.length > 0 && (
-                  <DetailSection label="Metadata" className="grow-[1.5] basis-64">
-                    {metadataEntries.slice(0, SHOWN_METADATA).map(([key, value]) => (
+                  <DetailSection label="Metadata" className="flex-[1_1_12rem]">
+                    {shownMetadata.map(([key, value], index) => (
                       <DetailRow key={key} label={key} labelClassName="font-mono">
                         <MetadataValue value={value} />
+                        {index === shownMetadata.length - 1 && moreMetadata.length > 0 && (
+                          <SessionAccessHoverCard
+                            content={
+                              <dl className="grid max-h-72 max-w-md grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 overflow-y-auto text-sm">
+                                {moreMetadata.map(([moreKey, moreValue]) => (
+                                  <div key={moreKey} className="contents">
+                                    <dt className="font-mono text-xs leading-5 text-label">
+                                      {moreKey}
+                                    </dt>
+                                    <dd className="break-all">{moreValue}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            }
+                          >
+                            {moreButton(moreMetadata.length)}
+                          </SessionAccessHoverCard>
+                        )}
                       </DetailRow>
                     ))}
-                    {metadataEntries.length > SHOWN_METADATA && (
-                      <DetailRow label="">
-                        <SessionAccessHoverCard
-                          content={
-                            <dl className="grid max-h-72 max-w-md grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 overflow-y-auto text-sm">
-                              {metadataEntries.slice(SHOWN_METADATA).map(([key, value]) => (
-                                <div key={key} className="contents">
-                                  <dt className="font-mono text-xs text-label">{key}</dt>
-                                  <dd className="break-all">{value}</dd>
-                                </div>
-                              ))}
-                            </dl>
-                          }
-                        >
-                          {moreButton(metadataEntries.length - SHOWN_METADATA)}
-                        </SessionAccessHoverCard>
-                      </DetailRow>
-                    )}
                   </DetailSection>
                 )}
               </div>
