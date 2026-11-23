@@ -1921,6 +1921,12 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $findDeletedRecordsOnCa = (serialNumber: string, caId: string, tx: Knex) =>
+    certificateDAL.find(
+      { $in: { serialNumber: getSerialNumberSpellings(serialNumber) }, caId, $notNull: ["deletedAt"] },
+      { tx }
+    );
+
   const $assertCanReimportDeletedRecords = async (
     serialNumber: string,
     {
@@ -1941,13 +1947,9 @@ export const certificateServiceFactory = ({
       actorId: string;
       actorAuthMethod: ActorAuthMethod;
       actorOrgId: string;
-    },
-    tx: Knex
+    }
   ) => {
-    const deletedRecords = await certificateDAL.find(
-      { $in: { serialNumber: getSerialNumberSpellings(serialNumber) }, caId, $notNull: ["deletedAt"] },
-      { tx }
-    );
+    const deletedRecords = await $findDeletedRecordsOnCa(serialNumber, caId, certificateDAL.primaryNode());
     for (const deletedRecord of deletedRecords) {
       const { canRevokeDirectly } = await assertCanRevokeOrRequestRevocation({
         certificate: deletedRecord,
@@ -1976,6 +1978,7 @@ export const certificateServiceFactory = ({
         }
       }
     }
+    return new Set(deletedRecords.map((deletedRecord) => deletedRecord.id));
   };
 
   /**
@@ -2110,8 +2113,9 @@ export const certificateServiceFactory = ({
           actorOrgId
         }
       : null;
-    if (reimportCheck)
-      await $assertCanReimportDeletedRecords(leafCert.serialNumber, reimportCheck, certificateDAL.primaryNode());
+    const checkedDeletedRecordIds = reimportCheck
+      ? await $assertCanReimportDeletedRecords(leafCert.serialNumber, reimportCheck)
+      : null;
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
@@ -2301,7 +2305,14 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.transaction(async (tx) => {
       await certificateDAL.lockSerialNumber(serialNumber, tx);
       await $assertSerialNumberImportable(serialNumber, actorOrgId, tx);
-      if (reimportCheck) await $assertCanReimportDeletedRecords(serialNumber, reimportCheck, tx);
+      if (reimportCheck && checkedDeletedRecordIds) {
+        const deletedRecords = await $findDeletedRecordsOnCa(serialNumber, reimportCheck.caId, tx);
+        if (deletedRecords.some((deletedRecord) => !checkedDeletedRecordIds.has(deletedRecord.id))) {
+          throw new BadRequestError({
+            message: `Certificate with serial number '${serialNumber}' was deleted while it was being imported. Import it again.`
+          });
+        }
+      }
 
       try {
         const txCert = await certificateDAL.create(

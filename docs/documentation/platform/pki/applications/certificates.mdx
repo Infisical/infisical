@@ -72,7 +72,7 @@ A keystore can hold several certificates. Infisical lists what is inside so you 
 
 You can import a deleted certificate again. It's added as a new certificate, and the deleted one stays in the inventory. A certificate with a revocation recorded in Certificate Manager can't be imported.
 
-If you import it into a profile that uses the certificate authority that issued it, revoking either certificate revokes both. So the import needs permission to revoke the deleted certificate, and if a revocation approval policy covers the deleted certificate, the Application and profile you import into must be covered by the same policy.
+If you import it into a profile that uses the certificate authority that issued it, revoking either certificate revokes both. So the import needs permission to revoke the deleted certificate, and if a [revocation approval policy](/documentation/platform/pki/applications/approvals#revocation) covers the deleted certificate, the Application and profile you import into must be covered by the same policy.
 
 ### Managing an imported certificate
 
