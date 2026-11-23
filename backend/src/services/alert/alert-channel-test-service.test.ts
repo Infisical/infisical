@@ -96,6 +96,7 @@ const buildKeyStore = () => {
 
 const OWNING_ALERT = {
   id: "alert-1",
+  description: "Rotate the key before Friday.",
   orgId: ORG_ID,
   projectId: null,
   resourceType: RESOURCE_TYPE,
@@ -217,6 +218,57 @@ describe("alertChannelTestService", () => {
 
       expect(lookups).toEqual([{ orgId: ORG_ID, resourceIds: ["resource-1"] }]);
       expect(result.resourceName).toBe("Payments API");
+    } finally {
+      restore();
+    }
+  });
+
+  test("shows the description the caller sends in the test notification, and none when it is blank", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("slack", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    // A fresh key store per send, since the cooldown allows one test per channel type a minute.
+    const sendTest = (dto: typeof boundSlackTest & { description?: string }) =>
+      alertChannelTestServiceFactory(buildDeps().deps).testChannel(dto);
+
+    try {
+      await sendTest({ ...boundSlackTest, description: " Page the on-call. " });
+      await sendTest({ ...boundSlackTest, description: "  " });
+      await sendTest(boundSlackTest);
+
+      expect(sent.map((ctx) => ctx.payload.alert.description)).toEqual(["Page the on-call.", undefined, undefined]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("uses a saved alert's description when the caller sends none, and not when the caller cleared it", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("slack", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    const sendTest = (description?: string) =>
+      alertChannelTestServiceFactory(buildDeps().deps).testChannel({
+        ...boundSlackTest,
+        alertId: OWNING_ALERT.id,
+        ...(description === undefined ? {} : { description })
+      });
+
+    try {
+      await sendTest();
+      await sendTest("Page the on-call.");
+      await sendTest("");
+
+      expect(sent.map((ctx) => ctx.payload.alert.description)).toEqual([
+        "Rotate the key before Friday.",
+        "Page the on-call.",
+        undefined
+      ]);
     } finally {
       restore();
     }

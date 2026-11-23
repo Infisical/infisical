@@ -16,6 +16,7 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   resourceKind: payload.resourceKind,
   resourceOwnerKind: payload.resourceOwnerKind,
   summary: payload.summary,
+  ...(payload.alert.description ? { description: payload.alert.description } : {}),
   severity: payload.severity,
   viewUrl: payload.alert.viewUrl,
   items: payload.items.slice(0, MAX_ITEMS_DISPLAYED).map((item) => ({

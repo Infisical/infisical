@@ -127,6 +127,7 @@ export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) =
                 rows={3}
                 isError={Boolean(error)}
               />
+              <FieldDescription>Included in every notification this alert sends.</FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>

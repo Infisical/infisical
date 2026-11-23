@@ -310,6 +310,7 @@ export type TTestAlertChannelDTO = {
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
   recipients?: TAlertChannelRecipient[];
+  description?: string;
 };
 
 export type TTestAlertChannelResponse = {

@@ -51,6 +51,9 @@ type Props = {
   onRemove: () => void;
   canRemove: boolean;
   renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
+  // A getter, not a form path: forms that embed alert channels in another resource's form use
+  // `description` for that resource, and their alerts have none.
+  getAlertDescription?: () => string | undefined;
 };
 
 export const ChannelCard = ({
@@ -61,7 +64,8 @@ export const ChannelCard = ({
   alertId,
   onRemove,
   canRemove,
-  renderRecipients
+  renderRecipients,
+  getAlertDescription
 }: Props) => {
   const scopeVariant = useScopeVariant();
   const {
@@ -94,7 +98,8 @@ export const ChannelCard = ({
         channelId: channel?.id,
         channelType,
         config,
-        recipients
+        recipients,
+        description: getAlertDescription?.()
       });
 
       if (result.success && result.error) {

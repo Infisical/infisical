@@ -177,6 +177,7 @@ export const alertChannelTestServiceFactory = ({
     const payload = buildTestAlertPayload({
       orgId: dto.actorOrgId,
       projectId,
+      description: dto.description,
       ...(provider.getWebhookSource
         ? { alertId: dto.alertId, resourceId: dto.resourceId, getWebhookSource: provider.getWebhookSource }
         : {})
@@ -221,6 +222,7 @@ export const alertChannelTestServiceFactory = ({
       resourceId: dto.resourceId
     });
 
+    let savedDescription: string | undefined;
     if (dto.alertId) {
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
@@ -232,6 +234,7 @@ export const alertChannelTestServiceFactory = ({
       ) {
         throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
       }
+      savedDescription = alert.description ?? undefined;
     }
 
     await provider.assertPermission({
@@ -249,7 +252,9 @@ export const alertChannelTestServiceFactory = ({
 
     const config = await $resolveConfig(dto, projectId);
     const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
-    const result = await $sendTest(dto, projectId, provider, config);
+    // An empty string is the editor's cleared field, so only an omitted description falls back to the saved one.
+    const description = dto.description ?? savedDescription;
+    const result = await $sendTest({ ...dto, description }, projectId, provider, config);
     return { ...result, projectId, resourceName };
   };
 

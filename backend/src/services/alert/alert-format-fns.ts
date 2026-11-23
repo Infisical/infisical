@@ -15,6 +15,11 @@ export const durationToDays = (duration: string): number => {
 
 export const humanizeDays = (days: number): string => `${days} day${days === 1 ? "" : "s"}`;
 
+export const alertDescriptionField = (description?: string | null): { description?: string } => {
+  const trimmed = description?.trim();
+  return trimmed ? { description: trimmed } : {};
+};
+
 export const formatUtcDate = (date: Date): string =>
   new Date(date).toLocaleString("en-US", {
     year: "numeric",

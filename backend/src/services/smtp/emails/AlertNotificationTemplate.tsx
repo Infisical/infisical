@@ -10,6 +10,7 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   resourceKind: string;
   resourceOwnerKind: string;
   summary: string;
+  description?: string;
   severity?: string;
   viewUrl: string;
   items: {
@@ -35,6 +36,7 @@ export const AlertNotificationTemplate = ({
   resourceKind,
   resourceOwnerKind,
   summary,
+  description,
   severity = "info",
   viewUrl,
   siteUrl,
@@ -68,6 +70,13 @@ export const AlertNotificationTemplate = ({
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
       <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">{summary}.</Text>
+
+      {description && (
+        <Text className="text-gray-700 text-[14px] leading-[22px] mt-[12px] mb-[0px] pl-[12px] border-0 border-l-[3px] border-solid border-gray-200">
+          {/* <br /> rather than CSS white-space, which several mail clients drop. */}
+          {description.split(/\r?\n/).flatMap((line, index) => (index > 0 ? [<br key={index} />, line] : [line]))}
+        </Text>
+      )}
 
       <Section className="mt-[28px] mb-[8px]">
         {items.map((item) => (
@@ -127,6 +136,7 @@ AlertNotificationTemplate.PreviewProps = {
   resourceKind: "Machine Identity Authentication",
   resourceOwnerKind: "Machine Identity",
   summary: "2 machine identity authentication(s) expiring within 30 days",
+  description: "Rotate the credential before it expires.\nOpen a ticket in the Platform queue if you need help.",
   severity: "critical",
   viewUrl: "https://infisical.com/organizations/org-1/access-management?selectedTab=identities",
   siteUrl: "https://infisical.com",

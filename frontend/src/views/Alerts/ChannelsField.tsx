@@ -19,6 +19,7 @@ type Props = {
   resourceType: string;
   resourceId?: string | null;
   channelPaywall?: TAlertChannelPaywall;
+  getAlertDescription?: () => string | undefined;
 };
 
 const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
@@ -45,7 +46,13 @@ export const buildNextChannel = (existing: { name: string }[], channelType: Aler
   return buildNewChannel(channelType, name);
 };
 
-export const ChannelsField = ({ projectId, resourceType, resourceId, channelPaywall }: Props) => {
+export const ChannelsField = ({
+  projectId,
+  resourceType,
+  resourceId,
+  channelPaywall,
+  getAlertDescription
+}: Props) => {
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const {
     control,
@@ -102,6 +109,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId, channelPayw
               resourceId={resourceId}
               canRemove={fields.length > 1}
               onRemove={() => remove(index)}
+              getAlertDescription={getAlertDescription}
             />
           ))}
         </div>

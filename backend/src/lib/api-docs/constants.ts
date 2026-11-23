@@ -2669,7 +2669,7 @@ export const CA_CRLS = {
 export const ALERTING = {
   CREATE: {
     name: "The name of the alert.",
-    description: "The description of the alert.",
+    description: "The description of the alert. Every notification the alert sends includes it.",
     resourceType: "The type of resource the alert watches, for example `cert-manager.application`.",
     resourceId:
       "The ID of the resource the alert watches. Set to null to watch every resource of this type, where the resource type supports it.",
@@ -2686,7 +2686,8 @@ export const ALERTING = {
     resourceId: "The ID of the resource the alert watches.",
     projectId: "The ID of the project the alert belongs to.",
     alertId: "The ID of the saved alert the channel belongs to.",
-    channelId: "The ID of the saved channel to test."
+    channelId: "The ID of the saved channel to test.",
+    description: "The alert's description, so the test notification shows it the way the alert's notifications will."
   },
   LIST: {
     resourceType: "The type of resource to list alerts for.",
@@ -2703,7 +2704,8 @@ export const ALERTING = {
   UPDATE: {
     alertId: "The ID of the alert to update.",
     name: "The new name of the alert.",
-    description: "The new description of the alert. Set to null to remove it.",
+    description:
+      "The new description of the alert. Every notification the alert sends includes it. Set to null to remove it.",
     condition: "The new settings of the alert's event. The accepted fields depend on the alert's `eventType`.",
     enabled: "Whether the alert is enabled.",
     channels: "The alert's channels. Replaces the current channels, so channels left out are deleted."

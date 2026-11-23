@@ -45,8 +45,14 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
     if (index < displayItems.length - 1) itemBlocks.push({ type: "divider" });
   });
 
+  // plain_text so the alert author's text is shown as written, with no mrkdwn links or mentions.
+  const descriptionBlocks: TSlackBlock[] = payload.alert.description
+    ? [{ type: "section", text: { type: "plain_text", text: payload.alert.description, emoji: true } }]
+    : [];
+
   const attachmentBlocks: TSlackBlock[] = [
     { type: "section", text: { type: "mrkdwn", text: escapeSlackText(payload.summary) } },
+    ...descriptionBlocks,
     ...itemBlocks
   ];
 

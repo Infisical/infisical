@@ -47,6 +47,7 @@ export type TTestAlertChannelDTO = TGenericPermission & {
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
   recipients?: TChannelRecipientInput[];
+  description?: string;
 };
 
 export type TTestAlertChannelResponse = {
