@@ -101,6 +101,7 @@ Infisical needs a Coolify API token that can read, write, and delete environment
         - **Prevent secret deletion**: When enabled, Infisical adds and updates environment variables in Coolify but never deletes them; enable this if you manage some of the resource's environment variables outside of Infisical
         - **Auto-sync on changes**: When enabled, secrets sync to Coolify automatically as the source changes; turn it off to sync manually only
         - **Customize key names**: Adds a prefix or suffix to every environment variable name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+        - **Auto redeploy**: Automatically redeploys the Coolify resource that is configured for this secret sync as target.
 
         <Warning>
             A Coolify resource also holds environment variables that people and other tools create, so a sync can change variables that were created outside Infisical. If you don't customize key names, the sync treats every environment variable on the resource as one it manages, except the ones whose names start with `SERVICE_`:
