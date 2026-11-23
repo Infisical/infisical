@@ -96,14 +96,14 @@ const DetailSection = ({
       role="group"
       aria-label={label}
       className={twMerge(
-        "flex min-w-0 flex-[0_1_auto] gap-x-6 border-t border-l border-border px-4 py-2.5",
+        "flex min-w-0 flex-[1_1_auto] gap-x-6 border-t border-l border-border px-4 py-2.5",
         className
       )}
     >
       {columns.map((column) => (
         <dl
           key={isValidElement(column[0]) ? column[0].key : undefined}
-          className="grid min-w-0 flex-[1_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5"
+          className="grid min-w-0 flex-[0_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5"
         >
           {column}
         </dl>
@@ -473,7 +473,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   <DetailSection
                     label="Metadata"
                     rowsPerColumn={rowsPerColumn}
-                    className="flex-[1_1_12rem]"
+                    className="flex-[3_1_12rem]"
                   >
                     {shownMetadata.map(([key, value], index) => (
                       <DetailRow key={key} label={key} labelClassName="font-mono">
