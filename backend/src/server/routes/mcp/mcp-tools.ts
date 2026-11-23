@@ -5,7 +5,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { AccessScope, ProjectMembershipRole, ProjectType, SecretType, TSecretApprovalRequests } from "@app/db/schemas";
+import { ProjectType, SecretType, TSecretApprovalRequests } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import {
@@ -19,7 +19,7 @@ import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { isValidFolderName } from "@app/lib/validator";
-import { GenericResourceNameSchema, SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
@@ -117,10 +117,9 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
     actorAuthMethod: req.permission.authMethod
   };
   const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.MCP };
-  const isOauth = req.auth.authMode === AuthMode.OAUTH;
-  // A machine identity's role decides whether it reads values; a delegated token also needs the user's consent.
+  // Describe only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues =
-    req.auth.authMode !== AuthMode.OAUTH || Boolean(req.auth.token.scopes?.includes(OauthScope.SecretsRead));
+    req.auth.authMode === AuthMode.OAUTH && Boolean(req.auth.token.scopes?.includes(OauthScope.SecretsRead));
 
   const submittedForApproval = async (
     approval: Pick<TSecretApprovalRequests, "id" | "slug" | "status" | "committerUserId">,
@@ -152,11 +151,9 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
 
   const registerTool = <T extends z.ZodTypeAny>(
     name: string,
-    config: { description: string; inputSchema: T; annotations: ToolAnnotations; allowsOauth?: boolean },
+    config: { description: string; inputSchema: T; annotations: ToolAnnotations },
     run: (args: z.output<T>) => Promise<unknown>
   ) => {
-    if (isOauth && config.allowsOauth === false) return;
-
     mcpServer.registerTool(
       name,
       {
@@ -168,7 +165,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         try {
           // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
           // change in how the SDK dispatches tools ever loses it.
-          if (isOauth && !requestContext.get(RequestContextKey.OauthScopes)) {
+          if (!requestContext.get(RequestContextKey.OauthScopes)) {
             throw new Error("OAuth scopes missing from the request context");
           }
 
@@ -201,69 +198,6 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
         description,
         environments: environments.map((env) => ({ name: env.name, slug: env.slug }))
       }));
-    }
-  );
-
-  registerTool(
-    "create-project",
-    {
-      description: "Create a Secrets Management project with the default environments.",
-      inputSchema: z.object({
-        projectName: GenericResourceNameSchema,
-        description: z.string().trim().max(256).optional(),
-        slug: slugSchema({ max: 64, field: "Project slug" }).optional()
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false },
-      // No delegation scope covers creating projects.
-      allowsOauth: false
-    },
-    async ({ projectName, description, slug }) => {
-      const project = await server.services.project.createProject({
-        ...actor,
-        projectName,
-        projectDescription: description,
-        slug,
-        type: ProjectType.SecretManager
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: project.id,
-        event: {
-          type: EventType.CREATE_PROJECT,
-          metadata: { name: project.name, slug: project.slug, type: ProjectType.SecretManager }
-        }
-      });
-
-      return { id: project.id, name: project.name, slug: project.slug };
-    }
-  );
-
-  registerTool(
-    "create-environment",
-    {
-      description: "Add an environment to a project.",
-      inputSchema: z.object({
-        projectId: ProjectIdSchema,
-        name: GenericResourceNameSchema,
-        slug: slugSchema({ field: "Environment slug" }),
-        position: z.number().int().min(1).optional()
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false },
-      // Environments are project settings, which a delegated token cannot change.
-      allowsOauth: false
-    },
-    async (args) => {
-      const environment = await server.services.projectEnv.createEnvironment({ ...actor, ...args });
-
-      await server.services.auditLog.createAuditLog({
-        ...auditLogInfo,
-        projectId: environment.projectId,
-        event: { type: EventType.CREATE_ENVIRONMENT, metadata: { name: environment.name, slug: environment.slug } }
-      });
-
-      return { id: environment.id, name: environment.name, slug: environment.slug };
     }
   );
 
@@ -605,63 +539,6 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest)
       });
 
       return { id: secret.id, secretKey: secret.secretKey, deleted: true };
-    }
-  );
-
-  registerTool(
-    "invite-members-to-project",
-    {
-      description:
-        "Add users to a project by email or username. Users outside the organization are invited to it first.",
-      inputSchema: z
-        .object({
-          projectId: ProjectIdSchema,
-          emails: z.string().trim().toLowerCase().email().array().max(100).default([]),
-          usernames: z.string().trim().toLowerCase().min(1).max(255).array().max(100).default([]),
-          roleSlugs: slugSchema({ field: "Role slug" }).array().min(1).max(10).optional()
-        })
-        .refine(
-          ({ emails, usernames }) => emails.length || usernames.length,
-          "Provide at least one email or username."
-        ),
-      annotations: { readOnlyHint: false, destructiveHint: false },
-      // Project membership is administration, which a delegated token cannot change.
-      allowsOauth: false
-    },
-    async ({ projectId, emails, usernames, roleSlugs }) => {
-      const usernamesAndEmails = [...emails, ...usernames];
-
-      await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
-        data: { roles: [], usernames: usernamesAndEmails, skipUsersWithOrgAccess: true }
-      });
-
-      const { memberships } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-        data: {
-          roles: (roleSlugs || [ProjectMembershipRole.Member]).map((role) => ({ isTemporary: false, role })),
-          usernames: usernamesAndEmails
-        }
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...auditLogInfo,
-        projectId,
-        event: {
-          type: EventType.ADD_BATCH_PROJECT_MEMBER,
-          metadata: {
-            members: memberships.map(({ actorUserId, id }) => ({
-              userId: actorUserId || "",
-              membershipId: id,
-              email: ""
-            }))
-          }
-        }
-      });
-
-      return memberships.map(({ id, actorUserId }) => ({ membershipId: id, userId: actorUserId }));
     }
   );
 

@@ -3,7 +3,7 @@ import { FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { mcpLimit, publicJwksLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -85,10 +85,18 @@ export const registerMcpRouter = async (server: FastifyZodProvider) => {
       }
       return payload;
     },
+    // Machine identity tokens get through only to be refused with a reason, rather than the generic auth error.
     onRequest: verifyAuth([AuthMode.OAUTH, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
+      if (req.auth.authMode !== AuthMode.OAUTH) {
+        throw new ForbiddenRequestError({
+          message:
+            "The Infisical MCP server only accepts user logins for now, not machine identity tokens. Remove the token from your MCP client's settings and sign in through the browser instead."
+        });
+      }
+
       const { mcpResource } = getMcpOauthUrls();
-      if (req.auth.authMode === AuthMode.OAUTH && req.auth.token.aud !== mcpResource) {
+      if (req.auth.token.aud !== mcpResource) {
         throw new UnauthorizedError({
           message: "This token was not issued for the Infisical MCP server. Reconnect your MCP client to sign in again."
         });

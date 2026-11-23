@@ -5252,15 +5252,19 @@ export const registerRoutes = async (
     }
   });
 
+  // Its own run mode so agent traffic can be served by a separate pool; the OAuth pages it relies on stay with the API.
+  if (envConfig.isMcpRunModeEnabled) {
+    await server.register(registerMcpResourceMetadataRouter, { prefix: "/.well-known/oauth-protected-resource" });
+    await server.register(registerMcpRouter, { prefix: "/api/mcp" });
+  }
+
   // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
   // none of the product API.
   if (envConfig.isApiRunModeEnabled) {
     // register special routes
     await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
     await server.register(registerOauthServerMetadataRouter, { prefix: "/.well-known/oauth-authorization-server" });
-    await server.register(registerMcpResourceMetadataRouter, { prefix: "/.well-known/oauth-protected-resource" });
     await server.register(registerPkiScepRouter, { prefix: "/scep" });
-    await server.register(registerMcpRouter, { prefix: "/api/mcp" });
 
     // register routes for v1
     await server.register(

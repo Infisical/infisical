@@ -25,24 +25,44 @@ import {
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
 import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
 
-type TAccessLevel = "read" | "full";
-
-// The user picks one access level per product rather than individual scopes. Read-only grants the product's read
-// scope, Full access its read and write scopes, and only scopes the application asked for are ever granted.
+// The user picks one access level per product rather than individual scopes. A level is offered when the application
+// asked for the scope it is named by (`requires`), and only scopes the application asked for are ever granted.
 const PRODUCT_ACCESS = [
   {
     key: "secrets-management",
     product: "Secrets Management",
-    readScope: "secrets:read",
-    writeScope: "secrets:write",
-    readDescription: "See projects, folders and secrets, including their values",
-    fullDescription: "Also create, change and delete secrets and folders"
+    levels: [
+      {
+        level: "full",
+        title: "Full access",
+        requires: "secrets:write",
+        scopes: ["secrets:read", "secrets:write"],
+        description: "Everything in Read-only, plus create, change and delete secrets and folders"
+      },
+      {
+        level: "read",
+        title: "Read-only",
+        requires: "secrets:read",
+        scopes: ["secrets:read"],
+        description: "See projects, folders and secrets, including their values"
+      },
+      {
+        level: "describe",
+        title: "Describe only",
+        requires: "secrets:describe",
+        scopes: ["secrets:describe"],
+        description: "See projects, folders and secrets, without their values"
+      }
+    ]
   }
 ];
 
+// Preselected when offered: read access is what most requests need, and writes are opted into.
+const DEFAULT_LEVEL_ORDER = ["read", "describe", "full"];
+
 export const OauthConsentPage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [accessLevels, setAccessLevels] = useState<Record<string, TAccessLevel>>({});
+  const [accessLevels, setAccessLevels] = useState<Record<string, string>>({});
 
   const search = useSearch({
     from: "/_authenticate/organization/oauth-consent"
@@ -70,17 +90,18 @@ export const OauthConsentPage = () => {
   });
 
   const requestedScopes = (authorizeInfo?.requestedScopes ?? []).map(({ scope }) => scope);
-  const requestedProducts = PRODUCT_ACCESS.filter(
-    ({ readScope, writeScope }) =>
-      requestedScopes.includes(readScope) || requestedScopes.includes(writeScope)
-  );
-  // Read-only unless the application asked only for write access.
-  const getAccessLevel = ({ key, readScope }: (typeof PRODUCT_ACCESS)[number]) =>
-    accessLevels[key] ?? (requestedScopes.includes(readScope) ? "read" : "full");
+  const requestedProducts = PRODUCT_ACCESS.map((productAccess) => ({
+    ...productAccess,
+    levels: productAccess.levels.filter(({ requires }) => requestedScopes.includes(requires))
+  })).filter(({ levels }) => levels.length > 0);
+  const getAccessLevel = ({ key, levels }: (typeof requestedProducts)[number]) =>
+    accessLevels[key] ??
+    DEFAULT_LEVEL_ORDER.find((level) => levels.some((offered) => offered.level === level)) ??
+    levels[0].level;
   const grantedScopes = requestedProducts.flatMap((productAccess) =>
-    (getAccessLevel(productAccess) === "full"
-      ? [productAccess.readScope, productAccess.writeScope]
-      : [productAccess.readScope]
+    (
+      productAccess.levels.find(({ level }) => level === getAccessLevel(productAccess))?.scopes ??
+      []
     ).filter((scope) => requestedScopes.includes(scope))
   );
   const isNothingGranted = requestedScopes.length > 0 && grantedScopes.length === 0;
@@ -204,38 +225,28 @@ export const OauthConsentPage = () => {
                     onValueChange={(level) =>
                       setAccessLevels((prev) => ({
                         ...prev,
-                        [productAccess.key]: level as TAccessLevel
+                        [productAccess.key]: level
                       }))
                     }
                   >
-                    {requestedScopes.includes(productAccess.readScope) && (
-                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-read`} variant="org">
+                    {productAccess.levels.map(({ level, title, description }) => (
+                      <FieldLabel
+                        key={level}
+                        htmlFor={`oauth-access-${productAccess.key}-${level}`}
+                        variant="org"
+                      >
                         <Field orientation="horizontal">
                           <FieldContent>
-                            <FieldTitle>Read-only</FieldTitle>
-                            <FieldDescription>{productAccess.readDescription}</FieldDescription>
+                            <FieldTitle>{title}</FieldTitle>
+                            <FieldDescription>{description}</FieldDescription>
                           </FieldContent>
                           <RadioGroupItem
-                            value="read"
-                            id={`oauth-access-${productAccess.key}-read`}
+                            value={level}
+                            id={`oauth-access-${productAccess.key}-${level}`}
                           />
                         </Field>
                       </FieldLabel>
-                    )}
-                    {requestedScopes.includes(productAccess.writeScope) && (
-                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-full`} variant="org">
-                        <Field orientation="horizontal">
-                          <FieldContent>
-                            <FieldTitle>Full access</FieldTitle>
-                            <FieldDescription>{productAccess.fullDescription}</FieldDescription>
-                          </FieldContent>
-                          <RadioGroupItem
-                            value="full"
-                            id={`oauth-access-${productAccess.key}-full`}
-                          />
-                        </Field>
-                      </FieldLabel>
-                    )}
+                    ))}
                   </RadioGroup>
                 </div>
               ))}
