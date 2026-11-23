@@ -29,6 +29,7 @@ const PERMISSIONS_POLICY = [
 
 export const responsePolicyHeaders = fp(async (fastify) => {
   fastify.addHook("onSend", async (_req, res, payload) => {
+    if (res.statusCode === 304) return payload;
     if (!res.hasHeader("Content-Security-Policy")) {
       const isHtml = String(res.getHeader("content-type") ?? "")
         .toLowerCase()

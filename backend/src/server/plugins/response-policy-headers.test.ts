@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
+import { etag } from "./etag";
 import { responsePolicyHeaders } from "./response-policy-headers";
 
 const ROUTE_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
@@ -14,6 +15,7 @@ const DEVICE_POLICY =
 const app = Fastify();
 
 beforeAll(async () => {
+  await app.register(etag);
   await app.register(responsePolicyHeaders);
   app.get("/json", async () => ({ ok: true }));
   app.get("/page", async (_req, res) => res.type("text/html").send("<!doctype html>"));
@@ -45,5 +47,14 @@ describe("responsePolicyHeaders", () => {
     const [page, json] = await Promise.all([app.inject({ url: "/page" }), app.inject({ url: "/json" })]);
     expect(page.headers["permissions-policy"]).toBe(DEVICE_POLICY);
     expect(json.headers["permissions-policy"]).toBe(DEVICE_POLICY);
+  });
+
+  test("leaves the cached policies in place when a page is revalidated", async () => {
+    const first = await app.inject({ url: "/page" });
+    const revalidated = await app.inject({ url: "/page", headers: { "if-none-match": first.headers.etag } });
+
+    expect(revalidated.statusCode).toBe(304);
+    expect(revalidated.headers["content-security-policy"]).toBeUndefined();
+    expect(revalidated.headers["permissions-policy"]).toBeUndefined();
   });
 });
