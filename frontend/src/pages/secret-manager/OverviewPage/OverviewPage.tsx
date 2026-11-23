@@ -52,6 +52,7 @@ import {
   DynamicSecretsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
   hasEnvironmentCapacity,
   HoneyTokensUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
@@ -1745,18 +1746,37 @@ const OverviewPageContent = () => {
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName),
-        environmentSlug: singleEnvSlug
-      });
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "folder_row",
-        projectId
-      });
+      const openFolderAccess = () => {
+        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+        if (!folder) return;
+        setFolderAccessTarget({
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
+        });
+        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+          source: "folder_row",
+          projectId
+        });
+      };
+
+      if (!subscription?.secretsFolderRbac) {
+        openUpgradeGate({
+          intent: FolderAccessControlsUpgradeIntent
+        });
+        return;
+      }
+
+      openFolderAccess();
     },
-    [getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
+    [
+      getFolderByNameAndEnv,
+      singleEnvSlug,
+      childFolderPath,
+      orgId,
+      projectId,
+      subscription?.secretsFolderRbac,
+      openUpgradeGate
+    ]
   );
 
   // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
@@ -1769,12 +1789,30 @@ const OverviewPageContent = () => {
   }, [navigate]);
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    setIsCurrentFolderAccessOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "breadcrumb",
-      projectId
-    });
-  }, [orgId, projectId]);
+    const openCurrentFolderAccess = () => {
+      setIsCurrentFolderAccessOpen(true);
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "breadcrumb",
+        projectId
+      });
+    };
+
+    if (!subscription?.secretsFolderRbac) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent
+      });
+      return;
+    }
+
+    openCurrentFolderAccess();
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");

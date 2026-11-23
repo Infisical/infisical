@@ -1,7 +1,3 @@
-import {
-  FolderAccessControlsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -12,16 +8,12 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
 import {
   TFolderAccess,
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import {
-  canGrantFolderAccess,
-  isRootFolderPath
-} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import { isRootFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderPathBreadcrumb";
 
 import { ActorSummary } from "./ActorSummary";
@@ -47,27 +39,13 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
-  const { subscription } = useSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleSave = async () => {
-    const fields = grant.updateFields();
-    if (
-      !canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), {
-        isPermissionRecursive: fields.isPermissionRecursive ?? access.isPermissionRecursive
-      })
-    ) {
-      openUpgradeGate({
-        intent: FolderAccessControlsUpgradeIntent,
-        paywallKey: "project.folder-access-section"
-      });
-      return;
-    }
     const payload = {
       projectId: access.projectId,
       environmentSlug: access.environment,
       secretPath: access.secretPath,
-      ...fields
+      ...grant.updateFields()
     };
 
     if (actor.type === "user") {
@@ -107,7 +85,6 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
           Save Changes
         </Button>
       </SheetFooter>
-      {upgradeGate}
     </>
   );
 };
