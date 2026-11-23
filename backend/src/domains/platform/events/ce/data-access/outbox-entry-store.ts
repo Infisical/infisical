@@ -3,9 +3,9 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 
 import { TableName, TEventOutbox } from "@app/db/schemas";
-import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
+import { TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
-import { chunkArray } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 
 import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, OutboxEntry } from "../models/outbox-entry";
@@ -54,10 +54,10 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  async findDueConsumers(consumers: string[], options?: TReadOptions): Promise<string[]> {
+  async findDueConsumers(consumers: string[]): Promise<string[]> {
     if (consumers.length === 0) return [];
     try {
-      const reader = this.connection.reader(options);
+      const reader = this.connection.reader();
       const rows = await reader(TableName.EventOutbox)
         .whereIn("consumer", consumers)
         .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
@@ -71,9 +71,9 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  async findOldestPendingAgeSeconds(options?: TReadOptions): Promise<TOldestPendingAge[]> {
+  async findOldestPendingAgeSeconds(): Promise<TOldestPendingAge[]> {
     try {
-      const reader = this.connection.reader(options);
+      const reader = this.connection.reader();
       const rows = await reader(TableName.EventOutbox)
         .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry, EventOutboxStatus.Processing])
         .groupBy("consumer")
@@ -232,17 +232,11 @@ export class OutboxEntryStore implements TOutboxEntryStore {
   // One UPDATE per distinct outcome, so entries on the same attempt share one retry delay. The retry clock runs
   // in the database.
   private async saveOutcomes(entries: OutboxEntry[], holding: (query: Knex.QueryBuilder) => void): Promise<number> {
-    const groups = new Map<string, OutboxEntry[]>();
-    for (const entry of entries) {
-      const key = JSON.stringify([entry.status, entry.attempts, entry.lastError]);
-      const group = groups.get(key);
-      if (group) group.push(entry);
-      else groups.set(key, [entry]);
-    }
+    const groups = groupBy(entries, (entry) => JSON.stringify([entry.status, entry.attempts, entry.lastError]));
 
     const writer = this.connection.writer();
     let saved = 0;
-    for (const group of groups.values()) {
+    for (const group of Object.values(groups)) {
       const [first] = group;
       const retryDelayMs = first.drawRetryDelayMs();
       const query = writer(TableName.EventOutbox).whereIn(

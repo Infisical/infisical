@@ -1,4 +1,6 @@
 import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { delay } from "@app/lib/delay";
+import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { EventDefinition } from "../../models/event-definition";
@@ -40,11 +42,6 @@ const CONSUMER_HANDLE_TIMEOUT_MS = 3 * STALE_CLAIM_THRESHOLD_MS;
 
 const COMMIT_ATTEMPTS = 3;
 const COMMIT_RETRY_DELAY_MS = 250;
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
 
 const toEvent = (entry: OutboxEntry): TEvent => ({
   specversion: "1.0",
@@ -114,7 +111,7 @@ export class EventDeliveryService implements TEventDeliveryService {
 
   async sweepStaleClaims(): Promise<void> {
     let retried = 0;
-    const failedByConsumer = new Map<string, number>();
+    const failed: OutboxEntry[] = [];
 
     for (let batch = 0; batch < STALE_SWEEP_MAX_BATCHES; batch += 1) {
       // eslint-disable-next-line no-await-in-loop -- batches must run serially to stay paced
@@ -132,7 +129,7 @@ export class EventDeliveryService implements TEventDeliveryService {
 
       for (const entry of expired) {
         if (entry.status === EventOutboxStatus.Failed) {
-          failedByConsumer.set(entry.consumer, (failedByConsumer.get(entry.consumer) ?? 0) + 1);
+          failed.push(entry);
         } else {
           retried += 1;
         }
@@ -140,17 +137,17 @@ export class EventDeliveryService implements TEventDeliveryService {
       if (expired.length < STALE_SWEEP_BATCH_SIZE) break;
     }
 
-    for (const [consumer, count] of failedByConsumer) {
+    for (const [consumer, entries] of Object.entries(groupBy(failed, (entry) => entry.consumer))) {
+      const count = entries.length;
       this.metrics.recordExhausted({ consumer, count });
       logger.error(
         `event-outbox: gave up on ${count} event(s) whose worker never reported back [consumer=${consumer}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
     }
 
-    const failed = [...failedByConsumer.values()].reduce((sum, count) => sum + count, 0);
-    if (retried > 0 || failed > 0) {
+    if (retried > 0 || failed.length > 0) {
       logger.warn(
-        `event-outbox: recovered stale claims [retried=${retried}] [failed=${failed}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+        `event-outbox: recovered stale claims [retried=${retried}] [failed=${failed.length}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
     }
   }
@@ -251,7 +248,7 @@ export class EventDeliveryService implements TEventDeliveryService {
           `event-outbox: failed to commit results, retrying [attempt=${attempt}] [consumer=${consumer}]`
         );
         // eslint-disable-next-line no-await-in-loop -- see above
-        await sleep(COMMIT_RETRY_DELAY_MS * attempt);
+        await delay(COMMIT_RETRY_DELAY_MS * attempt);
       }
     }
   }

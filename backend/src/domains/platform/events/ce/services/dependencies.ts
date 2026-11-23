@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { TReadOptions } from "@app/domains/lib/data-access";
 import { TStoreLocks } from "@app/domains/lib/transactions";
 
 import { EmittedEvent } from "../models/emitted-event";
@@ -49,8 +48,8 @@ export type TOldestPendingAge = { consumer: string; ageSeconds: number };
 export type TOutboxEntryStore = {
   // Skips an event the consumer already has.
   insert(deliveries: TOutboxDelivery[]): Promise<void>;
-  findDueConsumers(consumers: string[], options?: TReadOptions): Promise<string[]>;
-  findOldestPendingAgeSeconds(options?: TReadOptions): Promise<TOldestPendingAge[]>;
+  findDueConsumers(consumers: string[]): Promise<string[]>;
+  findOldestPendingAgeSeconds(): Promise<TOldestPendingAge[]>;
   claimBatch(consumer: string, limit: number): Promise<OutboxClaim>;
   extendClaim(claim: OutboxClaim): Promise<void>;
   // Returns how many entries the claim still held. One statement per outcome, so call it in a transaction.
