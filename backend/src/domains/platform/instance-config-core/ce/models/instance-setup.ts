@@ -20,10 +20,6 @@ export class InstanceSetup {
     return new InstanceSetup(record.initialized ?? null, record.onboardingCompleted, record.adminIdentityIds ?? null);
   }
 
-  get isSetUp(): boolean {
-    return Boolean(this.initialized);
-  }
-
   isAdminIdentity(identityId: string): boolean {
     return (this.adminIdentityIds ?? []).includes(identityId);
   }

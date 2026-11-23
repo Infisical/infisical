@@ -14,8 +14,8 @@ describe("InstanceSetup.complete", () => {
     const completed = setup.complete();
 
     // Assert
-    expect(completed.isSetUp).toBe(true);
-    expect(setup.isSetUp).toBe(false);
+    expect(completed.toJSON().initialized).toBe(true);
+    expect(setup.toJSON().initialized).toBe(false);
   });
 
   test("should refuse an instance already set up", () => {

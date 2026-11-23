@@ -76,7 +76,7 @@ describe("secret sharing routes", () => {
       body: { secretValue: "value", expiresIn: "1h" }
     });
 
-    expect(res.statusCode).not.toBe(200);
+    expect(res.json<{ message: string }>().message).toBe("Public secret sharing is disabled on this instance");
     expect(server.sendPostHogEvents).not.toHaveBeenCalled();
   });
 

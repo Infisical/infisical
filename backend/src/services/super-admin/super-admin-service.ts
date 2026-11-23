@@ -220,8 +220,8 @@ export const superAdminServiceFactory = ({
 
     await assertPasswordNotBreached(password);
     // The lookup can take seconds, so another admin signup may have finished meanwhile.
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (serverCfg?.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+    const { initialized } = await instanceConfigService.getInstanceConfig();
+    if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 

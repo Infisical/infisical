@@ -96,7 +96,7 @@ export const describeInstanceConfigStoreContract = (name: string, setup: TSetup)
         { clientId: "gh-id", clientSecret: "gh-secret", appSlug: "gh-slug", appId: "gh-app", privateKey: "gh-key" },
         encrypt
       );
-      config.replaceEnvOverrides(EnvOverrides.restore({ SOME_KEY: "some-value" }), encrypt);
+      config.replaceEnvOverrides(EnvOverrides.restore({ CLIENT_ID_GITHUB_LOGIN: "some-value" }), encrypt);
 
       // Action
       await store.save(config);

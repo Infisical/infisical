@@ -1,5 +1,6 @@
 import { expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { superAdminServiceFactory } from "./super-admin-service";
@@ -33,14 +34,14 @@ test("admin signup refuses a breached password before creating the account", asy
 });
 
 test("admin signup stops if the instance was set up during the breach lookup", async () => {
-  let initialized = false;
+  const instanceConfigService = new FakeInstanceConfigService();
   mocks.get.mockImplementation(async () => {
-    initialized = true;
+    await instanceConfigService.within().completeSetup({ closeSignUp: false });
+    await instanceConfigService.refreshSharedCopy();
     return { data: "" };
   });
   const userDAL = { findOne: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
-  const serverCfgDAL = { findById: vi.fn(async () => ({ initialized })) };
-  const service = superAdminServiceFactory({ userDAL, serverCfgDAL } as never);
+  const service = superAdminServiceFactory({ userDAL, instanceConfigService } as never);
 
   await expect(
     service.adminSignUp({

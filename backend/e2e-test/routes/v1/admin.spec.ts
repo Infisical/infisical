@@ -15,14 +15,16 @@ const instanceConfig = () =>
 
 // The service can neither mark the instance uninitialized nor set up one already set up, so these write the row and
 // drop the shared copy.
+const dropSharedCopy = () => testRedis.del("infisical-admin-cfg");
+
 const markUninitialized = async () => {
   await testDb(TableName.SuperAdmin).update({ initialized: false });
-  await testRedis.del("infisical-admin-cfg");
+  await dropSharedCopy();
 };
 
 const restoreSetUpWithOpenSignUp = async () => {
   await testDb(TableName.SuperAdmin).update({ initialized: true, allowSignUp: true });
-  await testRedis.del("infisical-admin-cfg");
+  await dropSharedCopy();
 };
 
 const updateServerConfig = (body: Record<string, unknown>) =>
@@ -206,10 +208,13 @@ describe("Admin V1 Router", () => {
   });
 
   describe("overridable env values", () => {
-    const overridableKeyNames = OVERRIDABLE_ENV_KEYS;
     const privateKeyCanary = `override-canary-${randomUUID()}`;
+    let storedOverrides: Buffer | null | undefined;
 
     beforeAll(async () => {
+      storedOverrides = (
+        await testDb(TableName.SuperAdmin).first<{ encryptedEnvOverrides: Buffer | null }>("encryptedEnvOverrides")
+      )?.encryptedEnvOverrides;
       const response = await updateServerConfig({
         envOverrides: { INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: privateKeyCanary }
       });
@@ -217,11 +222,12 @@ describe("Admin V1 Router", () => {
     });
 
     afterAll(async () => {
-      await updateServerConfig({ envOverrides: { INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: "" } });
+      await testDb(TableName.SuperAdmin).update({ encryptedEnvOverrides: storedOverrides ?? null });
+      await dropSharedCopy();
     });
 
     const expectNoOverridableValues = (body: string) => {
-      expect(overridableKeyNames.filter((key) => body.includes(key))).toEqual([]);
+      expect(OVERRIDABLE_ENV_KEYS.filter((key) => body.includes(key))).toEqual([]);
       expect(body).not.toContain(privateKeyCanary);
     };
 
@@ -250,6 +256,7 @@ describe("Admin V1 Router", () => {
       expectNoOverridableValues(response.body);
     });
   });
+
   describe("env overrides take effect on the next request", () => {
     let storedOverrides: Buffer | null | undefined;
     let createdShareIds: string[] = [];
@@ -266,7 +273,7 @@ describe("Admin V1 Router", () => {
       const identifiers = createdShareIds.map((id) => Buffer.from(id, "base64url").toString("hex"));
       if (identifiers.length) await testDb(TableName.SecretSharing).whereIn("identifier", identifiers).delete();
       await testDb(TableName.SuperAdmin).update({ encryptedEnvOverrides: storedOverrides ?? null });
-      await testRedis.del("infisical-admin-cfg");
+      await dropSharedCopy();
     });
 
     const createPublicShare = () =>
@@ -299,13 +306,6 @@ describe("Admin V1 Router", () => {
       expect(response.statusCode).toBe(422);
       expect(response.body).toContain("envOverrides");
     });
-
-    test("an empty body is refused with the no recognized fields message", async () => {
-      const response = await updateServerConfig({});
-
-      expect(response.statusCode).toBe(400);
-      expect(response.json().message).toContain("No recognized instance configuration fields were provided");
-    });
   });
 
   describe("slack credentials cannot be cleared", () => {
@@ -323,7 +323,7 @@ describe("Admin V1 Router", () => {
         encryptedSlackClientId: storedSlack?.encryptedSlackClientId ?? null,
         encryptedSlackClientSecret: storedSlack?.encryptedSlackClientSecret ?? null
       });
-      await testRedis.del("infisical-admin-cfg");
+      await dropSharedCopy();
     });
 
     test("an empty slack client id is refused by name and the stored value is kept", async () => {

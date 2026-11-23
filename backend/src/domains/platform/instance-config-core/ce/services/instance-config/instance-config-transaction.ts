@@ -12,7 +12,7 @@ export type TInstanceConfigTransaction = {
   completeSetup(input: { closeSignUp: boolean; adminIdentityId?: string }): Promise<void>;
 };
 
-const configNotFound = () => new EntityNotFoundError({ name: "AdminConfig", message: "Admin config not found" });
+export const configNotFound = () => new EntityNotFoundError({ name: "AdminConfig", message: "Admin config not found" });
 
 export class InstanceConfigTransaction implements TInstanceConfigTransaction {
   constructor(private readonly transactionRunner: TTransactionRunner<TInstanceConfigStores>) {}

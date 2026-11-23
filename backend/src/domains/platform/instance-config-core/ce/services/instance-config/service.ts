@@ -1,5 +1,5 @@
 import { findOnReplicaThenPrimary, ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import type { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
@@ -16,7 +16,7 @@ import { InstanceConfig, TInstanceConfigSettings } from "../../models/instance-c
 import { MicrosoftTeamsAppCredentials } from "../../models/microsoft-teams-app-credentials";
 import { SlackAppCredentials } from "../../models/slack-app-credentials";
 import { TInstanceConfigCache, TInstanceConfigStore, TInstanceConfigStores, TResolvedEnvCache } from "../dependencies";
-import { InstanceConfigTransaction, TInstanceConfigTransaction } from "./instance-config-transaction";
+import { configNotFound, InstanceConfigTransaction, TInstanceConfigTransaction } from "./instance-config-transaction";
 
 // The instance's settings and every env value an instance admin can override, resolved: the override when one is
 // stored, otherwise the process env.
@@ -75,8 +75,6 @@ export type TInstanceConfigService = {
   refreshSharedCopy(): Promise<void>;
   revokeAdminIdentity(identityId: string): Promise<void>;
 };
-
-const configNotFound = () => new EntityNotFoundError({ name: "AdminConfig", message: "Admin config not found" });
 
 export class InstanceConfigService implements TInstanceConfigService {
   constructor(

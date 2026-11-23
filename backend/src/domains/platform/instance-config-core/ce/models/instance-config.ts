@@ -105,10 +105,6 @@ export class InstanceConfig {
     );
   }
 
-  get isSetUp(): boolean {
-    return this.setup.isSetUp;
-  }
-
   isAdminIdentity(identityId: string): boolean {
     return this.setup.isAdminIdentity(identityId);
   }

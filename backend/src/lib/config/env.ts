@@ -636,32 +636,6 @@ const envSchema = z
     // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
     SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
-    // aws
-
-    // github oauth
-
-    // github app
-
-    // github radar app
-
-    // gitlab oauth
-
-    // gcp app
-
-    // Legacy Single Multi Purpose Azure App Connection
-
-    // Azure App Configuration App Connection
-
-    // Azure Key Vault App Connection
-
-    // Azure Client Secrets App Connection
-
-    // Azure DevOps App Connection
-
-    // Heroku App Connection
-
-    // Stripe App Connection
-
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),

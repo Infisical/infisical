@@ -64,7 +64,7 @@ env overrides) shared by every pod through Redis, and every env value an instanc
 ## Tests
 
 Consumers use `FakeInstanceConfigService` (`testing/fake-instance-config-service.ts`): the real service over one
-in-memory row, constructed with the `settings`, overridable `env` values and credentials a test needs.
+in-memory row, constructed with the `settings` and overridable `env` values a test needs.
 `buildInstanceConfigCore()` builds the module over in-memory stores, `InMemoryKeyStore` and `FakeKmsCore`, with a plain
 `processEnv` object; pass another build's `memory`, `keyStore` and `kmsCore` for a second pod.
 `testing/instance-config-store-contract.ts` runs against both stores. Integration tests use `setupIntegration({ freshDatabase: true })`, since `super_admin` is one

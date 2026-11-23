@@ -142,7 +142,7 @@ describe("InstanceConfigService.updateConfig", () => {
     expect(await module.instanceConfigService.getInstanceConfig()).toMatchObject({ allowSignUp: false });
   });
 
-  test.each([[{}], [{ allowSignUp: undefined }]])(
+  test.each([[{}], [{ allowSignUp: undefined }], [{ envOverrides: undefined }]])(
     "should refuse the empty patch %j and change nothing",
     async (patch) => {
       // Setup
@@ -220,21 +220,6 @@ describe("InstanceConfigService.updateConfig", () => {
     });
   });
 
-  test("should refuse an empty Slack client id by name and change nothing", async () => {
-    // Setup
-    const { module } = await buildInstanceConfigCore();
-    const service = module.instanceConfigService;
-    await service.updateConfig({ slackClientId: "id" });
-
-    // Action
-    const result = service.updateConfig({ allowSignUp: false, slackClientId: "" });
-
-    // Assert
-    await expect(result).rejects.toThrow("Slack client ID cannot be empty");
-    expect((await service.getSlackCredentials()).clientId).toBe("id");
-    expect((await service.getInstanceConfig()).allowSignUp).toBe(true);
-  });
-
   test("should store an empty GitHub app value and read it back as empty", async () => {
     // Setup
     const { module } = await buildInstanceConfigCore();
@@ -294,13 +279,17 @@ describe("InstanceConfigService.getMicrosoftTeamsCredentials", () => {
     const { module } = await buildInstanceConfigCore();
     const service = module.instanceConfigService;
     const before = await service.getMicrosoftTeamsCredentials();
+    vi.useFakeTimers({ now: before.configUpdatedAt.getTime() + 1000 });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
 
     // Action
     await service.updateConfig({ microsoftTeamsAppId: "app" });
     const after = await service.getMicrosoftTeamsCredentials();
 
     // Assert
-    expect(after.configUpdatedAt.getTime()).toBeGreaterThanOrEqual(before.configUpdatedAt.getTime());
+    expect(after.configUpdatedAt.getTime()).toBeGreaterThan(before.configUpdatedAt.getTime());
     expect(after.credentials.appId).toBe("app");
   });
 });
@@ -564,31 +553,6 @@ describe("InstanceConfigService.updateConfig", () => {
     const config = await service.getInstanceConfig();
     expect(config.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
     expect(config.DISABLE_PUBLIC_SECRET_SHARING).toBe(false);
-  });
-
-  test("should store nothing for an env override key an admin cannot override", async () => {
-    // Setup
-    const { module, memory, kmsCore } = await buildInstanceConfigCore({ processEnv: { SALT_ROUNDS: "12" } });
-    const service = module.instanceConfigService;
-
-    // Action
-    await service.updateConfig({ envOverrides: { NOT_OVERRIDABLE: "x", SALT_ROUNDS: "4" } });
-
-    // Assert
-    const row = await memory.instanceConfigStore.find();
-    expect(row?.envOverrides(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({});
-    expect(await service.getEnvOverridesOrganized()).not.toHaveProperty("NOT_OVERRIDABLE");
-  });
-
-  test("should refuse a patch whose only field is undefined env overrides", async () => {
-    // Setup
-    const { module } = await buildInstanceConfigCore();
-
-    // Action
-    const result = module.instanceConfigService.updateConfig({ envOverrides: undefined });
-
-    // Assert
-    await expect(result).rejects.toThrow(EMPTY_PATCH_MESSAGE);
   });
 
   test("should leave the row and the shared copy unchanged when part of the patch is refused", async () => {

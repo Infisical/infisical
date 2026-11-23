@@ -209,7 +209,7 @@ describe("InstanceConfig.completeSetup", () => {
     config.completeSetup({ closeSignUp: true });
 
     // Assert
-    expect(config.isSetUp).toBe(true);
+    expect(config.toSettings().initialized).toBe(true);
     expect(config.toSettings().allowSignUp).toBe(false);
   });
 
@@ -221,7 +221,7 @@ describe("InstanceConfig.completeSetup", () => {
     config.completeSetup({ closeSignUp: false });
 
     // Assert
-    expect(config.isSetUp).toBe(true);
+    expect(config.toSettings().initialized).toBe(true);
     expect(config.toSettings().allowSignUp).toBe(true);
   });
 });
