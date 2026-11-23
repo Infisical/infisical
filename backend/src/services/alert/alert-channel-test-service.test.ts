@@ -119,7 +119,9 @@ const buildDeps = (overrides?: {
       },
       alertDAL: {
         findByChannelId: async () => overrides?.channelOwners ?? [OWNING_ALERT],
-        findActiveById: async (id: string) => (id === OWNING_ALERT.id ? OWNING_ALERT : undefined)
+        // Stands in for a lagging replica: the saved alert is only visible on the primary.
+        findActiveById: async (id: string, options?: { readFromPrimary?: boolean }) =>
+          id === OWNING_ALERT.id && options?.readFromPrimary ? OWNING_ALERT : undefined
       },
       alertRecipientResolver: {
         resolveMany: async (rowsByChannel: Map<string, unknown[]>) =>

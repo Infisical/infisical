@@ -473,7 +473,7 @@ export type TChannelsForm = { channels: TChannelForm[] };
 
 const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
-  description: z.string().max(1000).optional(),
+  description: z.string().trim().max(1000).optional(),
   resourceType: z.nativeEnum(AlertResourceType),
   eventType: z.nativeEnum(AlertEventType),
   // Only the expiry event reads these; validated in superRefine so a hidden field can't block submit.
