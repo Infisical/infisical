@@ -102,7 +102,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <SheetContent>
         <form
-          onSubmit={handleSubmit(onFormSubmit)}
+          onSubmit={(e) => {
+            e.stopPropagation();
+            return handleSubmit(onFormSubmit)(e);
+          }}
           autoComplete="off"
           className="flex min-h-0 flex-1 flex-col"
         >

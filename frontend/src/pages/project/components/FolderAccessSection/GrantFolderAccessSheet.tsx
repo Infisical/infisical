@@ -34,7 +34,10 @@ import {
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
-import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import {
+  grantStateOf,
+  normalizeFolderPath
+} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
@@ -119,7 +122,8 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         (row) =>
           row.environment === environmentSlug &&
           row.isPermissionRecursive &&
-          normalizeFolderPath(row.secretPath) === "/"
+          normalizeFolderPath(row.secretPath) === "/" &&
+          grantStateOf(row) !== "expired"
       );
   const inheritedNote =
     environmentGrant && !targetError && !isCheckingFolder
