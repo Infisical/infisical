@@ -56,10 +56,31 @@ export type TDynamicSecretSshLeaseConfig = {
   principals?: string[];
 };
 
-export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig & TDynamicSecretSshLeaseConfig;
+export type TDynamicSecretAgentVaultLeaseConfig = {
+  agentVaultServiceId?: string;
+};
+
+export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig &
+  TDynamicSecretSshLeaseConfig &
+  TDynamicSecretAgentVaultLeaseConfig;
+
+export type TCreateSystemDynamicSecretLeaseDTO = {
+  dynamicSecretId: string;
+  config: TDynamicSecretLeaseConfig;
+  identityName: string;
+  persistedLeaseFields?: string[];
+};
 
 export type TDynamicSecretLeaseServiceFactory = {
   create: (arg: TCreateDynamicSecretLeaseDTO) => Promise<{
+    lease: TDynamicSecretLeases;
+    dynamicSecret: TDynamicSecretWithMetadata;
+    data: unknown;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }>;
+  createSystemLease: (arg: TCreateSystemDynamicSecretLeaseDTO) => Promise<{
     lease: TDynamicSecretLeases;
     dynamicSecret: TDynamicSecretWithMetadata;
     data: unknown;

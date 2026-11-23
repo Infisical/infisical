@@ -757,7 +757,8 @@
                         "pages": [
                           "documentation/platform/agent-vault/postgresql",
                           "documentation/platform/agent-vault/mysql",
-                          "documentation/platform/agent-vault/ssh"
+                          "documentation/platform/agent-vault/ssh",
+                          "documentation/platform/agent-vault/tls"
                         ]
                       }
                     ]

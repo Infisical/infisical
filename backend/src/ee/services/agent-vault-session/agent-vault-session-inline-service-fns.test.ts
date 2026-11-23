@@ -1,4 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { KeyObject, webcrypto } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
+import { beforeAll, describe, expect, test } from "vitest";
 
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
@@ -576,6 +579,100 @@ describe("database and SSH services sent with a session", () => {
     expect(
       toResolvedInlineService(row, {
         credential: { username: "agent", password: "p" },
+        customHeaders: [],
+        substitutions: []
+      })
+    ).toBeNull();
+  });
+});
+
+describe("TLS services sent with a session", () => {
+  const NOT_AFTER = new Date("2030-01-01T00:00:00.000Z");
+  let certificate = "";
+  let privateKey = "";
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+    const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const keys = (await webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=agent-vault-test-client",
+      notBefore: new Date("2020-01-01T00:00:00.000Z"),
+      notAfter: NOT_AFTER,
+      signingAlgorithm: alg,
+      keys
+    });
+    certificate = `${cert.toString("pem")}\n`;
+    privateKey = KeyObject.from(keys.privateKey).export({ type: "pkcs8", format: "pem" }) as string;
+  });
+
+  const tls = (overrides: Partial<TAgentVaultInlineServiceInput> = {}): TAgentVaultInlineServiceInput => ({
+    type: AgentVaultServiceType.Tls,
+    name: "engine",
+    host: "engine.internal",
+    port: 8443,
+    credential: { type: AgentVaultCredentialType.ClientCertificate, certificate, privateKey },
+    ...overrides
+  });
+
+  test("go out to the proxy with TLS on and the certificate and key as sent", () => {
+    const [prepared] = prepareInlineServices([tls({ tls: { verify: false } })]);
+    expect(prepared.hostPattern).toBeNull();
+    expect(prepared.config).toEqual({ host: "engine.internal", port: 8443, tls: { enabled: true, verify: false } });
+    expect(prepared.credentialConfig).toEqual({
+      type: AgentVaultCredentialType.ClientCertificate,
+      notAfter: NOT_AFTER.toISOString()
+    });
+
+    const row = storedRow({
+      name: "engine",
+      type: AgentVaultServiceType.Tls,
+      config: prepared.config,
+      hostPattern: null,
+      credentialType: AgentVaultCredentialType.ClientCertificate,
+      credentialConfig: prepared.credentialConfig
+    });
+    const resolved = toResolvedInlineService(row, prepared.secrets);
+    expect(resolved?.native).toEqual({
+      host: "engine.internal",
+      port: 8443,
+      database: null,
+      tls: { enabled: true, verify: false, ca: null }
+    });
+    expect(resolved?.credential).toEqual({ type: AgentVaultCredentialType.ClientCertificate, certificate, privateKey });
+    expect(toInlineServiceSummary(row)).toEqual({
+      id: "inline-1",
+      name: "engine",
+      description: null,
+      type: AgentVaultServiceType.Tls,
+      host: "engine.internal",
+      port: 8443,
+      tls: { enabled: true, verify: false, ca: null },
+      credential: { type: AgentVaultCredentialType.ClientCertificate, notAfter: NOT_AFTER.toISOString() }
+    });
+  });
+
+  test("refuse a dynamic secret", () => {
+    expect(() =>
+      prepareInlineServices([
+        tls({ credential: { type: AgentVaultCredentialType.DynamicSecret, dynamicSecretId: "dynamic-secret-1" } })
+      ])
+    ).toThrow("Service 'engine': A service sent with a session can't use a dynamic secret yet.");
+  });
+
+  test("an SSH key secret is never read as a client certificate", () => {
+    const row = storedRow({
+      name: "engine",
+      type: AgentVaultServiceType.Tls,
+      config: { host: "engine.internal", port: 443, tls: { enabled: true, verify: true } },
+      hostPattern: null,
+      credentialType: AgentVaultCredentialType.ClientCertificate,
+      credentialConfig: { type: AgentVaultCredentialType.ClientCertificate, notAfter: NOT_AFTER.toISOString() }
+    });
+    expect(
+      toResolvedInlineService(row, {
+        credential: { username: "agent", privateKey, certificate },
         customHeaders: [],
         substitutions: []
       })

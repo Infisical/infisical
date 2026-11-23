@@ -212,6 +212,8 @@ export const KeyStorePrefixes = {
   // By variable, not service: every service using an OAuth variable refreshes the same tokens.
   AgentVaultOauthVariableRefreshLock: (variableId: string) =>
     `agent-vault-oauth-refresh-lock:variable:${variableId}` as const,
+  AgentVaultDynamicSecretLeaseLock: (serviceId: string) =>
+    `agent-vault-dynamic-secret-lease-lock:${serviceId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
   // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).

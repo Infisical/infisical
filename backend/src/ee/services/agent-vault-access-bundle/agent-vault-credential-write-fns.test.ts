@@ -1,3 +1,7 @@
+import { KeyObject, webcrypto } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
+
 import { TAgentVaultServices } from "@app/db/schemas";
 
 import {
@@ -8,6 +12,7 @@ import { AgentVaultCredentialType, TAgentVaultMemberProvidedField } from "../age
 import { TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 import {
   assertNativeBasicHasUsername,
+  dynamicSecretIdFor,
   isStoredSecretReplaced,
   memberFieldsOf,
   memberOauthChangeOf,
@@ -366,6 +371,121 @@ describe("an SSH key credential", () => {
     const stored = storedSshKey(false);
     const update = credential({ type: SSH_KEY, privateKey: KEY });
     expect(isStoredSecretReplaced(update, stored, { username: "agent", privateKey: KEY })).toBe(true);
+  });
+});
+
+describe("a client certificate credential", () => {
+  const CLIENT_CERTIFICATE = AgentVaultCredentialType.ClientCertificate;
+  const NOT_AFTER = new Date("2030-01-01T00:00:00.000Z");
+  const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  let certificate = "";
+  let privateKey = "";
+  let otherKey = "";
+  let encryptedKey = "";
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+    const generate = async () => (await webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+    const keys = await generate();
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=agent-vault-test-client",
+      notBefore: new Date("2020-01-01T00:00:00.000Z"),
+      notAfter: NOT_AFTER,
+      signingAlgorithm: alg,
+      keys
+    });
+    certificate = `${cert.toString("pem")}\n`;
+    privateKey = KeyObject.from(keys.privateKey).export({ type: "pkcs8", format: "pem" }) as string;
+    otherKey = KeyObject.from((await generate()).privateKey).export({ type: "pkcs8", format: "pem" }) as string;
+    encryptedKey = KeyObject.from(keys.privateKey).export({
+      type: "pkcs8",
+      format: "pem",
+      cipher: "aes-256-cbc",
+      passphrase: "secret"
+    }) as string;
+  });
+
+  const storedClientCertificate = () =>
+    ({
+      ...(storedService({ type: CLIENT_CERTIFICATE }) as object),
+      credentialConfig: { type: CLIENT_CERTIFICATE, notAfter: "2029-01-01T00:00:00.000Z" }
+    }) as unknown as TAgentVaultServices;
+
+  test("seals the certificate and key, and records only the certificate's expiry", () => {
+    const written = splitCredential(credential({ type: CLIENT_CERTIFICATE, certificate, privateKey }));
+    expect(written.secret).toEqual({ certificate, privateKey });
+    expect(written.config).toEqual({ type: CLIENT_CERTIFICATE, notAfter: NOT_AFTER.toISOString() });
+    expect(written.memberProvidedFields).toBeNull();
+  });
+
+  test("is refused with a key that doesn't match the certificate", () => {
+    expect(() => splitCredential(credential({ type: CLIENT_CERTIFICATE, certificate, privateKey: otherKey }))).toThrow(
+      "The private key doesn't match the certificate"
+    );
+  });
+
+  test.each([
+    ["an encrypted key", () => ({ privateKey: encryptedKey }), "encrypted with a passphrase"],
+    [
+      "the key pasted into the certificate",
+      () => ({ certificate: `${certificate}${privateKey}` }),
+      "Paste only certificates"
+    ],
+    ["a field left to members", () => ({ memberProvidedFields: [VALUE] }), "can't be left to members"]
+  ])("is refused with %s", (_, override, message) => {
+    expect(() =>
+      splitCredential(credential({ type: CLIENT_CERTIFICATE, certificate, privateKey, ...override() }))
+    ).toThrow(message);
+  });
+
+  test("an update with neither part keeps the stored pair and its expiry", () => {
+    const stored = storedClientCertificate();
+    const update = credential({ type: CLIENT_CERTIFICATE });
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(written.config).toEqual(stored.credentialConfig);
+  });
+
+  test.each([
+    ["only the certificate", () => ({ certificate })],
+    ["only the key", () => ({ privateKey })]
+  ])("an update with %s is refused, since the two are replaced together", (_, sent) => {
+    expect(() =>
+      mergeCredential(credential({ type: CLIENT_CERTIFICATE, ...sent() }), storedClientCertificate(), null)
+    ).toThrow("needs both 'certificate' and 'privateKey', which are replaced together");
+  });
+});
+
+describe("a dynamic secret credential", () => {
+  const DYNAMIC_SECRET = AgentVaultCredentialType.DynamicSecret;
+  const reference = {
+    dynamicSecretId: "6f1e0c2a-1b2c-4d3e-8f40-5a6b7c8d9e0f",
+    projectId: "secrets-project",
+    environment: "prod",
+    secretPath: "/certs",
+    name: "engine-client"
+  };
+  const storedDynamicSecret = () =>
+    ({
+      ...(storedService({ type: DYNAMIC_SECRET, sealed: false }) as object),
+      credentialConfig: { type: DYNAMIC_SECRET, ...reference }
+    }) as unknown as TAgentVaultServices;
+
+  test("names the dynamic secret sent, or on an update without one the stored one", () => {
+    expect(
+      dynamicSecretIdFor(
+        credential({ type: DYNAMIC_SECRET, dynamicSecretId: "another" }) as never,
+        storedDynamicSecret()
+      )
+    ).toBe("another");
+    expect(dynamicSecretIdFor(credential({ type: DYNAMIC_SECRET }) as never, storedDynamicSecret())).toBe(
+      reference.dynamicSecretId
+    );
+  });
+
+  test("needs a dynamic secret when none is stored", () => {
+    expect(() => dynamicSecretIdFor(credential({ type: DYNAMIC_SECRET }) as never)).toThrow("needs 'dynamicSecretId'");
   });
 });
 

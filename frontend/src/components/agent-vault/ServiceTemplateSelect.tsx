@@ -152,7 +152,7 @@ const NativeCard = ({
   return (
     <SelectableCard
       media={
-        hasImageError ? (
+        hasImageError || !image ? (
           <Icon className="h-5 w-5 text-label-secondary" />
         ) : (
           <ProviderIcon

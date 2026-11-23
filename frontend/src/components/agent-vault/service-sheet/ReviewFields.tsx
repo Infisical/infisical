@@ -1,6 +1,9 @@
 import { useFormContext } from "react-hook-form";
+import { format } from "date-fns";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
+  Badge,
   CodeBlock,
   Detail,
   DetailGroup,
@@ -16,12 +19,16 @@ import {
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { useGetUserProjectsByType } from "@app/hooks/api/projects";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { buildHookNarrowing, describeHookNarrowing } from "../hooks/hookSchema";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
+  clientCertificateExpiry,
   credentialLabel,
   hasDatabase,
+  hasTls,
   isAllMethods,
   isOAuthVariableCredential,
   McpToolScope,
@@ -88,6 +95,8 @@ export const ReviewFields = ({
   const isNative = isNativeServiceType(form.serviceType);
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const isSshKey = form.credentialType === AgentVaultCredentialType.SshKey;
+  const isClientCertificate = form.credentialType === AgentVaultCredentialType.ClientCertificate;
+  const isDynamicSecret = form.credentialType === AgentVaultCredentialType.DynamicSecret;
   const isOAuth = form.credentialType === AgentVaultCredentialType.OAuth;
   const isAllTools = form.toolScope === McpToolScope.All;
   const secretLabel = isBasic ? "Password" : "Token";
@@ -95,6 +104,12 @@ export const ReviewFields = ({
   const sends = isNative ? null : credentialPreview(form);
 
   const tlsSummary = () => {
+    if (form.serviceType === AgentVaultServiceType.Tls) {
+      if (!form.tlsVerify) return "Doesn't verify the server certificate";
+      return form.tlsCa.trim()
+        ? "Verifies the server certificate with a custom CA"
+        : "Verifies the server certificate";
+    }
     if (!form.tlsEnabled) return "Off";
     if (!form.tlsVerify) return "On, doesn't verify the certificate";
     return form.tlsCa.trim()
@@ -114,6 +129,23 @@ export const ReviewFields = ({
     hasStoredKey &&
     service?.credential.type === AgentVaultCredentialType.SshKey &&
     service.credential.hasCertificate;
+  const hasStoredClientCertificate =
+    isUpdate && storedType === AgentVaultCredentialType.ClientCertificate;
+  const certificateExpiry = isClientCertificate
+    ? clientCertificateExpiry(
+        form.clientCertificate,
+        service?.credential.type === AgentVaultCredentialType.ClientCertificate
+          ? service.credential.notAfter
+          : null
+      )
+    : null;
+  const isCertificateExpired =
+    certificateExpiry !== null && certificateExpiry.getTime() <= Date.now();
+  const { data: projects = [] } = useGetUserProjectsByType(ProjectType.SecretManager);
+  const dynamicSecretProjectName = isDynamicSecret
+    ? (projects.find((project) => project.id === form.dynamicSecretProjectId)?.name ??
+      form.dynamicSecretProjectId)
+    : "";
   const headerRows = form.customHeaders
     .filter((header) => header.name)
     .map((header) => [`${header.name}:`, header.prefix ? `${header.prefix} ${MASK}` : MASK]);
@@ -168,7 +200,7 @@ export const ReviewFields = ({
                 <DetailValue className="break-all">{form.database.trim()}</DetailValue>
               </Detail>
             )}
-            {hasDatabase(form.serviceType) && (
+            {hasTls(form.serviceType) && (
               <Detail>
                 <DetailLabel>TLS</DetailLabel>
                 <DetailValue>{tlsSummary()}</DetailValue>
@@ -285,9 +317,65 @@ export const ReviewFields = ({
               </Detail>
             </>
           )}
+          {isClientCertificate && (
+            <>
+              <Detail>
+                <DetailLabel>Certificate</DetailLabel>
+                <DetailValue>
+                  {keyOutcome(form.clientCertificate, hasStoredClientCertificate)}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Private Key</DetailLabel>
+                <DetailValue>
+                  {keyOutcome(form.clientPrivateKey, hasStoredClientCertificate)}
+                </DetailValue>
+              </Detail>
+              {certificateExpiry && (
+                <Detail>
+                  <DetailLabel>{isCertificateExpired ? "Expired" : "Expires"}</DetailLabel>
+                  <DetailValue className="flex items-center gap-x-2">
+                    {format(certificateExpiry, "MMM d, yyyy")}
+                    {isCertificateExpired && (
+                      <Badge variant="danger">
+                        <TriangleAlertIcon />
+                        Expired
+                      </Badge>
+                    )}
+                  </DetailValue>
+                </Detail>
+              )}
+            </>
+          )}
+          {isDynamicSecret && (
+            <>
+              <Detail>
+                <DetailLabel>Dynamic Secret</DetailLabel>
+                <DetailValue className="break-all">
+                  {form.dynamicSecretName || form.dynamicSecretId}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Project</DetailLabel>
+                <DetailValue className="break-all">{dynamicSecretProjectName}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Environment</DetailLabel>
+                <DetailValue className="break-all">{form.dynamicSecretEnvironment}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Secret Path</DetailLabel>
+                <DetailValue className="font-mono break-all">
+                  {form.dynamicSecretPath.trim() || "/"}
+                </DetailValue>
+              </Detail>
+            </>
+          )}
           {form.credentialType !== AgentVaultCredentialType.Passthrough &&
             !isOAuth &&
-            !isSshKey && (
+            !isSshKey &&
+            !isClientCertificate &&
+            !isDynamicSecret && (
               <Detail>
                 <DetailLabel>{secretLabel}</DetailLabel>
                 <DetailValue>

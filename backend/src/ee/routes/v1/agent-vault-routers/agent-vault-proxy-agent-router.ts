@@ -239,7 +239,14 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                     privateKey: z.string(),
                     certificate: z.string().optional()
                   })
-                  .describe(JSON.stringify({ title: "SSH Key" }))
+                  .describe(JSON.stringify({ title: "SSH Key" })),
+                z
+                  .object({
+                    type: z.literal(AgentVaultCredentialType.ClientCertificate),
+                    certificate: z.string(),
+                    privateKey: z.string()
+                  })
+                  .describe(JSON.stringify({ title: "Client Certificate" }))
               ]),
               customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
               substitutions: z

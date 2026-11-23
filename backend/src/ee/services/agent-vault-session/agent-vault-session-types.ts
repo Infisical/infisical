@@ -67,7 +67,10 @@ export type TAgentVaultInlineServiceInput = {
         scopes?: string[];
         resource?: string;
       }
-    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string }
+    | { type: AgentVaultCredentialType.ClientCertificate; certificate: string; privateKey: string }
+    // Accepted only so a request that sends one is refused by name.
+    | { type: AgentVaultCredentialType.DynamicSecret; dynamicSecretId: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
   // A saved hook of the project, by name.
@@ -95,6 +98,7 @@ export type TAgentVaultInlineCredentialSummary =
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough }
   | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | { type: AgentVaultCredentialType.ClientCertificate; notAfter: string }
   | TAgentVaultInlineOauthCredentialSummary;
 
 export type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
@@ -111,7 +115,10 @@ export type TAgentVaultInlineServiceSummary = {
   hook?: TAgentVaultServiceHookView | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
-      credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
+      credential: Exclude<
+        TAgentVaultInlineCredentialSummary,
+        { type: AgentVaultCredentialType.SshKey | AgentVaultCredentialType.ClientCertificate }
+      >;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
       substitutions: TAgentVaultInlineSubstitutionSummary[];
     })
@@ -127,6 +134,9 @@ export type TAgentVaultInlineServiceSummary = {
         TAgentVaultInlineCredentialSummary,
         { type: AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey }
       >;
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Tls }> & {
+      credential: { type: AgentVaultCredentialType.ClientCertificate; notAfter: string };
     })
 );
 

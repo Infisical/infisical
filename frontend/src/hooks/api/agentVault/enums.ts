@@ -20,18 +20,21 @@ export enum AgentVaultServiceType {
   Mcp = "mcp",
   Postgres = "postgres",
   Mysql = "mysql",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  Tls = "tls"
 }
 
 export type TAgentVaultNativeServiceType =
   | AgentVaultServiceType.Postgres
   | AgentVaultServiceType.Mysql
-  | AgentVaultServiceType.Ssh;
+  | AgentVaultServiceType.Ssh
+  | AgentVaultServiceType.Tls;
 
 export const AGENT_VAULT_NATIVE_SERVICE_TYPES: readonly TAgentVaultNativeServiceType[] = [
   AgentVaultServiceType.Postgres,
   AgentVaultServiceType.Mysql,
-  AgentVaultServiceType.Ssh
+  AgentVaultServiceType.Ssh,
+  AgentVaultServiceType.Tls
 ];
 
 export const isNativeServiceType = (
@@ -44,7 +47,8 @@ export const isNativeServiceType = (
 export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceType, number> = {
   [AgentVaultServiceType.Postgres]: 5432,
   [AgentVaultServiceType.Mysql]: 3306,
-  [AgentVaultServiceType.Ssh]: 22
+  [AgentVaultServiceType.Ssh]: 22,
+  [AgentVaultServiceType.Tls]: 443
 };
 
 export enum AgentVaultMcpTransport {
@@ -57,7 +61,9 @@ export enum AgentVaultCredentialType {
   Basic = "basic",
   Passthrough = "passthrough",
   OAuth = "oauth",
-  SshKey = "ssh-key"
+  SshKey = "ssh-key",
+  ClientCertificate = "client-certificate",
+  DynamicSecret = "dynamic-secret"
 }
 
 export enum AgentVaultOauthStatus {

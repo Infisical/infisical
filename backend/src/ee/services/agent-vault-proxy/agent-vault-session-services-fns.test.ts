@@ -247,6 +247,19 @@ describe("describing one service", () => {
     ).toMatch(/^SSH server, not reachable over HTTP\. Run infisical agent-vault connect bastion /);
   });
 
+  test("a TLS service says to connect without TLS, since the proxy opens it with the certificate", () => {
+    const described = describeSessionService(
+      facts({
+        name: "engine",
+        type: AgentVaultServiceType.Tls,
+        hostPattern: null,
+        credential: { type: "none" }
+      })
+    );
+    expect(described).toMatchObject({ type: "tls", hosts: [], url: null });
+    expect(described.howToUse).toMatch(/^TLS server that needs a client certificate, not reachable directly\. /);
+  });
+
   test("a database login that is partly the session owner's own says they fix a failed login", () => {
     const described = describeSessionService(
       facts({ name: "orders-db", type: AgentVaultServiceType.Mysql, hostPattern: null, memberProvided: true })

@@ -90,6 +90,31 @@ describe("database and SSH service request schemas", () => {
   });
 });
 
+const DYNAMIC_SECRET_ID = "6f1e0c2a-1b2c-4d3e-8f40-5a6b7c8d9e0f";
+
+describe("TLS service request schemas", () => {
+  const tls = (extra: Record<string, unknown> = {}) => ({
+    type: "tls",
+    name: "engine",
+    host: "engine.internal",
+    credential: { type: "client-certificate", certificate: "-----BEGIN CERTIFICATE-----", privateKey: "key" },
+    ...extra
+  });
+
+  test("take a host, a port, the TLS checks, and a client certificate, and no database", () => {
+    expect(createMessages(tls({ port: 8443, tls: { verify: false, ca: null } }))).toEqual([]);
+    expect(AgentVaultCreateServiceBodySchema.parse(tls())).not.toHaveProperty("database");
+  });
+
+  test("take a dynamic secret to lease the client certificate from", () => {
+    const credential = { type: "dynamic-secret", dynamicSecretId: DYNAMIC_SECRET_ID };
+    expect(createMessages(tls({ credential }))).toEqual([]);
+    expect(createMessages(tls({ credential: { type: "dynamic-secret", dynamicSecretId: "engine" } }))).toEqual([
+      "Invalid uuid"
+    ]);
+  });
+});
+
 const httpService = (extra: Record<string, unknown> = {}) => ({
   type: "http",
   name: "datadog",
@@ -165,6 +190,16 @@ const TLS = { enabled: true, verify: true, ca: undefined };
 const BEARER = { type: AgentVaultCredentialType.Bearer, headerName: "Authorization", headerPrefix: "Bearer" };
 const BASIC = { type: AgentVaultCredentialType.Basic };
 const SSH_KEY = { type: AgentVaultCredentialType.SshKey, hasCertificate: false };
+const CLIENT_CERTIFICATE = { type: AgentVaultCredentialType.ClientCertificate, notAfter: "2030-01-01T00:00:00.000Z" };
+const DYNAMIC_SECRET = {
+  type: AgentVaultCredentialType.DynamicSecret,
+  dynamicSecretId: DYNAMIC_SECRET_ID,
+  name: "engine-client",
+  projectId: "secrets-project",
+  environment: "prod",
+  secretPath: "/certs",
+  dynamicSecretExists: true
+};
 
 // What each type keeps, stored as it is in a row, with every other type's columns set the way the database leaves them.
 const STORED_TYPES = [
@@ -222,6 +257,17 @@ const STORED_TYPES = [
     fields: ["host", "port"],
     bundleFields: [],
     inlineFields: []
+  },
+  {
+    type: AgentVaultServiceType.Tls,
+    config: { host: "engine.internal", port: 443, tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credential: CLIENT_CERTIFICATE,
+    fields: ["host", "port", "tls"],
+    bundleFields: [],
+    inlineFields: []
   }
 ];
 
@@ -242,6 +288,14 @@ const bundleService = (extra: Record<string, unknown>) => ({
 });
 
 describe("service responses", () => {
+  test("a TLS service with a dynamic secret returns the reference and whether the secret still exists", () => {
+    const row = STORED_TYPES.find((stored) => stored.type === AgentVaultServiceType.Tls)!;
+    const parsed = AgentVaultServiceSchema.parse(
+      bundleService({ ...toServiceTypeFields(row), credential: { ...DYNAMIC_SECRET, dynamicSecretExists: false } })
+    );
+    expect(parsed).toMatchObject({ credential: { ...DYNAMIC_SECRET, dynamicSecretExists: false } });
+  });
+
   test.each(STORED_TYPES)(
     "a bundle $type service carries only its own fields",
     ({ fields, bundleFields, inlineFields: _, credential, ...row }) => {
@@ -341,7 +395,9 @@ describe("service responses", () => {
     [AgentVaultServiceType.Mcp, { ...BASIC }],
     [AgentVaultServiceType.Postgres, { ...BEARER }],
     [AgentVaultServiceType.Mysql, { ...SSH_KEY }],
-    [AgentVaultServiceType.Ssh, { type: AgentVaultCredentialType.Passthrough }]
+    [AgentVaultServiceType.Ssh, { type: AgentVaultCredentialType.Passthrough }],
+    [AgentVaultServiceType.Tls, { ...BASIC }],
+    [AgentVaultServiceType.Http, { ...DYNAMIC_SECRET }]
   ])("a bundle %s service refuses a %o credential", (type, credential) => {
     const row = STORED_TYPES.find((stored) => stored.type === type)!;
     const result = AgentVaultServiceSchema.safeParse(
@@ -358,7 +414,8 @@ describe("service responses", () => {
     [AgentVaultServiceType.Mcp, BASIC],
     [AgentVaultServiceType.Mcp, { type: AgentVaultCredentialType.Passthrough }],
     [AgentVaultServiceType.Postgres, BEARER],
-    [AgentVaultServiceType.Ssh, BEARER]
+    [AgentVaultServiceType.Ssh, BEARER],
+    [AgentVaultServiceType.Tls, DYNAMIC_SECRET]
   ])("a session's own %s service refuses a %o credential", (type, credential) => {
     const row = STORED_TYPES.find((stored) => stored.type === type)!;
     const result = AgentVaultInlineServiceSchema.safeParse({
@@ -470,7 +527,8 @@ describe("a service's variable references", () => {
     [AgentVaultServiceType.Mcp, [CREDENTIAL_REFERENCE, CUSTOM_HEADER_REFERENCE], [SUBSTITUTION_REFERENCE]],
     [AgentVaultServiceType.Postgres, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
     [AgentVaultServiceType.Mysql, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
-    [AgentVaultServiceType.Ssh, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]]
+    [AgentVaultServiceType.Ssh, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Tls, [], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]]
   ])("a %s service lists only the kinds it can store", (type, kept, refused) => {
     const row = STORED_TYPES.find((stored) => stored.type === type)!;
     const parse = (variableReferences: unknown[]) =>

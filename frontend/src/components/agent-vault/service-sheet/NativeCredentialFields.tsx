@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
+import { format } from "date-fns";
 
 import {
   Button,
@@ -17,7 +18,9 @@ import {
 } from "@app/hooks/api/agentVault";
 
 import { CredentialFields, SecretInput } from "./CredentialFields";
+import { DynamicSecretCredentialFields } from "./DynamicSecretCredentialFields";
 import {
+  clientCertificateExpiry,
   NATIVE_CREDENTIAL_TYPES,
   nativeCredentialLabels,
   TServiceForm,
@@ -34,7 +37,10 @@ const KeyTextArea = ({
   hasStoredValue,
   isError
 }: {
-  field: ControllerRenderProps<TServiceForm, "sshPrivateKey" | "sshCertificate">;
+  field: ControllerRenderProps<
+    TServiceForm,
+    "sshPrivateKey" | "sshCertificate" | "clientCertificate" | "clientPrivateKey"
+  >;
   id: string;
   label: string;
   placeholder: string;
@@ -72,24 +78,40 @@ type Props = {
   storedMemberFields?: TAgentVaultMemberProvidedField[];
   /** Whether the stored SSH key credential has a certificate. */
   hasStoredCertificate?: boolean;
+  /** When the stored client certificate expires, as an ISO date. */
+  storedCertificateExpiry?: string;
+  /** Whether the stored dynamic secret has been deleted. */
+  isStoredDynamicSecretMissing?: boolean;
 };
 
 export const NativeCredentialFields = ({
   serviceType,
   storedType,
   storedMemberFields,
-  hasStoredCertificate = false
+  hasStoredCertificate = false,
+  storedCertificateExpiry,
+  isStoredDynamicSecretMissing = false
 }: Props) => {
   const { control, watch, setValue } = useFormContext<TServiceForm>();
   const baseId = useId();
   const credentialType = watch("credentialType");
   const username = watch("username");
   const sshCertificateRemoved = watch("sshCertificateRemoved");
+  const clientCertificate = watch("clientCertificate");
 
   const isSshKey = credentialType === AgentVaultCredentialType.SshKey;
   const hasStoredKey = storedType === AgentVaultCredentialType.SshKey && isSshKey;
   const hasCertificateToKeep = hasStoredKey && hasStoredCertificate;
   const isCertificateRemoved = hasCertificateToKeep && sshCertificateRemoved;
+
+  const isClientCertificate = credentialType === AgentVaultCredentialType.ClientCertificate;
+  const hasStoredClientCertificate =
+    storedType === AgentVaultCredentialType.ClientCertificate && isClientCertificate;
+  const expiry = isClientCertificate
+    ? clientCertificateExpiry(clientCertificate, storedCertificateExpiry)
+    : null;
+  const isExpired = expiry !== null && expiry.getTime() <= Date.now();
+  const isStoredExpiry = clientCertificate === UNCHANGED_SECRET || !clientCertificate.trim();
 
   const setCertificateRemoved = (isRemoved: boolean) => {
     setValue("sshCertificateRemoved", isRemoved, { shouldDirty: true });
@@ -199,6 +221,79 @@ export const NativeCredentialFields = ({
             )}
           />
         </>
+      )}
+
+      {isClientCertificate && (
+        <>
+          <Controller
+            control={control}
+            name="clientCertificate"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel htmlFor={`${baseId}-client-certificate`}>
+                  Client Certificate (PEM)
+                </FieldLabel>
+                <FieldContent>
+                  <KeyTextArea
+                    field={field}
+                    id={`${baseId}-client-certificate`}
+                    label="Client certificate"
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                    storedPlaceholder="Stored. Paste a new certificate and key to replace them."
+                    hasStoredValue={hasStoredClientCertificate}
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldDescription>
+                    The client&apos;s certificate first, followed by any intermediate certificates.
+                  </FieldDescription>
+                  {expiry && isExpired && (
+                    <FieldError>
+                      {`${isStoredExpiry ? "The stored certificate" : "This certificate"} expired on ${format(expiry, "MMM d, yyyy")}.`}
+                      {isStoredExpiry && " Paste a new certificate and key to replace it."}
+                    </FieldError>
+                  )}
+                  {expiry && !isExpired && (
+                    <FieldDescription>
+                      {`${isStoredExpiry ? "The stored certificate" : "This certificate"} expires on ${format(expiry, "MMM d, yyyy")}.`}
+                    </FieldDescription>
+                  )}
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="clientPrivateKey"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel htmlFor={`${baseId}-client-private-key`}>Private Key (PEM)</FieldLabel>
+                <FieldContent>
+                  <KeyTextArea
+                    field={field}
+                    id={`${baseId}-client-private-key`}
+                    label="Private key"
+                    placeholder="-----BEGIN PRIVATE KEY-----"
+                    storedPlaceholder="Stored. Paste a new key with a new certificate to replace it."
+                    hasStoredValue={hasStoredClientCertificate}
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldDescription>
+                    The key of the client certificate, without a passphrase.
+                  </FieldDescription>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        </>
+      )}
+
+      {credentialType === AgentVaultCredentialType.DynamicSecret && (
+        <DynamicSecretCredentialFields
+          isStoredDynamicSecretMissing={isStoredDynamicSecretMissing}
+        />
       )}
     </div>
   );

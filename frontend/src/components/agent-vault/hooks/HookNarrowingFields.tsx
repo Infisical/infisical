@@ -23,7 +23,8 @@ import {
 const NATIVE_TYPES = [
   AgentVaultServiceType.Postgres,
   AgentVaultServiceType.Mysql,
-  AgentVaultServiceType.Ssh
+  AgentVaultServiceType.Ssh,
+  AgentVaultServiceType.Tls
 ];
 
 type Props = {

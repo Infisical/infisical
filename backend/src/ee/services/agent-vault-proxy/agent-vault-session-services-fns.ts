@@ -205,7 +205,11 @@ const howToUse = (
   }
   const parts: string[] = [];
   const target = description.url ?? "these hosts";
-  if (isNativeServiceType(service.type)) {
+  if (service.type === AgentVaultServiceType.Tls) {
+    parts.push(
+      `TLS server that needs a client certificate, not reachable directly. Run infisical agent-vault connect ${service.name} and leave it running: it prints a local address on 127.0.0.1. Point your client at that address over plain TCP, without TLS or a client certificate: the proxy opens the TLS connection to the server with the service's certificate.`
+    );
+  } else if (isNativeServiceType(service.type)) {
     const { label } = getAgentVaultServiceType(service.type);
     const kind = service.type === AgentVaultServiceType.Ssh ? `${label} server` : `${label} database`;
     parts.push(

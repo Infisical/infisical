@@ -504,6 +504,23 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
   keeps the parts it leaves out, and `certificate: null` removes the certificate; when none is stored it changes nothing,
   so it neither rewrites the secret nor audits a replaced credential. Keys are not checked on save, as in PAM; the proxy
   refuses an unusable one when a connection is requested.
+- **`tls` services** (a raw TLS relay) take only `client-certificate` or `dynamic-secret`, and both
+  are only theirs (a CHECK too). Unlike `ssh-key`, the pair is parsed on save (`parseClientCertificate`: the key must
+  match the leaf, not encrypted) and an update replaces both parts or neither. `credentialConfig.notAfter` is the leaf's
+  expiry, so lists show it without decrypting. TLS can't be turned off for this type: `tls.enabled` is always `true`.
+- **A `dynamic-secret` credential makes resolve create Dynamic Secret leases** (`agent-vault-dynamic-secret/`). Save
+  accepts only a `namespace` dynamic secret with a default TTL of 10 minutes or more, checks the org's plan has Dynamic
+  Secrets and the caller's `lease` permission on it in its own project (only when the reference is set or re-sent) and
+  stores only the reference; resolve then leases as the system (`createSystemLease`, no permission or plan check,
+  audited as `CREATE_DYNAMIC_SECRET_LEASE` by the platform), reusing the service's lease (lease `config`
+  `{ agentVaultServiceId }`) while it has more than max(5 minutes, 20% of its lifetime, poll interval + 60s) left, under
+  a Redis lock per service, and sends its `CLIENT_CERTIFICATE`/`PRIVATE_KEY` as a `client-certificate`. When a new lease
+  fails, waits on the lock, or runs past the budget, the newest lease still valid for a minute goes out; with none, the
+  service goes with no credential and resolve never fails. Delete or a credential change queues revocation of the
+  service's leases of its old dynamic secret without the lock, so the request never waits on a lease: resolve writes
+  the lease row on the primary before it re-reads the service there, and revoke reads leases on the primary after the
+  write commits, so one sees the other. A lease created for a service that changed meanwhile is revoked at once;
+  expiry revokes the rest. Inline services refuse it.
 - **TLS to the database** is `{ enabled, verify, ca }`, defaulting to enabled and verified, merged one level deep on
   update. A `ca` is parsed on save. It applies only to the proxy's leg to the database. An update can't send
   `database: null` or `tls: null` for these two types (null is only an SSH service's read-back). The create event

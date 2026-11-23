@@ -4900,9 +4900,9 @@ export const AGENT_VAULT = {
     updateDescription:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
     descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
-    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, or `postgres`, `mysql` or `ssh` for a database or SSH server the agent reaches with `infisical agent-vault connect`. Can't be changed after the service is created.",
+    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, `postgres`, `mysql`, or `ssh` for a database or SSH server, or `tls` for a server that needs a TLS client certificate. The agent reaches the last four with `infisical agent-vault connect`. Can't be changed after the service is created.",
     updateType:
-      "The service's type, `http`, `mcp`, `postgres`, `mysql` or `ssh`. Must match the type the service was created with.",
+      "The service's type, `http`, `mcp`, `postgres`, `mysql`, `ssh`, or `tls`. Must match the type the service was created with.",
     nativeName:
       "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
     host: "The server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
@@ -4910,6 +4910,7 @@ export const AGENT_VAULT = {
     postgresPort: "The PostgreSQL server's port. Defaults to 5432.",
     mysqlPort: "The MySQL server's port. Defaults to 3306.",
     sshPort: "The SSH server's port. Defaults to 22.",
+    tlsPort: "The TLS server's port. Defaults to 443.",
     portRead: "The server's port.",
     postgresDatabase: "The database the proxy logs in to. The agent can only use this database.",
     mysqlDatabase:
@@ -4941,6 +4942,38 @@ export const AGENT_VAULT = {
     updateSshCertificate:
       "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit to keep the stored certificate; send null to remove it.",
     sshHasCertificate: "Whether an SSH certificate is stored with the key.",
+    tlsCredential:
+      "The client certificate the proxy presents to the TLS server: `client-certificate` stores one with its private key, never returned once saved, and `dynamic-secret` leases a short-lived one from a Dynamic Secret whenever the proxy needs it.",
+    clientCertificate:
+      "The client certificate in PEM format, followed by any intermediate certificates, leaf first. Never returned once saved.",
+    clientCertificatePrivateKey:
+      "The client certificate's private key in PEM format, without a passphrase. It must match the first certificate. Never returned once saved.",
+    updateClientCertificate:
+      "The client certificate in PEM format, followed by any intermediate certificates, leaf first. Send it with `privateKey`: the two are replaced together. Omit both to keep the stored ones.",
+    updateClientCertificatePrivateKey:
+      "The client certificate's private key in PEM format, without a passphrase. Send it with `certificate`: the two are replaced together. Omit both to keep the stored ones.",
+    clientCertificateNotAfter: "When the client certificate expires, as an ISO 8601 date.",
+    dynamicSecretId:
+      "The ID of the Dynamic Secret to lease the client certificate from. It must be in this organization, you need permission to create leases on it in its project, and its leases must return `CLIENT_CERTIFICATE` and `PRIVATE_KEY` (PEM). Agent Vault leases a certificate with the dynamic secret's default TTL when the proxy needs one and reuses it until it nears expiry.",
+    updateDynamicSecretId:
+      "The ID of the Dynamic Secret to lease the client certificate from. You need permission to create leases on it in its project. Omit to keep the stored one; your lease permission on it is checked again either way.",
+    dynamicSecretIdRead: "The ID of the Dynamic Secret the client certificate is leased from.",
+    dynamicSecretName: "The Dynamic Secret's name, as it was when the service was saved.",
+    dynamicSecretProjectId: "The ID of the project the Dynamic Secret is in.",
+    dynamicSecretEnvironment:
+      "The slug of the environment the Dynamic Secret is in, as it was when the service was saved.",
+    dynamicSecretPath: "The secret path of the Dynamic Secret, as it was when the service was saved.",
+    dynamicSecretExists:
+      "Whether the Dynamic Secret still exists. When it doesn't, the proxy refuses the service until its credential is changed.",
+    tlsServiceTls:
+      "How the proxy checks the TLS server. The proxy always connects over TLS: `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's.",
+    updateTlsServiceTls:
+      "How the proxy checks the TLS server. The proxy always connects over TLS: `verify` checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. A field you leave out keeps its saved value. Send `ca: null` to remove a stored one.",
+    tlsServiceVerify: "Whether the proxy checks the server's certificate. Defaults to true.",
+    tlsServiceCa:
+      "PEM certificate(s) of the authority that signed the server's certificate, used only while `verify` is on.",
+    updateTlsServiceCa:
+      "PEM certificate(s) of the authority that signed the server's certificate, used only while `verify` is on. Send null to remove a stored one.",
     serverUrlRead: "The MCP server's full URL.",
     transportRead:
       "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
@@ -5019,6 +5052,8 @@ export const AGENT_VAULT = {
       "The global variables this service's username and password use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     sshVariableReferences:
       "The global variables this service's username and password use. An SSH key uses none. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    tlsVariableReferences:
+      "Always empty: a client certificate or dynamic secret can't use variables. Not returned to Agent Vault members, since only admins can see global variables.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     mcpReferenceField: "Which value uses the variable: credential-value (the bearer token) or custom-header.",

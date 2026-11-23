@@ -65,6 +65,16 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
   | { type: AgentVaultCredentialType.Passthrough }
   | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | { type: AgentVaultCredentialType.ClientCertificate; notAfter: string }
+  | {
+      type: AgentVaultCredentialType.DynamicSecret;
+      dynamicSecretId: string;
+      name: string;
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      dynamicSecretExists: boolean;
+    }
   | TAgentVaultOauthCredentialSummary;
 
 // The admin's own sign-in (authorizationId), an OAuth variable's (variable, by key) or, with memberProvidedFields, a
@@ -118,6 +128,30 @@ export type TAgentVaultSshKeyCredentialUpdate = {
   username?: string;
   privateKey?: string;
   certificate?: string | null;
+};
+
+export type TAgentVaultClientCertificateCredentialInput = {
+  type: AgentVaultCredentialType.ClientCertificate;
+  certificate: string;
+  privateKey: string;
+};
+
+// Omitted fields keep the stored pair; the certificate and key are replaced together.
+export type TAgentVaultClientCertificateCredentialUpdate = {
+  type: AgentVaultCredentialType.ClientCertificate;
+  certificate?: string;
+  privateKey?: string;
+};
+
+export type TAgentVaultDynamicSecretCredentialInput = {
+  type: AgentVaultCredentialType.DynamicSecret;
+  dynamicSecretId: string;
+};
+
+// An omitted dynamicSecretId keeps the stored one.
+export type TAgentVaultDynamicSecretCredentialUpdate = {
+  type: AgentVaultCredentialType.DynamicSecret;
+  dynamicSecretId?: string;
 };
 
 export type TAgentVaultNativeTls = { enabled: boolean; verify: boolean; ca: string | null };
@@ -190,6 +224,12 @@ export type TAgentVaultServiceConfig =
       type: AgentVaultServiceType.Ssh;
       host: string;
       port: number;
+    }
+  | {
+      type: AgentVaultServiceType.Tls;
+      host: string;
+      port: number;
+      tls: TAgentVaultNativeTls;
     };
 
 type TAgentVaultServiceConfigOf<T extends AgentVaultServiceType> = Extract<
@@ -228,6 +268,11 @@ export type TAgentVaultService = (
   | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Ssh> & {
       credential: TAgentVaultCredentialSummaryOf<
         AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey
+      >;
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Tls> & {
+      credential: TAgentVaultCredentialSummaryOf<
+        AgentVaultCredentialType.ClientCertificate | AgentVaultCredentialType.DynamicSecret
       >;
     })
 ) & {
@@ -383,7 +428,8 @@ type TAgentVaultInlineCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | { type: AgentVaultCredentialType.ClientCertificate; notAfter: string };
 
 type TAgentVaultInlineCredentialSummaryOf<T extends AgentVaultCredentialType> = Extract<
   TAgentVaultInlineCredentialSummary,
@@ -414,6 +460,9 @@ export type TAgentVaultSessionInlineService = (
       credential: TAgentVaultInlineCredentialSummaryOf<
         AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey
       >;
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Tls> & {
+      credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.ClientCertificate>;
     })
 ) & {
   id: string;
@@ -642,6 +691,17 @@ export type TCreateAgentVaultServiceDTO = {
       port?: number;
       credential: TAgentVaultBasicCredentialInput | TAgentVaultSshKeyCredentialInput;
     }
+  | {
+      type: AgentVaultServiceType.Tls;
+      name: string;
+      description?: string;
+      host: string;
+      port?: number;
+      tls?: TAgentVaultNativeTlsInput;
+      credential:
+        | TAgentVaultClientCertificateCredentialInput
+        | TAgentVaultDynamicSecretCredentialInput;
+    }
 );
 
 export type TUpdateAgentVaultServiceDTO = {
@@ -660,7 +720,11 @@ export type TUpdateAgentVaultServiceDTO = {
   port?: number;
   database?: string;
   tls?: TAgentVaultNativeTlsInput;
-  credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
+  credential?:
+    | TAgentVaultCredentialUpdate
+    | TAgentVaultSshKeyCredentialUpdate
+    | TAgentVaultClientCertificateCredentialUpdate
+    | TAgentVaultDynamicSecretCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
   /** Left out keeps the service's hook; null removes it. */

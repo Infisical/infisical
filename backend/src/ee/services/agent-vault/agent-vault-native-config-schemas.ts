@@ -9,7 +9,8 @@ import { AgentVaultServiceType } from "./agent-vault-enums";
 export const AGENT_VAULT_NATIVE_SERVICE_TYPES = [
   AgentVaultServiceType.Postgres,
   AgentVaultServiceType.Mysql,
-  AgentVaultServiceType.Ssh
+  AgentVaultServiceType.Ssh,
+  AgentVaultServiceType.Tls
 ] as const;
 
 export type TAgentVaultNativeServiceType = (typeof AGENT_VAULT_NATIVE_SERVICE_TYPES)[number];
@@ -23,7 +24,8 @@ export const AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
 export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceType, number> = {
   [AgentVaultServiceType.Postgres]: 5432,
   [AgentVaultServiceType.Mysql]: 3306,
-  [AgentVaultServiceType.Ssh]: 22
+  [AgentVaultServiceType.Ssh]: 22,
+  [AgentVaultServiceType.Tls]: 443
 };
 
 export const AGENT_VAULT_NATIVE_MAX_HOST_LENGTH = 253;
@@ -47,7 +49,9 @@ export const AGENT_VAULT_NATIVE_MESSAGES = {
     "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.",
   caInvalidText: "The certificate authority contains invalid text. Copy the CA certificate from its file again.",
   caNotOnlyCertificates:
-    "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate."
+    "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate.",
+  tlsAlwaysOn:
+    "A TLS service always connects over TLS with its client certificate, so TLS can't be turned off. Leave 'tls.enabled' out."
 } as const;
 
 // Underscores are allowed because Docker Compose service names use them and Go's resolver accepts them.
@@ -148,6 +152,20 @@ export const AgentVaultMysqlServiceConfigSchema = z.object({
 export const AgentVaultSshServiceConfigSchema = z.object({
   host: nativeHostSchema,
   port: nativePortSchema(AGENT_VAULT_NATIVE_DEFAULT_PORTS[AgentVaultServiceType.Ssh])
+});
+
+export const AgentVaultTlsServiceConfigSchema = z.object({
+  host: nativeHostSchema,
+  port: nativePortSchema(AGENT_VAULT_NATIVE_DEFAULT_PORTS[AgentVaultServiceType.Tls]),
+  tls: z
+    .object({
+      enabled: z
+        .literal(true, { errorMap: () => ({ message: AGENT_VAULT_NATIVE_MESSAGES.tlsAlwaysOn }) })
+        .default(true),
+      verify: z.boolean().default(true),
+      ca: certificateAuthoritySchema.optional()
+    })
+    .default({})
 });
 
 export type TAgentVaultNativeTls = z.infer<typeof nativeTlsSchema>;

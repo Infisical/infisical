@@ -3,11 +3,13 @@ import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { projectServiceFactory } from "./project-service";
+import { ProjectFilterType } from "./project-types";
 
 const setup = () => {
   const memberships = new Map<
@@ -264,5 +266,55 @@ describe("certificate search with current status", () => {
     expect(listOptions.sortByCurrentStatus).toBe(true);
     expect(listOptions.statusAt).toBeInstanceOf(Date);
     expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
+  });
+});
+
+describe("deleting an Agent Vault project", () => {
+  test("revokes the leases of each service that leases from a dynamic secret", async () => {
+    const agentVaultServiceDAL = {
+      find: vi.fn().mockResolvedValue([
+        { id: "service-1", credentialConfig: { dynamicSecretId: "dynamic-secret-1" } },
+        { id: "service-2", credentialConfig: { dynamicSecretId: "dynamic-secret-2" } }
+      ])
+    };
+    const agentVaultDynamicSecretService = { revokeServiceLeases: vi.fn().mockResolvedValue(undefined) };
+    const service = projectServiceFactory({
+      projectDAL: {
+        findProjectByFilter: vi
+          .fn()
+          .mockResolvedValue({ id: "project", orgId: "org", slug: "apollo", type: ProjectType.AgentVault }),
+        softDeleteById: vi.fn().mockResolvedValue({ id: "project" })
+      },
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({
+          permission: createMongoAbility([{ action: "manage", subject: "all" }])
+        })
+      },
+      orgDAL: { findOne: vi.fn().mockResolvedValue({ id: "org" }) },
+      keyStore: { acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }) },
+      honeyTokenCleanupService: { revokeProjectHoneyTokens: vi.fn().mockResolvedValue(undefined) },
+      agentVaultServiceDAL,
+      agentVaultDynamicSecretService,
+      secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue(undefined) },
+      usageMeteringService: { emit: vi.fn() },
+      licenseService: new FakeLicenseService()
+    } as unknown as Parameters<typeof projectServiceFactory>[0]);
+
+    await service.deleteProject({
+      actor: ActorType.USER,
+      actorId: "user",
+      actorOrgId: "org",
+      actorAuthMethod: null,
+      filter: { type: ProjectFilterType.ID, projectId: "project" }
+    });
+
+    expect(agentVaultServiceDAL.find).toHaveBeenCalledExactlyOnceWith({
+      projectId: "project",
+      credentialType: AgentVaultCredentialType.DynamicSecret
+    });
+    expect(agentVaultDynamicSecretService.revokeServiceLeases.mock.calls).toEqual([
+      [{ serviceId: "service-1", dynamicSecretId: "dynamic-secret-1" }],
+      [{ serviceId: "service-2", dynamicSecretId: "dynamic-secret-2" }]
+    ]);
   });
 });

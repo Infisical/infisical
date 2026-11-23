@@ -43,6 +43,13 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   sshPrivateKey: "",
   sshCertificate: "",
   sshCertificateRemoved: false,
+  clientCertificate: "",
+  clientPrivateKey: "",
+  dynamicSecretProjectId: "",
+  dynamicSecretEnvironment: "",
+  dynamicSecretPath: "/",
+  dynamicSecretId: "",
+  dynamicSecretName: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -846,6 +853,120 @@ describe("native service requests", () => {
   it("sends a trimmed CA while TLS is on", () => {
     expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
       tls: { enabled: true, verify: true, ca: "PEM" }
+    });
+  });
+
+  const storedTls = {
+    ...storedNativeBase,
+    type: AgentVaultServiceType.Tls,
+    host: "engine.internal",
+    port: 443,
+    tls: { enabled: true, verify: true, ca: null },
+    credential: {
+      type: AgentVaultCredentialType.ClientCertificate,
+      notAfter: "2036-11-03T23:34:53.000Z"
+    }
+  } satisfies TAgentVaultService;
+
+  const tlsForm = (overrides: Partial<TServiceForm> = {}) =>
+    form({
+      serviceType: AgentVaultServiceType.Tls,
+      name: "engine",
+      hosts: [],
+      host: " engine.internal ",
+      port: "8443",
+      credentialType: AgentVaultCredentialType.ClientCertificate,
+      secret: "",
+      clientCertificate: " CERTIFICATE PEM \n",
+      clientPrivateKey: "\n KEY PEM ",
+      ...overrides
+    });
+
+  it("builds a TLS service with its server, TLS settings, and client certificate", () => {
+    expect(buildCreateServiceRequest("bundle-1", tlsForm({ tlsCa: " CA PEM " }))).toEqual({
+      accessBundleIds: ["bundle-1"],
+      type: AgentVaultServiceType.Tls,
+      name: "engine",
+      host: "engine.internal",
+      port: 8443,
+      tls: { verify: true, ca: "CA PEM" },
+      credential: {
+        type: AgentVaultCredentialType.ClientCertificate,
+        certificate: "CERTIFICATE PEM",
+        privateKey: "KEY PEM"
+      }
+    });
+    expect(
+      buildCreateServiceRequest("bundle-1", tlsForm({ tlsVerify: false, tlsCa: "kept" }))
+    ).toHaveProperty("tls", { verify: false });
+  });
+
+  it("leaves the credential out of a TLS update unless both halves are replaced", () => {
+    const update = (overrides: Partial<TServiceForm>) =>
+      buildUpdateServiceRequest(storedTls, tlsForm(overrides));
+    expect(
+      update({ clientCertificate: UNCHANGED_SECRET, clientPrivateKey: UNCHANGED_SECRET })
+    ).toEqual({
+      serviceId: "service-1",
+      type: AgentVaultServiceType.Tls,
+      name: "engine",
+      host: "engine.internal",
+      port: 8443,
+      tls: { verify: true, ca: null },
+      description: null
+    });
+    expect(update({}).credential).toEqual({
+      type: AgentVaultCredentialType.ClientCertificate,
+      certificate: "CERTIFICATE PEM",
+      privateKey: "KEY PEM"
+    });
+  });
+
+  const DYNAMIC_SECRET_ID = "7f4c8f43-8f6b-4c41-9a0c-3d1c0a6a0b11";
+  const dynamicSecretForm = (overrides: Partial<TServiceForm> = {}) =>
+    tlsForm({
+      credentialType: AgentVaultCredentialType.DynamicSecret,
+      clientCertificate: "",
+      clientPrivateKey: "",
+      dynamicSecretProjectId: "project-1",
+      dynamicSecretEnvironment: "prod",
+      dynamicSecretPath: "/namespace",
+      dynamicSecretId: DYNAMIC_SECRET_ID,
+      dynamicSecretName: "namespace-ingress",
+      ...overrides
+    });
+  const storedDynamicSecretTls = {
+    ...storedTls,
+    credential: {
+      type: AgentVaultCredentialType.DynamicSecret,
+      dynamicSecretId: DYNAMIC_SECRET_ID,
+      name: "namespace-ingress",
+      projectId: "project-1",
+      environment: "prod",
+      secretPath: "/namespace",
+      dynamicSecretExists: true
+    }
+  } satisfies TAgentVaultService;
+
+  it("creates a TLS service with only the dynamic secret's ID", () => {
+    expect(buildCreateServiceRequest("bundle-1", dynamicSecretForm()).credential).toEqual({
+      type: AgentVaultCredentialType.DynamicSecret,
+      dynamicSecretId: DYNAMIC_SECRET_ID
+    });
+  });
+
+  it("leaves the credential out of a TLS update that keeps the stored dynamic secret", () => {
+    expect(
+      buildUpdateServiceRequest(storedDynamicSecretTls, dynamicSecretForm())
+    ).not.toHaveProperty("credential");
+    expect(
+      buildUpdateServiceRequest(
+        storedDynamicSecretTls,
+        dynamicSecretForm({ dynamicSecretId: "0b6c2f8e-1d9a-4f5e-8c3b-2a7d9e4f1c60" })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.DynamicSecret,
+      dynamicSecretId: "0b6c2f8e-1d9a-4f5e-8c3b-2a7d9e4f1c60"
     });
   });
 });

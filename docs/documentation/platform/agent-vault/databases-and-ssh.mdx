@@ -1,9 +1,9 @@
 ---
 title: "Databases and SSH"
-description: Databases and SSH servers that an AI agent can reach during a session without holding their credentials.
+description: Databases, SSH servers, and TLS servers that an AI agent can reach during a session without holding their credentials.
 ---
 
-A database or SSH service lets an agent reach a PostgreSQL database, a MySQL database, or an SSH server during a [session](/documentation/platform/agent-vault/sessions), with clients such as `psql`, `mysql`, and `ssh`. The agent never holds the password or key: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the server with the service's account.
+A database or SSH service lets an agent reach a PostgreSQL database, a MySQL database, or an SSH server during a [session](/documentation/platform/agent-vault/sessions), with clients such as `psql`, `mysql`, and `ssh`. The agent never holds the password or key: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the server with the service's account. A [TLS service](/documentation/platform/agent-vault/tls) does the same for a server that requires a client certificate.
 
 These services work differently from [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers). The agent runs [`infisical agent-vault connect`](/cli/reference#agent-vault-connect), which opens a port on the agent's own machine for each service and prints the port's address. Each connection to that port goes to the proxy over TLS, and the proxy connects to the server from inside your network.
 
@@ -16,7 +16,7 @@ flowchart LR
 
 To add one of these services to an access bundle, follow the page for its type:
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="PostgreSQL" icon="database" href="/documentation/platform/agent-vault/postgresql">
     Let an AI agent query a PostgreSQL database without holding its password.
   </Card>
@@ -26,11 +26,14 @@ To add one of these services to an access bundle, follow the page for its type:
   <Card title="SSH" icon="terminal" href="/documentation/platform/agent-vault/ssh">
     Let an AI agent run commands on an SSH server without holding its password or key.
   </Card>
+  <Card title="TLS" icon="lock" href="/documentation/platform/agent-vault/tls">
+    Let an AI agent reach a server that requires a client certificate without holding the certificate's key.
+  </Card>
 </CardGroup>
 
 ## Connect your agent
 
-`infisical agent-vault connect` opens a port on `127.0.0.1` for each service you name, or for every database and SSH service in the session with `--all`. The command keeps running, and the ports stay open until it stops.
+`infisical agent-vault connect` opens a port on `127.0.0.1` for each service you name, or for every database, SSH, and TLS service in the session with `--all`. The command keeps running, and the ports stay open until it stops.
 
 <Steps>
   <Step>
@@ -59,7 +62,7 @@ To add one of these services to an access bundle, follow the page for its type:
       Example:  ssh -p 52818 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null agent@127.0.0.1
     ```
 
-    The agent's [list of services](/documentation/platform/agent-vault/service-discovery) tells it to run this command for each database and SSH service. To make sure the agent uses the services, also tell it (in its instructions or in a [skill](/documentation/platform/agent-vault/skills)) to run the command, read the printed addresses, and keep the command running while it uses the services.
+    The agent's [list of services](/documentation/platform/agent-vault/service-discovery) tells it to run this command for each database, SSH, and TLS service. To make sure the agent uses the services, also tell it (in its instructions or in a [skill](/documentation/platform/agent-vault/skills)) to run the command, read the printed addresses, and keep the command running while it uses the services.
   </Step>
   <Step>
     The agent connects its client to the printed address, as in the example command. Any username works, and the agent must not pass a password: the proxy logs in with the service's account.
@@ -127,6 +130,6 @@ The proxy records each statement, SSH command, and file transfer in the [session
     The proxy runs an older version of the Infisical CLI. Update the CLI on the proxy's machine and restart the proxy.
   </Accordion>
   <Accordion title="The agent's connection closes after a service changes">
-    The proxy closes open connections to a service when you remove the service or change its host, port, database, or TLS settings, and when the session ends. A new password or key applies to new connections, and open connections stay open.
+    The proxy closes open connections to a service when you remove the service or change its host, port, database, or TLS settings, and when the session ends. A new password, key, client certificate, or dynamic secret applies to new connections, and open connections stay open.
   </Accordion>
 </AccordionGroup>

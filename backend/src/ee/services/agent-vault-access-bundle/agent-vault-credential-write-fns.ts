@@ -4,8 +4,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { TAgentVaultOauthMemberConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { sameMemberProvidedFields } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import {
+  AGENT_VAULT_CLIENT_CERTIFICATE_MESSAGES,
   AgentVaultBearerConfigSchema,
-  TAgentVaultCredentialConfig
+  parseClientCertificate,
+  TAgentVaultCredentialConfig,
+  TAgentVaultDynamicSecretConfig
 } from "../agent-vault/agent-vault-credential-schemas";
 import {
   AgentVaultCredentialType,
@@ -97,6 +100,63 @@ const sshKeyWrite = (secret: { username?: string | null; privateKey?: string | n
   };
 };
 
+export const CLIENT_CERTIFICATE_MEMBER_FIELDS_MESSAGE =
+  "A client certificate can't be left to members. Set the certificate and key on the service.";
+
+type TClientCertificateUpdate = Extract<
+  TAgentVaultCredentialUpdate,
+  { type: AgentVaultCredentialType.ClientCertificate }
+>;
+
+const assertNoClientCertificateMemberFields = (credential: TClientCertificateUpdate) => {
+  if (credential.memberProvidedFields?.length) {
+    throw new BadRequestError({ message: CLIENT_CERTIFICATE_MEMBER_FIELDS_MESSAGE });
+  }
+};
+
+const sendsClientCertificate = (credential: TClientCertificateUpdate) =>
+  credential.certificate !== undefined || credential.privateKey !== undefined;
+
+const clientCertificateWrite = (credential: TClientCertificateUpdate) => {
+  assertNoClientCertificateMemberFields(credential);
+  if (!credential.certificate || !credential.privateKey) {
+    throw new BadRequestError({ message: AGENT_VAULT_CLIENT_CERTIFICATE_MESSAGES.needsBoth });
+  }
+  const { certificate, privateKey, notAfter } = parseClientCertificate({
+    certificate: credential.certificate,
+    privateKey: credential.privateKey
+  });
+  return {
+    config: { type: AgentVaultCredentialType.ClientCertificate as const, notAfter },
+    secret: { certificate, privateKey },
+    memberProvidedFields: null
+  };
+};
+
+export const DYNAMIC_SECRET_MEMBER_FIELDS_MESSAGE =
+  "A dynamic secret credential can't be left to members. Choose the dynamic secret on the service.";
+export const DYNAMIC_SECRET_NEEDS_ID_MESSAGE =
+  "A dynamic secret credential needs 'dynamicSecretId', the ID of the dynamic secret to lease the credential from.";
+
+type TDynamicSecretUpdate = Extract<TAgentVaultCredentialUpdate, { type: AgentVaultCredentialType.DynamicSecret }>;
+
+export const dynamicSecretIdFor = (credential: TDynamicSecretUpdate, stored?: TAgentVaultServices) => {
+  if (credential.memberProvidedFields?.length) {
+    throw new BadRequestError({ message: DYNAMIC_SECRET_MEMBER_FIELDS_MESSAGE });
+  }
+  if (credential.dynamicSecretId) return credential.dynamicSecretId;
+  if (stored?.credentialType === AgentVaultCredentialType.DynamicSecret) {
+    return (stored.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId;
+  }
+  throw new BadRequestError({ message: DYNAMIC_SECRET_NEEDS_ID_MESSAGE });
+};
+
+export const dynamicSecretWrite = (reference: TAgentVaultDynamicSecretConfig): TCredentialWrite => ({
+  config: { type: AgentVaultCredentialType.DynamicSecret, ...reference },
+  secret: null,
+  memberProvidedFields: null
+});
+
 // Sending a value replaces the stored secret, and so does a write that drops a field the admin held: handing it to
 // members, or changing the type over a secret that was stored.
 export const isStoredSecretReplaced = (
@@ -106,10 +166,15 @@ export const isStoredSecretReplaced = (
 ) => {
   if (written === undefined) return false;
   if (credential.type !== stored.credentialType) return Boolean(stored.encryptedCredential) || written !== null;
-  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
+  if (
+    credential.type === AgentVaultCredentialType.Passthrough ||
+    credential.type === AgentVaultCredentialType.OAuth ||
+    credential.type === AgentVaultCredentialType.DynamicSecret
+  ) {
     return false;
   }
   if (credential.type === AgentVaultCredentialType.SshKey) return sendsSshKeyPart(credential, stored);
+  if (credential.type === AgentVaultCredentialType.ClientCertificate) return sendsClientCertificate(credential);
 
   const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
   const keyOfField: readonly (readonly [TAgentVaultMemberProvidedField, string])[] =
@@ -143,7 +208,12 @@ export const BASIC_NEEDS_A_HALF_MESSAGE =
 // NULL, never an empty list, is what the column stores for a credential the admin sets in full. An OAuth sign-in left
 // to members is `credential-value`, the field that holds the token.
 export const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.SshKey) {
+  if (
+    credential.type === AgentVaultCredentialType.Passthrough ||
+    credential.type === AgentVaultCredentialType.SshKey ||
+    credential.type === AgentVaultCredentialType.ClientCertificate ||
+    credential.type === AgentVaultCredentialType.DynamicSecret
+  ) {
     return null;
   }
   const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
@@ -195,9 +265,13 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
     case AgentVaultCredentialType.SshKey:
       assertNoSshKeyMemberFields(credential);
       return sshKeyWrite(credential);
+    case AgentVaultCredentialType.ClientCertificate:
+      return clientCertificateWrite(credential);
     // Its tokens come from a completed authorization, never from the request.
     case AgentVaultCredentialType.OAuth:
       throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_MESSAGE });
+    case AgentVaultCredentialType.DynamicSecret:
+      throw new BadRequestError({ message: DYNAMIC_SECRET_NEEDS_ID_MESSAGE });
     case AgentVaultCredentialType.Passthrough:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
     default: {
@@ -214,7 +288,9 @@ export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stor
     credential.type !== stored.credentialType ||
     credential.type === AgentVaultCredentialType.Passthrough ||
     (credential.type === AgentVaultCredentialType.OAuth && (credential.authorizationId || credential.variable)) ||
-    credential.type === AgentVaultCredentialType.SshKey
+    credential.type === AgentVaultCredentialType.SshKey ||
+    credential.type === AgentVaultCredentialType.ClientCertificate ||
+    credential.type === AgentVaultCredentialType.DynamicSecret
   ) {
     return memberFieldsOf(credential);
   }
@@ -231,6 +307,9 @@ export const mergeCredential = (
 ): TCredentialWrite => {
   if (credential.type === AgentVaultCredentialType.OAuth) {
     throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_MESSAGE });
+  }
+  if (credential.type === AgentVaultCredentialType.DynamicSecret) {
+    throw new BadRequestError({ message: DYNAMIC_SECRET_NEEDS_ID_MESSAGE });
   }
   if (credential.type !== stored.credentialType) {
     if (
@@ -270,6 +349,18 @@ export const mergeCredential = (
       privateKey: keep("privateKey"),
       certificate: keep("certificate")
     });
+  }
+
+  if (credential.type === AgentVaultCredentialType.ClientCertificate) {
+    assertNoClientCertificateMemberFields(credential);
+    if (!sendsClientCertificate(credential)) {
+      return {
+        config: stored.credentialConfig as TAgentVaultCredentialConfig,
+        secret: undefined,
+        memberProvidedFields: null
+      };
+    }
+    return clientCertificateWrite(credential);
   }
 
   const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string };

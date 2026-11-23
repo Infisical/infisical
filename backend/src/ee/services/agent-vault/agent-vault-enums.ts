@@ -10,7 +10,9 @@ export enum AgentVaultCredentialType {
   Basic = "basic",
   Passthrough = "passthrough",
   OAuth = "oauth",
-  SshKey = "ssh-key"
+  SshKey = "ssh-key",
+  ClientCertificate = "client-certificate",
+  DynamicSecret = "dynamic-secret"
 }
 
 export enum AgentVaultOauthStatus {
@@ -32,7 +34,8 @@ export enum AgentVaultServiceType {
   Mcp = "mcp",
   Postgres = "postgres",
   Mysql = "mysql",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  Tls = "tls"
 }
 
 export enum AgentVaultMcpTransport {

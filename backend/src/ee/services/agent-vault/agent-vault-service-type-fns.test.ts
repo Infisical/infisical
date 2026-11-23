@@ -198,15 +198,53 @@ describe("credential types", () => {
   });
 
   // OAuth only through an OAuth variable, which the service save checks.
-  test("an HTTP service takes every credential type but an SSH key", () => {
+  test("an HTTP service takes every credential type but an SSH key, a client certificate, or a dynamic secret", () => {
     Object.values(AgentVaultCredentialType)
-      .filter((type) => type !== AgentVaultCredentialType.SshKey)
+      .filter(
+        (type) =>
+          type !== AgentVaultCredentialType.SshKey &&
+          type !== AgentVaultCredentialType.ClientCertificate &&
+          type !== AgentVaultCredentialType.DynamicSecret
+      )
       .forEach((type) => {
         expect(() => assertCredentialTypeSupported(http, type)).not.toThrow();
       });
     expect(() => assertCredentialTypeSupported(http, AgentVaultCredentialType.SshKey)).toThrow(
       "An HTTP service can't use an SSH key as its credential."
     );
+  });
+});
+
+describe("TLS services", () => {
+  const tls = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Tls];
+
+  test("default to port 443 with TLS on and verified, and take no database", () => {
+    const config = buildServiceConfig(tls, { host: "engine.internal" });
+    expect(config).toEqual({ host: "engine.internal", port: 443, tls: { enabled: true, verify: true } });
+    expect(resolveServiceHostPattern(tls, config, undefined)).toBeNull();
+    expect(findUnsupportedServiceFields(tls, { database: "app" })).toEqual(["database"]);
+  });
+
+  test("refuse turning TLS off, on create and on update", () => {
+    expect(() => buildServiceConfig(tls, { host: "engine.internal", tls: { enabled: false } })).toThrow(
+      "'tls.enabled': A TLS service always connects over TLS with its client certificate, so TLS can't be turned off."
+    );
+    const stored = { host: "engine.internal", port: 443, tls: { enabled: true, verify: true } };
+    expect(() => buildServiceConfig(tls, { tls: { enabled: false } }, stored)).toThrow("can't be turned off");
+  });
+
+  test("take only a client certificate or a dynamic secret, which no other type takes", () => {
+    expect(() => assertCredentialTypeSupported(tls, AgentVaultCredentialType.ClientCertificate)).not.toThrow();
+    expect(() => assertCredentialTypeSupported(tls, AgentVaultCredentialType.DynamicSecret)).not.toThrow();
+    expect(() => assertCredentialTypeSupported(tls, AgentVaultCredentialType.Basic)).toThrow(
+      "A TLS service can't use a username and password as its credential. Use a client certificate or a dynamic secret."
+    );
+    Object.values(AGENT_VAULT_SERVICE_TYPES)
+      .filter((definition) => definition.type !== AgentVaultServiceType.Tls)
+      .forEach((definition) => {
+        expect(definition.allowedCredentialTypes).not.toContain(AgentVaultCredentialType.ClientCertificate);
+        expect(definition.allowedCredentialTypes).not.toContain(AgentVaultCredentialType.DynamicSecret);
+      });
   });
 });
 

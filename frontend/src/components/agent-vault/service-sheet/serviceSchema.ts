@@ -70,7 +70,9 @@ export const storedMemberFields = (
 ): TAgentVaultMemberProvidedField[] =>
   service &&
   service.credential.type !== AgentVaultCredentialType.Passthrough &&
-  service.credential.type !== AgentVaultCredentialType.SshKey
+  service.credential.type !== AgentVaultCredentialType.SshKey &&
+  service.credential.type !== AgentVaultCredentialType.ClientCertificate &&
+  service.credential.type !== AgentVaultCredentialType.DynamicSecret
     ? (service.credential.memberProvidedFields ?? [])
     : [];
 
@@ -109,7 +111,9 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through",
   [AgentVaultCredentialType.OAuth]: "OAuth",
-  [AgentVaultCredentialType.SshKey]: "SSH Key"
+  [AgentVaultCredentialType.SshKey]: "SSH Key",
+  [AgentVaultCredentialType.ClientCertificate]: "Client Certificate",
+  [AgentVaultCredentialType.DynamicSecret]: "Dynamic Secret"
 };
 
 // A database or SSH login has no HTTP header, so "Basic Auth" would misdescribe it.
@@ -123,8 +127,16 @@ const SSH_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> =
   [AgentVaultCredentialType.SshKey]: "SSH Key"
 };
 
-export const nativeCredentialLabels = (serviceType: TAgentVaultNativeServiceType) =>
-  serviceType === AgentVaultServiceType.Ssh ? SSH_CREDENTIAL_LABELS : DATABASE_CREDENTIAL_LABELS;
+const TLS_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.ClientCertificate]: "Stored Client Certificate",
+  [AgentVaultCredentialType.DynamicSecret]: "Dynamic Secret"
+};
+
+export const nativeCredentialLabels = (serviceType: TAgentVaultNativeServiceType) => {
+  if (serviceType === AgentVaultServiceType.Ssh) return SSH_CREDENTIAL_LABELS;
+  if (serviceType === AgentVaultServiceType.Tls) return TLS_CREDENTIAL_LABELS;
+  return DATABASE_CREDENTIAL_LABELS;
+};
 
 export const credentialLabel = (
   serviceType: AgentVaultServiceType,
@@ -139,7 +151,16 @@ export const NATIVE_CREDENTIAL_TYPES: Record<
 > = {
   [AgentVaultServiceType.Postgres]: [AgentVaultCredentialType.Basic],
   [AgentVaultServiceType.Mysql]: [AgentVaultCredentialType.Basic],
-  [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey]
+  [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey],
+  [AgentVaultServiceType.Tls]: [
+    AgentVaultCredentialType.ClientCertificate,
+    AgentVaultCredentialType.DynamicSecret
+  ]
+};
+
+const NATIVE_CREDENTIAL_TYPE_MESSAGES: Partial<Record<TAgentVaultNativeServiceType, string>> = {
+  [AgentVaultServiceType.Ssh]: "An SSH service takes a password or an SSH key.",
+  [AgentVaultServiceType.Tls]: "A TLS service takes a client certificate or a dynamic secret."
 };
 
 export const HTTP_CREDENTIAL_TYPES = [
@@ -161,7 +182,8 @@ export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Mcp]: "MCP Server",
   [AgentVaultServiceType.Postgres]: "PostgreSQL",
   [AgentVaultServiceType.Mysql]: "MySQL",
-  [AgentVaultServiceType.Ssh]: "SSH"
+  [AgentVaultServiceType.Ssh]: "SSH",
+  [AgentVaultServiceType.Tls]: "TLS"
 };
 
 export type TServiceKind = "http" | "mcp" | "native";
@@ -175,6 +197,9 @@ export const serviceKindOf = (serviceType: AgentVaultServiceType): TServiceKind 
 export const hasDatabase = (serviceType: AgentVaultServiceType) =>
   serviceType === AgentVaultServiceType.Postgres || serviceType === AgentVaultServiceType.Mysql;
 
+export const hasTls = (serviceType: AgentVaultServiceType) =>
+  hasDatabase(serviceType) || serviceType === AgentVaultServiceType.Tls;
+
 // The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
 export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
 
@@ -185,6 +210,8 @@ const MAX_NATIVE_DATABASE_LENGTH = 64;
 const MAX_NATIVE_CA_LENGTH = 16384;
 const MAX_SSH_KEY_LENGTH = 8192;
 const MAX_SSH_USERNAME_LENGTH = 256;
+const MAX_CLIENT_CERTIFICATE_LENGTH = 16384;
+const MAX_CLIENT_PRIVATE_KEY_LENGTH = 8192;
 
 const NATIVE_HOSTNAME_RE =
   /^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/i;
@@ -193,6 +220,8 @@ const IPV6_SCHEMA = z.string().ip({ version: "v6" });
 // eslint-disable-next-line no-control-regex
 const PEM_CONTROL_CHARS_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const PEM_BLOCK_RE = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
+const PRIVATE_KEY_BLOCK_RE =
+  /^-----BEGIN ((?:RSA |EC )?PRIVATE KEY)-----\n[A-Za-z0-9+/=\n]+\n-----END \1-----$/;
 
 const SSH_KEY_VARIABLE_MESSAGE =
   "An SSH key credential can't use variables yet, so this can't contain double braces. Enter the value itself.";
@@ -269,6 +298,69 @@ export const certificateAuthorityError = (value: string): string | null => {
     return invalid;
   }
   return null;
+};
+
+export const clientCertificateError = (value: string): string | null => {
+  const pem = value.replace(/\r\n?/g, "\n").trim();
+  if (!pem) return null;
+  if (pem.length > MAX_CLIENT_CERTIFICATE_LENGTH) {
+    return `The certificate can be at most ${MAX_CLIENT_CERTIFICATE_LENGTH} characters.`;
+  }
+  const invalid =
+    "This isn't a valid PEM certificate. Paste the client certificate, starting with -----BEGIN CERTIFICATE-----.";
+  if (PEM_CONTROL_CHARS_RE.test(pem)) return invalid;
+  const blocks = pem.match(PEM_BLOCK_RE);
+  if (!blocks?.length) return invalid;
+  if ((pem.match(/-----BEGIN /g) ?? []).length !== blocks.length) {
+    return "Paste only certificates here. This text also contains a private key or other data, which goes in Private Key.";
+  }
+  try {
+    blocks.forEach((block) => new x509.X509Certificate(block));
+  } catch {
+    return invalid;
+  }
+  return null;
+};
+
+export const clientPrivateKeyError = (value: string): string | null => {
+  const pem = value
+    .replace(/\r\n?/g, "\n")
+    .trim()
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+  if (!pem) return null;
+  if (pem.length > MAX_CLIENT_PRIVATE_KEY_LENGTH) {
+    return `The private key can be at most ${MAX_CLIENT_PRIVATE_KEY_LENGTH} characters.`;
+  }
+  if (
+    pem.includes("-----BEGIN ENCRYPTED PRIVATE KEY-----") ||
+    /Proc-Type:\s*4,ENCRYPTED/.test(pem)
+  ) {
+    return "This key is protected by a passphrase, which the proxy can't enter. Paste the key without its passphrase.";
+  }
+  if ((pem.match(/-----BEGIN /g) ?? []).length > 1) {
+    return "Paste only the private key. This text contains more than one PEM block.";
+  }
+  if (!PRIVATE_KEY_BLOCK_RE.test(pem)) {
+    return "This isn't a valid PEM private key. Paste the key, starting with -----BEGIN PRIVATE KEY-----.";
+  }
+  return null;
+};
+
+export const clientCertificateExpiry = (
+  clientCertificate: string,
+  storedNotAfter?: string | null
+): Date | null => {
+  const entered = clientCertificate === UNCHANGED_SECRET ? "" : clientCertificate.trim();
+  if (!entered) return storedNotAfter ? new Date(storedNotAfter) : null;
+  const block = entered.replace(/\r\n?/g, "\n").match(PEM_BLOCK_RE)?.[0];
+  if (!block) return null;
+  try {
+    return new x509.X509Certificate(block).notAfter;
+  } catch {
+    return null;
+  }
 };
 
 const hasSshKeyVariable = (value: string) => value.includes("{{") || value.includes("}}");
@@ -481,7 +573,13 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "secret",
     "memberProvidedFields",
     "sshPrivateKey",
-    "sshCertificate"
+    "sshCertificate",
+    "clientCertificate",
+    "clientPrivateKey",
+    "dynamicSecretProjectId",
+    "dynamicSecretEnvironment",
+    "dynamicSecretPath",
+    "dynamicSecretId"
   ],
   [ServiceStep.Tools]: [],
   [ServiceStep.Hook]: ["hook"],
@@ -649,6 +747,13 @@ export const buildServiceSchema = (
       sshCertificate: z.string(),
       // Set only by Remove Certificate: an emptied box keeps the stored certificate, as every other stored value does.
       sshCertificateRemoved: z.boolean(),
+      clientCertificate: z.string(),
+      clientPrivateKey: z.string(),
+      dynamicSecretProjectId: z.string(),
+      dynamicSecretEnvironment: z.string(),
+      dynamicSecretPath: z.string(),
+      dynamicSecretId: z.string(),
+      dynamicSecretName: z.string(),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
@@ -733,6 +838,8 @@ export const buildServiceSchema = (
         if (hasDatabase(data.serviceType)) {
           const databaseIssue = nativeDatabaseError(data.database);
           if (databaseIssue) issue("database", databaseIssue);
+        }
+        if (hasTls(data.serviceType)) {
           // The CA field is hidden unless the proxy verifies the certificate, and nothing sends it then.
           const caIssue =
             data.tlsEnabled && data.tlsVerify ? certificateAuthorityError(data.tlsCa) : null;
@@ -741,9 +848,8 @@ export const buildServiceSchema = (
         if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {
           issue(
             "credentialType",
-            data.serviceType === AgentVaultServiceType.Ssh
-              ? "An SSH service takes a password or an SSH key."
-              : "A database service takes a username and password."
+            NATIVE_CREDENTIAL_TYPE_MESSAGES[data.serviceType] ??
+              "A database service takes a username and password."
           );
         }
       }
@@ -1028,6 +1134,8 @@ export const buildServiceSchema = (
         data.credentialType !== AgentVaultCredentialType.Passthrough &&
         data.credentialType !== AgentVaultCredentialType.OAuth &&
         data.credentialType !== AgentVaultCredentialType.SshKey &&
+        data.credentialType !== AgentVaultCredentialType.ClientCertificate &&
+        data.credentialType !== AgentVaultCredentialType.DynamicSecret &&
         !isSecretMemberProvided
       ) {
         addReferenceIssue(data.secret, ["secret"]);
@@ -1076,6 +1184,37 @@ export const buildServiceSchema = (
         if (data.sshCertificate !== UNCHANGED_SECRET && !data.sshCertificateRemoved) {
           const certificateIssue = sshKeyTextError(data.sshCertificate);
           if (certificateIssue) issue("sshCertificate", certificateIssue);
+        }
+        return;
+      }
+      if (data.credentialType === AgentVaultCredentialType.DynamicSecret) {
+        if (!data.dynamicSecretId) {
+          if (!data.dynamicSecretProjectId) issue("dynamicSecretProjectId", "Choose a project.");
+          else if (!data.dynamicSecretEnvironment) {
+            issue("dynamicSecretEnvironment", "Choose an environment.");
+          } else issue("dynamicSecretId", "Choose a dynamic secret.");
+        }
+        return;
+      }
+      if (data.credentialType === AgentVaultCredentialType.ClientCertificate) {
+        const entered = (value: string) => (value === UNCHANGED_SECRET ? "" : value.trim());
+        const certificate = entered(data.clientCertificate);
+        const privateKey = entered(data.clientPrivateKey);
+        if (certificate) {
+          const certificateIssue = clientCertificateError(certificate);
+          if (certificateIssue) issue("clientCertificate", certificateIssue);
+        } else if (needsNewValue) {
+          issue("clientCertificate", "Paste the client certificate.");
+        } else if (privateKey) {
+          issue("clientCertificate", "Paste the certificate that goes with this private key.");
+        }
+        if (privateKey) {
+          const keyIssue = clientPrivateKeyError(privateKey);
+          if (keyIssue) issue("clientPrivateKey", keyIssue);
+        } else if (needsNewValue) {
+          issue("clientPrivateKey", "Paste the private key.");
+        } else if (certificate) {
+          issue("clientPrivateKey", "Paste the private key that goes with this certificate.");
         }
         return;
       }

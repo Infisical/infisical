@@ -58,6 +58,19 @@ export type TAgentVaultCredentialInput =
       certificate?: string | null;
       // Accepted only so a request that sends any is refused by name: a key can't be left to members yet.
       memberProvidedFields?: TAgentVaultMemberProvidedField[];
+    }
+  | {
+      type: AgentVaultCredentialType.ClientCertificate;
+      certificate?: string;
+      privateKey?: string;
+      // Accepted only so a request that sends any is refused by name.
+      memberProvidedFields?: TAgentVaultMemberProvidedField[];
+    }
+  | {
+      type: AgentVaultCredentialType.DynamicSecret;
+      dynamicSecretId?: string;
+      // Accepted only so a request that sends any is refused by name.
+      memberProvidedFields?: TAgentVaultMemberProvidedField[];
     };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
@@ -100,11 +113,28 @@ export type TAgentVaultBasicCredentialSummary = {
 
 export type TAgentVaultSshKeyCredentialSummary = { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
 
+export type TAgentVaultClientCertificateCredentialSummary = {
+  type: AgentVaultCredentialType.ClientCertificate;
+  notAfter: string;
+};
+
+export type TAgentVaultDynamicSecretCredentialSummary = {
+  type: AgentVaultCredentialType.DynamicSecret;
+  dynamicSecretId: string;
+  name: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  dynamicSecretExists: boolean;
+};
+
 export type TAgentVaultCredentialSummary =
   | TAgentVaultBearerCredentialSummary
   | TAgentVaultBasicCredentialSummary
   | { type: AgentVaultCredentialType.Passthrough }
   | TAgentVaultSshKeyCredentialSummary
+  | TAgentVaultClientCertificateCredentialSummary
+  | TAgentVaultDynamicSecretCredentialSummary
   | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
@@ -160,6 +190,10 @@ export type TAgentVaultServiceSummary = {
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
       credential: TAgentVaultBasicCredentialSummary | TAgentVaultSshKeyCredentialSummary;
+      variableReferences: TAgentVaultCredentialReferenceSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Tls }> & {
+      credential: TAgentVaultClientCertificateCredentialSummary | TAgentVaultDynamicSecretCredentialSummary;
       variableReferences: TAgentVaultCredentialReferenceSummary[];
     })
 );

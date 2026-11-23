@@ -4,7 +4,7 @@ sidebarTitle: "Namespace"
 description: "Learn how to issue short-lived Namespace client certificates on demand, for mutual TLS access to Namespace ingress."
 ---
 
-The Namespace dynamic secret issues a new [Namespace](https://namespace.so/) tenant client certificate each time someone creates a lease. Use it to give an application, a CI job, or an AI agent its own short-lived certificate for Namespace's mutual TLS ingress, instead of sharing one long-lived certificate.
+The Namespace dynamic secret issues a new [Namespace](https://namespace.so/) tenant client certificate each time someone creates a lease. Use it to give an application, a CI job, or an AI agent its own short-lived certificate for Namespace's mutual TLS ingress, instead of sharing one long-lived certificate. An [Agent Vault TLS service](/documentation/platform/agent-vault/tls#dynamic-secret) can lease its client certificate from this dynamic secret.
 
 To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
 

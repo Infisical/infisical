@@ -217,7 +217,8 @@ const SERVICE_TYPE_NAMES: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Mcp]: "an MCP",
   [AgentVaultServiceType.Postgres]: "a PostgreSQL",
   [AgentVaultServiceType.Mysql]: "a MySQL",
-  [AgentVaultServiceType.Ssh]: "an SSH"
+  [AgentVaultServiceType.Ssh]: "an SSH",
+  [AgentVaultServiceType.Tls]: "a TLS"
 };
 
 /** Refuses a narrowing the service's type can't use, since the proxy would ignore it and check the whole service. */

@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { NotFoundError } from "@app/lib/errors";
 import {
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretStatusChangeMetric,
@@ -41,10 +42,10 @@ const dynamicSecretCfg = {
   metadata: []
 };
 
-const createService = ({ revocationFailing = false } = {}) => {
-  const cfg = { ...dynamicSecretCfg, revocationFailing };
+const createService = ({ revocationFailing = false, dynamicSecretOnPlan = true, projectDeleted = false } = {}) => {
+  const cfg = { ...dynamicSecretCfg, name: "db", status: null, revocationFailing };
   const provider = {
-    create: vi.fn(async () => ({ entityId: "entity-1", data: {} })),
+    create: vi.fn(async (): Promise<{ entityId: string; data: unknown }> => ({ entityId: "entity-1", data: {} })),
     revoke: vi.fn(async () => ({ entityId: "entity-1" }))
   };
   const dynamicSecretLeaseDAL = {
@@ -62,6 +63,10 @@ const createService = ({ revocationFailing = false } = {}) => {
     deleteById: vi.fn(async () => ({}))
   };
 
+  const getProjectPermission = vi.fn(async () => ({
+    permission: createMongoAbility([{ action: "manage", subject: "all" }])
+  }));
+
   const service = dynamicSecretLeaseServiceFactory({
     dynamicSecretLeaseDAL: dynamicSecretLeaseDAL as never,
     dynamicSecretDAL: {
@@ -77,17 +82,25 @@ const createService = ({ revocationFailing = false } = {}) => {
       unsetLeaseRevocation: vi.fn(async () => undefined),
       queueFailedRevocation: vi.fn(async () => undefined)
     } as never,
-    licenseService: new FakeLicenseService().setPlan("org-1", { dynamicSecret: true }),
-    folderDAL: { findBySecretPath: vi.fn(async () => ({ id: "folder-1", envId: "env-1" })) } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
-      }))
+    licenseService: new FakeLicenseService().setPlan("org-1", { dynamicSecret: dynamicSecretOnPlan }),
+    folderDAL: {
+      findBySecretPath: vi.fn(async () => ({ id: "folder-1", envId: "env-1" })),
+      findById: vi.fn(async () => ({
+        id: "folder-1",
+        envId: "env-1",
+        projectId: "project-1",
+        environment: { envSlug: "prod" }
+      })),
+      findSecretPathByFolderIds: vi.fn(async () => [{ path: "/certs" }])
     } as never,
-    projectDAL: { findProjectBySlug: vi.fn(async () => ({ id: "project-1" })) } as never,
+    permissionService: { getProjectPermission } as never,
+    projectDAL: {
+      findProjectBySlug: vi.fn(async () => ({ id: "project-1" })),
+      findById: vi.fn(async () => (projectDeleted ? undefined : { id: "project-1" }))
+    } as never,
     kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
-        encryptor: () => ({ cipherTextBlob: Buffer.from("") }),
+        encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: () => Buffer.from("{}")
       }))
     } as never,
@@ -96,7 +109,7 @@ const createService = ({ revocationFailing = false } = {}) => {
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) } as never
   });
 
-  return { service, provider, dynamicSecretLeaseDAL, cfg };
+  return { service, provider, dynamicSecretLeaseDAL, cfg, getProjectPermission };
 };
 
 const actor = {
@@ -198,5 +211,63 @@ describe("dynamic secret lease service metrics", () => {
 
       expect(vi.mocked(recordDynamicSecretUnrecordedCredentialMetric)).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("a system lease", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const systemLease = {
+    dynamicSecretId: dynamicSecretCfg.id,
+    config: { agentVaultServiceId: "service-1" },
+    identityName: "agent-vault",
+    persistedLeaseFields: ["CLIENT_CERTIFICATE", "PRIVATE_KEY"]
+  };
+
+  test("checks no actor's permission, uses the default TTL, and seals the fields the caller reads back", async () => {
+    const { service, provider, dynamicSecretLeaseDAL, getProjectPermission } = createService();
+    provider.create.mockResolvedValueOnce({
+      entityId: "entity-1",
+      data: { CLIENT_CERTIFICATE: "cert", PRIVATE_KEY: "key", EXPIRES_AT: "2030-01-01T00:00:00.000Z" }
+    });
+
+    const before = Date.now();
+    const result = await service.createSystemLease(systemLease);
+
+    expect(getProjectPermission).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ projectId: "project-1", environment: "prod", secretPath: "/certs" });
+    expect(provider.create).toHaveBeenCalledWith(
+      expect.objectContaining({ identity: { name: "agent-vault" }, config: { agentVaultServiceId: "service-1" } })
+    );
+    type TCreated = { expireAt: Date; config: unknown; encryptedLeaseData: Buffer };
+    const created = (dynamicSecretLeaseDAL.create.mock.calls as unknown as [TCreated][])[0][0];
+    expect(created.config).toEqual({ agentVaultServiceId: "service-1" });
+    expect(JSON.parse(created.encryptedLeaseData.toString())).toEqual({
+      CLIENT_CERTIFICATE: "cert",
+      PRIVATE_KEY: "key"
+    });
+    expect(created.expireAt.getTime() - before).toBeGreaterThanOrEqual(60 * 60 * 1000);
+    expect(created.expireAt.getTime() - Date.now()).toBeLessThanOrEqual(60 * 60 * 1000);
+  });
+
+  test("doesn't check the plan, which was checked when the caller saved the reference", async () => {
+    const { service, provider } = createService({ dynamicSecretOnPlan: false });
+    await expect(service.createSystemLease(systemLease)).resolves.toMatchObject({ projectId: "project-1" });
+    expect(provider.create).toHaveBeenCalled();
+  });
+
+  test("isn't issued once the dynamic secret's project is deleted", async () => {
+    const { service, provider } = createService({ projectDeleted: true });
+    await expect(service.createSystemLease(systemLease)).rejects.toThrow(NotFoundError);
+    expect(provider.create).not.toHaveBeenCalled();
+  });
+
+  test("a lease created through the API can't claim to be an Agent Vault service's", async () => {
+    const { service, dynamicSecretLeaseDAL } = createService();
+    await service.create({ ...actor, name: "db", config: { agentVaultServiceId: "service-1", namespace: "ns" } });
+    const created = (dynamicSecretLeaseDAL.create.mock.calls as unknown as [{ config: unknown }][])[0][0];
+    expect(created.config).toEqual({ namespace: "ns" });
   });
 });

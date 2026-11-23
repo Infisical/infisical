@@ -286,7 +286,9 @@ const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberP
   ],
   [AgentVaultCredentialType.Passthrough]: [],
   [AgentVaultCredentialType.OAuth]: [],
-  [AgentVaultCredentialType.SshKey]: []
+  [AgentVaultCredentialType.SshKey]: [],
+  [AgentVaultCredentialType.ClientCertificate]: [],
+  [AgentVaultCredentialType.DynamicSecret]: []
 };
 
 export const MemberProvidedToggle = ({
