@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
@@ -24,10 +24,15 @@ import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSche
 
 type AdminSignUpFormProps = {
   defaultValues?: AdminSignUpFormData;
+  activationTokenError?: string;
   onContinue: (values: AdminSignUpFormData) => void;
 };
 
-export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormProps) => {
+export const AdminSignUpForm = ({
+  defaultValues,
+  activationTokenError,
+  onContinue
+}: AdminSignUpFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
   const {
@@ -37,7 +42,12 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
     setError,
     watch
   } = useForm<AdminSignUpFormData>({
-    resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
+    resolver: zodResolver(
+      createAdminSignUpSchema(
+        config.passwordPolicy,
+        Boolean(config.isInitialSetupActivationTokenRequired)
+      )
+    ),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: defaultValues ?? {
@@ -45,7 +55,8 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
       lastName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      activationToken: ""
     }
   });
 
@@ -55,6 +66,16 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
     policy: config.passwordPolicy
   });
   const confirmPassword = watch("confirmPassword");
+
+  useEffect(() => {
+    if (activationTokenError) {
+      setError(
+        "activationToken",
+        { type: "server", message: activationTokenError },
+        { shouldFocus: true }
+      );
+    }
+  }, [activationTokenError, setError]);
 
   const onSubmit = async (values: AdminSignUpFormData) => {
     const latestBreachStatus = await validatePassword(values.password);
@@ -71,6 +92,9 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
   };
 
   const showDangerState = submitCount > 0;
+  const showActivationTokenError =
+    Boolean(errors.activationToken) &&
+    (showDangerState || errors.activationToken?.type === "server");
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
@@ -184,6 +208,25 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
             ) : null}
           </Field>
         </AnimatedCollapse>
+        {config.isInitialSetupActivationTokenRequired && (
+          <Field data-invalid={showActivationTokenError}>
+            <FieldLabel className="sr-only" htmlFor="admin-signup-activation-token">
+              Activation token
+            </FieldLabel>
+            <Input
+              variant="outlined"
+              {...register("activationToken")}
+              id="admin-signup-activation-token"
+              type="password"
+              placeholder="Activation token"
+              autoComplete="off"
+              isError={showActivationTokenError}
+            />
+            <FieldError>
+              {showActivationTokenError ? errors.activationToken?.message : undefined}
+            </FieldError>
+          </Field>
+        )}
       </FieldGroup>
       <Button
         type="submit"

@@ -9,6 +9,7 @@ import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   AdminEmailDomain,
   RootKeyEncryptionStrategy,
+  SuperAdminErrorCode,
   TAdminCreateEmailDomainDTO,
   TCreateAdminUserDTO,
   TCreatedEncryptionKeyRotation,
@@ -30,6 +31,7 @@ export const useCreateAdminUser = () => {
     object,
     TCreateAdminUserDTO
   >({
+    meta: { handledErrorCodes: [SuperAdminErrorCode.InvalidActivationToken] },
     mutationFn: async (opt) => {
       const { data } = await apiRequest.post("/api/v1/admin/signup", opt);
       return data;

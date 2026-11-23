@@ -8,12 +8,14 @@ export type TAdminSignUpDTO = {
   organizationName?: string;
   ip: string;
   userAgent: string;
+  activationToken?: string;
 };
 
 export type TAdminBootstrapInstanceDTO = {
   email: string;
   password: string;
   organizationName: string;
+  activationToken?: string;
 };
 
 export type TAdminGetUsersDTO = {
@@ -71,7 +73,8 @@ export enum LoginMethod {
 }
 
 export enum SuperAdminErrorCode {
-  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT",
+  InvalidActivationToken = "SUPER_ADMIN_INVALID_ACTIVATION_TOKEN"
 }
 
 export enum CacheType {

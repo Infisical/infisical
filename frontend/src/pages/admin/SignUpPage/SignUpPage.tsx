@@ -23,6 +23,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
+import { SuperAdminErrorCode } from "@app/hooks/api/admin/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import { AdminSignUpFormData } from "./adminSignUpSchema";
@@ -56,6 +57,7 @@ export const SignUpPage = () => {
   const [activeStep, setActiveStep] = useState(BootstrapStep.Account);
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
+  const [activationTokenError, setActivationTokenError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const {
@@ -72,6 +74,7 @@ export const SignUpPage = () => {
   const handleAccountContinue = (values: AdminSignUpFormData) => {
     setAccountData(values);
     setFormError(undefined);
+    setActivationTokenError(undefined);
     setActiveStep(BootstrapStep.Organization);
   };
 
@@ -89,7 +92,8 @@ export const SignUpPage = () => {
         password: accountData.password,
         firstName: accountData.firstName,
         lastName: accountData.lastName || undefined,
-        organizationName
+        organizationName,
+        activationToken: accountData.activationToken || undefined
       });
 
       SecurityClient.setToken(result.token);
@@ -98,10 +102,19 @@ export const SignUpPage = () => {
       await router.invalidate();
       await navigate({ to: "/admin/setup" });
     } catch (error) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message
+      const responseData = axios.isAxiosError<{ message?: string; error?: string }>(error)
+        ? error.response?.data
         : undefined;
-      setFormError(message || "Unable to create the instance. Please try again.");
+
+      if (responseData?.error === SuperAdminErrorCode.InvalidActivationToken) {
+        setActivationTokenError(
+          responseData.message || "The activation token is missing or incorrect."
+        );
+        setActiveStep(BootstrapStep.Account);
+        return;
+      }
+
+      setFormError(responseData?.message || "Unable to create the instance. Please try again.");
     }
   });
 
@@ -121,7 +134,11 @@ export const SignUpPage = () => {
         </CardHeader>
         <CardContent>
           {activeStep === BootstrapStep.Account ? (
-            <AdminSignUpForm defaultValues={accountData} onContinue={handleAccountContinue} />
+            <AdminSignUpForm
+              defaultValues={accountData}
+              activationTokenError={activationTokenError}
+              onContinue={handleAccountContinue}
+            />
           ) : (
             <form className="flex flex-col gap-6" noValidate onSubmit={handleOrganizationSubmit}>
               {formError && (
