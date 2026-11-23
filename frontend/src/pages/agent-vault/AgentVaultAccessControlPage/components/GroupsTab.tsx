@@ -36,7 +36,13 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -71,6 +77,7 @@ export const GroupsTab = () => {
     offset: (page - 1) * perPage
   });
   const revokeMembers = useRevokeAgentVaultMembers(projectId);
+  const { permission } = useProjectPermission();
   const { blockedReasonFor } = useAgentVaultAdminGuard();
 
   const rows = data?.members ?? [];
@@ -182,7 +189,10 @@ export const GroupsTab = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
                         <DisabledReasonMenuItem
-                          disabledReason={blockedReasonFor(row.roles)}
+                          disabledReason={
+                            blockedReasonFor(row.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, row, "edit")
+                          }
                           onClick={() => setGroupToEdit(row)}
                         >
                           <PencilIcon />
@@ -190,7 +200,10 @@ export const GroupsTab = () => {
                         </DisabledReasonMenuItem>
                         <DisabledReasonMenuItem
                           variant="danger"
-                          disabledReason={blockedReasonFor(row.roles)}
+                          disabledReason={
+                            blockedReasonFor(row.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, row, "remove")
+                          }
                           onClick={() => setGroupToRemove(row)}
                         >
                           <Trash2Icon />

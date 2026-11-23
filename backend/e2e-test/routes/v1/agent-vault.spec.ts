@@ -58,6 +58,7 @@ import {
   convertAgentVaultMemberRows,
   createAgentVaultProject,
   deleteAgentVaultProject,
+  expireProjectPermissionMarkers,
   markAgentVaultProjectOriginal
 } from "e2e-test/testUtils/agent-vault";
 import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
@@ -13235,6 +13236,57 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("by id, a session or proxy the caller has nothing on reads like a missing one", async () => {
+    test("sessions, their logs and proxies answer 404 for a real id, as for a random one", async () => {
+      const bundle = await createAccessBundle(`by-id-404-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(mint.statusCode, mint.payload).toBe(200);
+      const sessionId = mint.json().session.id as string;
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: `by-id-404-${Date.now()}` });
+      expect(created.statusCode, created.payload).toBe(200);
+      const proxyId = created.json().proxy.id as string;
+      const role = await createAgentVaultRole(agentVaultProjectId, `by-id-404-${Date.now()}`, [
+        { subject: "agent-vault-access-bundles", action: ["read"] }
+      ]);
+      const caller = await createUaIdentity(`av-by-id-404-${Date.now()}`);
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [caller.id],
+          roles: [role.slug]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const randomId = crypto.randomUUID();
+        for (const id of [sessionId, randomId]) {
+          // eslint-disable-next-line no-await-in-loop
+          const read = await caller.asIdentity("GET", `/api/v1/agent-vault/sessions/${id}`);
+          expect(read.statusCode, read.payload).toBe(404);
+          // eslint-disable-next-line no-await-in-loop
+          const logs = await caller.asIdentity("GET", `/api/v1/agent-vault/sessions/${id}/logs`);
+          expect(logs.statusCode, logs.payload).toBe(404);
+        }
+        for (const id of [proxyId, randomId]) {
+          // eslint-disable-next-line no-await-in-loop
+          const patched = await caller.asIdentity("PATCH", `/api/v1/agent-vault/proxies/${id}`, { name: "renamed" });
+          expect(patched.statusCode, patched.payload).toBe(404);
+        }
+
+        // Someone who can see proxies is told they may not change one.
+        await setMemberRoles({ machineIdentityIds: [caller.id] }, [
+          (
+            await createAgentVaultRole(agentVaultProjectId, `by-id-403-${Date.now()}`, [
+              { subject: "agent-vault-proxies", action: ["read"] }
+            ])
+          ).slug
+        ]);
+        const forbidden = await caller.asIdentity("PATCH", `/api/v1/agent-vault/proxies/${proxyId}`, { name: "renamed" });
+        expect(forbidden.statusCode, forbidden.payload).toBe(403);
+      } finally {
+        await deleteUaIdentity(caller.id);
+        await inject("DELETE", `/api/v1/agent-vault/proxies/${proxyId}`);
+      }
+    });
+  });
+
   describe("generic project routes", async () => {
     // The org-level pages reach the Agent Vault project through the platform's own membership routes, so the
     // last-admin rule has to hold there too, not only on the product routes.
@@ -15171,6 +15223,23 @@ describe("Agent Vault V1 Router", async () => {
           );
           const namedKept = await member.as("POST", "/api/v1/agent-vault/sessions", { services: [keptName], ttl: "1h" });
           expect(namedKept.statusCode, namedKept.payload).toBe(200);
+
+          // A deny added after mint stops a service the session lists on its own, while a session with the bundle keeps it.
+          const resolveListed = await resolverFor((namedKept.json().session as { token: string }).token);
+          expect(await resolveListed()).toEqual([keptName]);
+          const updated = await inject("PATCH", `/api/v1/projects/${projectId}/roles/${role.id}`, {
+            permissions: [
+              ...SESSION_RULES,
+              { subject: "agent-vault-access-bundles", action: ["read", "use"], conditions: { accessBundleId: bundle.id } },
+              { subject: "agent-vault-services", action: ["use"], conditions: { serviceId: deniedId }, inverted: true },
+              { subject: "agent-vault-services", action: ["use"], conditions: { serviceId: keptId }, inverted: true },
+              { subject: "agent-vault-skills", action: ["use"], conditions: { skillId: deniedSkill.id }, inverted: true }
+            ]
+          });
+          expect(updated.statusCode, updated.payload).toBe(200);
+          await expireProjectPermissionMarkers(projectId);
+          expect(await resolveListed()).toEqual([]);
+          expect(await resolve()).toEqual([keptName, deniedName].sort());
 
           expect(await roleSlugsAt(`${servicesUrl}/${keptId}/roles`)).toContain(role.slug);
           expect(await roleSlugsAt(`${servicesUrl}/${deniedId}/roles`)).toContain(role.slug);

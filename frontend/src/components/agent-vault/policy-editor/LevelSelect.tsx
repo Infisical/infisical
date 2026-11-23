@@ -20,8 +20,6 @@ export type TLevelOption = {
   hasSeparatorBefore?: boolean;
 };
 
-export const PrivilegedOption = () => <span className="text-muted">Privileged</span>;
-
 type Props = {
   value: string;
   options: TLevelOption[];

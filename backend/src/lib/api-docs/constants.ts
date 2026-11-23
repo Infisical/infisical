@@ -5013,13 +5013,13 @@ export const AGENT_VAULT = {
     substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
-      "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+      "The global variables this service's credential, custom header values and substitution values use. Returned only if you can read global variables. A member's own personal variables are listed under personalValues.",
     mcpVariableReferences:
-      "The global variables this service's credential and custom header values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+      "The global variables this service's credential and custom header values use. Returned only if you can read global variables. A member's own personal variables are listed under personalValues.",
     databaseVariableReferences:
-      "The global variables this service's username and password use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+      "The global variables this service's username and password use. Returned only if you can read global variables. A member's own personal variables are listed under personalValues.",
     sshVariableReferences:
-      "The global variables this service's username and password use. An SSH key uses none. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+      "The global variables this service's username and password use. An SSH key uses none. Returned only if you can read global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     mcpReferenceField: "Which value uses the variable: credential-value (the bearer token) or custom-header.",
@@ -5507,7 +5507,7 @@ export const AGENT_VAULT = {
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Needs permission to start sessions with inline services. Up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:

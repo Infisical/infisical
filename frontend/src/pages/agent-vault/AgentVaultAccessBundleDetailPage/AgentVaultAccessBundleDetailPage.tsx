@@ -165,7 +165,9 @@ export const AgentVaultAccessBundleDetailPage = () => {
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title={accessBundle.name}
-        description={accessBundle.description || "No description"}
+        description={
+          <span className="wrap-anywhere">{accessBundle.description || "No description"}</span>
+        }
         backLink={
           <Link
             to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"

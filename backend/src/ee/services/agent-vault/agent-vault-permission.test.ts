@@ -1,4 +1,4 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { describe, expect, test, vi } from "vitest";
 
@@ -9,6 +9,7 @@ import { ProjectPermissionSet, ProjectPermissionSub } from "@app/ee/services/per
 import { conditionsMatcher } from "@app/lib/casl";
 
 import {
+  allowedAmong,
   intersectIds,
   intersectReach,
   reachOf,
@@ -220,5 +221,66 @@ describe("reachOf looks up only what it needs", () => {
     const reach = await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p", undefined, { skills: false });
     expect(reach.skillIds).toEqual([]);
     expect(reachDAL.findSkillIds).not.toHaveBeenCalled();
+  });
+});
+
+describe("allowedAmong", () => {
+  const SERVICE_RULES = {
+    action: "use",
+    subjectType: ProjectPermissionSub.AgentVaultServices,
+    field: "serviceId"
+  };
+  const idOf = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const ids = Array.from({ length: 40 }, (_, n) => idOf(n));
+  const perIdCheck = (permission: ReturnType<typeof permissionOfRoles>) =>
+    ids.filter((id) =>
+      permission.can("use" as never, subject(ProjectPermissionSub.AgentVaultServices, { serviceId: id }) as never)
+    );
+  const service = (conditions?: Record<string, unknown>, inverted = false): TRule => ({
+    subject: ProjectPermissionSub.AgentVaultServices,
+    action: ["use"],
+    ...(conditions ? { conditions } : {}),
+    ...(inverted ? { inverted } : {})
+  });
+
+  test.each([
+    ["allows named ids", [[service({ serviceId: { $in: ids.slice(0, 10) } })]]],
+    [
+      "a deny in another role takes ids back",
+      [[service({ serviceId: { $in: ids.slice(0, 20) } })], [service({ serviceId: { $in: ids.slice(5, 8) } }, true)]]
+    ],
+    [
+      "an unconditioned allow with denies",
+      [[service()], [service({ serviceId: ids[3] }, true), service({ serviceId: { $eq: ids[9] } }, true)]]
+    ],
+    [
+      "an unconditioned deny wins over named allows",
+      [[service({ serviceId: { $in: ids.slice(0, 5) } })], [service(undefined, true)]]
+    ],
+    ["nothing allowed", [[service({ serviceId: { $in: ids.slice(0, 5) } }, true)]]],
+    ["uppercase ids match", [[service({ serviceId: { $in: ids.slice(0, 3).map((id) => id.toUpperCase()) } })]]]
+  ])("matches a check per id: %s", (_label, roles) => {
+    const permission = permissionOfRoles(...(roles as TRule[][]));
+    expect(allowedAmong(permission, SERVICE_RULES, ids)).toEqual(perIdCheck(permission));
+  });
+
+  test("is fast on a role that names thousands of ids", () => {
+    const many = Array.from({ length: 20000 }, (_, n) => idOf(n));
+    const rules = Array.from({ length: 300 }, (_, n) =>
+      service({ serviceId: { $in: many.slice(n * 60, n * 60 + 60) } }, n % 7 === 0)
+    );
+    const permission = permissionOfRoles(rules);
+    const started = performance.now();
+    const allowed = allowedAmong(permission, SERVICE_RULES, many);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(allowed.length).toBeGreaterThan(0);
+    expect(allowed.slice(0, 50)).toEqual(
+      many
+        .slice(0, 2000)
+        .filter((id) =>
+          permission.can("use" as never, subject(ProjectPermissionSub.AgentVaultServices, { serviceId: id }) as never)
+        )
+        .slice(0, 50)
+    );
   });
 });

@@ -172,7 +172,7 @@ const isAgentVaultLegacyRole = (role: string) =>
 // In an Agent Vault project `member` names the Member role the role migration made in a project that had Member rows, as
 // on Agent Vault's own members routes, so a client that still sends it keeps working there. `viewer` names it too, since
 // a client that sends it expects the same access. A project without that role refuses both like any role it doesn't
-// have. Drop with the Agent Vault alias after 2027-01-04.
+// have. Drop the alias after 2027-01-04, but keep dropping repeated roles.
 export const withAgentVaultMemberAlias = async <T extends { role: string }>(
   {
     projectDAL,
@@ -184,13 +184,7 @@ export const withAgentVaultMemberAlias = async <T extends { role: string }>(
   scopeData: { scope: AccessScope; orgId?: string; projectId?: string },
   roles: T[]
 ): Promise<T[]> => {
-  if (
-    scopeData.scope !== AccessScope.Project ||
-    !scopeData.projectId ||
-    !roles.some((el) => isAgentVaultLegacyRole(el.role))
-  ) {
-    return roles;
-  }
+  if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return roles;
   const { projectId } = scopeData;
   const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
     projectDAL.findById(projectId)
@@ -198,12 +192,22 @@ export const withAgentVaultMemberAlias = async <T extends { role: string }>(
   if (project?.type !== ProjectType.AgentVault) return roles;
   // A project in another org is left to the guards, so the request learns nothing about it before they run.
   if (scopeData.orgId && project.orgId !== scopeData.orgId) return roles;
-  const memberRole = await findAgentVaultMemberRole(roleDAL, project.id);
-  if (!memberRole) {
-    const legacy = roles.find((el) => isAgentVaultLegacyRole(el.role))!.role;
-    throw new BadRequestError({ message: agentVaultNoSuchRoleMessage(legacy) });
+  let aliased = roles;
+  if (roles.some((el) => isAgentVaultLegacyRole(el.role))) {
+    const memberRole = await findAgentVaultMemberRole(roleDAL, project.id);
+    if (!memberRole) {
+      const legacy = roles.find((el) => isAgentVaultLegacyRole(el.role))!.role;
+      throw new BadRequestError({ message: agentVaultNoSuchRoleMessage(legacy) });
+    }
+    aliased = roles.map((el) => (isAgentVaultLegacyRole(el.role) ? { ...el, role: memberRole.slug } : el));
   }
-  return roles.map((el) => (isAgentVaultLegacyRole(el.role) ? { ...el, role: memberRole.slug } : el));
+  // Each role is written as its own row, so one sent twice would be held twice; the members API drops repeats too.
+  const seen = new Set<string>();
+  return aliased.filter((el) => {
+    if (seen.has(el.role)) return false;
+    seen.add(el.role);
+    return true;
+  });
 };
 
 /**

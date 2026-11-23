@@ -4,9 +4,10 @@ import { TAgentVaultPersonalValueReferencesInsert } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
+import { isOauthScopeNarrowedRequest } from "@app/services/oauth-client/oauth-scope";
 
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
@@ -233,7 +234,18 @@ export const agentVaultPersonalValueServiceFactory = ({
    * `credential-value`: the sealed tokens in `encryptedValue` and the rest in `oauthConfig`. Claiming the authorization
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
+  // Personal values come with the membership, which no OAuth scope narrows, and no scope grants Agent Vault access, so a
+  // delegated token that carries scopes can't change them.
+  const assertNotScopeNarrowed = () => {
+    if (isOauthScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message: "This token's OAuth scopes don't cover Agent Vault, so it can't change your personal values."
+      });
+    }
+  };
+
   const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
+    assertNotScopeNarrowed();
     const { owner, service } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
@@ -325,6 +337,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   };
 
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
+    assertNotScopeNarrowed();
     const { values, credentialType, ...dto } = input;
 
     const { owner, service } = await findReachableService(dto);
@@ -479,6 +492,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   // Values outlive the caller's access to the service, so they can delete their own for a service they can no longer
   // use. Without values of theirs, such a service still reads like one that does not exist.
   const deletePersonalValues = async (dto: TPersonalValuesByServiceDTO) => {
+    assertNotScopeNarrowed();
     const { owner, service, canUse } = await findServiceForCaller(dto);
 
     return agentVaultPersonalValueDAL.transaction(async (tx) => {

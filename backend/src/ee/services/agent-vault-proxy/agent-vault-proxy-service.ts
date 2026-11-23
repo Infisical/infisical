@@ -77,9 +77,9 @@ import {
 import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
+  deniesUseOnItsOwn,
   intersectReach,
   reachOf,
-  TAgentVaultReach,
   TAgentVaultReachKinds
 } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
@@ -288,6 +288,31 @@ export const agentVaultProxyServiceFactory = ({
     return proxy;
   };
 
+  // By id, a caller without the action is refused with 403 only if they can see proxies; otherwise the proxy reads like
+  // a missing one, so a 403 never confirms that an id exists.
+  const $authorizeProxy = async (
+    scoped: TAgentVaultProxyScoped & { proxyId: string },
+    action: ProjectPermissionAgentVaultProxyActions
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: scoped.ctx.actor,
+      actorId: scoped.ctx.actorId,
+      projectId: scoped.projectId,
+      actorAuthMethod: scoped.ctx.actorAuthMethod,
+      actorOrgId: scoped.ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
+    if (
+      permission.cannot(action, ProjectPermissionSub.AgentVaultProxies) &&
+      permission.cannot(ProjectPermissionAgentVaultProxyActions.Read, ProjectPermissionSub.AgentVaultProxies)
+    ) {
+      throw new NotFoundError({ message: `Proxy with ID '${scoped.proxyId}' not found` });
+    }
+    const proxy = await $findProxyOr404(scoped);
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
+    return proxy;
+  };
+
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
   const $sealRootCaKey = async (projectId: string, privateKey: string) => {
@@ -379,8 +404,7 @@ export const agentVaultProxyServiceFactory = ({
   // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
   // the one it serves and can't be handed out as if it were.
   const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const proxy = await $authorizeProxy({ projectId, ctx, proxyId }, ProjectPermissionAgentVaultProxyActions.Read);
     const servesOwnCa = new ConflictError({
       message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
     });
@@ -468,8 +492,10 @@ export const agentVaultProxyServiceFactory = ({
   // One UPDATE bumps tokenVersion and swaps the CA, so no token ever pairs with the wrong CA. Two rotations at
   // once queue on the row lock, and each response carries the version and CA its own UPDATE returned.
   const rotateProxyToken = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const proxy = await $authorizeProxy(
+      { projectId, ctx, proxyId },
+      ProjectPermissionAgentVaultProxyActions.IssueToken
+    );
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
     // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
@@ -504,8 +530,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const updateProxy = async ({ projectId, ctx, proxyId, name, ...settings }: TUpdateProxyDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Edit);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const proxy = await $authorizeProxy({ projectId, ctx, proxyId }, ProjectPermissionAgentVaultProxyActions.Edit);
 
     if (name && name !== proxy.name) {
       const existing = await agentVaultProxyDAL.findOne({ projectId, name });
@@ -526,15 +551,13 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const deleteProxy = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Delete);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const proxy = await $authorizeProxy({ projectId, ctx, proxyId }, ProjectPermissionAgentVaultProxyActions.Delete);
     await agentVaultProxyDAL.deleteById(proxy.id);
     return { id: proxy.id, name: proxy.name };
   };
 
   const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Revoke);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const proxy = await $authorizeProxy({ projectId, ctx, proxyId }, ProjectPermissionAgentVaultProxyActions.Revoke);
     await resourceAuthMethodService.revokeAccess({
       resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxy.id },
       actor: $resourceActor(ctx)
@@ -854,7 +877,7 @@ export const agentVaultProxyServiceFactory = ({
     identityId: string | null;
     userId: string | null;
     kinds: TAgentVaultReachKinds;
-  }): Promise<TAgentVaultReach> => {
+  }) => {
     const refused = () =>
       new UnauthorizedError({
         message: "The machine identity that owns this session is no longer allowed to act on behalf of its user"
@@ -893,7 +916,10 @@ export const agentVaultProxyServiceFactory = ({
       throw refused();
     }
 
-    return reachOf(userPermission, { agentVaultReachDAL }, projectId, undefined, kinds);
+    return {
+      reach: await reachOf(userPermission, { agentVaultReachDAL }, projectId, undefined, kinds),
+      permission: userPermission
+    };
   };
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach what resolve would not.
@@ -914,15 +940,13 @@ export const agentVaultProxyServiceFactory = ({
     // The name marks an on-behalf-of session, even after deleting the user nulls its id.
     const onBehalfOf =
       session.onBehalfOfUserName != null
-        ? {
-            reach: await $getOnBehalfOfUserReach({
-              projectId: session.projectId,
-              orgId,
-              identityId: session.identityId ?? null,
-              userId: session.onBehalfOfUserId ?? null,
-              kinds
-            })
-          }
+        ? await $getOnBehalfOfUserReach({
+            projectId: session.projectId,
+            orgId,
+            identityId: session.identityId ?? null,
+            userId: session.onBehalfOfUserId ?? null,
+            kinds
+          })
         : null;
 
     const actor = session.userId
@@ -979,7 +1003,16 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     const actorReach = await reachOf(ownerPermission, { agentVaultReachDAL }, session.projectId, undefined, kinds);
-    const reach = onBehalfOf ? intersectReach(actorReach, onBehalfOf.reach) : actorReach;
+    // A bundle gives what it holds whatever a role says on the item, but a service or skill the session lists on its
+    // own stops while either side's role denies it, as minting it would be refused now.
+    const permissions = onBehalfOf ? [ownerPermission, onBehalfOf.permission] : [ownerPermission];
+    const reach = {
+      ...(onBehalfOf ? intersectReach(actorReach, onBehalfOf.reach) : actorReach),
+      isServiceDeniedOnItsOwn: (id: string) =>
+        permissions.some((permission) => deniesUseOnItsOwn(permission, "service", id)),
+      isSkillDeniedOnItsOwn: (id: string) =>
+        permissions.some((permission) => deniesUseOnItsOwn(permission, "skill", id))
+    };
     return {
       reach,
       ownerCanUseInlineServices: canUseInlineServices,

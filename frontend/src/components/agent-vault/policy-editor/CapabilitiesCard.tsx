@@ -2,7 +2,6 @@ import { Fragment } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import {
-  Badge,
   Card,
   CardDescription,
   CardHeader,
@@ -12,10 +11,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 
 import { ActionRows } from "./ActionRows";
@@ -31,18 +27,8 @@ import {
   TAgentVaultPolicy,
   TPolicyKind
 } from "./agentVaultPolicyModel";
-import { LevelSelect, PrivilegedOption } from "./LevelSelect";
-
-export const PrivilegedBadge = ({ risk }: { risk: string }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Badge variant="outline" data-row-interactive>
-        Privileged
-      </Badge>
-    </TooltipTrigger>
-    <TooltipContent className="max-w-xs">{risk}</TooltipContent>
-  </Tooltip>
-);
+import { LevelSelect } from "./LevelSelect";
+import { PrivilegedMarker } from "./PrivilegedMarker";
 
 export const RowWarnings = ({ warnings }: { warnings: string[] }) => {
   if (!warnings.length) return null;
@@ -102,7 +88,7 @@ export const CapabilitiesCard = ({
                 <TableCell isWrappable className="max-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span>{row.label}</span>
-                    {risk && <PrivilegedBadge risk={risk} />}
+                    {risk && <PrivilegedMarker risk={risk} />}
                   </div>
                   <p className="text-xs leading-4 text-muted">{row.description}</p>
                   <RowWarnings warnings={warnings} />
@@ -114,7 +100,7 @@ export const CapabilitiesCard = ({
                       value,
                       label,
                       description: isLevelPrivileged(row.key, value) ? (
-                        <PrivilegedOption />
+                        <PrivilegedMarker />
                       ) : undefined
                     }))}
                     ariaLabel={row.label}

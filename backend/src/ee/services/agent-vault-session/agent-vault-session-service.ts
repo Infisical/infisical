@@ -1022,14 +1022,36 @@ export const agentVaultSessionServiceFactory = ({
     return session;
   };
 
+  // By id, a caller without the action is refused with 403 only for a session they can see; otherwise the session reads
+  // like a missing one, so a 403 never confirms that an id exists.
+  const requireSessionAction = async (
+    permission: Awaited<ReturnType<typeof getAgentVaultPermission>>["permission"],
+    action: ProjectPermissionAgentVaultSessionActions,
+    dto: TGetSessionByIdDTO
+  ) => {
+    if (permission.can(action, ProjectPermissionSub.AgentVaultSessions)) return;
+    if (permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+      await findVisibleSession({
+        ...dto,
+        reachesAnySession: permission.can(
+          ProjectPermissionAgentVaultSessionActions.ReadAny,
+          ProjectPermissionSub.AgentVaultSessions
+        )
+      });
+      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSessions);
+    }
+    throw new NotFoundError({ message: `Session with ID '${dto.sessionId}' not found` });
+  };
+
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     const { permission } = reachability;
     const reader = { permission, reach: reachability, projectId };
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Read, {
+      projectId,
+      ctx,
+      sessionId
+    });
     const reachesAnySession = permission.can(
       ProjectPermissionAgentVaultSessionActions.ReadAny,
       ProjectPermissionSub.AgentVaultSessions
@@ -1044,10 +1066,11 @@ export const agentVaultSessionServiceFactory = ({
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Revoke,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Revoke, {
+      projectId,
+      ctx,
+      sessionId
+    });
     const reachesAnySession = permission.can(
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
       ProjectPermissionSub.AgentVaultSessions
@@ -1104,10 +1127,11 @@ export const agentVaultSessionServiceFactory = ({
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     const { permission } = reachability;
     const reader = { permission, reach: reachability, projectId };
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Edit, {
+      projectId,
+      ctx,
+      sessionId
+    });
     const reachesAnySession = permission.can(
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionSub.AgentVaultSessions

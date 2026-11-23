@@ -47,6 +47,7 @@ import {
   useUser,
   useProject
 } from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -230,7 +231,10 @@ export const MembersTab = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
                               <DisabledReasonMenuItem
-                                disabledReason={blockedReason}
+                                disabledReason={
+                                  blockedReason ??
+                                  agentVaultMemberActionDeniedReason(permission, member, "edit")
+                                }
                                 onClick={() => setMemberToEdit(member)}
                               >
                                 <PencilIcon />
@@ -238,7 +242,10 @@ export const MembersTab = () => {
                               </DisabledReasonMenuItem>
                               <DisabledReasonMenuItem
                                 variant="danger"
-                                disabledReason={blockedReason}
+                                disabledReason={
+                                  blockedReason ??
+                                  agentVaultMemberActionDeniedReason(permission, member, "remove")
+                                }
                                 onClick={() => setMemberToRemove(member)}
                               >
                                 <Trash2Icon />

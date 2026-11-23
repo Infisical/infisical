@@ -122,7 +122,10 @@ export const membershipIdentityServiceFactory = ({
     })
   };
 
-  const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
+  const createMembership = async (input: TCreateMembershipIdentityDTO) => {
+    // Ids are compared as strings in a role's identityId conditions, and the database matches any case, so the id is
+    // put in the database's case first.
+    const dto = { ...input, data: { ...input.data, identityId: input.data.identityId.toLowerCase() } };
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
     data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
@@ -267,7 +270,10 @@ export const membershipIdentityServiceFactory = ({
     return { membership };
   };
 
-  const updateMembership = async (dto: TUpdateMembershipIdentityDTO) => {
+  const updateMembership = async (input: TUpdateMembershipIdentityDTO) => {
+    // Ids are compared as strings in the self check and in a role's identityId conditions, and the database matches any
+    // case, so the id is put in the database's case first.
+    const dto = { ...input, selector: { ...input.selector, identityId: input.selector.identityId.toLowerCase() } };
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
     const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
@@ -488,7 +494,10 @@ export const membershipIdentityServiceFactory = ({
 
   // On org removal the identity's project rows in the org are revoked here; the event only lets the reconcile
   // consumer confirm nothing's left.
-  const deleteMembership = async (dto: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
+  const deleteMembership = async (input: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
+    // Ids are compared as strings in the self check and in a role's identityId conditions, and the database matches any
+    // case, so the id is put in the database's case first.
+    const dto = { ...input, selector: { ...input.selector, identityId: input.selector.identityId.toLowerCase() } };
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 

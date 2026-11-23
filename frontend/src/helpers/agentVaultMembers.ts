@@ -1,3 +1,12 @@
+import { MongoAbility, subject } from "@casl/ability";
+
+import {
+  ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultActorIdsDTO, TAgentVaultActorRef } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -72,3 +81,44 @@ export const assignableAgentVaultRoles = <T extends { slug: string }>(
   options: readonly T[],
   isViewerAdmin: boolean
 ) => (isViewerAdmin ? [...options] : options.filter((option) => option.slug !== ADMIN));
+
+const MEMBER_NOUN: Record<AgentVaultMemberType, string> = {
+  [AgentVaultMemberType.User]: "user",
+  [AgentVaultMemberType.Group]: "group",
+  [AgentVaultMemberType.MachineIdentity]: "machine identity"
+};
+
+/**
+ * Why the caller can't change this member's roles ("edit") or remove them ("remove"), or undefined when they can. A
+ * role can limit machine identity actions to some identities, so those are checked on the identity itself; users and
+ * groups go by kind, as the API checks them.
+ */
+export const agentVaultMemberActionDeniedReason = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  member: { type: AgentVaultMemberType; id: string },
+  action: "edit" | "remove"
+): string | undefined => {
+  const isEdit = action === "edit";
+  let isAllowed: boolean;
+  if (member.type === AgentVaultMemberType.MachineIdentity) {
+    isAllowed = permission.can(
+      isEdit ? ProjectPermissionIdentityActions.Edit : ProjectPermissionIdentityActions.Delete,
+      subject(ProjectPermissionSub.Identity, { identityId: member.id })
+    );
+  } else if (member.type === AgentVaultMemberType.Group) {
+    isAllowed = permission.can(
+      isEdit ? ProjectPermissionActions.Edit : ProjectPermissionActions.Delete,
+      ProjectPermissionSub.Groups
+    );
+  } else {
+    isAllowed = permission.can(
+      isEdit ? ProjectPermissionMemberActions.Edit : ProjectPermissionMemberActions.Delete,
+      ProjectPermissionSub.Member
+    );
+  }
+  if (isAllowed) return undefined;
+  const noun = MEMBER_NOUN[member.type];
+  return isEdit
+    ? `You don't have permission to change this ${noun}'s roles`
+    : `You don't have permission to remove this ${noun}`;
+};

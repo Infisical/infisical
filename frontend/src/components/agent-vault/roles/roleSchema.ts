@@ -11,8 +11,24 @@ import { slugSchema } from "@app/lib/schemas";
 
 const RESERVED_ROLE_SLUGS: string[] = Object.values(ProjectMembershipRole);
 
+// Members pick a role by its name, so a name can't pass for a built-in role or for another role that only differs by a
+// character no one can see. Matches the API's checks and messages.
+const ROLE_NAME_DISALLOWED_RE = /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}]/u;
+const BUILT_IN_ROLE_NAMES = ["admin", "no access", "no-access"];
+
 export const roleDetailsSchema = z.object({
-  name: z.string().trim().min(1, "Enter a name"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Enter a name for the role.")
+    .refine(
+      (name) => !ROLE_NAME_DISALLOWED_RE.test(name),
+      "A role name can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."
+    )
+    .refine(
+      (name) => !BUILT_IN_ROLE_NAMES.includes(name.toLowerCase()),
+      "This is the name of a built-in role. Choose a different name."
+    ),
   slug: slugSchema({ min: 1, max: 64 }).refine(
     (slug) => !RESERVED_ROLE_SLUGS.includes(slug),
     "A built-in role uses this slug. Choose a different one."

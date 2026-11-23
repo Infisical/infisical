@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ShieldAlertIcon, TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   Accordion,
@@ -11,10 +11,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  CardTitle
 } from "@app/components/v3";
 
 import {
@@ -24,6 +21,7 @@ import {
   TAgentVaultPolicy,
   TPolicyKind
 } from "./agentVaultPolicyModel";
+import { PrivilegedMarker } from "./PrivilegedMarker";
 import { useAgentVaultPolicyCatalog } from "./useAgentVaultPolicyCatalog";
 
 const SummaryLine = ({
@@ -41,16 +39,7 @@ const SummaryLine = ({
     <div className="flex items-center justify-between gap-2">
       <span className="flex min-w-0 items-center gap-1.5 text-sm">
         <span className="truncate">{label}</span>
-        {risk && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <ShieldAlertIcon className="size-3.5 text-muted" aria-label="Privileged" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">{risk}</TooltipContent>
-          </Tooltip>
-        )}
+        {risk && <PrivilegedMarker risk={risk} />}
       </span>
       {badge}
     </div>

@@ -101,6 +101,36 @@ const idsNamedBy = (rule: { conditions?: unknown }, field: string): string[] | n
 
 type TIdRules = { action: string; subjectType: ProjectPermissionSub; field: string };
 
+/**
+ * The candidates the permission allows for this action. A role can name thousands of ids, and a CASL check per id walks
+ * every rule, so when each rule is unconditioned or names ids on the field alone, the rules are applied once in CASL's
+ * own order (rulesFor lists the most relevant first, and the first rule that matches an id decides it). Anything else
+ * falls back to a check per id.
+ */
+export const allowedAmong = (permission: TAbility, { action, subjectType, field }: TIdRules, candidates: string[]) => {
+  const rules = rulesOf(permission, action, subjectType);
+  const namedByRule = rules.map((rule) => (rule.conditions ? idsNamedBy(rule, field) : null));
+  const isPlain = rules.every(
+    (rule, index) =>
+      !rule.fields &&
+      (!rule.conditions || (Object.keys(rule.conditions as object).length === 1 && namedByRule[index] !== null))
+  );
+  if (!isPlain) {
+    return candidates.filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
+  }
+  const undecided = new Set(candidates);
+  const allowed = new Set<string>();
+  for (let index = 0; index < rules.length && undecided.size; index += 1) {
+    const rule = rules[index];
+    const matched = rule.conditions ? (namedByRule[index] ?? []).filter((id) => undecided.has(id)) : [...undecided];
+    matched.forEach((id) => {
+      undecided.delete(id);
+      if (!rule.inverted) allowed.add(id);
+    });
+  }
+  return candidates.filter((id) => allowed.has(id));
+};
+
 const idsAllowed = async (
   permission: TAbility,
   {
@@ -123,7 +153,7 @@ const idsAllowed = async (
   const ids = named.every((namedIds) => namedIds !== null)
     ? await loadIds([...new Set(named.flatMap((namedIds) => namedIds ?? []))])
     : await loadIds();
-  return ids.filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
+  return allowedAmong(permission, { action, subjectType, field }, ids);
 };
 
 // The machine identities a member list may show, null for every one: a role can limit identity read to some
@@ -198,9 +228,7 @@ export const idsPickedOutFor = (permission: TProjectPermissionResult["permission
       .filter((rule) => !rule.inverted)
       .flatMap((rule) => idsNamedBy(rule, rules.field) ?? [])
   );
-  return [...picked].filter((id) =>
-    permission.can(rules.action as never, subject(rules.subjectType, { [rules.field]: id }) as never)
-  );
+  return allowedAmong(permission, rules, [...picked]);
 };
 
 /**

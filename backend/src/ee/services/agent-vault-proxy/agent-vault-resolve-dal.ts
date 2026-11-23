@@ -67,6 +67,9 @@ type TResolveScope = {
   accessBundleIds: string[] | null;
   serviceIds: string[] | null;
   skillIds: string[] | null;
+  // A service or skill the session lists on its own leaves once a role denies it; one its bundle holds stays.
+  isServiceDeniedOnItsOwn?: (id: string) => boolean;
+  isSkillDeniedOnItsOwn?: (id: string) => boolean;
 };
 
 // A listed service or skill stays while the owner can use it directly or through a bundle that holds it.
@@ -314,7 +317,9 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       // A service the session lists that its bundle also holds is sent once, as the bundle's, with the bundle's
       // overrides already beside it.
       const throughBundleIds = new Set(throughBundle.map((row) => row.id));
-      const listedOnly = listedRows.filter((row) => !throughBundleIds.has(row.id));
+      const listedOnly = listedRows.filter(
+        (row) => !throughBundleIds.has(row.id) && !scope.isServiceDeniedOnItsOwn?.(row.id)
+      );
       const present = [...throughBundle, ...listedOnly];
       // An owner who can use a service directly could name it alone anyway, so it brings no overrides. One reached
       // only through bundles brings theirs, as a session carrying the bundle would.
@@ -440,9 +445,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       )) as unknown as TResolveSkillRow[];
 
       const throughBundleIds = new Set(throughBundle.map((row) => row.id));
-      return [...throughBundle, ...listedRows.filter((row) => !throughBundleIds.has(row.id))].sort((a, b) =>
-        a.name < b.name ? -1 : 1
+      const listedOnly = listedRows.filter(
+        (row) => !throughBundleIds.has(row.id) && !scope.isSkillDeniedOnItsOwn?.(row.id)
       );
+      return [...throughBundle, ...listedOnly].sort((a, b) => (a.name < b.name ? -1 : 1));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session skills" });
     }

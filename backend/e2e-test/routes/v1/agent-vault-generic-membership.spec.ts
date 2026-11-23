@@ -607,6 +607,16 @@ describe("Agent Vault through the generic membership routes", () => {
       expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
     });
 
+    test("a machine identity can't get past the check by sending its own id in uppercase", async () => {
+      const res = await asManager("PATCH", identityPath(managerIdentityId.toUpperCase()), {
+        roles: [{ role: ProjectMembershipRole.NoAccess }]
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toBe(OWN_ROLE);
+      const membership = await projectMembershipOf({ actorIdentityId: managerIdentityId });
+      expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
+    });
+
     test("a user can't change their own roles, an admin included", async () => {
       const membership = await projectMembershipOf({ actorUserId: seedData1.id });
       const res = await asAdmin("PATCH", `/api/v1/projects/${projectId}/memberships/${membership.id}`, {
@@ -719,6 +729,22 @@ describe("Agent Vault through the generic membership routes", () => {
       } finally {
         restoreLicense();
       }
+    });
+
+    test("a role sent more than once is given once", async () => {
+      const identityId = await createOrgIdentity("av-generic-repeats");
+      const added = await asAdmin("POST", identityPath(identityId), {
+        roles: Array.from({ length: 12 }, () => ({ role: ProjectMembershipRole.NoAccess }))
+      });
+      expect(added.statusCode, added.payload).toBe(200);
+      const membership = await projectMembershipOf({ actorIdentityId: identityId });
+      expect(await roleSlugsOf(membership.id)).toEqual([ProjectMembershipRole.NoAccess]);
+
+      const updated = await asAdmin("PATCH", identityPath(identityId), {
+        roles: [{ role: "membership-manager" }, { role: "membership-manager" }]
+      });
+      expect(updated.statusCode, updated.payload).toBe(200);
+      expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
     });
 
     test("a member holds at most 10 roles", async () => {

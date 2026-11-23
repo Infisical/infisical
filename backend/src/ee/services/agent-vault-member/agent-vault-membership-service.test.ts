@@ -947,3 +947,21 @@ describe("assigning a role is bounded like Secrets Management's membership route
     }
   );
 });
+
+describe("withRoleDetails", () => {
+  test("lists Admin and No Access first, then the rest by name, the same every time", async () => {
+    const { service, deps } = buildService();
+    vi.mocked(deps.roleDAL.find).mockResolvedValue([
+      { slug: "zeta", name: "Zeta" },
+      { slug: "alpha-ops", name: "alpha ops" },
+      { slug: "beta", name: "Beta" }
+    ] as never);
+
+    const [member] = await service.withRoleDetails(PROJECT_ID, [
+      { roles: ["zeta", "beta", ProjectMembershipRole.Admin, "alpha-ops"] }
+    ]);
+
+    expect(member.roles).toEqual([ProjectMembershipRole.Admin, "alpha-ops", "beta", "zeta"]);
+    expect(member.roleDetails.map((role) => role.name)).toEqual(["Admin", "alpha ops", "Beta", "Zeta"]);
+  });
+});

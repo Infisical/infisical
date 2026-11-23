@@ -250,7 +250,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "createAgentVaultSession",
       description:
-        "Create an Agent Vault session with an access bundle you can reach, the project's services and skills you can reach, listed one by one, services (Agent Vault admins) and skills of its own, or any mix of them, for yourself or, as a machine identity with a delegation, on behalf of a user",
+        "Create an Agent Vault session with an access bundle you can reach, the project's services and skills you can reach, listed one by one, services and skills of its own, or any mix of them, for yourself or, as a machine identity with a delegation, on behalf of a user",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.preprocess(
         mapLegacyAccessBundles,

@@ -1022,10 +1022,23 @@ export const agentVaultMembershipServiceFactory = ({
       ...Object.entries(AGENT_VAULT_BUILT_IN_ROLE_NAMES),
       ...customRoles.map((role): [string, string] => [role.slug, role.name])
     ]);
-    return members.map((member) => ({
-      ...member,
-      roleDetails: member.roles.map((slug) => ({ slug, name: nameOf.get(slug) ?? slug }))
-    }));
+    // Roles given together share a createdAt, so the stored order is arbitrary; this reads the same every time.
+    const rankOf = (slug: string) => {
+      if (slug === ProjectMembershipRole.Admin) return 0;
+      if (slug === ProjectMembershipRole.NoAccess) return 1;
+      return 2;
+    };
+    return members.map((member) => {
+      const roleDetails = member.roles
+        .map((slug) => ({ slug, name: nameOf.get(slug) ?? slug }))
+        .sort(
+          (a, b) =>
+            rankOf(a.slug) - rankOf(b.slug) ||
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
+            a.slug.localeCompare(b.slug)
+        );
+      return { ...member, roles: roleDetails.map((role) => role.slug), roleDetails };
+    });
   };
 
   return {

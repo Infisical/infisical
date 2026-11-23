@@ -410,7 +410,6 @@ export const AgentVaultRoleDetailPage = () => {
           I={ProjectPermissionActions.Read}
           a={ProjectPermissionSub.Role}
           renderGuardBanner
-          passThrough={false}
         >
           {null}
         </ProjectPermissionCan>

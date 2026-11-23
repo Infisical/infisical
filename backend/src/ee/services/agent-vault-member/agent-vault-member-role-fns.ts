@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import RE2 from "re2";
 import { v5 as uuidv5 } from "uuid";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
@@ -62,6 +63,31 @@ export const agentVaultMemberRoleIdOf = (projectId: string) => uuidv5(projectId,
 // and No Access are the only built-in roles, so `member` is refused there like any role the project doesn't have.
 export const findAgentVaultMemberRole = (roleDAL: Pick<TRoleDALFactory, "findById">, projectId: string, tx?: Knex) =>
   roleDAL.findById(agentVaultMemberRoleIdOf(projectId), tx);
+
+// The rules in one Agent Vault role, each applied on every request that reads its holders' reach.
+export const AGENT_VAULT_MAX_ROLE_RULES = 500;
+
+// A role's name is what members pick it by, so it can't pass for a built-in role or for another role that only differs by
+// a character no one can see. RE2 sees a lone surrogate only as U+FFFD, so isWellFormed catches those.
+const AGENT_VAULT_ROLE_NAME_DISALLOWED_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]/u);
+const AGENT_VAULT_BUILT_IN_ROLE_NAMES = ["admin", "no access", "no-access"];
+
+export const normalizeAgentVaultRoleName = (name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) throw new BadRequestError({ message: "Enter a name for the role." });
+  if (!trimmed.isWellFormed() || AGENT_VAULT_ROLE_NAME_DISALLOWED_RE.test(trimmed)) {
+    throw new BadRequestError({
+      message:
+        "A role name can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."
+    });
+  }
+  if (AGENT_VAULT_BUILT_IN_ROLE_NAMES.includes(trimmed.toLowerCase())) {
+    throw new BadRequestError({
+      message: `'${trimmed}' is the name of a built-in role. Choose a different name.`
+    });
+  }
+  return trimmed;
+};
 
 export const agentVaultNoSuchRoleMessage = (slug: string) =>
   `This project has no role '${slug}'. Use admin, no-access, or the slug of one of the project's roles.`;

@@ -52,8 +52,10 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -95,6 +97,7 @@ export const IdentitiesTab = () => {
     offset: (page - 1) * perPage
   });
   const revokeMembers = useRevokeAgentVaultMembers(projectId);
+  const { permission } = useProjectPermission();
   const { blockedReasonFor } = useAgentVaultAdminGuard();
   const deleteIdentity = useDeleteProjectIdentity();
   const updateIdentity = useUpdateProjectIdentity();
@@ -267,7 +270,10 @@ export const IdentitiesTab = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
                         <DisabledReasonMenuItem
-                          disabledReason={blockedReasonFor(identity.roles)}
+                          disabledReason={
+                            blockedReasonFor(identity.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, identity, "edit")
+                          }
                           onClick={() => setToEdit(identity)}
                         >
                           <PencilIcon />
@@ -275,7 +281,10 @@ export const IdentitiesTab = () => {
                         </DisabledReasonMenuItem>
                         <DisabledReasonMenuItem
                           variant="danger"
-                          disabledReason={blockedReasonFor(identity.roles)}
+                          disabledReason={
+                            blockedReasonFor(identity.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, identity, "remove")
+                          }
                           onClick={() => setToRemove(identity)}
                         >
                           <Trash2Icon />

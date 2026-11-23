@@ -16,6 +16,12 @@ import { usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
 import { agentVaultPersonalValueServiceFactory } from "./agent-vault-personal-value-service";
 
 // The caller can use the one bundle these tests use, which holds the service.
+const oauthScopes = vi.hoisted(() => ({ narrowed: false }));
+vi.mock("@app/services/oauth-client/oauth-scope", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/oauth-client/oauth-scope")>()),
+  isOauthScopeNarrowedRequest: () => oauthScopes.narrowed
+}));
+
 vi.mock("../agent-vault/agent-vault-permission", () => ({
   getAgentVaultReachability: vi.fn(async () => ({
     accessBundleIds: ["22222222-2222-4222-8222-222222222222"],
@@ -184,6 +190,17 @@ describe("setPersonalValues", () => {
 describe("deletePersonalValues", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test("refuses a delegated OAuth token that carries scopes, which don't cover Agent Vault", async () => {
+    oauthScopes.narrowed = true;
+    try {
+      const { deleteOwn, deleteValues } = setup({ savedValues: [{ id: "value" }] });
+      await expect(deleteOwn()).rejects.toThrow("can't change your personal values");
+      expect(deleteValues).not.toHaveBeenCalled();
+    } finally {
+      oauthScopes.narrowed = false;
+    }
   });
 
   test("deletes the caller's values for a service they can no longer use", async () => {

@@ -540,17 +540,23 @@ export const ServicesCard = ({
                   {!isBundle && (
                     <TableCell>
                       {service.accessBundles?.length ? (
-                        <OverflowBadgeList
-                          items={service.accessBundles}
-                          getKey={(bundle) => bundle.id}
-                          getLabel={(bundle) => bundle.name}
-                          getLinkProps={(bundle) =>
-                            linkOptions({
-                              to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
-                              params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.id }
-                            })
-                          }
-                        />
+                        <div className="max-w-72">
+                          <OverflowBadgeList
+                            items={service.accessBundles}
+                            getKey={(bundle) => bundle.id}
+                            getLabel={(bundle) => bundle.name}
+                            getLinkProps={(bundle) =>
+                              linkOptions({
+                                to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId,
+                                  accessBundleId: bundle.id
+                                }
+                              })
+                            }
+                          />
+                        </div>
                       ) : (
                         <span className="text-sm text-muted">&mdash;</span>
                       )}

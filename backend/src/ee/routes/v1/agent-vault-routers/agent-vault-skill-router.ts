@@ -370,7 +370,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "listAgentVaultSkillVersions",
-      description: "List the kept versions of a skill, newest first. Only admins can list versions.",
+      description: "List the kept versions of a skill, newest first. Needs edit access to the skill.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: { 200: z.object({ versions: AgentVaultSkillVersionSchema.array() }) }

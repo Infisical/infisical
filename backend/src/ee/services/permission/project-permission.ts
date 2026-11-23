@@ -1047,6 +1047,10 @@ const HoneyTokenConditionSchema = z
 
 // Stored lowercase, the way Postgres returns ids: CASL compares condition values exactly, so a rule saved with an id in
 // capitals would never match the row it names.
+// Every id a role names is checked against the project's items on each request that reads the role's reach, so a role
+// can't name more than this in one condition (see AGENT_VAULT_MAX_ROLE_RULES for the rules in one role).
+export const AGENT_VAULT_MAX_IDS_PER_CONDITION = 1000;
+
 const AGENT_VAULT_ID_SCHEMA = z
   .string()
   .uuid()
@@ -1059,7 +1063,12 @@ const AGENT_VAULT_ID_CONDITION_SCHEMA = z.union([
   z
     .object({
       [PermissionConditionOperators.$EQ]: AGENT_VAULT_ID_SCHEMA,
-      [PermissionConditionOperators.$IN]: AGENT_VAULT_ID_SCHEMA.array().min(1)
+      [PermissionConditionOperators.$IN]: AGENT_VAULT_ID_SCHEMA.array()
+        .min(1)
+        .max(
+          AGENT_VAULT_MAX_IDS_PER_CONDITION,
+          `Name at most ${AGENT_VAULT_MAX_IDS_PER_CONDITION} IDs in one condition`
+        )
     })
     .partial()
     .strict()

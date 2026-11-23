@@ -307,14 +307,12 @@ export const agentVaultSessionLogServiceFactory = ({
 
   const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TAgentVaultSessionScoped) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
 
+    // Without session read the logs read like a missing session's, so a 403 never confirms that an id exists.
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (
       !session ||
+      permission.cannot(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions) ||
       (!isSessionOwnedBy(ctx, session) &&
         permission.cannot(ProjectPermissionAgentVaultSessionActions.ReadAny, ProjectPermissionSub.AgentVaultSessions))
     ) {

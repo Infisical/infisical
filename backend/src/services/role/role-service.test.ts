@@ -144,3 +144,52 @@ describe("deleting an Agent Vault role", () => {
     expect(roleDAL.delete).not.toHaveBeenCalled();
   });
 });
+
+describe("Agent Vault role names", () => {
+  const createWithName = (name: string) =>
+    ({ ...createDto, data: { ...createDto.data, name } }) as unknown as TCreateRoleDTO;
+
+  test.each([
+    ["Admin", "built-in role"],
+    [" no access ", "built-in role"],
+    ["No-Access", "built-in role"],
+    ["Ad​min", "invisible characters"],
+    ["Release‮Engineers", "invisible characters"],
+    ["Release\nEngineers", "invisible characters"],
+    ["", "Enter a name"]
+  ])("refuses %j", async (name, message) => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await expect(service.createRole(createWithName(name))).rejects.toThrow(message);
+    expect(roleDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("saves a name trimmed", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await service.createRole(createWithName("  Release Engineers  "));
+    expect(roleDAL.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Release Engineers" }));
+  });
+});
+
+describe("Agent Vault role size", () => {
+  test("refuses more rules than an Agent Vault role can hold, as the routes send them", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    const tooMany = JSON.stringify(Array.from({ length: 501 }, () => ["read", "agent-vault-proxies"]));
+    await expect(
+      service.createRole({
+        ...createDto,
+        data: { ...createDto.data, permissions: tooMany }
+      } as unknown as TCreateRoleDTO)
+    ).rejects.toThrow("at most 500 rules");
+    expect(roleDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("takes a role at the limit", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    const atLimit = JSON.stringify(Array.from({ length: 500 }, () => ["read", "agent-vault-proxies"]));
+    await service.createRole({
+      ...createDto,
+      data: { ...createDto.data, permissions: atLimit }
+    } as unknown as TCreateRoleDTO);
+    expect(roleDAL.create).toHaveBeenCalled();
+  });
+});

@@ -10,6 +10,10 @@ import {
   TableName
 } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  AGENT_VAULT_MAX_ROLE_RULES,
+  normalizeAgentVaultRoleName
+} from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -109,11 +113,39 @@ export const roleServiceFactory = ({
     });
   };
 
+  // An Agent Vault role's rules are applied on every request that reads its holders' reach, so a role is capped.
+  const assertAgentVaultRuleCount = async (scopeData: TCreateRoleDTO["scopeData"], permissions: unknown) => {
+    // The role routes pass the packed rules as JSON text.
+    const rules: unknown = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+    if (!Array.isArray(rules) || rules.length <= AGENT_VAULT_MAX_ROLE_RULES) return;
+    if (scopeData.scope !== AccessScope.Project) return;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.AgentVault) return;
+    throw new BadRequestError({
+      message: `An Agent Vault role can have at most ${AGENT_VAULT_MAX_ROLE_RULES} rules. Combine rules that name IDs into one rule per action, or split the role in two.`
+    });
+  };
+
+  // Agent Vault members pick roles by name, so a name there is trimmed and checked (normalizeAgentVaultRoleName).
+  const agentVaultRoleNameOf = async (scopeData: TCreateRoleDTO["scopeData"], name: string | undefined) => {
+    if (name === undefined || scopeData.scope !== AccessScope.Project) return name;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    return project?.type === ProjectType.AgentVault ? normalizeAgentVaultRoleName(name) : name;
+  };
+
   const createRole = async (dto: TCreateRoleDTO) => {
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
     await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
+    const name = (await agentVaultRoleNameOf(scopeData, data.name)) ?? data.name;
+    await assertAgentVaultRuleCount(scopeData, data.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
@@ -137,7 +169,7 @@ export const roleServiceFactory = ({
     });
 
     const role = await roleDAL.create({
-      name: data.name,
+      name,
       description: data.description,
       slug: data.slug,
       permissions: data.permissions,
@@ -154,6 +186,8 @@ export const roleServiceFactory = ({
 
     await factory.onUpdateRoleGuard(dto);
     await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
+    const name = await agentVaultRoleNameOf(scopeData, data?.name);
+    await assertAgentVaultRuleCount(scopeData, data?.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
@@ -185,7 +219,7 @@ export const roleServiceFactory = ({
     });
 
     const role = await roleDAL.updateById(existingRole.id, {
-      name: data?.name,
+      name,
       description: data?.description,
       slug: data?.slug,
       permissions: data?.permissions

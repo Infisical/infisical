@@ -177,6 +177,13 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   (`withAgentVaultMemberAlias` in `membership-fns.ts`), and keep bundle roles the same way: a raw `member` row grants
   nothing there. The deprecated `POST /api/v1/workspace/:workspaceId/memberships` can only give that raw row, so it
   refuses an Agent Vault project.
+- **An Agent Vault role holds at most `AGENT_VAULT_MAX_ROLE_RULES` rules, and one condition names at most
+  `AGENT_VAULT_MAX_IDS_PER_CONDITION` ids**: every request that reads a holder's reach applies the role. `allowedAmong`
+  (`agent-vault-permission.ts`) applies plain id rules once in CASL's order instead of a check per id; keep any new
+  id-condition shape inside what it treats as plain, or it falls back to the slow path. A role's name is trimmed and
+  can't be a built-in role's or hold invisible characters (`normalizeAgentVaultRoleName`). The generic membership routes
+  drop a role sent twice (`withAgentVaultMemberAlias`). Member responses list roles Admin and No Access first, then by
+  name.
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
   session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
   be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
@@ -189,13 +196,17 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   even for a role with nothing on that subject (`getService`, the skill reads), since a 403 there would confirm the id
   exists; only a list answers 403 for a role that can see none of it. Skills do the same: `$authorizeSkill` and
   `$authorizeBundleLink` answer 404 for a skill or bundle the caller can't see.
+  Sessions, their logs and proxies do the same by id: `requireSessionAction` and `$authorizeProxy` answer 404 unless the
+  caller can see the item, and 403 only then.
 
 ## Access bundles, roles and reach
 
 - **What an actor can put in a session comes from their roles' `use` rules** on `agent-vault-access-bundles`,
   `agent-vault-services` and `agent-vault-skills`. Using a bundle covers its services and skills, so a role that uses a
   bundle needs nothing on what it holds, whatever a role says on the item: a deny on a service or skill only stops its direct use, and a bundle that holds it still gives it. Naming such an
-  item on its own at mint is refused (`deniesUseOnItsOwn`), for both sides of an on-behalf-of session. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
+  item on its own at mint is refused (`deniesUseOnItsOwn`), for both sides of an on-behalf-of session. A session
+  that lists such an item on its own stops getting it at resolve once a role denies it (`isServiceDeniedOnItsOwn`,
+  `isSkillDeniedOnItsOwn` on the reach); items its bundle holds stay. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
   into a `TAgentVaultReach`: a list of ids per kind, null when the rules cover every one, ones created later included.
   Mint, resolve, the skills fetch, member-facing reads and delegations all go through it, so they can't disagree.
 - **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with one of `$eq` or `$in`;
@@ -890,6 +901,7 @@ personal values can reference.
   `memberProvidedFields` first.
 - **A member can delete their own values for a service they can no longer use** (`deletePersonalValues`): losing
   access keeps them until the member leaves the project. Without values of theirs, such a service still answers 404.
+  A delegated OAuth token that carries scopes can't set, connect or delete personal values (`isOauthScopeNarrowedRequest`).
 - **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the list
   and is required for a new one; a list without it returns everything the caller can see (their own, plus the global
   ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock by
