@@ -1,4 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TAzureFederatedCredential } from "@app/hooks/api/appConnections/types/azure-federated-credential";
 import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-connection";
 
 export enum AzureKeyVaultConnectionMethod {
@@ -38,11 +39,7 @@ export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection
         credentials: {
           clientId: string;
           tenantId: string;
-          federatedCredential?: {
-            issuerUrl: string | null;
-            subjectIdentifier: string;
-            audience: string;
-          };
+          federatedCredential?: TAzureFederatedCredential;
         };
       }
   );

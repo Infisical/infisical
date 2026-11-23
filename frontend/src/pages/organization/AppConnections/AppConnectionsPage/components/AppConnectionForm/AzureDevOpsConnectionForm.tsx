@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -42,6 +43,10 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import {
+  AzureManagedIdentityConnectionDetails,
+  AzureManagedIdentityFields
+} from "./shared/AzureManagedIdentityFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 // Base schema with common fields
@@ -76,15 +81,28 @@ const clientSecretSchema = baseSchema.extend({
   })
 });
 
+const managedIdentitySchema = baseSchema.extend({
+  method: z.literal(AzureDevOpsConnectionMethod.ManagedIdentity),
+  credentials: z.object({
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    orgName: z.string().trim().min(1, "Organization name is required")
+  })
+});
+
 // Union schema
 const formSchema = z.discriminatedUnion("method", [
   oauthSchema,
   accessTokenSchema,
-  clientSecretSchema
+  clientSecretSchema,
+  managedIdentitySchema
 ]);
 
 type FormData = z.infer<typeof formSchema>;
-type OnSubmitForm = z.infer<typeof accessTokenSchema> | z.infer<typeof clientSecretSchema>;
+type OnSubmitForm =
+  | z.infer<typeof accessTokenSchema>
+  | z.infer<typeof clientSecretSchema>
+  | z.infer<typeof managedIdentitySchema>;
 
 type Props = {
   appConnection?: TAzureDevOpsConnection;
@@ -162,6 +180,19 @@ const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormD
         };
       }
       break;
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      if ("tenantId" in credentials && "clientId" in credentials && "orgName" in credentials) {
+        return {
+          ...base,
+          method: AzureDevOpsConnectionMethod.ManagedIdentity,
+          credentials: {
+            tenantId: credentials.tenantId,
+            clientId: credentials.clientId,
+            orgName: credentials.orgName
+          }
+        };
+      }
+      break;
     default:
       return base;
   }
@@ -171,8 +202,9 @@ const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormD
 
 export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const { onCancel } = useAppConnectionForm();
+  const { onCancel, isNewConnection } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasVerifyFailed, setHasVerifyFailed] = useState(false);
 
   const {
     option: { oauthClientId },
@@ -200,6 +232,11 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
 
   const selectedMethod = watch("method");
 
+  const federatedCredential =
+    appConnection?.method === AzureDevOpsConnectionMethod.ManagedIdentity
+      ? appConnection.credentials.federatedCredential
+      : undefined;
+
   const onSubmitHandler = async (formData: FormData) => {
     switch (formData.method) {
       case AzureDevOpsConnectionMethod.OAuth:
@@ -226,6 +263,19 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
       case AzureDevOpsConnectionMethod.ClientSecret:
         await onSubmit(formData);
         break;
+      case AzureDevOpsConnectionMethod.ManagedIdentity:
+        if (!isUpdate) {
+          await onSubmit(formData);
+          break;
+        }
+        setHasVerifyFailed(false);
+        try {
+          await onSubmit(formData);
+        } catch {
+          // The request's error toast already explains the failure
+          setHasVerifyFailed(true);
+        }
+        break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
     }
@@ -234,10 +284,22 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
   const isMissingConfig = selectedMethod === AzureDevOpsConnectionMethod.OAuth && !oauthClientId;
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const isManagedIdentity = selectedMethod === AzureDevOpsConnectionMethod.ManagedIdentity;
+  // Azure needs the connection ID in the subject, so a new connection is created from the federated credential step
+  const isConfiguringManagedIdentity = isManagedIdentity && !isUpdate;
+
+  let submitLabel = isUpdate ? "Reconnect to Azure" : "Connect to Azure";
+  if (isManagedIdentity) {
+    submitLabel = hasVerifyFailed ? "Retry Verification" : "Verify Connection";
+  }
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-6">
         {!isUpdate && <GenericAppConnectionsFields />}
+        {appConnection && isManagedIdentity && (
+          <AzureManagedIdentityConnectionDetails appConnection={appConnection} />
+        )}
 
         <Controller
           name="method"
@@ -275,6 +337,11 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
                   })}
                 </SelectContent>
               </Select>
+              {isUpdate && isManagedIdentity && (
+                <FieldDescription>
+                  Name and method are fixed once the connection is created.
+                </FieldDescription>
+              )}
               <FieldError>
                 {!isLoading && isMissingConfig
                   ? `Environment variables have not been configured. ${
@@ -482,15 +549,63 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
           </>
         )}
 
-        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
-          <Button
-            type="submit"
-            variant={scopeVariant}
-            isPending={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+        {isManagedIdentity && (
+          <AzureManagedIdentityFields
+            isUpdate={isUpdate}
+            federatedCredential={federatedCredential}
+            onCredentialsChange={() => setHasVerifyFailed(false)}
           >
-            {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
-          </Button>
+            <Controller
+              name="credentials.orgName"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.orgName">
+                    Organization Name
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Your Azure DevOps organization name.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setHasVerifyFailed(false);
+                    }}
+                    id="credentials.orgName"
+                    disabled={isNewConnection}
+                    placeholder="myorganization"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </AzureManagedIdentityFields>
+        )}
+
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
+          {isConfiguringManagedIdentity ? (
+            <Button variant={scopeVariant} isDisabled>
+              Create Connection
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant={scopeVariant}
+              isPending={isSubmitting || isRedirecting}
+              isDisabled={
+                isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting
+              }
+            >
+              {submitLabel}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -499,6 +614,9 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit, projectId }
           >
             Cancel
           </Button>
+          {isConfiguringManagedIdentity && (
+            <span className="text-xs text-muted">Configure the federated credential first.</span>
+          )}
         </SheetFooter>
       </form>
     </FormProvider>

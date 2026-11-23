@@ -924,6 +924,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDNSConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
       return { name: "Managed Identity", icon: IdCardIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
@@ -963,6 +968,21 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Token", icon: KeyRoundIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
+  }
+};
+
+// Created before it can be verified, so creating it is a step of the form rather than the end of it
+export const isAzureManagedIdentityConnection = ({ method }: Pick<TAppConnection, "method">) => {
+  switch (method) {
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDNSConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
+      return true;
+    default:
+      return false;
   }
 };
 

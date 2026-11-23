@@ -9,10 +9,10 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { isAzureManagedIdentityConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionForm } from "./AppConnectionForm";
@@ -85,7 +85,7 @@ export const AddAppConnectionModal = ({
 
     // Azure can only be told to trust a managed identity connection once it has an ID, so the sheet stays open on
     // its credentials, which show the federated credential values and verify the setup on reconnect
-    if (appConnection.method === AzureKeyVaultConnectionMethod.ManagedIdentity) {
+    if (isAzureManagedIdentityConnection(appConnection)) {
       setIsDirty(false);
       setCreatedConnection(appConnection);
       return;
