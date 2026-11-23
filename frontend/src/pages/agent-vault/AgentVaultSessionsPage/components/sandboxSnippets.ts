@@ -9,8 +9,10 @@ import cursorWorkerDockerfile from "./sandbox-scripts/cursor-worker-dockerfile.t
 import cursorWorkerEntrypoint from "./sandbox-scripts/cursor-worker-entrypoint.sh.txt?raw";
 import cursorWorkerEnv from "./sandbox-scripts/cursor-worker-env.sh.txt?raw";
 import cursorWorkersNamespace from "./sandbox-scripts/cursor-workers.yaml.txt?raw";
+import daytonaImageGo from "./sandbox-scripts/daytona-image.go.txt?raw";
 import daytonaImagePy from "./sandbox-scripts/daytona-image.py.txt?raw";
 import daytonaImageTs from "./sandbox-scripts/daytona-image.ts.txt?raw";
+import daytonaRunGo from "./sandbox-scripts/daytona-run.go.txt?raw";
 import daytonaRunPy from "./sandbox-scripts/daytona-run.py.txt?raw";
 import daytonaRunTs from "./sandbox-scripts/daytona-run.ts.txt?raw";
 import dockerCompose from "./sandbox-scripts/docker-compose.yaml.txt?raw";
@@ -24,8 +26,10 @@ import kubernetesDockerfile from "./sandbox-scripts/kubernetes-dockerfile.txt?ra
 import kubernetesOrchestratorRole from "./sandbox-scripts/kubernetes-orchestrator-role.yaml.txt?raw";
 import kubernetesProxy from "./sandbox-scripts/kubernetes-proxy.yaml.txt?raw";
 import kubernetesRunAgent from "./sandbox-scripts/kubernetes-run-agent.sh.txt?raw";
+import modalImageGo from "./sandbox-scripts/modal-image.go.txt?raw";
 import modalImagePy from "./sandbox-scripts/modal-image.py.txt?raw";
 import modalImageTs from "./sandbox-scripts/modal-image.ts.txt?raw";
+import modalRunGo from "./sandbox-scripts/modal-run.go.txt?raw";
 import modalRunPy from "./sandbox-scripts/modal-run.py.txt?raw";
 import modalRunTs from "./sandbox-scripts/modal-run.ts.txt?raw";
 
@@ -40,7 +44,8 @@ export enum ScriptProvider {
 
 export enum ScriptLanguage {
   TypeScript = "typescript",
-  Python = "python"
+  Python = "python",
+  Go = "go"
 }
 
 export type TSandboxScript = { fileName: string; code: string };
@@ -49,14 +54,20 @@ export type TSandboxScript = { fileName: string; code: string };
 // Files the guide names only in its prose carry their name here instead.
 type TScriptSource = string | TSandboxScript;
 
-const LANGUAGE_SCRIPTS: Partial<Record<ScriptProvider, Record<ScriptLanguage, TScriptSource[]>>> = {
+// Every guide has TypeScript, so a language a guide lacks falls back to it.
+type TLanguageScripts = Record<ScriptLanguage.TypeScript, TScriptSource[]> &
+  Partial<Record<ScriptLanguage, TScriptSource[]>>;
+
+const LANGUAGE_SCRIPTS: Partial<Record<ScriptProvider, TLanguageScripts>> = {
   [ScriptProvider.Modal]: {
     [ScriptLanguage.TypeScript]: [modalImageTs, modalRunTs],
-    [ScriptLanguage.Python]: [modalImagePy, modalRunPy]
+    [ScriptLanguage.Python]: [modalImagePy, modalRunPy],
+    [ScriptLanguage.Go]: [modalImageGo, modalRunGo]
   },
   [ScriptProvider.Daytona]: {
     [ScriptLanguage.TypeScript]: [daytonaImageTs, daytonaRunTs],
-    [ScriptLanguage.Python]: [daytonaImagePy, daytonaRunPy]
+    [ScriptLanguage.Python]: [daytonaImagePy, daytonaRunPy],
+    [ScriptLanguage.Go]: [daytonaImageGo, daytonaRunGo]
   },
   [ScriptProvider.E2B]: {
     [ScriptLanguage.TypeScript]: [e2bRunTs],
@@ -92,6 +103,12 @@ const SHELL_SCRIPTS: Partial<Record<ScriptProvider, TScriptSource[]>> = {
 };
 
 export const hasScriptLanguages = (provider: ScriptProvider) => Boolean(LANGUAGE_SCRIPTS[provider]);
+
+export const scriptLanguagesFor = (provider: ScriptProvider) =>
+  Object.values(ScriptLanguage).filter((language) => LANGUAGE_SCRIPTS[provider]?.[language]);
+
+export const resolveScriptLanguage = (provider: ScriptProvider, preferred: ScriptLanguage) =>
+  LANGUAGE_SCRIPTS[provider]?.[preferred] ? preferred : ScriptLanguage.TypeScript;
 
 type TSandboxValues = { siteUrl: string; projectId: string; accessBundle: string };
 

@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -167,6 +168,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type TOrderCertificateDeps = {
@@ -183,6 +185,7 @@ type TOrderCertificateDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type DBConfigurationColumn = {
@@ -384,7 +387,8 @@ export const executeAcmeOrder = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
-    oidcIssuerService
+    oidcIssuerService,
+    instanceConfigService
   } = deps;
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
@@ -496,13 +500,18 @@ export const executeAcmeOrder = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Set ACME challenge TXT record"
-          });
+          await route53UpsertRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            {
+              name: recordName,
+              type: "TXT",
+              value: recordValue,
+              ttl: 30,
+              comment: "Set ACME challenge TXT record"
+            },
+            instanceConfigService
+          );
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -545,7 +554,7 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsInsertTxtRecord(
             connection as TGcpConnection,
-            { appConnectionDAL, kmsDataKeyService, oidcIssuerService },
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
@@ -588,13 +597,18 @@ export const executeAcmeOrder = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Delete ACME challenge TXT record"
-          });
+          await route53DeleteRecord(
+            connection as TAwsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            {
+              name: recordName,
+              type: "TXT",
+              value: recordValue,
+              ttl: 30,
+              comment: "Delete ACME challenge TXT record"
+            },
+            instanceConfigService
+          );
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -637,7 +651,7 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsDeleteTxtRecord(
             connection as TGcpConnection,
-            { appConnectionDAL, kmsDataKeyService, oidcIssuerService },
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
@@ -775,7 +789,8 @@ export const AcmeCertificateAuthorityFns = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1033,7 +1048,8 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       }
     );
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
@@ -1107,7 +1123,8 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       }
     );
   };

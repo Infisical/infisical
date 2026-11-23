@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
@@ -101,6 +102,7 @@ const createGuard = ({
     smtpService: {} as never,
     userGroupMembershipDAL: {} as never,
     licenseService: new FakeLicenseService(),
+    instanceConfigService: new FakeInstanceConfigService(),
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
     samlConfigDAL: {} as never,
@@ -321,6 +323,7 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
           .mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem, authEnforced: false, rootOrgId: null })
       } as never,
       licenseService: new FakeLicenseService(),
+      instanceConfigService: new FakeInstanceConfigService(),
       membershipUserDAL: { find: vi.fn(), getUserById: vi.fn() } as never,
       tokenService: {} as never,
       userDAL: {} as never,

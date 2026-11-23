@@ -56,6 +56,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   _gatewayV2Service,
   _gatewayPoolService,
   _keyStore,
+  instanceConfigService,
   _passwordValidationContext,
   oidcIssuerService
 ) => {
@@ -69,7 +70,8 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
     return getGcpConnectionAuthToken(secretRotation.connection, {
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     });
   };
 

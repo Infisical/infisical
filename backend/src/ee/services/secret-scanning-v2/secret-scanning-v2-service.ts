@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -90,6 +91,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -105,6 +107,7 @@ export const secretScanningV2ServiceFactory = ({
   secretScanningV2Queue,
   appConnectionDAL,
   kmsDataKeyService,
+  instanceConfigService,
   keyStore
 }: TSecretScanningV2ServiceFactoryDep) => {
   // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
@@ -285,7 +288,11 @@ export const secretScanningV2ServiceFactory = ({
     encryptedCredentials: Buffer | null | undefined,
     resourceNames: string[]
   ) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsDataKeyService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     if (!factory.updateWebhook || !isDataSourceWebhookRequired(dataSource)) return undefined;
 
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -382,7 +389,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     try {
@@ -520,7 +528,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     if (payload.isDiscoveryEnabled && !doesDataSourceSupportDiscovery(dataSource))
@@ -655,7 +664,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let connection: TAppConnection | null = null;
@@ -834,7 +844,11 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsDataKeyService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     const { noun } = AUTO_SYNC_DESCRIPTION_HELPER[dataSource.type];
 
     let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1099,7 +1113,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1525,7 +1540,7 @@ export const secretScanningV2ServiceFactory = ({
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
-    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
+    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, instanceConfigService),
     bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService),
     gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService)
   };

@@ -1,7 +1,7 @@
 import { gaxios, Impersonated } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
-import { getConfig } from "@app/lib/config/env";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -21,9 +21,10 @@ export class GcpIamServiceAccountSuffixError extends BadRequestError {
 
 type TGcpIamProviderDTO = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
-export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProviderFns => {
+export const GcpIamProvider = ({ projectDAL, instanceConfigService }: TGcpIamProviderDTO): TDynamicProviderFns => {
   // used to keep backwards compatibility with existing provider inputs that didn't enforce the org id suffix
   const validateExistingProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretGcpIamSchema.parseAsync(inputs);
@@ -53,14 +54,14 @@ export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProv
   };
 
   const $getToken = async (serviceAccountEmail: string, ttl: number, tokenScopes: string[]): Promise<string> => {
-    const appCfg = getConfig();
-    if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+    const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
+    if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({
         message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
       });
     }
 
-    const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+    const sourceClient = buildGcpSourceCredential(INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
     const impersonatedCredentials = new Impersonated({
       sourceClient,

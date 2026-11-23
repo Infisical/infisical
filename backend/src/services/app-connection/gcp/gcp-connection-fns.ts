@@ -4,6 +4,7 @@ import { AwsClient, ExternalAccountClient, gaxios, Impersonated, JWT } from "goo
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, GatewayTimeoutError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -145,9 +146,12 @@ export const buildGcpSourceCredential = (credentialJson: string) => {
   });
 };
 
-const getGcpImpersonationAccessToken = async (serviceAccountEmail: string) => {
-  const appCfg = getConfig();
-  if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+const getGcpImpersonationAccessToken = async (
+  serviceAccountEmail: string,
+  instanceConfigService: Pick<TInstanceConfigService, "getOverridableEnv">
+) => {
+  const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
+  if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
       message: `Environment variables have not been configured for GCP ${getAppConnectionMethodName(
         GcpConnectionMethod.ServiceAccountImpersonation
@@ -155,7 +159,7 @@ const getGcpImpersonationAccessToken = async (serviceAccountEmail: string) => {
     });
   }
 
-  const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+  const sourceClient = buildGcpSourceCredential(INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
   const impersonatedCredentials = new Impersonated({
     sourceClient,
@@ -417,7 +421,8 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionFor
   switch (appConnection.method) {
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return getGcpImpersonationAccessToken(
-        (appConnection.credentials as { serviceAccountEmail: string }).serviceAccountEmail
+        (appConnection.credentials as { serviceAccountEmail: string }).serviceAccountEmail,
+        deps.instanceConfigService
       );
     case GcpConnectionMethod.WorkloadIdentityFederation:
       return getGcpWorkloadIdentityAccessToken(appConnection.id, deps);
@@ -541,7 +546,8 @@ export const getGcpSecretManagerProjectLocations = async (
 
 export const validateGcpConnectionCredentials = async (
   appConnection: TGcpConnectionConfig,
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  instanceConfigService: Pick<TInstanceConfigService, "getOverridableEnv">
 ) => {
   switch (appConnection.method) {
     case GcpConnectionMethod.ServiceAccountImpersonation: {
@@ -558,7 +564,7 @@ export const validateGcpConnectionCredentials = async (
         }
       }
 
-      await getGcpImpersonationAccessToken(serviceAccountEmail);
+      await getGcpImpersonationAccessToken(serviceAccountEmail, instanceConfigService);
 
       return appConnection.credentials;
     }

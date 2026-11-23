@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -327,6 +328,7 @@ export const PkiSyncFns = {
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
       oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+      instanceConfigService: TInstanceConfigService;
     }
   ): Promise<TPkiSyncSyncResult> => {
     switch (pkiSync.destination) {
@@ -337,7 +339,8 @@ export const PkiSyncFns = {
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
-          oidcIssuerService: dependencies.oidcIssuerService
+          oidcIssuerService: dependencies.oidcIssuerService,
+          instanceConfigService: dependencies.instanceConfigService
         });
         return azureKeyVaultPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -347,7 +350,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         return awsCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -355,7 +359,8 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsSecretsManager as PkiSync);
         const awsSecretsManagerPkiSync = awsSecretsManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         return awsSecretsManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -375,7 +380,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         return awsElasticLoadBalancerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -480,7 +486,8 @@ export const PkiSyncFns = {
           gcpAuthDeps: {
             appConnectionDAL: dependencies.appConnectionDAL,
             kmsDataKeyService: dependencies.kmsDataKeyService,
-            oidcIssuerService: dependencies.oidcIssuerService
+            oidcIssuerService: dependencies.oidcIssuerService,
+            instanceConfigService: dependencies.instanceConfigService
           }
         });
         return gcpCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
@@ -600,6 +607,7 @@ export const PkiSyncFns = {
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
       oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+      instanceConfigService: TInstanceConfigService;
     }
   ): Promise<void> => {
     switch (pkiSync.destination) {
@@ -610,7 +618,8 @@ export const PkiSyncFns = {
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
-          oidcIssuerService: dependencies.oidcIssuerService
+          oidcIssuerService: dependencies.oidcIssuerService,
+          instanceConfigService: dependencies.instanceConfigService
         });
         await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -624,7 +633,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -636,7 +646,8 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsSecretsManager as PkiSync);
         const awsSecretsManagerPkiSync = awsSecretsManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         await awsSecretsManagerPkiSync.removeCertificates(pkiSync, dependencies.certificateMap);
         break;
@@ -661,7 +672,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          instanceConfigService: dependencies.instanceConfigService
         });
         await awsElasticLoadBalancerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -797,7 +809,8 @@ export const PkiSyncFns = {
           gcpAuthDeps: {
             appConnectionDAL: dependencies.appConnectionDAL,
             kmsDataKeyService: dependencies.kmsDataKeyService,
-            oidcIssuerService: dependencies.oidcIssuerService
+            oidcIssuerService: dependencies.oidcIssuerService,
+            instanceConfigService: dependencies.instanceConfigService
           }
         });
         await gcpCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {

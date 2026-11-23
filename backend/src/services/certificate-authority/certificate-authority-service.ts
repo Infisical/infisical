@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   Meter,
@@ -159,6 +160,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
@@ -198,6 +200,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   kmsDataKeyService,
+  instanceConfigService,
   kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
@@ -227,6 +230,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     pkiSubscriberDAL,
     pkiSyncDAL,
@@ -293,6 +297,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });
@@ -328,6 +333,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });

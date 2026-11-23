@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -240,6 +241,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -367,6 +369,7 @@ export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   licenseService,
   gatewayV2Service,
   gatewayPoolService,
@@ -612,7 +615,9 @@ export const appConnectionServiceFactory = ({
         PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
         !isAppConnectionAllowedInProject(app, project.type as ProjectType)
       ) {
-        const supported = listAppConnectionOptions(project.type as ProjectType).map((option) => option.name);
+        const supported = (await listAppConnectionOptions(instanceConfigService, project.type as ProjectType)).map(
+          (option) => option.name
+        );
         throw new BadRequestError({
           message: `${APP_CONNECTION_NAME_MAP[app]} Connections can't be used in this project. It supports: ${supported.join(", ")}.`
         });
@@ -681,7 +686,15 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+        {
+          identityUaDAL,
+          gitHubAppDAL,
+          kmsDataKeyService,
+          instanceConfigService,
+          keyStore,
+          oidcIssuerService,
+          actorId: actor.id
+        }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1002,7 +1015,15 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+          {
+            identityUaDAL,
+            gitHubAppDAL,
+            kmsDataKeyService,
+            instanceConfigService,
+            keyStore,
+            oidcIssuerService,
+            actorId: actor.id
+          }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1517,7 +1538,8 @@ export const appConnectionServiceFactory = ({
   };
 
   return {
-    listAppConnectionOptions,
+    listAppConnectionOptions: (projectType?: ProjectType) =>
+      listAppConnectionOptions(instanceConfigService, projectType),
     listAppConnections,
     findAppConnectionById,
     findAppConnectionByName,
@@ -1531,10 +1553,16 @@ export const appConnectionServiceFactory = ({
     triggerCredentialRotation,
     github: githubConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, {
       gitHubAppDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     }),
-    githubRadar: githubRadarConnectionService(connectAppConnectionById),
-    gcp: gcpConnectionService(connectAppConnectionById, { appConnectionDAL, kmsDataKeyService, oidcIssuerService }),
+    githubRadar: githubRadarConnectionService(connectAppConnectionById, instanceConfigService),
+    gcp: gcpConnectionService(connectAppConnectionById, {
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
+    }),
     databricks: databricksConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
@@ -1542,7 +1570,7 @@ export const appConnectionServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService
     ),
-    aws: awsConnectionService(connectAppConnectionById),
+    aws: awsConnectionService(connectAppConnectionById, instanceConfigService),
     kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     imperva: impervaConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     humanitec: humanitecConnectionService(connectAppConnectionById),
@@ -1554,9 +1582,15 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     ),
-    azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    azureDevOps: azureDevOpsConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    ),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
     hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
@@ -1566,11 +1600,21 @@ export const appConnectionServiceFactory = ({
     onepass: onePassConnectionService(connectAppConnectionById),
     keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
-    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    heroku: herokuConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    ),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
     triggerDev: triggerDevConnectionService(connectAppConnectionById),
-    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    gitlab: gitlabConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    ),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     convex: convexConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),

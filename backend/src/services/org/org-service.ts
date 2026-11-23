@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -84,8 +85,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
-import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -149,6 +148,7 @@ type TOrgServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -186,7 +186,8 @@ export const orgServiceFactory = ({
   gatewayV2Service,
   auditLogSettingsService,
   eventEmitter,
-  orgInviteQuota
+  orgInviteQuota,
+  instanceConfigService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -877,10 +878,12 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
-    if (!trx) await usageMeteringService.syncSeats(organization.id);
-
-    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    // Seat sync calls the License Server and the usage event enqueues a job, so both wait for commit. A caller that
+    // passed a tx runs them after its own commit.
+    if (!trx) {
+      await usageMeteringService.syncSeats(organization.id);
+      usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    }
 
     return organization;
   };
@@ -1144,8 +1147,8 @@ export const orgServiceFactory = ({
   };
 
   const $isEmailLoginEnabled = async () => {
-    const { enabledLoginMethods } = await getServerCfg();
-    return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    return loginPolicy.allows(LoginMethod.EMAIL);
   };
 
   const resendOrgMemberInvitation = async ({

@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
@@ -17,13 +18,12 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   getConfig: () => ({ isSmtpConfigured: false, SITE_URL: "https://infisical.test" })
 }));
 
-const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+let enabledLoginMethods: string[] | null = null;
+const instanceConfig = () => new FakeInstanceConfigService({ settings: { enabledLoginMethods } });
 
-vi.mock("@app/services/super-admin/super-admin-service", () => ({
-  getServerCfg: getServerCfgMock
-}));
-
-beforeEach(() => getServerCfgMock.mockResolvedValue({ enabledLoginMethods: null }));
+beforeEach(() => {
+  enabledLoginMethods = null;
+});
 
 // Without SMTP the resend returns the invitation link to the caller, and that link alone completes the
 // invitee's signup. So a caller who could not have granted the pending membership's role must not get one.
@@ -99,7 +99,8 @@ const setup = ({
       )
     },
     membershipRoleDAL: { findOne: vi.fn().mockResolvedValue({ role: inviteeRole }) },
-    tokenService: { createTokenForUser }
+    tokenService: { createTokenForUser },
+    instanceConfigService: instanceConfig()
   } as never);
 
   const resend = () =>
@@ -167,7 +168,7 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
   );
 
   test("no link is handed out for a non-admin once the instance has disabled email login", async () => {
-    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    enabledLoginMethods = ["saml"];
     const { resend, createTokenForUser } = setup({
       actorPermission: abilityByRole.admin,
       shouldUseNewPrivilegeSystem: true,
@@ -179,7 +180,7 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
   });
 
   test("an Admin invitation can still be resent with email login disabled, as admins can still log in", async () => {
-    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    enabledLoginMethods = ["saml"];
     const { resend } = setup({ actorPermission: abilityByRole.admin, shouldUseNewPrivilegeSystem: true });
 
     const { signupToken } = await resend();
@@ -199,7 +200,7 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
 
 describe("verifyUserToOrg with email login disabled", () => {
   test("a link issued earlier accepts the invitation but gives no signup token", async () => {
-    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    enabledLoginMethods = ["saml"];
     const validateTokenForUser = vi.fn().mockResolvedValue(undefined);
 
     const service = orgServiceFactory({
@@ -212,7 +213,8 @@ describe("verifyUserToOrg with email login disabled", () => {
         findById: vi.fn().mockResolvedValue({ id: ORG_ID, name: "Acme", authEnforced: false })
       },
       membershipRoleDAL: { findOne: vi.fn().mockResolvedValue({ role: "member" }) },
-      tokenService: { validateTokenForUser }
+      tokenService: { validateTokenForUser },
+      instanceConfigService: instanceConfig()
     } as never);
 
     const result = await service.verifyUserToOrg({ orgId: ORG_ID, email: "invitee@acme.test", code: "code" });
