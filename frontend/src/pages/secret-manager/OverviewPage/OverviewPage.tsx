@@ -4610,6 +4610,14 @@ const OverviewPageContent = () => {
                         TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
                     )}
                   >
+                    {secretPath !== "/" && page === 1 && !showOverviewSkeleton && (
+                      <ParentFolderTableRow
+                        secretPath={secretPath}
+                        isNavigationDisabled={isOverviewPending}
+                        environments={visibleEnvs}
+                        onClick={navigateToFolder}
+                      />
+                    )}
                     {tableView !== "table" && (
                       <TableFilteredEmptyRow
                         colSpan={visibleEnvs.length + 2}
@@ -4662,14 +4670,6 @@ const OverviewPageContent = () => {
                       ))
                     ) : (
                       <>
-                        {secretPath !== "/" && tableView === "table" && page === 1 && (
-                          <ParentFolderTableRow
-                            secretPath={secretPath}
-                            isNavigationDisabled={isOverviewPending}
-                            environments={visibleEnvs}
-                            onClick={navigateToFolder}
-                          />
-                        )}
                         {visibleEnvs.length > 0 &&
                           tableView === "table" &&
                           canCreateSecretsInAllVisibleEnvs &&
