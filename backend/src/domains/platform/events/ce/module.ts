@@ -4,7 +4,7 @@ import type { TDomainCron, TDomainQueue } from "@app/domains/lib/jobs";
 import { TransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
 
-import { TelemetryClient } from "./clients/telemetry/client";
+import { OtelMetricsClient } from "./clients/otel-metrics/client";
 import { OutboxEntryStore } from "./data-access/outbox-entry-store";
 import { TEventConsumer, TEventsStores } from "./services/dependencies";
 import { EventDeliveryService, TEventDeliveryService } from "./services/event-delivery/service";
@@ -44,7 +44,7 @@ export class EventsModule {
 
   private readonly consumerRegistry = new ConsumerRegistry();
 
-  private readonly telemetryClient: TelemetryClient;
+  private readonly otelMetricsClient: OtelMetricsClient;
 
   private readonly relayTimer: RelayTimer;
 
@@ -55,20 +55,20 @@ export class EventsModule {
       outboxEntryStore: new OutboxEntryStore(singleStoreConnection(trx)),
       locks
     }));
-    this.telemetryClient = new TelemetryClient(deps.isTelemetryEnabled);
+    this.otelMetricsClient = new OtelMetricsClient(deps.isTelemetryEnabled);
 
     this.eventEmitterService = new EventEmitterService(
       outboxEntryStore,
       transactionRunner,
       this.consumerRegistry,
-      this.telemetryClient
+      this.otelMetricsClient
     );
     this.eventDeliveryService = new EventDeliveryService(
       outboxEntryStore,
       transactionRunner,
       this.consumerRegistry,
       new FlushQueue(deps.queueService),
-      this.telemetryClient
+      this.otelMetricsClient
     );
     this.relayTimer = new RelayTimer(() => this.eventDeliveryService.relayDueEvents());
   }
@@ -116,7 +116,7 @@ export class EventsModule {
 
     if (!this.deps.isGeneralWorkerRunModeEnabled || this.deps.isSecondaryInstance) return;
 
-    this.telemetryClient.registerOldestPendingGauge();
+    this.otelMetricsClient.registerOldestPendingGauge();
     this.relayTimer.start();
   }
 

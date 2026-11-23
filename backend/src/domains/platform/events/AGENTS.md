@@ -22,7 +22,7 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 | --- | --- |
 | `ce/models/` | `EventDefinition` (an event's name and data schema), `EmittedEvent` (a validated event about to be written), `OutboxEntry` (one consumer's delivery of one event: status, attempts, backoff), `OutboxClaim` (the entries one worker holds, and the token that fences them), `EventRejectedError` (why an emit was refused) |
 | `ce/data-access/` | `OutboxEntryStore` |
-| `ce/clients/telemetry/` | `TelemetryClient`: the outbox metrics and the oldest-pending gauge, behind `TEventsMetrics` so services never import the meter |
+| `ce/clients/otel-metrics/` | `OtelMetricsClient`: the outbox metrics and the oldest-pending gauge, behind `TEventsMetrics` so services never import the meter |
 | `ce/services/event-emitter/` | `EventEmitterService` |
 | `ce/services/event-delivery/` | `EventDeliveryService` |
 | `ce/services/helpers/` | `ConsumerRegistry`, `buildDeliveries` (validation and who gets a row), `FlushQueue`, `RelayTimer`, and the helpers consumers use (`consume-events.ts`) |

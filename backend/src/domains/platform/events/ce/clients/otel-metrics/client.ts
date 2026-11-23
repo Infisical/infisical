@@ -10,7 +10,7 @@ import { EventRejectionReason } from "../../models/event-rejection";
 import { EventOutboxStatus } from "../../models/outbox-entry";
 import { TEventsMetrics, TOldestPendingAge } from "../../services/dependencies";
 
-export class TelemetryClient implements TEventsMetrics {
+export class OtelMetricsClient implements TEventsMetrics {
   private oldestPending: TOldestPendingAge[] = [];
 
   constructor(private readonly isTelemetryEnabled: boolean) {}
