@@ -216,8 +216,8 @@ export const EnvironmentPageForm = () => {
           <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
         </CardTitle>
         <CardDescription>
-          Override specific environment variables. Saved values may take up to a minute to
-          propagate to every container.
+          Override specific environment variables. Saved values may take up to a minute to propagate
+          to every container.
         </CardDescription>
       </CardHeader>
       <CardContent>
