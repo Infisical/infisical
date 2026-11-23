@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -99,7 +100,11 @@ import {
   useOrgAdminAccessProject,
   useSearchProjects
 } from "@app/hooks/api";
-import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
+import {
+  certManagerInstanceKeys,
+  TCertManagerInstanceState,
+  useCertManagerInstanceState
+} from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   Project,
@@ -262,6 +267,7 @@ export const ProjectTypePage = () => {
   });
   const projectType = urlSlugToProjectType(typeSlug) ?? (typeSlug as ProjectType);
 
+  const queryClient = useQueryClient();
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
 
@@ -319,7 +325,10 @@ export const ProjectTypePage = () => {
           isOpen={isCertManagerSetupOpen}
           onOpenChange={(open) => {
             setIsCertManagerSetupOpen(open);
-            if (!open) {
+            const latestInstance = queryClient.getQueryData<TCertManagerInstanceState>(
+              certManagerInstanceKeys.state(orgId)
+            );
+            if (!open && !latestInstance?.activeProjectId) {
               navigate({
                 to: "/organizations/$orgId/projects",
                 params: { orgId }

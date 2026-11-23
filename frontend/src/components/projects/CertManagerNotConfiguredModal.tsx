@@ -55,6 +55,7 @@ export const CertManagerNotConfiguredModal = ({ isOpen, onOpenChange }: Props) =
       return;
     }
     setCertManagerActiveProjectCookie(currentOrg.id, selectedId);
+    onOpenChange(false);
     navigate({
       to: "/organizations/$orgId/cert-manager/overview",
       params: { orgId: currentOrg.id }
