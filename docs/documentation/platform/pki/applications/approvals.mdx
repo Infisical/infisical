@@ -59,7 +59,7 @@ The machine identity bypass applies to renewals the same way it applies to issua
 
 To try a failed renewal again, fix the problem, then renew the certificate manually. If the notification says the CA issued the certificate but Infisical couldn't link it to the request, find the certificate in the certificate inventory before you renew again, because a new renewal issues another certificate.
 
-If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. To give approvers time, set automatic renewal to start well before the certificate expires.
+If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate, unless it's self-signed. To give approvers time, set automatic renewal to start well before the certificate expires.
 
 ### Revocation
 
