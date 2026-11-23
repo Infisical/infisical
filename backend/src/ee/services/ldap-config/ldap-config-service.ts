@@ -8,6 +8,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -57,7 +58,6 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -105,8 +105,8 @@ type TLdapConfigServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne" | "findGroupOrgIds">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -155,7 +155,7 @@ export const ldapConfigServiceFactory = ({
   orgDAL,
   groupDAL,
   membershipGroupDAL,
-  membershipDAL,
+  pamPermissionService,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
@@ -758,8 +758,7 @@ export const ldapConfigServiceFactory = ({
               usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
-              membershipDAL,
-              membershipRoleDAL,
+              pamPermissionService,
               pamAccountDAL,
               pamSessionDAL,
               gatewayV2Service,

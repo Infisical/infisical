@@ -47,6 +47,10 @@ export class Membership {
     return this.record.scopeResourceId ?? null;
   }
 
+  get resourceType(): string | null {
+    return this.record.scopeResourceType ?? null;
+  }
+
   get actor(): TMembershipActor {
     if (this.record.actorUserId) return { type: ActorType.USER, id: this.record.actorUserId };
     if (this.record.actorIdentityId) return { type: ActorType.IDENTITY, id: this.record.actorIdentityId };

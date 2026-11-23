@@ -4,6 +4,7 @@ import { ProjectMembershipRole, ProjectType, RESOURCE_SCOPE, ResourceType } from
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing/knex-grant-seeder";
 import {
   ProjectPermissionIdentityActions,
@@ -52,7 +53,8 @@ describe("PamPermissionService.getPamPermission", () => {
     const projects = buildProjectsModule(h.db, { projectRoles: [new PamProjectRoles()] });
     const { pamPermissionService } = new PamModule({
       projectsService: projects.projectsService,
-      projectResourcePermissionService: projects.projectResourcePermissionService
+      projectResourcePermissionService: projects.projectResourcePermissionService,
+      actorGrantsService: accessControlServices(h.db).actorGrantsService
     });
     const actor: TActorContext = {
       principal: {

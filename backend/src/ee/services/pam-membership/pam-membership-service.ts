@@ -40,7 +40,6 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { terminatePamSessionsWithoutLaunchAccess, TPamSessionActor } from "../pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getResourceIdsWithActions } from "../pam/pam-permission";
 import {
   TAddPamAccountMemberDTO,
   TAddPamFolderMemberDTO,
@@ -324,8 +323,7 @@ export const pamMembershipServiceFactory = ({
       projectId,
       actors,
       actorId: subject.actor.principal.id,
-      membershipDAL,
-      membershipRoleDAL,
+      pamPermissionService,
       pamAccountDAL,
       pamSessionDAL,
       userDAL,
@@ -1084,13 +1082,11 @@ export const pamMembershipServiceFactory = ({
     const isProductAdmin = productPermission.hasRole({ slug: PamProductRole.Admin });
 
     const hasAnyResourceWith = async (action: PamResourcePermissionActions) => {
-      const { folderIds, accountIds } = await getResourceIdsWithActions(
-        membershipDAL,
-        membershipRoleDAL,
+      const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+        actor: ctx,
         projectId,
-        { allOf: [action] },
-        ctx
-      );
+        actions: { allOf: [action] }
+      });
       return folderIds.length > 0 || accountIds.length > 0;
     };
 

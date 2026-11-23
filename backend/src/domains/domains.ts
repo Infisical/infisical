@@ -146,7 +146,11 @@ export const createDomains = async (deps: TDomainDeps) => {
     projectsService,
     cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
-  const pam = new PamModule({ projectsService, projectResourcePermissionService });
+  const pam = new PamModule({
+    projectsService,
+    projectResourcePermissionService,
+    actorGrantsService: accessControl.actorGrantsService
+  });
   const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
   const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
   const kms = new KmsModule({ projectPermissionService });

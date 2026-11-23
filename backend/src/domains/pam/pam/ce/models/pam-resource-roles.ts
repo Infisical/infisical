@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import { ResourceType } from "@app/db/schemas";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
-import { Grant, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
+import { Grant, Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
 import { TResourceRoles } from "@app/domains/platform/projects/ce/module";
 
 import {
@@ -9,7 +9,9 @@ import {
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
   pamResourceOperatorPermissions,
-  PamResourcePermissionSet
+  PamResourcePermissionActions,
+  PamResourcePermissionSet,
+  PamResourcePermissionSub
 } from "./pam-roles";
 
 type TPamResourceRule = TPermissionRule<PamResourcePermissionSet>;
@@ -40,6 +42,18 @@ abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionS
 
   projectAdminRules(): TPamResourceRule[] {
     return this.adminRules;
+  }
+
+  // The rules of a role a membership holds, or none for a slug PAM does not define.
+  rulesOrNoneFor(grant: Grant): TPamResourceRule[] {
+    return this.builtInRoles.get(grant.builtInSlug() ?? grant.toJSON().slug) ?? [];
+  }
+
+  allows(grant: Grant, action: PamResourcePermissionActions): boolean {
+    return Permission.fromRules<PamResourcePermissionSet>({ rules: this.rulesOrNoneFor(grant) }).can({
+      action,
+      subject: PamResourcePermissionSub.PamResource
+    });
   }
 }
 

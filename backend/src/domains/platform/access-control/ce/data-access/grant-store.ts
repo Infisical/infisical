@@ -12,7 +12,7 @@ import { Privilege, TPrivilegeRecord } from "../models/privilege";
 import { ProjectMemberGrants, TOwnedAttributeRecord } from "../models/project-member-grants";
 import { Role } from "../models/role";
 import { TRoleAssignmentRecord } from "../models/role-assignment";
-import { TGrantActor, TGrantScope, TGrantStore, TGroup, TRoleOwner } from "../services/dependencies";
+import { TActorMembership, TGrantActor, TGrantScope, TGrantStore, TGroup, TRoleOwner } from "../services/dependencies";
 
 type TMembershipRoleRow = Record<string, unknown> & { membershipId: string; membershipRoleId: string };
 
@@ -180,24 +180,74 @@ export class GrantStore implements TGrantStore {
         .select("*")
         .orderBy("id");
       if (!memberships.length) return [];
-      const roles = (await knex(TableName.MembershipRole)
-        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .whereIn(
-          `${TableName.MembershipRole}.membershipId`,
-          memberships.map((membership) => membership.id)
-        )
-        .select(knex.ref("*").withSchema(TableName.MembershipRole))
-        .select(
-          knex.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
-          knex.ref("name").withSchema(TableName.Role).as("customRoleName"),
-          knex.ref("permissions").withSchema(TableName.Role).as("customRolePermissions")
-        )
-        .orderBy(`${TableName.MembershipRole}.id`)) as unknown as (TRoleAssignmentRecord & { membershipId: string })[];
+      const roles = await GrantStore.findResourceMembershipRoles(
+        knex,
+        memberships.map((membership) => membership.id as string)
+      );
       return memberships.map((membership) =>
         Membership.restore({ ...membership, roles: roles.filter((role) => role.membershipId === membership.id) })
       );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find resource memberships for actor" });
+    }
+  }
+
+  async findResourceMembershipsForActors(
+    { actors, projectId, resourceTypes }: { actors: TGrantActor[]; projectId: string; resourceTypes: string[] },
+    options?: TReadOptions
+  ): Promise<TActorMembership[]> {
+    const userIds = actors.filter((actor) => actor.type === ActorType.USER).map((actor) => actor.id);
+    const identityIds = actors.filter((actor) => actor.type === ActorType.IDENTITY).map((actor) => actor.id);
+    if (!resourceTypes.length || (!userIds.length && !identityIds.length)) return [];
+    try {
+      const knex = this.connection.reader(options);
+      const [userGroups, identityGroups] = await Promise.all([
+        userIds.length
+          ? (knex(TableName.UserGroupMembership).whereIn("userId", userIds).select("groupId", "userId") as Promise<
+              { groupId: string; userId: string }[]
+            >)
+          : Promise.resolve([]),
+        identityIds.length
+          ? (knex(TableName.IdentityGroupMembership)
+              .whereIn("identityId", identityIds)
+              .select("groupId", "identityId") as Promise<{ groupId: string; identityId: string }[]>)
+          : Promise.resolve([])
+      ]);
+      const membersOfGroup = new Map<string, TGrantActor[]>();
+      const addMember = (groupId: string, actor: TGrantActor) =>
+        membersOfGroup.set(groupId, [...(membersOfGroup.get(groupId) ?? []), actor]);
+      userGroups.forEach(({ groupId, userId }) => addMember(groupId, { type: ActorType.USER, id: userId }));
+      identityGroups.forEach(({ groupId, identityId }) =>
+        addMember(groupId, { type: ActorType.IDENTITY, id: identityId })
+      );
+
+      const memberships = await knex(TableName.Membership)
+        .where({ scope: RESOURCE_SCOPE, scopeProjectId: projectId })
+        .whereIn("scopeResourceType", resourceTypes)
+        .where((qb) => {
+          if (userIds.length) void qb.orWhereIn("actorUserId", userIds);
+          if (identityIds.length) void qb.orWhereIn("actorIdentityId", identityIds);
+          if (membersOfGroup.size) void qb.orWhereIn("actorGroupId", [...membersOfGroup.keys()]);
+        })
+        .select("*")
+        .orderBy("id");
+      if (!memberships.length) return [];
+      const roles = await GrantStore.findResourceMembershipRoles(
+        knex,
+        memberships.map((membership) => membership.id as string)
+      );
+
+      return memberships.flatMap((row) => {
+        const membership = Membership.restore({
+          ...row,
+          roles: roles.filter((role) => role.membershipId === row.id)
+        });
+        if (row.actorUserId) return [{ actor: { type: ActorType.USER, id: row.actorUserId }, membership }];
+        if (row.actorIdentityId) return [{ actor: { type: ActorType.IDENTITY, id: row.actorIdentityId }, membership }];
+        return (membersOfGroup.get(row.actorGroupId as string) ?? []).map((actor) => ({ actor, membership }));
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find resource memberships for actors" });
     }
   }
 
@@ -261,6 +311,22 @@ export class GrantStore implements TGrantStore {
       ];
     });
     return branches[0].unionAll(branches.slice(1));
+  }
+
+  private static async findResourceMembershipRoles(
+    knex: Knex,
+    membershipIds: string[]
+  ): Promise<(TRoleAssignmentRecord & { membershipId: string })[]> {
+    return (await knex(TableName.MembershipRole)
+      .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+      .whereIn(`${TableName.MembershipRole}.membershipId`, membershipIds)
+      .select(knex.ref("*").withSchema(TableName.MembershipRole))
+      .select(
+        knex.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+        knex.ref("name").withSchema(TableName.Role).as("customRoleName"),
+        knex.ref("permissions").withSchema(TableName.Role).as("customRolePermissions")
+      )
+      .orderBy(`${TableName.MembershipRole}.id`)) as unknown as (TRoleAssignmentRecord & { membershipId: string })[];
   }
 
   private static whereActorOrItsGroups(knex: Knex, qb: Knex.QueryBuilder, actor: TGrantActor) {

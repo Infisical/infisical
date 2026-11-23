@@ -3,6 +3,7 @@ import net from "node:net";
 import type WebSocket from "ws";
 
 import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { TGrantActor } from "@app/domains/platform/access-control/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -19,7 +20,6 @@ import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -44,7 +44,7 @@ import {
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
-import { checkAccountAccess, getLaunchAccessRemainingMs } from "../pam/pam-permission";
+import { checkAccountAccess } from "../pam/pam-permission";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
@@ -78,8 +78,7 @@ type TPamWebAccessServiceFactoryDep = {
     | "updateById"
     | "transaction"
   >;
-  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser" | "findResourceMembershipsForActor">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -135,7 +134,6 @@ export const pamWebAccessServiceFactory = ({
   userService,
   orgDAL,
   membershipDAL,
-  membershipRoleDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -240,13 +238,11 @@ export const pamWebAccessServiceFactory = ({
       }
     }
 
-    const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
-      membershipDAL,
-      membershipRoleDAL,
+    const launchAccessRemainingMs = await pamPermissionService.getLaunchAccessRemainingMs({
+      actor: { type: actor.principal.type, id: actor.principal.id } as TGrantActor,
       projectId,
-      account,
-      { type: actor.principal.type, id: actor.principal.id }
-    );
+      account
+    });
     if (launchAccessRemainingMs !== null && launchAccessRemainingMs <= 0) {
       throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });
     }
@@ -514,13 +510,11 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
-        membershipDAL,
-        membershipRoleDAL,
+      const launchAccessRemainingMs = await pamPermissionService.getLaunchAccessRemainingMs({
+        actor: { type: ActorType.USER, id: userId } as TGrantActor,
         projectId,
-        account,
-        { type: ActorType.USER, id: userId }
-      );
+        account
+      });
       if (launchAccessRemainingMs !== null) {
         if (launchAccessRemainingMs <= 0) {
           sendMessage(socket, {

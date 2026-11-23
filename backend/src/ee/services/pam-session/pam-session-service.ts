@@ -1,5 +1,6 @@
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { TGrantActor } from "@app/domains/platform/access-control/ce/module";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
@@ -13,7 +14,6 @@ import { ms } from "@app/lib/ms";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -47,12 +47,7 @@ import {
 } from "../pam/pam-enums";
 import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
-import {
-  checkAccountAccess,
-  getLaunchAccessRemainingMs,
-  getResourceIdsWithActions,
-  verifyProductMembership
-} from "../pam/pam-permission";
+import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
 import {
   buildPamPolicyRules,
   outputMaskingGatewayOptions,
@@ -102,8 +97,7 @@ type TPamSessionServiceFactoryDep = {
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   projectPermissionService: TProjectPermissionService;
   pamPermissionService: TPamPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
@@ -142,7 +136,6 @@ export const pamSessionServiceFactory = ({
   pamAccountDAL,
   pamFolderDAL,
   membershipDAL,
-  membershipRoleDAL,
   projectPermissionService,
   pamPermissionService,
   kmsDataKeyService,
@@ -209,13 +202,11 @@ export const pamSessionServiceFactory = ({
   ) => {
     const productPermission = await verifyProductMembership(projectPermissionService, projectId, ctx);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.ViewSessions] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.ViewSessions] }
+    });
 
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
@@ -622,13 +613,11 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
-    const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
-      membershipDAL,
-      membershipRoleDAL,
+    const launchAccessRemainingMs = await pamPermissionService.getLaunchAccessRemainingMs({
+      actor: { type: actor.principal.type, id: actor.principal.id } as TGrantActor,
       projectId,
-      account,
-      { type: actor.principal.type, id: actor.principal.id }
-    );
+      account
+    });
     if (launchAccessRemainingMs !== null) {
       if (launchAccessRemainingMs <= 0) {
         throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });

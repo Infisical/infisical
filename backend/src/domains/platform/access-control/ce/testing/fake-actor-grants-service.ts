@@ -1,7 +1,7 @@
 import { AccessScope } from "@app/db/schemas";
 import { TReadOptions } from "@app/domains/lib/data-access";
 
-import { TActorGrantsService } from "../services/actor-grants/service";
+import { TActorGrantsService, TActorGrantsTransaction } from "../services/actor-grants/service";
 import { TGrantActor, TGrantScope, TGrantStore } from "../services/dependencies";
 
 // For other domains' tests: the real service's answers straight from a store, with no cache in between.
@@ -38,5 +38,14 @@ export class FakeActorGrantsService implements TActorGrantsService {
 
   listResourceMemberships(input: { actor: TGrantActor; projectId: string; resourceType: string }) {
     return this.grantStore.findResourceMembershipsForActor(input);
+  }
+
+  listResourceMembershipsForActors(input: { actors: TGrantActor[]; projectId: string; resourceTypes: string[] }) {
+    return this.grantStore.findResourceMembershipsForActors(input);
+  }
+
+  // A store has no transactions, so a read on one is the same read.
+  within(): TActorGrantsTransaction {
+    return { listResourceMembershipsForActors: (input) => this.listResourceMembershipsForActors(input) };
   }
 }

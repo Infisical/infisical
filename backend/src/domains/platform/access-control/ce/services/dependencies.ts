@@ -17,6 +17,9 @@ export type TGrantScope =
 
 export type TGroup = Pick<TGroups, "id" | "orgId" | "name" | "slug">;
 
+// A membership an actor holds, directly or through one of its groups.
+export type TActorMembership = { actor: TGrantActor; membership: Membership };
+
 export type TRoleOwner = { orgId: string } | { projectId: string };
 
 // Read-only over every table Access Control owns (memberships, membership_roles, roles, additional_privileges,
@@ -49,6 +52,12 @@ export type TGrantStore = {
     input: { actor: TGrantActor; projectId: string; resourceType: string },
     options?: TReadOptions
   ): Promise<Membership[]>;
+  // findResourceMembershipsForActor for many actors and resource types in a fixed number of queries. A group's
+  // membership comes back once for each requested actor in that group, paired with that actor.
+  findResourceMembershipsForActors(
+    input: { actors: TGrantActor[]; projectId: string; resourceTypes: string[] },
+    options?: TReadOptions
+  ): Promise<TActorMembership[]>;
   // The org's or project's custom roles with these slugs; slugs with no role are left out.
   findRolesBySlugs(input: { owner: TRoleOwner; slugs: string[] }, options?: TReadOptions): Promise<Role[]>;
   findGroupsByIds(ids: string[], options?: TReadOptions): Promise<TGroup[]>;

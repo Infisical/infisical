@@ -58,7 +58,14 @@ export const withProjectAuditContext = {
     getKmsPermission: async (input) => record(await service.getKmsPermission(input))
   }),
   pamPermission: (service: TPamPermissionService): TPamPermissionService => ({
-    getPamPermission: async (input) => record(await service.getPamPermission(input))
+    getPamPermission: async (input) => record(await service.getPamPermission(input)),
+    assertAccountAccess: (input) => service.assertAccountAccess(input),
+    canAccessAccount: (input) => service.canAccessAccount(input),
+    getResourceIdsWithActions: (input) => service.getResourceIdsWithActions(input),
+    getResourceIdsWithActionsForActors: (input) => service.getResourceIdsWithActionsForActors(input),
+    getLaunchAccessRemainingMs: (input) => service.getLaunchAccessRemainingMs(input),
+    getAccountPermissionRules: (input) => service.getAccountPermissionRules(input),
+    within: (tx) => service.within(tx)
   }),
   applicationPermission: (service: TApplicationPermissionService): TApplicationPermissionService => ({
     getApplicationPermission: async (input) => record(await service.getApplicationPermission(input))

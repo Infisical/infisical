@@ -14,7 +14,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory                          | Purpose                                                                                                                |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `pam/`                             | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
+| `pam/`                             | Shared enums, permission adapters (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
 | `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                           |
 | `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                   |
 | `pam-account-template/`            | Account templates (type + policies + settings)                                                                         |
@@ -33,10 +33,12 @@ new deps with `Pick<>`).
 
 Two tiers: **product membership** (`PamProductRole`: Admin/Member) + **resource membership** scoped to a
 folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator is Connector plus
-`ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
-`pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
-use them instead of re-implementing. They check through `pamPermissionService.getPamPermission` and
-`projectPermissionService.getProjectPermission`, so PAM services take the request's actor context
+`ViewCredentials`, with no approval rights so credential approval can't be self-served). Every resource check and
+read lives on `pamPermissionService` in the PAM domain (`getPamPermission`, `assertAccountAccess`,
+`canAccessAccount`, `getResourceIdsWithActions`, `getLaunchAccessRemainingMs`, `getAccountPermissionRules`, and
+`within(tx)` for a re-check that must see the caller's uncommitted membership change); never read PAM memberships
+or evaluate PAM roles outside it. `pam/pam-permission.ts` keeps only positional adapters over it and
+`verifyProductMembership`. PAM services take the request's actor context
 (`actor: req.permission`); never rebuild one from flat actor fields, which drops a delegated token's scope
 narrowing. Every list/mutation endpoint checks an **action**, not just
 membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
@@ -255,7 +257,7 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
 account deletion). Duration is capped at the template max, the approval grant's expiry and the end of a
-temporary folder or account membership (`getLaunchAccessRemainingMs`), since nothing ends a session when a
+temporary folder or account membership (`pamPermissionService.getLaunchAccessRemainingMs`), since nothing ends a session when a
 membership lapses on its own; expiration is enforced by a delayed BullMQ job scheduled at session creation.
 
 **Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions

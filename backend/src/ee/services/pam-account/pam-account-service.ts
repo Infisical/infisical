@@ -1,4 +1,3 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
@@ -10,18 +9,16 @@ import {
   PamResourcePermissionSub,
   TPamPermissionService
 } from "@app/domains/pam/pam/ce/module";
-import { Membership } from "@app/domains/platform/access-control/ce/module";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
-import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { ProjectResourcePermission, TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
@@ -63,8 +60,6 @@ import {
   accountAccessAllows,
   checkAccountAccess,
   checkFolderPermission,
-  getAccountPermissionRulesMap,
-  getResourceIdsWithActions,
   verifyProductMembership
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
@@ -340,13 +335,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }: TListPamAccountsDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] }
+    });
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
     const { accounts } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
@@ -401,13 +394,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         ctx.org.id
       ),
       // Resolve every account's effective permissions in one membership fetch
-      getAccountPermissionRulesMap(
-        membershipDAL,
-        membershipRoleDAL,
+      pamPermissionService.getAccountPermissionRules({
+        actor: ctx,
         projectId,
-        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
-        ctx
-      )
+        accounts: accounts.map((a) => ({ id: a.id, folderId: a.folderId }))
+      })
     ]);
 
     const maskingDegraded = await $resolveMaskingDegraded(ctx.org.id, accounts);
@@ -1287,22 +1278,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }: TListAccessibleAccountsDTO & TActorInput & { offset?: number; limit?: number }) => {
     await verifyMembership(projectId, ctx);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.ReadAccounts] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.ReadAccounts] }
+    });
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
 
-    const launchScopes = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const launchScopes = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.LaunchSessions] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.LaunchSessions] }
+    });
     const launchFolderIds = new Set(launchScopes.folderIds);
     const launchAccountIds = new Set(launchScopes.accountIds);
 
@@ -1428,47 +1415,29 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    const allRules: RawRuleOf<MongoAbility<PamResourcePermissionSet, MongoQuery>>[] = [];
-    const allMemberships: Membership[] = [];
-
-    if (account.folderId) {
-      try {
-        const folderPermission = await pamPermissionService.getPamPermission({
-          actor: ctx,
-          projectId,
-          folderId: account.folderId
-        });
-        allRules.push(...folderPermission.rules);
-        allMemberships.push(...folderPermission.memberships);
-      } catch (err) {
-        if (!(err instanceof ForbiddenRequestError) && !(err instanceof PermissionDeniedError)) throw err;
-      }
-    }
-
-    try {
-      const accountPermission = await pamPermissionService.getPamPermission({ actor: ctx, projectId, accountId });
-      allRules.push(...accountPermission.rules);
-      allMemberships.push(...accountPermission.memberships);
-    } catch (err) {
-      if (!(err instanceof ForbiddenRequestError) && !(err instanceof PermissionDeniedError)) throw err;
-    }
-
-    const mergedPermission = createMongoAbility<PamResourcePermissionSet>(allRules, { conditionsMatcher });
-
-    ForbiddenError.from(mergedPermission).throwUnlessCan(
-      PamResourcePermissionActions.ReadAccounts,
-      PamResourcePermissionSub.PamResource
-    );
+    // The account's roles and its folder's count together. With neither, the refusal is the rule denial a member
+    // without ReadAccounts gets, not a "not a member" one.
+    const permission = await pamPermissionService
+      .getPamPermission({ actor: ctx, projectId, folderId: account.folderId, accountId })
+      .catch((err: unknown) => {
+        if (err instanceof PermissionDeniedError && !err.denial)
+          return ProjectResourcePermission.none<PamResourcePermissionSet>();
+        throw err;
+      });
+    permission.assert({
+      action: PamResourcePermissionActions.ReadAccounts,
+      subject: PamResourcePermissionSub.PamResource
+    });
 
     // Only member managers get the roster; read-only roles must not enumerate members.
-    const canManageMembers = mergedPermission.can(
-      PamResourcePermissionActions.ManageMembers,
-      PamResourcePermissionSub.PamResource
-    );
+    const canManageMembers = permission.can({
+      action: PamResourcePermissionActions.ManageMembers,
+      subject: PamResourcePermissionSub.PamResource
+    });
 
     return {
-      permissions: packRules(mergedPermission.rules),
-      memberships: canManageMembers ? allMemberships.map((membership) => membership.toJSON()) : []
+      permissions: packRules(permission.rules),
+      memberships: canManageMembers ? permission.memberships.map((membership) => membership.toJSON()) : []
     };
   };
 

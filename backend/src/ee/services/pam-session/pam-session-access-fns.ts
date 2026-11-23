@@ -1,17 +1,16 @@
 import { Knex } from "knex";
 
-import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { pamActorKey, PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamSessionStatus } from "../pam/pam-enums";
-import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
 
@@ -50,8 +49,7 @@ type TTerminatePamSessionsWithoutLaunchAccessDTO = {
   // The admin who made the access change; named as the terminating actor on the gateway signal. Absent when
   // SCIM or an IdP group sync made it.
   actorId?: string;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -86,8 +84,7 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
   projectId,
   actors,
   actorId,
-  membershipDAL,
-  membershipRoleDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
@@ -129,14 +126,13 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
   const accountById = new Map(accounts.map((account) => [account.id, account]));
 
   // Resolved per actor rather than per session, since an actor's grants cover every account.
-  const launchableByActor = await getResourceIdsWithActionsForActors(
-    membershipDAL,
-    membershipRoleDAL,
-    projectId,
-    { allOf: [PamResourcePermissionActions.LaunchSessions] },
-    [...new Map(sessions.map((s) => [pamActorKey(s.sessionActor), s.sessionActor])).values()],
-    tx
-  );
+  const launchableByActor = await pamPermissionService
+    .within(sealKnexTransaction(tx))
+    .getResourceIdsWithActionsForActors({
+      actors: [...new Map(sessions.map((s) => [pamActorKey(s.sessionActor), s.sessionActor])).values()],
+      projectId,
+      actions: { allOf: [PamResourcePermissionActions.LaunchSessions] }
+    });
 
   const revoked = sessions.filter((session) => {
     const account = accountById.get(session.accountId);

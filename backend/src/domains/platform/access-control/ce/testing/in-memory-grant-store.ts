@@ -10,6 +10,7 @@ import {
   TRoles,
   TUserGroupMembership
 } from "@app/db/schemas";
+import { InMemoryTransactionRunner } from "@app/domains/lib/transactions/testing/in-memory-transaction-runner";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 
@@ -19,7 +20,7 @@ import { Privilege } from "../models/privilege";
 import { ProjectMemberGrants } from "../models/project-member-grants";
 import { Role } from "../models/role";
 import { TRoleAssignmentRecord } from "../models/role-assignment";
-import { TGrantActor, TGrantScope, TGrantStore, TGroup, TRoleOwner } from "../services/dependencies";
+import { TActorMembership, TGrantActor, TGrantScope, TGrantStore, TGroup, TRoleOwner } from "../services/dependencies";
 
 export type TInMemoryGrantRows = {
   memberships: Map<string, TMemberships>;
@@ -170,6 +171,30 @@ export class InMemoryGrantStore implements TGrantStore {
       .map((membership) => Membership.restore({ ...membership, roles: this.assignmentsOf(membership.id) }));
   }
 
+  async findResourceMembershipsForActors({
+    actors,
+    projectId,
+    resourceTypes
+  }: {
+    actors: TGrantActor[];
+    projectId: string;
+    resourceTypes: string[];
+  }): Promise<TActorMembership[]> {
+    return actors.flatMap((actor) =>
+      this.actorMemberships(actor)
+        .filter(
+          (membership) =>
+            membership.scope === RESOURCE_SCOPE &&
+            membership.scopeProjectId === projectId &&
+            resourceTypes.includes(membership.scopeResourceType ?? "")
+        )
+        .map((membership) => ({
+          actor,
+          membership: Membership.restore({ ...membership, roles: this.assignmentsOf(membership.id) })
+        }))
+    );
+  }
+
   async findRolesBySlugs({ owner, slugs }: { owner: TRoleOwner; slugs: string[] }): Promise<Role[]> {
     return [...this.rows.roles.values()]
       .filter(
@@ -248,3 +273,7 @@ export class InMemoryGrantStore implements TGrantStore {
       .sort(byId);
   }
 }
+
+// Transactions over the store for the real service in tests: reads only, so there is nothing to roll back.
+export const inMemoryGrantTransactions = (grantStore: TGrantStore) =>
+  new InMemoryTransactionRunner({ snapshot: () => null, restore: () => undefined }, () => ({ grantStore }));

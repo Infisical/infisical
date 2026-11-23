@@ -1,13 +1,29 @@
 import { randomUUID } from "node:crypto";
 
 import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
-import { ActorGrants, TMembershipRecord } from "@app/domains/platform/access-control/ce/module";
-import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
+import {
+  ActorGrants,
+  Membership,
+  TActorGrantsService,
+  TActorMembership,
+  TGrantActor,
+  TMembershipRecord
+} from "@app/domains/platform/access-control/ce/module";
+import { ProjectResourcePermission, TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
 import { PamAccountRoles, PamFolderRoles } from "../models/pam-resource-roles";
 import { PamResourcePermissionSet } from "../models/pam-roles";
-import { TGetPamPermissionInput, TPamPermissionService } from "../services/pam-permission/service";
+import {
+  PamPermissionService,
+  TAccountAccessInput,
+  TGetPamPermissionInput,
+  TPamAccountRef,
+  TPamActionFilter,
+  TPamPermissionService,
+  TPamPermissionTransaction
+} from "../services/pam-permission/service";
 
 type TPamResource = { resourceType: ResourceType.PamFolder | ResourceType.PamAccount; resourceId: string };
 
@@ -70,6 +86,71 @@ export class FakePamPermissionService implements TPamPermissionService {
     if (isProjectAdmin) return ProjectResourcePermission.implicitAdmin({ roles });
     const last = resources[resources.length - 1];
     throw new PermissionDeniedError({ message: `You are not a member of this ${last?.resourceType ?? "resource"}.` });
+  }
+
+  // The reads over memberships answer from the same assigned roles, through the real service.
+  private readonly memberships = new PamPermissionService(
+    {} as TProjectResourcePermissionService,
+    {
+      listResourceMembershipsForActors: async ({ actors, projectId }: { actors: TGrantActor[]; projectId: string }) =>
+        this.membershipsOf(actors, projectId),
+      within: () => ({
+        listResourceMembershipsForActors: async ({ actors, projectId }: { actors: TGrantActor[]; projectId: string }) =>
+          this.membershipsOf(actors, projectId)
+      })
+    } as unknown as TActorGrantsService
+  );
+
+  async assertAccountAccess(input: TAccountAccessInput) {
+    return PamPermissionService.prototype.assertAccountAccess.call(this, input);
+  }
+
+  async canAccessAccount(input: TAccountAccessInput) {
+    return PamPermissionService.prototype.canAccessAccount.call(this, input);
+  }
+
+  getResourceIdsWithActions(input: { actor: TActorContext; projectId: string; actions: TPamActionFilter }) {
+    return this.memberships.getResourceIdsWithActions(input);
+  }
+
+  getResourceIdsWithActionsForActors(input: { actors: TGrantActor[]; projectId: string; actions: TPamActionFilter }) {
+    return this.memberships.getResourceIdsWithActionsForActors(input);
+  }
+
+  getLaunchAccessRemainingMs(input: { actor: TGrantActor; projectId: string; account: TPamAccountRef }) {
+    return this.memberships.getLaunchAccessRemainingMs(input);
+  }
+
+  getAccountPermissionRules(input: { actor: TActorContext; projectId: string; accounts: TPamAccountRef[] }) {
+    return this.memberships.getAccountPermissionRules(input);
+  }
+
+  within(): TPamPermissionTransaction {
+    return this.memberships.within({} as never);
+  }
+
+  private membershipsOf(actors: TGrantActor[], projectId: string): TActorMembership[] {
+    const now = new Date();
+    return actors.flatMap((actor) =>
+      [...this.roles.entries()].flatMap(([key, slugs]) => {
+        const [actorId, resourceType, resourceId] = key.split(":");
+        if (actorId !== actor.id) return [];
+        const membership = Membership.restore({
+          id: randomUUID(),
+          scope: RESOURCE_SCOPE,
+          scopeOrgId: "",
+          scopeProjectId: projectId,
+          scopeResourceType: resourceType,
+          scopeResourceId: resourceId,
+          actorUserId: actor.id,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+          roles: slugs.map((role) => ({ id: randomUUID(), role, isTemporary: false, createdAt: now, updatedAt: now }))
+        });
+        return [{ actor, membership }];
+      })
+    );
   }
 
   private assign(actorId: string, { resourceType, resourceId }: TPamResource, role: string): this {

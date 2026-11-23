@@ -12,6 +12,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionActions,
@@ -59,7 +60,6 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-g
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -150,7 +150,7 @@ type TScimServiceFactoryDep = {
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -202,7 +202,7 @@ export const scimServiceFactory = ({
   membershipGroupDAL,
   identityGroupMembershipDAL,
   membershipUserDAL,
-  membershipDAL,
+  pamPermissionService,
   membershipRoleDAL,
   additionalPrivilegeDAL,
   projectAccessRevokeService,
@@ -217,7 +217,7 @@ export const scimServiceFactory = ({
   eventEmitter,
   agentVaultPersonalValueDAL
 }: TScimServiceFactoryDep): TScimServiceFactory => {
-  const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+  const pamSessionDeps = { pamPermissionService, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({ actor, orgId, description, ttlDays }) => {
     const permission = await orgPermissionService.getOrgPermission({

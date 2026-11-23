@@ -6,6 +6,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
@@ -29,7 +30,6 @@ import { retryWithBackoff } from "@app/lib/retry";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -396,7 +396,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
   eventEmitter: TEventEmitter;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -421,7 +421,7 @@ export const githubOrgSyncServiceFactory = ({
   auditLogService,
   orgDAL,
   eventEmitter,
-  membershipDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
@@ -429,7 +429,7 @@ export const githubOrgSyncServiceFactory = ({
   identityGroupMembershipDAL,
   agentVaultPersonalValueDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
-  const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+  const pamSessionDeps = { pamPermissionService, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
   // Run after the users' group rows are deleted in `tx`, so the clear keeps only the values of users who still hold
   // the bundle another way.

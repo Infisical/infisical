@@ -14,8 +14,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { logger } from "@app/lib/logger";
 import { TActorInput } from "@app/lib/types";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { computeNextHeartbeatAt, isHeartbeatScheduled } from "../pam-account-heartbeat/pam-heartbeat-fns";
@@ -28,7 +26,7 @@ import { getCredentialAccountIds, resolveHostsViaDcDns, winrmRpcWithGateway } fr
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { generateRdsAuthToken } from "../pam-session/aws-iam/aws-iam-federation";
 import { PamAccountType, PamHeartbeatStatus, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
-import { checkAccountAccess, getResourceIdsWithActions, verifyProductMembership } from "../pam/pam-permission";
+import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -85,8 +83,6 @@ type TPamAccountRotationServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectPermissionService: TProjectPermissionService;
   pamPermissionService: TPamPermissionService;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -102,8 +98,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     pamAccountDAL,
     projectPermissionService,
     pamPermissionService,
-    membershipDAL,
-    membershipRoleDAL,
     kmsDataKeyService,
     keyStore,
     gatewayV2Service,
@@ -1060,13 +1054,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     const account = await loadAccount(accountId, projectId);
     await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.ViewCredentials] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.ViewCredentials] }
+    });
 
     const candidates = await pamAccountDAL.findRotationCandidates(
       projectId,

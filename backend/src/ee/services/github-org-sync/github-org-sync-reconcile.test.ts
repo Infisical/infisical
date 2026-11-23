@@ -133,7 +133,7 @@ const createService = () => {
     userAliasDAL: userAliasDAL as never,
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(undefined) } as never,
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) } as never,
-    membershipDAL: {} as never,
+    pamPermissionService: {} as never,
     pamAccountDAL: {} as never,
     pamSessionDAL: { find: vi.fn().mockResolvedValue([]), update: vi.fn() } as never,
     userDAL: {} as never,

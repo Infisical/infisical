@@ -363,6 +363,106 @@ export const describeGrantStoreContract = (name: string, setup: () => Promise<TG
       });
     });
 
+    describe("findResourceMembershipsForActors", () => {
+      test("should pair each actor with its memberships on the resource types, direct and through groups", async () => {
+        // Setup
+        const { store, seed, orgId, projectId, userId, user, newUser, newIdentity, newProject } = await arrange();
+        const otherUserId = await newUser();
+        const identityId = await newIdentity(orgId);
+        const outsiderId = await newUser();
+        const group = await seed.group({ orgId });
+        await seed.groupMember({ groupId: group.id, userId });
+        await seed.groupMember({ groupId: group.id, identityId });
+        const resource = { scope: RESOURCE_SCOPE, orgId, projectId } as const;
+        await seed.membership({ ...resource, resourceType: "pam-folder", resourceId: "f1", actor: { userId } });
+        await seed.membership({
+          ...resource,
+          resourceType: "pam-account",
+          resourceId: "a1",
+          actor: { userId: otherUserId },
+          isActive: false
+        });
+        await seed.membership({
+          ...resource,
+          resourceType: "pam-folder",
+          resourceId: "f2",
+          actor: { groupId: group.id }
+        });
+        await seed.membership({
+          ...resource,
+          resourceType: "pam-folder",
+          resourceId: "f3",
+          actor: { userId: outsiderId }
+        });
+        await seed.membership({ ...resource, resourceType: "signer", resourceId: "s1", actor: { userId } });
+        await seed.membership({
+          scope: RESOURCE_SCOPE,
+          orgId,
+          projectId: await newProject(orgId),
+          resourceType: "pam-folder",
+          resourceId: "f4",
+          actor: { userId }
+        });
+
+        // Action
+        const memberships = await store.findResourceMembershipsForActors({
+          actors: [user, { type: ActorType.USER, id: otherUserId }, { type: ActorType.IDENTITY, id: identityId }],
+          projectId,
+          resourceTypes: ["pam-folder", "pam-account"]
+        });
+
+        // Assert
+        expect(
+          memberships.map(({ actor, membership }) => `${actor.type}:${actor.id}:${membership.resourceId}`).sort()
+        ).toEqual(
+          [
+            `${ActorType.USER}:${userId}:f1`,
+            `${ActorType.USER}:${userId}:f2`,
+            `${ActorType.USER}:${otherUserId}:a1`,
+            `${ActorType.IDENTITY}:${identityId}:f2`
+          ].sort()
+        );
+      });
+
+      test("should return the roles of each membership", async () => {
+        // Setup
+        const { store, seed, orgId, projectId, userId, user } = await arrange();
+        await seed.membership({
+          scope: RESOURCE_SCOPE,
+          orgId,
+          projectId,
+          resourceType: "pam-folder",
+          resourceId: "f1",
+          actor: { userId },
+          roles: [{ role: "operator" }, { role: "auditor" }]
+        });
+
+        // Action
+        const [{ membership }] = await store.findResourceMembershipsForActors({
+          actors: [user],
+          projectId,
+          resourceTypes: ["pam-folder"]
+        });
+
+        // Assert
+        expect(membership.roles.map((role) => role.role).sort()).toEqual(["auditor", "operator"]);
+      });
+
+      test("should return nothing for no actors or no resource types", async () => {
+        // Setup
+        const { store, projectId, user } = await arrange();
+
+        // Action
+        const results = await Promise.all([
+          store.findResourceMembershipsForActors({ actors: [], projectId, resourceTypes: ["pam-folder"] }),
+          store.findResourceMembershipsForActors({ actors: [user], projectId, resourceTypes: [] })
+        ]);
+
+        // Assert
+        expect(results).toEqual([[], []]);
+      });
+    });
+
     describe("findGrantsFingerprint", () => {
       test("should keep the same fingerprint when nothing changed", async () => {
         // Setup

@@ -1,6 +1,7 @@
 import { TDbClient } from "@app/db";
-import { poolStoreConnection } from "@app/domains/lib/data-access";
+import { poolStoreConnection, singleStoreConnection } from "@app/domains/lib/data-access";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
+import { TransactionRunner } from "@app/domains/lib/transactions";
 
 import { ActorGrantsCache } from "./data-access/actor-grants-cache";
 import { GrantStore } from "./data-access/grant-store";
@@ -19,8 +20,8 @@ export * from "./models/role-assignment";
 export * from "./models/rule-identity";
 export * from "./models/rule-set";
 export * from "./models/temporary-access";
-export type { TActorGrantsService } from "./services/actor-grants/service";
-export type { TGrantActor, TGrantScope, TGroup, TRoleOwner } from "./services/dependencies";
+export type { TActorGrantsService, TActorGrantsTransaction } from "./services/actor-grants/service";
+export type { TActorMembership, TGrantActor, TGrantScope, TGroup, TRoleOwner } from "./services/dependencies";
 export type { TGroupService } from "./services/groups/service";
 export type { TRoleService } from "./services/roles/service";
 
@@ -42,7 +43,11 @@ export class AccessControlModule {
 
   constructor({ db, keyStore, cacheMarkerTtlSeconds }: TAccessControlDeps) {
     const grantStore = new GrantStore(poolStoreConnection(db));
-    this.actorGrantsService = new ActorGrantsService(grantStore, new ActorGrantsCache(keyStore, cacheMarkerTtlSeconds));
+    this.actorGrantsService = new ActorGrantsService(
+      grantStore,
+      new ActorGrantsCache(keyStore, cacheMarkerTtlSeconds),
+      new TransactionRunner(db, (trx) => ({ grantStore: new GrantStore(singleStoreConnection(trx)) }))
+    );
     this.roleService = new RoleService(grantStore);
     this.groupService = new GroupService(grantStore);
   }

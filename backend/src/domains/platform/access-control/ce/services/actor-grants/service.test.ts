@@ -6,7 +6,7 @@ import { ActorType } from "@app/lib/auth/actor-types";
 
 import { ActorGrantsCache } from "../../data-access/actor-grants-cache";
 import { InMemoryGrantSeeder } from "../../testing/in-memory-grant-seeder";
-import { InMemoryGrantStore } from "../../testing/in-memory-grant-store";
+import { inMemoryGrantTransactions, InMemoryGrantStore } from "../../testing/in-memory-grant-store";
 import { ActorGrantsService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
@@ -17,7 +17,8 @@ const arrange = (markerTtlSeconds = 0) => {
   const seed = new InMemoryGrantSeeder(store);
   const service = new ActorGrantsService(
     store,
-    new ActorGrantsCache(new InMemoryKeyStore(() => clock), markerTtlSeconds)
+    new ActorGrantsCache(new InMemoryKeyStore(() => clock), markerTtlSeconds),
+    inMemoryGrantTransactions(store)
   );
   const orgId = randomUUID();
   const projectId = randomUUID();

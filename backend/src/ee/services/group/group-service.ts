@@ -1,6 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TGroups } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionGroupActions,
@@ -88,8 +89,9 @@ type TGroupServiceFactoryDep = {
     | "findGroupOrgIds"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne" | "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById" | "lockActorsForOrgAccess">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -133,6 +135,7 @@ export const groupServiceFactory = ({
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
+  pamPermissionService,
   identityAccessTokenService,
   alertChannelRecipientDAL,
   eventEmitter,
@@ -142,7 +145,7 @@ export const groupServiceFactory = ({
   gatewayV2Service,
   agentVaultPersonalValueDAL
 }: TGroupServiceFactoryDep) => {
-  const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+  const pamSessionDeps = { pamPermissionService, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
   const createGroup = async ({ name, slug, role, actor }: TCreateGroupDTO) => {
     const permission = await orgPermissionService.getOrgPermission({ actor });
@@ -952,6 +955,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId],
       actorId: actor.principal.id,
       identityDAL,
+      membershipDAL,
       groupDAL,
       identityGroupMembershipDAL,
       userGroupMembershipDAL,

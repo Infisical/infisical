@@ -49,8 +49,7 @@ const createDeps = () => ({
   additionalPrivilegeDAL: { delete: vi.fn() },
   alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn() },
   eventEmitter: {},
-  membershipDAL: {},
-  membershipRoleDAL: {},
+  pamPermissionService: {},
   pamAccountDAL: {},
   pamSessionDAL: {},
   gatewayV2Service: {}

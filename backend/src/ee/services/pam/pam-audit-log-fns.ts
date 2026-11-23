@@ -1,29 +1,25 @@
 import { ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPamAuditLogScope } from "../audit-log/audit-log-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamProductRole } from "./pam-enums";
-import { getResourceIdsWithActions, verifyProductMembership } from "./pam-permission";
+import { verifyProductMembership } from "./pam-permission";
 
 type TPamAuditLogScopeResolverDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectPermissionService: TProjectPermissionService;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamPermissionService: Pick<TPamPermissionService, "getResourceIdsWithActions">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
 };
 
 export const pamAuditLogScopeResolverFactory = ({
   projectDAL,
   projectPermissionService,
-  membershipDAL,
-  membershipRoleDAL,
+  pamPermissionService,
   pamAccountDAL
 }: TPamAuditLogScopeResolverDeps) => {
   return async ({
@@ -38,13 +34,11 @@ export const pamAuditLogScopeResolverFactory = ({
 
     const productPermission = await verifyProductMembership(projectPermissionService, projectId, actor);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor,
       projectId,
-      { anyOf: [PamResourcePermissionActions.ViewAuditLogs] },
-      actor
-    );
+      actions: { anyOf: [PamResourcePermissionActions.ViewAuditLogs] }
+    });
 
     // A ViewAuditLogs grant on a folder also covers logs for the accounts within it
     let resolvedAccountIds = accountIds;

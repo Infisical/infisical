@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { FakePamPermissionService } from "@app/domains/pam/pam/ce/testing/fake-pam-permission-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
@@ -24,8 +25,6 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { membershipDALFactory } from "@app/services/membership/membership-dal";
-import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -297,8 +296,7 @@ describe("User folder access CRUD", () => {
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
         alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
         eventEmitter: { emit: async () => {} },
-        membershipDAL: membershipDALFactory(testDb),
-        membershipRoleDAL: membershipRoleDALFactory(testDb),
+        pamPermissionService: new FakePamPermissionService(),
         pamAccountDAL: pamAccountDALFactory(testDb),
         pamSessionDAL: pamSessionDALFactory(testDb),
         gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }

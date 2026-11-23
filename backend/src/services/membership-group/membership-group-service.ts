@@ -7,6 +7,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TActorContextService, TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
@@ -33,7 +34,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -80,7 +81,7 @@ type TMembershipGroupServiceFactoryDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   eventEmitter: TEventEmitter;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -111,7 +112,7 @@ export const membershipGroupServiceFactory = ({
   userGroupMembershipDAL,
   identityAccessTokenService,
   eventEmitter,
-  membershipDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
@@ -474,8 +475,7 @@ export const membershipGroupServiceFactory = ({
       userIds,
       identityIds,
       actorId,
-      membershipDAL,
-      membershipRoleDAL,
+      pamPermissionService,
       pamAccountDAL,
       pamSessionDAL,
       userDAL,

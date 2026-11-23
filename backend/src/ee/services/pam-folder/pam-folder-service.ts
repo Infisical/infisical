@@ -27,7 +27,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PAM_FOLDER_RESOURCE_TYPE } from "../pam-access-request/pam-access-request-events";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getResourceIdsWithActions, verifyProductMembership } from "../pam/pam-permission";
+import { verifyProductMembership } from "../pam/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,
@@ -120,13 +120,11 @@ export const pamFolderServiceFactory = ({
       ? { anyOf: [filterByAction] }
       : { anyOf: [PamResourcePermissionActions.ReadFolder, PamResourcePermissionActions.ReadAccounts] };
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds, accountIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      actionsToCheck,
-      ctx
-    );
+      actions: actionsToCheck
+    });
 
     // CreateAccounts is a folder-level action only - ignore account-level permissions for this filter
     const isFolderOnlyAction = filterByAction === PamResourcePermissionActions.CreateAccounts;
@@ -149,13 +147,11 @@ export const pamFolderServiceFactory = ({
     const [visibleFolders, allFolders, adminFolders] = await Promise.all([
       listVisible(),
       pamFolderDAL.findByProjectIdFiltered(projectId, [], { search, onlyAccessible }),
-      getResourceIdsWithActions(
-        membershipDAL,
-        membershipRoleDAL,
+      pamPermissionService.getResourceIdsWithActions({
+        actor: ctx,
         projectId,
-        { allOf: [PamResourcePermissionActions.ManageMembers] },
-        ctx
-      )
+        actions: { allOf: [PamResourcePermissionActions.ManageMembers] }
+      })
     ]);
     const visibleById = new Map(visibleFolders.map((folder) => [folder.id, folder]));
     const adminIds = new Set(adminFolders.folderIds);
@@ -391,13 +387,11 @@ export const pamFolderServiceFactory = ({
     }
 
     // Same test the folder list uses for callerAccess, so a temporary or group-held admin is refused too.
-    const { folderIds: adminFolderIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
+    const { folderIds: adminFolderIds } = await pamPermissionService.getResourceIdsWithActions({
+      actor: ctx,
       projectId,
-      { allOf: [PamResourcePermissionActions.ManageMembers] },
-      ctx
-    );
+      actions: { allOf: [PamResourcePermissionActions.ManageMembers] }
+    });
     if (adminFolderIds.includes(folderId)) {
       throw new ConflictError({ message: `You're already an admin of folder "${folder.name}"` });
     }

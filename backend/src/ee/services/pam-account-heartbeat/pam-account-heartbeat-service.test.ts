@@ -1,6 +1,11 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
-import { PamResourcePermissionActions, PamResourcePermissionSub } from "@app/domains/pam/pam/ce/module";
+import {
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
+  TAccountAccessInput
+} from "@app/domains/pam/pam/ce/module";
+import { FakePamPermissionService } from "@app/domains/pam/pam/ce/testing/fake-pam-permission-service";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -85,7 +90,12 @@ const buildService = (
       assertGatewayBindingInOrg
     },
     kmsDataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
-    pamPermissionService: { getPamPermission: vi.fn() },
+    pamPermissionService: {
+      getPamPermission: vi.fn(),
+      assertAccountAccess(input: TAccountAccessInput) {
+        return FakePamPermissionService.prototype.assertAccountAccess.call(this, input);
+      }
+    },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     rotationHandlers
   };

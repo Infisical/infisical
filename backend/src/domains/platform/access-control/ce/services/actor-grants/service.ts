@@ -1,11 +1,19 @@
 import { AccessScope } from "@app/db/schemas";
 import { TReadOptions } from "@app/domains/lib/data-access";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 
 import { ActorGrants } from "../../models/actor-grants";
 import { Membership } from "../../models/membership";
 import { Privilege } from "../../models/privilege";
 import { ProjectMemberGrants } from "../../models/project-member-grants";
-import { TActorGrantsCache, TGrantActor, TGrantScope, TGrantStore } from "../dependencies";
+import { TActorGrantsCache, TActorMembership, TGrantActor, TGrantScope, TGrantStore } from "../dependencies";
+
+type TResourceMembershipsForActorsInput = { actors: TGrantActor[]; projectId: string; resourceTypes: string[] };
+
+// What may read on a caller's transaction, so a check sees the membership writes it has not committed yet.
+export type TActorGrantsTransaction = {
+  listResourceMembershipsForActors(input: TResourceMembershipsForActorsInput): Promise<TActorMembership[]>;
+};
 
 export type TActorGrantsService = {
   // What the actor holds at the scope, read now. Empty when it has no membership there.
@@ -28,12 +36,17 @@ export type TActorGrantsService = {
     projectId: string;
     resourceType: string;
   }): Promise<Membership[]>;
+  // The memberships many actors hold on resources of these types in a project, directly or through their groups,
+  // active or not, each paired with the actor.
+  listResourceMembershipsForActors(input: TResourceMembershipsForActorsInput): Promise<TActorMembership[]>;
+  within(tx: TTransaction): TActorGrantsTransaction;
 };
 
 export class ActorGrantsService implements TActorGrantsService {
   constructor(
     private readonly grantStore: TGrantStore,
-    private readonly actorGrantsCache: TActorGrantsCache
+    private readonly actorGrantsCache: TActorGrantsCache,
+    private readonly transactionRunner: TTransactionRunner<{ grantStore: TGrantStore }>
   ) {}
 
   getActorGrants({ actor, scope }: { actor: TGrantActor; scope: TGrantScope }, options?: TReadOptions) {
@@ -75,5 +88,17 @@ export class ActorGrantsService implements TActorGrantsService {
 
   listResourceMemberships(input: { actor: TGrantActor; projectId: string; resourceType: string }) {
     return this.grantStore.findResourceMembershipsForActor(input);
+  }
+
+  listResourceMembershipsForActors(input: TResourceMembershipsForActorsInput) {
+    return this.grantStore.findResourceMembershipsForActors(input);
+  }
+
+  within(tx: TTransaction): TActorGrantsTransaction {
+    const runner = this.transactionRunner.within(tx);
+    return {
+      listResourceMembershipsForActors: (input) =>
+        runner.run(({ stores }) => stores.grantStore.findResourceMembershipsForActors(input))
+    };
   }
 }

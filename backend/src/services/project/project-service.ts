@@ -1,5 +1,3 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -47,7 +45,6 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermission,
-  ProjectPermissionSet,
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
@@ -2180,25 +2177,19 @@ export const projectServiceFactory = ({
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
     if (filteredProjectMembers.length === 0) {
-      const customRolesWithMemberCreate = await roleDAL.find({ projectId });
-      const customRoleSlugsCanCreate = customRolesWithMemberCreate
-        .filter((role) => {
-          try {
-            const permissions = (
-              typeof role.permissions === "string"
-                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-                : role.permissions
-            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
-
-            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
-              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
-            );
-            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
-          } catch {
-            return false;
-          }
+      const customRoles = await roleDAL.find({ projectId });
+      const customRolePermissions = await projectPermissionService
+        .getProjectPermissionByRoles({
+          projectId,
+          roles: customRoles.map((role) => role.slug),
+          ignoreUnresolvedRoles: true
         })
-        .map((role) => role.slug);
+        .catch(() => []);
+      const customRoleSlugsCanCreate = customRolePermissions
+        .filter(({ permission }) =>
+          permission.can({ action: ProjectPermissionMemberActions.Create, subject: ProjectPermissionSub.Member })
+        )
+        .map(({ role }) => role.slug);
 
       if (customRoleSlugsCanCreate.length > 0) {
         const usersWithCustomCreateMemberRole = projectMembers
