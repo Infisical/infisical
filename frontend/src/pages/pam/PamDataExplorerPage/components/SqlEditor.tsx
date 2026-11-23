@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { MySQL, PostgreSQL, sql } from "@codemirror/lang-sql";
+import { MSSQL, MySQL, PostgreSQL, sql, type SQLDialect } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, keymap, placeholder, type ViewUpdate } from "@codemirror/view";
@@ -74,6 +74,11 @@ const infisicalHighlight = HighlightStyle.define(
   { all: { color: "var(--color-foreground)" } }
 );
 
+const EDITOR_DIALECTS: Partial<Record<SqlDialect, SQLDialect>> = {
+  mysql: MySQL,
+  mssql: MSSQL
+};
+
 const MAX_SQL_BYTES = 50 * 1024; // 50KB — matches backend Zod limit
 
 const maxSqlLength = EditorState.transactionFilter.of((tr: Transaction) => {
@@ -134,7 +139,7 @@ export function SqlEditor({
           ]),
           maxSqlLength,
           placeholder("Start writing SQL..."),
-          sql({ dialect: sqlDialect === "mysql" ? MySQL : PostgreSQL }),
+          sql({ dialect: EDITOR_DIALECTS[sqlDialect] ?? PostgreSQL }),
           infisicalTheme,
           syntaxHighlighting(infisicalHighlight),
           EditorView.updateListener.of((update: ViewUpdate) => {

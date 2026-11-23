@@ -134,6 +134,7 @@ const PageContent = () => {
           account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.CockroachDB ||
           account.accountType === PamAccountType.MySQL ||
+          account.accountType === PamAccountType.MsSQL ||
           account.accountType === PamAccountType.Snowflake ||
           account.accountType === PamAccountType.ClickHouse
         ) {

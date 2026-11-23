@@ -27,6 +27,7 @@ type QueryResult = {
   transactionOpen: boolean;
   command: string;
   executionTimeMs: number;
+  messages?: string[];
 };
 
 type Props = {
@@ -71,10 +72,8 @@ export function QueryPanel({
       onTransactionStateChange(res.transactionOpen);
       setResult(res);
     } catch (err) {
-      // BE is the source of truth via transactionOpen on error responses, but
-      // when the pending promise rejects without a transactionOpen (e.g. WS
-      // drop, timeout) we fall back to assuming the txn is gone.
-      onTransactionStateChange(false);
+      // The server reports transactionOpen on errors; without it (WS drop, timeout) assume the transaction is gone
+      onTransactionStateChange((err as { transactionOpen?: boolean })?.transactionOpen ?? false);
       setError(err instanceof Error ? err.message : String(err));
       setResult(null);
     } finally {
@@ -179,6 +178,11 @@ export function QueryPanel({
           <div className="min-h-0 flex-1 overflow-hidden">
             <QueryResultsTable result={result} error={error} isRunning={isRunning} />
           </div>
+          {!isRunning && !error && result?.messages && result.messages.length > 0 && (
+            <div className="max-h-24 shrink-0 overflow-y-auto border-t border-border px-3 py-1.5 font-mono text-xs whitespace-pre-wrap text-muted">
+              {result.messages.join("\n")}
+            </div>
+          )}
           {!isRunning && result && !error && (
             <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-1">
               <span className="text-xs text-muted">

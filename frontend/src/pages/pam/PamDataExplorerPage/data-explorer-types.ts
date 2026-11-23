@@ -36,6 +36,7 @@ export type DataExplorerServerMessage =
       transactionOpen: boolean;
       command: string;
       executionTimeMs: number;
+      messages?: string[];
     }
   | {
       type: "error";

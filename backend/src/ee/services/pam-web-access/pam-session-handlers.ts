@@ -1,6 +1,7 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 
 import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-handler";
+import { handleMssqlSession } from "./mssql/pam-mssql-session-handler";
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handleCockroachdbSession, handlePostgresSession } from "./postgres/pam-postgres-session-handler";
@@ -31,6 +32,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.MySQL]: {
     gatewayAccountType: PamAccountType.MySQL,
     handler: handleMysqlSession
+  },
+  [PamAccountType.MsSQL]: {
+    gatewayAccountType: PamAccountType.MsSQL,
+    handler: handleMssqlSession
   },
   [PamAccountType.Redis]: {
     gatewayAccountType: PamAccountType.Redis,
