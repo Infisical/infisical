@@ -723,7 +723,10 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     Each event records one step of the renewal:
 
     - `renew-certificate` or `automated-renew-certificate` with the status `pending_approval`: the actor, or automatic renewal, requested the renewal
-    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request, `event.metadata.certificateId` and `event.metadata.certificateName` identify the certificate being renewed, and `event.metadata.commonName` is the common name the renewal requests
+    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request. On these events:
+      - `event.metadata.certificateId` is the certificate being renewed
+      - `event.metadata.certificateName`, when present, is that certificate's common name, or its first SAN if it has no common name
+      - `event.metadata.commonName`, when present, is the common name the renewal requests
     - `renew-certificate` with `platform` as the actor: after the approvers approved the request, Infisical renewed the certificate (the status is `issued`) or sent the renewal to an external CA (the status is `pending`)
     - A second `renew-certificate` with `platform` as the actor and the status `issued`, for an external CA such as ACME or Microsoft ADCS: the CA issued the renewed certificate, and `event.metadata.newCertificateId` is the new certificate
     - `certificate-issuance-failed` with `platform` as the actor and the operation `renew`: the approved renewal failed, and `event.metadata.error` holds the reason
