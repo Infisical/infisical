@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
-import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
