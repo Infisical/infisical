@@ -1,4 +1,9 @@
 import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -54,7 +59,7 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
     ]
   },
   [OauthScope.SecretsWrite]: {
-    description: "Create, change and delete secrets, and create folders",
+    description: "Create, change and delete secrets, create folders, and create projects",
     mcpOnly: true,
     rules: [
       {
@@ -66,7 +71,10 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
           ProjectPermissionSecretActions.Delete
         ]
       },
-      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Create] }
+      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Create] },
+      // Creating a project takes either of these, depending on how the user's org role was written.
+      { level: "org", subject: OrgPermissionSubjects.Workspace, actions: [OrgPermissionActions.Create] },
+      { level: "org", subject: OrgPermissionSubjects.Project, actions: [OrgPermissionProjectActions.Create] }
     ]
   },
   [OauthScope.SecretsRead]: {

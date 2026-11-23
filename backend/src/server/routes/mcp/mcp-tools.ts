@@ -18,7 +18,7 @@ import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { isValidFolderName } from "@app/lib/validator";
-import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
+import { BaseSecretNameSchema, GenericResourceNameSchema, SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getPermissionDenialDetails } from "@app/server/plugins/audit-log-permission-denied";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
@@ -233,6 +233,40 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         description,
         environments: environments.map((env) => ({ name: env.name, slug: env.slug }))
       }));
+    }
+  );
+
+  registerTool(
+    "create-project",
+    {
+      description: "Create a Secrets Management project with the default environments.",
+      inputSchema: z.object({
+        projectName: GenericResourceNameSchema,
+        description: z.string().trim().max(256).optional(),
+        slug: slugSchema({ max: 64, field: "Project slug" }).optional()
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false }
+    },
+    async ({ projectName, description, slug }) => {
+      const project = await server.services.project.createProject({
+        ...actor,
+        projectName,
+        projectDescription: description,
+        slug,
+        type: ProjectType.SecretManager
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.CREATE_PROJECT,
+          metadata: { name: project.name, slug: project.slug, type: ProjectType.SecretManager }
+        }
+      });
+
+      return { id: project.id, name: project.name, slug: project.slug };
     }
   );
 

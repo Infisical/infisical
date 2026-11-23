@@ -1,8 +1,19 @@
 import { createMongoAbility, subject } from "@casl/ability";
 
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 
-import { applyOauthScopeToProjectRules, isValidOauthScope, OauthScope, parseOauthScopeString } from "./oauth-scope";
+import {
+  applyOauthScopeToOrgRules,
+  applyOauthScopeToProjectRules,
+  isValidOauthScope,
+  OauthScope,
+  parseOauthScopeString
+} from "./oauth-scope";
 
 describe("parseOauthScopeString", () => {
   test("splits, trims, and de-duplicates recognized scopes", () => {
@@ -167,5 +178,25 @@ describe("applyOauthScopeToProjectRules", () => {
     const rules = [{ action: "manage", subject: "all" }];
     const scoped = applyOauthScopeToProjectRules(rules, []);
     expect(scoped).toEqual([]);
+  });
+});
+
+describe("applyOauthScopeToOrgRules", () => {
+  const orgRules = [
+    { action: [OrgPermissionActions.Create], subject: OrgPermissionSubjects.Workspace },
+    { action: [OrgPermissionProjectActions.Create], subject: OrgPermissionSubjects.Project },
+    { action: [OrgPermissionActions.Create], subject: OrgPermissionSubjects.Member }
+  ];
+
+  test("secrets:write lets the user create projects and nothing else in the org", () => {
+    const scoped = applyOauthScopeToOrgRules(orgRules, [OauthScope.SecretsWrite]);
+    expect(scoped.map((rule) => rule.subject)).toEqual([
+      OrgPermissionSubjects.Workspace,
+      OrgPermissionSubjects.Project
+    ]);
+  });
+
+  test("the read scopes grant nothing in the org", () => {
+    expect(applyOauthScopeToOrgRules(orgRules, [OauthScope.SecretsRead, OauthScope.SecretsDescribe])).toEqual([]);
   });
 });
