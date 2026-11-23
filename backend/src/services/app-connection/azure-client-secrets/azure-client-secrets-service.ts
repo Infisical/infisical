@@ -4,6 +4,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import {
   TAzureClientSecretsConnection,
@@ -20,9 +21,15 @@ type TGetAppConnectionFunc = (
 const listAzureRegisteredApps = async (
   appConnection: TAzureClientSecretsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, kmsDataKeyService);
+  const accessToken = await getAzureConnectionAccessToken(
+    appConnection.id,
+    appConnectionDAL,
+    kmsDataKeyService,
+    oidcIssuerService
+  );
 
   const graphEndpoint = `https://graph.microsoft.com/v1.0/applications`;
 
@@ -48,12 +55,13 @@ const listAzureRegisteredApps = async (
 export const azureClientSecretsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureClientSecrets, connectionId, actor);
 
-    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, kmsDataKeyService);
+    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, kmsDataKeyService, oidcIssuerService);
 
     return apps.map((app) => ({
       id: app.id,

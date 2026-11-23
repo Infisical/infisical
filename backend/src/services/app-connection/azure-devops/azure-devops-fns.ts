@@ -12,15 +12,18 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import {
   ExchangeCodeAzureResponse,
   TAzureDevOpsConnectionClientSecretCredentials,
   TAzureDevOpsConnectionConfig,
-  TAzureDevOpsConnectionCredentials
+  TAzureDevOpsConnectionCredentials,
+  TAzureDevOpsConnectionManagedIdentityCredentials
 } from "./azure-devops-types";
 
 export const getAzureDevopsConnectionListItem = () => {
@@ -32,7 +35,8 @@ export const getAzureDevopsConnectionListItem = () => {
     methods: Object.values(AzureDevOpsConnectionMethod) as [
       AzureDevOpsConnectionMethod.OAuth,
       AzureDevOpsConnectionMethod.AccessToken,
-      AzureDevOpsConnectionMethod.ClientSecret
+      AzureDevOpsConnectionMethod.ClientSecret,
+      AzureDevOpsConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
   };
@@ -41,7 +45,8 @@ export const getAzureDevopsConnectionListItem = () => {
 export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -165,13 +170,55 @@ export const getAzureDevopsConnection = async (
 
       return clientData.access_token;
 
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsDataKeyService,
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
+      })) as TAzureDevOpsConnectionManagedIdentityCredentials;
+
+      if (
+        managedIdentityCredentials.accessToken &&
+        managedIdentityCredentials.expiresAt &&
+        managedIdentityCredentials.expiresAt > currentTime + 300000
+      ) {
+        return managedIdentityCredentials.accessToken;
+      }
+
+      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+        {
+          appConnection,
+          tenantId: managedIdentityCredentials.tenantId,
+          clientId: managedIdentityCredentials.clientId,
+          scope: "https://app.vssps.visualstudio.com/.default"
+        },
+        oidcIssuerService
+      );
+
+      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
+        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
+        orgId: appConnection.orgId,
+        kmsDataKeyService,
+        projectId: appConnection.projectId
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedManagedIdentityCredentials
+      });
+
+      return managedIdentityToken.accessToken;
+
     default:
       throw new BadRequestError({ message: `Unsupported connection method` });
   }
 };
 
-export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDevOpsConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureDevOpsConnectionCredentials = async (
+  config: TAzureDevOpsConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET, SITE_URL } =
     getConfig();
@@ -374,6 +421,60 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
             message: "Failed to validate Azure DevOps client credentials"
           });
         }
+      }
+
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      const {
+        tenantId: managedIdentityTenantId,
+        clientId: managedIdentityClientId,
+        orgName: managedIdentityOrgName
+      } = inputCredentials as { tenantId: string; clientId: string; orgName: string };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) {
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName
+        };
+      }
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId,
+            scope: "https://app.vssps.visualstudio.com/.default"
+          },
+          oidcIssuerService
+        );
+
+        await request.get(
+          `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(managedIdentityOrgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${managedIdentityToken.accessToken}`
+            }
+          }
+        );
+
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName,
+          ...managedIdentityToken
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to authenticate with Azure DevOps using the managed identity: ${
+              (e?.response?.data as { error_description?: string })?.error_description || e.message
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

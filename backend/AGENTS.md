@@ -964,9 +964,11 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
   returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
   regain whatever the provider still trusts. So the connection is created first, without a token exchange,
-  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
-  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
-  caches the provider's access token in the credentials like the secret-based methods do.
+  and reconnecting verifies it once the customer has added the federated credential. Every Entra-backed Azure
+  connection has a `managed-identity` method built on `getAzureManagedIdentityAccessToken`
+  (`app-connection/shared/azure/`), which takes the resource's scope; callers cache the provider's access token
+  in the credentials like the secret-based methods do. A new one also adds its method to
+  `addAppConnectionFederatedCredential`.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.

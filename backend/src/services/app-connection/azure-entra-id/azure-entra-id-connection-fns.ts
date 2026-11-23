@@ -8,20 +8,24 @@ import {
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { AzureEntraIdConnectionMethod } from "./azure-entra-id-connection-enums";
 import {
   ExchangeCodeAzureResponse,
   TAzureEntraIdConnectionClientSecretCredentials,
-  TAzureEntraIdConnectionConfig
+  TAzureEntraIdConnectionConfig,
+  TAzureEntraIdConnectionManagedIdentityCredentials
 } from "./azure-entra-id-connection-types";
 
 export const getAzureEntraIdConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -80,6 +84,38 @@ export const getAzureEntraIdConnectionAccessToken = async (
 
       return clientData.access_token;
     }
+    case AzureEntraIdConnectionMethod.ManagedIdentity: {
+      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsDataKeyService,
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
+      })) as TAzureEntraIdConnectionManagedIdentityCredentials;
+
+      const { accessToken, expiresAt, clientId, tenantId } = managedIdentityCredentials;
+
+      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+        return accessToken;
+      }
+
+      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+        { appConnection, tenantId, clientId, scope: "https://graph.microsoft.com/.default" },
+        oidcIssuerService
+      );
+
+      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
+        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
+        orgId: appConnection.orgId,
+        kmsDataKeyService,
+        projectId: appConnection.projectId
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedManagedIdentityCredentials
+      });
+
+      return managedIdentityToken.accessToken;
+    }
     default:
       throw new InternalServerError({
         message: `Unhandled Azure Entra ID connection method: ${appConnection.method as AzureEntraIdConnectionMethod}`
@@ -91,7 +127,10 @@ export const getAzureEntraIdConnectionListItem = () => {
   return {
     name: "Azure Entra ID" as const,
     app: AppConnection.AzureEntraId as const,
-    methods: Object.values(AzureEntraIdConnectionMethod) as [AzureEntraIdConnectionMethod.ClientSecret]
+    methods: Object.values(AzureEntraIdConnectionMethod) as [
+      AzureEntraIdConnectionMethod.ClientSecret,
+      AzureEntraIdConnectionMethod.ManagedIdentity
+    ]
   };
 };
 
@@ -117,8 +156,11 @@ export const graphApiRequest = async <T>(
   }
 };
 
-export const validateAzureEntraIdConnectionCredentials = async (config: TAzureEntraIdConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureEntraIdConnectionCredentials = async (
+  config: TAzureEntraIdConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   switch (method) {
     case AzureEntraIdConnectionMethod.ClientSecret: {
@@ -160,6 +202,36 @@ export const validateAzureEntraIdConnectionCredentials = async (config: TAzureEn
             message: "Failed to get access token"
           });
         }
+      }
+    }
+    case AzureEntraIdConnectionMethod.ManagedIdentity: {
+      const { tenantId, clientId } = inputCredentials as { tenantId: string; clientId: string };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId, clientId };
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId,
+            clientId,
+            scope: "https://graph.microsoft.com/.default"
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId, clientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
     }
     default:

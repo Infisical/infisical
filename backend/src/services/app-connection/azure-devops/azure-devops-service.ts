@@ -9,6 +9,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import { getAzureDevopsConnection } from "./azure-devops-fns";
@@ -53,6 +54,7 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
         Accept: "application/json"
       };
     case AzureDevOpsConnectionMethod.ClientSecret:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
       return {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -65,9 +67,15 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
 const listAzureDevOpsProjects = async (
   appConnection: TAzureDevOpsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ): Promise<TAzureDevOpsProject[]> => {
-  const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, kmsDataKeyService);
+  const accessToken = await getAzureDevopsConnection(
+    appConnection.id,
+    appConnectionDAL,
+    kmsDataKeyService,
+    oidcIssuerService
+  );
 
   // Both OAuth and access Token methods use organization name from credentials
   const credentials = appConnection.credentials as { orgName: string };
@@ -104,12 +112,18 @@ const listAzureDevOpsProjects = async (
 export const azureDevOpsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureDevOps, connectionId, actor);
 
-    const projects = await listAzureDevOpsProjects(appConnection, appConnectionDAL, kmsDataKeyService);
+    const projects = await listAzureDevOpsProjects(
+      appConnection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     return projects.map((project) => ({
       id: project.id,

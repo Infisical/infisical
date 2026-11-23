@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureAppConfigurationConnectionMethod } from "./azure-app-configuration-connection-enums";
 
 export const AzureAppConfigurationConnectionOAuthInputCredentialsSchema = z.object({
@@ -55,6 +56,18 @@ export const AzureAppConfigurationConnectionClientSecretOutputCredentialsSchema 
   expiresAt: z.number()
 });
 
+export const AzureAppConfigurationConnectionManagedIdentityInputCredentialsSchema = z.object({
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientId: z.string().uuid().trim().min(1, "Client ID required")
+});
+
+export const AzureAppConfigurationConnectionManagedIdentityOutputCredentialsSchema = z.object({
+  tenantId: z.string(),
+  clientId: z.string(),
+  accessToken: z.string().optional(),
+  expiresAt: z.number().optional()
+});
+
 export const ValidateAzureAppConfigurationConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -69,6 +82,14 @@ export const ValidateAzureAppConfigurationConnectionCredentialsSchema = z.discri
       .literal(AzureAppConfigurationConnectionMethod.ClientSecret)
       .describe(AppConnections.CREATE(AppConnection.AzureAppConfiguration).method),
     credentials: AzureAppConfigurationConnectionClientSecretInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureAppConfiguration).credentials
+    )
+  }),
+  z.object({
+    method: z
+      .literal(AzureAppConfigurationConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureAppConfiguration).method),
+    credentials: AzureAppConfigurationConnectionManagedIdentityInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureAppConfiguration).credentials
     )
   })
@@ -93,7 +114,8 @@ export const UpdateAzureAppConfigurationConnectionSchema = z
     credentials: z
       .union([
         AzureAppConfigurationConnectionOAuthInputCredentialsSchema,
-        AzureAppConfigurationConnectionClientSecretInputCredentialsSchema
+        AzureAppConfigurationConnectionClientSecretInputCredentialsSchema,
+        AzureAppConfigurationConnectionManagedIdentityInputCredentialsSchema
       ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureAppConfiguration).credentials)
@@ -118,6 +140,10 @@ export const AzureAppConfigurationConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureAppConfigurationConnectionMethod.ClientSecret),
       credentials: AzureAppConfigurationConnectionClientSecretOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureAppConfigurationConnectionMethod.ManagedIdentity),
+      credentials: AzureAppConfigurationConnectionManagedIdentityOutputCredentialsSchema
     })
   ])
 );
@@ -137,6 +163,17 @@ export const SanitizedAzureAppConfigurationConnectionSchema = z.discriminatedUni
     })
   }).describe(
     JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureAppConfiguration]} (Client Secret)` })
+  ),
+  BaseAzureAppConfigurationConnectionSchema.extend({
+    method: z.literal(AzureAppConfigurationConnectionMethod.ManagedIdentity),
+    credentials: AzureAppConfigurationConnectionManagedIdentityOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true
+    }).extend({
+      federatedCredential: AzureConnectionFederatedCredentialSchema
+    })
+  }).describe(
+    JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureAppConfiguration]} (Managed Identity)` })
   )
 ]);
 

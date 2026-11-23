@@ -12,9 +12,11 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { generateClientAssertion } from "../shared/azure/generate-client-assertion";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 import {
@@ -22,7 +24,8 @@ import {
   TAzureClientSecretsConnectionCertificateCredentials,
   TAzureClientSecretsConnectionClientSecretCredentials,
   TAzureClientSecretsConnectionConfig,
-  TAzureClientSecretsConnectionCredentials
+  TAzureClientSecretsConnectionCredentials,
+  TAzureClientSecretsConnectionManagedIdentityCredentials
 } from "./azure-client-secrets-connection-types";
 
 export const getAzureClientSecretsConnectionListItem = () => {
@@ -34,7 +37,8 @@ export const getAzureClientSecretsConnectionListItem = () => {
     methods: Object.values(AzureClientSecretsConnectionMethod) as [
       AzureClientSecretsConnectionMethod.OAuth,
       AzureClientSecretsConnectionMethod.ClientSecret,
-      AzureClientSecretsConnectionMethod.Certificate
+      AzureClientSecretsConnectionMethod.Certificate,
+      AzureClientSecretsConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID
   };
@@ -43,7 +47,8 @@ export const getAzureClientSecretsConnectionListItem = () => {
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appCfg = getConfig();
   const appConnection = await appConnectionDAL.findById(connectionId);
@@ -188,6 +193,37 @@ export const getAzureConnectionAccessToken = async (
       return clientData.access_token;
     }
 
+    case AzureClientSecretsConnectionMethod.ManagedIdentity: {
+      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        projectId: appConnection.projectId,
+        kmsDataKeyService,
+        encryptedCredentials: appConnection.encryptedCredentials
+      })) as TAzureClientSecretsConnectionManagedIdentityCredentials;
+      const { accessToken, expiresAt, clientId, tenantId } = managedIdentityCredentials;
+      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+        return accessToken;
+      }
+
+      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+        { appConnection, tenantId, clientId, scope: "https://graph.microsoft.com/.default" },
+        oidcIssuerService
+      );
+
+      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
+        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
+        orgId: appConnection.orgId,
+        projectId: appConnection.projectId,
+        kmsDataKeyService
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedManagedIdentityCredentials
+      });
+
+      return managedIdentityToken.accessToken;
+    }
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure connection method: ${appConnection.method as AzureClientSecretsConnectionMethod}`
@@ -195,8 +231,11 @@ export const getAzureConnectionAccessToken = async (
   }
 };
 
-export const validateAzureClientSecretsConnectionCredentials = async (config: TAzureClientSecretsConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureClientSecretsConnectionCredentials = async (
+  config: TAzureClientSecretsConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const {
     INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
@@ -354,6 +393,37 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
             message: "Failed to get access token"
           });
         }
+      }
+    }
+
+    case AzureClientSecretsConnectionMethod.ManagedIdentity: {
+      const { tenantId, clientId } = inputCredentials;
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId, clientId };
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId,
+            clientId,
+            scope: "https://graph.microsoft.com/.default"
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId, clientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
     }
 

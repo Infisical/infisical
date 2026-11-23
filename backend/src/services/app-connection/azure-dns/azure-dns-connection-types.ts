@@ -22,6 +22,8 @@ export type TAzureDnsConnectionConfig = DiscriminativePick<
   "method" | "app" | "credentials"
 > & {
   orgId: string;
+  projectId?: string | null;
+  connection?: { id: string; name: string };
 };
 
 export type TAzureDnsZone = {

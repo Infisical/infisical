@@ -1554,9 +1554,15 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      oidcIssuerService
     ),
-    azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    azureDevOps: azureDevOpsConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    ),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
     hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
@@ -1579,7 +1585,7 @@ export const appConnectionServiceFactory = ({
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
-    azureDns: azureDnsConnectionService(connectAppConnectionById),
+    azureDns: azureDnsConnectionService(connectAppConnectionById, oidcIssuerService),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
@@ -1604,7 +1610,12 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    azureEntraId: azureEntraIdConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    ),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
