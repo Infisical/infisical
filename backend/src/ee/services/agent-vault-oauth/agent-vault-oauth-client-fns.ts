@@ -96,7 +96,8 @@ export const registerOauthClient = async ({
   registrationEndpoint,
   redirectUri,
   grantTypesSupported,
-  tokenEndpointAuthMethodsSupported
+  tokenEndpointAuthMethodsSupported,
+  clientName = AGENT_VAULT_OAUTH_CLIENT_NAME
 }: {
   http: TOauthHttpClient;
   serverUrl: string;
@@ -104,13 +105,15 @@ export const registerOauthClient = async ({
   redirectUri: string;
   grantTypesSupported: string[] | null;
   tokenEndpointAuthMethodsSupported: string[] | null;
+  // What the provider's consent screen shows the user signing in.
+  clientName?: string;
 }): Promise<{ client: TOauthClient; compatibility: AgentVaultOauthCompatibility[] }> => {
   const refreshSupported = !grantTypesSupported || grantTypesSupported.includes(OauthGrantType.RefreshToken);
   const publicClientSupported =
     !tokenEndpointAuthMethodsSupported ||
     tokenEndpointAuthMethodsSupported.includes(AgentVaultOauthClientAuthMethod.None);
   const minimal = {
-    client_name: AGENT_VAULT_OAUTH_CLIENT_NAME,
+    client_name: clientName,
     redirect_uris: [redirectUri],
     token_endpoint_auth_method: publicClientSupported
       ? AgentVaultOauthClientAuthMethod.None

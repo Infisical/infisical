@@ -393,13 +393,22 @@ export const scanGitRepositoryAndGetFindings = async (
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
-  return findingsData.map((finding) => ({
-    details: toFindingDetails(finding),
-    fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
-    severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID,
-    secretValue: finding.Secret
-  }));
+  return findingsData.map((match) => {
+    // A rule that matches only a file's path comes back without a fingerprint, so every such match in a repository
+    // would share one place. This builds the one the scanner gives other matches.
+    const finding = {
+      ...match,
+      Fingerprint: match.Fingerprint || `${match.Commit}:${match.File}:${match.RuleID}:${match.StartLine}`
+    };
+
+    return {
+      details: toFindingDetails(finding),
+      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID,
+      secretValue: finding.Secret
+    };
+  });
 };
 
 export const replaceNonChangesWithNewlines = (patch: string) => {

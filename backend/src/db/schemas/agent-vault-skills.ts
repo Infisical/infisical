@@ -13,7 +13,10 @@ export const AgentVaultSkillsSchema = z.object({
   name: z.string(),
   description: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  sessionId: z.string().uuid().nullable().optional(),
+  position: z.number().nullable().optional(),
+  filesDeletedAt: z.date().nullable().optional()
 });
 
 export type TAgentVaultSkills = z.infer<typeof AgentVaultSkillsSchema>;

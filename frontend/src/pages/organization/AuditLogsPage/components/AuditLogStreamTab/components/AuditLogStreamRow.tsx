@@ -18,7 +18,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
-import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionAuditLogsActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
@@ -89,7 +89,10 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end">
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
@@ -100,7 +103,10 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
                   </DropdownMenuItem>
                 )}
               </OrgPermissionCan>
-              <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Settings}>
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     variant="danger"

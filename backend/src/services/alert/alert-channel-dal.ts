@@ -59,9 +59,31 @@ export const alertChannelDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countAlertsByWorkflowIntegrationId = async (workflowIntegrationId: string, tx?: Knex): Promise<number> => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AlertChannel)
+        .join(
+          TableName.AlertChannelMembership,
+          `${TableName.AlertChannel}.id`,
+          `${TableName.AlertChannelMembership}.channelId`
+        )
+        .join(TableName.Alert, `${TableName.AlertChannelMembership}.alertId`, `${TableName.Alert}.id`)
+        .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.AlertChannel}.workflowIntegrationId`, workflowIntegrationId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .countDistinct(`${TableName.Alert}.id as count`)
+        .first();
+
+      return Number((result as { count?: string | number } | undefined)?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAlertsByWorkflowIntegrationId" });
+    }
+  };
+
   return {
     ...alertChannelOrm,
     findByAlertId,
-    findByAlertIds
+    findByAlertIds,
+    countAlertsByWorkflowIntegrationId
   };
 };

@@ -26,6 +26,7 @@ export enum PkiApplicationResourceActions {
   Delete = "delete",
   Create = "create",
   List = "list",
+  RequestRevocation = "request-revocation",
   ReadPrivateKey = "read-private-key",
   Import = "import",
   SyncCertificates = "sync-certificates",
@@ -77,6 +78,12 @@ export type TPkiApplicationMemberDetails = {
   authMethod?: string | null;
   slug?: string | null;
 };
+
+export enum PkiApplicationMemberRole {
+  Admin = "admin",
+  Operator = "operator",
+  Auditor = "auditor"
+}
 
 export type TPkiApplicationMember = {
   membershipId: string;

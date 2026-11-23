@@ -9,13 +9,13 @@ In this guide, you'll:
 - Install the Infisical Kubernetes Operator and set up a Machine Identity with Kubernetes Auth.
 - Connect the operator to Infisical with the `InfisicalConnection` and `InfisicalAuth` CRDs.
 - Pull a secret from Infisical into your cluster with the `InfisicalStaticSecret` CRD and consume it from a demo app.
-- Push a Kubernetes Secret back to Infisical with the `InfisicalPushSecret` CRD.
+- Push a Kubernetes Secret back to Infisical with the `InfisicalStaticSecretPush` CRD.
 - Generate a dynamic database credential in your cluster with the `InfisicalDynamicSecret` CRD.
 
 <Note>
-  This guide's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where.
+  This guide's pull and push paths use the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) or [`InfisicalStaticSecretPush`](/integrations/platforms/kubernetes/infisical-static-secret-push-crd) says which secrets sync where.
 
-  Pushing and dynamic secrets have no `v1beta1` equivalents, so those sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
+  Dynamic secrets have no `v1beta1` equivalent yet, so that section uses the `v1alpha1` [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRD, which carries its own inline `authentication` block. See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
 </Note>
 
 ## Prerequisites
@@ -51,7 +51,7 @@ Before you begin, make sure you have:
     helm install infisical-operator infisical-helm-charts/secrets-operator
     ```
 
-    The Helm chart installs every operator CRD, including the `v1beta1` `InfisicalConnection`, `InfisicalAuth`, and `InfisicalStaticSecret` kinds this guide uses for the pull path.
+    The Helm chart installs every operator CRD, including the `v1beta1` `InfisicalConnection`, `InfisicalAuth`, `InfisicalStaticSecret`, and `InfisicalStaticSecretPush` kinds this guide uses for the pull and push paths.
 
     Confirm the operator pod is running:
 
@@ -78,8 +78,8 @@ Before you begin, make sure you have:
     2. Select **Access Control** from the left navigation pane.
     3. Open the **Machine Identities** tab and create an identity. Give it a name and assign it the **Member** organization role. You grant it project-level access in the next step.
     4. Copy the **Identity ID** and record it. It lands in two different places later:
-        - **Pull path**: you store it in a Kubernetes Secret named `kubernetes-credentials`. The `InfisicalAuth` CRD reads it from there through `identityIdRef`. It is never pasted inline for pull.
-        - **Push and dynamic**: you paste it inline as `identityId` in each CRD's `authentication.kubernetesAuth` block.
+        - **Pull and push**: you store it in a Kubernetes Secret named `kubernetes-credentials`. The `InfisicalAuth` CRD reads it from there through `identityIdRef`. It's never pasted inline for pull or push.
+        - **Dynamic**: you paste it inline as `identityId` in the `InfisicalDynamicSecret` CRD's `authentication.kubernetesAuth` block.
     5. Select the identity, then add a **Kubernetes Auth** method with these values:
         - **Allowed Service Account Names**: `infisical-service-account`
         - **Allowed Namespaces**: `default`
@@ -112,7 +112,7 @@ Before you begin, make sure you have:
   <Step title="Create service accounts, RBAC, and tokens">
     The Kubernetes Auth method needs two Kubernetes service accounts:
 
-    - `infisical-token-reviewer`: its JWT lets the **Infisical backend** call the Kubernetes TokenReview API to validate tokens presented by the operator. It serves both the pull path and the push/dynamic path.
+    - `infisical-token-reviewer`: its JWT lets the **Infisical backend** call the Kubernetes TokenReview API to validate tokens presented by the operator. It serves the pull, push, and dynamic paths.
     - `infisical-service-account`: the identity the operator presents when it authenticates to Infisical.
 
     Create the token-reviewer service account:
@@ -192,11 +192,11 @@ Before you begin, make sure you have:
     You should see `serviceaccount/infisical-service-account patched`.
 
     <Note>
-      The `infisical-service-account-token` Secret and the `kubectl patch` serve only the `v1alpha1` push and dynamic CRDs, which read the service account's stored token. The `v1beta1` pull path does not use them: `InfisicalAuth` mints a short-lived token (10 minutes) through the Kubernetes TokenRequest API on every login.
+      The `infisical-service-account-token` Secret and the `kubectl patch` serve only the `v1alpha1` dynamic CRD, which reads the service account's stored token. The `v1beta1` pull and push paths don't use them: `InfisicalAuth` mints a short-lived token (10 minutes) through the Kubernetes TokenRequest API on every login.
     </Note>
 
     <Note>
-      The service-account names and namespaces above must match the **Allowed Service Account Names** (`infisical-service-account`) and **Allowed Namespaces** (`default`) you set on the Kubernetes Auth method. They must also match the `serviceAccountRef` in the `InfisicalAuth` CRD and in the push and dynamic CRDs' inline `kubernetesAuth` blocks. Do not rename them.
+      The service-account names and namespaces above must match the **Allowed Service Account Names** (`infisical-service-account`) and **Allowed Namespaces** (`default`) you set on the Kubernetes Auth method. They must also match the `serviceAccountRef` in the `InfisicalAuth` CRD and in the dynamic CRD's inline `kubernetesAuth` block. Do not rename them.
     </Note>
   </Step>
 
@@ -252,7 +252,7 @@ Before you begin, make sure you have:
 
 ## Connect the operator to Infisical
 
-The `v1beta1` pull path splits connection and authentication into two reusable objects. The [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) records where your Infisical instance is. The [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) records how the operator authenticates to it. Any number of `InfisicalStaticSecret` resources can then share the same pair.
+The `v1beta1` pull and push paths split connection and authentication into two reusable objects. The [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) records where your Infisical instance is. The [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) records how the operator authenticates to it. Any number of `InfisicalStaticSecret` and `InfisicalStaticSecretPush` resources can then share the same pair.
 
 <Steps titleSize="h3">
   <Step title="Create the InfisicalConnection">
@@ -269,7 +269,7 @@ The `v1beta1` pull path splits connection and authentication into two reusable o
     ```
 
     <Note>
-      If you self-host Infisical, set `spec.address` to your instance's base URL instead, for example `https://infisical.example.com`. Provide the base URL only, without a trailing `/api`. The `InfisicalStaticSecret` pull path uses `spec.address` exactly as written and appends the API path itself, so an address that ends in `/api` produces failing requests to `/api/api/...`. For the same reason, always set `spec.address` explicitly. The operator's `INFISICAL_HOST_API` fallback, which the Helm chart sets to `https://app.infisical.com/api`, ends in `/api` and does not work for the pull path.
+      If you self-host Infisical, set `spec.address` to your instance's base URL instead, for example `https://infisical.example.com`. Provide the base URL only, without a trailing `/api`. The pull and push paths use `spec.address` exactly as written and append the API path themselves, so an address that ends in `/api` produces failing requests to `/api/api/...`. For the same reason, always set `spec.address` explicitly. The operator's `INFISICAL_HOST_API` fallback, which the Helm chart sets to `https://app.infisical.com/api`, ends in `/api` and doesn't work for the pull and push paths.
     </Note>
 
     Apply the resource:
@@ -508,11 +508,9 @@ The [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-stati
   </Step>
 </Steps>
 
-## Push a secret with the InfisicalPushSecret CRD
+## Push a secret with the InfisicalStaticSecretPush CRD
 
-The [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) CRD does the reverse: it reads a Kubernetes Secret and writes its values into Infisical.
-
-This `v1alpha1` CRD doesn't use the `InfisicalConnection` or `InfisicalAuth` objects; it carries its own inline `authentication` block with the Identity ID pasted as a plain `identityId` string.
+The [`InfisicalStaticSecretPush`](/integrations/platforms/kubernetes/infisical-static-secret-push-crd) CRD does the reverse: it reads Kubernetes Secrets (`sources`) and writes their values into Infisical (`targets`). It authenticates through the same `InfisicalAuth` as the pull path.
 
 <Steps titleSize="h3">
   <Step title="Create the source Kubernetes Secret">
@@ -537,50 +535,41 @@ This `v1alpha1` CRD doesn't use the `InfisicalConnection` or `InfisicalAuth` obj
     ```
   </Step>
 
-  <Step title="Create the InfisicalPushSecret resource">
-    Save the manifest below as `push-secret.yaml`. Replace `your-identity-id` and `your-project-slug`, and set `environmentSlug` to the environment you want to push into (the slug you confirmed earlier).
+  <Step title="Create the InfisicalStaticSecretPush resource">
+    Save the manifest below as `push-secret.yaml`. Replace `your-project-slug`, and set `environmentSlug` to the environment you want to push into (the slug you confirmed earlier).
 
     ```yaml
-    apiVersion: secrets.infisical.com/v1alpha1
-    kind: InfisicalPushSecret
+    apiVersion: secrets.infisical.com/v1beta1
+    kind: InfisicalStaticSecretPush
     metadata:
       name: push-secret-demo
       namespace: default
     spec:
-      updatePolicy: Replace
-      deletionPolicy: Delete
-      destination:
-        projectSlug: your-project-slug
-        environmentSlug: prod
-        secretsPath: "/"
-      authentication:
-        kubernetesAuth:
-          identityId: your-identity-id
-          serviceAccountRef:
-            name: infisical-service-account
+      infisicalAuthRef:
+        name: infisical-auth
+        namespace: default
+      syncOptions:
+        updatePolicy: Replace
+        deletionPolicy: Delete
+      sources:
+        secrets:
+          - name: push-secret-demo
             namespace: default
-      push:
-        secret:
-          secretName: push-secret-demo
-          secretNamespace: default
+      targets:
+        - projectSlug: your-project-slug
+          environmentSlug: prod
+          secretPath: "/"
     ```
 
     Note the differences from the pull flow you built with `InfisicalStaticSecret`:
 
-    - **Authentication is inline.** The CRD carries its own `authentication.kubernetesAuth` block, with the Identity ID as a plain `identityId` string and the same `serviceAccountRef`. The shared connection and auth objects are not in play here.
-    - Scope lives under `spec.destination` (`projectSlug`, `environmentSlug`, `secretsPath`) instead of `spec.sources`, and the environment field is `environmentSlug`.
-    - The direction reverses: `push.secret` names the source Kubernetes Secret to read from, and there are no `targets`.
-    - `updatePolicy: Replace` makes the operator overwrite values that already exist in Infisical. Without it, pre-existing Infisical secrets are left untouched.
+    - The direction reverses: `sources.secrets` names the Kubernetes Secrets to read from, and each entry in `targets` names the Infisical project, environment, and path to push to.
+    - Each target sets exactly one of `projectSlug` or `projectId`. Setting both, or neither, makes the reconcile fail: `kubectl apply` still succeeds, and the error surfaces in the resource's status conditions.
+    - `syncOptions.refreshInterval` is optional. Without it, the operator pushes when you apply the resource and again whenever it or the source Secret changes.
+    - `updatePolicy: Replace` makes the operator overwrite values that already exist in Infisical. Set it to `None` to leave pre-existing Infisical secrets untouched.
     - `deletionPolicy: Delete` makes the operator remove the pushed secrets from Infisical when you delete this CRD. This matters during cleanup.
-    - `push.secret.secretName` must match the source secret you created (`push-secret-demo`).
-
-    <Note>
-      In `spec.destination`, set exactly one of `projectSlug` or `projectId`. Setting both, or neither, makes the reconcile fail: `kubectl apply` still succeeds, and the error surfaces in the resource's status conditions.
-    </Note>
-
-    <Note>
-      If you self-host Infisical, point this CRD at your instance with the optional `spec.hostAPI` field, or set the `hostAPI` Helm value for the operator. When neither is set, the operator's default is `https://app.infisical.com/api`.
-    </Note>
+    - `Replace` and `Delete` are the defaults, so you can leave both out. They're set here to show what the cleanup step relies on.
+    - `sources.secrets[].name` must match the source secret you created (`push-secret-demo`).
 
     Apply the resource:
 
@@ -590,7 +579,20 @@ This `v1alpha1` CRD doesn't use the `InfisicalConnection` or `InfisicalAuth` obj
   </Step>
 
   <Step title="Verify the push reached Infisical">
-    Open your project in Infisical, select the environment you pushed to, and confirm `API_KEY` now appears. The operator pushes when you apply the resource and again whenever it changes; it doesn't re-sync on a timer unless you set `spec.resyncInterval` (for example `1m`). If `API_KEY` is missing, check the resource's status conditions and the operator logs as described in [Troubleshooting](#troubleshooting).
+    Confirm the resource synced. If the `SYNCED` column is empty at first, wait a few seconds for the first reconcile and run it again:
+
+    ```bash
+    kubectl get infisicalstaticsecretpush push-secret-demo -n default
+    ```
+
+    You should see `True` in the `SYNCED` column:
+
+    ```text
+    NAME               AGE   AUTH METHOD   SYNCED   ERROR
+    push-secret-demo   15s   kubernetes    True     false
+    ```
+
+    Then open your project in Infisical, select the environment you pushed to, and confirm `API_KEY` now appears. If `SYNCED` isn't `True` or `API_KEY` is missing, see [Troubleshooting](#troubleshooting).
 
     ![Infisical project secrets dashboard showing the pushed API_KEY secret](/images/push-secret.png)
   </Step>
@@ -598,7 +600,7 @@ This `v1alpha1` CRD doesn't use the `InfisicalConnection` or `InfisicalAuth` obj
 
 ## Generate a dynamic secret with the InfisicalDynamicSecret CRD
 
-The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRD tells the operator to create and lease a [Dynamic Secret](/documentation/platform/dynamic-secrets/overview), then write the lease credentials into a Kubernetes Secret that any workload can consume. Like the push CRD, it's a `v1alpha1` resource with its own inline `authentication` block; the shared connection and auth objects aren't used here.
+The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRD tells the operator to create and lease a [Dynamic Secret](/documentation/platform/dynamic-secrets/overview), then write the lease credentials into a Kubernetes Secret that any workload can consume. Unlike the pull and push CRDs, it's a `v1alpha1` resource with its own inline `authentication` block; the shared connection and auth objects aren't used here.
 
 <Steps titleSize="h3">
   <Step title="Create the dynamic secret in Infisical">
@@ -652,10 +654,11 @@ The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dyna
 
     Note for this CRD:
 
-    - The authentication block is the same inline shape as the push CRD, and the environment field is `environmentSlug`. Here `projectSlug`/`environmentSlug`/`secretsPath` live under `spec.dynamicSecret`.
+    - Authentication is inline: `authentication.kubernetesAuth` holds the Identity ID as a plain `identityId` string and the same `serviceAccountRef` as the `InfisicalAuth`.
+    - `projectSlug`, `environmentSlug`, and `secretsPath` live under `spec.dynamicSecret`.
     - `leaseRevocationPolicy: Revoke` revokes the lease when you delete the resource, which matters for cleanup. Omit it to leave leases in place.
     - `leaseTTL` is optional. When omitted, the operator sends no TTL and the lease uses the dynamic secret's own default TTL configured in Infisical.
-    - Like the push CRD, it accepts `spec.hostAPI` for self-hosted instances.
+    - It doesn't use the `InfisicalConnection`. If you self-host Infisical, point this CRD at your instance with the optional `spec.hostAPI` field, or set the `hostAPI` Helm value for the operator. When neither is set, the operator's default is `https://app.infisical.com/api`.
 
     Apply the resource:
 
@@ -684,14 +687,14 @@ Confirm the shared objects are healthy and all three workflows succeeded:
 - **Connection**: `kubectl get infisicalconnection infisical-connection -n default` shows `True` in the `READY` column.
 - **Auth**: `kubectl get infisicalauth infisical-auth -n default` shows `True` in the `READY` column.
 - **Pull**: `kubectl exec -it $(kubectl get pod -l app=nginx -n default -o jsonpath='{.items[0].metadata.name}') -n default -- env | grep SMTP` prints `SMTP_HOST=smtp@gmail.com`.
-- **Push**: `API_KEY` appears in your Infisical project's environment.
+- **Push**: `kubectl get infisicalstaticsecretpush push-secret-demo -n default` shows `True` in the `SYNCED` column, and `API_KEY` appears in your Infisical project's environment.
 - **Dynamic**: `kubectl get secret dynamic-secret-test -n default -o jsonpath='{.data}' | jq` shows lease credentials.
 
 If all five checks pass, you have synced secrets in both directions and generated a leased database credential from Kubernetes.
 
 ## Troubleshooting
 
-If a sync doesn't produce the expected result, inspect the resources' status conditions and the operator logs before changing anything. For the pull path, diagnose in dependency order: connection first, then auth, then the static secret. Each resource only becomes ready after the one it references.
+If a sync doesn't produce the expected result, inspect the resources' status conditions and the operator logs before changing anything. For the pull and push paths, diagnose in dependency order: connection first, then auth, then the static secret or push. Each resource only becomes ready after the one it references.
 
 <AccordionGroup>
   <Accordion title="The InfisicalConnection is not Ready">
@@ -743,13 +746,23 @@ If a sync doesn't produce the expected result, inspect the resources' status con
     ```
   </Accordion>
   <Accordion title="The push to Infisical did not appear">
-    Describe the push resource:
+    Describe the resource and read its conditions:
 
     ```bash
-    kubectl describe infisicalpushsecret push-secret-demo -n default
+    kubectl describe infisicalstaticsecretpush push-secret-demo -n default
     ```
 
-    Check the `secrets.infisical.com/Authenticated` and `secrets.infisical.com/Reconcile` conditions. Read the `Reconcile` condition's Reason and Message rather than its `True`/`False` status: on failure this condition reports `Status=True` with `Reason=Error`, the opposite of the usual Kubernetes convention, and the message names the error. Confirm `push.secret.secretName` matches an existing Kubernetes Secret and that `destination.projectSlug` and `destination.environmentSlug` are correct. If you self-host, confirm `spec.hostAPI` (or the Helm `hostAPI` value) points at your instance; otherwise the operator targets `https://app.infisical.com/api`.
+    The operator sets `secrets.infisical.com/LastReconcileStatus`: `True` with reason `OK` on success, or `False` with a "Reconciliation failed" message naming the error. Common causes:
+
+    - The referenced `InfisicalAuth` isn't ready. The push can't sync until the auth's `IsReady` condition is `True`; work up the chain.
+    - `sources.secrets` names a Kubernetes Secret that doesn't exist.
+    - A wrong `projectSlug`, `environmentSlug`, or `secretPath` in `targets`, or the Machine Identity lacks access to the project.
+
+    Then check the operator logs:
+
+    ```bash
+    kubectl logs -l control-plane=controller-manager -n default
+    ```
   </Accordion>
   <Accordion title="The dynamic secret lease was not created">
     Describe the dynamic-secret resource:
@@ -769,12 +782,12 @@ Remove the resources this guide created so you don't leave an active database le
 1. Delete the sync resources. Deleting the `InfisicalDynamicSecret` with `leaseRevocationPolicy: Revoke` revokes the active database lease.
 
     <Warning>
-      Because the push CRD was created with `deletionPolicy: Delete`, deleting it also removes the pushed `API_KEY` secret from your Infisical project. If you pushed into a shared environment, make sure that is what you want.
+      Because the `InfisicalStaticSecretPush` was created with `deletionPolicy: Delete`, deleting it also removes the pushed `API_KEY` secret from your Infisical project. If you pushed into a shared environment, make sure that is what you want.
     </Warning>
 
     ```bash
     kubectl delete infisicaldynamicsecret dynamic-secret-demo -n default
-    kubectl delete infisicalpushsecret push-secret-demo -n default
+    kubectl delete infisicalstaticsecretpush push-secret-demo -n default
     kubectl delete infisicalstaticsecret infisical-static-secret-demo -n default
     ```
 
@@ -815,7 +828,8 @@ Remove the resources this guide created so you don't leave an active database le
 - [InfisicalConnection CRD reference](/integrations/platforms/kubernetes/infisical-connection-crd)
 - [InfisicalAuth CRD reference](/integrations/platforms/kubernetes/infisical-auth-crd)
 - [InfisicalStaticSecret CRD reference](/integrations/platforms/kubernetes/infisical-static-secret-crd)
-- [InfisicalPushSecret CRD reference](/integrations/platforms/kubernetes/infisical-push-secret-crd)
+- [InfisicalStaticSecretPush CRD reference](/integrations/platforms/kubernetes/infisical-static-secret-push-crd)
 - [InfisicalDynamicSecret CRD reference](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd)
 - [InfisicalSecret CRD reference (v1alpha1 pull)](/integrations/platforms/kubernetes/infisical-secret-crd)
+- [InfisicalPushSecret CRD reference (v1alpha1 push)](/integrations/platforms/kubernetes/infisical-push-secret-crd)
 - [Kubernetes Auth for Machine Identities](/documentation/platform/identities/kubernetes-auth)

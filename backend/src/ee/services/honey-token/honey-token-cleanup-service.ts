@@ -1,13 +1,15 @@
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenManagedBy, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HONEY_TOKEN_RESOURCE_TYPE } from "./honey-token-events";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
 import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
 import { getHoneyTokenManagedBy } from "./honey-token-types";
@@ -18,9 +20,10 @@ const REVOKE_BATCH_SIZE = 5;
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
     THoneyTokenDALFactory,
-    "findUnrevokedByProjectIdForCleanup" | "findUnrevokedByOrgTreeForCleanup" | "update"
+    "findUnrevokedByProjectIdForCleanup" | "findUnrevokedByOrgTreeForCleanup" | "update" | "transaction"
   >;
   honeyTokenConfigDAL: Pick<THoneyTokenConfigDALFactory, "findOne">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
 } & THoneyTokenProviderHooksDep;
 
 export type THoneyTokenCleanupRow = Awaited<ReturnType<THoneyTokenDALFactory["findFolderlessForCleanup"]>>[number];
@@ -33,11 +36,12 @@ export type THoneyTokenCleanupServiceFactory = ReturnType<typeof honeyTokenClean
 export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
-  kmsService,
-  appConnectionDAL
+  kmsDataKeyService,
+  appConnectionDAL,
+  alertService
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({
-    kmsService,
+    kmsDataKeyService,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL
@@ -46,7 +50,7 @@ export const honeyTokenCleanupServiceFactory = ({
   const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
     const config = await honeyTokenConfigDAL.findOne({ orgId, type });
     const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
-    return rawConnection ? decryptAppConnection(rawConnection, kmsService) : null;
+    return rawConnection ? decryptAppConnection(rawConnection, kmsDataKeyService) : null;
   };
 
   // Resolves each org's honey token connection once, however many of its tokens are revoked. The credentials
@@ -79,7 +83,7 @@ export const honeyTokenCleanupServiceFactory = ({
         target = { managedBy: HoneyTokenManagedBy.Organization, appConnection };
       }
 
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: honeyToken.projectId
       });
@@ -114,10 +118,17 @@ export const honeyTokenCleanupServiceFactory = ({
     }
 
     if (revokedIds.length) {
-      await honeyTokenDAL.update(
-        { $in: { id: revokedIds } },
-        { status: HoneyTokenStatus.Revoked, revokedAt: new Date() }
-      );
+      await honeyTokenDAL.transaction(async (tx) => {
+        await honeyTokenDAL.update(
+          { $in: { id: revokedIds } },
+          { status: HoneyTokenStatus.Revoked, revokedAt: new Date() },
+          tx
+        );
+        await alertService.deleteAlertsForDeletedResources(
+          { resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceIds: revokedIds },
+          tx
+        );
+      });
     }
   };
 

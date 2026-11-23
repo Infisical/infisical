@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -16,10 +17,10 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -29,6 +30,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
+  assertKeySchemaProducesValidNames,
   enterpriseSyncCheck,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
@@ -54,11 +56,11 @@ import {
 import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
 import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
+import { SECRET_SYNC_RESOURCE_TYPE } from "./secret-sync-events";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
   SECRET_SYNC_CONNECTION_MAP,
@@ -73,7 +75,7 @@ type TSecretSyncServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne" | "find" | "findByFolderId" | "findByFolderIds">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -90,6 +92,7 @@ type TSecretSyncServiceFactoryDep = {
     "queueSecretSyncSyncSecretsById" | "queueSecretSyncImportSecretsById" | "queueSecretSyncRemoveSecretsById"
   >;
   licenseService: TLicenseService;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -104,13 +107,14 @@ export const secretSyncServiceFactory = ({
   secretV2BridgeDAL,
   appConnectionDAL,
   appConnectionService,
-  kmsService,
+  kmsDataKeyService,
   permissionService,
   orgDAL,
   projectBotService,
   secretSyncQueue,
   keyStore,
-  licenseService
+  licenseService,
+  alertService
 }: TSecretSyncServiceFactoryDep) => {
   const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
     sync.connectionId ?? sync.connection?.id;
@@ -136,7 +140,7 @@ export const secretSyncServiceFactory = ({
     });
   };
 
-  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A sync including subfolders reads the whole
@@ -207,7 +211,7 @@ export const secretSyncServiceFactory = ({
     sourceFolderId: string;
     keySchema?: string;
   }) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -225,7 +229,7 @@ export const secretSyncServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService
     });
 
     try {
@@ -250,7 +254,7 @@ export const secretSyncServiceFactory = ({
             projectFolderGrantDAL,
             actorOrgId,
             orgDAL,
-            kmsService
+            kmsDataKeyService
           }
         }
       );
@@ -541,7 +545,7 @@ export const secretSyncServiceFactory = ({
           const credentials = await decryptAppConnectionCredentials({
             orgId: conn.orgId,
             encryptedCredentials: conn.encryptedCredentials,
-            kmsService,
+            kmsDataKeyService,
             projectId: conn.projectId
           });
           return { ...conn, credentials } as TAppConnection;
@@ -663,6 +667,12 @@ export const secretSyncServiceFactory = ({
 
     const requestedSyncOptions = params.syncOptions;
     const includeAllSubFolders = Boolean(params.includeAllSubFolders ?? requestedSyncOptions?.includeAllSubFolders);
+
+    assertKeySchemaProducesValidNames({
+      destination: params.destination,
+      keySchema: requestedSyncOptions?.keySchema,
+      environment
+    });
 
     if (
       includeAllSubFolders &&
@@ -924,6 +934,16 @@ export const secretSyncServiceFactory = ({
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
     const { keySchema, initialSyncBehavior } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+
+    // Checked only when the key schema or source environment changes, so a sync saved before a destination gained a
+    // name rule can still be edited
+    if (
+      keySchema !== (secretSync.syncOptions as TSecretSync["syncOptions"] | undefined)?.keySchema ||
+      updatedEnvironment !== secretSync.environment?.slug
+    ) {
+      assertKeySchemaProducesValidNames({ destination, keySchema, environment: updatedEnvironment ?? "" });
+    }
+
     // The deprecated value comes from the request rather than updatedSyncOptions: a destination
     // that merges options (Azure Entra ID SCIM) would otherwise hand back the stored mirror as if
     // the caller had sent it.
@@ -1068,7 +1088,13 @@ export const secretSyncServiceFactory = ({
       return updatedSecretSync;
     }
 
-    await secretSyncDAL.deleteById(syncId);
+    await secretSyncDAL.transaction(async (tx) => {
+      await alertService.deleteAlertsForDeletedResources(
+        { resourceType: SECRET_SYNC_RESOURCE_TYPE, resourceIds: [syncId] },
+        tx
+      );
+      await secretSyncDAL.deleteById(syncId, tx);
+    });
 
     return secretSync as TSecretSync;
   };

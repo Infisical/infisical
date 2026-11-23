@@ -415,7 +415,6 @@ const SettingsTab = ({
     heartbeat?: { intervalSeconds?: number | null };
   };
   const requiresRecording = accountTypeRequiresRecording(template.type);
-  const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
 
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
@@ -822,246 +821,240 @@ const SettingsTab = ({
         </CardContent>
       </Card>
 
-      {showGatewaySettings && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">System Settings</CardTitle>
-            <CardDescription>
-              System-level defaults for accounts using this template.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            <Field>
-              <FieldLabel>Gateway</FieldLabel>
-              <FieldContent>
-                <GatewayPicker
-                  value={{ gatewayId, gatewayPoolId }}
-                  onChange={(value) => {
-                    setValue("gatewayId", value.gatewayId, { shouldDirty: true });
-                    setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
-                  }}
-                  noGatewayLabel="No Gateway"
-                  noGatewayIcon={Ban}
-                />
-                <FieldDescription>
-                  Used to reach accounts unless overridden on the account.
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">System Settings</CardTitle>
+          <CardDescription>System-level defaults for accounts using this template.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Field>
+            <FieldLabel>Gateway</FieldLabel>
+            <FieldContent>
+              <GatewayPicker
+                value={{ gatewayId, gatewayPoolId }}
+                onChange={(value) => {
+                  setValue("gatewayId", value.gatewayId, { shouldDirty: true });
+                  setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
+                }}
+                noGatewayLabel="No Gateway"
+                noGatewayIcon={Ban}
+              />
+              <FieldDescription>
+                Used to reach accounts unless overridden on the account.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        </CardContent>
+      </Card>
 
-      {showGatewaySettings && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">Session Recording</CardTitle>
-            <CardDescription>
-              Where session recordings for accounts using this template are stored.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            <Controller
-              name="recordingStorageBackend"
-              control={control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Storage backend</FieldLabel>
-                  <FieldContent>
-                    <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value="postgres">Internal Database</SelectItem>
-                        <SelectItem value="aws-s3">S3 Bucket</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Session Recording</CardTitle>
+          <CardDescription>
+            Where session recordings for accounts using this template are stored.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Controller
+            name="recordingStorageBackend"
+            control={control}
+            render={({ field }) => (
+              <Field>
+                <FieldLabel>Storage backend</FieldLabel>
+                <FieldContent>
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="postgres">Internal Database</SelectItem>
+                      <SelectItem value="aws-s3">S3 Bucket</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+          />
 
-            {requiresRecording && storageBackend === "postgres" && (
+          {requiresRecording && storageBackend === "postgres" && (
+            <Alert variant="warning">
+              <AlertTriangleIcon />
+              <AlertTitle>Accounts cannot be launched</AlertTitle>
+              <AlertDescription>
+                {typeName} accounts require an external recording storage backend. Accounts using
+                this template can still be created, but sessions can&apos;t be launched until
+                external storage is configured.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {storageBackend === "aws-s3" && (
+            <>
               <Alert variant="warning">
                 <AlertTriangleIcon />
-                <AlertTitle>Accounts cannot be launched</AlertTitle>
+                <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
                 <AlertDescription>
-                  {typeName} accounts require an external recording storage backend. Accounts using
-                  this template can still be created, but sessions can&apos;t be launched until
-                  external storage is configured.
+                  Changing the bucket on a template with existing recordings makes those recordings
+                  inaccessible unless you manually migrate each object. Keep the same bucket and key
+                  prefix when rotating credentials.
                 </AlertDescription>
               </Alert>
-            )}
 
-            {storageBackend === "aws-s3" && (
-              <>
-                <Alert variant="warning">
-                  <AlertTriangleIcon />
-                  <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
-                  <AlertDescription>
-                    Changing the bucket on a template with existing recordings makes those
-                    recordings inaccessible unless you manually migrate each object. Keep the same
-                    bucket and key prefix when rotating credentials.
-                  </AlertDescription>
-                </Alert>
-
-                <Controller
-                  name="recordingConnectionId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field>
-                      <FieldLabel>Connection</FieldLabel>
-                      <FieldContent>
-                        <Select
-                          value={field.value ?? ""}
-                          onValueChange={(v) => field.onChange(v || null)}
-                        >
-                          <SelectTrigger className="w-full" isError={!!fieldState.error}>
-                            <SelectValue placeholder="Select a connection" />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {recordingConnections.length === 0 && (
-                              <div className="px-2 py-3 text-center text-xs text-muted">
-                                No AWS or S3-Compatible Storage connections found. Create one from
-                                the App Connections page.
-                              </div>
-                            )}
-                            {recordingConnections.map((conn) => {
-                              const connection = appConnections.find(({ id }) => id === conn.id);
-                              const providerName = connection
-                                ? getAppConnectionProviderName(connection)
-                                : APP_CONNECTION_MAP[conn.app].name;
-                              return (
-                                <SelectItem key={conn.id} value={conn.id}>
-                                  {conn.name} <span className="text-muted">({providerName})</span>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        {fieldState.error ? (
-                          <FieldError>{fieldState.error.message}</FieldError>
-                        ) : (
-                          <FieldDescription>
-                            The AWS or S3-Compatible Storage connection used to access the bucket.
-                          </FieldDescription>
-                        )}
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="s3Bucket"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field>
-                      <FieldLabel>S3 Bucket</FieldLabel>
-                      <FieldContent>
-                        <Input
-                          {...field}
-                          placeholder="my-recordings-bucket"
-                          isError={!!fieldState.error}
-                        />
-                        <FieldError>{fieldState.error?.message}</FieldError>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                {recordingConnectionApp !== AppConnection.S3Compatible && (
-                  <Controller
-                    name="s3Region"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel>Region</FieldLabel>
-                        <FieldContent>
-                          <Input {...field} placeholder="us-east-1" />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                )}
-
-                <Controller
-                  name="s3KeyPrefix"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Key prefix (optional)</FieldLabel>
-                      <FieldContent>
-                        <Input {...field} placeholder="pam-recordings/" />
-                        <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </>
-            )}
-
-            {supportsSessionLogMasking && (
-              <div className="flex flex-col gap-4 border-t border-border pt-6">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Session Log Masking</p>
-                  <p className="text-xs text-muted">
-                    What gets masked in recordings for accounts using this template.
-                  </p>
-                </div>
-
-                <Controller
-                  control={control}
-                  name="settings.sessionLogMaskingBuiltInDetection"
-                  render={({ field }) => (
-                    <Field orientation="horizontal">
-                      <FieldContent>
-                        <FieldTitle>
-                          Built-in Detection
-                          <Badge variant="success">Recommended</Badge>
-                        </FieldTitle>
+              <Controller
+                name="recordingConnectionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>Connection</FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={(v) => field.onChange(v || null)}
+                      >
+                        <SelectTrigger className="w-full" isError={!!fieldState.error}>
+                          <SelectValue placeholder="Select a connection" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {recordingConnections.length === 0 && (
+                            <div className="px-2 py-3 text-center text-xs text-muted">
+                              No AWS or S3-Compatible Storage connections found. Create one from the
+                              App Connections page.
+                            </div>
+                          )}
+                          {recordingConnections.map((conn) => {
+                            const connection = appConnections.find(({ id }) => id === conn.id);
+                            const providerName = connection
+                              ? getAppConnectionProviderName(connection)
+                              : APP_CONNECTION_MAP[conn.app].name;
+                            return (
+                              <SelectItem key={conn.id} value={conn.id}>
+                                {conn.name} <span className="text-muted">({providerName})</span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {fieldState.error ? (
+                        <FieldError>{fieldState.error.message}</FieldError>
+                      ) : (
                         <FieldDescription>
-                          API keys and tokens from known providers, and the account&apos;s own
-                          credentials, are masked automatically.
+                          The AWS or S3-Compatible Storage connection used to access the bucket.
                         </FieldDescription>
-                      </FieldContent>
-                      <Toggle
-                        variant="pam"
-                        checked={field.value ?? false}
-                        onCheckedChange={field.onChange}
-                      />
-                    </Field>
-                  )}
-                />
+                      )}
+                    </FieldContent>
+                  </Field>
+                )}
+              />
 
+              <Controller
+                name="s3Bucket"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>S3 Bucket</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        placeholder="my-recordings-bucket"
+                        isError={!!fieldState.error}
+                      />
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              {recordingConnectionApp !== AppConnection.S3Compatible && (
                 <Controller
+                  name="s3Region"
                   control={control}
-                  name="settings.sessionLogMaskingPatterns"
-                  render={({ field, fieldState }) => (
+                  render={({ field }) => (
                     <Field>
-                      <FieldLabel>Custom patterns</FieldLabel>
+                      <FieldLabel>Region</FieldLabel>
                       <FieldContent>
-                        <TextArea
-                          rows={5}
-                          placeholder={"acme_[a-z0-9]{24}\ninternal-vault://\\S+"}
-                          value={field.value ?? ""}
-                          isError={!!fieldState.error}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(val.trim() ? val : "");
-                          }}
-                        />
-                        <FieldDescription>One regex per line.</FieldDescription>
-                        <FieldError>{fieldState.error?.message}</FieldError>
+                        <Input {...field} placeholder="us-east-1" />
                       </FieldContent>
                     </Field>
                   )}
                 />
+              )}
+
+              <Controller
+                name="s3KeyPrefix"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Key prefix (optional)</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="pam-recordings/" />
+                      <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
+          )}
+
+          {supportsSessionLogMasking && (
+            <div className="flex flex-col gap-4 border-t border-border pt-6">
+              <div>
+                <p className="text-sm font-medium text-foreground">Session Log Masking</p>
+                <p className="text-xs text-muted">
+                  What gets masked in recordings for accounts using this template.
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              <Controller
+                control={control}
+                name="settings.sessionLogMaskingBuiltInDetection"
+                render={({ field }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>
+                        Built-in Detection
+                        <Badge variant="success">Recommended</Badge>
+                      </FieldTitle>
+                      <FieldDescription>
+                        API keys and tokens from known providers, and the account&apos;s own
+                        credentials, are masked automatically.
+                      </FieldDescription>
+                    </FieldContent>
+                    <Toggle
+                      variant="pam"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="settings.sessionLogMaskingPatterns"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>Custom patterns</FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        rows={5}
+                        placeholder={"acme_[a-z0-9]{24}\ninternal-vault://\\S+"}
+                        value={field.value ?? ""}
+                        isError={!!fieldState.error}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val.trim() ? val : "");
+                        }}
+                      />
+                      <FieldDescription>One regex per line.</FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div aria-hidden className="h-8 shrink-0" />
       {isDirty && <SheetSaveBar isPending={updateTemplate.isPending} onDiscard={() => reset()} />}

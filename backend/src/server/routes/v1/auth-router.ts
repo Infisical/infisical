@@ -126,7 +126,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       if (!isGraceHit) {
         // Normal rotation: issue new refresh token and invalidate the old one
         const rotation = await server.services.authToken.rotateRefreshToken(decodedToken, tokenVersion);
-        newRefreshToken = rotation.newRefreshToken;
+        if (!rotation.isGraceHit) newRefreshToken = rotation.newRefreshToken;
       }
 
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;

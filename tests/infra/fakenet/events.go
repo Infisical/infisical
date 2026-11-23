@@ -29,8 +29,32 @@ type EventRecord struct {
 // another caller.
 type Emitter struct {
 	log  *eventLog
+	txt  *txtRecords
 	host string
 	key  string
+}
+
+// SetTXT answers DNS TXT queries for name with values, for a fake that is a DNS
+// provider: a record created through its API is then served the way the provider's
+// nameservers would serve it. No values removes the name.
+func (e Emitter) SetTXT(name string, values ...string) {
+	if e.txt == nil {
+		return
+	}
+	if len(values) == 0 {
+		e.txt.remove(name)
+		return
+	}
+	e.txt.set(name, values)
+}
+
+// LookupTXT returns the TXT values fakenet's DNS answers for name, for a fake that
+// checks a record another fake published (a CA validating DNS-01).
+func (e Emitter) LookupTXT(name string) []string {
+	if e.txt == nil {
+		return nil
+	}
+	return e.txt.lookup(name)
 }
 
 func (e Emitter) Publish(ev Event) {

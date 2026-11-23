@@ -1,23 +1,21 @@
-import RE2 from "re2";
-
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
+import { CliCapability, cliSupports, isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserServiceFactory } from "@app/services/user/user-service";
 
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
@@ -55,19 +53,23 @@ import {
 } from "../pam/pam-permission";
 import {
   buildPamPolicyRules,
+  outputMaskingGatewayOptions,
   PamPolicyType,
   policyAppliesTo,
   resolveAccessControls,
+  resolveOutputMasking,
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
+  AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials,
-  generateRdsAuthToken
+  generateRdsAuthToken,
+  toAwsRoleSessionName
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -102,16 +104,21 @@ type TPamSessionServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
+  >;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -121,6 +128,12 @@ type TPamSessionServiceFactoryDep = {
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
 
+// A gateway that predates AWS IAM brokering leaves it out of the account types it advertises
+const gatewayServesAwsIam = (gateway: { capabilities?: unknown }) =>
+  (gateway.capabilities as { supported_account_types?: string[] } | null)?.supported_account_types?.includes(
+    PamAccountType.AwsIam
+  ) === true;
+
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
@@ -128,18 +141,23 @@ export const pamSessionServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
+  gatewayV2DAL,
   gatewayPoolService,
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
+  userService,
   orgDAL,
   pamAccessRequestService,
   telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
@@ -211,6 +229,21 @@ export const pamSessionServiceFactory = ({
     return session;
   };
 
+  // An older gateway ignores rules it does not know, which would show the user unmasked data.
+  const assertGatewayEnforcesOutputMasking = async (
+    gatewayId: string,
+    account: { accountType: string; templatePolicies: unknown }
+  ) => {
+    const { filter } = outputMaskingGatewayOptions(account);
+    if (!filter) return;
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway || !filter(gateway)) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway?.name ?? gatewayId}' must be updated to the latest version before it can enforce this account's output masking`
+      });
+    }
+  };
+
   // Called by the gateway
   const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
@@ -230,6 +263,9 @@ export const pamSessionServiceFactory = ({
     if (!account) {
       throw new NotFoundError({ message: "Account not found" });
     }
+
+    // Before activating the session or claiming recording secrets, so a refused fetch leaves nothing behind.
+    await assertGatewayEnforcesOutputMasking(gatewayId, account);
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
@@ -269,6 +305,22 @@ export const pamSessionServiceFactory = ({
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AwsIam) {
+      const stsCredentials = await generateAwsIamSessionCredentials({
+        roleArn: connectionDetails.roleArn as string,
+        externalId: orgId,
+        roleSessionName: toAwsRoleSessionName(session.actorEmail || session.actorName),
+        sessionDuration: Math.max(
+          AWS_STS_MIN_DURATION_SECONDS,
+          Math.min(remainingSeconds, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS)
+        )
+      });
+      credentials.accessKeyId = stsCredentials.accessKeyId;
+      credentials.secretAccessKey = stsCredentials.secretAccessKey;
+      credentials.sessionToken = stsCredentials.sessionToken;
+      credentials.expiresAt = stsCredentials.expiresAt.toISOString();
     }
 
     if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
@@ -325,7 +377,7 @@ export const pamSessionServiceFactory = ({
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
-        kmsService
+        kmsDataKeyService
       });
 
       // A gateway fetches credentials per connection, so two can mint at once; without a single
@@ -359,7 +411,7 @@ export const pamSessionServiceFactory = ({
         projectId: session.projectId,
         sessionId,
         encryptedSessionKey: storedSessionKey,
-        kmsService
+        kmsDataKeyService
       });
 
       recording = {
@@ -382,6 +434,9 @@ export const pamSessionServiceFactory = ({
 
     const policyRules = buildPamPolicyRules({
       commandBlockingPatterns,
+      outputMasking: policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType)
+        ? resolveOutputMasking(account.templatePolicies)
+        : null,
       maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
       // Never send a rule the gateway has no way to honour.
       maskingBuiltInDetection:
@@ -429,6 +484,43 @@ export const pamSessionServiceFactory = ({
       void reportPamSessionEnded({
         session: updatedSession,
         orgId,
+        endReason: PamSessionEndReason.Completed,
+        telemetryService,
+        userDAL
+      });
+    }
+
+    return {
+      projectId: session.projectId,
+      accountId: session.accountId,
+      accountName: session.accountName,
+      alreadyEnded: !updatedSession
+    };
+  };
+
+  // Called by the user or identity that launched the session. A session through a gateway is left to the
+  // gateway, which would otherwise keep serving it while the session list shows it as ended
+  const endOwnSession = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    const ownerId = ctx.actor === ActorType.IDENTITY ? session?.identityId : session?.userId;
+    if (!session || ownerId !== ctx.actorId) {
+      throw new NotFoundError({ message: `Session '${sessionId}' not found` });
+    }
+
+    await verifyProductMembership(permissionService, session.projectId, ctx);
+
+    if (session.gatewayId) {
+      throw new BadRequestError({
+        message: `Session '${sessionId}' runs through a gateway, so it ends when you close it in the CLI`
+      });
+    }
+
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    if (updatedSession) {
+      void reportPamSessionEnded({
+        session: updatedSession,
+        orgId: ctx.actorOrgId,
         endReason: PamSessionEndReason.Completed,
         telemetryService,
         userDAL
@@ -504,7 +596,7 @@ export const pamSessionServiceFactory = ({
         });
       }
       await enforceMfa(
-        { mfaSessionService, orgDAL, userDAL },
+        { mfaSessionService, orgDAL, userDAL, userService },
         {
           userId: actor.actorId,
           orgId: actor.actorOrgId,
@@ -599,8 +691,26 @@ export const pamSessionServiceFactory = ({
       });
     }
 
-    // AWS IAM: no gateway, no proxy -- generate STS credentials directly
-    if (account.accountType === PamAccountType.AwsIam) {
+    // An AWS IAM account with a gateway brokers CLI sessions through it, where credentials are re-minted
+    // as they expire. The console, and any account without a gateway, gets credentials directly.
+    const awsIamThroughGateway =
+      account.accountType === PamAccountType.AwsIam &&
+      accessMethod === PamAccessMethod.Cli &&
+      Boolean(account.gatewayId ?? account.templateGatewayId ?? account.gatewayPoolId ?? account.templateGatewayPoolId);
+
+    if (
+      awsIamThroughGateway &&
+      isCliUserAgent(actorUserAgent) &&
+      !cliSupports(actorUserAgent, CliCapability.AwsIamGateway)
+    ) {
+      throw new BadRequestError({
+        message:
+          "This AWS IAM account connects through a gateway, which needs a newer Infisical CLI. Update the CLI and try again."
+      });
+    }
+
+    if (account.accountType === PamAccountType.AwsIam && !awsIamThroughGateway) {
+      sessionDurationMs = Math.min(sessionDurationMs, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS * 1000);
       const stsDurationSeconds = Math.floor(sessionDurationMs / 1000);
 
       if (stsDurationSeconds < AWS_STS_MIN_DURATION_SECONDS) {
@@ -615,20 +725,12 @@ export const pamSessionServiceFactory = ({
       // Machine identities have no email; fall back to the identity name for STS attribution.
       const federatedUsername = actorEmail || actorName;
 
-      // STS requires roleSessionName to be 2-64 chars; pad short names with random characters
-      // so the actor's name stays recognizable in CloudTrail (1-char identity name, user with
-      // no email and empty names)
-      let roleSessionName = federatedUsername.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64);
-      if (roleSessionName.length < 2) {
-        roleSessionName = `${roleSessionName}${alphaNumericNanoId(8)}`;
-      }
-
       const stsCredentials = await generateAwsIamSessionCredentials({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
         externalId: actor.actorOrgId,
-        roleSessionName,
+        roleSessionName: toAwsRoleSessionName(federatedUsername),
         sessionDuration: stsDurationSeconds
       });
 
@@ -714,10 +816,29 @@ export const pamSessionServiceFactory = ({
     });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
-      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      // Output masking never applies to AWS IAM, so its options would be empty there
+      ...(awsIamThroughGateway
+        ? {
+            filter: gatewayServesAwsIam,
+            unavailableMessage:
+              "No healthy gateway in this account's gateway pool can serve AWS IAM sessions. Update the pool's gateways to the latest version."
+          }
+        : outputMaskingGatewayOptions(account))
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
+    }
+
+    await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
+
+    if (awsIamThroughGateway) {
+      const gateway = await gatewayV2DAL.findById(effectiveGatewayId);
+      if (!gateway || !gatewayServesAwsIam(gateway)) {
+        throw new BadRequestError({
+          message: `Gateway '${gateway?.name ?? effectiveGatewayId}' must be updated to the latest version before it can serve AWS IAM sessions`
+        });
+      }
     }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
@@ -795,6 +916,13 @@ export const pamSessionServiceFactory = ({
       metadata.clientId = rawCredentials.clientId as string;
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
+    } else if (account.accountType === PamAccountType.AwsIam) {
+      metadata.roleArn = rawConnectionDetails.roleArn as string;
+      metadata.expiresAt = expiresAt.toISOString();
+      const awsAccountId = extractAwsAccountIdFromArn(metadata.roleArn);
+      if (awsAccountId) {
+        metadata.awsAccountId = awsAccountId;
       }
     } else if (account.accountType === PamAccountType.Snowflake) {
       for (const key of ["account", "warehouse", "database", "schema", "role"]) {
@@ -883,6 +1011,7 @@ export const pamSessionServiceFactory = ({
     getSessionById,
     getSessionCredentials,
     endSessionFromGateway,
+    endOwnSession,
     terminateSession
   };
 };

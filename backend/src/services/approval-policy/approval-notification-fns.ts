@@ -1,15 +1,17 @@
 import { TApprovalRequests } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { sendSlackNotification } from "@app/services/slack/slack-fns";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ApprovalNotificationEvent, ApproverType } from "./approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import { TApprovalNotification, TApprovalResource } from "./approval-policy-types";
+
+const SELF_APPROVAL_BLOCKED_TYPES = new Set([ApprovalPolicyType.PamAccess, ApprovalPolicyType.CertCodeSigning]);
 
 export type TApprovalNotificationDeps = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -17,7 +19,7 @@ export type TApprovalNotificationDeps = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export const expandApproversToUserIds = async (
@@ -45,8 +47,21 @@ const resolveRecipients = async (
     return request.requesterId ? new Set([request.requesterId]) : new Set<string>();
   }
 
+  if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
+    const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
+    if (request.requesterId) userIds.add(request.requesterId);
+    return userIds;
+  }
+
   const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
   if (actorId) userIds.delete(actorId);
+  if (
+    event === ApprovalNotificationEvent.Requested &&
+    request.requesterId &&
+    SELF_APPROVAL_BLOCKED_TYPES.has(request.type as ApprovalPolicyType)
+  ) {
+    userIds.delete(request.requesterId);
+  }
   return userIds;
 };
 
@@ -76,7 +91,7 @@ const deliverToUsers = async (
 const deliverToChat = async (
   content: TApprovalNotification,
   request: TApprovalRequests,
-  { slackIntegrationDAL, kmsService }: TApprovalNotificationDeps
+  { slackIntegrationDAL, kmsDataKeyService }: TApprovalNotificationDeps
 ) => {
   for (const delivery of content.chat ?? []) {
     // eslint-disable-next-line no-await-in-loop
@@ -88,7 +103,7 @@ const deliverToChat = async (
       await sendSlackNotification({
         orgId: request.organizationId,
         notification: delivery.notification,
-        kmsService,
+        kmsDataKeyService,
         targetChannelIds: delivery.channelIds,
         slackIntegration
       });
@@ -104,7 +119,8 @@ export const dispatchApprovalNotification = async (
     approvers,
     actorId,
     comment,
-    bypassReason
+    bypassReason,
+    failureReason
   }: {
     event: ApprovalNotificationEvent;
     request: TApprovalRequests;
@@ -113,6 +129,7 @@ export const dispatchApprovalNotification = async (
     actorId?: string;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   },
   deps: TApprovalNotificationDeps
 ) => {
@@ -123,7 +140,7 @@ export const dispatchApprovalNotification = async (
       ? await resource.filterActiveApprovers(request, approvers)
       : approvers;
 
-    const content = await resource.buildNotification({ event, request, comment, bypassReason });
+    const content = await resource.buildNotification({ event, request, comment, bypassReason, failureReason });
     if (!content) return;
 
     const recipientIds = await resolveRecipients(event, request, eligibleApprovers, actorId, deps);

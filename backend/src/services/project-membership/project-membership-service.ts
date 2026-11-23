@@ -388,7 +388,6 @@ export const projectMembershipServiceFactory = ({
     }
     usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(project.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return orgMembers;
   };
 

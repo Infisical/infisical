@@ -9,6 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
   PlanLimit,
@@ -29,6 +30,7 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
@@ -49,8 +51,6 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -132,7 +132,7 @@ type TLdapConfigServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -168,7 +168,7 @@ export const ldapConfigServiceFactory = ({
   usageMeteringService,
   tokenService,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
@@ -235,7 +235,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -288,7 +288,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -399,7 +399,7 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

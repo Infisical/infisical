@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -40,9 +41,6 @@ import {
   CertKeyUsage,
   CertStatus
 } from "../certificate/certificate-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TPkiTemplatesDALFactory } from "./pki-templates-dal";
 import {
   TCreatePkiTemplateDTO,
@@ -68,7 +66,8 @@ type TPkiTemplatesServiceFactoryDep = {
     | "findOne"
   >;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
@@ -82,7 +81,6 @@ type TPkiTemplatesServiceFactoryDep = {
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
 };
 
 export type TPkiTemplatesServiceFactory = ReturnType<typeof pkiTemplatesServiceFactory>;
@@ -98,8 +96,8 @@ export const pkiTemplatesServiceFactory = ({
   certificateAuthorityCrlDAL,
   certificateDAL,
   certificateBodyDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TPkiTemplatesServiceFactoryDep) => {
   const createTemplate = async ({
     actor,
@@ -413,12 +411,8 @@ export const pkiTemplatesServiceFactory = ({
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -469,8 +463,8 @@ export const pkiTemplatesServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
@@ -582,7 +576,7 @@ export const pkiTemplatesServiceFactory = ({
       extensions
     });
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -595,8 +589,8 @@ export const pkiTemplatesServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({

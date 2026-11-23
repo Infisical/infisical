@@ -176,6 +176,40 @@ func TestSecretReplication_Copy(t *testing.T) {
 		}, importedValues(importedSecrets(t, tn.Admin, proj, "dev", "/")))
 	})
 
+	t.Run("should replicate every folder the source imports, the last import winning a shared key", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		for _, folder := range []string{"/first", "/second", "/source"} {
+			secretmanager.CreateFolder(t, proj, "staging", folder)
+		}
+		secretmanager.CreateFolder(t, proj, "dev", "/replica")
+		secretmanager.CreateSecret(t, proj, "staging", "FIRST_ONLY_KEY", "first-only-value", secretmanager.WithPath("/first"))
+		secretmanager.CreateSecret(t, proj, "staging", "SHARED_KEY", "first-value", secretmanager.WithPath("/first"))
+		secretmanager.CreateSecret(t, proj, "staging", "SECOND_ONLY_KEY", "second-only-value", secretmanager.WithPath("/second"))
+		secretmanager.CreateSecret(t, proj, "staging", "SHARED_KEY", "second-value", secretmanager.WithPath("/second"))
+		secretmanager.CreateSecret(t, proj, "staging", "SOURCE_KEY", "source-value", secretmanager.WithPath("/source"))
+		secretmanager.CreateImport(t, proj, "staging", secretmanager.Location{Env: "staging", Path: "/first"},
+			secretmanager.IntoPath("/source"))
+		secretmanager.CreateImport(t, proj, "staging", secretmanager.Location{Env: "staging", Path: "/second"},
+			secretmanager.IntoPath("/source"))
+
+		// Action
+		replica := secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "staging", Path: "/source"},
+			secretmanager.IntoPath("/replica"), secretmanager.Replicated())
+
+		// Assert
+		waitReplicated(t, proj, "dev", "/replica", replica, time.Time{})
+		require.Equal(t, map[string][]string{
+			"SOURCE_KEY":      {"source-value"},
+			"FIRST_ONLY_KEY":  {"first-only-value"},
+			"SECOND_ONLY_KEY": {"second-only-value"},
+			"SHARED_KEY":      {"second-value"},
+		}, importedValues(importedSecrets(t, tn.Admin, proj, "dev", "/replica")))
+	})
+
 	t.Run("should open a change request instead of writing when the replica path has a policy", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `Creating the source secret and creating the import each queue a replication

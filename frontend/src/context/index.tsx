@@ -19,9 +19,11 @@ export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,

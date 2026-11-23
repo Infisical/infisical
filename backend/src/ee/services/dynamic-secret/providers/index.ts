@@ -22,7 +22,9 @@ import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
+import { NeonProvider } from "./neon";
 import { OAuth2Provider } from "./oauth2";
+import { OpenRouterProvider } from "./openrouter";
 import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
@@ -72,5 +74,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
   [DynamicSecretProviders.Tailscale]: TailscaleProvider(),
   [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
-  [DynamicSecretProviders.Kafka]: KafkaProvider()
+  [DynamicSecretProviders.Kafka]: KafkaProvider(),
+  [DynamicSecretProviders.OpenRouter]: OpenRouterProvider(),
+  [DynamicSecretProviders.Neon]: NeonProvider()
 });
