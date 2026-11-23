@@ -74,7 +74,7 @@ const moreButton = (count: number) => (
 // A session with this many fields or fewer shows them in one row; more use two.
 const SINGLE_ROW_MAX_FIELDS = 5;
 
-// Rows past rowsPerColumn start a new column beside the first, so the block never grows taller than rowsPerColumn.
+// Each column of up to rowsPerColumn rows is its own divided cell, so the block never grows taller than rowsPerColumn.
 const DetailSection = ({
   label,
   rowsPerColumn,
@@ -92,23 +92,20 @@ const DetailSection = ({
     columns.push(rows.slice(i, i + rowsPerColumn));
   }
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className={twMerge(
-        "flex min-w-0 flex-[1_1_auto] gap-x-6 border-t border-l border-border px-4 py-2.5",
-        className
-      )}
-    >
+    <>
       {columns.map((column) => (
         <dl
           key={isValidElement(column[0]) ? column[0].key : undefined}
-          className="grid min-w-0 flex-[0_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5"
+          aria-label={label}
+          className={twMerge(
+            "grid min-w-0 flex-[1_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5 border-t border-l border-border px-4 py-2.5",
+            className
+          )}
         >
           {column}
         </dl>
       ))}
-    </div>
+    </>
   );
 };
 
