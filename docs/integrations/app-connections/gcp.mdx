@@ -77,8 +77,10 @@ The pool and provider don't need to exist yet. When you create the connection in
                 Enter a **Name**, select the **Workload Identity Federation** method, then fill out the fields:
 
                 - **Project Number**: the number you found in [Step 1](#step-1-find-your-gcp-project-number)
-                - **Pool ID** and **Provider ID**: the form suggests new IDs, which the setup commands use to create the pool and provider. To use a pool and provider you already created, for example for another GCP connection in the same Infisical organization, enter their IDs instead. Each ID is 4 to 32 lowercase letters, digits, and hyphens.
+                - **Pool ID** and **Provider ID**: the IDs of the workload identity pool and its provider (the form suggests new IDs)
                 - **Service Account Email** (optional): the email of a service account for the connection to impersonate (leave it empty to grant GCP roles to the connection itself)
+
+                The setup commands create a pool and provider with the suggested IDs. To use a pool and provider that you already created, enter their IDs instead. Several GCP connections in the same Infisical organization can share one pool and provider.
 
                 Enter a service account if the roles your integrations need are already granted to one. Then select **Create Connection**.
             </Step>
@@ -101,15 +103,21 @@ The pool and provider don't need to exist yet. When you create the connection in
         projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>
         ```
 
-        Choose the pool and provider IDs yourself, or use those of a pool and provider you already created. Each ID is 4 to 32 lowercase letters, digits, and hyphens. The response returns the values you need in [Step 3](#step-3-configure-gcp) in `credentials.federatedCredential`:
+        Choose new pool and provider IDs, or use the IDs of a pool and provider that you already created. Each ID is 4 to 32 lowercase letters, digits, and hyphens.
 
-        | Value | Response field | Format |
-        | --- | --- | --- |
-        | Issuer | `issuerUrl` | `<SITE_URL>/api/v1/oidc-issuer/organizations/<ORG_ID>` |
-        | Subject identifier | `subjectIdentifier` | `app-connection:<CONNECTION_ID>` |
-        | Audience | `audience` | `https://iam.googleapis.com/<WORKLOAD_IDENTITY_PROVIDER>` |
+        The response returns the values you need in [Step 3](#step-3-configure-gcp) in `credentials.federatedCredential`:
 
-        GCP accepts the audience by default, so you don't enter it in GCP.
+        <ResponseField name="issuerUrl" type="string">
+            The URL that GCP downloads Infisical's signing keys from, `<SITE_URL>/api/v1/oidc-issuer/organizations/<ORG_ID>`
+        </ResponseField>
+
+        <ResponseField name="subjectIdentifier" type="string">
+            The connection's identity in GCP, `app-connection:<CONNECTION_ID>`
+        </ResponseField>
+
+        <ResponseField name="audience" type="string">
+            The audience of the tokens that Infisical signs for the connection, `https://iam.googleapis.com/<WORKLOAD_IDENTITY_PROVIDER>` (GCP accepts it by default, so you don't enter it in GCP)
+        </ResponseField>
     </Tab>
 </Tabs>
 

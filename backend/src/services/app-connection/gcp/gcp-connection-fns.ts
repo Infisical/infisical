@@ -282,7 +282,7 @@ const exchangeGcpWorkloadIdentityToken = async (
         status: error instanceof AxiosError ? error.response?.status : undefined,
         detail
       },
-      "GCP Security Token Service token exchange failed"
+      `GCP Security Token Service token exchange failed [connectionId=${appConnection.id}] [workloadIdentityProvider=${workloadIdentityProvider}]`
     );
     if (!isGcpRefusal(error)) throw toGcpUpstreamError(error, "GCP's Security Token Service", detail);
 
@@ -320,7 +320,7 @@ const exchangeGcpWorkloadIdentityToken = async (
     // Not the error itself: its request config holds the federated token
     logger.warn(
       { connectionId: appConnection.id, serviceAccountEmail, status, googleMessage },
-      "GCP service account access token request failed"
+      `GCP service account access token request failed [connectionId=${appConnection.id}] [serviceAccountEmail=${serviceAccountEmail}]`
     );
 
     if (!isGcpRefusal(error)) {

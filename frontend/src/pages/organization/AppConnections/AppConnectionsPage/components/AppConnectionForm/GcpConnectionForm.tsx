@@ -72,8 +72,10 @@ const toWorkloadIdentityProvider = ({
 }: TWorkloadIdentityProviderParts) =>
   `projects/${projectNumber.trim()}/locations/global/workloadIdentityPools/${poolId.trim()}/providers/${providerId.trim()}`;
 
-// GCP keeps a deleted pool's ID reserved for 30 days, so a fixed default would collide with one deleted earlier
-const randomGcpId = () => `infisical-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+// GCP keeps a deleted pool's ID reserved for 30 days, so a fixed default would collide with one deleted earlier.
+// getRandomValues rather than randomUUID, which browsers only expose over HTTPS or localhost.
+const randomGcpId = () =>
+  `infisical-${Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GCP)
@@ -362,7 +364,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const { handleSubmit, control, watch } = form;
   // The shared hint gives way to an error under either input, as a field's own hint does
   const credentialErrors = form.formState.errors.credentials as
-    | { poolId?: unknown; providerId?: unknown }
+    | { poolId?: { message?: string }; providerId?: { message?: string } }
     | undefined;
   const hasPoolOrProviderError = Boolean(credentialErrors?.poolId || credentialErrors?.providerId);
 
@@ -587,7 +589,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Field>
               )}
             />
-            <Field className="mb-4 gap-0">
+            <Field className="mb-4">
               <div className="grid grid-cols-2 gap-3">
                 <Controller
                   name="credentials.poolId"
@@ -607,7 +609,6 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         disabled={isNewConnection}
                         isError={Boolean(error)}
                       />
-                      <FieldError errors={[error]} />
                     </Field>
                   )}
                 />
@@ -629,7 +630,6 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         disabled={isNewConnection}
                         isError={Boolean(error)}
                       />
-                      <FieldError errors={[error]} />
                     </Field>
                   )}
                 />
@@ -639,6 +639,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   ? "The workload identity pool and provider that trust this connection."
                   : "Suggested IDs for a new pool and provider, which the setup commands create after you create the connection. To use an existing pool and provider, enter their IDs instead."}
               </FieldDescription>
+              <FieldError errors={[credentialErrors?.poolId, credentialErrors?.providerId]} />
             </Field>
             <Controller
               name="credentials.serviceAccountEmail"
