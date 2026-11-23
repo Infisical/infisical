@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -32,6 +33,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -49,6 +51,7 @@ export const pamSessionChunkServiceFactory = ({
   pamAccountDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL
 }: TPamSessionChunkServiceFactoryDep) => {
   const resolveRecordingConfig = async (accountId: string): Promise<TPamRecordingResolvedConfig | null> => {
@@ -83,7 +86,7 @@ export const pamSessionChunkServiceFactory = ({
         backend: PamRecordingStorageBackend.AwsS3,
         bucket: s3Config.bucket,
         keyPrefix: s3Config.keyPrefix ?? null,
-        ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
+        ...(await resolveS3RecordingAccess(appConnection, s3Config.region, instanceConfigService))
       };
     }
 

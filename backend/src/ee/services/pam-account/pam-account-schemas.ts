@@ -1171,7 +1171,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.GcpServiceAccount:
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
-      throw new Error("AWS IAM accounts do not use gateway routing");
+      return { host: "amazonaws.com", port: 443 };
     case PamAccountType.Snowflake:
       return { host: `${(validated as { account: string }).account}.snowflakecomputing.com`, port: 443 };
     case PamAccountType.AzureCli:

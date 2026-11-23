@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
+import axios from "axios";
 import { t } from "i18next";
 import { ChevronDownIcon, ChevronUpIcon, CircleXIcon } from "lucide-react";
 
@@ -39,6 +40,12 @@ import { waitForMinimumAuthVerificationLoading } from "./authTiming";
 const MAX_MFA_ATTEMPTS = 5;
 const CLIENT_RESEND_DELAY_SECONDS = 20;
 
+// The MFA token is a short-lived JWT; once it lapses the backend rejects every call made with it.
+const isMfaTokenExpiredError = (error: unknown) =>
+  axios.isAxiosError(error) &&
+  error.response?.status === 403 &&
+  error.response?.data?.error === "TokenError";
+
 type Props = {
   // needsFactorSetup: the user got in with a recovery code instead of setting up the
   // method their org requires. The caller picks where they go, e.g. a CLI login must
@@ -48,9 +55,18 @@ type Props = {
   email: string;
   method: MfaMethod;
   onChangeAccount?: () => void | Promise<void>;
+  // Starts a fresh challenge when the MFA token expires; without it the challenge is closed.
+  onSessionExpired?: () => void | Promise<void>;
 };
 
-export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount }: Props) => {
+export const Mfa = ({
+  successCallback,
+  closeMfa,
+  email,
+  method,
+  onChangeAccount,
+  onSessionExpired
+}: Props) => {
   const [mfaCode, setMfaCode] = useState("");
   const [showRecoveryCodeInput, setShowRecoveryCodeInput] = useState(false);
   const [activeMethod, setActiveMethod] = useState<MfaMethod>(method);
@@ -111,6 +127,19 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     hasSentEmailCodeRef.current = method === MfaMethod.EMAIL;
     loadMethods();
   }, [method]);
+
+  const handleMfaTokenExpired = async () => {
+    SecurityClient.setMfaToken("");
+    if (onSessionExpired) {
+      await onSessionExpired();
+      return;
+    }
+    createNotification({
+      text: "Your verification session expired. Try again to get a new code.",
+      type: "info"
+    });
+    closeMfa?.();
+  };
 
   const getExpectedCodeLength = () => {
     // Recovery codes are account-level and 8 characters for every MFA method
@@ -204,7 +233,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
             mfaMethod: activeMethod
           });
       sessionToken = result.token;
-    } catch {
+    } catch (error) {
+      if (isMfaTokenExpiredError(error)) {
+        setIsLoading(false);
+        await handleMfaTokenExpired();
+        return;
+      }
       if (typeof triesLeft === "number") {
         const newTriesLeft = triesLeft - 1;
         setTriesLeft(newTriesLeft);
@@ -242,8 +276,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
       resendEmailDelay.restartDelay();
       setIsLoadingResend(false);
     } catch (err) {
-      console.error(err);
       setIsLoadingResend(false);
+      if (isMfaTokenExpiredError(err)) {
+        await handleMfaTokenExpired();
+        return;
+      }
+      console.error(err);
     }
   };
 
@@ -292,6 +330,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
       });
       sessionToken = mfaResult.token;
     } catch (error) {
+      if (isMfaTokenExpiredError(error)) {
+        setIsLoading(false);
+        await handleMfaTokenExpired();
+        return;
+      }
+
       console.error("WebAuthn verification failed:", error);
 
       let errorMessage = "Failed to verify passkey";

@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import {
   ApprovalPolicyType,
@@ -225,7 +227,9 @@ export const resolveStepApproverUserIds = async (
     if (approver.type === ApproverType.User) {
       userIds.add(approver.id);
     } else if (approver.type === ApproverType.Group) {
-      const members = await userGroupMembershipDAL.find({ groupId: approver.id });
+      const members = await requestMemoize(requestMemoKeys.groupMembers(approver.id), () =>
+        userGroupMembershipDAL.find({ groupId: approver.id })
+      );
       members.forEach((member) => userIds.add(member.userId));
     }
   }

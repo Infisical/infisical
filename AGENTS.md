@@ -119,6 +119,16 @@ Agent Vault is a normal project type that users create, like Secrets Management,
 
 Secret Scanning has one active project per organization (the newest). Like Certificate Manager, its URLs are `/organizations/$orgId/secret-scanning/…` with no `$projectId`; legacy orgs can still hold several projects, so the frontend pins the one being viewed (see `frontend/AGENTS.md`). New orgs and sub-orgs get it at creation (`bootstrapSecretScanningProject`), older orgs lazily from `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
 
+### Instance Config
+
+The `super_admin` row (instance settings, Slack, Teams and GitHub app credentials, env overrides) belongs to Instance
+Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getSettings()`, `getLoginPolicy()`, `getSignUpPolicy()`,
+`isInstanceAdminIdentity()` and the credential getters; change it through `updateConfig()` and the other intent
+methods. Never query `super_admin` or decrypt its columns elsewhere; its cached value is shared with pods of the
+previous release. The env values an instance admin can override (`EnvOverrides.KEYS` in Instance Config Core) are not
+in `lib/config/env.ts` and never go back into `envSchema`: read them from `getOverridableEnv()` per use, never at boot,
+and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
+
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.

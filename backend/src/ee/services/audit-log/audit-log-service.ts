@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -47,6 +48,7 @@ const COLLAPSE_FLUSH_BACKOFF_MS = 3_000;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
+  instanceConfigService: TInstanceConfigService;
   clickhouseAuditLogDAL?: TClickHouseAuditLogDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
@@ -71,6 +73,7 @@ type TAuditLogServiceFactoryDep = {
 
 export const auditLogServiceFactory = ({
   auditLogDAL,
+  instanceConfigService,
   clickhouseAuditLogDAL,
   auditLogQueue,
   auditLogSettingsService,
@@ -363,7 +366,8 @@ export const auditLogServiceFactory = ({
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);
     const auditLogGenerationDisabled = Boolean(appCfg.DISABLE_AUDIT_LOG_GENERATION);
-    const postgresAuditLogStorageDisabled = Boolean(appCfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
+    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
+    const postgresAuditLogStorageDisabled = Boolean(DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
     const auditLogRowCount = await auditLogDAL.getApproximateRowCount();
 
     return {
@@ -376,12 +380,13 @@ export const auditLogServiceFactory = ({
 
   const checkPostgresAuditLogVolumeMigrationAlert = async () => {
     const appCfg = getConfig();
+    const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
     const isClickHouseConfigured = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
     if (
       isClickHouseConfigured ||
       appCfg.isCloud ||
       appCfg.DISABLE_AUDIT_LOG_GENERATION ||
-      appCfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE
+      DISABLE_POSTGRES_AUDIT_LOG_STORAGE
     )
       return;
 

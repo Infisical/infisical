@@ -99,5 +99,14 @@ export const describeOrganizationKeyStoreContract = (
       expect(await store.referencesKey(used)).toBe(true);
       expect(await store.referencesKey(unused)).toBe(false);
     });
+
+    test("should report whether an id names an organization", async () => {
+      const { store, newOrg } = await setup();
+      const orgId = await newOrg();
+
+      expect(await store.isOrganization(orgId)).toBe(true);
+      expect(await store.isOrganization(randomUUID())).toBe(false);
+      expect(await store.isOrganization("not-a-uuid")).toBe(false);
+    });
   });
 };

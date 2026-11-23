@@ -1,6 +1,7 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -171,6 +172,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -216,6 +218,7 @@ export const certificateIssuanceQueueFactory = ({
   certificateDAL,
   projectDAL,
   kmsDataKeyService,
+  instanceConfigService,
   kmsKeyService,
   queueService,
   certificateBodyDAL,
@@ -246,6 +249,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     pkiSubscriberDAL,
     pkiSyncDAL,
@@ -296,6 +300,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });
@@ -333,6 +338,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });

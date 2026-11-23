@@ -139,10 +139,16 @@ export const KeyStorePrefixes = {
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
-  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string, page: string) =>
-    `project-folder-access-marker:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessMarker: (
+    projectId: string,
+    rosterVersion: string,
+    folderId: string,
+    actorType: string,
+    page: string
+  ) => `project-folder-access-marker:${projectId}:${rosterVersion}:${folderId}:${actorType}:${page}` as const,
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessRosterVersion: (projectId: string) => `project-folder-access-roster-version:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
@@ -217,7 +223,8 @@ export const KeyStorePrefixes = {
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   SigningActivityTrend: (projectId: string, range: string, signerId?: string) =>
     `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
-  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  RefreshTokenGrace: (sessionId: string, refreshVersion: number) =>
+    `refresh-token-grace:${sessionId}:${refreshVersion}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>
@@ -238,7 +245,6 @@ export const KeyStorePrefixes = {
   WorkerHeartbeat: (workerType: string, instanceId: string) =>
     `worker-heartbeat:{${workerType}}:${instanceId}` as const,
 
-  AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
@@ -295,6 +301,7 @@ export const KeyStoreTtls = {
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
+  ProjectFolderAccessRosterVersionTtlSeconds: 600, // 10 minutes, must outlive the marker
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
@@ -306,6 +313,9 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
+  // Outlives the slowest rotation: knex's default 60s wait for a pool connection plus the update's 5s bound
+  // (REFRESH_ROTATION_DB_TIMEOUT_MS), so the entry is still there when the new version commits.
+  RefreshTokenGracePendingInSeconds: 75,
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailDispatchCooldownInSeconds: 60, // 1 minute
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
@@ -315,7 +325,6 @@ export const KeyStoreTtls = {
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
-  AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days

@@ -115,7 +115,7 @@ provider that checks it.
 | `oidcidp` | `idp.oidc.test/<scope>` | path | OIDC SSO; machine identity OIDC, JWT (jwks) and SPIFFE (`TrustKey` publishes a key the test signs with) |
 | `oauth` | `www.googleapis.com`, `github.com`, `gitlab.com` | authorization code, which is also the access token | Google, GitHub, GitLab login; GCP service account certificates |
 | `kubernetes` | `api.kubernetes.test` | reviewer JWT | machine identity Kubernetes auth (TokenReview) |
-| `aws` | `sts.amazonaws.com`, `sts.us-east-1.amazonaws.com` | access key id | AWS IAM auth (JSON when asked) |
+| `aws` | `sts.amazonaws.com`, `sts.us-east-1.amazonaws.com`, `kms.us-east-1.amazonaws.com` | access key id | AWS IAM auth (JSON when asked); AWS external KMS with assume role (`SeedRole` trust policies enforce `sts:ExternalId`) |
 | `azure` | `login.microsoftonline.com/<tenant>` | tenant id | Azure auth signing keys |
 | `alicloud` | `sts.aliyuncs.com` | access key id | Alibaba Cloud auth (checks the signature) |
 | `oci` | `identity.us-ashburn-1.oraclecloud.com` | signature key id | OCI auth (checks the signature) |

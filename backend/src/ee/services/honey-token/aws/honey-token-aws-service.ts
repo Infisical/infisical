@@ -31,6 +31,7 @@ const MANAGED_UNAVAILABLE_MESSAGES: Record<TAwsHoneyTokenInstanceUnavailableReas
 
 export const honeyTokenAwsProviderHooksFactory = ({
   kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL,
   honeyTokenDAL,
   honeyTokenConfigDAL
@@ -103,7 +104,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
 
   return {
     createCredentials: (target) =>
-      createAwsIamHoneyTokenCredentials(target).then((credentials) => ({
+      createAwsIamHoneyTokenCredentials(target, instanceConfigService).then((credentials) => ({
         credentials,
         tokenIdentifier: credentials.accessKeyId
       })),
@@ -111,7 +112,8 @@ export const honeyTokenAwsProviderHooksFactory = ({
       revokeAwsIamHoneyTokenCredentials({
         target,
         iamUserName: credentials.iamUserName,
-        accessKeyId: credentials.accessKeyId
+        accessKeyId: credentials.accessKeyId,
+        instanceConfigService
       }),
     verifyDeployment: async ({ connectionId, orgId, encryptedConfig }) => {
       const { decryptor: configDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -129,7 +131,8 @@ export const honeyTokenAwsProviderHooksFactory = ({
         stackName: config?.stackName ?? "infisical-honey-tokens",
         awsRegion: config?.awsRegion ?? "us-east-1",
         appConnectionDAL,
-        kmsDataKeyService
+        kmsDataKeyService,
+        instanceConfigService
       });
     },
     getCredentialsForDisplay: async ({ encryptedCredentials, projectId }) => {

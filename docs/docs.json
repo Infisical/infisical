@@ -23,7 +23,19 @@
     "eyebrows": "breadcrumbs"
   },
   "thumbnails": {
-    "appearance": "light"
+    "preset": "classic",
+    "appearance": "light",
+    "background": "https://infisical.com/docs/images/docs-preview-yellow.png",
+    "fonts": {
+      "family": "Alliance",
+      "source": "/fonts/AllianceNo2-Regular.woff",
+      "format": "woff"
+    },
+    "eyebrow": {
+      "source": "group",
+      "style": "plain",
+      "color": "#000000"
+    }
   },
   "icons": {
     "library": "lucide"
@@ -211,6 +223,7 @@
                       "documentation/platform/dynamic-secrets/mongo-atlas",
                       "documentation/platform/dynamic-secrets/mssql",
                       "documentation/platform/dynamic-secrets/mysql",
+                      "documentation/platform/dynamic-secrets/neon",
                       "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/openrouter",
                       "documentation/platform/dynamic-secrets/oracle",
@@ -4753,6 +4766,16 @@
                       "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
                       "api-reference/endpoints/agent-vault-skills/list-session-skills"
+                    ]
+                  },
+                  {
+                    "group": "Hooks",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-hooks/list",
+                      "api-reference/endpoints/agent-vault-hooks/get",
+                      "api-reference/endpoints/agent-vault-hooks/create",
+                      "api-reference/endpoints/agent-vault-hooks/update",
+                      "api-reference/endpoints/agent-vault-hooks/delete"
                     ]
                   },
                   {

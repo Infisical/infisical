@@ -52,6 +52,8 @@ import {
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
+  TAgentVaultHook,
+  TAgentVaultHookPage,
   TAgentVaultSkillDetail,
   TAgentVaultSkillPage,
   TAgentVaultSkillVersion,
@@ -61,6 +63,7 @@ import {
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
   TListAgentVaultSessionsDTO,
+  TListAgentVaultHooksDTO,
   TListAgentVaultSkillsDTO,
   TListAgentVaultVariablesDTO
 } from "./types";
@@ -177,6 +180,12 @@ export const agentVaultKeys = {
     [...agentVaultKeys.skill(orgId, projectId, skillId), "versions"] as const,
   skillVersion: (orgId: string, projectId: string, skillId: string, version: number) =>
     [...agentVaultKeys.skillVersions(orgId, projectId, skillId), version] as const,
+  hooks: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "hooks"] as const,
+  hookList: (orgId: string, projectId: string, params: TListAgentVaultHooksDTO) =>
+    [...agentVaultKeys.hooks(orgId, projectId), "list", params] as const,
+  hook: (orgId: string, projectId: string, hookId: string) =>
+    [...agentVaultKeys.hooks(orgId, projectId), "detail", hookId] as const,
   // Nested under accessBundle() so changes to the bundle refresh its skills too.
   accessBundleSkills: (orgId: string, projectId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(orgId, projectId, accessBundleId), "skills"] as const,
@@ -1070,6 +1079,41 @@ export const useListAgentVaultSkills = (
     },
     placeholderData: keepPreviousInProject(projectId),
     enabled
+  });
+};
+
+export const useListAgentVaultHooks = (
+  projectId: string,
+  params: TListAgentVaultHooksDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.hookList(currentOrg.id, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultHookPage>("/api/v1/agent-vault/hooks", {
+        params: { ...params, projectId }
+      });
+      return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+export const useGetAgentVaultHook = (projectId: string, hookId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.hook(currentOrg.id, projectId, hookId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`
+      );
+      return data.hook;
+    },
+    enabled: Boolean(hookId)
   });
 };
 

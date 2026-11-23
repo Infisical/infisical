@@ -4,6 +4,7 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -156,6 +157,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  instanceConfigService: TInstanceConfigService;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds"
@@ -259,6 +261,7 @@ export const secretRotationV2ServiceFactory = ({
   auditLogService,
   secretQueueService,
   keyStore,
+  instanceConfigService,
   queueService,
   folderCommitService,
   eventEmitter,
@@ -650,6 +653,7 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
+      instanceConfigService,
       passwordValidationContext
     );
 
@@ -1050,6 +1054,7 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        instanceConfigService,
         passwordValidationContext
       );
 
@@ -1418,6 +1423,7 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        instanceConfigService,
         passwordValidationContext
       );
 
@@ -1784,7 +1790,8 @@ export const secretRotationV2ServiceFactory = ({
       kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService,
-      keyStore
+      keyStore,
+      instanceConfigService
     );
 
     if (!rotationFactory.checkActiveCredentials)
@@ -2185,6 +2192,7 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
+      instanceConfigService,
       passwordValidationContext
     );
 
