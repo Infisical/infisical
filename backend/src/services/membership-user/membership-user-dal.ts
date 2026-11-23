@@ -174,9 +174,6 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedUsers.limit(filter.limit);
-      if (filter.offset) void paginatedUsers.offset(filter.offset);
-
       if (filter.username || filter.role) {
         buildKnexFilterForSearchResource(
           paginatedUsers,
@@ -196,6 +193,15 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         );
       }
+
+      // Count distinct memberships before pagination. The data query JOINs membership_roles
+      // (one-to-many), so a window count would tally role assignments instead of users.
+      const countQuery = await (tx || db.replicaNode())
+        .count("* as total")
+        .from(paginatedUsers.clone().as("distinctMemberships"));
+
+      if (filter.limit) void paginatedUsers.limit(filter.limit);
+      if (filter.offset) void paginatedUsers.offset(filter.offset);
 
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
@@ -230,11 +236,6 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("id").withSchema(TableName.Users).as("userId")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
 
       const data = sqlNestRelationships({
@@ -284,7 +285,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount: Number((countQuery?.[0] as unknown as { total: number })?.total ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindUser" });
     }
