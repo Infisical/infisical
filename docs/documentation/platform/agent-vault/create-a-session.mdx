@@ -8,7 +8,7 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 A [session](/documentation/platform/agent-vault/sessions) gives an agent access to services in an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session).
 
-You can create a session in the [Infisical dashboard](#create-a-session-in-the-dashboard), with the [Infisical CLI](#create-a-session-with-the-cli), through the [API](#create-a-session-with-the-api), or with the [Python](#create-a-session-with-the-python-sdk) or [Node.js](#create-a-session-with-the-node-js-sdk) SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
+You can create a session in the [Infisical dashboard](#create-a-session-in-the-dashboard), with the [Infisical CLI](#create-a-session-with-the-cli), through the [API](#create-a-session-with-the-api), or with the [Python](#create-a-session-with-the-python-sdk), [Node.js](#create-a-session-with-the-node-js-sdk), or [Go](#create-a-session-with-the-go-sdk) SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
 
 <Tip>
 The way you create sessions depends on [where you start your agents](/documentation/platform/agent-vault/how-it-works#orchestrators).
@@ -216,6 +216,34 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
     If you self-host Infisical, pass `siteUrl` with the address of your instance to `new InfisicalSDK()`. `session.token` holds the session token, and `session.id` holds the ID you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again.
 
     The SDK requires `@infisical/sdk` version 5.3.0 or newer. For every method and parameter, see the [Node.js SDK reference](/sdks/languages/node#agentvault-sessions).
+  </Tab>
+  <Tab title="Go SDK" id="create-a-session-with-the-go-sdk">
+    Set up a machine identity for your code:
+
+    <MachineIdentitySetup />
+
+    Log in as the machine identity, then call `AgentVault().Sessions().Create`:
+
+    ```go
+    import infisical "github.com/infisical/go-sdk"
+
+    client := infisical.NewInfisicalClient(context.Background(), infisical.Config{})
+    _, err := client.Auth().UniversalAuthLogin("<client-id>", "<client-secret>")
+    if err != nil {
+      return err
+    }
+
+    session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+      ProjectID:    "<project-id>",
+      AccessBundle: "<access-bundle-name>",
+      TTL:          "1h",
+      Label:        "nightly deploy",
+    })
+    ```
+
+    If you self-host Infisical, set `SiteUrl` in `infisical.Config` to the address of your instance. `session.Token` holds the session token, and `session.ID` holds the ID you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again.
+
+    The SDK requires `github.com/infisical/go-sdk` version 0.10.0 or newer. For every method and parameter, see the [Go SDK reference](/sdks/languages/go#agent-vault-sessions).
   </Tab>
 </Tabs>
 

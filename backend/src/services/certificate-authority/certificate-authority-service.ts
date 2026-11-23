@@ -25,6 +25,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -196,6 +197,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   approvalRequestDAL: TRecordCertificateRequestFailureDeps["approvalRequestDAL"];
   approvalPolicyDAL: TRecordCertificateRequestFailureDeps["approvalPolicyDAL"];
   approvalPolicyService: TRecordCertificateRequestFailureDeps["approvalPolicyService"];
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -234,7 +236,8 @@ export const certificateAuthorityServiceFactory = ({
   auditLogService,
   approvalRequestDAL,
   approvalPolicyDAL,
-  approvalPolicyService
+  approvalPolicyService,
+  oidcIssuerService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -253,7 +256,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
