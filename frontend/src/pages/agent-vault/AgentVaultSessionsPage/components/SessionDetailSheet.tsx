@@ -59,6 +59,7 @@ import { SessionStatusBadge } from "./SessionStatusBadge";
 const SHOWN_INLINE_SERVICES = 1;
 const SHOWN_SERVICES = 2;
 const SHOWN_SKILLS = 2;
+const SHOWN_METADATA = 3;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
 // One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
@@ -72,39 +73,53 @@ const moreButton = (count: number) => (
 );
 
 const DetailSection = ({
-  title,
+  label,
   children,
   className
 }: {
-  title: string;
+  label: string;
   children: ReactNode;
   className?: string;
 }) => (
-  <section
+  <dl
+    aria-label={label}
     className={twMerge(
-      "flex min-w-0 flex-[1_1_15rem] flex-col gap-2 border-t border-l border-border px-4 py-3",
+      "grid min-w-0 flex-[1_1_12rem] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5 border-t border-l border-border px-4 py-2.5",
       className
     )}
   >
-    <h3 className="text-xs font-medium text-muted">{title}</h3>
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5">
-      {children}
-    </dl>
-  </section>
+    {children}
+  </dl>
+);
+
+const MetadataValue = ({ value }: { value: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="truncate">{value}</span>
+    </TooltipTrigger>
+    <TooltipContent className="max-w-sm break-all">{value}</TooltipContent>
+  </Tooltip>
 );
 
 const DetailRow = ({
   label,
   children,
-  className
+  className,
+  labelClassName
 }: {
   label: ReactNode;
   children: ReactNode;
   className?: string;
+  labelClassName?: string;
 }) => (
   <div className="contents">
-    <dt className="truncate text-xs text-label">{label}</dt>
-    <dd className={twMerge("flex min-w-0 items-center gap-2 text-sm text-foreground", className)}>
+    <dt className={twMerge("truncate text-xs leading-5 text-label", labelClassName)}>{label}</dt>
+    <dd
+      className={twMerge(
+        "flex min-h-5 min-w-0 items-center gap-2 text-sm leading-5 text-foreground",
+        className
+      )}
+    >
       {children}
     </dd>
   </div>
@@ -113,7 +128,7 @@ const DetailRow = ({
 const MemberValue = ({ name, subtitle }: { name: string; subtitle?: string }) => (
   <span className="flex min-w-0 flex-col">
     <span className="truncate">{name}</span>
-    {subtitle && <span className="truncate text-xs text-muted">{subtitle}</span>}
+    {subtitle && <span className="truncate text-xs leading-4 text-muted">{subtitle}</span>}
   </span>
 );
 
@@ -229,6 +244,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   >
                     {session.label ?? "Unlabeled session"}
                   </SheetTitle>
+                  <SessionStatusBadge status={session.status} />
                   {canEdit && (
                     <IconButton
                       variant="ghost"
@@ -261,15 +277,15 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
             <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
               {/* -ml-px and -mt-px push the dividers at the leading edge and top row past the clipped edge, so only dividers between sections show */}
               <div className="flex shrink-0 flex-wrap overflow-hidden rounded-md border border-border bg-container *:-mt-px *:-ml-px">
-                <DetailSection title="Identity" className="basis-52">
+                <DetailSection label="Identity">
                   <DetailRow
                     label={isMachineIdentity ? "Machine Identity" : "User"}
-                    className={twMerge(isOwnerDeleted && "text-muted")}
+                    className={twMerge("items-start", isOwnerDeleted && "text-muted")}
                   >
                     {isMachineIdentity ? (
-                      <BotIcon className="size-4 shrink-0 text-muted" />
+                      <BotIcon className="mt-0.5 size-4 shrink-0 text-muted" />
                     ) : (
-                      <UserIcon className="size-4 shrink-0 text-muted" />
+                      <UserIcon className="mt-0.5 size-4 shrink-0 text-muted" />
                     )}
                     <MemberValue
                       name={`${memberDisplayName(session.actor)}${isOwnerDeleted ? " (deleted)" : ""}`}
@@ -279,9 +295,9 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   {session.onBehalfOf && (
                     <DetailRow
                       label="On Behalf Of"
-                      className={twMerge(!session.onBehalfOf.id && "text-muted")}
+                      className={twMerge("items-start", !session.onBehalfOf.id && "text-muted")}
                     >
-                      <UserIcon className="size-4 shrink-0 text-muted" />
+                      <UserIcon className="mt-0.5 size-4 shrink-0 text-muted" />
                       <MemberValue
                         name={`${memberDisplayName(session.onBehalfOf)}${session.onBehalfOf.id ? "" : " (deleted)"}`}
                         subtitle={
@@ -293,7 +309,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {hasAccess && (
-                  <DetailSection title="Access" className="basis-64">
+                  <DetailSection label="Access" className="basis-56">
                     {session.accessBundle && (
                       <DetailRow label="Access Bundle">
                         {session.accessBundle.id ? (
@@ -392,10 +408,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   </DetailSection>
                 )}
 
-                <DetailSection title="Activity" className="basis-56">
-                  <DetailRow label="Status">
-                    <SessionStatusBadge status={session.status} />
-                  </DetailRow>
+                <DetailSection label="Activity">
                   <DetailRow label="Created">
                     {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
                   </DetailRow>
@@ -417,17 +430,30 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {metadataEntries.length > 0 && (
-                  <DetailSection title="Metadata" className="grow-[1.5] basis-80">
-                    {metadataEntries.map(([key, value]) => (
-                      <DetailRow key={key} label={key}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="truncate">{value}</span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-sm break-all">{value}</TooltipContent>
-                        </Tooltip>
+                  <DetailSection label="Metadata" className="grow-[1.5] basis-64">
+                    {metadataEntries.slice(0, SHOWN_METADATA).map(([key, value]) => (
+                      <DetailRow key={key} label={key} labelClassName="font-mono">
+                        <MetadataValue value={value} />
                       </DetailRow>
                     ))}
+                    {metadataEntries.length > SHOWN_METADATA && (
+                      <DetailRow label="">
+                        <SessionAccessHoverCard
+                          content={
+                            <dl className="grid max-h-72 max-w-md grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 overflow-y-auto text-sm">
+                              {metadataEntries.slice(SHOWN_METADATA).map(([key, value]) => (
+                                <div key={key} className="contents">
+                                  <dt className="font-mono text-xs text-label">{key}</dt>
+                                  <dd className="break-all">{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          }
+                        >
+                          {moreButton(metadataEntries.length - SHOWN_METADATA)}
+                        </SessionAccessHoverCard>
+                      </DetailRow>
+                    )}
                   </DetailSection>
                 )}
               </div>
