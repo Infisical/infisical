@@ -78,7 +78,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       description: "Create an alert that notifies its channels when an event happens to a resource.",
       body: z.object({
         name: z.string().min(1).max(255).describe(ALERTING.CREATE.name),
-        description: z.string().max(1000).optional().describe(ALERTING.CREATE.description),
+        description: z.string().trim().max(1000).optional().describe(ALERTING.CREATE.description),
         resourceType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.resourceType),
         resourceId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.resourceId),
         eventType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.eventType),
@@ -244,7 +244,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       params: z.object({ alertId: z.string().uuid().describe(ALERTING.UPDATE.alertId) }),
       body: z.object({
         name: z.string().min(1).max(255).optional().describe(ALERTING.UPDATE.name),
-        description: z.string().max(1000).nullable().optional().describe(ALERTING.UPDATE.description),
+        description: z.string().trim().max(1000).nullable().optional().describe(ALERTING.UPDATE.description),
         condition: z.unknown().optional().describe(ALERTING.UPDATE.condition),
         enabled: z.boolean().optional().describe(ALERTING.UPDATE.enabled),
         channels: z

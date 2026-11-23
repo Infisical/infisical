@@ -224,7 +224,8 @@ export const alertChannelTestServiceFactory = ({
 
     let savedDescription: string | undefined;
     if (dto.alertId) {
-      const alert = await alertDAL.findActiveById(dto.alertId);
+      // Primary, so a test sent right after saving the alert shows the description that was just saved.
+      const alert = await alertDAL.findActiveById(dto.alertId, { readFromPrimary: true });
       if (
         !alert ||
         alert.orgId !== dto.actorOrgId ||
