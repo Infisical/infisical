@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { fillActivityPeriods, getActivityPeriodWindow, selectActivityPeriod } from "@app/lib/knex/activity-periods";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { SigningOperationStatus } from "./signer-enums";
@@ -147,5 +148,43 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId };
+  const getActivityTrend = async (
+    { projectId, signerIds, daysBack }: { projectId: string; signerIds?: string[]; daysBack: number },
+    tx?: Knex
+  ) => {
+    try {
+      const window = getActivityPeriodWindow(daysBack);
+      const counts = new Map<string, { success: number; failed: number }>();
+
+      if (!signerIds || signerIds.length) {
+        let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
+          .where(`${TableName.PkiSigningOperations}.projectId`, projectId)
+          .where(`${TableName.PkiSigningOperations}.createdAt`, ">=", window.startDate)
+          .where(`${TableName.PkiSigningOperations}.createdAt`, "<=", window.endDate);
+
+        if (signerIds) {
+          query = query.whereIn(`${TableName.PkiSigningOperations}.signerId`, signerIds);
+        }
+
+        const rows = (await query
+          .select(
+            selectActivityPeriod(db, window, TableName.PkiSigningOperations, "createdAt"),
+            db.raw("count(*) filter (where status = ?)::int as success", [SigningOperationStatus.Success]),
+            db.raw("count(*) filter (where status in (?, ?))::int as failed", [
+              SigningOperationStatus.Failed,
+              SigningOperationStatus.Denied
+            ])
+          )
+          .groupBy("period")) as unknown as { period: string; success: number; failed: number }[];
+
+        rows.forEach((row) => counts.set(row.period, { success: Number(row.success), failed: Number(row.failed) }));
+      }
+
+      return fillActivityPeriods(window, (period) => counts.get(period) ?? { success: 0, failed: 0 });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetSigningOperationActivityTrend" });
+    }
+  };
+
+  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId, getActivityTrend };
 };

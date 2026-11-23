@@ -57,7 +57,7 @@ const buildService = (permission: unknown = allowAll) => {
     permissionService: {
       getOrgPermission: vi.fn(async () => ({ permission }))
     },
-    kmsService: {}
+    kmsDataKeyService: {}
   } as unknown as TAuditLogStreamServiceFactoryDep;
 
   return { service: auditLogStreamServiceFactory(deps), auditLogStreamDAL };

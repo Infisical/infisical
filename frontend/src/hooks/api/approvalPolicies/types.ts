@@ -3,6 +3,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
+  CertRevocation = "cert-revocation",
   CertCodeSigning = "cert-code-signing"
 }
 
@@ -64,6 +65,9 @@ export type CodeSigningPolicyConstraints = {
 
 // Conditions on the requester's own account in a service carry this subject and no input
 export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
+
+// The check on the requester's own Infisical user and groups, which carries the requester subject and no connection
+export const AUTO_APPROVAL_REQUESTER_CONSTRAINT = "is-one-of";
 
 export const AUTO_APPROVAL_AI_SUBJECT = "ai";
 export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
@@ -209,6 +213,7 @@ export type TApprovalPolicy = {
   id: string;
   projectId: string;
   name: string;
+  isActive?: boolean | null;
   maxRequestTtl?: string | null;
   type: ApprovalPolicyType;
   conditions: {

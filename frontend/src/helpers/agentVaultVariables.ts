@@ -73,12 +73,12 @@ export const findVariableReferenceAtCaret = (text: string, caret: number) => {
 
 /**
  * The first problem with the references in a field, or null. A key counts as unknown only once it is in
- * `missingKeys`, so one still being looked up passes.
+ * `missingKeys`, so one still being looked up passes. `oauthKeys` are keys of OAuth variables, which text can't use.
  */
 export const variableReferenceError = (
   text: string,
   missingKeys?: ReadonlySet<string>,
-  { isPersonal = false }: { isPersonal?: boolean } = {}
+  { isPersonal = false, oauthKeys }: { isPersonal?: boolean; oauthKeys?: ReadonlySet<string> } = {}
 ): string | null => {
   const refs = findVariableReferences(text);
 
@@ -89,6 +89,11 @@ export const variableReferenceError = (
   const malformed = refs.find((ref) => !VARIABLE_KEY_RE.test(ref));
   if (malformed !== undefined) {
     return `"${toVariableReference(malformed)}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`;
+  }
+
+  const oauthKey = refs.find((ref) => oauthKeys?.has(ref));
+  if (oauthKey) {
+    return `'${oauthKey}' is an OAuth variable, which can't be used in text. Set the service's credential to OAuth and choose the variable there.`;
   }
 
   const missing = refs.find((ref) => missingKeys?.has(ref));

@@ -1,10 +1,8 @@
 import { z } from "zod";
 
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { zpStr } from "@app/lib/zod";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 const envSchema = z
@@ -46,29 +44,7 @@ const envSchema = z
 
 export type TMigrationEnvConfig = z.infer<typeof envSchema>;
 
-export const getMigrationHsmConfig = () => {
-  const parsedEnv = envSchema.safeParse(process.env);
-  if (!parsedEnv.success) {
-    // eslint-disable-next-line no-console
-    console.error("Invalid environment variables. Check the error below");
-    // eslint-disable-next-line no-console
-    console.error(parsedEnv.error.issues);
-    process.exit(-1);
-  }
-  return {
-    isHsmConfigured: parsedEnv.data.isHsmConfigured,
-    HSM_PIN: parsedEnv.data.HSM_PIN,
-    HSM_SLOT: parsedEnv.data.HSM_SLOT,
-    HSM_LIB_PATH: parsedEnv.data.HSM_LIB_PATH,
-    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL
-  };
-};
-
-export const getMigrationEnvConfig = async (
-  superAdminDAL: TSuperAdminDALFactory,
-  hsmService: THsmServiceFactory,
-  kmsRootConfigDAL: TKmsRootConfigDALFactory
-) => {
+export const getMigrationEnvConfig = async (superAdminDAL: TSuperAdminDALFactory) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     // eslint-disable-next-line no-console
@@ -84,7 +60,7 @@ export const getMigrationEnvConfig = async (
 
   let envCfg = Object.freeze(parsedEnv.data);
 
-  const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL, envCfg);
+  const fipsEnabled = await crypto.initialize(superAdminDAL);
 
   // Fix for 128-bit entropy encryption key expansion issue:
   // In FIPS it is not ideal to expand a 128-bit key into 256-bit. We solved this issue in the past by creating the ROOT_ENCRYPTION_KEY.

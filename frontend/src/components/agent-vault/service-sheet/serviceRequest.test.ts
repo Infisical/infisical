@@ -17,7 +17,13 @@ import {
   buildUpdateServiceRequest,
   membersClearedNotice
 } from "./serviceRequest";
-import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  HTTP_METHODS,
+  McpToolScope,
+  serviceHookDraftOf,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
@@ -49,14 +55,14 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hookEnabled: false,
-  hookUrl: "",
-  hookSigningSecret: "",
+  hook: serviceHookDraftOf(null),
   ...overrides
 });
 
@@ -245,6 +251,7 @@ const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
 const memberOAuth = (clientId: string | null = null) =>
   storedMcp({
     type: AgentVaultCredentialType.OAuth,
+    source: "member",
     memberProvidedFields: MEMBER,
     issuer: "https://mcp.linear.app",
     grantedScopes: [],
@@ -255,6 +262,7 @@ const memberOAuth = (clientId: string | null = null) =>
 
 const sharedOAuth = storedMcp({
   type: AgentVaultCredentialType.OAuth,
+  source: "service",
   memberProvidedFields: [],
   status: AgentVaultOauthStatus.Connected,
   issuer: "https://mcp.linear.app",
@@ -417,6 +425,13 @@ describe("buildUpdateServiceRequest", () => {
 });
 
 describe("buildListMcpToolsRequest", () => {
+  const bearerMcp = storedMcp({
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  });
+
   it("sends a typed token and header values for a new service", () => {
     expect(
       buildListMcpToolsRequest(
@@ -450,7 +465,7 @@ describe("buildListMcpToolsRequest", () => {
     expect(
       buildListMcpToolsRequest(
         "project-1",
-        "service-1",
+        bearerMcp,
         mcpForm({
           credentialType: AgentVaultCredentialType.Bearer,
           secret: UNCHANGED_SECRET,
@@ -481,7 +496,7 @@ describe("buildListMcpToolsRequest", () => {
         mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" });
-    expect(buildListMcpToolsRequest("project-1", "service-1", mcpForm())).not.toHaveProperty(
+    expect(buildListMcpToolsRequest("project-1", bearerMcp, mcpForm())).not.toHaveProperty(
       "credential"
     );
   });
@@ -490,7 +505,7 @@ describe("buildListMcpToolsRequest", () => {
     expect(
       buildListMcpToolsRequest(
         "project-1",
-        "service-1",
+        bearerMcp,
         mcpForm({
           credentialType: AgentVaultCredentialType.Bearer,
           secret: UNCHANGED_SECRET,
@@ -835,114 +850,192 @@ describe("native service requests", () => {
   });
 });
 
-const HOOK_URL = "https://hooks.example.com/agent-vault";
-const HOOK_SECRET = "s".repeat(32);
-
-const storedHooked = { ...storedHttp, hook: { url: HOOK_URL } } satisfies TAgentVaultService;
-
-const hookOf = (request: object) => ("hook" in request ? request.hook : "absent");
-
-describe("hook requests", () => {
-  it("sends the hook on create only while it is on, with the URL trimmed", () => {
-    expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({ hookEnabled: true, hookUrl: ` ${HOOK_URL} `, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
-    expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({ hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toBe("absent");
+describe("OAuth variable credentials", () => {
+  const variableMcp = storedMcp({
+    type: AgentVaultCredentialType.OAuth,
+    source: "variable",
+    variable: { id: "variable-1", key: "LINEAR" },
+    memberProvidedFields: [],
+    status: AgentVaultOauthStatus.Connected,
+    issuer: "https://mcp.linear.app",
+    grantedScopes: [],
+    requiredScopes: []
   });
 
-  it("sends the hook on create for MCP and database services too", () => {
-    const hook = { hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET };
-    expect(hookOf(buildCreateServiceRequest(undefined, mcpForm(hook)))).toEqual({
-      url: HOOK_URL,
-      signingSecret: HOOK_SECRET
-    });
+  it("sends an HTTP API's OAuth credential as the chosen variable", () => {
     expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({
-            ...hook,
-            serviceType: AgentVaultServiceType.Postgres,
-            host: "db.internal",
-            port: "5432",
-            database: "billing",
-            credentialType: AgentVaultCredentialType.Basic,
-            username: "agent"
-          })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
+      buildCreateServiceRequest(
+        undefined,
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "GDRIVE" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "GDRIVE" });
   });
 
-  it("leaves an untouched hook out of an update", () => {
+  it("sends an MCP server's OAuth credential as the variable only when one is chosen", () => {
     expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
-        )
-      )
-    ).toBe("absent");
+      buildCreateServiceRequest(
+        undefined,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
     expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: "" })
-        )
-      )
-    ).toBe("absent");
+      buildListMcpToolsRequest(
+        "project-1",
+        undefined,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
   });
 
-  it("sends a new URL alone, keeping the stored secret", () => {
+  it("leaves an unchanged variable out on edit, so saving needs no permission to read its value", () => {
     expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({
-            hookEnabled: true,
-            hookUrl: "https://hooks.example.com/v2",
-            hookSigningSecret: UNCHANGED_SECRET
-          })
-        )
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
       )
-    ).toEqual({ url: "https://hooks.example.com/v2" });
+    ).not.toHaveProperty("credential");
+    expect(
+      buildUpdateServiceRequest(
+        { ...storedHttp, credential: variableMcp.credential },
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "LINEAR" })
+      )
+    ).not.toHaveProperty("credential");
   });
 
-  it("sends a new secret with the URL", () => {
+  it("sends the variable on edit when it changes or the service didn't use one", () => {
     expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR_2" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR_2" });
+    expect(
+      buildUpdateServiceRequest(
+        storedHttp,
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
+    expect(
+      buildUpdateServiceRequest(
+        sharedOAuth,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
   });
 
-  it("removes a stored hook with null once it is turned off", () => {
+  it("loads tools with the saved variable without naming it, and names a newly chosen one", () => {
     expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
-        )
+      buildListMcpToolsRequest(
+        "project-1",
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
       )
-    ).toBeNull();
+    ).not.toHaveProperty("credential");
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR_2" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR_2" });
   });
 
-  it("sends nothing for a service with no hook and the toggle off", () => {
-    expect(hookOf(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form()))).toBe("absent");
+  it("keeps a variable the caller can't see by leaving the credential out", () => {
+    expect(
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "" })
+      ).credential
+    ).toBeUndefined();
+  });
+
+  it("says sessions use the variable when members' connections are removed for it", () => {
+    expect(
+      membersClearedNotice(
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }),
+        memberOAuth()
+      )?.description
+    ).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use the sign-in of the LINEAR variable."
+    );
+  });
+
+  it("asks nothing when a variable service is left to each member", () => {
+    expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), variableMcp)).toBe(null);
+  });
+});
+
+describe("service hooks", () => {
+  const HOOK = { id: "hook-1", name: "approvals" };
+  const picked = (overrides: Partial<TServiceForm["hook"]> = {}) => ({
+    ...serviceHookDraftOf(HOOK),
+    ...overrides
+  });
+
+  it("creates a service with its hook by name and only the narrowing its type uses", () => {
+    expect(
+      buildCreateServiceRequest(
+        undefined,
+        form({
+          hook: picked({ methods: [AgentVaultHttpMethod.Put], paths: ["/v1"], tools: ["x"] })
+        })
+      ).hook
+    ).toEqual({ name: "approvals", methods: [AgentVaultHttpMethod.Put], paths: ["/v1"] });
+    expect(
+      buildCreateServiceRequest(undefined, mcpForm({ hook: picked({ tools: ["delete_issue"] }) }))
+        .hook
+    ).toEqual({ name: "approvals", tools: ["delete_issue"] });
+    expect(
+      buildCreateServiceRequest(undefined, postgresForm({ hook: picked({ paths: ["/x"] }) })).hook
+    ).toEqual({ name: "approvals" });
+  });
+
+  it("creates a service without a hook by leaving it out", () => {
+    expect(buildCreateServiceRequest(undefined, form())).not.toHaveProperty("hook");
+  });
+
+  it("leaves an unchanged hook out of an update, even with its lists reordered", () => {
+    const saved = {
+      ...storedHttp,
+      hook: {
+        ...HOOK,
+        methods: [AgentVaultHttpMethod.Put, AgentVaultHttpMethod.Get],
+        paths: ["/v1"]
+      }
+    };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
+  it("leaves an untouched hook saved with every method listed out of an update", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK, methods: [...HTTP_METHODS] } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
+  it("sends a changed narrowing or another hook", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: picked({ paths: ["/v1"] }) })).hook
+    ).toEqual({ name: "approvals", paths: ["/v1"] });
+    expect(
+      buildUpdateServiceRequest(
+        saved,
+        form({ hook: picked({ hookId: "hook-2", hookName: "release-guard" }) })
+      ).hook
+    ).toEqual({ name: "release-guard" });
+  });
+
+  it("sends null to remove the hook", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: { ...HOOK } }, form()).hook).toBeNull();
+  });
+
+  it("sends nothing when there was no hook and none is picked, or the read left the hook out", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form())).not.toHaveProperty(
+      "hook"
+    );
+    expect(buildUpdateServiceRequest(storedHttp, form())).not.toHaveProperty("hook");
   });
 });

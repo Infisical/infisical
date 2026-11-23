@@ -135,6 +135,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Heroku:
     case SecretSync.GitLab:
     case SecretSync.CloudflareSecretsStore:
+    case SecretSync.Convex:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Checkly:
@@ -161,6 +162,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Daytona:
     case SecretSync.Keeper:
     case SecretSync.Jenkins:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     case SecretSync.Spacelift:

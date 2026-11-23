@@ -65,6 +65,15 @@ export const writeLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Each request to a bulk endpoint can carry up to 50 writes, so writeLimit would let one address
+// run thousands per minute.
+export const bulkWriteLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 20,
+  keyGenerator: (req) => req.realIp
+};
+
 // OCSP is per-handshake traffic, so readLimit is the wrong budget: a mutual TLS fleet behind one NAT
 // address would spend it on revocation checks alone and read the resulting tryLater as the responder
 // being down. The endpoint is unauthenticated, so the IP is all there is to key on, and

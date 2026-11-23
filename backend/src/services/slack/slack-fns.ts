@@ -1,11 +1,11 @@
 import { WebClient } from "@slack/web-api";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
-import { KmsDataKey } from "../kms/kms-types";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
 const COMPANY_BRAND_COLOR = "#e0ed34";
@@ -16,16 +16,27 @@ const ERROR_COLOR = "#e74c3c";
 const escapeSlackMrkdwn = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
+const SLACK_CHANNEL_LIST_MAX_PAGES = 50;
+const SLACK_CHANNEL_LIST_TIMEOUT_MS = 10 * 1000;
+
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
     name: string;
     id: string;
+    isArchived: boolean;
   }[] = [];
 
-  const slackWebClient = new WebClient(botKey);
-  let cursor;
+  // The SDK's default retry policy waits out rate limits for up to half an hour, which would hang the request.
+  const slackWebClient = new WebClient(botKey, {
+    timeout: SLACK_CHANNEL_LIST_TIMEOUT_MS,
+    retryConfig: { retries: 2, maxRetryTime: SLACK_CHANNEL_LIST_TIMEOUT_MS },
+    rejectRateLimitedCalls: true
+  });
+  let cursor: string | undefined;
+  let page = 0;
 
   do {
+    page += 1;
     // eslint-disable-next-line no-await-in-loop
     const response = await slackWebClient.conversations.list({
       cursor,
@@ -36,13 +47,19 @@ export const fetchSlackChannels = async (botKey: string) => {
     response.channels?.forEach((channel) =>
       slackChannels.push({
         name: channel.name_normalized as string,
-        id: channel.id as string
+        id: channel.id as string,
+        isArchived: Boolean(channel.is_archived)
       })
     );
 
-    // Set the cursor for the next page
-    cursor = response.response_metadata?.next_cursor;
-  } while (cursor); // Continue while there is a cursor
+    cursor = response.response_metadata?.next_cursor || undefined;
+  } while (cursor && page < SLACK_CHANNEL_LIST_MAX_PAGES);
+
+  if (cursor) {
+    logger.warn(
+      `Slack channel listing stopped after ${SLACK_CHANNEL_LIST_MAX_PAGES} pages; returning the first ${slackChannels.length} channels`
+    );
+  }
 
   return slackChannels;
 };
@@ -436,11 +453,11 @@ const buildSlackPayload = (notification: TNotification) => {
 export const sendSlackNotification = async ({
   orgId,
   notification,
-  kmsService,
+  kmsDataKeyService,
   targetChannelIds,
   slackIntegration
 }: TSendSlackNotificationDTO) => {
-  const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });

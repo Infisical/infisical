@@ -2,11 +2,11 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TableName, TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
@@ -70,7 +70,7 @@ export type TAlertServiceFactoryDep = {
     | "getDetailsForChannels"
     | "filterRecipientsInScope"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   alertProviderRegistry: TAlertProviderRegistry;
   alertHistoryDAL: Pick<TAlertHistoryDALFactory, "findLatestByAlertIds">;
 };
@@ -135,7 +135,7 @@ export const alertServiceFactory = ({
   alertChannelMembershipDAL,
   alertChannelRecipientDAL,
   alertChannelService,
-  kmsService,
+  kmsDataKeyService,
   alertProviderRegistry,
   alertHistoryDAL
 }: TAlertServiceFactoryDep) => {
@@ -297,7 +297,7 @@ export const alertServiceFactory = ({
     });
 
     const scope = { orgId: dto.actorOrgId, projectId: projectId ?? null };
-    const cipher = await getAlertChannelCipher(kmsService, scope);
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, scope);
     const recipientScope = getRecipientScope(provider, projectId);
 
     const channels: TPreparedChannelCreate[] = [];
@@ -313,6 +313,7 @@ export const alertServiceFactory = ({
           orgId: dto.actorOrgId,
           projectId: projectId ?? null,
           recipientScope,
+          actor: toAlertActor(dto),
           createdByActorId: dto.actorId,
           createdByActorType: dto.actor
         },
@@ -388,7 +389,7 @@ export const alertServiceFactory = ({
     }
 
     const scope = { orgId: alert.orgId, projectId: alert.projectId };
-    const cipher = await getAlertChannelCipher(kmsService, scope);
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, scope);
 
     const deleteChannelIds: string[] = [];
     const channelUpdates: TPreparedChannelUpdate[] = [];
@@ -416,7 +417,8 @@ export const alertServiceFactory = ({
               config: channelInput.config,
               enabled: channelInput.enabled,
               recipients: channelInput.recipients,
-              recipientScope
+              recipientScope,
+              actor: toAlertActor(dto)
             },
             existingById.get(channelInput.id) as TAlertChannels,
             cipher
@@ -434,6 +436,7 @@ export const alertServiceFactory = ({
               orgId: alert.orgId,
               projectId: alert.projectId,
               recipientScope,
+              actor: toAlertActor(dto),
               createdByActorId: alert.createdByActorId ?? null,
               createdByActorType: alert.createdByActorType
             },
@@ -606,7 +609,7 @@ export const alertServiceFactory = ({
     );
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
-    const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, { orgId: alert.orgId, projectId: alert.projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
     const lastRuns = await $getLastRuns(provider, [alert.id]);
     const filters = await $getFilters(provider, { orgId: alert.orgId, projectId: alert.projectId ?? null }, [alert]);
@@ -641,7 +644,7 @@ export const alertServiceFactory = ({
     if (alerts.length === 0) return [];
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
-    const cipher = await getAlertChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId });
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, { orgId: dto.actorOrgId, projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
 
     const lastRuns = await $getLastRuns(
@@ -844,20 +847,15 @@ export const alertServiceFactory = ({
         tx
       );
       for (const channel of channels.filter((row) => row.alertId === alertId)) {
+        const {
+          id: channelId,
+          alertId: channelAlertId,
+          createdAt: channelCreatedAt,
+          updatedAt: channelUpdatedAt,
+          ...channelFields
+        } = channel;
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-        const copiedChannel = await alertChannelDAL.create(
-          {
-            name: channel.name,
-            channelType: channel.channelType,
-            encryptedConfig: channel.encryptedConfig,
-            enabled: channel.enabled,
-            orgId: channel.orgId,
-            projectId: channel.projectId,
-            createdByActorId: channel.createdByActorId,
-            createdByActorType: channel.createdByActorType
-          },
-          tx
-        );
+        const copiedChannel = await alertChannelDAL.create(channelFields, tx);
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
         await alertChannelMembershipDAL.insertMany([{ alertId: copiedAlert.id, channelId: copiedChannel.id }], tx);
         const channelRecipients = recipients.filter((recipient) => recipient.channelId === channel.id);

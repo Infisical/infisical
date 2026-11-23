@@ -17,11 +17,10 @@ import {
   FieldLabel,
   TextArea
 } from "@app/components/v3";
-import { useProjectPermission, useUser } from "@app/context";
+import { useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
-  ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   TApprovalRequest,
   useApproveApprovalRequest,
@@ -30,21 +29,21 @@ import {
 
 type Props = {
   request: TApprovalRequest;
+  canReview: boolean;
 };
 
-export const RequestActionsSection = ({ request }: Props) => {
+export const RequestActionsSection = ({ request, canReview }: Props) => {
   const { user } = useUser();
-  const { memberships } = useProjectPermission();
   const [comment, setComment] = useState("");
   const { handlePopUpOpen, handlePopUpToggle, popUp } = usePopUp(["approveModal", "rejectModal"]);
 
   const userId = user?.id || "";
-  const userGroups = memberships.map((el) => el.actorGroupId).filter(Boolean);
 
   const { mutateAsync: approveRequest, isPending: isApproving } = useApproveApprovalRequest();
   const { mutateAsync: rejectRequest, isPending: isRejecting } = useRejectApprovalRequest();
 
-  if (request.status !== ApprovalRequestStatus.Pending) {
+  // canReview comes from the same check the approve and reject calls run, on the step in progress.
+  if (!canReview) {
     return null;
   }
 
@@ -53,14 +52,6 @@ export const RequestActionsSection = ({ request }: Props) => {
   );
 
   if (!currentStep) {
-    return null;
-  }
-
-  const isApprover = currentStep.approvers.some((approver) =>
-    approver.type === ApproverType.User ? approver.id === userId : userGroups.includes(approver.id)
-  );
-
-  if (!isApprover) {
     return null;
   }
 
@@ -161,7 +152,9 @@ export const RequestActionsSection = ({ request }: Props) => {
           <DialogHeader>
             <DialogTitle>Approve request</DialogTitle>
             <DialogDescription>
-              The requester gets the access described on this request as soon as you approve.
+              {request.type === ApprovalPolicyType.CertRevocation
+                ? "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone."
+                : "The requester gets the access described on this request as soon as you approve."}
             </DialogDescription>
           </DialogHeader>
           <Field>
@@ -204,7 +197,9 @@ export const RequestActionsSection = ({ request }: Props) => {
           <DialogHeader>
             <DialogTitle>Reject request</DialogTitle>
             <DialogDescription>
-              The request is closed and the requester gets no access. They can open a new one.
+              {request.type === ApprovalPolicyType.CertRevocation
+                ? "The request is closed and the certificate isn't revoked. The requester can ask again."
+                : "The request is closed and the requester gets no access. They can open a new one."}
             </DialogDescription>
           </DialogHeader>
           <Field>

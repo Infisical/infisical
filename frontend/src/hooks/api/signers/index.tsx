@@ -31,6 +31,7 @@ export {
   useGetSigner,
   useGetSignerPolicy,
   useGetSignerPublicKey,
+  useGetSigningActivityTrend,
   useGetSigningOperation,
   useListEffectiveSignerMembers,
   useListSignerMembers,

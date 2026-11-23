@@ -17,14 +17,14 @@ through `ce/services/dependencies.ts`: `TLicensePolicyService` = `LicensePolicyS
 `TLicenseServer` = `LicenseServerClient`. Never add defaults or fallbacks for them in `ce/`: a free tier copy in MIT code is one
 anyone can edit into a paid one.
 
-| Layer | Holds |
-| --- | --- |
-| `ce/models/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
-| `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names; `InstanceEntitlementsCache` (in memory) |
-| `ce/services/` | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts` |
-| `ce/services/helpers/` | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
+| Layer                         | Holds                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ce/models/`                  | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data                                                                                                                                                                                                                                   |
+| `ce/data-access/`             | `PlanCache`, `UsageReportCache` (key store) and their key names; `InstanceEntitlementsCache` (in memory)                                                                                                                                                                                                |
+| `ce/services/`                | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts`                                                                                                                                                                                                                                       |
+| `ce/services/helpers/`        | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`)                                                                                                            |
 | `ee/services/license-policy/` | `LicensePolicyService` (the instance's license: cloud, online or offline key, or community; and cloud org plans), with `default-features.ts` (the free tier only), `license-key.ts` (key parsing, offline key shape), entitlement projection (the only place the free tier is applied), feature mapping |
-| `ee/clients/license-server/` | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping |
+| `ee/clients/license-server/`  | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping                                                                                                                                                                      |
 
 Rules:
 
@@ -34,6 +34,14 @@ Rules:
   them fresh each fetch (`findOrganization`), since orgs get renamed.
 - **Key names, TTLs and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`, `UsageQueues`): old
   pods share them during a rolling deploy.
+- **A project create, delete or restore calls `refreshWorkspacesUsed`, never `invalidatePlan`.** Dropping the plan
+  sends every in-flight request for the org to the License Server and the project count at once.
+  `refreshWorkspacesUsed` rewrites only the separate `workspacesUsed` key, and only when the plan has a project
+  limit; `invalidatePlan` is for changes to the plan itself. The project limit is enforced by
+  `lockAndCountWorkspaces` under the create lock, so the cached count is for display only.
+- **A plan cache miss fetches once per root org** (`fetchOnMiss`, under the revalidate lock). The others serve the
+  last-known plan meanwhile, and fetch themselves only when there is none. A cached plan past its `fresh` marker
+  is served and refreshed in the background, so a busy org never misses.
 - **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). In `getPlan`, a DB or key
   store error serves the fallback for that call only and writes nothing, so it never clobbers a cached paid plan.
   `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving the

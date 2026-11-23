@@ -142,6 +142,12 @@ import {
   TValidateConvexConnectionCredentialsSchema
 } from "./convex";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -666,6 +672,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TRundeckConnection
   | TPortainerConnection
   | TJenkinsConnection
+  | TCoolifyConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -775,6 +782,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRundeckConnectionInput
   | TPortainerConnectionInput
   | TJenkinsConnectionInput
+  | TCoolifyConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -918,6 +926,7 @@ export type TAppConnectionConfig =
   | TRundeckConnectionConfig
   | TPortainerConnectionConfig
   | TJenkinsConnectionConfig
+  | TCoolifyConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -1018,6 +1027,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRundeckConnectionCredentialsSchema
   | TValidatePortainerConnectionCredentialsSchema
   | TValidateJenkinsConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema

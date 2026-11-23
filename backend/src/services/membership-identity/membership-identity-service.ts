@@ -609,7 +609,13 @@ export const membershipIdentityServiceFactory = ({
     });
     if (!membership) throw new NotFoundError({ message: `Identity membership not found` });
 
-    return membership;
+    return {
+      ...membership,
+      identity: {
+        ...membership.identity,
+        activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(membership.identity.id, keyStore)
+      }
+    };
   };
 
   // It's a list of org identities, so at project scope only org identity read gates it, plus a check that

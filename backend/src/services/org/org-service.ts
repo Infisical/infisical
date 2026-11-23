@@ -58,6 +58,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import {
   ActorAuthMethod,
@@ -65,6 +66,7 @@ import {
   AuthMethod,
   AuthModeJwtTokenPayload,
   AuthTokenType,
+  MfaMethod,
   SsoMfaTrust
 } from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
@@ -82,6 +84,8 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { getServerCfg } from "../super-admin/super-admin-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -500,6 +504,7 @@ export const orgServiceFactory = ({
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -565,16 +570,32 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (enforceMfa !== undefined) {
+    // Stored strongest first, so the first entry is the strongest allowed method. selectedMfaMethod is the
+    // deprecated single-method form of the same setting.
+    let allowedMfaMethodsUpdate: MfaMethod[] | undefined;
+    if (allowedMfaMethods !== undefined) {
+      allowedMfaMethodsUpdate = MFA_METHOD_PRIORITY.filter((method) => allowedMfaMethods.includes(method));
+    } else if (selectedMfaMethod !== undefined) {
+      allowedMfaMethodsUpdate = [selectedMfaMethod];
+    }
+
+    if (enforceMfa !== undefined || allowedMfaMethodsUpdate) {
       if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
       }
 
-      if (!appCfg.isSmtpConfigured) {
+      // Email codes need SMTP; passkeys and authenticator apps don't, so only an allowlist with email does.
+      const orgBeforeUpdate = await orgDAL.findById(orgId);
+      const willEnforceMfa = enforceMfa ?? orgBeforeUpdate?.enforceMfa;
+      const willAllowEmail = (allowedMfaMethodsUpdate ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
+        MfaMethod.EMAIL
+      );
+      if (willEnforceMfa && willAllowEmail && !appCfg.isSmtpConfigured) {
         throw new BadRequestError({
-          message: "Failed to enforce user MFA due to missing instance SMTP configuration."
+          message:
+            "Email MFA codes need SMTP, which is not configured for this instance. Remove Email from the allowed MFA methods or configure SMTP."
         });
       }
     }
@@ -726,7 +747,10 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      selectedMfaMethod,
+      allowedMfaMethods: allowedMfaMethodsUpdate,
+      // Kept in step with the first allowed method so a server on the previous release, which reads only
+      // selectedMfaMethod, still enforces a method the org chose.
+      selectedMfaMethod: allowedMfaMethodsUpdate?.[0],
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -1119,6 +1143,11 @@ export const orgServiceFactory = ({
     return `${appCfg.SITE_URL}/login`;
   };
 
+  const $isEmailLoginEnabled = async () => {
+    const { enabledLoginMethods } = await getServerCfg();
+    return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
+  };
+
   const resendOrgMemberInvitation = async ({
     orgId,
     actorId,
@@ -1149,10 +1178,43 @@ export const orgServiceFactory = ({
       [`${TableName.Membership}.id` as "id"]: membershipId
     });
 
+    if (!inviteeOrgMembership) {
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
+    }
+
     if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
       throw new BadRequestError({
         message: "Organization invitation already accepted"
       });
+    }
+
+    const inviteePermissions = await permissionService.getActorGrantAbilities({
+      scopeData: { scope: AccessScope.Organization, orgId },
+      actorId: inviteeOrgMembership.actorUserId as string,
+      actorType: ActorType.USER
+    });
+    if (inviteePermissions.length) {
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+        orgDAL.findById(orgId)
+      );
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: inviteePermissions,
+        baseMessage: "Failed to resend the invitation of this org member"
+      });
+    }
+
+    if (!org?.authEnforced && !(await $isEmailLoginEnabled())) {
+      const inviteeRole = await membershipRoleDAL.findOne({ membershipId: inviteeOrgMembership.id });
+      if (inviteeRole?.role !== OrgMembershipRole.Admin) {
+        throw new BadRequestError({
+          message:
+            "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
+        });
+      }
     }
 
     // Only a mailed invitation counts: without SMTP the caller gets the link instead. A step that fails before
@@ -1297,10 +1359,13 @@ export const orgServiceFactory = ({
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
-    if (
-      organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
-    ) {
+    const isAdminInvite = membershipRole.role === OrgMembershipRole.Admin;
+
+    if (!isAdminInvite && !(await $isEmailLoginEnabled())) {
+      return { user, organizationName: organization.name };
+    }
+
+    if (organization.authEnforced && !(organization.bypassOrgAuthEnabled && isAdminInvite)) {
       return { user, organizationName: organization.name };
     }
 

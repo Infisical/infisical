@@ -4,7 +4,6 @@ import path from "node:path";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
-import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
@@ -15,7 +14,6 @@ import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
@@ -23,13 +21,13 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
+import { etag } from "./plugins/etag";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
@@ -49,8 +47,6 @@ type TMain = {
   clickhouse: ClickHouseClient | null;
   envConfig: TEnvConfig;
   superAdminDAL: TSuperAdminDALFactory;
-  hsmService: THsmServiceFactory;
-  kmsRootConfigDAL: TKmsRootConfigDALFactory;
 };
 
 // Run the server!
@@ -64,9 +60,7 @@ export const main = async ({
   redis,
   clickhouse,
   envConfig,
-  superAdminDAL,
-  hsmService,
-  kmsRootConfigDAL
+  superAdminDAL
 }: TMain) => {
   const appCfg = getConfig();
 
@@ -124,7 +118,7 @@ export const main = async ({
   });
 
   try {
-    await server.register(fastifyEtag);
+    await server.register(etag);
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
@@ -182,10 +176,8 @@ export const main = async ({
       keyStore,
       redis,
       clickhouse,
-      hsmService,
       envConfig,
-      superAdminDAL,
-      kmsRootConfigDAL
+      superAdminDAL
     });
 
     if (appCfg.isApiRunModeEnabled) {

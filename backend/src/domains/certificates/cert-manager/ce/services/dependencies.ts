@@ -1,3 +1,5 @@
+import { TReadOptions } from "@app/domains/lib/data-access";
+
 // No per-project split: the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
 export type TOrgUnitCount = { orgId: string; count: number };
 
@@ -14,10 +16,10 @@ export type TPkiRootOrgUsage = {
 
 // No orgId = whole instance.
 export type TCertificateUsageStore = {
-  countInternalCas(orgId?: string): Promise<number>;
-  countActiveCertificateQuotaKeys(orgId?: string): Promise<{ total: number; wildcard: number }>;
-  isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string): Promise<boolean>;
-  getInternalCaOrgBreakdown(orgId?: string): Promise<TOrgUnitCount[]>;
-  getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]>;
-  getPkiUsageByRootOrg(): Promise<TPkiRootOrgUsage[]>;
+  countInternalCas(orgId?: string, options?: TReadOptions): Promise<number>;
+  countActiveCertificateQuotaKeys(orgId?: string, options?: TReadOptions): Promise<{ total: number; wildcard: number }>;
+  isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string, options?: TReadOptions): Promise<boolean>;
+  getInternalCaOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TOrgUnitCount[]>;
+  getActiveCertificateOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TCertificateOrgUnitCount[]>;
+  getPkiUsageByRootOrg(options?: TReadOptions): Promise<TPkiRootOrgUsage[]>;
 };
