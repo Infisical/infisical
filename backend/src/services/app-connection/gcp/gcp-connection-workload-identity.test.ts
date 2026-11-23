@@ -1,5 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { BadRequestError, GatewayTimeoutError, NotFoundError } from "@app/lib/errors";
 
 import { GcpConnectionMethod } from "./gcp-connection-enums";
@@ -40,6 +41,7 @@ const SA_TOKEN_EXPIRY = "2030-01-01T00:00:00Z";
 
 const signToken = vi.fn(async () => "signed-jwt");
 const oidcIssuerService = { signToken };
+const instanceConfigService = new FakeInstanceConfigService();
 
 const googleError = (status: number, data: unknown) =>
   new AxiosError("Request failed", "ERR_BAD_REQUEST", undefined, undefined, {
@@ -101,7 +103,7 @@ describe("getGcpConnectionFederatedCredential", () => {
 
 describe("validateGcpConnectionCredentials with workload identity federation", () => {
   test("creates the connection without contacting GCP, which cannot trust a connection that does not exist yet", async () => {
-    const credentials = await validateGcpConnectionCredentials(wifConfig({ connection: undefined }), oidcIssuerService);
+    const credentials = await validateGcpConnectionCredentials(wifConfig({ connection: undefined }), oidcIssuerService, instanceConfigService);
 
     expect(credentials).toEqual({ workloadIdentityProvider: PROVIDER, serviceAccountEmail: SERVICE_ACCOUNT });
     expect(signToken).not.toHaveBeenCalled();
@@ -111,14 +113,14 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
   test("refuses when SITE_URL is not an https URL GCP can fetch the keys from", async () => {
     config.SITE_URL = "http://localhost:8080";
 
-    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService)).rejects.toThrow(
+    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)).rejects.toThrow(
       /requires SITE_URL to be this instance's public https URL/
     );
     expect(post).not.toHaveBeenCalled();
   });
 
   test("signs a token for the connection, exchanges it, and impersonates the service account on reconnect", async () => {
-    const credentials = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService);
+    const credentials = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService);
 
     expect(signToken).toHaveBeenCalledWith({
       appConnection: { ...CONNECTION, orgId: ORG_ID, projectId: PROJECT_ID },
@@ -152,7 +154,8 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
   test("uses the federated token directly when no service account is set", async () => {
     const credentials = await validateGcpConnectionCredentials(
       wifConfig({ credentials: { workloadIdentityProvider: PROVIDER } } as Partial<TGcpConnectionConfig>),
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     expect(post).toHaveBeenCalledTimes(1);
@@ -167,7 +170,7 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
       })
     });
 
-    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch((e: unknown) => e);
+    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect((error as BadRequestError).message).toBe(
@@ -180,7 +183,7 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
       iam: googleError(403, { error: { message: "Permission 'iam.serviceAccounts.getAccessToken' denied" } })
     });
 
-    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService)).rejects.toThrow(
+    await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService)).rejects.toThrow(
       `GCP denied the connection access to service account '${SERVICE_ACCOUNT}'. Grant the Workload Identity User role (roles/iam.workloadIdentityUser) on the service account to the connection's principal, subject 'app-connection:${CONNECTION.id}'.`
     );
   });
@@ -192,7 +195,7 @@ describe("validateGcpConnectionCredentials when GCP fails rather than refuses", 
       sts: googleError(503, { error: "temporarily_unavailable", error_description: "Backend error." })
     });
 
-    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch(
       (e: unknown) => e
     )) as Error;
 
@@ -206,7 +209,7 @@ describe("validateGcpConnectionCredentials when GCP fails rather than refuses", 
   test("reports a timeout as a gateway timeout", async () => {
     googleResponds({ sts: new AxiosError("timeout of 30000ms exceeded", AxiosError.ECONNABORTED) });
 
-    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch((e: unknown) => e);
+    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(GatewayTimeoutError);
     expect((error as Error).message).toBe(
@@ -217,7 +220,7 @@ describe("validateGcpConnectionCredentials when GCP fails rather than refuses", 
   test("reports an outage of the IAM Credentials API without asking for a role grant", async () => {
     googleResponds({ iam: googleError(500, { error: { message: "Internal error encountered." } }) });
 
-    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch(
       (e: unknown) => e
     )) as Error;
 
@@ -238,7 +241,7 @@ describe("validateGcpConnectionCredentials when GCP's IAM Credentials API is off
       })
     });
 
-    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService).catch(
       (e: unknown) => e
     )) as BadRequestError;
 
@@ -251,7 +254,7 @@ describe("validateGcpConnectionCredentials when GCP's IAM Credentials API is off
 
 describe("GCP token requests", () => {
   test("give up after a bounded time instead of waiting on Google forever", async () => {
-    await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService);
+    await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService, instanceConfigService);
 
     expect(post.mock.calls).toHaveLength(2);
     post.mock.calls.forEach((call) => expect(call[2]).toMatchObject({ timeout: 30_000 }));
@@ -282,7 +285,8 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
   const deps = {
     appConnectionDAL: { findById, update },
     kmsDataKeyService: {},
-    oidcIssuerService
+    oidcIssuerService,
+    instanceConfigService
   } as unknown as TGcpConnectionAuthDeps;
   const connection = {
     id: CONNECTION.id,

@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { DiscriminativePick } from "@app/lib/types";
 import { TCipherPairSource } from "@app/services/app-connection/app-connection-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
@@ -35,12 +36,14 @@ export type TGcpConnectionWorkloadIdentityFederationCredentials = z.infer<
 
 export type TGcpConnectionFederatedCredential = z.infer<typeof GcpConnectionFederatedCredentialSchema>;
 
-// What a caller needs to get a token for a stored connection. Workload identity federation signs a token,
-// and caches GCP's access token in the connection's credentials.
+// What a caller needs to get a token for a stored connection. Impersonation reads Infisical's own service account
+// from the instance config; workload identity federation signs a token, and caches GCP's access token in the
+// connection's credentials.
 export type TGcpConnectionAuthDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   kmsDataKeyService: TCipherPairSource;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: Pick<TInstanceConfigService, "getOverridableEnv">;
 };
 
 export type TGcpConnectionForAuth = Pick<TGcpConnection, "id" | "orgId" | "method" | "credentials">;
