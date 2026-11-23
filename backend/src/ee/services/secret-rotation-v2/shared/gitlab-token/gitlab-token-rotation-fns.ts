@@ -1,5 +1,6 @@
 import { AxiosError, HttpStatusCode } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
@@ -49,13 +50,20 @@ export const assertGitLabConnectionCanCreateTokens = (connection: TGitLabConnect
 export const getGitLabTokenApiContext = async ({
   connection,
   appConnectionDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   connection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<TGitLabTokenApiContext> => {
-  const accessToken = await getGitLabConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService);
+  const accessToken = await getGitLabConnectionAccessToken(
+    connection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService
+  );
   const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
 
   return {

@@ -14,7 +14,15 @@ import {
 export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
   TGitLabServiceAccountTokenRotationWithConnection,
   TGitLabServiceAccountTokenRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsDataKeyService) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  _keyStore,
+  instanceConfigService
+) => {
   const {
     connection,
     rotationInterval,
@@ -30,6 +38,7 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     secretsMapping,
     appConnectionDAL,
     kmsDataKeyService,
+    instanceConfigService,
     tokensPath: `/groups/${encodeURIComponent(groupId)}/service_accounts/${encodeURIComponent(serviceAccountId)}/personal_access_tokens`,
     resourceLabel,
     permissionHint: "Check that the connection's user has the Owner role on the group.",

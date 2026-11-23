@@ -2,13 +2,14 @@ import { z } from "zod";
 
 import {
   SecretScanningDataSourcesSchema,
+  SecretScanningFindingLocationsSchema,
   SecretScanningFindingsSchema,
   SecretScanningResourcesSchema,
   SecretScanningScansSchema
 } from "@app/db/schemas";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
-import { SecretScanningDataSources } from "@app/lib/api-docs";
+import { SecretScanningDataSources, SecretScanningFindings } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 
 type SecretScanningDataSourceSchemaOpts = {
@@ -114,13 +115,21 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
-  details: true,
-  secretFindingBlindIndex: true
+  secretFindingBlindIndex: true,
+  details: true
 }).extend({
+  // still returned for clients built before locations; removed with the columns
+  fingerprint: z.string().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
+  scanId: z.string().uuid().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
   projectId: z.string(),
   dataSourceId: z.string().uuid(),
   dataSourceName: z.string(),
-  resourceName: z.string()
+  resourceName: z.string(),
+  locationCount: z.number()
+});
+
+export const SecretScanningFindingLocationSchema = SecretScanningFindingLocationsSchema.extend({
+  details: GitRepositoryScanFindingDetailsSchema
 });
 
 export const SecretScanningResourceSchema = SecretScanningResourcesSchema;

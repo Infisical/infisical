@@ -1,14 +1,19 @@
 import { describe, expect, test } from "vitest";
 
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultInlineServiceSecretsRow } from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
+  bindInlineOauthVariables,
   inlineServiceDisplayName,
   openInlineServiceSecrets,
   prepareInlineServices,
@@ -67,8 +72,7 @@ describe("prepareInlineServices", () => {
     expect(service.secrets).toEqual({
       credential: { value: "sk-live" },
       customHeaders: [],
-      substitutions: [],
-      hookSecret: null
+      substitutions: []
     });
   });
 
@@ -104,23 +108,6 @@ describe("prepareInlineServices", () => {
     expect(service.secrets).toBeNull();
   });
 
-  test("seals the hook's signing secret, even for a pass-through service with nothing else to send", () => {
-    const [service] = prepareInlineServices([
-      httpBearer({
-        credential: { type: AgentVaultCredentialType.Passthrough },
-        hook: { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) }
-      })
-    ]);
-    expect(service.hookUrl).toBe("https://hooks.example.com/agent-vault");
-    expect(service.secrets).toEqual({
-      credential: null,
-      customHeaders: [],
-      substitutions: [],
-      hookSecret: "s".repeat(32)
-    });
-    expect(prepareInlineServices([httpBearer()])[0].hookUrl).toBeNull();
-  });
-
   test("derives an MCP service's host from its server URL", () => {
     const [service] = prepareInlineServices([
       {
@@ -146,7 +133,7 @@ describe("prepareInlineServices", () => {
         httpBearer(),
         httpBearer({ hostPattern: "other.example.com", credential: { type: AgentVaultCredentialType.OAuth } })
       ])
-    ).toThrow(/^Service at index 1: Services sent with a session can't use OAuth/);
+    ).toThrow(/^Service at index 1: An OAuth credential sent with a session needs 'variable'/);
   });
 
   test("refuses fields left to members", () => {
@@ -163,7 +150,7 @@ describe("prepareInlineServices", () => {
     ).toThrow(/can't leave a field to members/);
   });
 
-  test("offers only a bearer token for an MCP service, since OAuth isn't available inline", () => {
+  test("offers a bearer token or OAuth for an MCP service", () => {
     expect(() =>
       prepareInlineServices([
         {
@@ -173,7 +160,9 @@ describe("prepareInlineServices", () => {
           credential: { type: AgentVaultCredentialType.Passthrough }
         }
       ])
-    ).toThrow("Service at index 0: An MCP service can't use pass-through as its credential. Use a bearer token.");
+    ).toThrow(
+      "Service at index 0: An MCP service can't use pass-through as its credential. Use a bearer token or OAuth."
+    );
   });
 
   test("refuses a custom header that would shadow the credential's", () => {
@@ -279,15 +268,6 @@ describe("inline service reads", () => {
     expect(toInlineServiceSummary(storedRow()).description).toBeNull();
   });
 
-  test("the summary carries the hook's URL, never its signing secret", () => {
-    const summary = toInlineServiceSummary(
-      storedRow({ hookUrl: "https://hooks.example.com/agent-vault", encryptedHookSecret: Buffer.from("sealed") })
-    );
-    expect(summary.hook).toEqual({ url: "https://hooks.example.com/agent-vault" });
-    expect(summary).not.toHaveProperty("encryptedHookSecret");
-    expect(toInlineServiceSummary(storedRow()).hook).toBeNull();
-  });
-
   test("the summary carries no secret, nor anything else stored beside the credential", () => {
     const summary = toInlineServiceSummary(
       storedRow({
@@ -307,6 +287,18 @@ describe("inline service reads", () => {
       headerPrefix: "Bearer"
     });
   });
+
+  test("the summary carries the service's hook and its narrowing, or null, only when given the hook names", () => {
+    const row = storedRow({ hookId: "hook-1", hookMethods: ["POST"], hookPaths: ["/v1/charges"], hookTools: null });
+    expect(toInlineServiceSummary(row, new Map(), new Map([["hook-1", "approvals"]])).hook).toEqual({
+      id: "hook-1",
+      name: "approvals",
+      methods: ["POST"],
+      paths: ["/v1/charges"]
+    });
+    expect(toInlineServiceSummary(row)).not.toHaveProperty("hook");
+    expect(toInlineServiceSummary(storedRow(), new Map(), new Map([["hook-1", "approvals"]])).hook).toBeNull();
+  });
 });
 
 describe("an MCP server's tool list", () => {
@@ -322,8 +314,7 @@ describe("an MCP server's tool list", () => {
       toResolvedInlineService(mcpRow, {
         credential: { value: "token" },
         customHeaders: [],
-        substitutions: [],
-        hookSecret: null
+        substitutions: []
       })
     ).toMatchObject({ allowedTools: ["search"] });
   });
@@ -339,8 +330,7 @@ describe("toResolvedInlineService", () => {
     const resolved = toResolvedInlineService(storedRow(), {
       credential: { value: "{{literal}}" },
       customHeaders: [],
-      substitutions: [],
-      hookSecret: null
+      substitutions: []
     });
     expect(resolved).toMatchObject({
       name: "api.example.com",
@@ -382,8 +372,7 @@ describe("toResolvedInlineService", () => {
       toResolvedInlineService(storedRow({ customHeaders: [{ name: "X-Team", prefix: "", encryptedValue: null }] }), {
         credential: { value: "token" },
         customHeaders: [],
-        substitutions: [],
-        hookSecret: null
+        substitutions: []
       })
     ).toBeNull();
     expect(
@@ -393,7 +382,7 @@ describe("toResolvedInlineService", () => {
             { placeholder: "ACME_KEY", surfaces: [AgentVaultSubstitutionSurface.Header], encryptedValue: null }
           ]
         }),
-        { credential: { value: "token" }, customHeaders: [], substitutions: [], hookSecret: null }
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
       )
     ).toBeNull();
   });
@@ -403,8 +392,7 @@ describe("toResolvedInlineService", () => {
       toResolvedInlineService(storedRow(), {
         credential: { username: "user", password: "pass" },
         customHeaders: [],
-        substitutions: [],
-        hookSecret: null
+        substitutions: []
       })
     ).toBeNull();
     expect(
@@ -413,7 +401,7 @@ describe("toResolvedInlineService", () => {
           credentialType: AgentVaultCredentialType.Basic,
           credentialConfig: { type: AgentVaultCredentialType.Basic }
         }),
-        { credential: { value: "token" }, customHeaders: [], substitutions: [], hookSecret: null }
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
       )
     ).toBeNull();
   });
@@ -425,7 +413,7 @@ describe("toResolvedInlineService", () => {
           credentialType: AgentVaultCredentialType.Basic,
           credentialConfig: { type: AgentVaultCredentialType.Basic }
         }),
-        { credential: { username: "user", password: "pass" }, customHeaders: [], substitutions: [], hookSecret: null }
+        { credential: { username: "user", password: "pass" }, customHeaders: [], substitutions: [] }
       )?.credential
     ).toEqual({ type: AgentVaultCredentialType.Basic, username: "user", password: "pass" });
   });
@@ -442,7 +430,7 @@ describe("toResolvedInlineService", () => {
             source: AgentVaultCredentialType.OAuth
           }
         }),
-        { credential: { value: "token" }, customHeaders: [], substitutions: [], hookSecret: null }
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
       )?.credential
     ).toEqual({
       type: AgentVaultCredentialType.Bearer,
@@ -453,53 +441,55 @@ describe("toResolvedInlineService", () => {
   });
 });
 
-describe("inline services with a hook", () => {
-  const hookUrl = "https://hooks.example.com/agent-vault";
-  const passthroughWithHook = (overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}) =>
+describe("inline services written with a hook before hooks became their own resource", () => {
+  const seal = (value: unknown) => Buffer.from(JSON.stringify(value));
+  const open = (sealed: Buffer) => JSON.parse(sealed.toString()) as unknown;
+  const legacyHooked = (overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}) =>
     storedRow({
       credentialType: AgentVaultCredentialType.Passthrough,
       credentialConfig: { type: AgentVaultCredentialType.Passthrough },
-      hookUrl,
+      hookUrl: "https://hooks.example.com/agent-vault",
+      encryptedHookSecret: seal({ value: "s".repeat(32) }),
       ...overrides
     });
 
-  test("resolve sends the hook with its secret and no bundle", () => {
-    const resolved = toResolvedInlineService(storedRow({ hookUrl }), {
-      credential: { value: "token" },
-      customHeaders: [],
-      substitutions: [],
-      hookSecret: "s".repeat(32)
-    });
-    expect(resolved).toMatchObject({
-      accessBundleId: null,
-      accessBundleName: null,
-      hook: { url: hookUrl, secret: "s".repeat(32) }
-    });
-    expect(
-      toResolvedInlineService(storedRow(), {
-        credential: { value: "token" },
-        customHeaders: [],
-        substitutions: [],
-        hookSecret: null
-      })?.hook
-    ).toBeNull();
+  // Resolve attaches the hook from the row's URL and secret afterwards, with every other service's hook.
+  test("still resolve, with the hook left for resolve to attach", () => {
+    const resolved = toResolvedInlineService(legacyHooked(), openInlineServiceSecrets(legacyHooked(), open));
+    expect(resolved).toMatchObject({ hook: null });
   });
 
-  test("resolve leaves out a service whose hook has no secret to sign with, rather than send it without the hook", () => {
-    expect(toResolvedInlineService(passthroughWithHook(), null)).toBeNull();
-    expect(
-      toResolvedInlineService(storedRow({ hookUrl }), {
-        credential: { value: "token" },
-        customHeaders: [],
-        substitutions: [],
-        hookSecret: null
-      })
-    ).toBeNull();
+  test("a pass-through service with only a legacy hook needs nothing sealed", () => {
+    expect(openInlineServiceSecrets(legacyHooked({ encryptedHookSecret: null }), open)).toBeNull();
+    expect(toInlineServiceFacts(legacyHooked({ encryptedHookSecret: null }), () => true)).not.toBeNull();
   });
 
-  test("the list an agent reads leaves out a pass-through service with only a hook once its session ended", () => {
-    expect(toInlineServiceFacts(passthroughWithHook())).not.toBeNull();
-    expect(toInlineServiceFacts(passthroughWithHook({ secretsDeletedAt: new Date() }))).toBeNull();
+  test("reads carry no hook", () => {
+    expect(toInlineServiceSummary(legacyHooked())).not.toHaveProperty("hook");
+  });
+});
+
+describe("an inline service's saved hook", () => {
+  const http = (hook: TAgentVaultInlineServiceInput["hook"]): TAgentVaultInlineServiceInput => ({
+    type: AgentVaultServiceType.Http,
+    hostPattern: "api.example.com",
+    credential: { type: AgentVaultCredentialType.Passthrough },
+    hook
+  });
+
+  test("is kept by name for mint to find, and null without one", () => {
+    const [withHook, withoutHook] = prepareInlineServices([
+      http({ name: "approvals", paths: ["/charges"] }),
+      { ...http(undefined), hostPattern: "other.example.com" }
+    ]);
+    expect(withHook.hook).toEqual({ name: "approvals", paths: ["/charges"] });
+    expect(withoutHook.hook).toBeNull();
+  });
+
+  test("refuses a narrowing the service's type can't use, naming the service by its host", () => {
+    expect(() => prepareInlineServices([http({ name: "approvals", tools: ["t"] })])).toThrow(
+      "'api.example.com' is an HTTP service, and only an MCP service can be narrowed by tools. Leave them out to check every request to it."
+    );
   });
 });
 
@@ -587,8 +577,7 @@ describe("database and SSH services sent with a session", () => {
       toResolvedInlineService(row, {
         credential: { username: "agent", password: "p" },
         customHeaders: [],
-        substitutions: [],
-        hookSecret: null
+        substitutions: []
       })
     ).toBeNull();
   });
@@ -611,8 +600,7 @@ describe("openInlineServiceSecrets", () => {
     expect(openInlineServiceSecrets(row, open)).toEqual({
       credential: { value: "sk-live" },
       customHeaders: ["payments", "7"],
-      substitutions: ["acme"],
-      hookSecret: null
+      substitutions: ["acme"]
     });
   });
 
@@ -628,22 +616,6 @@ describe("openInlineServiceSecrets", () => {
     ).toBeNull();
   });
 
-  test("opens the hook's signing secret, and is null when the hook has none", () => {
-    const row = storedRow({
-      credentialType: AgentVaultCredentialType.Passthrough,
-      credentialConfig: { type: AgentVaultCredentialType.Passthrough },
-      hookUrl: "https://hooks.example.com/agent-vault",
-      encryptedHookSecret: seal({ value: "s".repeat(32) })
-    });
-    expect(openInlineServiceSecrets(row, open)).toEqual({
-      credential: null,
-      customHeaders: [],
-      substitutions: [],
-      hookSecret: "s".repeat(32)
-    });
-    expect(openInlineServiceSecrets({ ...row, encryptedHookSecret: null }, open)).toBeNull();
-  });
-
   test("a pass-through service with nothing to seal has no secrets and still goes out", () => {
     const row = storedRow({
       credentialType: AgentVaultCredentialType.Passthrough,
@@ -651,6 +623,171 @@ describe("openInlineServiceSecrets", () => {
     });
     expect(openInlineServiceSecrets(row, open)).toBeNull();
     expect(toResolvedInlineService(row, null)?.credential).toEqual({ type: AgentVaultCredentialType.Passthrough });
+  });
+});
+
+describe("OAuth sent with a session", () => {
+  const VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
+  const variables = [
+    { id: VARIABLE_ID, key: "GDRIVE_U123", type: AgentVaultVariableType.OAuth },
+    { id: "text-1", key: "OPENAI_KEY", type: AgentVaultVariableType.Text }
+  ];
+  const withVariable = (key: string) =>
+    httpBearer({ name: "gdrive", credential: { type: AgentVaultCredentialType.OAuth, variable: key } });
+  const tokens = {
+    type: AgentVaultCredentialType.OAuth,
+    accessToken: "ya29.access",
+    refreshToken: "1//refresh",
+    expiresAt: "2026-11-18T12:00:00Z",
+    authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenEndpoint: "https://oauth2.googleapis.com/token",
+    clientId: "client-1",
+    clientSecret: "secret-1",
+    scopes: ["https://www.googleapis.com/auth/drive"]
+  } as const;
+
+  test("an OAuth variable is stored by id, with nothing sealed", () => {
+    const [service] = bindInlineOauthVariables(prepareInlineServices([withVariable("GDRIVE_U123")]), variables);
+
+    expect(service.credentialConfig).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variableId: VARIABLE_ID
+    });
+    expect(service.secrets).toBeNull();
+  });
+
+  test("a key that names no variable, or a text variable, is refused by name", () => {
+    const prepared = (key: string) => prepareInlineServices([withVariable(key)]);
+    expect(() => bindInlineOauthVariables(prepared("MISSING"), variables)).toThrow(
+      "Service 'gdrive': There's no global variable named 'MISSING'"
+    );
+    expect(() => bindInlineOauthVariables(prepared("OPENAI_KEY"), variables)).toThrow(
+      "Service 'gdrive': 'OPENAI_KEY' is a text variable"
+    );
+  });
+
+  test("a variable and tokens together, or a sign-in, are refused", () => {
+    expect(() =>
+      prepareInlineServices([
+        httpBearer({ credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_U123", accessToken: "x" } })
+      ])
+    ).toThrow("Send either 'variable' or the tokens and the provider's details, not both. Leave out 'accessToken'.");
+    expect(() =>
+      prepareInlineServices([
+        httpBearer({
+          credential: { type: AgentVaultCredentialType.OAuth, authorizationId: "88888888-8888-4888-8888-888888888888" }
+        })
+      ])
+    ).toThrow(/can't use an OAuth sign-in/);
+  });
+
+  test("tokens are stored as sent, with the connection a refresh needs", () => {
+    const [service] = prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes] } })]);
+
+    expect(service.secrets?.credential).toEqual({
+      accessToken: "ya29.access",
+      refreshToken: "1//refresh",
+      clientSecret: "secret-1"
+    });
+    expect(service.credentialConfig).toMatchObject({
+      type: AgentVaultCredentialType.OAuth,
+      issuer: "https://accounts.google.com",
+      tokenEndpoint: "https://oauth2.googleapis.com/token",
+      clientId: "client-1",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic,
+      status: AgentVaultOauthStatus.Connected,
+      expiresAt: "2026-11-18T12:00:00.000Z",
+      accessTokenHash: hashAccessToken("ya29.access")
+    });
+  });
+
+  test("tokens need the provider's endpoints, the client and the scopes", () => {
+    const send = (credential: Record<string, unknown>) => () =>
+      prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes], ...credential } })]);
+    expect(send({ tokenEndpoint: undefined })).toThrow(/need the provider's 'tokenEndpoint'/);
+    expect(send({ clientId: undefined })).toThrow(/need the provider's 'clientId'/);
+    expect(send({ scopes: [] })).toThrow(/scopes they were granted/);
+    expect(send({ accessToken: undefined })).toThrow(/needs 'variable'/);
+    expect(send({ tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None })).toThrow(
+      /'tokenEndpointAuthMethod' is 'none'/
+    );
+  });
+
+  test("tokens go out on resolve, and the variable's resolution is used for a variable", () => {
+    const sealed = { accessToken: "ya29.access", refreshToken: "1//refresh" };
+    const tokenRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, status: AgentVaultOauthStatus.Connected },
+      encryptedCredential: Buffer.from(JSON.stringify(sealed))
+    });
+    const secrets = openInlineServiceSecrets(tokenRow, (blob) => JSON.parse(blob.toString("utf-8")));
+    expect(toResolvedInlineService(tokenRow, secrets)?.credential).toMatchObject({
+      type: AgentVaultCredentialType.Bearer,
+      value: "ya29.access",
+      source: "oauth"
+    });
+
+    const variableRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID }
+    });
+    expect(openInlineServiceSecrets(variableRow, () => ({}))).toBeNull();
+    const notConnected = toResolvedInlineService(variableRow, null, {});
+    expect(notConnected).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true
+    });
+    expect(notConnected?.credentialRemoved).toBeUndefined();
+    expect(notConnected?.credentialNotConnected).toBeUndefined();
+    expect(toResolvedInlineService(variableRow, null, { notConnected: true })).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    const removed = toResolvedInlineService(variableRow, null, { removed: true });
+    expect(removed).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialRemoved: true
+    });
+    expect(removed?.credentialNotConnected).toBeUndefined();
+  });
+
+  test("the agent is told the proxy adds an OAuth credential, and the summary never holds a token", () => {
+    const variableRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID }
+    });
+    expect(toInlineServiceFacts(variableRow, () => true)?.credential).toEqual({ type: "oauth" });
+    expect(toInlineServiceFacts(variableRow, () => false)).toMatchObject({
+      credential: { type: "none" },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    expect(
+      toInlineServiceSummary(variableRow, new Map([[VARIABLE_ID, { id: VARIABLE_ID, key: "GDRIVE_U123" }]])).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variable: { id: VARIABLE_ID, key: "GDRIVE_U123" }
+    });
+    expect(toInlineServiceSummary(variableRow).credential).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable"
+    });
+
+    const [prepared] = prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes] } })]);
+    const tokenRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: prepared.credentialConfig
+    });
+    expect(toInlineServiceSummary(tokenRow).credential).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "inline",
+      issuer: "https://accounts.google.com",
+      grantedScopes: ["https://www.googleapis.com/auth/drive"]
+    });
   });
 });
 

@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -23,9 +24,11 @@ import {
   TAzureDevOpsConnectionCredentials
 } from "./azure-devops-types";
 
-export const getAzureDevopsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID } = getConfig();
-
+export const getAzureDevopsConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure DevOps" as const,
     app: AppConnection.AzureDevOps as const,
@@ -41,7 +44,8 @@ export const getAzureDevopsConnectionListItem = () => {
 export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -60,8 +64,9 @@ export const getAzureDevopsConnection = async (
   // Handle different connection methods
   switch (appConnection.method) {
     case AzureDevOpsConnectionMethod.OAuth:
-      const appCfg = getConfig();
-      if (!appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
+      const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
+        await instanceConfigService.getOverridableEnv();
+      if (!INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
         });
@@ -85,8 +90,8 @@ export const getAzureDevopsConnection = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `https://app.vssps.visualstudio.com/.default`,
-          client_id: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
-          client_secret: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
+          client_id: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
+          client_secret: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
           refresh_token: refreshToken
         })
       );
@@ -170,11 +175,15 @@ export const getAzureDevopsConnection = async (
   }
 };
 
-export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDevOpsConnectionConfig) => {
+export const validateAzureDevOpsConnectionCredentials = async (
+  config: TAzureDevOpsConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { credentials: inputCredentials, method } = config;
 
-  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET, SITE_URL } =
-    getConfig();
+  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureDevOpsConnectionMethod.OAuth:

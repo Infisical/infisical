@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { RateLimitError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -13,10 +14,15 @@ vi.mock("@app/lib/validator", () => ({
   blockLocalAndPrivateIpAddresses: vi.fn(),
   safeRequest: { get: safeRequestGetMock }
 }));
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getConfig: () => ({})
+}));
 vi.mock("@app/lib/config/request", () => ({ request: {} }));
 vi.mock("@app/lib/fn", () => ({ removeTrailingSlash: (url: string) => url.replace(/\/$/, "") }));
-vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
 vi.mock("@app/services/app-connection/app-connection-fns", () => ({
   encryptAppConnectionCredentials: vi.fn()
 }));
@@ -31,9 +37,14 @@ describe("GitLab list retry handling", () => {
     }
   } as TGitLabConnection;
   const fetchMock = vi.fn<typeof fetch>();
-  const service = gitlabConnectionService(vi.fn().mockResolvedValue(connection), { updateById: vi.fn() }, {
-    createCipherPairWithDataKey: vi.fn()
-  } as never);
+  const service = gitlabConnectionService(
+    vi.fn().mockResolvedValue(connection),
+    { updateById: vi.fn() },
+    {
+      createCipherPairWithDataKey: vi.fn()
+    } as never,
+    new FakeInstanceConfigService()
+  );
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -111,9 +122,12 @@ describe("GitLab group service account listing", () => {
       instanceUrl: "https://gitlab.example.com"
     }
   } as TGitLabConnection;
-  const service = gitlabConnectionService(vi.fn().mockResolvedValue(connection), { updateById: vi.fn() }, {
-    createCipherPairWithDataKey: vi.fn()
-  } as never);
+  const service = gitlabConnectionService(
+    vi.fn().mockResolvedValue(connection),
+    { updateById: vi.fn() },
+    { createCipherPairWithDataKey: vi.fn() } as never,
+    {} as never
+  );
 
   afterEach(() => {
     safeRequestGetMock.mockReset();

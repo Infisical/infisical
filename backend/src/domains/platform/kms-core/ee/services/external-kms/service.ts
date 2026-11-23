@@ -7,6 +7,7 @@ import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
   KmsProviders,
+  TExternalKmsAwsSchema,
   TExternalKmsGcpSchema,
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
@@ -23,7 +24,9 @@ import {
   TKmsCoreStores,
   TUpdateExternalKmsInput
 } from "../../../ce/services/dependencies";
+import { AwsProviderInputs, ExternalKmsProviderInputsVersion } from "../../models/aws-provider-inputs";
 import { TExternalKmsProviders } from "../dependencies";
+import { assertAwsInputsAllowed } from "../helpers/assert-aws-inputs-allowed";
 import { openProviderInputs, providerError, TProviderInput } from "../helpers/provider-inputs";
 
 const notFound = (kmsId: string) => new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
@@ -39,7 +42,7 @@ export class ExternalKmsService implements TExternalKmsService {
   ) {}
 
   async create({ orgId, name, description, provider }: TCreateExternalKmsInput) {
-    const providerInput = await this.validateNew(provider as TExternalKmsInputSchema);
+    const providerInput = await this.validateNew(provider as TExternalKmsInputSchema, orgId);
     const orgCipher = await this.orgCipher(orgId);
     const { cipherTextBlob } = orgCipher.encryptor({ plainText: Buffer.from(JSON.stringify(providerInput)) });
     const key = KmsKey.createExternal({
@@ -47,21 +50,28 @@ export class ExternalKmsService implements TExternalKmsService {
       name,
       description,
       provider: provider.type,
-      encryptedProviderInputs: cipherTextBlob
+      encryptedProviderInputs: cipherTextBlob,
+      providerInputsVersion: ExternalKmsProviderInputsVersion.OrgBoundExternalId
     });
     await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.insert(key));
     return ExternalKmsService.details(key, providerInput);
   }
 
+  // Provider inputs are checked against the provider outside the transaction, so they are written only if the stored
+  // ones are still the ones that were checked. The external ID check runs again under the lock because the project or
+  // organization it looks up may have been created meanwhile.
   async update(kmsId: string, { name, description, provider }: TUpdateExternalKmsInput) {
     const { key, orgCipher } = await this.requireExternal(kmsId);
     let providerInput = ExternalKmsService.openInputs(key, orgCipher);
-    let encryptedProviderInputs: Buffer | undefined;
+    let replacement: { encrypted: Buffer; version: number; awsInputs: AwsProviderInputs | null } | undefined;
     if (provider) {
-      providerInput = await this.validateUpdate(provider as TExternalKmsInputUpdateSchema, providerInput);
-      encryptedProviderInputs = orgCipher.encryptor({
-        plainText: Buffer.from(JSON.stringify(providerInput))
-      }).cipherTextBlob;
+      const validated = await this.validateUpdate(provider as TExternalKmsInputUpdateSchema, key, providerInput);
+      providerInput = validated.inputs;
+      replacement = {
+        encrypted: orgCipher.encryptor({ plainText: Buffer.from(JSON.stringify(providerInput)) }).cipherTextBlob,
+        version: validated.version,
+        awsInputs: validated.awsInputs
+      };
     }
 
     const updated = await this.transactionRunner.run(async ({ stores }) => {
@@ -69,7 +79,8 @@ export class ExternalKmsService implements TExternalKmsService {
       if (!current?.isExternal) throw notFound(key.id);
       if (name) current.rename(name);
       if ((name || description) && description !== undefined) current.describe(description);
-      if (encryptedProviderInputs) current.replaceProviderInputs(encryptedProviderInputs);
+      if (replacement?.awsInputs) await assertAwsInputsAllowed(replacement.awsInputs, stores);
+      if (replacement) current.replaceProviderInputs(replacement.encrypted, replacement.version, key);
       await stores.kmsKeyStore.save(current);
       return current;
     });
@@ -124,10 +135,11 @@ export class ExternalKmsService implements TExternalKmsService {
   }
 
   // AWS may create a key and return its id in the inputs.
-  private async validateNew(provider: TExternalKmsInputSchema): Promise<TProviderInput> {
+  private async validateNew(provider: TExternalKmsInputSchema, orgId: string): Promise<TProviderInput> {
     switch (provider.type) {
       case KmsProviders.Aws: {
-        const client = await this.providers.aws({ inputs: provider.inputs }).catch((error) => {
+        const awsInputs = AwsProviderInputs.create({ orgId, inputs: provider.inputs });
+        const client = await this.providers.aws({ inputs: awsInputs.toProviderInputs() }).catch((error) => {
           if (error instanceof STSServiceException || error instanceof KMSServiceException) {
             throw new ExternalSystemError({
               message: error.message ? `AWS error: ${error.message}` : "Failed to connect to AWS KMS"
@@ -155,15 +167,24 @@ export class ExternalKmsService implements TExternalKmsService {
 
   private async validateUpdate(
     provider: TExternalKmsInputUpdateSchema,
+    key: KmsKey,
     current: TProviderInput
-  ): Promise<TProviderInput> {
+  ): Promise<{ inputs: TProviderInput; version: number; awsInputs: AwsProviderInputs | null }> {
+    const currentVersion = ExternalKmsService.inputsVersionOf(key);
     switch (provider.type) {
       case KmsProviders.Aws: {
-        const inputs = { ...ExternalKmsAwsSchema.parse(current), ...provider.inputs };
-        const client = await this.providers.aws({ inputs });
+        const stored = AwsProviderInputs.restore({
+          orgId: key.orgId,
+          inputs: ExternalKmsAwsSchema.parse(current),
+          version: currentVersion
+        });
+        const awsInputs = stored.withChanges(ExternalKmsAwsSchema.parse({ ...stored.inputs, ...provider.inputs }));
+        // Before AssumeRole: sending another organization's external ID is the call this check exists to stop.
+        await assertAwsInputsAllowed(awsInputs, this.stores);
+        const client = await this.providers.aws({ inputs: awsInputs.toProviderInputs() });
         return ExternalKmsService.withClient(client, "AWS", "Failed to validate AWS connection", async () => {
           await client.validateConnection();
-          return inputs;
+          return { inputs: awsInputs.inputs, version: awsInputs.version, awsInputs };
         });
       }
       case KmsProviders.Gcp: {
@@ -171,7 +192,7 @@ export class ExternalKmsService implements TExternalKmsService {
         const client = await this.providers.gcp({ inputs });
         return ExternalKmsService.withClient(client, "GCP", "Failed to validate GCP connection", async () => {
           await client.validateConnection();
-          return inputs;
+          return { inputs, version: currentVersion, awsInputs: null };
         });
       }
       default:
@@ -207,13 +228,28 @@ export class ExternalKmsService implements TExternalKmsService {
     return status;
   }
 
+  private static inputsVersionOf(key: KmsKey) {
+    const ref = key.externalRef();
+    if (!ref) throw notFound(key.id);
+    return ref.providerInputsVersion;
+  }
+
   private static details(key: KmsKey, providerInput: TProviderInput): TExternalKmsDetails {
+    const ref = key.externalRef();
+    if (!ref) throw notFound(key.id);
     return {
       ...key.columns(),
       external: {
         ...ExternalKmsService.statusOf(key),
         kmsKeyId: key.id,
-        providerInput: providerInput as unknown as Record<string, unknown>
+        providerInput: providerInput as unknown as Record<string, unknown>,
+        hasLegacyExternalId:
+          ref.provider === KmsProviders.Aws &&
+          AwsProviderInputs.restore({
+            orgId: key.orgId,
+            inputs: providerInput as TExternalKmsAwsSchema,
+            version: ref.providerInputsVersion
+          }).hasLegacyExternalId()
       }
     };
   }

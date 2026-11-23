@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -37,6 +38,7 @@ import {
   TFindSecretScanningDataSourceByIdDTO,
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
+  TListSecretScanningFindingLocationsDTO,
   TRemoveSecretScanningResourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
@@ -44,6 +46,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
@@ -88,6 +91,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -103,6 +107,7 @@ export const secretScanningV2ServiceFactory = ({
   secretScanningV2Queue,
   appConnectionDAL,
   kmsDataKeyService,
+  instanceConfigService,
   keyStore
 }: TSecretScanningV2ServiceFactoryDep) => {
   // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
@@ -283,7 +288,11 @@ export const secretScanningV2ServiceFactory = ({
     encryptedCredentials: Buffer | null | undefined,
     resourceNames: string[]
   ) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsDataKeyService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     if (!factory.updateWebhook || !isDataSourceWebhookRequired(dataSource)) return undefined;
 
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -380,7 +389,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     try {
@@ -518,7 +528,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     if (payload.isDiscoveryEnabled && !doesDataSourceSupportDiscovery(dataSource))
@@ -653,7 +664,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let connection: TAppConnection | null = null;
@@ -832,7 +844,11 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsDataKeyService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     const { noun } = AUTO_SYNC_DESCRIPTION_HELPER[dataSource.type];
 
     let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1097,7 +1113,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1268,14 +1285,6 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1300,14 +1309,6 @@ export const secretScanningV2ServiceFactory = ({
     filter: TListSecretScanningFindingsFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1327,18 +1328,12 @@ export const secretScanningV2ServiceFactory = ({
     return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
-  const updateSecretScanningFindingById = async (
-    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+  // Reading findings doesn't check the plan, so an org that downgrades can still see what was found.
+  const findSecretScanningFindingWithPermission = async (
+    findingId: string,
+    action: ProjectPermissionSecretScanningFindingActions,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
@@ -1355,9 +1350,45 @@ export const secretScanningV2ServiceFactory = ({
       projectId: finding.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretScanningFindings);
+
+    return finding;
+  };
+
+  const listSecretScanningFindingLocations = async (
+    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
+      ProjectPermissionSecretScanningFindingActions.Read,
+      actor
+    );
+
+    const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      offset,
+      limit
+    });
+
+    return { locations: locations as TSecretScanningFindingLocation[], totalCount, finding };
+  };
+
+  const updateSecretScanningFindingById = async (
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.has(PlanFeature.SecretScanning))
+      throw new BadRequestError({
+        message:
+          "Failed to update Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
       ProjectPermissionSecretScanningFindingActions.Update,
-      ProjectPermissionSub.SecretScanningFindings
+      actor
     );
 
     const isStatusChange = status !== undefined && status !== finding.status;
@@ -1505,10 +1536,11 @@ export const secretScanningV2ServiceFactory = ({
     listSecretScanningScansWithDetailsByDataSourceId,
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
+    listSecretScanningFindingLocations,
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
-    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
+    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, instanceConfigService),
     bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService),
     gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService)
   };

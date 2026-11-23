@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
@@ -48,6 +49,7 @@ type TPamAccountHeartbeatServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   permissionService: TPermissionServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
@@ -60,6 +62,7 @@ export const pamAccountHeartbeatServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   kmsDataKeyService,
+  instanceConfigService,
   permissionService,
   projectDAL,
   rotationHandlers = PAM_ROTATION_FACTORY_MAP
@@ -151,7 +154,7 @@ export const pamAccountHeartbeatServiceFactory = ({
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
       try {
-        await validateCloud({ connectionDetails, credentials, orgId });
+        await validateCloud({ connectionDetails, credentials, orgId, instanceConfigService });
         return { status: PamHeartbeatStatus.Healthy };
       } catch (err) {
         const status = classifyCloudProbeError(err);

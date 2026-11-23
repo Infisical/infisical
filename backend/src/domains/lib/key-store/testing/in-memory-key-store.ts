@@ -51,6 +51,11 @@ export class InMemoryKeyStore implements TDomainKeyStore {
 
   deleteItem = async (key: string) => (this.entries.delete(key) ? 1 : 0);
 
+  deleteItemIfValue = async (key: string, value: string) => {
+    if (this.read(key) !== value) return false;
+    return this.entries.delete(key);
+  };
+
   incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
     const next = Number(this.read(key) ?? 0) + value;
     await this.setItemWithExpiry(key, expiryInSeconds, next);

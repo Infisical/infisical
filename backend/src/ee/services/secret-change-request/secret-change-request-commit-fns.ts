@@ -167,6 +167,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commits: TSecretApprovalCommit[] = [];
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
+    const renamedFromKey: Record<string, string> = {};
 
     const { encryptor: secretManagerEncryptor } = await dataKeysOn(
       kmsDataKeyService,
@@ -379,6 +380,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
             secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
+            if (newSecretName && newSecretName !== secretKey) renamedFromKey[newSecretName] = secretKey;
             if (tagIds?.length || existingTagIds[secretKey]?.length) {
               commitTagIds[newSecretName ?? secretKey] = tagIds || existingTagIds[secretKey];
             }
@@ -515,7 +517,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
       );
     }
 
-    const tagIds = unique(Object.values(commitTagIds).flat());
+    const tagIds = unique([
+      ...Object.values(commitTagIds).flat(),
+      ...Object.values(renamedFromKey).flatMap((key) => existingTagIds[key] ?? [])
+    ]);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds, providedTx) : [];
     if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
     const tagsGroupById = groupBy(tags, (i) => i.id);
@@ -534,6 +539,19 @@ export const secretApprovalRequestCommitFnsFactory = ({
           secretTags: commitTagIds?.[commit.key]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
         })
       );
+
+      const originalKey = commit.op === SecretOperations.Update ? renamedFromKey[commit.key] : undefined;
+      if (originalKey) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretActions.Edit,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: originalKey,
+            secretTags: existingTagIds[originalKey]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
+          })
+        );
+      }
     });
 
     return {

@@ -92,6 +92,7 @@ const buildFactory = (connection: Record<string, unknown> = buildConnection()) =
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
     {} as any
   );
 

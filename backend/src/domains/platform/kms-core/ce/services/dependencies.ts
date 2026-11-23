@@ -105,6 +105,7 @@ export type TOrganizationKeyStore = {
   claimKmsKey(key: OrganizationKey): Promise<boolean>;
   claimDataKey(key: OrganizationKey): Promise<boolean>;
   referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean>;
+  isOrganization(id: string, options?: TReadOptions): Promise<boolean>;
 };
 
 // Key columns on projects, which no domain owns yet. A project scheduled for deletion isn't found.
@@ -119,6 +120,7 @@ export type TProjectKeyStore = {
   save(key: ProjectKey): Promise<void>;
   // Includes projects scheduled for deletion.
   referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean>;
+  findOrgIdIncludingPendingDeletion(projectId: string, options?: TReadOptions): Promise<string | null>;
 };
 
 // A project's wrapped data key in Redis, so the hot path skips the project row. Holds only what the database holds
@@ -165,6 +167,7 @@ export type TExternalKmsConfig = {
   statusDetails?: string | null;
   // Decrypted provider inputs. Holds credentials: callers return only the sanitized form.
   providerInput: Record<string, unknown>;
+  hasLegacyExternalId: boolean;
 };
 
 export type TExternalKmsDetails = TKmsKeyColumns & { external: TExternalKmsConfig };
@@ -187,9 +190,18 @@ export type TUpdateExternalKmsInput = {
   provider?: { type: string; inputs: unknown };
 };
 
+// The reads the enterprise edition needs to check that a key's provider inputs do not name another organization.
+// Pass the stores of the current call, so inside a caller's transaction the check reads that transaction instead of
+// taking a second connection.
+export type TInfisicalIdLookup = {
+  organizationKeyStore: Pick<TOrganizationKeyStore, "isOrganization">;
+  projectKeyStore: Pick<TProjectKeyStore, "findOrgIdIncludingPendingDeletion">;
+};
+
 // Implemented by the enterprise edition and built before KMS Core, so every call gets the org data-key cipher that
 // opens the key's provider inputs.
 export type TExternalKmsHook = {
+  assertInputsAllowed(key: TExternalKeyRef, orgCipher: TCipherPair, idLookup: TInfisicalIdLookup): Promise<void>;
   encrypt(key: TExternalKeyRef, orgCipher: TCipherPair, plainText: Buffer): Promise<Buffer<ArrayBuffer>>;
   decrypt(key: TExternalKeyRef, orgCipher: TCipherPair, cipherTextBlob: Buffer): Promise<Buffer<ArrayBuffer>>;
 };

@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   TRotationFactoryCheckActiveCredentials,
@@ -35,6 +36,7 @@ export const gitLabTokenRotationFactory = ({
   secretsMapping,
   appConnectionDAL,
   kmsDataKeyService,
+  instanceConfigService,
   tokensPath,
   resourceLabel,
   permissionHint,
@@ -46,6 +48,7 @@ export const gitLabTokenRotationFactory = ({
   secretsMapping: { tokenId: string; token: string };
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   /** a GitLab token collection, e.g. `/groups/:id/access_tokens` */
   tokensPath: string;
   /** what the tokens belong to, for error messages, e.g. `group '34'` */
@@ -66,7 +69,8 @@ export const gitLabTokenRotationFactory = ({
     return getGitLabTokenApiContext({
       connection,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
   };
 

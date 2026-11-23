@@ -18,7 +18,7 @@ import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
-import { getRequiredMfaMethod, isIdpMfaTrusted } from "@app/services/auth/auth-fns";
+import { getUserAllowedMfaMethods, isIdpMfaTrusted, isMfaRequired } from "@app/services/auth/auth-fns";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -551,9 +551,13 @@ export const oauthClientServiceFactory = ({
     const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
-    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(org, user);
+    const allowedMfaMethods = getUserAllowedMfaMethods(org, user);
     const isMfaSatisfiedByIdp = isIdpMfaTrusted({ org, authMethod: dto.authMethod, idpMfaOrgId: dto.idpMfaOrgId });
-    if (isMfaRequired && !isMfaSatisfiedByIdp && (!dto.isMfaVerified || dto.mfaMethod !== requiredMfaMethod)) {
+    if (
+      isMfaRequired(org, user) &&
+      !isMfaSatisfiedByIdp &&
+      (!dto.isMfaVerified || !dto.mfaMethod || !allowedMfaMethods.includes(dto.mfaMethod))
+    ) {
       throw new UnauthorizedError({
         message: "Multi-factor authentication is required before authorizing this application"
       });
@@ -729,8 +733,7 @@ export const oauthClientServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    const { isMfaRequired } = getRequiredMfaMethod(org, user);
-    if (isMfaRequired && !client.tokenExchangeIdpSatisfiesMfa) {
+    if (isMfaRequired(org, user) && !client.tokenExchangeIdpSatisfiesMfa) {
       throw new UnauthorizedError({
         message:
           "Multi-factor authentication is required for this user, and this application has not been marked as relying on an identity provider that enforces it. An organization admin can enable that on the application under Organization Settings > OAuth Applications."
@@ -927,8 +930,7 @@ export const oauthClientServiceFactory = ({
       decodedToken.organizationId
     );
 
-    let { refreshToken } = dto;
-    let { refreshVersion } = tokenVersion;
+    let refreshToken: string | undefined;
 
     // Carry the originally-granted scopes forward; a refresh must never broaden delegation.
     const grantedScopes = oauthDecodedToken.scopes ?? [];
@@ -944,15 +946,16 @@ export const oauthClientServiceFactory = ({
       scopes: grantedScopes
     };
 
-    if (!isGraceHit) {
-      const { updatedSession } = await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
-      refreshVersion = updatedSession.refreshVersion;
-
+    // A grace hit returns no refresh_token, so the client keeps the one it holds (RFC 6749 section 6). Echoing
+    // the presented token back would let a late grace response overwrite the newer token a concurrent
+    // request was just issued, and the next refresh with it would revoke the session as reuse.
+    const rotation = isGraceHit ? undefined : await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
+    if (rotation && !rotation.isGraceHit) {
       refreshToken = signOauthToken(
         {
           ...sharedClaims,
           tokenType: AuthTokenType.REFRESH_TOKEN,
-          version: refreshVersion,
+          version: rotation.updatedSession.refreshVersion,
           oauthClientId: client.clientId
         },
         refreshTokenExpiresIn
@@ -973,7 +976,7 @@ export const oauthClientServiceFactory = ({
       access_token: accessToken,
       token_type: "Bearer" as const,
       expires_in: expiresInToSeconds(accessTokenExpiresIn),
-      refresh_token: refreshToken,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
       scope: grantedScopes.join(" ")
     };
   };

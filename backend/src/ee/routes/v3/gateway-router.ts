@@ -46,6 +46,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   directAddress: true,
   directHeartbeat: true
 }).extend({
+  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.RESPONSE.cliVersion),
+  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.RESPONSE.cliVersionReportedAt),
   canRevoke: z.boolean()
 });
 
@@ -909,7 +911,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         actorType: req.permission.type,
         relayName: req.body.relayName,
         directAddress: req.body.directAddress,
-        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined
+        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined,
+        userAgent: req.headers["user-agent"]
       });
 
       await server.services.auditLog.createAuditLog({

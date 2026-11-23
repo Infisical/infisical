@@ -466,9 +466,22 @@ export const ServicesCard = ({
                       </span>
                       {service.credential.type === AgentVaultCredentialType.OAuth &&
                         service.credential.status &&
-                        service.credential.status !== AgentVaultOauthStatus.Connected && (
+                        service.credential.status !== AgentVaultOauthStatus.Connected &&
+                        (service.credential.variable ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <OAuthStatusBadge status={service.credential.status} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Uses the {service.credential.variable.key} variable. Authorize it on
+                              the Variables page.
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
                           <OAuthStatusBadge status={service.credential.status} />
-                        )}
+                        ))}
                       {service.description && (
                         <span
                           className="min-w-0 flex-1 truncate text-sm text-muted"

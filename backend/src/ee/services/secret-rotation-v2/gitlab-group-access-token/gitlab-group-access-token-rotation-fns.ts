@@ -11,7 +11,15 @@ import {
 export const gitLabGroupAccessTokenRotationFactory: TRotationFactory<
   TGitLabGroupAccessTokenRotationWithConnection,
   TGitLabGroupAccessTokenRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsDataKeyService) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  _keyStore,
+  instanceConfigService
+) => {
   const {
     connection,
     rotationInterval,
@@ -25,6 +33,7 @@ export const gitLabGroupAccessTokenRotationFactory: TRotationFactory<
     secretsMapping,
     appConnectionDAL,
     kmsDataKeyService,
+    instanceConfigService,
     tokensPath: `/groups/${encodeURIComponent(groupId)}/access_tokens`,
     resourceLabel: `group '${groupId}'`,
     permissionHint:

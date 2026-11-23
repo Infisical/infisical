@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
@@ -28,6 +29,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserServiceFactory } from "@app/services/user/user-service";
 
 import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
@@ -115,7 +117,8 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findRootOrgDetails">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
@@ -125,6 +128,7 @@ type TPamAccountServiceFactoryDep = {
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
@@ -212,13 +216,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     userDAL,
     orgDAL,
     mfaSessionService,
+    userService,
     permissionService,
     kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     gatewayPoolMembershipDAL,
     gatewayV2DAL,
-    licenseService
+    licenseService,
+    instanceConfigService
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
@@ -581,7 +587,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         });
       }
       await enforceMfa(
-        { mfaSessionService, orgDAL, userDAL },
+        { mfaSessionService, orgDAL, userDAL, userService },
         {
           userId: ctx.actorId,
           orgId: ctx.actorOrgId,
@@ -629,7 +635,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
       try {
-        await validateCloud({ connectionDetails, credentials, orgId });
+        await validateCloud({ connectionDetails, credentials, orgId, instanceConfigService });
       } catch (err) {
         throw new BadRequestError({
           message: `Connection test failed: ${err instanceof Error ? err.message : "unable to validate credentials"}`

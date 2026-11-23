@@ -21,10 +21,14 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
   alertDAL: Pick<TAlertDALFactory, "findByChannelId" | "findActiveById">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
+  alertChannelService: Pick<
+    TAlertChannelServiceFactory,
+    "validateRecipients" | "assertRecipientTypesAllowed" | "assertActorMayUseConfig"
+  >;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
+  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
 
@@ -42,6 +46,7 @@ export const alertChannelTestServiceFactory = ({
   alertProviderRegistry,
   kmsDataKeyService,
   smtpService,
+  slackIntegrationDAL,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
   const $assertCooldown = async (orgId: string, actorId: string, channelType: string) => {
@@ -90,7 +95,13 @@ export const alertChannelTestServiceFactory = ({
     const incoming = dto.config ?? {};
 
     if (!dto.channelId) {
-      return parseChannelConfig(definition, dto.channelType, incoming);
+      const config = parseChannelConfig(definition, dto.channelType, incoming);
+      await alertChannelService.assertActorMayUseConfig({
+        actor: toAlertActor(dto),
+        channelType: dto.channelType,
+        config
+      });
+      return config;
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -112,7 +123,14 @@ export const alertChannelTestServiceFactory = ({
     const stored = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
-    return parseChannelConfig(definition, dto.channelType, merged);
+    const config = parseChannelConfig(definition, dto.channelType, merged);
+    await alertChannelService.assertActorMayUseConfig({
+      actor: toAlertActor(dto),
+      channelType: dto.channelType,
+      config,
+      existingConfig: stored
+    });
+    return config;
   };
 
   const $resolveRecipients = async (
@@ -155,7 +173,7 @@ export const alertChannelTestServiceFactory = ({
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
     await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
 
-    const deps: TAlertChannelDeps = { smtpService };
+    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
     const payload = buildTestAlertPayload({
       orgId: dto.actorOrgId,
       projectId,
@@ -168,7 +186,7 @@ export const alertChannelTestServiceFactory = ({
       if (!definition.directed) {
         const result = await definition.send({ channelId: TEST_CHANNEL_ID, config, payload, deps });
         if (!result.success) return { success: false, error: result.error ?? "Delivery failed" };
-        return { success: true, deliveredTo: 1 };
+        return { success: true, deliveredTo: 1, ...(result.error ? { error: result.error } : {}) };
       }
 
       const results = await Promise.all(

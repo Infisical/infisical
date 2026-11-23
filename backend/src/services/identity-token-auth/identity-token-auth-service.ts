@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   TableName
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -67,6 +68,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: TLicenseService;
+  instanceConfigService: TInstanceConfigService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   eventEmitter: TEventEmitter;
 };
@@ -81,6 +83,7 @@ export const identityTokenAuthServiceFactory = ({
   identityAccessTokenService,
   permissionService,
   licenseService,
+  instanceConfigService,
   orgDAL,
   eventEmitter
 }: TIdentityTokenAuthServiceFactoryDep) => {
@@ -133,7 +136,7 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -236,7 +239,7 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -381,7 +384,7 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
@@ -456,7 +459,7 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
@@ -601,7 +604,7 @@ export const identityTokenAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const tokens = await identityAccessTokenDAL.find(
       {
@@ -728,7 +731,11 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigService,
+      foundToken.identityId,
+      isActorSuperAdmin
+    );
 
     const token = await identityTokenAuthDAL.transaction(async (tx) => {
       const [doc] = await identityAccessTokenDAL.update(
@@ -815,7 +822,11 @@ export const identityTokenAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigService,
+      identityAccessToken.identityId,
+      isActorSuperAdmin
+    );
 
     const revokedToken = await identityTokenAuthDAL.transaction(async (tx) => {
       const [doc] = await identityAccessTokenDAL.update(

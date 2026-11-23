@@ -828,8 +828,8 @@ export const projectServiceFactory = ({
       };
     });
 
-    // The plan caches the project count, so drop it after commit (the caller's commit, if it passed a tx).
-    if (!trx) await licenseService.invalidatePlan(actorOrgId);
+    // The plan caches the project count, so recount after commit (the caller's commit, if it passed a tx).
+    if (!trx) await licenseService.refreshWorkspacesUsed(actorOrgId);
     // New projects seed members, so re-meter seats. The counters filter by project type.
     usageMeteringService.emit(results.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(results.orgId, Meter.PamIdentities);
@@ -941,8 +941,8 @@ export const projectServiceFactory = ({
         throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
       }
 
-      // The plan caches the project count, which leaves out soft-deleted projects, so drop it.
-      await licenseService.invalidatePlan(actorOrgId);
+      // The plan caches the project count, which leaves out soft-deleted projects.
+      await licenseService.refreshWorkspacesUsed(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
@@ -1094,7 +1094,7 @@ export const projectServiceFactory = ({
         throw error;
       }
 
-      await licenseService.invalidatePlan(project.orgId);
+      await licenseService.refreshWorkspacesUsed(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
