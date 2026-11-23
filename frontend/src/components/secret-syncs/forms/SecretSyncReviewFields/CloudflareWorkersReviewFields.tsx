@@ -40,12 +40,23 @@ export const CloudflareWorkersSyncReviewFields = () => {
   const { watch } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.CloudflareWorkers }
   >();
-  const scriptId = watch("destinationConfig.scriptId");
+  const [scriptId, previewName] = watch([
+    "destinationConfig.scriptId",
+    "destinationConfig.previewName"
+  ]);
 
   return (
-    <Detail>
-      <DetailLabel>Script</DetailLabel>
-      <DetailValue>{scriptId}</DetailValue>
-    </Detail>
+    <>
+      <Detail>
+        <DetailLabel>Script</DetailLabel>
+        <DetailValue>{scriptId}</DetailValue>
+      </Detail>
+      {previewName && (
+        <Detail>
+          <DetailLabel>Preview</DetailLabel>
+          <DetailValue>{previewName}</DetailValue>
+        </Detail>
+      )}
+    </>
   );
 };

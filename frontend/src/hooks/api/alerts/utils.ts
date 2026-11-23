@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import {
   AlertChannelType,
   TAlert,
@@ -6,6 +8,16 @@ import {
   WEBHOOK_AUTH_FIELDS,
   WebhookAuthType
 } from "./types";
+
+const SlackAppConfigSchema = z.object({
+  workflowIntegrationId: z.string().catch(""),
+  channels: z.array(z.object({ id: z.string(), name: z.string() })).catch([])
+});
+
+const toSlackAppForm = (config: Record<string, unknown>) => {
+  const { workflowIntegrationId, channels } = SlackAppConfigSchema.parse(config);
+  return { workflowIntegrationId, slackChannels: channels };
+};
 
 export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
@@ -25,13 +37,19 @@ export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm
   authHeaderValue: "",
   headers: (channel.config.headers as TChannelForm["headers"]) ?? [],
   integrationKey: "",
+  ...toSlackAppForm(channel.config),
   hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
   hasSigningSecret: Boolean(channel.config.hasSigningSecret),
   hasAuthCredentials: Boolean(channel.config.hasAuthCredentials),
   hasBasicPassword: Boolean(channel.config.hasBasicPassword),
   hasAuthHeaderValue: Boolean(channel.config.hasAuthHeaderValue),
   hasIntegrationKey: Boolean(channel.config.hasIntegrationKey),
-  savedUrl: channel.config.url as string | undefined
+  savedUrl: channel.config.url as string | undefined,
+  savedChannel: {
+    id: channel.id,
+    channelType: channel.channelType,
+    hasWebhookUrl: Boolean(channel.config.hasWebhookUrl)
+  }
 });
 
 const filled = (fields: Record<string, string | undefined>) =>
@@ -63,6 +81,14 @@ export const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
   switch (channel.channelType) {
     case AlertChannelType.Email:
       return { ...base, config: {}, recipients: channel.recipients };
+    case AlertChannelType.SlackApp:
+      return {
+        ...base,
+        config: {
+          workflowIntegrationId: channel.workflowIntegrationId,
+          channels: channel.slackChannels ?? []
+        }
+      };
     case AlertChannelType.Slack:
       return { ...base, config: channel.webhookUrl ? { webhookUrl: channel.webhookUrl } : {} };
     case AlertChannelType.Webhook:

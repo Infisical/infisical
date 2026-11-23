@@ -1,4 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService, TKmsDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
@@ -28,8 +29,6 @@ import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-appro
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -125,6 +124,7 @@ import {
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
 import { ConvexConnectionMethod, getConvexConnectionListItem, validateConvexConnectionCredentials } from "./convex";
+import { CoolifyConnectionMethod, getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { decryptRotationMessage } from "./credential-rotation/app-connection-credential-rotation-fns";
 import { DatabricksConnectionMethod } from "./databricks";
@@ -203,6 +203,11 @@ import {
   validateHumanitecConnectionCredentials
 } from "./humanitec";
 import { getImpervaConnectionListItem, ImpervaConnectionMethod, validateImpervaConnectionCredentials } from "./imperva";
+import {
+  getIncidentIoConnectionListItem,
+  IncidentIoConnectionMethod,
+  validateIncidentIoConnectionCredentials
+} from "./incident-io";
 import { getJenkinsConnectionListItem, JenkinsConnectionMethod, validateJenkinsConnectionCredentials } from "./jenkins";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
@@ -354,6 +359,8 @@ import {
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
+export type TCipherPairSource = Pick<TKmsDataKeyTransaction, "createCipherPairWithDataKey">;
+
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
 );
@@ -401,7 +408,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -516,6 +523,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRundeckConnectionListItem(),
     getPortainerConnectionListItem(),
     getJenkinsConnectionListItem(),
+    getCoolifyConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -529,7 +537,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
-    getClickHouseConnectionListItem()
+    getClickHouseConnectionListItem(),
+    getIncidentIoConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -538,15 +547,15 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
 export const encryptAppConnectionCredentials = async ({
   orgId,
   credentials,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   credentials: TAppConnection["credentials"];
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -568,15 +577,15 @@ export const encryptAppConnectionCredentials = async ({
 export const decryptAppConnectionCredentials = async ({
   orgId,
   encryptedCredentials,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -595,17 +604,17 @@ export const decryptAppConnectionCredentials = async ({
 export const encryptAppConnectionConfiguration = async ({
   orgId,
   configuration,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   configuration: TAppConnectionConfiguration;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
   if (!configuration) return null;
 
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -627,17 +636,17 @@ export const encryptAppConnectionConfiguration = async ({
 export const decryptAppConnectionConfiguration = async ({
   orgId,
   encryptedConfiguration,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedConfiguration: Buffer | null | undefined;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }): Promise<TAppConnectionConfiguration> => {
   if (!encryptedConfiguration) return undefined;
 
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -659,7 +668,7 @@ export const validateAppConnectionCredentials = async (
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    kmsDataKeyService: TKmsDataKeyService;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
@@ -671,7 +680,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsService: deps.kmsService
+        kmsDataKeyService: deps.kmsDataKeyService
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -768,6 +777,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jenkins]: validateJenkinsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -782,7 +792,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -839,6 +850,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case JenkinsConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
       return "API Token";
@@ -904,6 +916,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DaytonaConnectionMethod.ApiKey:
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
+    case IncidentIoConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -945,7 +958,7 @@ export const decryptAppConnection = async (
     };
     project?: { name: string; id: string; type: string; slug: string } | null;
   },
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"]
+  kmsDataKeyService: TAppConnectionServiceFactoryDep["kmsDataKeyService"]
 ) => {
   const { encryptedCredentials, encryptedConfiguration, ...connectionWithoutEncrypted } = appConnection;
 
@@ -959,7 +972,7 @@ export const decryptAppConnection = async (
                 orgId: appConnection.orgId,
                 projectId: appConnection.projectId,
                 encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
-                kmsService
+                kmsDataKeyService
               })
             : null
         }
@@ -968,13 +981,13 @@ export const decryptAppConnection = async (
       encryptedCredentials,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsService
+      kmsDataKeyService
     }),
     configuration: await decryptAppConnectionConfiguration({
       encryptedConfiguration,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsService
+      kmsDataKeyService
     }),
     credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;
@@ -1102,6 +1115,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
   [AppConnection.Jenkins]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
@@ -1115,7 +1129,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
-  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
+  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

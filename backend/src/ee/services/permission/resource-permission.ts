@@ -56,6 +56,7 @@ export enum ResourcePermissionSignerActions {
   PreApprove = "pre-approve",
   RevokeRequest = "revoke-request",
   ReissueCertificate = "reissue-certificate",
+  RevokeCertificate = "revoke-certificate",
   ExportCertificate = "export-certificate"
 }
 
@@ -87,6 +88,7 @@ export enum ResourcePermissionCertificateActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
+  RequestRevocation = "request-revocation",
   ReadPrivateKey = "read-private-key",
   Import = "import"
 }

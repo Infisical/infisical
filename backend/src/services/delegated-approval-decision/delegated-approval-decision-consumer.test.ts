@@ -106,7 +106,7 @@ const decided = (
   decision,
   approvalRequestId: APPROVAL_REQUEST_ID,
   permissions: ["secrets:        create, read", "secret-folders: edit"],
-  decidedBy: "Grace Hopper",
+  approvedBy: ["Grace Hopper", "Ada Lovelace"],
   decidedAt: "2026-10-20 10:15:00",
   notes: null,
   ...overrides
@@ -170,7 +170,7 @@ const buildConsumer = ({
     },
     appConnectionDAL: { findById: vi.fn().mockResolvedValue(connection) },
     membershipDAL: { isUserProjectMember: vi.fn().mockResolvedValue(isRequesterProjectMember) },
-    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
     auditLogService: { createAuditLog },
     approvalResources: { [ApprovalPolicyType.SecretAccess]: { postApprovalTxRoutine } },
     decisionNotifiers: { [ApprovalPolicyType.SecretAccess]: notify }
@@ -249,7 +249,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     auditedWith(createAuditLog, {
       outcome: DelegatedApprovalDecisionOutcome.Applied,
       decision: DelegatedApprovalDecision.Approved,
-      decidedBy: "Grace Hopper",
+      approvedBy: ["Grace Hopper", "Ada Lovelace"],
       decidedAt: "2026-10-20 10:15:00",
       providerRecordNumber: "INFAR1000000"
     });

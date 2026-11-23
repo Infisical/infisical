@@ -451,7 +451,6 @@ export const identityServiceFactory = ({
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
@@ -463,7 +462,6 @@ export const identityServiceFactory = ({
     // identity meters change too.
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

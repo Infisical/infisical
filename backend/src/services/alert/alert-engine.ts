@@ -1,9 +1,9 @@
 import pLimit from "p-limit";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
@@ -51,8 +51,9 @@ export type TAlertEngineDep = {
   >;
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
+  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
 };
 
 export type TAlertEngine = ReturnType<typeof alertEngineFactory>;
@@ -63,8 +64,9 @@ export const alertEngineFactory = ({
   alertHistoryDAL,
   alertProviderRegistry,
   alertRecipientResolver,
-  kmsService,
-  smtpService
+  kmsDataKeyService,
+  smtpService,
+  slackIntegrationDAL
 }: TAlertEngineDep) => {
   const $dispatchChannelWork = async (
     alert: TAlerts,
@@ -84,7 +86,7 @@ export const alertEngineFactory = ({
     };
     const viewUrl = await provider.buildViewUrl(alertContext);
 
-    const { decryptor } = await getAlertChannelCipher(kmsService, {
+    const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: alert.orgId,
       projectId: alert.projectId
     });
@@ -107,7 +109,7 @@ export const alertEngineFactory = ({
       });
     }
 
-    const deps: TAlertChannelDeps = { smtpService };
+    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
 
     const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
 
@@ -184,7 +186,7 @@ export const alertEngineFactory = ({
     });
 
     const errors = dispatched
-      .filter((result) => !result.success && result.error)
+      .filter((result) => result.error)
       .map((result) => `${result.channelType}: ${result.error}`);
     const anyDelivered = dispatched.some((result) => result.success);
     let status = AlertRunStatus.SUCCESS;
@@ -212,10 +214,10 @@ export const alertEngineFactory = ({
       }
     }
 
-    if (status === AlertRunStatus.SUCCESS) return AlertDispatchOutcome.DeliverySuccess;
-    return status === AlertRunStatus.PARTIAL
-      ? AlertDispatchOutcome.DeliveryPartial
-      : AlertDispatchOutcome.DeliveryFailed;
+    if (status === AlertRunStatus.FAILED) return AlertDispatchOutcome.DeliveryFailed;
+    // A channel that reached only some destinations is recorded as delivered, so a retry would skip it.
+    const anyChannelFailed = dispatched.some((result) => !result.success);
+    return anyChannelFailed ? AlertDispatchOutcome.DeliveryPartial : AlertDispatchOutcome.DeliverySuccess;
   };
 
   const $buildChannelWork = (

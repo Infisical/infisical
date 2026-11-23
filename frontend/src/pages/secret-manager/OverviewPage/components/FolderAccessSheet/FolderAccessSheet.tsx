@@ -84,7 +84,7 @@ import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
-// organization members outside the project are not paged, so each kind is capped and search narrows it
+// organization members outside the project are not paged, so each tab is capped and search narrows it
 const ORG_PREVIEW_LIMIT = 10;
 const NO_ACCESS_SECTION = "no-access";
 
@@ -266,11 +266,11 @@ export const FolderAccessSheet = ({
 
     return {
       actors: {
-        user: matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor).sort(byName),
+        user: matchingUsers.map(toOrgUserActor).sort(byName).slice(0, ORG_PREVIEW_LIMIT),
         identity: matchingIdentities
-          .slice(0, ORG_PREVIEW_LIMIT)
           .map(toOrgIdentityActor)
           .sort(byName)
+          .slice(0, ORG_PREVIEW_LIMIT)
       },
       totals: { user: matchingUsers.length, identity: matchingIdentities.length },
       usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username]))
@@ -693,8 +693,8 @@ export const FolderAccessSheet = ({
                                 </div>
                                 {orgCandidates.totals[type] > ORG_PREVIEW_LIMIT && (
                                   <p className="py-2.5 text-xs text-muted">
-                                    Showing the first {ORG_PREVIEW_LIMIT}. Search to find someone
-                                    else.
+                                    Showing the first {ORG_PREVIEW_LIMIT} of{" "}
+                                    {orgCandidates.totals[type]}. Search to find someone else.
                                   </p>
                                 )}
                               </section>

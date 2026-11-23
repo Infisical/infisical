@@ -53,16 +53,19 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserServiceFactory } from "../user/user-service";
 import {
   assertOAuthLoginMethodEnabled,
   enforceUserLockStatus,
-  getRequiredMfaMethod,
+  getUserAllowedMfaMethods,
   isIdpMfaTrusted,
+  isMfaRequired,
   isOAuthLoginMethodDisabled,
   isSsoAuthMethod,
   isSsoSessionIssuedByOrg,
   OAuthAuthMethod,
-  RECOVERY_CODE_MFA_ASSURANCE
+  RECOVERY_CODE_MFA_ASSURANCE,
+  resolveMfaChallenge
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -100,6 +103,7 @@ type TAuthLoginServiceFactoryDep = {
     TMfaLockoutServiceFactory,
     "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
   >;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -116,7 +120,8 @@ export const authLoginServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   permissionService,
-  mfaLockoutService
+  mfaLockoutService,
+  userService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -192,7 +197,8 @@ export const authLoginServiceFactory = ({
     authMethod,
     organizationId,
     issuingRootOrgId,
-    requiredMfaMethod,
+    initialMfaMethod,
+    allowedMfaMethods,
     idpMfaOrgId
   }: {
     userId: string;
@@ -200,7 +206,9 @@ export const authLoginServiceFactory = ({
     authMethod: AuthMethod;
     organizationId?: string;
     issuingRootOrgId?: string;
-    requiredMfaMethod: MfaMethod;
+    // The method the login page opens on; an email code is sent up front only for that.
+    initialMfaMethod: MfaMethod;
+    allowedMfaMethods: MfaMethod[];
     idpMfaOrgId?: string;
   }) => {
     const appCfg = getConfig();
@@ -213,14 +221,15 @@ export const authLoginServiceFactory = ({
         organizationId,
         issuingRootOrgId,
         email,
-        requiredMfaMethod,
+        allowedMfaMethods,
+        requiredMfaMethod: initialMfaMethod,
         idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
     );
 
-    if (requiredMfaMethod === MfaMethod.EMAIL && email) {
+    if (initialMfaMethod === MfaMethod.EMAIL && email) {
       await sendUserMfaCode({ userId, email });
     }
 
@@ -691,10 +700,10 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
    */
-  const resendMfaToken = async (userId: string, requiredMfaMethod: MfaMethod) => {
-    if (requiredMfaMethod !== MfaMethod.EMAIL) {
+  const resendMfaToken = async (userId: string, allowedMfaMethods: MfaMethod[]) => {
+    if (!allowedMfaMethods.includes(MfaMethod.EMAIL)) {
       throw new BadRequestError({
-        message: "Email MFA code cannot be sent when a different MFA method is required"
+        message: "Email codes are not an allowed MFA method for this organization"
       });
     }
 
@@ -716,7 +725,7 @@ export const authLoginServiceFactory = ({
     userId,
     mfaToken,
     mfaMethod,
-    requiredMfaMethod,
+    allowedMfaMethods,
     mfaJwtToken,
     ip,
     userAgent,
@@ -735,9 +744,9 @@ export const authLoginServiceFactory = ({
           userId,
           recoveryCode: mfaToken
         });
-      } else if (mfaMethod !== requiredMfaMethod) {
+      } else if (!allowedMfaMethods.includes(mfaMethod)) {
         throw new BadRequestError({
-          message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
+          message: `Invalid MFA method. Use one of: ${allowedMfaMethods.join(", ")}.`
         });
       } else if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
@@ -803,11 +812,11 @@ export const authLoginServiceFactory = ({
     // MFA-management step-up isn't re-prompted right after login - including recovery-code
     // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
     // by the new session's tokenVersionId so no other session inherits it. A non-recovery
-    // login can only have proven the required method.
+    // login records the allowed method it actually proved.
     await mfaLockoutService.recordRecentMfaAuth(
       user.id,
       token.tokenVersionId,
-      isRecoveryCode ? RECOVERY_CODE_MFA_ASSURANCE : requiredMfaMethod
+      isRecoveryCode ? RECOVERY_CODE_MFA_ASSURANCE : mfaMethod
     );
 
     if (isRecoveryCode && userEnc.email) {
@@ -1365,26 +1374,38 @@ export const authLoginServiceFactory = ({
       );
     }
 
-    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
+    const isMfaRequiredForOrg = isMfaRequired(rootOrg, user);
+    const allowedMfaMethods = getUserAllowedMfaMethods(rootOrg, user);
     // The MFA policy belongs to the root org, so moving between a root org and its sub-orgs is not a change.
     const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
-    const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
+    // A session that proved a method this org no longer allows has to prove an allowed one.
+    const hasMfaMethodChanged = !mfaMethod || !allowedMfaMethods.includes(mfaMethod);
     // Checked on every selection so turning the trust off applies at the next switch. While the org enforces
     // MFA it waives the whole challenge, personal flag included: passing an enforced challenge turns personal
     // MFA on (the login MFA page activates it), so the two cannot be told apart. Personal MFA in an org that
     // does not enforce it still prompts.
     const isMfaSatisfiedByIdp = isIdpMfaTrusted({ org: rootOrg, authMethod: userAuthMethod, idpMfaOrgId });
     const shouldTriggerMfa =
-      isMfaRequired && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
+      isMfaRequiredForOrg && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
 
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const enrolledMethods = await userService.getEnrolledMfaMethods(user);
+      const { challengeMethod } = resolveMfaChallenge({
+        allowedMethods: allowedMfaMethods,
+        enrolledMethods,
+        preferredMethod: user.selectedMfaMethod
+      });
+      const requiredMfaMethod =
+        challengeMethod ?? allowedMfaMethods.find((method) => method !== MfaMethod.EMAIL) ?? MfaMethod.EMAIL;
 
       const mfaToken = await issueMfaChallenge({
         userId: user.id,
         email: user.email,
         authMethod: userAuthMethod,
-        requiredMfaMethod,
+        initialMfaMethod: requiredMfaMethod,
+        allowedMfaMethods,
         organizationId: rootOrg.id,
         issuingRootOrgId,
         idpMfaOrgId
@@ -1409,7 +1430,7 @@ export const authLoginServiceFactory = ({
     });
 
     let mfaSatisfiedBy: TMfaSatisfiedBy = "infisical";
-    if (!isMfaRequired) mfaSatisfiedBy = "not-required";
+    if (!isMfaRequiredForOrg) mfaSatisfiedBy = "not-required";
     else if (isMfaSatisfiedByIdp) mfaSatisfiedBy = "idp";
 
     // In the event of this being a break-glass request (not this org's own SAML / OIDC / LDAP session, nor Google, when any is enforced)

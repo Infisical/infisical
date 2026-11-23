@@ -15,6 +15,7 @@ export type Kms = {
     provider: string;
     configuration: Record<string, any>;
     credentialsHash?: string;
+    hasLegacyExternalId?: boolean;
   };
 };
 
@@ -74,8 +75,8 @@ export const ExternalKmsAwsSchema = z.object({
           externalId: z
             .string()
             .trim()
-            .min(1)
             .optional()
+            .transform((value) => value || undefined)
             .describe("AWS assume role external id for furthur security in authentication")
         })
       })

@@ -10,9 +10,13 @@ export type TSlackIntegrationDALFactory = ReturnType<typeof slackIntegrationDALF
 export const slackIntegrationDALFactory = (db: TDbClient) => {
   const slackIntegrationOrm = ormify(db, TableName.SlackIntegrations);
 
-  const findByIdWithWorkflowIntegrationDetails = async (id: string, tx?: Knex) => {
+  const findByIdWithWorkflowIntegrationDetails = async (
+    id: string,
+    tx?: Knex,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
+  ) => {
     try {
-      return await (tx || db.replicaNode())(TableName.SlackIntegrations)
+      return await (tx || (readFromPrimary ? db : db.replicaNode()))(TableName.SlackIntegrations)
         .join(
           TableName.WorkflowIntegrations,
           `${TableName.SlackIntegrations}.id`,

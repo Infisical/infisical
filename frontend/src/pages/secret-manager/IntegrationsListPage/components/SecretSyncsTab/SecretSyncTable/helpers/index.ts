@@ -1,7 +1,13 @@
-import { getGitHubSyncSecretTypeName, JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
+import {
+  COOLIFY_RESOURCE_TYPE_LABELS,
+  COOLIFY_SYNC_SCOPE_LABELS,
+  getGitHubSyncSecretTypeName,
+  JENKINS_SYNC_SCOPE_LABELS
+} from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
@@ -185,7 +191,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.CloudflareWorkers:
       primaryText = destinationConfig.scriptId;
-      secondaryText = "Script ID";
+      secondaryText = destinationConfig.previewName
+        ? `Preview: ${destinationConfig.previewName}`
+        : "Script ID";
+      break;
+    case SecretSync.Convex:
+      primaryText = destinationConfig.deploymentName;
+      secondaryText = "Convex Deployment";
       break;
     case SecretSync.CloudflareSecretsStore:
       primaryText = destinationConfig.storeName || destinationConfig.storeId;
@@ -327,6 +339,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           ? destinationConfig.folderPath
           : JENKINS_SYNC_SCOPE_LABELS[JenkinsSyncScope.Global];
       secondaryText = "Credentials";
+      break;
+    case SecretSync.Coolify:
+      primaryText = destinationConfig.resourceName;
+      secondaryText =
+        destinationConfig.scope === CoolifySyncScope.Preview
+          ? `${COOLIFY_RESOURCE_TYPE_LABELS[destinationConfig.resourceType]} (${COOLIFY_SYNC_SCOPE_LABELS[CoolifySyncScope.Preview]})`
+          : COOLIFY_RESOURCE_TYPE_LABELS[destinationConfig.resourceType];
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

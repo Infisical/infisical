@@ -59,3 +59,21 @@ type AccessKeyDeleted struct{ AccessKeyDetail }
 
 func (AccessKeyCreated) EventName() string { return "aws.access-key-created" }
 func (AccessKeyDeleted) EventName() string { return "aws.access-key-deleted" }
+
+// RoleAssumed is an AssumeRole STS granted, published on the caller's scope with the
+// external ID the caller sent, which is what the role's trust policy checked.
+type RoleAssumed struct {
+	RoleArn    string `json:"roleArn"`
+	ExternalID string `json:"externalId"`
+}
+
+func (RoleAssumed) EventName() string { return "aws.role-assumed" }
+
+// KeyDetail names a KMS key by its id.
+type KeyDetail struct {
+	KeyID string `json:"keyId"`
+}
+
+type KeyCreated struct{ KeyDetail }
+
+func (KeyCreated) EventName() string { return "aws.key-created" }

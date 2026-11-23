@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
 import {
   BoxIcon,
   ExternalLinkIcon,
@@ -35,9 +36,18 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
+  CREATE_SESSION_HANDLED_ERROR_CODES,
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultProxies
@@ -46,7 +56,6 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
@@ -59,6 +68,7 @@ import {
 } from "./SandboxPlatformPanel";
 import { hasScriptLanguages, ScriptLanguage } from "./sandboxSnippets";
 import { formatSessionExpiry } from "./SessionExpiry";
+import { sessionFieldErrorOf } from "./sessionFormErrors";
 import {
   SessionMachineIdentityField,
   TSnippetIdentity,
@@ -128,10 +138,19 @@ type Props = {
 export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { user } = useUser();
   const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // The picker lists the project's machine identities, which takes Read on them.
+  const canPickIdentity = permission.can(
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionSub.Identity
+  );
+  // The no-proxy notice reads the proxy list, so without Read on proxies it stays hidden.
+  const canReadProxies = permission.can(
+    ProjectPermissionAgentVaultProxyActions.Read,
+    ProjectPermissionSub.AgentVaultProxies
+  );
 
   const [platform, setPlatform] = useState<TPlatformTab>(() => SandboxPlatform.Modal);
   const [tab, setTab] = useState<TCreateSessionTab>(() =>
@@ -158,7 +177,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     { limit: 1 },
     // The dialog stays mounted on the sessions page, so it must not poll while closed. Its notice
     // links to the proxies page in a new tab, so check again on return.
-    { enabled: isOpen, refetchOnWindowFocus: "always" }
+    { enabled: isOpen && canReadProxies, refetchOnWindowFocus: "always" }
   );
   // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
   const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
@@ -200,18 +219,44 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, ttl }: TDashboardSessionInput) => {
-    if (!accessBundle) return;
+  const onCreateNowSubmit = async ({
+    label,
+    metadata,
+    ttl,
+    services,
+    skills
+  }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
+        accessBundle: accessBundle?.name,
+        services: services.length ? services : undefined,
+        skills: skills.length ? skills : undefined,
         ttl,
-        label
+        label,
+        metadata
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      return undefined;
+    } catch (error) {
+      // The global request handler toasts every failure but these, which this dialog reports itself.
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: unknown; message?: unknown } | undefined)
+        : undefined;
+      if (
+        typeof serverResponse?.error !== "string" ||
+        !CREATE_SESSION_HANDLED_ERROR_CODES.includes(serverResponse.error)
+      ) {
+        return undefined;
+      }
+      const fieldErrors = sessionFieldErrorOf(serverResponse, { services, skills });
+      if (fieldErrors) return fieldErrors;
+      createNotification({
+        title: "Bad Request",
+        text: String(serverResponse.message),
+        type: "error"
+      });
+      return undefined;
     }
   };
 
@@ -266,7 +311,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           // The created session keeps the bundle it was made with.
           isDisabled={isLocked}
         />
-        <FieldDescription>The services an agent can reach with this session.</FieldDescription>
+        <FieldDescription>
+          {isCreateNow
+            ? "Optional when you pick services or skills below."
+            : "The services an agent can reach with this session."}
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
@@ -290,7 +339,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           </FieldContent>
         </Field>
       )}
-      {!isCreateNow && isAdmin && (
+      {!isCreateNow && canPickIdentity && (
         <SessionMachineIdentityField
           identity={identity}
           onIdentityChange={setIdentity}
@@ -299,7 +348,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           hasEnvCredentials={!isOwnSandbox}
         />
       )}
-      {!isCreateNow && !isAdmin && (
+      {!isCreateNow && !canPickIdentity && (
         // Labeled like the picker admins see here, so it lines up with the bundle field beside it.
         <Field>
           <FieldLabel>Machine Identity</FieldLabel>
@@ -431,8 +480,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <DialogHeader>
             <DialogTitle>Create Session</DialogTitle>
             <DialogDescription>
-              An agent running with this session can only reach the hosts in the session&apos;s
-              associated access bundle.
+              An agent running with this session can only reach the services it was created with.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -542,7 +590,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
                 type="submit"
                 form={CREATE_NOW_FORM_ID}
                 variant="av"
-                isDisabled={!accessBundle}
                 isPending={createSession.isPending}
               >
                 Create Session

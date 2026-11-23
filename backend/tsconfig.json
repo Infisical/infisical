@@ -21,7 +21,6 @@
     "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
     "paths": {
       "@app/*": ["./src/*"],
-      "@bdd_routes/*": ["./src/server/routes/bdd/*"],
       "e2e-test/*": ["./e2e-test/*"]
     },
     "jsx": "react-jsx"

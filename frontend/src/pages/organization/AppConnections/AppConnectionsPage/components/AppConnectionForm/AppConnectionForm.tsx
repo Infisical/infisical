@@ -37,6 +37,7 @@ import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DaytonaConnectionForm } from "./DaytonaConnectionForm";
@@ -61,6 +62,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
+import { IncidentIoConnectionForm } from "./IncidentIoConnectionForm";
 import { JenkinsConnectionForm } from "./JenkinsConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
@@ -412,6 +414,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <HpeIloConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -420,6 +424,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -734,6 +740,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
@@ -742,6 +750,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

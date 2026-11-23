@@ -23,6 +23,14 @@ type TPageHeaderScopeConfig = {
   titleClassName: string;
 };
 
+// --color-project carries the active product's colour (see useActiveProduct), so every product shares
+// one config.
+const PRODUCT_SCOPE_CONFIG: TPageHeaderScopeConfig = {
+  icon: ProjectIcon,
+  iconClassName: "text-project",
+  titleClassName: "decoration-project/90"
+};
+
 const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeaderScopeConfig> = {
   org: {
     icon: OrgIcon,
@@ -39,36 +47,12 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
     iconClassName: "text-neutral",
     titleClassName: "decoration-neutral/90"
   },
-  [ProjectType.SecretManager]: {
-    icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
-  },
-  [ProjectType.CertificateManager]: {
-    icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
-  },
-  [ProjectType.KMS]: {
-    icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
-  },
-  [ProjectType.SecretScanning]: {
-    icon: ProjectIcon,
-    iconClassName: "text-product-ss",
-    titleClassName: "decoration-product-ss/90"
-  },
-  [ProjectType.PAM]: {
-    icon: ProjectIcon,
-    iconClassName: "text-product-pam",
-    titleClassName: "decoration-product-pam/90"
-  },
-  [ProjectType.AgentVault]: {
-    icon: ProjectIcon,
-    iconClassName: "text-product-av",
-    titleClassName: "decoration-product-av/90"
-  }
+  [ProjectType.SecretManager]: PRODUCT_SCOPE_CONFIG,
+  [ProjectType.CertificateManager]: PRODUCT_SCOPE_CONFIG,
+  [ProjectType.KMS]: PRODUCT_SCOPE_CONFIG,
+  [ProjectType.SecretScanning]: PRODUCT_SCOPE_CONFIG,
+  [ProjectType.PAM]: PRODUCT_SCOPE_CONFIG,
+  [ProjectType.AgentVault]: PRODUCT_SCOPE_CONFIG
 };
 
 export const PageHeader = ({

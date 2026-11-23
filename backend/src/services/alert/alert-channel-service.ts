@@ -1,10 +1,14 @@
+import { isDeepStrictEqual } from "node:util";
+
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TAlertChannels } from "@app/db/schemas";
+import { OrganizationActionScope, TAlertChannels } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { BadRequestError } from "@app/lib/errors";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { TGenericPermission } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -23,7 +27,7 @@ import {
   TPreparedChannelCreate,
   TPreparedChannelUpdate
 } from "./alert-channel-service-types";
-import { AlertChannelType } from "./alert-channel-types";
+import { AlertChannelType, TAlertChannelDefinition, TAlertChannelScopeDeps } from "./alert-channel-types";
 import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType, PROJECT_WIDE_PRINCIPAL_TYPES, TAlertRecipientScope } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
@@ -35,6 +39,8 @@ export type TAlertChannelServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  slackIntegrationDAL: TAlertChannelScopeDeps["slackIntegrationDAL"];
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TAlertChannelServiceFactory = ReturnType<typeof alertChannelServiceFactory>;
@@ -51,6 +57,7 @@ export type TCreateChannelInput = {
   orgId: string;
   projectId?: string | null;
   recipientScope: TAlertRecipientScope;
+  actor: TGenericPermission;
   createdByActorId: string | null;
   createdByActorType: string;
 };
@@ -63,6 +70,7 @@ export type TUpdateChannelInput = {
   enabled?: boolean;
   recipients?: TChannelRecipientInput[];
   recipientScope: TAlertRecipientScope;
+  actor: TGenericPermission;
 };
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
@@ -73,7 +81,9 @@ export const alertChannelServiceFactory = ({
   orgDAL,
   projectDAL,
   groupDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  slackIntegrationDAL,
+  permissionService
 }: TAlertChannelServiceFactoryDep) => {
   const $idsOfType = (recipients: TChannelRecipientInput[], principalType: AlertPrincipalType) => [
     ...new Set(recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId))
@@ -190,6 +200,63 @@ export const alertChannelServiceFactory = ({
     }
   };
 
+  // An unchanged stored config was already allowed when it was saved, so renames and toggles skip the check.
+  const assertActorMayUseConfig = async ({
+    actor,
+    channelType,
+    config,
+    existingConfig
+  }: {
+    actor: TGenericPermission;
+    channelType: string;
+    config: Record<string, unknown>;
+    existingConfig?: Record<string, unknown>;
+  }) => {
+    const required = getChannelDefinition(channelType).requiredOrgPermission;
+    if (!required) return;
+    if (existingConfig && isDeepStrictEqual(config, existingConfig)) return;
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.actor,
+      actorId: actor.actorId,
+      orgId: actor.actorOrgId,
+      actorAuthMethod: actor.actorAuthMethod,
+      actorOrgId: actor.actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+    if (permission.cannot(...required.permission)) {
+      throw new ForbiddenRequestError({ message: required.message });
+    }
+  };
+
+  const $assertConfigInScope = async (
+    definition: TAlertChannelDefinition,
+    orgId: string,
+    config: Record<string, unknown>
+  ): Promise<string | null> => {
+    await definition.assertConfigInScope?.({ orgId, config }, { slackIntegrationDAL });
+    return definition.getWorkflowIntegrationId?.(config) ?? null;
+  };
+
+  // A stored integration that has since been deleted must not block unrelated edits, and its id can no
+  // longer be written back to the foreign key, so only a changed integration is checked and stored.
+  const $resolveChangedWorkflowIntegration = async (
+    definition: TAlertChannelDefinition,
+    orgId: string,
+    config: Record<string, unknown>,
+    existingConfig: Record<string, unknown>
+  ): Promise<{ workflowIntegrationId: string | null } | null> => {
+    if (!definition.getWorkflowIntegrationId) return null;
+    const next = definition.getWorkflowIntegrationId(config);
+    let previous: string | null = null;
+    try {
+      previous = definition.getWorkflowIntegrationId(existingConfig);
+    } catch {
+      previous = null;
+    }
+    if (next === previous) return null;
+    return { workflowIntegrationId: await $assertConfigInScope(definition, orgId, config) };
+  };
+
   const $redactConfig = (channelType: string, config: Record<string, unknown>): Record<string, unknown> => {
     const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
     if (!definition) return {};
@@ -212,6 +279,8 @@ export const alertChannelServiceFactory = ({
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
     const config = parseChannelConfig(definition, input.channelType, input.config);
+    await assertActorMayUseConfig({ actor: input.actor, channelType: input.channelType, config });
+    const workflowIntegrationId = await $assertConfigInScope(definition, input.orgId, config);
     await validateRecipients(input.orgId, input.recipientScope, recipients, tx);
 
     return {
@@ -219,6 +288,7 @@ export const alertChannelServiceFactory = ({
         name: input.name,
         channelType: input.channelType,
         encryptedConfig: encryptChannelConfig(config, encryptor),
+        workflowIntegrationId,
         enabled: input.enabled ?? true,
         orgId: input.orgId,
         projectId: input.projectId ?? null,
@@ -262,9 +332,22 @@ export const alertChannelServiceFactory = ({
     const existingConfig = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, cipher.decryptor);
 
     let finalConfig = existingConfig;
+    let integrationPatch: { workflowIntegrationId: string | null } | null = null;
     if (input.config !== undefined) {
       const merged = mergeChannelConfigWithStored(channel.channelType, input.config, existingConfig);
       finalConfig = parseChannelConfig(definition, channel.channelType, merged);
+      await assertActorMayUseConfig({
+        actor: input.actor,
+        channelType: channel.channelType,
+        config: finalConfig,
+        existingConfig
+      });
+      integrationPatch = await $resolveChangedWorkflowIntegration(
+        definition,
+        channel.orgId,
+        finalConfig,
+        existingConfig
+      );
     }
 
     const { recipients } = input;
@@ -278,7 +361,8 @@ export const alertChannelServiceFactory = ({
       patch: {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
-        ...(input.config !== undefined ? { encryptedConfig: encryptChannelConfig(finalConfig, cipher.encryptor) } : {})
+        ...(input.config !== undefined ? { encryptedConfig: encryptChannelConfig(finalConfig, cipher.encryptor) } : {}),
+        ...(integrationPatch ?? {})
       },
       recipients
     };
@@ -369,6 +453,7 @@ export const alertChannelServiceFactory = ({
 
   return {
     prepareChannelCreate,
+    assertActorMayUseConfig,
     applyChannelCreate,
     prepareChannelUpdate,
     applyChannelUpdate,

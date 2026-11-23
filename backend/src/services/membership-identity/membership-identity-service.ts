@@ -252,7 +252,6 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
       await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { membership };
@@ -555,7 +554,6 @@ export const membershipIdentityServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     if (scopeData.scope === AccessScope.Project) {
       await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
@@ -616,7 +614,13 @@ export const membershipIdentityServiceFactory = ({
     });
     if (!membership) throw new NotFoundError({ message: `Identity membership not found` });
 
-    return membership;
+    return {
+      ...membership,
+      identity: {
+        ...membership.identity,
+        activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(membership.identity.id, keyStore)
+      }
+    };
   };
 
   // It's a list of org identities, so at project scope only org identity read gates it, plus a check that

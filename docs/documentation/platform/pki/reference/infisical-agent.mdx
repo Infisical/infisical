@@ -98,7 +98,7 @@ Duration values (`ttl`, `renew-before-expiry`, `status-check-interval`, `failure
 | Parameter | Required | Description |
 | --------- | -------- | ----------- |
 | `infisical.address` | Yes | The URL of your Infisical instance (e.g. `https://app.infisical.com`, `https://eu.infisical.com`, or your self-hosted instance) |
-| `infisical.retry-strategy.max-retries` | Optional (defaults to `3`) | Maximum number of retries for failed API requests, including authentication, issuance, and renewal operations |
+| `infisical.retry-strategy.max-retries` | Optional (defaults to `3`) | The maximum number of times the agent retries a failed API request, including authentication. Requests that read data are retried on `429`, `502`, `503`, and `504` responses and on network errors. Issuance and renewal requests are retried only on `429` responses or if the request didn't reach Infisical, so a retry can't issue a second certificate. `0` turns off retries for certificate requests |
 | `infisical.retry-strategy.base-delay` | Optional (defaults to `200ms`) | Initial delay between retries; subsequent retries back off exponentially |
 | `infisical.retry-strategy.max-delay` | Optional (defaults to `5s`) | Upper bound on the delay between retries |
 
@@ -174,13 +174,13 @@ Each entry in the `certificates` list accepts the following parameters:
 | `file-output.chain.permission` | Optional (defaults to `0600`) | The octal file permissions for the chain file (e.g. `0644`) |
 | `file-output.chain.omit-root` | Optional (defaults to `true`) | Whether to exclude the root CA certificate from the written chain |
 | `file-output.combine-certificate-chain` | Optional (defaults to `false`) | Whether to write the certificate followed by its chain to `certificate.path` as a single full-chain file. When `true`, `chain.path` is ignored and `chain.omit-root` still applies. See [Full-chain certificate file](#full-chain-certificate-file) |
-| `lifecycle.renew-before-expiry` | Optional (auto-renewal is disabled if not set) | How long before expiration the agent should renew the certificate (e.g. `14d`). Must be shorter than the certificate's TTL |
+| `lifecycle.renew-before-expiry` | Optional (auto-renewal is disabled if not set) | How long before expiration the agent should renew the certificate (e.g. `14d`). Must be shorter than the certificate's TTL. If the certificate uses the profile's default TTL and that TTL is shorter than this value, the agent logs a warning and doesn't renew the certificate before it expires |
 | `lifecycle.replace-on-renewals` | Optional (defaults to `false`) | Only valid with `certificate-id`. Whether the agent should deliver the most recent renewal of that certificate instead of the certificate itself |
-| `lifecycle.status-check-interval` | Optional (defaults to `10s`) | How frequently the agent checks certificate status and renewal needs |
-| `lifecycle.failure-retry-interval` | Optional (defaults to the status check interval) | How long the agent waits before retrying after a failed operation |
-| `lifecycle.max-failure-retries` | Optional (defaults to `10`) | How many consecutive failures the agent tolerates before it stops retrying an operation |
+| `lifecycle.status-check-interval` | Optional (defaults to `10s`) | How often the agent checks the certificate's status with Infisical. If the certificate is due for renewal before the next check, the agent checks at the renewal time instead. The agent rounds the interval up to the next multiple of 10 seconds |
+| `lifecycle.failure-retry-interval` | Optional (defaults to the status check interval) | How long the agent waits before it retries a failed issuance, renewal, or certificate fetch |
+| `lifecycle.max-failure-retries` | Optional (defaults to `10`) | The number of consecutive failed attempts before the agent [pauses its retries](#failure-handling) |
 | `post-hooks.on-issuance.command` | Optional | Shell command to run after a certificate is issued for the first time |
-| `post-hooks.on-renewal.command` | Optional | Shell command to run after a certificate is renewed |
+| `post-hooks.on-renewal.command` | Optional | Shell command to run after a certificate is renewed, or after the agent replaces a delivered certificate with a new one |
 | `post-hooks.on-failure.command` | Optional | Shell command to run when issuance or renewal fails, or when a tracked certificate is revoked or expires |
 | `post-hooks.*.timeout` | Optional (defaults to `30`) | Maximum execution time in seconds for the hook command before it's terminated |
 
@@ -232,6 +232,21 @@ The agent runs custom commands in response to certificate lifecycle events throu
 
   </Tab>
 </Tabs>
+
+## Failure handling
+
+The agent retries failures at two levels. First, [`infisical.retry-strategy`](#infisical-connection) retries a single API request within a few seconds. If the request still fails, or the agent can't write the certificate to disk, the agent retries the whole issuance or renewal.
+
+The agent waits `failure-retry-interval` between these attempts. After `max-failure-retries` consecutive failed attempts, it pauses for ten times `failure-retry-interval`, up to one hour, and then starts a new round of attempts. Each attempt can create a certificate in Infisical, so the pause limits how many certificates a lasting problem creates, such as an output path the agent can't write to.
+
+### Recovery by failure type
+
+| Failure | Agent behavior |
+| ------- | -------------- |
+| Infisical rejects a renewal because the certificate expired or was already renewed outside the agent | The next attempt issues a new certificate |
+| The certificate expired before the agent renewed it, for example because the machine was asleep during the renewal window | Runs the `on-failure` hook, then issues a new certificate. If `renew-before-expiry` isn't set, the agent runs the hook and doesn't issue a new certificate |
+| The certificate is revoked | Runs the `on-failure` hook and stops managing the certificate |
+| An issuance request reaches Infisical, but the agent doesn't receive the response | The agent can't tell that Infisical issued a certificate, so the next attempt issues another one. The first certificate stays in Infisical |
 
 ## Example configurations
 

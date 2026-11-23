@@ -1,5 +1,7 @@
 import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
+import RE2 from "re2";
 
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -18,6 +20,7 @@ import { JiraConnectionMethod } from "./jira-connection-enums";
 import { TJiraApproval, TJiraConnectionConfig, TJiraIssue, TJiraNamedOption, TJiraUser } from "./jira-connection-types";
 
 export const JIRA_REQUEST_TIMEOUT_MS = 15_000;
+export const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const JIRA_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const JIRA_PAGE_SIZE = 50;
 const JIRA_MAX_PAGES = 10;
@@ -177,7 +180,13 @@ export const jiraRequest = async <T>(
 export const isJiraNotFoundError = (error: unknown) => isAxiosError(error) && error.response?.status === 404;
 
 export const getJiraErrorMessage = (error: unknown) => {
-  if (error instanceof BadRequestError || error instanceof NotFoundError) return error.message;
+  if (
+    error instanceof BadRequestError ||
+    error instanceof RuleViolationError ||
+    error instanceof NotFoundError ||
+    error instanceof EntityNotFoundError
+  )
+    return error.message;
 
   if (isAxiosError(error)) {
     if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
@@ -229,12 +238,12 @@ export const validateJiraConnectionCredentials = async (
       { gatewayV2Service }
     );
   } catch (error) {
-    if (error instanceof NotFoundError) throw error;
+    if (error instanceof NotFoundError || error instanceof EntityNotFoundError) throw error;
 
     logJiraError(error, "validate-credentials");
 
     // A failure past the gateway arrives as a bare message, such as "socket hang up"
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Unable to validate connection: ${config.gatewayId ? "couldn't reach Jira through the gateway: " : ""}${error.message}`
       });
@@ -430,6 +439,32 @@ export const findJiraUsersByEmail = async (
   );
 
   return Array.isArray(users) ? users : [];
+};
+
+export const searchJiraIssues = async (
+  config: TJiraRequestConfig,
+  { jql, fields, maxResults }: { jql: string; fields: string[]; maxResults: number },
+  deps: TJiraGatewayDeps
+): Promise<{ issues: TJiraIssue[]; hasMore: boolean }> => {
+  if (isJiraCloud(config)) {
+    const data = await jiraRequest<{ issues?: TJiraIssue[]; isLast?: boolean; nextPageToken?: string }>(
+      config,
+      { path: "/rest/api/3/search/jql", params: { jql, maxResults, fields: fields.join(",") } },
+      deps
+    );
+    if (!Array.isArray(data?.issues))
+      throw new BadRequestError({ message: "Jira returned an unexpected search response" });
+    return { issues: data.issues, hasMore: Boolean(data.nextPageToken) && data.isLast !== true };
+  }
+
+  const data = await jiraRequest<{ issues?: TJiraIssue[]; total?: number }>(
+    config,
+    { path: "/rest/api/2/search", params: { jql, maxResults, fields: fields.join(",") } },
+    deps
+  );
+  if (!Array.isArray(data?.issues))
+    throw new BadRequestError({ message: "Jira returned an unexpected search response" });
+  return { issues: data.issues, hasMore: (data.total ?? 0) > data.issues.length };
 };
 
 // Jira Service Management approvals, which only an approver can decide, unlike an issue's status
