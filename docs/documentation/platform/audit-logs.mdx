@@ -723,7 +723,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     Each event records one step of the renewal:
 
     - `renew-certificate` or `automated-renew-certificate` with the status `pending_approval`: the actor, or automatic renewal, requested the renewal
-    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request. On these events:
+    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request, with these fields:
       - `event.metadata.certificateId` is the certificate being renewed
       - `event.metadata.certificateName`, when present, is that certificate's common name, or its first SAN if it has no common name
       - `event.metadata.commonName`, when present, is the common name the renewal requests
