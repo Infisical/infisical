@@ -26,7 +26,9 @@ Every project has two built-in roles. For any other set of permissions, create a
 | **No Access** | Nothing, until someone gives the member another role |
 | Custom role | Exactly the permissions you choose for the role |
 
-If a member holds several roles, they can do everything that any of their roles allows, except what one of their roles denies. Members you invite to the organization with access to an Agent Vault project start with **No Access**.
+If a member holds several roles, they can do everything that any of their roles allows, except what one of their roles denies.
+
+If you invite someone to the organization with access to an Agent Vault project, you pick their role in the project: **Admin**, **No Access**, or one of the project's custom roles.
 
 A member's roles have three limits:
 
@@ -41,15 +43,13 @@ To create sessions with an access bundle, a service, or a skill, a member needs 
 - **Use** on an access bundle lets a member create sessions with the bundle, including every service and skill in it, without permissions on those services and skills
 - **Use** on a service or a skill lets a member [pick it for a session](/documentation/platform/agent-vault/create-a-session) without an access bundle
 
-If one of a member's roles denies **Use** on a service or skill, the member can't use it, even through an access bundle that holds it.
-
-A deny on a service for one host also covers a wildcard service for that host. For example, if a role denies **Use** on a service for `api.github.com`, the member also can't use a service for `*.github.com` through an access bundle. Otherwise, their requests to `api.github.com` would [go to the `*.github.com` service](/documentation/platform/agent-vault/http-apis#host-conflicts), which might allow more.
+If one of a member's roles denies **Use** on a service or skill, the member can't pick it for a session on its own, but they still get it with any access bundle they can use that holds it. To keep a service or skill from a member, take it out of the access bundles they can use.
 
 **View** lets a member see an access bundle, service, or skill without using it. Each permission can cover every access bundle, service, or skill in the project, including ones created later, or only the ones you pick.
 
 ### See who can use an access bundle, service, or skill
 
-Infisical lists the roles that allow **Use** on each access bundle, service, and skill, and the members who hold each role. For a service or skill, the list also includes the roles that can use it through an access bundle. If one of those members also holds a role that denies **Use**, the member still can't use it.
+Infisical lists the roles that allow **Use** on each access bundle, service, and skill, and the members who hold each role. For a service or skill, the list also includes the roles that can use an access bundle that holds it. The list checks each role on its own, so if a member also holds a role that denies **Use** on an access bundle, they can't use that access bundle even though the list shows their other role.
 
 To open the list, select **Who Can Use** in one of these places:
 
@@ -88,7 +88,7 @@ If a member's role can edit roles, the member can change what any role allows, i
 
 ### Give a role to members
 
-To give a role to members of the project, you need the **Admin** role, or another role with **Full Control** on **Members and Groups**.
+To give a role to members of the project, you need the **Admin** role, or another role with **Manage and Assign Roles** on **Members and Groups**.
 
 <Steps>
   <Step>
@@ -125,7 +125,7 @@ To add members, you need a role that can add them, such as **Admin**.
 
 You can only add users who are already in the [organization](/documentation/platform/organization), including users whose invite is still pending. If a user's invite is pending, they can't create sessions until they accept it.
 
-Only an admin can give someone the **Admin** role, or change or remove another admin. You can't change your own roles or remove your own access, even if you're an admin. To do either, ask another admin.
+Only an admin can give someone the **Admin** role, or change or remove another admin. Only an admin can create tokens or client secrets for a machine identity that holds the **Admin** role, or change how it logs in. Roles in an Agent Vault project can't assume another member's privileges. You can't change your own roles or remove your own access, even if you're an admin. To do either, ask another admin.
 
 If you're an organization admin, you can add yourself to any project with the **Admin** role by selecting **Join as Admin** (see [Join as an organization admin](/documentation/platform/agent-vault/projects#join-as-an-organization-admin)). You don't need another admin to add you.
 

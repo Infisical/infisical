@@ -36,13 +36,13 @@ To create a new access bundle:
   </Step>
 </Steps>
 
-If none of your roles can use the new access bundle, Infisical creates a role that can use it, named after the access bundle (such as `deploy-checks users`), and gives you the role. If you're in the project only through a group, Infisical doesn't create the role.
+If none of your roles can use the new access bundle, Infisical creates a role that can use it, named after the access bundle (such as `deploy-checks users`), and gives you the role. Infisical doesn't create the role if you're in the project only through a group, or if your role is **No Access**.
 
 Now you can [add services](/documentation/platform/agent-vault/services#add-a-service-to-an-access-bundle) to the access bundle so agents using it can make authenticated requests. You can also [add skills](/documentation/platform/agent-vault/skills#add-a-skill-to-an-access-bundle) to the access bundle, so the CLI installs your team's instructions for every agent that starts with it.
 
 ## Who can use an access bundle
 
-Access bundles give agents credentials for external APIs, so members of a project can't create sessions with an access bundle until one of their [roles](/documentation/platform/agent-vault/access-control#roles) lets them use it. If a member can use an access bundle, they can use every service and skill in it, unless one of their roles denies **Use** on that service or skill.
+Access bundles give agents credentials for external APIs, so members of a project can't create sessions with an access bundle until one of their [roles](/documentation/platform/agent-vault/access-control#roles) lets them use it. If a member can use an access bundle, they can use every service and skill in it, whatever their roles say about those services and skills.
 
 To let someone use an access bundle:
 
