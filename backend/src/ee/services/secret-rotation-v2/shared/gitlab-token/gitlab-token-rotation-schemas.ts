@@ -44,6 +44,7 @@ export const GITLAB_TOKEN_ROTATION_INTERVAL_ERROR = `GitLab tokens can expire at
 
 export const GitLabTokenRotationIntervalSchema = z.coerce
   .number()
+  .int("The rotation interval must be a whole number of days")
   .min(1)
   .max(GITLAB_TOKEN_MAX_ROTATION_INTERVAL_DAYS, GITLAB_TOKEN_ROTATION_INTERVAL_ERROR);
 

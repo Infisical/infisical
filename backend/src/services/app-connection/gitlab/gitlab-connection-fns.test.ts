@@ -141,7 +141,8 @@ describe("GitLab group service account listing", () => {
             data: [
               { id: 12, username: "service_account_group_34_ci", name: "CI deployer" },
               { id: 13, username: "service_account_group_34_infisical", name: "Infisical" }
-            ]
+            ],
+            headers: { "x-next-page": "" }
           }
     );
 
@@ -151,5 +152,19 @@ describe("GitLab group service account listing", () => {
       headers: { "PRIVATE-TOKEN": "test-token" }
     });
     expect(serviceAccounts).toEqual([{ id: "12", username: "service_account_group_34_ci", name: "CI deployer" }]);
+  });
+
+  it("follows GitLab's next-page header instead of the page size", async () => {
+    safeRequestGetMock.mockImplementation(async (url: string, options: { params?: { page: number } }) => {
+      if (url.endsWith("/user")) return { data: { id: 99 } };
+      return options.params?.page === 1
+        ? { data: [{ id: 12, username: "ci", name: "CI" }], headers: { "x-next-page": "2" } }
+        : { data: [{ id: 14, username: "deploy", name: "Deploy" }], headers: { "x-next-page": "" } };
+    });
+
+    const serviceAccounts = await service.listGroupServiceAccounts("connection-id", "34", {} as OrgServiceActor);
+
+    expect(serviceAccounts.map(({ id }) => id)).toEqual(["12", "14"]);
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(3);
   });
 });

@@ -563,14 +563,14 @@ export const listGitLabGroupServiceAccounts = async ({
     // a rotation can't target the connection's own identity, so it isn't offered
     const connectionUserId = await getGitLabCurrentUserId({ apiUrl, headers });
 
-    for (let page = 1; page <= GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; page += 1) {
-      const { data } = await safeRequest.get<{ id: number; username: string; name: string }[]>(
-        `${apiUrl}/groups/${encodeURIComponent(groupId)}/service_accounts`,
-        {
-          headers,
-          params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
-        }
-      );
+    let page = 1;
+    for (let pagesRead = 0; pagesRead < GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; pagesRead += 1) {
+      const { data, headers: responseHeaders } = await safeRequest.get<
+        { id: number; username: string; name: string }[]
+      >(`${apiUrl}/groups/${encodeURIComponent(groupId)}/service_accounts`, {
+        headers,
+        params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
+      });
 
       serviceAccounts.push(
         ...data
@@ -582,7 +582,10 @@ export const listGitLabGroupServiceAccounts = async ({
           }))
       );
 
-      if (data.length < GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE) return serviceAccounts;
+      // GitLab leaves x-next-page empty on the last page
+      const nextPage = Number(responseHeaders["x-next-page"]);
+      if (!nextPage) return serviceAccounts;
+      page = nextPage;
     }
   } catch (error: unknown) {
     if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {

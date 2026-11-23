@@ -411,6 +411,13 @@ describe("GitLab token expiry", () => {
       message:
         "GitLab tokens can expire at most 365 days after they are created, so the rotation interval cannot exceed 180 days."
     });
+
+    const fractional = CreateGitLabServiceAccountTokenRotationSchema.safeParse({ ...input, rotationInterval: 1.5 });
+    expect(fractional.success).toBe(false);
+    expect(fractional.error?.issues[0]).toMatchObject({
+      path: ["rotationInterval"],
+      message: "The rotation interval must be a whole number of days"
+    });
   });
 });
 
