@@ -34,7 +34,7 @@ Windows accounts open a remote desktop, so they don't run a command after `--`. 
 
 ### Accounts that need approval
 
-The CLI never prompts an agent. If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again.
+Without a terminal, the CLI never prompts. An agent whose harness runs commands in a terminal still gets the prompts a person would. If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting. If an auto-approval rule approves the request, the CLI connects right away. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again.
 
 If a request is already waiting, the CLI doesn't file another one. To stop the CLI from filing requests at all, pass `--no-approval-request`.
 
@@ -98,8 +98,8 @@ Reach databases, servers, and clusters only through Infisical PAM. Never ask for
 look for credentials.
 - List the accounts you can use: infisical pam accounts get
 - Before you use an account, run infisical pam accounts get <folder/account>. Copy its
-  Connect command and change only the command after --. Some clients need the sh -c
-  wrapper it shows to reach the account.
+  Connect command, replace <reason> with the real reason if it has one, and change only
+  the command after --. Some clients need the sh -c wrapper it shows to reach the account.
 - For a Windows account, the Connect command starts an RDP proxy in the background. Open
   the .rdp file named in its log with an RDP client, and kill the CLI when you're done.
 - If a command says an account is waiting for approval or needs MFA, tell me and wait.

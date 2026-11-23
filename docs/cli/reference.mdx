@@ -1047,7 +1047,7 @@ To use a different organization for a single command, pass `--org` to that comma
   command="pam"
 >
 
-Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical Privileged Access Management (PAM)](/documentation/platform/pam/overview) from your terminal. A gateway supplies each account's credential, which never reaches your machine. Infisical records every session.
+Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical Privileged Access Management (PAM)](/documentation/platform/pam/overview) from your terminal. A gateway supplies each account's credential, which never reaches your machine. The one exception is an AWS IAM account without a gateway, which gets temporary credentials on your machine. Infisical records every session.
 
 People and AI agents use the same commands. List the accounts you can access with [infisical pam accounts get](/cli/reference#pam-accounts-get), then open one with [infisical pam access](/cli/reference#pam-access), or run a single command against it with `infisical pam access <folder/account> -- <command>`. [PAM for AI agents](/documentation/platform/pam/ai-agents/overview) describes how an agent uses these commands.
 
@@ -1094,7 +1094,7 @@ People and AI agents use the same commands. List the accounts you can access wit
   ]}
 >
 
-Open a session for one PAM account. The command runs as a machine identity if you set `--token`, `--auth-method`, `INFISICAL_TOKEN`, or `INFISICAL_AUTH_METHOD`. Otherwise, it runs as the user you logged in as with [infisical login](/cli/reference#login).
+Open a session for one PAM account. The command runs as a machine identity if you set `--token`, `--auth-method`, `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` or `INFISICAL_TOKEN`, or `INFISICAL_AUTH_METHOD`, checked in that order. Otherwise, it runs as the user you logged in as with [infisical login](/cli/reference#login).
 
 With a command after `--`, the CLI opens the session, runs the command once, ends the session, and exits with the command's exit code. SSH accounts run the command on the target. Database, Redis, Snowflake, Kubernetes, GCP, and Azure accounts run it on your machine, pointed at a local proxy:
 
@@ -1110,7 +1110,7 @@ Without a command, SSH accounts connect you to a shell on the target. Pass `--pr
 
 In a terminal, the CLI asks before it files an access request for an account that requires approval, and has you complete MFA in your browser. Without a terminal, such as when an AI agent runs it, the CLI never prompts:
 
-- **Approval:** the CLI files an access request with `--reason` and `--duration` and exits with an error saying the request is waiting (if a request is already waiting, it files nothing new)
+- **Approval:** the CLI files an access request with `--reason` and `--duration` and exits with an error saying the request is waiting (if a request is already waiting, it files nothing new). If an auto-approval rule approves the request, the CLI connects right away
 - **MFA:** the CLI exits with an error that has a link where a person completes verification
 - **Login:** if you aren't logged in or your login expired, the CLI exits with an error instead of starting a login
 
@@ -1154,9 +1154,9 @@ List the PAM accounts you can access, with each account's type and access status
 - `needs approval` (`needs_approval` in JSON): `infisical pam access` files an access request for a person to approve
 - `pending`: a request is waiting for approval
 - `approved`: approved access is active until the time shown
-- `unavailable`: the account can't be used right now (the output shows the reason)
+- `unavailable`: the account can't be used right now. Name the account to see why, or read `disabledReason` with `-o json`
 
-Name one account to see its details, any reason or MFA it requires, and a command that connects to it. With `-o json`, each account also has an `example` field holding that command.
+Name one account as `folder/account` to see its details, any reason or MFA it requires, and a command that connects to it. A bare account name finds the account in any folder. With `-o json`, each account also has an `example` field holding that command, which is empty for an unavailable account.
 
 </CLICommand>
 
