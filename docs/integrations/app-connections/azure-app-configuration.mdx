@@ -6,7 +6,7 @@ description: "Learn how to configure a Azure App Configuration Connection for In
 
 import AzureOAuthAppConfigurationServicePrincipal from "/snippets/app-connections/azure/oauth-app-configuration-service-principal.mdx";
 
-Infisical currently only supports two methods for connecting to Azure, which are OAuth and Client Secrets.
+Infisical supports three methods for connecting to Azure App Configuration: OAuth, Client Secret, and Managed Identity.
 
 <Accordion title="Self-Hosted Instance">
   Using the Azure App Configuration connection on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -95,6 +95,14 @@ Infisical currently only supports two methods for connecting to Azure, which are
     </Step>
   </Steps>
 </Accordion>
+<Accordion title="Managed Identity Authentication">
+  To use managed identity authentication, you need a user-assigned managed identity with access to the Azure App Configuration stores you want to use. Infisical doesn't store a secret for this method.
+
+  **Prerequisites:**
+  - An existing Azure App Configuration store
+  - A [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with a role on your target store(s) that grants read and write access to key-values, such as **App Configuration Data Owner**
+  - If you self-host Infisical, a `SITE_URL` that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it
+</Accordion>
 
 ## Setup Azure connection in Infisical
 
@@ -134,6 +142,23 @@ Infisical currently only supports two methods for connecting to Azure, which are
               You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
           </Tip>
         </Step>
+      </Tab>
+      <Tab title="Managed Identity">
+        <Steps>
+          <Step>
+            Select the **Managed Identity** method, fill in the **Tenant ID** and **Client ID** of your managed identity, then select **Configure Federated Credential**. Infisical creates the connection and shows its **Issuer**, **Subject Identifier**, and **Audience**.
+          </Step>
+          <Step>
+            In the Azure portal, open your managed identity and go to **Settings** > **Federated credentials** > **Add Credential**. Choose the **Other issuer** scenario and enter the values from Infisical.
+          </Step>
+          <Step>
+            Back in Infisical, select **Verify Connection**.
+          </Step>
+        </Steps>
+
+        <Tip>
+            If you create the connection with the Azure App Configuration connection [Create](/api-reference/endpoints/app-connections/azure-app-configuration/create) endpoint, the response includes these values in `credentials.federatedCredential`.
+        </Tip>
       </Tab>
     </Tabs>
   </Step>
