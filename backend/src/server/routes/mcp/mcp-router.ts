@@ -10,7 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { getMcpOauthUrls, MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 
-import { createMcpServer } from "./mcp-tools";
+import { createMcpServer } from "./mcp-server";
 
 const toWebRequest = (req: FastifyRequest, url: string) => {
   const headers = new Headers();

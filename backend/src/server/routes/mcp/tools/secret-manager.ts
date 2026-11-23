@@ -1,35 +1,23 @@
-import { ForbiddenError } from "@casl/ability";
-import { McpServer, StandardSchemaWithJSON, ToolAnnotations } from "@modelcontextprotocol/server";
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { ProjectType, SecretType, TSecretApprovalRequests } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
-import {
-  BadRequestError,
-  ConflictError,
-  ForbiddenRequestError,
-  NotFoundError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
-import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { isValidFolderName } from "@app/lib/validator";
 import { BaseSecretNameSchema, GenericResourceNameSchema, SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
-import { getPermissionDenialDetails } from "@app/server/plugins/audit-log-permission-denied";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
-import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, TSecretModifiedEvent } from "@app/services/telemetry/telemetry-types";
 
-const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The project ID, from list-projects.");
+import { ProjectIdSchema, TMcpToolContext } from "../mcp-tool-fns";
+
 // Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
 const EnvironmentSlugSchema = z.string().trim().min(1).max(255).describe("The environment slug, from list-projects.");
 // Secret keys are stored in a 500-character column.
@@ -48,34 +36,6 @@ const SecretCommentSchema = z.string().trim().max(10_000);
 
 const EnvironmentSchema = z.object({ projectId: ProjectIdSchema, environmentSlug: EnvironmentSlugSchema });
 const SecretLocationSchema = EnvironmentSchema.extend({ secretPath: PathSchema });
-
-// The SDK validates arguments through Standard Schema, which zod 3 implements, and advertises them in tools/list
-// as JSON Schema, which zod 3 cannot produce on its own.
-const toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
-  // Every field written out in full: a schema reused for two fields would otherwise become a $ref, which some clients
-  // do not follow.
-  const jsonSchema = () =>
-    zodToJsonSchema(schema, { $refStrategy: "none", pipeStrategy: "input" }) as Record<string, unknown>;
-  return {
-    "~standard": { ...schema["~standard"], jsonSchema: { input: jsonSchema, output: jsonSchema } }
-  } as StandardSchemaWithJSON<z.input<T>, z.output<T>>;
-};
-
-const getToolErrorMessage = (error: unknown, toolName: string, actorId: string) => {
-  if (error instanceof ForbiddenError) return `You are not allowed to ${error.action} on ${error.subjectType}`;
-  if (
-    error instanceof BadRequestError ||
-    error instanceof NotFoundError ||
-    error instanceof ForbiddenRequestError ||
-    error instanceof UnauthorizedError ||
-    error instanceof ConflictError
-  ) {
-    return error.message;
-  }
-
-  logger.error(error, `MCP tool call failed [tool=${toolName}] [actorId=${actorId}]`);
-  return "Something went wrong while running this tool. Try again, and contact support if it keeps happening.";
-};
 
 type TRawSecret = {
   id: string;
@@ -108,23 +68,15 @@ type TSecretLocation = z.output<typeof SecretLocationSchema> & { secretName: str
 
 // Each tool does what the REST route behind it does: the same service call, audit log and read tracking, with the
 // audit log marked as coming from MCP.
-export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest, scopes: string[]) => {
-  const mcpServer = new McpServer(
-    { name: "infisical", version: "1.0.0" },
-    {
-      instructions: "Call list-projects first to find project IDs and environment slugs.",
-      // A token's tools never change, so clients have no list changes to subscribe to.
-      capabilities: { tools: { listChanged: false } }
-    }
-  );
-
-  const actor = {
-    actor: req.permission.type,
-    actorId: req.permission.id,
-    actorOrgId: req.permission.orgId,
-    actorAuthMethod: req.permission.authMethod
-  };
-  const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.MCP };
+export const registerSecretManagerTools = ({
+  server,
+  req,
+  scopes,
+  actor,
+  auditLogInfo,
+  sendEvent,
+  registerTool
+}: TMcpToolContext) => {
   // Describe only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
 
@@ -136,15 +88,6 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         message:
           "This connection wasn't granted access to see projects and folders. Reconnect and choose Describe only, Read-only or Full access."
       });
-    }
-  };
-
-  // Analytics must never turn a tool call that already succeeded into an error.
-  const sendEvent = async (event: TPostHogEvent) => {
-    try {
-      await server.services.telemetry.sendPostHogEvents(event);
-    } catch (error) {
-      logger.error(error, `Failed to send MCP analytics event [event=${event.event}] [actorId=${req.permission.id}]`);
     }
   };
 
@@ -219,40 +162,6 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
     });
 
     return { id: secret.id, secretKey: secret.secretKey, version: secret.version };
-  };
-
-  const registerTool = <T extends z.ZodTypeAny>(
-    name: string,
-    config: { description: string; inputSchema: T; annotations: ToolAnnotations },
-    run: (args: z.output<T>) => Promise<unknown>
-  ) => {
-    mcpServer.registerTool(name, { ...config, inputSchema: toToolInput(config.inputSchema) }, async (args) => {
-      try {
-        // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
-        // change in how the SDK dispatches tools ever loses it.
-        if (!isScopeNarrowedRequest()) {
-          throw new Error("OAuth scopes missing from the request context");
-        }
-
-        return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
-      } catch (error) {
-        // The error never reaches the route's onError hook, which records denials for REST routes.
-        const denial = getPermissionDenialDetails(error);
-        if (denial) {
-          void server.services.auditLog.recordPermissionDenied({
-            ...auditLogInfo,
-            orgId: req.permission.orgId,
-            projectId: (args as { projectId?: string }).projectId,
-            metadata: { ...denial, route: `MCP tool ${name}`, method: req.method }
-          });
-        }
-
-        return {
-          content: [{ type: "text" as const, text: getToolErrorMessage(error, name, req.permission.id) }],
-          isError: true
-        };
-      }
-    });
   };
 
   registerTool(
@@ -650,6 +559,4 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
       return { id: secret.id, secretKey: secret.secretKey, deleted: true };
     }
   );
-
-  return mcpServer;
 };
