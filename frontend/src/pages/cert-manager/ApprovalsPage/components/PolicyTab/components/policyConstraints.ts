@@ -14,7 +14,7 @@ export const RENEWAL_APPROVAL_OPTIONS = [
     value: CertRequestRenewalApproval.OnChange,
     title: "When the renewal changes the certificate",
     description:
-      "Renewals with changes, as well as renewals of imported and discovered certificates, always need approval."
+      "Renewals with changes, as well as renewals of imported and discovered certificates, need approval."
   },
   {
     value: CertRequestRenewalApproval.Always,
@@ -24,7 +24,7 @@ export const RENEWAL_APPROVAL_OPTIONS = [
 ] as const;
 
 export const CERT_POLICY_TYPE_LABEL = {
-  [ApprovalPolicyType.CertRequest]: "Issuance and renewal",
+  [ApprovalPolicyType.CertRequest]: "Issuance and Renewal",
   [ApprovalPolicyType.CertRevocation]: "Revocation"
 } as const;
 

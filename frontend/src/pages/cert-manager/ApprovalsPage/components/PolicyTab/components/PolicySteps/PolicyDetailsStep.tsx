@@ -211,7 +211,7 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                   </SelectContent>
                 </Select>
                 <FieldDescription>
-                  Issuance and renewal covers new certificates and renewals. Revocation covers
+                  Issuance and Renewal covers new certificates and renewals. Revocation covers
                   revoking certificates.
                   {isEditing && " A policy's type can't be changed after it's created."}
                 </FieldDescription>

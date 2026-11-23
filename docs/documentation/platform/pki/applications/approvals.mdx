@@ -31,7 +31,7 @@ Approval workflows add a human review step before certificates are issued or rev
 
 An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of two actions:
 
-- **Issuance and renewal:** new certificates and renewals
+- **Issuance and Renewal:** new certificates and renewals
 - **Revocation:** revoking certificates
 
 When a certificate request is made through an enrollment method:
@@ -59,7 +59,7 @@ The machine identity bypass applies to renewals the same way it applies to issua
 
 To try a failed renewal again, fix the problem, then renew the certificate manually. If the notification says the CA issued the certificate but Infisical couldn't link it to the request, find the certificate in the certificate inventory before you renew again, because a new renewal issues another certificate.
 
-If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. If the certificate's profile has the **Issuer Type** `Self-Signed`, approving the renewal after it expires still renews the certificate. To give approvers time, set automatic renewal to start well before the certificate expires.
+If the certificate's profile has the **Issuer Type** `Certificate Authority` and nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. With the **Issuer Type** `Self-Signed`, approving the renewal after the certificate expires still renews it. To give approvers time, set automatic renewal to start well before the certificate expires.
 
 ### Revocation
 
@@ -83,10 +83,10 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     |-------|-------------|
     | **Policy Name** | A descriptive name like `production-cert-approval` |
     | **Max. Request TTL** | How long a request can remain pending before expiring |
-    | **Policy Type** | **Issuance and renewal** or **Revocation** (you can't change it after you create the policy) |
+    | **Policy Type** | **Issuance and Renewal** or **Revocation** (you can't change it after you create the policy) |
     | **Certificate Profiles** | Which profiles require approval |
-    | **Renewals Requiring Approval** | Which [renewals](#renewals) wait for approval: **When the renewal changes the certificate** or **Every renewal** (issuance policies only) |
-    | **Bypass approval for machine identities** | Allow automated systems to skip approval (issuance policies only) |
+    | **Renewals Requiring Approval** | Which [renewals](#renewals) wait for approval: **When the renewal changes the certificate** or **Every renewal** (Issuance and Renewal policies only) |
+    | **Bypass approval for machine identities** | Allow automated systems to skip approval (Issuance and Renewal policies only) |
   </Step>
   <Step title="Configure approval steps">
     Each step defines who can approve and how many approvals are required:
