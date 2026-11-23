@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -8,7 +10,6 @@ import {
   getAzureConnectionAccessToken,
   requestWithAzureKeyVaultGateway
 } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -26,10 +27,11 @@ import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azu
 
 type TAzureKeyVaultSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 // the effective gateway is resolved up front, so callers thread a connection that only carries a gatewayId
@@ -38,11 +40,12 @@ type TGatewayConnection = { gatewayId?: string | null; gatewayPoolId?: string | 
 const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
 
 export const azureKeyVaultSyncFactory = ({
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
     accessToken: string,
@@ -148,8 +151,9 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
@@ -297,8 +301,9 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
@@ -335,8 +340,9 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(

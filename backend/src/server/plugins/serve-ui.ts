@@ -4,16 +4,16 @@ import path from "node:path";
 import staticServe from "@fastify/static";
 import RE2 from "re2";
 
+import type { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 const CONNECT_SRC_DIRECTIVE = new RE2("(connect-src\\s+[^;]+)(;)");
 
 // browsers download session recordings straight from storage hosts a server admin allowed
-const withAllowedStorageHostnames = async (indexHtml: string) => {
+const withAllowedStorageHostnames = async (instanceConfigService: TInstanceConfigService, indexHtml: string) => {
   try {
-    const { allowedStorageHostnames } = await getServerCfg();
+    const { allowedStorageHostnames } = await instanceConfigService.getSettings();
     if (!allowedStorageHostnames?.length) return indexHtml;
     const hosts = allowedStorageHostnames.map((hostname) => `https://${hostname}`).join(" ");
     return indexHtml.replace(CONNECT_SRC_DIRECTIVE, `$1 ${hosts}$2`);
@@ -28,10 +28,12 @@ export const registerServeUI = async (
   server: FastifyZodProvider,
   {
     standaloneMode,
-    dir
+    dir,
+    instanceConfigService
   }: {
     standaloneMode?: boolean;
     dir: string;
+    instanceConfigService: TInstanceConfigService;
   }
 ) => {
   const appCfg = getConfig();
@@ -172,7 +174,7 @@ export const registerServeUI = async (
           .header("Cache-Control", "no-cache, no-store, must-revalidate")
           .header("Pragma", "no-cache")
           .header("Expires", "0")
-          .send(await withAllowedStorageHostnames(indexHtml));
+          .send(await withAllowedStorageHostnames(instanceConfigService, indexHtml));
       }
     });
   }

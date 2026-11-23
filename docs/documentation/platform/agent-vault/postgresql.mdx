@@ -1,0 +1,82 @@
+---
+title: "PostgreSQL"
+description: "Let an AI agent query a PostgreSQL database without holding its password."
+---
+
+A PostgreSQL service lets an agent reach a PostgreSQL database during a [session](/documentation/platform/agent-vault/sessions), with clients such as `psql`. The agent never holds the password: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the database with the service's account. The agent reaches the service through [`infisical agent-vault connect`](/cli/reference#agent-vault-connect).
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the service to
+- A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that can reach the database, and whose HTTP port the agent can reach
+- An account on the database with only the access your agents need, such as a read-only database role
+
+## Add a PostgreSQL database
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, select the **Databases and More** tab, then select **PostgreSQL**.
+  </Step>
+  <Step>
+    On the **Details** step, enter a **Name** and the [server's details](#server-details). Select **Continue**.
+  </Step>
+  <Step>
+    On the **Credential** step, set up the [account](#credentials) the proxy logs in as. Select **Continue**.
+  </Step>
+  <Step>
+    Optionally, on the **Hook** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks each connection to this service. Select **Continue**.
+  </Step>
+  <Step>
+    On the **Review** step, select **Add Service**.
+  </Step>
+</Steps>
+
+Next, [connect your agent](/documentation/platform/agent-vault/databases-and-ssh#connect-your-agent) to the service.
+
+## Server details
+
+- **Name:** The name the agent connects with, as in `infisical agent-vault connect analytics` (lowercase letters, numbers, and hyphens, at most 63 characters)
+- **Host:** The server's host name or IP address, as the proxy reaches it, such as `orders_db` for a Docker Compose service (no scheme, port, path, or variable)
+- **Port:** The server's port (defaults to `5432`)
+- **Database:** The database the proxy logs in to (not a variable)
+- **TLS:** How the proxy connects to the database, described in [TLS to the database](#tls-to-the-database)
+
+A PostgreSQL service always connects to its database, whichever database the agent's client asks for.
+
+### TLS to the database
+
+TLS applies only to the connection between the proxy and the database. The connection between the agent's machine and the proxy always uses TLS.
+
+- **Use TLS** (on by default): The proxy connects to the database over TLS
+- **Verify Certificate** (on by default): The proxy checks the database's certificate against the system's trusted certificate authorities, or against the CA certificate you add
+- **CA Certificate (optional):** The PEM certificate of the authority that signed the database's certificate, if the database uses a private certificate (for AWS RDS, your region's bundle, such as [`us-east-1-bundle.pem`](https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem))
+
+If you turn **Use TLS** off, a PostgreSQL service still uses TLS when the database offers it, without checking the certificate.
+
+## Credentials
+
+Enter the account's **Username** and **Password**. To give each member their own account, leave the username, the password, or both to each member, as described in [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values). To use a password that several services share, type `{{` in **Password** and select a [variable](/documentation/platform/agent-vault/variables).
+
+## Limitations
+
+- **Database logins:** PostgreSQL services log in with a plain-text, MD5, or SCRAM-SHA-256 password
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The client says the server closed the connection">
+    The proxy couldn't log in to the server. Check that:
+
+    - The service's **Host** and **Port** are reachable from the proxy's machine
+    - The account's username and password are correct
+    - The TLS settings match the database, for example **Verify Certificate** is off or **CA Certificate (optional)** is set for a database with a private certificate
+
+    The session's log shows the failed connection as an **Error** row with the reason, and so does the proxy's own log.
+
+    If `connect` printed a message about the service's hook, the hook server refused the connection or didn't give a usable answer. See the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
+  </Accordion>
+</AccordionGroup>

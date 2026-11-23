@@ -9,7 +9,9 @@ import {
 } from "@aws-sdk/client-elastic-load-balancing-v2";
 import { z } from "zod";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { ProjectType, TCertificateSyncs } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -26,7 +28,6 @@ import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-conne
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { awsCertificateManagerPkiSyncFactory } from "@app/services/pki-sync/aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
@@ -58,7 +59,7 @@ const { withRateLimitRetry, executeWithConcurrencyLimit } = awsConnectionQueue;
 
 type TAwsElasticLoadBalancerPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -69,13 +70,15 @@ type TAwsElasticLoadBalancerPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 const getAwsElbClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ): Promise<ElasticLoadBalancingV2Client> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -91,7 +94,7 @@ const getAwsElbClient = async (
 
   const decryptedCredentials = await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   });
@@ -110,7 +113,11 @@ const getAwsElbClient = async (
       });
   }
 
-  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
+    region
+  );
 
   return new ElasticLoadBalancingV2Client(awsConfig);
 };
@@ -119,7 +126,8 @@ const getAwsAcmClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ): Promise<ACMClient> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -135,7 +143,7 @@ const getAwsAcmClient = async (
 
   const decryptedCredentials = await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   });
@@ -154,22 +162,28 @@ const getAwsAcmClient = async (
       });
   }
 
-  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
+    region
+  );
 
   return new ACMClient(awsConfig);
 };
 
 export const awsElasticLoadBalancerPkiSyncFactory = ({
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
-  certificateDAL
+  certificateDAL,
+  instanceConfigService
 }: TAwsElasticLoadBalancerPkiSyncFactoryDeps) => {
   const acmFactory = awsCertificateManagerPkiSyncFactory({
-    kmsService,
+    kmsDataKeyService,
     appConnectionDAL,
     certificateSyncDAL,
-    certificateDAL
+    certificateDAL,
+    instanceConfigService
   });
 
   const attachCertificateToListener = async (
@@ -279,7 +293,13 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
     }
 
     // Attach certificates to ELB listeners
-    const elbClient = await getAwsElbClient(pkiSync.connection.id, region as AWSRegion, appConnectionDAL, kmsService);
+    const elbClient = await getAwsElbClient(
+      pkiSync.connection.id,
+      region as AWSRegion,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
     const listenerAttachmentErrors: Array<{ name: string; error: string }> = [];
     let attachedCount = 0;
 
@@ -338,7 +358,8 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
           pkiSync.connection.id,
           region as AWSRegion,
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService,
+          instanceConfigService
         );
 
         // Get default certificates for each listener to avoid removing them
@@ -460,8 +481,20 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
       return { removed: 0, failed: 0, skipped: certificateNames.length };
     }
 
-    const elbClient = await getAwsElbClient(pkiSync.connection.id, region as AWSRegion, appConnectionDAL, kmsService);
-    const acmClient = await getAwsAcmClient(pkiSync.connection.id, region as AWSRegion, appConnectionDAL, kmsService);
+    const elbClient = await getAwsElbClient(
+      pkiSync.connection.id,
+      region as AWSRegion,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
+    const acmClient = await getAwsAcmClient(
+      pkiSync.connection.id,
+      region as AWSRegion,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     let removedCount = 0;
     let failedCount = 0;

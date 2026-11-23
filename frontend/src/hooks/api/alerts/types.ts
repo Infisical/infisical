@@ -8,7 +8,9 @@ export enum AlertResourceType {
   PamFolder = "pam.folder",
   SecretReminder = "secret.reminder",
   AuditLogStream = "audit-log.stream",
-  SecretRotation = "secret.rotation"
+  SecretRotation = "secret.rotation",
+  SecretSync = "secret.sync",
+  HoneyToken = "secret.honey-token"
 }
 
 export enum AlertEventType {
@@ -19,7 +21,9 @@ export enum AlertEventType {
   PamAccessRequestDenied = "pam.folder.access-request-denied",
   PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
   AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed",
-  SecretRotationFailed = "secret.rotation.failed"
+  SecretRotationFailed = "secret.rotation.failed",
+  SecretSyncFailed = "secret.sync.failed",
+  HoneyTokenTriggered = "secret.honey-token.triggered"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -37,7 +41,11 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   [AlertResourceType.SecretReminder]: [],
   [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed],
   // Rotation alerts are edited from the rotation form, not the generic alert form.
-  [AlertResourceType.SecretRotation]: []
+  [AlertResourceType.SecretRotation]: [],
+  // Sync alerts are edited from the sync form, not the generic alert form.
+  [AlertResourceType.SecretSync]: [],
+  // Honey token alerts are edited from the honey token form, not the generic alert form.
+  [AlertResourceType.HoneyToken]: []
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -46,11 +54,14 @@ export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourc
 // Only secrets have a project-wide audience, so other resource types don't offer project recipients
 export const ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS: string[] = [
   AlertResourceType.SecretReminder,
-  AlertResourceType.SecretRotation
+  AlertResourceType.SecretRotation,
+  AlertResourceType.SecretSync,
+  AlertResourceType.HoneyToken
 ];
 
 export enum AlertChannelType {
   Email = "email",
+  SlackApp = "slack-app",
   Slack = "slack",
   Webhook = "webhook",
   PagerDuty = "pagerduty"
@@ -151,7 +162,9 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.PamFolder]: "PAM Folder",
   [AlertResourceType.SecretReminder]: "Secret Reminder",
   [AlertResourceType.AuditLogStream]: "Audit Log Stream",
-  [AlertResourceType.SecretRotation]: "Secret Rotation"
+  [AlertResourceType.SecretRotation]: "Secret Rotation",
+  [AlertResourceType.SecretSync]: "Secret Sync",
+  [AlertResourceType.HoneyToken]: "Honey Token"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -162,7 +175,9 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequestDenied]: "Request Denied",
   [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure",
-  [AlertEventType.SecretRotationFailed]: "Rotation Failure"
+  [AlertEventType.SecretRotationFailed]: "Rotation Failure",
+  [AlertEventType.SecretSyncFailed]: "Sync Failure",
+  [AlertEventType.HoneyTokenTriggered]: "Honey Token Triggered"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -181,7 +196,11 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.AuditLogStreamDeliveryFailed]:
     "Notify when an external log stream fails to deliver audit log events after all retries.",
   [AlertEventType.SecretRotationFailed]:
-    "Notify when a scheduled rotation fails after all of its retries."
+    "Notify when a scheduled rotation fails after all of its retries.",
+  [AlertEventType.SecretSyncFailed]:
+    "Notify when a sync, import or remove fails after all of its retries.",
+  [AlertEventType.HoneyTokenTriggered]:
+    "Notify when someone uses the honey token's decoy credentials."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.
@@ -193,10 +212,25 @@ export type TAlertChannelPaywall = {
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
   [AlertChannelType.Email]: "Email",
+  [AlertChannelType.SlackApp]: "Slack",
   [AlertChannelType.Slack]: "Slack",
   [AlertChannelType.Webhook]: "Webhook",
   [AlertChannelType.PagerDuty]: "PagerDuty"
 };
+
+export const MAX_SLACK_APP_CHANNELS = 20;
+
+export const SLACK_CHANNEL_TYPES: AlertChannelType[] = [
+  AlertChannelType.SlackApp,
+  AlertChannelType.Slack
+];
+
+// A webhook Slack channel is added by switching a Slack card's method, so it has no menu entry of its own.
+export const ADD_MENU_CHANNEL_TYPES = Object.values(AlertChannelType).filter(
+  (channelType) => channelType !== AlertChannelType.Slack
+);
+
+export type TAlertSlackChannel = { id: string; name: string };
 
 export type TAlertChannelRecipient = {
   principalType: AlertPrincipalType;
@@ -329,6 +363,8 @@ export const channelFormSchema = z
       )
       .default([]),
     integrationKey: z.string().optional(),
+    workflowIntegrationId: z.string().optional(),
+    slackChannels: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
     recipients: z
       .array(
         z.object({
@@ -343,7 +379,14 @@ export const channelFormSchema = z
     hasBasicPassword: z.boolean().optional(),
     hasAuthHeaderValue: z.boolean().optional(),
     hasIntegrationKey: z.boolean().optional(),
-    savedUrl: z.string().optional()
+    savedUrl: z.string().optional(),
+    savedChannel: z
+      .object({
+        id: z.string(),
+        channelType: z.nativeEnum(AlertChannelType),
+        hasWebhookUrl: z.boolean()
+      })
+      .optional()
   })
   .superRefine((channel, ctx) => {
     const isNew = !channel.id;
@@ -354,6 +397,27 @@ export const channelFormSchema = z
             code: z.ZodIssueCode.custom,
             path: ["recipients"],
             message: "Add at least one recipient"
+          });
+        }
+        break;
+      case AlertChannelType.SlackApp:
+        if (!channel.workflowIntegrationId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["workflowIntegrationId"],
+            message: "Select a Slack integration"
+          });
+        } else if (!channel.slackChannels?.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["slackChannels"],
+            message: "Select at least one Slack channel"
+          });
+        } else if (channel.slackChannels.length > MAX_SLACK_APP_CHANNELS) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["slackChannels"],
+            message: `Select at most ${MAX_SLACK_APP_CHANNELS} Slack channels`
           });
         }
         break;

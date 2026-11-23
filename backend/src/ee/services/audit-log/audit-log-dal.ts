@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs, TAuditLogsInsert } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
@@ -21,10 +20,11 @@ type TAggregateQuery = {
   endDate: string;
 };
 
-export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
+export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find" | "create"> {
+  create: (data: TAuditLogsInsert, isPostgresStorageDisabled: boolean) => Promise<TAuditLogs>;
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
-  batchCreate: (logs: TAuditLogsInsert[]) => Promise<void>;
+  batchCreate: (logs: TAuditLogsInsert[], isPostgresStorageDisabled: boolean) => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -302,24 +302,22 @@ export const auditLogDALFactory = (db: TDbClient) => {
     }
   };
 
-  const create: TAuditLogDALFactory["create"] = async (tx) => {
-    const config = getConfig();
-
-    if (config.DISABLE_POSTGRES_AUDIT_LOG_STORAGE) {
+  const create: TAuditLogDALFactory["create"] = async (data, isPostgresStorageDisabled) => {
+    if (isPostgresStorageDisabled) {
       return {
-        ...tx,
+        ...data,
         id: uuidv4(),
         createdAt: new Date(),
         updatedAt: new Date()
       };
     }
 
-    return auditLogOrm.create(tx);
+    return auditLogOrm.create(data);
   };
 
-  const batchCreate: TAuditLogDALFactory["batchCreate"] = async (logs) => {
+  const batchCreate: TAuditLogDALFactory["batchCreate"] = async (logs, isPostgresStorageDisabled) => {
     if (logs.length === 0) return;
-    if (getConfig().DISABLE_POSTGRES_AUDIT_LOG_STORAGE) return;
+    if (isPostgresStorageDisabled) return;
 
     try {
       await db.transaction(async (tx) => {

@@ -61,7 +61,6 @@ import {
   useRestoreAgentVaultSkillVersion,
   useUpdateAgentVaultSkill
 } from "@app/hooks/api/agentVault";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { DeleteSkillDialog } from "./DeleteSkillDialog";
@@ -97,8 +96,7 @@ const SkillSheetBody = ({
   const { projectId } = useProject();
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole, permission } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
   const canEdit = permission.can(
     ProjectPermissionAgentVaultSkillActions.Edit,
     ProjectPermissionSub.AgentVaultSkills
@@ -384,7 +382,8 @@ const SkillSheetBody = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {isAdmin && (
+                  {/* Listing a skill's versions takes Edit on the server. */}
+                  {canEdit && (
                     <DropdownMenuItem onClick={() => setDialog("history")}>
                       <HistoryIcon />
                       Version History
@@ -487,7 +486,7 @@ const SkillSheetBody = ({
 
       {skill && (
         <>
-          {isAdmin && (
+          {canEdit && (
             <SkillVersionHistoryDialog
               isOpen={dialog === "history"}
               onOpenChange={(open) => setDialog(open ? "history" : null)}

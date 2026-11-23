@@ -586,6 +586,10 @@ export const ProductSheet = ({
     : "your current plan";
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
   const trialAvailable = !entitled && prod.plans.some((plan) => plan.selfServe && plan.trialable);
+  // A usage-only product such as Agent Vault has no yearly price, so checkout can't offer one.
+  const offersYearly = prod.plans.some(
+    (plan) => plan.selfServe && !plan.salesLed && planHeadlinePrice(plan, "annual") > 0
+  );
   // The plan-card price always leads with the best (annual) rate shown as a per-month figure (÷12, see
   // PlanPricing) with a "billed annually" note, even for a trialable plan. An entitled product shows
   // its own cadence. PlanPricing falls back to monthly for a monthly-only plan. The trial's
@@ -833,7 +837,9 @@ export const ProductSheet = ({
                 ) : (
                   <>
                     <span className="text-xs text-muted">
-                      Choose monthly or yearly at checkout · cancel any time
+                      {offersYearly
+                        ? "Choose monthly or yearly at checkout · cancel any time"
+                        : "Billed monthly · cancel any time"}
                     </span>
                     <Button variant="outline" onClick={onClose}>
                       Close

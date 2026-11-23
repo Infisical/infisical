@@ -6,7 +6,7 @@ import { CharacterType, characterValidator } from "./validate-string";
 
 let disposableDomains: Set<string> | undefined;
 
-// Read once per process, synchronously so the check never yields to the event loop
+// Read on first use and kept for the life of the process
 const getDisposableDomains = () => {
   disposableDomains ??= new Set(
     fs.readFileSync(path.join(__dirname, "disposable_emails.txt"), "utf8").split("\n").filter(Boolean)
@@ -14,7 +14,7 @@ const getDisposableDomains = () => {
   return disposableDomains;
 };
 
-export const isDisposableEmail = async (emails: string | string[]) => {
+export const isDisposableEmail = (emails: string | string[]) => {
   const domains = getDisposableDomains();
   const isListed = (email: string) => domains.has(email.split("@")[1]?.trim().toLowerCase() ?? "");
   return Array.isArray(emails) ? emails.some(isListed) : isListed(emails);

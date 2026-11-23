@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 
 import { authLoginServiceFactory } from "./auth-login-service";
@@ -19,10 +20,6 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
-vi.mock("@app/services/super-admin/super-admin-service", () => ({
-  getServerCfg: vi.fn(async () => ({ allowSignUp: true }))
-}));
-
 type TDeps = Parameters<typeof authLoginServiceFactory>[0];
 
 const googleLogin = {
@@ -36,17 +33,17 @@ const googleLogin = {
 };
 
 const existingAccount = ({
-  email = "alice@corp.com",
-  storedEmail = email,
+  username = "alice@corp.com",
+  storedEmail = username,
   alias
 }: {
-  email?: string;
+  username?: string;
   storedEmail?: string | null;
   alias?: { email: string; isEmailVerified: boolean };
 }) => {
   const user = {
     id: "user-1",
-    username: email,
+    username,
     email: storedEmail,
     isAccepted: true,
     isEmailVerified: true,
@@ -78,7 +75,8 @@ const existingAccount = ({
       createTokenForUser: vi.fn().mockResolvedValue("123456"),
       getUserTokenSession: vi.fn().mockResolvedValue({ id: "session-1", accessVersion: 1, refreshVersion: 1 })
     },
-    mfaLockoutService: { clearRecentMfaAuth: vi.fn() }
+    mfaLockoutService: { clearRecentMfaAuth: vi.fn() },
+    instanceConfigService: new FakeInstanceConfigService()
   } as unknown as TDeps);
 
   return { service, userDAL, userAliasDAL, smtpService };
@@ -87,7 +85,7 @@ const existingAccount = ({
 describe("oauth2Login", () => {
   beforeAll(async () => {
     vi.stubEnv("FIPS_ENABLED", "false");
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {
@@ -98,7 +96,8 @@ describe("oauth2Login", () => {
     const userDAL = { findOne: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
     const service = authLoginServiceFactory({
       userDAL,
-      userAliasDAL: { findOne: vi.fn().mockResolvedValue(undefined) }
+      userAliasDAL: { findOne: vi.fn().mockResolvedValue(undefined) },
+      instanceConfigService: new FakeInstanceConfigService()
     } as unknown as TDeps);
 
     await expect(service.oauth2Login(googleLogin)).rejects.toThrow(
@@ -135,7 +134,7 @@ describe("oauth2Login", () => {
   test.each(["alice@mailinator.com", "Alice@Mailinator.com", null])(
     "signs in an existing account on a disposable domain whose stored email is %s",
     async (storedEmail) => {
-      const { service, userAliasDAL, smtpService } = existingAccount({ email: "alice@mailinator.com", storedEmail });
+      const { service, userAliasDAL, smtpService } = existingAccount({ username: "alice@mailinator.com", storedEmail });
 
       const login = await service.oauth2Login(googleLogin);
 

@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import type {
   TAgentVaultOauthConfig,
-  TAgentVaultOauthMemberConfig
+  TAgentVaultOauthMemberConfig,
+  TAgentVaultOauthVariableCredentialConfig
 } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { AgentVaultCredentialType } from "./agent-vault-enums";
 
@@ -85,7 +86,8 @@ export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
 export type TAgentVaultCredentialConfig =
   | z.infer<typeof AgentVaultCredentialConfigSchema>
   | TAgentVaultOauthConfig
-  | TAgentVaultOauthMemberConfig;
+  | TAgentVaultOauthMemberConfig
+  | TAgentVaultOauthVariableCredentialConfig;
 
 export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Bearer), value: z.string().min(1).max(8192) }),

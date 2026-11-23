@@ -1,19 +1,16 @@
 import { Knex } from "knex";
 
-import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
-import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AuthMethod } from "@app/services/auth/auth-type";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "@app/services/project/project-fns";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -194,22 +191,7 @@ export async function seed(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-
-  const hsmConfig = getHsmConfig(logger);
-
-  const hsmModule = initializeHsmModule(hsmConfig);
-  hsmModule.initialize();
-
-  const hsmService = hsmServiceFactory({
-    hsmModule: hsmModule.getModule(),
-    envConfig: hsmConfig
-  });
-
-  await hsmService.startService();
-
-  await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
+  await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(knex), logger);
 
   const [project] = await knex(TableName.Project)
     .insert({

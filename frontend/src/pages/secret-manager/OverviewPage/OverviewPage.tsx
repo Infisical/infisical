@@ -1779,6 +1779,15 @@ const OverviewPageContent = () => {
     ]
   );
 
+  // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
+  const handleManageRootAccess = useCallback(() => {
+    setFolderAccessTarget(null);
+    setIsCurrentFolderAccessOpen(false);
+    navigate({ search: (prev) => ({ ...prev, secretPath: "/" }) }).then(() =>
+      setIsCurrentFolderAccessOpen(true)
+    );
+  }, [navigate]);
+
   const handleCurrentFolderAccessOpen = useCallback(() => {
     const openCurrentFolderAccess = () => {
       setIsCurrentFolderAccessOpen(true);
@@ -4526,31 +4535,33 @@ const OverviewPageContent = () => {
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="-mr-1.5 flex items-center gap-2">
-                              <Badge variant="ghost" asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    overviewTelemetry.interaction({
-                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
-                                      source: "header",
-                                      resourceType: "secret"
-                                    });
-                                    setIsSingleEnvSecretsVisible.toggle();
-                                  }}
-                                >
-                                  {isSingleEnvSecretsVisible ? (
-                                    <>
-                                      <EyeOffIcon />
-                                      Hide Values
-                                    </>
-                                  ) : (
-                                    <>
-                                      <EyeIcon />
-                                      Reveal All
-                                    </>
-                                  )}
-                                </button>
-                              </Badge>
+                              {(mergedSecKeys.length > 0 || sortableImportItems.length > 0) && (
+                                <Badge variant="ghost" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      overviewTelemetry.interaction({
+                                        action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                        source: "header",
+                                        resourceType: "secret"
+                                      });
+                                      setIsSingleEnvSecretsVisible.toggle();
+                                    }}
+                                  >
+                                    {isSingleEnvSecretsVisible ? (
+                                      <>
+                                        <EyeOffIcon />
+                                        Hide Values
+                                      </>
+                                    ) : (
+                                      <>
+                                        <EyeIcon />
+                                        Reveal All
+                                      </>
+                                    )}
+                                  </button>
+                                </Badge>
+                              )}
                               {isProtectedBranch && (
                                 <Tooltip>
                                   <TooltipTrigger>
@@ -5415,6 +5426,7 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
       <EditHoneyTokenModal
+        secretPath={secretPath}
         isOpen={popUp.editHoneyToken.isOpen}
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
@@ -5562,6 +5574,7 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
+          onManageRootAccess={handleManageRootAccess}
         />
       )}
       {isCurrentFolderAccessOpen && (
@@ -5572,6 +5585,7 @@ const OverviewPageContent = () => {
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
+          onManageRootAccess={handleManageRootAccess}
         />
       )}
       <ConfirmationAlertDialog

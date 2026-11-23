@@ -1,7 +1,7 @@
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { HoneyTokenManagedBy, HoneyTokenType } from "../honey-token-enums";
@@ -30,7 +30,8 @@ const MANAGED_UNAVAILABLE_MESSAGES: Record<TAwsHoneyTokenInstanceUnavailableReas
 };
 
 export const honeyTokenAwsProviderHooksFactory = ({
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL,
   honeyTokenDAL,
   honeyTokenConfigDAL
@@ -79,7 +80,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
       });
 
       if (config?.encryptedConfig) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: honeyToken.orgId
         });
@@ -103,7 +104,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
 
   return {
     createCredentials: (target) =>
-      createAwsIamHoneyTokenCredentials(target).then((credentials) => ({
+      createAwsIamHoneyTokenCredentials(target, instanceConfigService).then((credentials) => ({
         credentials,
         tokenIdentifier: credentials.accessKeyId
       })),
@@ -111,10 +112,11 @@ export const honeyTokenAwsProviderHooksFactory = ({
       revokeAwsIamHoneyTokenCredentials({
         target,
         iamUserName: credentials.iamUserName,
-        accessKeyId: credentials.accessKeyId
+        accessKeyId: credentials.accessKeyId,
+        instanceConfigService
       }),
     verifyDeployment: async ({ connectionId, orgId, encryptedConfig }) => {
-      const { decryptor: configDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: configDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
       });
@@ -129,11 +131,12 @@ export const honeyTokenAwsProviderHooksFactory = ({
         stackName: config?.stackName ?? "infisical-honey-tokens",
         awsRegion: config?.awsRegion ?? "us-east-1",
         appConnectionDAL,
-        kmsService
+        kmsDataKeyService,
+        instanceConfigService
       });
     },
     getCredentialsForDisplay: async ({ encryptedCredentials, projectId }) => {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

@@ -78,8 +78,8 @@ describe("isAliasedEmail", () => {
 
 describe("isDisposableEmail", () => {
   test("matches only a listed domain, whatever its case or surrounding whitespace", async () => {
-    expect(await isDisposableEmail("alice@Mailinator.COM ")).toBe(true);
-    expect(await isDisposableEmail(["alice@corp.com", " bob@MAILINATOR.com"])).toBe(true);
-    expect(await isDisposableEmail(["alice@corp.com", "bob@corpmailinator.com"])).toBe(false);
+    expect(isDisposableEmail("alice@Mailinator.COM ")).toBe(true);
+    expect(isDisposableEmail(["alice@corp.com", " bob@MAILINATOR.com"])).toBe(true);
+    expect(isDisposableEmail(["alice@corp.com", "bob@corpmailinator.com"])).toBe(false);
   });
 });

@@ -723,11 +723,27 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "incident.io",
+    slug: "incident-io",
+    path: "/integrations/app-connections/incident-io",
+    description:
+      "Learn how to connect incident.io so Infisical can check who is on call in your schedules.",
+    category: "Monitoring",
+  },
+  {
     name: "Jenkins",
     slug: "jenkins",
     path: "/integrations/app-connections/jenkins",
     description:
       "Learn how to connect Jenkins to sync secrets from Infisical.",
     category: "CI/CD",
+  },
+  {
+    name: "Coolify",
+    slug: "coolify",
+    path: "/integrations/app-connections/coolify",
+    description:
+      "Learn how to connect Coolify to sync secrets from Infisical.",
+    category: "Hosting",
   },
 ];

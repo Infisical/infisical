@@ -1,16 +1,26 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Code,
+  CopyButton,
   DialogFooter,
+  DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
   SecretInput,
   Select,
@@ -67,6 +77,14 @@ const AWS_REGIONS = [
   { name: "AWS US ISO (West)", slug: "us-iso-west-1" }
 ];
 
+const AWS_KMS_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms";
+
+type AwsKmsCredential = Extract<
+  AddExternalKmsType["configuration"],
+  { type: ExternalKmsProvider.Aws }
+>["inputs"]["credential"];
+
 type Props = {
   onCompleted: () => void;
   onCancel: () => void;
@@ -110,8 +128,7 @@ export const AwsKmsForm = ({
                     accessKey: kms.externalKms.configuration.credential.data?.accessKey ?? "",
                     secretKey: kms.externalKms.configuration.credential.data?.secretKey ?? "",
                     assumeRoleArn:
-                      kms.externalKms.configuration.credential.data?.assumeRoleArn ?? "",
-                    externalId: kms.externalKms.configuration.credential.data?.externalId ?? ""
+                      kms.externalKms.configuration.credential.data?.assumeRoleArn ?? ""
                   }
                 }
               }
@@ -135,6 +152,14 @@ export const AwsKmsForm = ({
   );
 
   const selectedAwsAuthType = watch("configuration.inputs.credential.type");
+  const hasLegacyExternalId = Boolean(kms?.externalKms?.hasLegacyExternalId);
+  const storedExternalId: string | undefined =
+    kms?.externalKms?.configuration?.credential?.data?.externalId;
+
+  const withOrgExternalId = (credential: AwsKmsCredential): AwsKmsCredential =>
+    credential.type === KmsAwsCredentialType.AssumeRole
+      ? { ...credential, data: { ...credential.data, externalId: currentOrg.id } }
+      : credential;
 
   const handleAwsKmsFormSubmit = async (data: AddExternalKmsType) => {
     const { name, description, configuration } = data;
@@ -151,7 +176,7 @@ export const AwsKmsForm = ({
             configuration: {
               type: ExternalKmsProvider.Aws,
               inputs: {
-                credential: { ...awsInputs.credential },
+                credential: awsInputs.credential && withOrgExternalId(awsInputs.credential),
                 awsRegion: awsInputs.awsRegion,
                 kmsKeyId: awsInputs.kmsKeyId
               }
@@ -176,7 +201,16 @@ export const AwsKmsForm = ({
         await addAwsExternalKms({
           name,
           description,
-          configuration
+          configuration:
+            configuration.type === ExternalKmsProvider.Aws
+              ? {
+                  ...configuration,
+                  inputs: {
+                    ...configuration.inputs,
+                    credential: withOrgExternalId(configuration.inputs.credential)
+                  }
+                }
+              : configuration
         });
 
         createNotification({
@@ -207,7 +241,10 @@ export const AwsKmsForm = ({
         type="submit"
         variant={isSubOrganization ? "sub-org" : "org"}
         isPending={isSubmitting}
-        isDisabled={isSubmitting || Boolean(kms && !isDirty)}
+        isDisabled={
+          isSubmitting ||
+          Boolean(kms && !isDirty && !(mode === "credentials" && hasLegacyExternalId))
+        }
       >
         {submitLabel}
       </Button>
@@ -278,7 +315,6 @@ export const AwsKmsForm = ({
                       setValue("configuration.inputs.credential.data.accessKey", "");
                       setValue("configuration.inputs.credential.data.secretKey", "");
                       setValue("configuration.inputs.credential.data.assumeRoleArn", "");
-                      setValue("configuration.inputs.credential.data.externalId", "");
                       onChange(nextValue);
                     }}
                   >
@@ -354,29 +390,59 @@ export const AwsKmsForm = ({
                         placeholder="arn:aws:iam::123456789012:role/InfisicalKms"
                       />
                       <FieldDescription>
-                        The role Infisical assumes to access AWS KMS.
+                        Infisical sends your{" "}
+                        <HoverCard openDelay={150} closeDelay={150}>
+                          <HoverCardTrigger asChild>
+                            <span className="cursor-help text-foreground underline decoration-muted decoration-dotted underline-offset-4">
+                              organization ID
+                            </span>
+                          </HoverCardTrigger>
+                          <HoverCardContent align="start" className="w-auto max-w-sm">
+                            <p className="text-xs font-medium text-foreground">External ID</p>
+                            <div className="mt-1 flex items-center gap-1">
+                              <span className="font-mono text-xs">{currentOrg.id}</span>
+                              <CopyButton value={currentOrg.id} ariaLabel="Copy organization ID" />
+                            </div>
+                            <p className="mt-2 text-xs text-muted">
+                              Require it in the role&apos;s trust policy with the{" "}
+                              <Code>sts:ExternalId</Code> condition.
+                            </p>
+                          </HoverCardContent>
+                        </HoverCard>{" "}
+                        as the External ID when it assumes this role.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>
                   )}
                 />
-                <Controller
-                  control={control}
-                  name="configuration.inputs.credential.data.externalId"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="aws-kms-external-id">External ID</FieldLabel>
-                      <Input
-                        {...field}
-                        id="aws-kms-external-id"
-                        value={field.value ?? ""}
-                        isError={Boolean(error)}
-                        placeholder="Optional"
+                {hasLegacyExternalId && (
+                  <Alert variant="warning">
+                    <TriangleAlertIcon />
+                    <AlertTitle>
+                      {storedExternalId
+                        ? "External ID Not Tied to This Organization"
+                        : "No External ID on This Key"}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {storedExternalId ? (
+                        <p>
+                          This key keeps working with its current external ID. Before updating its
+                          credentials, add your organization ID to the role&apos;s trust policy next
+                          to the current value. Remove the old value after the update.
+                        </p>
+                      ) : (
+                        <p>
+                          This key keeps working without an external ID. Update its credentials
+                          first so Infisical sends your organization ID, then require that value in
+                          the role&apos;s trust policy.
+                        </p>
+                      )}
+                      <DocumentationLinkBadge
+                        href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
                       />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+                    </AlertDescription>
+                  </Alert>
+                )}
               </>
             )}
           </>

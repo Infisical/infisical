@@ -53,6 +53,7 @@ export const Route = createFileRoute(
     return {
       implicitProjectId: pamProjectId,
       implicitProductType: ProjectType.PAM,
+      productType: ProjectType.PAM,
       breadcrumbs: []
     };
   }

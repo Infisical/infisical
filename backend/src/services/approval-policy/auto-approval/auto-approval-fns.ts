@@ -1,6 +1,10 @@
 import { logger } from "@app/lib/logger";
+import { TAiJudgeResult } from "@app/services/ai/ai-types";
 
 import {
+  AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
+  AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_AI_SUBJECT_LABEL,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
@@ -11,16 +15,37 @@ import {
   TStoredAutoApproval
 } from "./auto-approval-types";
 
-export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string }) =>
+export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string | null }) =>
   condition.inputId ?? `${AUTO_APPROVAL_REQUESTER_SUBJECT}:${condition.connectionId}`;
+
+export const isAiCondition = (condition: { subject: string }) => condition.subject === AUTO_APPROVAL_AI_SUBJECT;
+
+export type TAiConditionResult = { passed: boolean; reason: string | null; ai: TAiJudgeResult | null };
+
+export const AUTO_APPROVAL_MAX_OPTIONS = 100;
+
+export const anyOf = (values: string[]) => values.join(" or ");
 
 export const describeAutoApprovalCondition = (subjectLabel: string, constraintLabel: string, values: string[]) =>
   [subjectLabel, constraintLabel, values.join(" or ")].filter(Boolean).join(" ");
 
+const describeValues = (
+  constraint: { describeValues?: (facts: unknown, values: string[]) => string[] } | undefined,
+  facts: unknown,
+  values: string[]
+) => {
+  if (!constraint?.describeValues || !facts) return values;
+  try {
+    return constraint.describeValues(facts, values);
+  } catch {
+    return values;
+  }
+};
+
 export type TResolvedAutoApprovalSubject = {
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  definition: TAutoApprovalSubject<any, any> | null;
+  definition: Pick<TAutoApprovalSubject<any, any>, "input" | "constraints"> | null;
   facts: unknown;
   error: string | null;
   recordId?: string | null;
@@ -32,24 +57,44 @@ export type TResolvedAutoApprovalSubject = {
 export const evaluateAutoApprovalRules = (
   rules: TStoredAutoApproval["rules"],
   subjects: Map<string, TResolvedAutoApprovalSubject>,
-  ctx: TAutoApprovalContext
+  ctx: TAutoApprovalContext,
+  aiResults: Map<string, TAiConditionResult> = new Map()
 ): Pick<TAutoApprovalEvidence, "rules" | "approvedByRuleId"> => {
   const evaluated = rules.map((rule) => {
     const conditions = rule.conditions.map((condition) => {
+      if (isAiCondition(condition)) {
+        const result = aiResults.get(condition.id);
+        return {
+          id: condition.id,
+          connectionId: null,
+          subject: condition.subject,
+          constraint: condition.constraint,
+          values: condition.values,
+          description: describeAutoApprovalCondition(
+            AUTO_APPROVAL_AI_SUBJECT_LABEL,
+            AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
+            []
+          ),
+          passed: result?.passed ?? false,
+          reason: result ? result.reason : "The AI didn't review this request",
+          ai: result?.ai ?? null
+        };
+      }
+
       const subject = subjects.get(getAutoApprovalSubjectKey(condition));
       const isUnusedCheck =
         condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT && Boolean(subject?.definition?.input);
       const constraint = isUnusedCheck ? undefined : subject?.definition?.constraints[condition.constraint];
       const base = {
         id: condition.id,
-        connectionId: condition.connectionId,
+        connectionId: condition.connectionId ?? null,
         subject: condition.subject,
         constraint: condition.constraint,
         values: condition.values,
         description: describeAutoApprovalCondition(
           subject?.label ?? condition.subject,
           isUnusedCheck ? AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL : (constraint?.label ?? condition.constraint),
-          condition.values
+          describeValues(constraint, subject?.facts, condition.values)
         )
       };
 
@@ -93,11 +138,18 @@ const isAutoApprovalEvidence = (value: unknown): value is TAutoApprovalEvidence 
   (value as { version?: unknown }).version === 1 &&
   Array.isArray((value as { rules?: unknown }).rules);
 
+// The requester isn't told why the AI declined, so they can't tune their input against it
+const getVisibleReason = (condition: { subject: string; passed: boolean; reason: string | null }, hideAi: boolean) =>
+  hideAi && isAiCondition(condition) && !condition.passed ? null : condition.reason;
+
 // What the API returns about an evaluation: results and reasons
-export const toAutoApprovalOutcome = (request: {
-  autoApprovedAt?: Date | null;
-  autoApprovalEvidence?: unknown;
-}): TAutoApprovalOutcome | null => {
+export const toAutoApprovalOutcome = (
+  request: {
+    autoApprovedAt?: Date | null;
+    autoApprovalEvidence?: unknown;
+  },
+  { hideAi = false }: { hideAi?: boolean } = {}
+): TAutoApprovalOutcome | null => {
   const evidence = request.autoApprovalEvidence;
   if (!isAutoApprovalEvidence(evidence)) return null;
 
@@ -109,7 +161,28 @@ export const toAutoApprovalOutcome = (request: {
       id: rule.id,
       name: rule.name,
       passed: rule.passed,
-      conditions: rule.conditions.map(({ id, description, passed, reason }) => ({ id, description, passed, reason }))
+      conditions: rule.conditions.map(({ id, subject, description, passed, reason, ai }) => ({
+        id,
+        description,
+        passed,
+        reason: getVisibleReason({ subject, passed, reason }, hideAi),
+        ai:
+          ai && !hideAi
+            ? {
+                model: ai.model,
+                approve: ai.approve,
+                reason: ai.reason,
+                error: ai.error,
+                toolCalls: ai.toolCalls.map(({ tool, connectionName, input, summary, error }) => ({
+                  tool,
+                  connectionName,
+                  input,
+                  summary,
+                  error
+                }))
+              }
+            : null
+      }))
     }))
   };
 };
@@ -139,9 +212,10 @@ export const getClosestFailedRule = (evidence: Pick<TAutoApprovalEvidence, "rule
     .sort((a, b) => a.failed - b.failed || b.passed - a.passed);
   if (!closest) return null;
 
-  const failedCondition = closest.rule.conditions.find((condition) => !condition.passed);
+  // AI checks never explain a refusal, so a rule that failed only on one gives no reason
+  const failedCondition = closest.rule.conditions.find((condition) => !condition.passed && !isAiCondition(condition));
   return {
     ruleName: closest.rule.name,
-    reason: failedCondition?.reason ?? failedCondition?.description ?? "a condition didn't pass"
+    reason: failedCondition ? (failedCondition.reason ?? failedCondition.description) : null
   };
 };

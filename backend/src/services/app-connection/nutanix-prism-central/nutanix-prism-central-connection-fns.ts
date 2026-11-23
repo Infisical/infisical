@@ -2,6 +2,7 @@ import { AxiosRequestConfig } from "axios";
 import crypto from "crypto";
 import https from "https";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -160,7 +161,7 @@ export const validateNutanixPrismCentralConnectionCredentials = async (
       }
     );
   } catch (error: unknown) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
     throw new BadRequestError({
       message: `Unable to validate Nutanix Prism Central connection: ${error instanceof Error ? error.message : "verify credentials and that Prism Central is reachable"}`
     });
@@ -207,7 +208,7 @@ export const listNutanixClusters = async (
       }
     );
   } catch (error: unknown) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
     throw new BadRequestError({
       message: `Failed to fetch Nutanix clusters: ${error instanceof Error ? error.message : "verify credentials and that Prism Central is reachable"}`
     });

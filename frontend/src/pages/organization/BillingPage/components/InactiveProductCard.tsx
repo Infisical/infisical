@@ -1,12 +1,15 @@
 import { CSSProperties } from "react";
 
+import { formatFreeUsageSummary } from "@app/components/agent-vault/FreeUsage";
 import {
   getSelfHostedLicenseState,
   SELF_HOSTED_LICENSE_COPY
 } from "@app/components/license/self-hosted-license";
+import { BillingProduct } from "@app/components/license/UpgradeGate";
 import { Badge, Button, Card, CardTitle } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { BillingCatalogProduct } from "@app/hooks/api";
+import { useGetAgentVaultAccess } from "@app/hooks/api/agentVault";
 
 import { ProductIcon } from "./shared";
 
@@ -26,6 +29,9 @@ export const InactiveProductCard = ({
   onContact: (prod: BillingCatalogProduct) => void;
 }) => {
   const { subscription } = useSubscription();
+  const { data: agentVaultAccess } = useGetAgentVaultAccess(prod.id === BillingProduct.AgentVault);
+  const agentVaultFreeUsage =
+    prod.id === BillingProduct.AgentVault ? (agentVaultAccess?.freeUsage ?? null) : null;
   const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
   const hasSelfServePlan = prod.plans.some((plan) => plan.selfServe);
   const hasSalesLedPlan = prod.plans.some((plan) => plan.salesLed);
@@ -61,6 +67,11 @@ export const InactiveProductCard = ({
       <span className="flex-1 text-xs text-muted">
         {canActivate || canContactSales ? (prod.tagline ?? note) : note}
       </span>
+      {agentVaultFreeUsage && (
+        <span className="text-xs text-muted">
+          Free · {formatFreeUsageSummary(agentVaultFreeUsage)}
+        </span>
+      )}
       {canActivate && (
         <Button
           variant="product"

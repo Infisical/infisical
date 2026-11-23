@@ -5,7 +5,7 @@ import { z } from "zod";
 import { SignerDetailPage } from "./SignerDetailPage";
 
 const SignerDetailSearchSchema = z.object({
-  selectedTab: z.enum(["activity", "approvals", "members"]).catch("activity").optional()
+  selectedTab: z.enum(["overview", "approvals", "members"]).catch("overview").optional()
 });
 
 export const Route = createFileRoute(

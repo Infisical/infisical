@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
+import { AgentVaultSessionErrorCode } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -26,6 +27,7 @@ import {
   TAgentVaultProjectService,
   TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
+  TAgentVaultHook,
   TAgentVaultSkillSummary,
   TAgentVaultSkillVersion,
   TAgentVaultSkippedBundleItem,
@@ -40,7 +42,9 @@ import {
   TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
+  TAgentVaultOauthVariableSignInStart,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TListAgentVaultMcpToolsDTO,
@@ -50,9 +54,11 @@ import {
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultProxyDTO,
   TUpdateAgentVaultServiceDTO,
-  TUpdateAgentVaultSessionLabelDTO,
+  TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultHookDTO,
   TUpdateAgentVaultSkillDTO,
+  TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -237,6 +243,17 @@ const invalidateServices = (
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId, projectId) })
   ]);
 
+// Writing a service can also change its hook, or the name a hook's Used By shows for it.
+const invalidateServiceWrite = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    invalidateServices(queryClient, orgId, projectId),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) })
+  ]);
+
 export const useCreateAgentVaultService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -249,7 +266,7 @@ export const useCreateAgentVaultService = (projectId: string) => {
       );
       return data;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -265,7 +282,7 @@ export const useUpdateAgentVaultService = (projectId: string) => {
       );
       return data;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -279,7 +296,7 @@ export const useDeleteAgentVaultService = (projectId: string) => {
       );
       return data.service;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -373,10 +390,17 @@ export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
   });
 };
 
+// The create session form shows a refused service or skill under its field, and toasts any other 400 itself.
+export const CREATE_SESSION_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ...Object.values(AgentVaultSessionErrorCode)
+];
+
 export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handledErrorCodes: CREATE_SESSION_HANDLED_ERROR_CODES },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
@@ -392,14 +416,14 @@ export const useCreateAgentVaultSession = (projectId: string) => {
   });
 };
 
-export const useUpdateAgentVaultSessionLabel = (projectId: string) => {
+export const useUpdateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+    mutationFn: async ({ sessionId, label, metadata }: TUpdateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
         `/api/v1/agent-vault/sessions/${sessionId}`,
-        { label }
+        { label, metadata }
       );
       return data.session;
     },
@@ -646,6 +670,27 @@ export const useDeleteAgentVaultVariable = (projectId: string) => {
     },
     onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
+};
+
+// The sign-in itself is written into the variable when the callback page completes it, so the variables and the
+// services that use them are refreshed once the poll sees it finish, with useRefreshAgentVaultVariables.
+export const useStartAgentVaultOauthVariableSignIn = () =>
+  useMutation({
+    // The variable dialog shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ variableId, ...params }: TStartAgentVaultOauthVariableSignInDTO) => {
+      const { data } = await apiRequest.post<TAgentVaultOauthVariableSignInStart>(
+        `/api/v1/agent-vault/variables/${variableId}/authorizations`,
+        params
+      );
+      return data;
+    }
+  });
+
+export const useRefreshAgentVaultVariables = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return () => invalidateVariables(queryClient, currentOrg.id, projectId);
 };
 
 // A mutation rather than a query, so a revealed value never enters the query cache.
@@ -972,5 +1017,68 @@ export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
         accessBundleId,
         skillIds: [skillId]
       })
+  });
+};
+
+// Services are refetched too, and the bundles that list them, since a service's read names its hook.
+const invalidateHookChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) })
+  ]);
+
+export const useCreateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.post<{ hook: TAgentVaultHook }>(
+        "/api/v1/agent-vault/hooks",
+        { ...params, projectId }
+      );
+      return data.hook;
+    },
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useUpdateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, ...params }: TUpdateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.patch<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`,
+        params
+      );
+      return data.hook;
+    },
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useDeleteAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hookId: string) => {
+      const { data } = await apiRequest.delete<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`
+      );
+      return data.hook;
+    },
+    // Dropped rather than invalidated, which would refetch it only to get a 404.
+    onSuccess: (_, hookId) => {
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.hook(currentOrg.id, projectId, hookId),
+        type: "inactive"
+      });
+      return invalidateHookChange(queryClient, currentOrg.id, projectId);
+    }
   });
 };

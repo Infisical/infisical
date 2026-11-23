@@ -1,8 +1,9 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import {
   THoneyTokenConfigRecord,
@@ -19,7 +20,8 @@ import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;

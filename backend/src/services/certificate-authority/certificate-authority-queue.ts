@@ -1,3 +1,5 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-await-in-loop */
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -10,8 +12,6 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -42,11 +42,9 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
+  kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
@@ -70,8 +68,9 @@ export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
-  projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
+  kmsKeyService,
   queueService,
   cronJob,
   keyStore,
@@ -96,9 +95,10 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    instanceConfigService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     gatewayV2Service,
@@ -114,9 +114,9 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue
   });
@@ -154,9 +154,9 @@ export const certificateAuthorityQueueFactory = ({
                 certificateAuthorityCrlDAL,
                 certificateAuthorityCertDAL,
                 certificateAuthoritySecretDAL,
-                projectDAL,
                 certificateDAL,
-                kmsService,
+                kmsDataKeyService,
+                kmsKeyService,
                 caKeySourceService,
                 keyStore
               });

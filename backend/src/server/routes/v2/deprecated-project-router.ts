@@ -372,7 +372,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       deprecated: true,
-      description: "Deprecated: Use POST /api/v1/projects/{projectId}/certificates/search instead.",
+      description: "Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.",
       hide: true,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({

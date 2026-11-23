@@ -7,13 +7,21 @@ type Props = {
 
 export const CloudflareWorkersSyncDestinationSection = ({ secretSync }: Props) => {
   const {
-    destinationConfig: { scriptId }
+    destinationConfig: { scriptId, previewName }
   } = secretSync;
 
   return (
-    <Detail>
-      <DetailLabel>Script ID</DetailLabel>
-      <DetailValue>{scriptId}</DetailValue>
-    </Detail>
+    <>
+      <Detail>
+        <DetailLabel>Script ID</DetailLabel>
+        <DetailValue>{scriptId}</DetailValue>
+      </Detail>
+      {previewName && (
+        <Detail>
+          <DetailLabel>Preview</DetailLabel>
+          <DetailValue>{previewName}</DetailValue>
+        </Detail>
+      )}
+    </>
   );
 };

@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import {
   BadRequestError,
   CryptographyError,
@@ -107,7 +108,9 @@ export const isTerminalIssuanceError = (err: unknown): boolean => {
     err instanceof BadRequestError ||
     err instanceof NotFoundError ||
     err instanceof ForbiddenRequestError ||
-    err instanceof CryptographyError
+    err instanceof CryptographyError ||
+    err instanceof RuleViolationError ||
+    err instanceof EntityNotFoundError
   ) {
     return true;
   }
