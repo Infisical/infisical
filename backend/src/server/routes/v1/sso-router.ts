@@ -49,6 +49,7 @@ type TOauthLoginConfig = Pick<
 >;
 
 let registeredOauthConfig: TOauthLoginConfig | null = null;
+let registeredOauthServer: FastifyZodProvider | null = null;
 
 // Build a set of trusted hosts from SITE_URL and CORS_ALLOWED_ORIGINS to prevent
 // open-redirect attacks via Host header injection on OAuth callback endpoints.
@@ -88,6 +89,10 @@ const getOAuthCallbackUrl = (req: { protocol: string; host: string }, path: stri
 
 const registerOauthMiddlewares = (server: FastifyZodProvider, oauthCfg: TOauthLoginConfig) => {
   const appCfg = getConfig();
+  if (registeredOauthServer !== server) {
+    ["google", "github", "gitlab"].forEach((strategy) => passport.unuse(strategy));
+    registeredOauthConfig = null;
+  }
   const previous = registeredOauthConfig;
 
   // passport oauth strategy for Google
@@ -436,6 +441,7 @@ const registerOauthMiddlewares = (server: FastifyZodProvider, oauthCfg: TOauthLo
   }
 
   registeredOauthConfig = oauthCfg;
+  registeredOauthServer = server;
 };
 
 const ensureOauthStrategies = async (server: FastifyZodProvider) => {

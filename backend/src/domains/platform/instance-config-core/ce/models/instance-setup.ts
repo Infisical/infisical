@@ -28,7 +28,6 @@ export class InstanceSetup {
     if (this.initialized) throw new StateConflictError({ message: "Instance has already been set up" });
   }
 
-  // Refuses an instance already set up.
   complete(): InstanceSetup {
     this.assertNotSetUp();
     return new InstanceSetup(true, this.onboardingCompleted, this.adminIdentityIds);
