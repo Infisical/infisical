@@ -190,7 +190,6 @@ const ExportCertificateForm = ({
                       label="Keystore password"
                       value={password}
                       policy={policy ?? { requirements: [] }}
-                      breachStatus="idle"
                       registration={passwordRegistration}
                       error={errors.password}
                       submitCount={attempts}

@@ -3,7 +3,7 @@ import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Field } from "@infisical/cipher/ui/field";
 import { StatusText } from "@infisical/cipher/ui/text";
 
-import type { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import { doesPasswordMeetPolicy } from "@app/components/utilities/checks/password/passwordPolicy";
 import type { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 import { PasswordField } from "./PasswordField";
@@ -17,7 +17,6 @@ type Props = {
   password: string;
   confirmPassword: string;
   policy: TPasswordPolicy;
-  breachStatus: PasswordBreachCheckStatus;
   submitCount: number;
 };
 
@@ -27,18 +26,17 @@ export const NewPasswordFields = ({
   password,
   confirmPassword,
   policy,
-  breachStatus,
   submitCount
 }: Props) => {
   const showDangerState = submitCount > 0;
-  const isPasswordValidated = breachStatus === "safe" || breachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(password, policy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   return (
     <>
       <PasswordField
         value={password}
         policy={policy}
-        breachStatus={breachStatus}
+        serverError={errors.password?.type === "server" ? errors.password.message : undefined}
         registration={register("password")}
         error={showDangerState ? errors.password?.message : undefined}
         submitCount={submitCount}
