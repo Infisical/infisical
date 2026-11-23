@@ -33,6 +33,10 @@ export const getLastSeenHeartbeat = (gateway: {
   );
 };
 
+// Releases report a bare number such as 0.45.11; a source build reports "devel".
+export const formatGatewayCliVersion = (cliVersion: string) =>
+  cliVersion === "devel" ? cliVersion : `v${cliVersion}`;
+
 export type TGatewayTransportHealth = {
   transport: "direct" | "relay";
   label: string;

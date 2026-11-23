@@ -40,6 +40,7 @@ import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agen
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
+  inlineServiceHookText,
   inlineServiceTarget,
   sessionInlineServices,
   sessionInlineSkills,
@@ -300,29 +301,34 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       <Detail className="min-w-0">
                         <DetailLabel>Inline Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownInlineServices.map((service) => (
-                            <Tooltip key={service.id}>
-                              <TooltipTrigger asChild>
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <ServiceIcon
-                                    hostPattern={hostPatternOf(service)}
-                                    serviceType={service.type}
-                                    className="size-5"
-                                  />
-                                  <span className="truncate">{service.name}</span>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-sm">
-                                Sent with this session when it was created, for{" "}
-                                {inlineServiceTarget(service)}
-                                {service.hook && (
-                                  <span className="block break-all">
-                                    Calls the hook at {service.hook.url} first.
+                          {shownInlineServices.map((service) => {
+                            const hookText = inlineServiceHookText(service);
+                            return (
+                              <Tooltip key={service.id}>
+                                <TooltipTrigger asChild>
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <ServiceIcon
+                                        hostPattern={hostPatternOf(service)}
+                                        serviceType={service.type}
+                                        className="size-5"
+                                      />
+                                      <span className="truncate">{service.name}</span>
+                                    </span>
+                                    {hookText && (
+                                      <span className="truncate pl-7 text-xs text-muted">
+                                        {hookText}
+                                      </span>
+                                    )}
                                   </span>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-sm">
+                                  Sent with this session when it was created, for{" "}
+                                  {inlineServiceTarget(service)}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
                           {moreInlineServices.length > 0 && (
                             <SessionAccessHoverCard
                               content={<InlineServicesList services={moreInlineServices} />}

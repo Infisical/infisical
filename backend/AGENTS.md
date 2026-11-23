@@ -1050,6 +1050,9 @@ on must stay editable. The check reads the setting, not the plan, so it keeps ap
 Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
 (`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
 
+**Gate gateway features on `capabilities`, never on `cliVersion`.** The version comes from the gateway's
+`User-Agent`, which anyone holding its credential sets, and source builds report `devel`; it is for display.
+
 ### Audit Log Storage
 
 Audit logs live in **one** store at a time. When a ClickHouse client is configured and

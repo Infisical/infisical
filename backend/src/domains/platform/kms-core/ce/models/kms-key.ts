@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import slugify from "@sindresorhus/slugify";
 
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
@@ -157,6 +157,7 @@ export class KmsKey {
     description?: string | null;
     provider: string;
     encryptedProviderInputs: Buffer;
+    providerInputsVersion: number;
   }): KmsKey {
     const now = new Date();
     return new KmsKey(
@@ -175,7 +176,11 @@ export class KmsKey {
       now,
       now,
       null,
-      ExternalKeyConfig.create({ provider: input.provider, encryptedProviderInputs: input.encryptedProviderInputs })
+      ExternalKeyConfig.create({
+        provider: input.provider,
+        encryptedProviderInputs: input.encryptedProviderInputs,
+        providerInputsVersion: input.providerInputsVersion
+      })
     );
   }
 
@@ -284,9 +289,14 @@ export class KmsKey {
     this.touch();
   }
 
-  replaceProviderInputs(encryptedProviderInputs: Buffer) {
+  replaceProviderInputs(encryptedProviderInputs: Buffer, providerInputsVersion: number, read: KmsKey) {
     if (!this.external) throw new RuleViolationError({ message: `KMS with ID '${this.id}' is not external` });
-    this.external = this.external.withInputs(encryptedProviderInputs);
+    if (!read.external || !this.external.hasSameInputsAs(read.external)) {
+      throw new StateConflictError({
+        message: "This external KMS was changed while your update was being saved. Reload it and try again."
+      });
+    }
+    this.external = this.external.withInputs(encryptedProviderInputs, providerInputsVersion);
     this.touch();
   }
 

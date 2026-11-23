@@ -56,7 +56,7 @@ func main() {
 		webhook.Service,
 		webhook.Slack,
 		webhook.Splunk,
-		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
+		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation, aws.KMS,
 		vercel.Service,
 		oauth.Google, oauth.GitHub, oauth.GitLab,
 		kubernetes.Service, azure.Service, alicloud.Service, oci.Service,
