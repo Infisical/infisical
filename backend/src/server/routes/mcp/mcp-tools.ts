@@ -27,7 +27,7 @@ import {
   SecretImportReferencesBehavior,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
-import { PostHogEventTypes, TSecretModifiedEvent } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "@app/services/telemetry/telemetry-types";
 
 const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The project ID, from list-projects.");
 // Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
@@ -128,13 +128,22 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
   // Describe only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
 
+  // Analytics must never turn a tool call that already succeeded into an error.
+  const sendEvent = async (event: TPostHogEvent) => {
+    try {
+      await server.services.telemetry.sendPostHogEvents(event);
+    } catch (error) {
+      logger.error(error, `Failed to send MCP analytics event [event=${event.event}] [actorId=${req.permission.id}]`);
+    }
+  };
+
   // The product analytics event the tool's REST route sends, with MCP as the channel.
   const sendSecretsEvent = (
     event: TSecretModifiedEvent["event"],
     { projectId, environmentSlug, secretPath }: z.output<typeof SecretLocationSchema>,
     numberOfSecrets = 1
   ) =>
-    server.services.telemetry.sendPostHogEvents({
+    sendEvent({
       event,
       distinctId: getTelemetryDistinctId(req),
       organizationId: req.permission.orgId,
@@ -279,7 +288,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         type: ProjectType.SecretManager
       });
 
-      await server.services.telemetry.sendPostHogEvents({
+      await sendEvent({
         event: PostHogEventTypes.ProjectCreated,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
@@ -369,7 +378,7 @@ export const createMcpServer = (server: FastifyZodProvider, req: FastifyRequest,
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
+      await sendEvent({
         event: PostHogEventTypes.SecretFolderCreated,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
