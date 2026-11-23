@@ -110,7 +110,10 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         <CardHeader>
           <CardTitle role="heading" aria-level={2}>
             {requestData.renewal ? "Renewal Request" : "Request"} for{" "}
-            {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
+            {requestData.renewal?.certificateName ||
+              certRequest?.altNames?.[0]?.value ||
+              certRequest?.commonName ||
+              "-"}
           </CardTitle>
         </CardHeader>
         <CardContent>

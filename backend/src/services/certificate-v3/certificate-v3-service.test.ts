@@ -3056,7 +3056,8 @@ describe("CertificateV3Service", () => {
           expect.objectContaining({
             requestData: expect.objectContaining({
               renewal: expect.objectContaining({ certificateName: mockOriginalCert.commonName })
-            })
+            }),
+            justification: `Certificate renewal request for ${mockOriginalCert.commonName}`
           })
         );
       });

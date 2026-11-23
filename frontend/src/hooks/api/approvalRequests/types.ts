@@ -83,7 +83,7 @@ export type CertRequestRequestData = {
   };
   removeRootsFromChain?: boolean;
   certificateRequestId: string;
-  renewal?: { certificateId: string; raisedByAutoRenewal?: boolean };
+  renewal?: { certificateId: string; raisedByAutoRenewal?: boolean; certificateName?: string };
 };
 
 export type CertRevocationRequestData = {

@@ -117,9 +117,10 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
   }
 
   const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
-  const commonName = data?.certificateRequest?.commonName ?? "";
+  const renewal = data && "renewal" in data ? data.renewal : undefined;
+  const commonName = renewal?.certificateName || data?.certificateRequest?.commonName || "";
   return {
-    typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
+    typeLabel: renewal ? "Renewal" : "Issuance",
     commonName,
     displayName: commonName,
     profileName: data?.profileName ?? ""

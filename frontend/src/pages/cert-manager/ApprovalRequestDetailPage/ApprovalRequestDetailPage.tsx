@@ -432,7 +432,9 @@ const PageContent = () => {
         <p className="mt-1 text-sm text-muted">
           Certificate {reqData.renewal ? "renewal" : "issuance"} request for{" "}
           <span className="font-medium text-foreground-secondary">
-            {reqData.certificateRequest?.commonName || reqData.profileName}
+            {reqData.renewal?.certificateName ||
+              reqData.certificateRequest?.commonName ||
+              reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
           {applicationLink}

@@ -218,6 +218,9 @@ const MAX_RENEWAL_CHAIN_HOPS = 10;
 const isSourcedOutsideInfisical = (certificate: TCertificates) =>
   Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
 
+const getRenewedCertificateName = (certificate: TCertificates) =>
+  certificate.commonName || certificate.altNames?.split(",")[0]?.trim() || undefined;
+
 const isEveryRenewalHeldForApproval = (certificate: TCertificates, renewalApproval: CertRequestRenewalApproval) =>
   renewalApproval === CertRequestRenewalApproval.Always || isSourcedOutsideInfisical(certificate);
 
@@ -1446,10 +1449,10 @@ export const certificateRenewalServiceFactory = ({
             caId,
             ...(externalConfiguration && { externalConfiguration }),
             raisedByAutoRenewal: actorCtx.actor === ActorType.PLATFORM,
-            certificateName: originalCert.commonName || originalCert.altNames?.split(",")[0]?.trim() || undefined
+            certificateName: getRenewedCertificateName(originalCert)
           }
         },
-        justification: `Certificate renewal request for ${certificateRequest.commonName || profile.slug}`,
+        justification: `Certificate renewal request for ${getRenewedCertificateName(originalCert) || profile.slug}`,
         requester: {
           actor: actorCtx.actor,
           actorId: actorCtx.actorId,
