@@ -594,12 +594,6 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    if (boundResource && !granted.length) {
-      throw new BadRequestError({
-        message: `The Infisical MCP server needs at least one scope. Request ${OauthScope.SecretsDescribe}, ${OauthScope.SecretsRead} or ${OauthScope.SecretsWrite}.`
-      });
-    }
-
     return granted;
   };
 
@@ -631,6 +625,13 @@ export const oauthClientServiceFactory = ({
     }
 
     const grantedScopes = parseRequestedScopes(dto.scope, resource);
+    // Checked here, where the token's scopes are decided, and not in parseRequestedScopes: the authorize redirect calls
+    // getAuthorizeInfo without the scope, leaving it to the consent page.
+    if (resource && !grantedScopes.length) {
+      throw new BadRequestError({
+        message: `The Infisical MCP server needs at least one scope. Request ${OauthScope.SecretsDescribe}, ${OauthScope.SecretsRead} or ${OauthScope.SecretsWrite}.`
+      });
+    }
 
     // Called only for its side effects: it throws if the consenting user is not a member of the
     // client's org or fails org SSO enforcement. This blocks issuing a delegation code to a user
