@@ -9,6 +9,8 @@ import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConne
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
+import { AppConnectionCreationForm } from "./AppConnectionCreationForm";
+
 // Shared by the project and organization pickers; each supplies its permission check and form scope
 export const useConnectionCreationDialog = <TOption,>(
   app: AppConnection | undefined,
@@ -52,17 +54,19 @@ export const useConnectionCreationDialog = <TOption,>(
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
-        <AppConnectionForm
+        <AppConnectionCreationForm
           app={app}
-          layout="dialog"
           {...formProps}
           onDirtyChange={setIsDirty}
           onPendingChange={setIsPending}
-          onComplete={(connection) => {
+          onCreated={(connection) => {
             if (attempt !== attemptRef.current) return;
             setIsDirty(false);
             setIsDiscardDialogOpen(false);
             onCreated(connection);
+          }}
+          onComplete={() => {
+            if (attempt !== attemptRef.current) return;
             complete();
           }}
           onCancel={() => requestCancel(cancel)}

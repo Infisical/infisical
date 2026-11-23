@@ -21,7 +21,8 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
+
+import { AppConnectionCreationForm } from "./AppConnectionCreationForm";
 
 type Props = {
   apps: AppConnection[];
@@ -115,19 +116,21 @@ export const useAppConnectionCreation = <TOption,>({
         }}
       >
         {app ? (
-          <AppConnectionForm
+          <AppConnectionCreationForm
             key={app}
             app={app}
-            layout="dialog"
             projectId={currentProject.id}
             projectType={currentProject.type}
             onDirtyChange={setIsDirty}
             onPendingChange={setIsPending}
-            onComplete={(connection) => {
+            onCreated={(connection) => {
               if (attempt !== attemptRef.current) return;
               setIsDirty(false);
               setIsDiscardDialogOpen(false);
               onCreated(connection);
+            }}
+            onComplete={() => {
+              if (attempt !== attemptRef.current) return;
               complete();
             }}
             onCancel={() => requestCancel(cancel)}
