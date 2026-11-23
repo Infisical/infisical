@@ -30,7 +30,7 @@ import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatibl
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { CacheType, LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -861,7 +861,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const appCfg = getConfig();
       const serverCfg = await getServerCfg();
-      if (serverCfg.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+      if (serverCfg.initialized) {
+        throw new BadRequestError({
+          name: SuperAdminErrorCode.InstanceAlreadySetUp,
+          message: "Admin account has already been set up"
+        });
+      }
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,

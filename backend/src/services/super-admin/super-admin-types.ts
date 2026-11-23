@@ -74,7 +74,8 @@ export enum LoginMethod {
 
 export enum SuperAdminErrorCode {
   AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT",
-  InvalidActivationToken = "SUPER_ADMIN_INVALID_ACTIVATION_TOKEN"
+  InvalidActivationToken = "SUPER_ADMIN_INVALID_ACTIVATION_TOKEN",
+  InstanceAlreadySetUp = "SUPER_ADMIN_INSTANCE_ALREADY_SET_UP"
 }
 
 export enum CacheType {

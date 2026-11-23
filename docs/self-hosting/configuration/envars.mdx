@@ -40,8 +40,10 @@ Used to configure platform-specific security and operational settings.
 </ParamField>
 
 <ParamField query="INITIAL_SETUP_ACTIVATION_TOKEN" type="string" optional>
-  A token that the first super admin must enter to set up the instance. If you set it, the
-  super admin signup page asks for the token, and the
+  A token that the first super admin must enter to set up the instance. The token must be
+  32 to 256 characters long. If the token is shorter or longer, Infisical doesn't start.
+  To generate a token, run `openssl rand -hex 32`.
+  If you set the token, the super admin signup page asks for it, and the
   [Bootstrap instance](/api-reference/endpoints/admin/bootstrap-instance) endpoint rejects
   requests without it.
   Infisical ignores the token once the instance is set up.

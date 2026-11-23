@@ -615,7 +615,10 @@ export const superAdminServiceFactory = ({
     const sanitizedEmail = email.trim().toLowerCase();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {
-      throw new BadRequestError({ message: "Instance has already been set up" });
+      throw new BadRequestError({
+        name: SuperAdminErrorCode.InstanceAlreadySetUp,
+        message: "Instance has already been set up"
+      });
     }
 
     assertInitialSetupActivationToken(activationToken);
