@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalRequests } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
@@ -131,6 +132,7 @@ import {
   generatePkcs12FromCertificate,
   getCertificateCredentials,
   getCertificateDisplayName,
+  getSerialNumberSpellings,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
@@ -145,6 +147,7 @@ import {
   ApprovedRevocationOutcomeKind,
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
+  CertificateRevocationSource,
   CertificateRevocationStatus,
   CertKeyUsage,
   CertStatus,
@@ -167,7 +170,8 @@ import {
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    | "findOne"
+    | "findOneLiveFirst"
+    | "lockSerialNumber"
     | "update"
     | "find"
     | "findByThumbprintInOrg"
@@ -502,7 +506,10 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOneLiveFirst({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -566,7 +573,7 @@ export const certificateServiceFactory = ({
     actorOrgId,
     auditLogInfo
   }: TDeleteCertDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOneLiveFirst({ serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: id
@@ -707,7 +714,7 @@ export const certificateServiceFactory = ({
     if (id) {
       cert = await certificateDAL.findById(id, primary);
     } else if (serialNumber) {
-      cert = await certificateDAL.findOne({ serialNumber }, primary);
+      cert = await certificateDAL.findOneLiveFirst({ serialNumber }, primary);
     } else if (thumbprint) {
       const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
       const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
@@ -721,7 +728,13 @@ export const certificateServiceFactory = ({
         },
         primary
       );
-      if (matches.length > 1) {
+      const activeMatchCount = matches.filter((match) => !match.deletedAt).length;
+      if (activeMatchCount === 0 && matches.length > 1) {
+        throw new BadRequestError({
+          message: "Multiple deleted certificates match the provided thumbprint. Revoke by certificate ID instead"
+        });
+      }
+      if (activeMatchCount > 1) {
         throw new BadRequestError({
           message:
             "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
@@ -803,6 +816,29 @@ export const certificateServiceFactory = ({
         licenseService
       });
     }
+  };
+
+  const $assertSerialNumberImportable = async (serialNumber: string, actorOrgId: string, tx: Knex) => {
+    const revokedCert = await certificateDAL.findOneLiveFirst(
+      { $in: { serialNumber: getSerialNumberSpellings(serialNumber) }, status: CertStatus.REVOKED },
+      tx
+    );
+    if (!revokedCert) return;
+    const isOwnRecord = (await projectDAL.findById(revokedCert.projectId, tx))?.orgId === actorOrgId;
+    throw new BadRequestError({
+      message: isOwnRecord
+        ? `The certificate with serial number '${serialNumber}' was revoked, so it can't be imported.`
+        : "A certificate with this serial number already exists"
+    });
+  };
+
+  const $resolveActiveRecord = async (cert: TRevocableCertificate) => {
+    if (!cert.deletedAt || !cert.caId) return cert;
+    const activeRecord = await certificateDAL.findOneLiveFirst(
+      { $in: { serialNumber: getSerialNumberSpellings(cert.serialNumber) }, caId: cert.caId, deletedAt: null },
+      certificateDAL.primaryNode()
+    );
+    return activeRecord ?? cert;
   };
 
   const $assertCertificateRevocable = async (cert: TRevocableCertificate, ca: TRevocationCa) => {
@@ -893,66 +929,128 @@ export const certificateServiceFactory = ({
   }: TRevocationArgs & { rebuildCrl: boolean }) => {
     const revokedAt = new Date();
     const revokedCertId = cert.id;
-    const revokedCertApplicationId = cert.applicationId ?? null;
     const recorded = await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.lockSerialNumber(cert.serialNumber, tx);
       const locked = await certificateDAL.findByIdForUpdate(revokedCertId, tx);
-      if (locked?.status === CertStatus.REVOKED) return false;
+      if (locked?.status === CertStatus.REVOKED) return null;
+      const serialNumbers = getSerialNumberSpellings(cert.serialNumber);
+      if (locked?.deletedAt && !ca.externalCa?.id) {
+        const [activeCopy] = await certificateDAL.find(
+          {
+            $in: { serialNumber: serialNumbers },
+            caId: ca.id,
+            deletedAt: null,
+            $notEqual: { status: CertStatus.REVOKED }
+          },
+          { limit: 1, tx }
+        );
+        if (activeCopy) {
+          throw new BadRequestError({
+            message: `Certificate '${getCertificateDisplayName(cert)}' was imported again while it was being revoked. Revoke it again so the active certificate's permissions and approval policy apply.`
+          });
+        }
+      }
 
+      const revocation = { revokedAt, revocationReason: revocationReasonToCrlCode(revocationReason) };
       await certificateDAL.update(
         {
           id: revokedCertId
         },
         {
           status: CertStatus.REVOKED,
-          revokedAt,
-          revocationReason: revocationReasonToCrlCode(revocationReason)
+          ...revocation
         },
+        tx
+      );
+      const otherRecords = await certificateDAL.update(
+        {
+          $in: { serialNumber: serialNumbers },
+          caId: ca.id,
+          $notEqual: { status: CertStatus.REVOKED, id: revokedCertId }
+        },
+        { status: CertStatus.REVOKED, ...revocation },
         tx
       );
 
       if (!ca.externalCa?.id) {
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-      return true;
+      return { otherRecords };
     });
     if (!recorded) return null;
 
-    const crlWarning = rebuildCrl ? await $rebuildCrlAfterRevocation(ca) : undefined;
+    await Promise.all(
+      recorded.otherRecords.map(async (otherRecord) => {
+        try {
+          await auditLogService.createAuditLog({
+            projectId: ca.projectId,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
+            event: {
+              type: EventType.REVOKE_CERT,
+              metadata: {
+                certId: otherRecord.id,
+                cn: otherRecord.commonName,
+                serialNumber: otherRecord.serialNumber,
+                applicationId: otherRecord.applicationId,
+                applicationName: await $resolveApplicationName(otherRecord.applicationId).catch((error) => {
+                  logger.warn(
+                    error,
+                    `Failed to resolve the application name for another record of a revoked certificate [certId=${otherRecord.id}] [revokedCertId=${revokedCertId}]`
+                  );
+                  return null;
+                }),
+                revocationReason,
+                source: CertificateRevocationSource.SameCertificate
+              }
+            }
+          });
+        } catch (err) {
+          logger.error(
+            err,
+            `Failed to write the audit log for another record of a revoked certificate [certId=${otherRecord.id}] [revokedCertId=${revokedCertId}]`
+          );
+        }
+      })
+    );
 
-    if (!cert.deletedAt) {
-      await certificateAlertEventEmitter.notify({
-        certificateId: revokedCertId,
-        projectId: ca.projectId,
-        orgId,
-        eventType: CertificateApplicationAlertEvent.Revocation,
-        applicationId: revokedCertApplicationId
-      });
-    }
+    const crlWarning = rebuildCrl ? await $rebuildCrlAfterRevocation(ca) : undefined;
 
     usageMeteringService.emit(orgId, Meter.ActiveCerts);
     usageMeteringService.emit(orgId, Meter.WildcardCerts);
 
-    // Trigger auto sync for PKI syncs connected to this certificate
-    await triggerAutoSyncForCertificate(cert.id, {
-      certificateSyncDAL,
-      pkiSyncDAL,
-      pkiSyncQueue
-    });
-
-    if (cert.applicationId && !cert.deletedAt) {
-      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
-    }
-
-    if (!cert.deletedAt) {
-      try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId: cert.id,
+    for (const revokedRecord of [cert, ...recorded.otherRecords.filter((otherRecord) => !otherRecord.deletedAt)]) {
+      if (!revokedRecord.deletedAt) {
+        await certificateAlertEventEmitter.notify({
+          certificateId: revokedRecord.id,
           projectId: ca.projectId,
-          eventType: PkiAlertEventType.REVOCATION,
-          applicationId: cert.applicationId ?? null
+          orgId,
+          eventType: CertificateApplicationAlertEvent.Revocation,
+          applicationId: revokedRecord.applicationId ?? null
         });
-      } catch {
-        logger.debug("Failed to queue PKI revocation alert event");
+      }
+
+      // Trigger auto sync for PKI syncs connected to this certificate
+      await triggerAutoSyncForCertificate(revokedRecord.id, {
+        certificateSyncDAL,
+        pkiSyncDAL,
+        pkiSyncQueue
+      });
+
+      if (revokedRecord.applicationId && !revokedRecord.deletedAt) {
+        await queueCertificateFilterReconcile(revokedRecord.id, revokedRecord.applicationId, pkiSyncQueue);
+      }
+
+      if (!revokedRecord.deletedAt) {
+        try {
+          await pkiAlertV2Queue?.queueCertificateEvent({
+            certificateId: revokedRecord.id,
+            projectId: ca.projectId,
+            eventType: PkiAlertEventType.REVOCATION,
+            applicationId: revokedRecord.applicationId ?? null
+          });
+        } catch {
+          logger.debug("Failed to queue PKI revocation alert event");
+        }
       }
     }
 
@@ -1051,7 +1149,9 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TRevokeCertDTO) => {
-    const cert = await $findCertificateToRevoke({ id, serialNumber, thumbprint, actorOrgId });
+    const cert = await $resolveActiveRecord(
+      await $findCertificateToRevoke({ id, serialNumber, thumbprint, actorOrgId })
+    );
     const ca = await $loadRevocationCa(cert);
 
     const { canRevokeDirectly } = await assertCanRevokeOrRequestRevocation({
@@ -1213,10 +1313,11 @@ export const certificateServiceFactory = ({
     certificateId: string;
     revocationReason: CrlReason;
   }) => {
-    const cert = await certificateDAL.findById(certificateId);
-    if (!cert) {
+    const matchedCert = await certificateDAL.findById(certificateId, certificateDAL.primaryNode());
+    if (!matchedCert) {
       return { outcome: PlatformRevocationOutcome.NotRevocable, reason: "The certificate no longer exists." } as const;
     }
+    const cert = await $resolveActiveRecord(matchedCert);
     if (cert.status === CertStatus.REVOKED) return { outcome: PlatformRevocationOutcome.AlreadyRevoked } as const;
 
     const revocableCa = await $resolveRevocableCa(cert);
@@ -1373,6 +1474,14 @@ export const certificateServiceFactory = ({
       if (cert.status === CertStatus.REVOKED) {
         return { kind: ApprovedRevocationOutcomeKind.AlreadyRevoked };
       }
+      const activeRecord = await $resolveActiveRecord(cert);
+      if (activeRecord.id !== cert.id) {
+        if (activeRecord.status === CertStatus.REVOKED) return { kind: ApprovedRevocationOutcomeKind.AlreadyRevoked };
+        return {
+          kind: ApprovedRevocationOutcomeKind.Failed,
+          reason: `Certificate '${getCertificateDisplayName(cert)}' was deleted and imported again after this request was made. Request the revocation of the active certificate, so its approval policy applies.`
+        };
+      }
 
       const ca = await $loadRevocationCa(cert);
       await $assertCertificateRevocable(cert, ca);
@@ -1514,7 +1623,7 @@ export const certificateServiceFactory = ({
    * serial number [serialNumber]
    */
   const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOneLiveFirst({ serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
@@ -1930,6 +2039,7 @@ export const certificateServiceFactory = ({
     }
 
     const leafCert = new x509.X509Certificate(certificatePem);
+    await $assertSerialNumberImportable(leafCert.serialNumber, actorOrgId, certificateDAL.primaryNode());
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
@@ -2012,11 +2122,6 @@ export const certificateServiceFactory = ({
     }
 
     const { serialNumber, notBefore, notAfter } = leafCert;
-
-    const existingCertWithSerial = await certificateDAL.findOne({ serialNumber, projectId });
-    if (existingCertWithSerial) {
-      assertCertificateNotDeleted(existingCertWithSerial, "A deleted certificate can't be imported again.");
-    }
 
     const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
 
@@ -2122,6 +2227,9 @@ export const certificateServiceFactory = ({
     }
 
     const cert = await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.lockSerialNumber(serialNumber, tx);
+      await $assertSerialNumberImportable(serialNumber, actorOrgId, tx);
+
       try {
         const txCert = await certificateDAL.create(
           {
@@ -2224,7 +2332,7 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TGetCertBundleDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOneLiveFirst({ serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
@@ -2367,7 +2475,10 @@ export const certificateServiceFactory = ({
     if (!alias || alias.trim() === "") {
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOneLiveFirst({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

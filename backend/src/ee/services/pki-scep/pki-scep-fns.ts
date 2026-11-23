@@ -297,14 +297,15 @@ export const isSignerCertIssuedByCa = async ({
     // Check if the certificate has been revoked in the database
     // Use transaction to read from primary DB (not replica) since this is a security-critical check
     const isRevoked = await certificateDAL.transaction(async (tx) => {
-      const storedCert = await certificateDAL.findOne(
+      const revokedCert = await certificateDAL.findOne(
         {
           serialNumber: signerCert.serialNumber,
-          caId
+          caId,
+          status: CertStatus.REVOKED
         },
         tx
       );
-      return storedCert?.status === CertStatus.REVOKED;
+      return Boolean(revokedCert);
     });
 
     if (isRevoked) {

@@ -28,7 +28,7 @@ import {
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { keySizeToAlgorithms } from "./certificate-fns";
+import { keySizeToAlgorithms, toMinimalSerialNumber } from "./certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
 
 // Scoped to UI-surfaced algorithms; intentionally narrower than pqc-utils.PQC_ALGORITHMS.
@@ -592,6 +592,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
         .select(selectAllTableCols(TableName.Certificate));
 
       if (limit) void query.limit(limit);
@@ -1233,6 +1234,20 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneLiveFirst = async (
+    filter: Parameters<typeof certificateOrm.find>[0],
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    const [certificate] = await certificateOrm.find(filter, { limit: 1, sort: [["deletedAt", "desc", "first"]], tx });
+    return certificate;
+  };
+
+  const lockSerialNumber = async (serialNumber: string, tx: Knex) => {
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [
+      `certificate-serial:${toMinimalSerialNumber(serialNumber)}`
+    ]);
+  };
+
   const findWithFullDetails = async (
     filter: TCertificateLookupFilter,
     tx?: Knex
@@ -1267,7 +1282,9 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
-        query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
+        query = query
+          .where(`${TableName.Certificate}.serialNumber`, filter.serialNumber)
+          .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first");
       }
 
       const result = (await query.first()) as
@@ -1659,6 +1676,8 @@ export const certificateDALFactory = (db: TDbClient) => {
   return {
     primaryNode,
     ...certificateOrm,
+    findOneLiveFirst,
+    lockSerialNumber,
     findByIdForUpdate,
     findByIdForShare,
     create,

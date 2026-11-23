@@ -58,7 +58,7 @@ export type TPreparedCodeSigningCertificate =
 type TDigiCertCodeSigningFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOneLiveFirst">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -375,7 +375,7 @@ export const digiCertCodeSigningFns = ({
       message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
     });
 
-    const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
+    const existingCert = await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber });
     if (existingCert) {
       if (existingCert.caId !== ca.id) throw differentCaError;
       assertCertificateNotDeleted(existingCert, "Request a new code signing certificate instead.");
@@ -432,7 +432,7 @@ export const digiCertCodeSigningFns = ({
       insert,
       findConcurrentInsert: async () => {
         const concurrentCert = await certificateDAL.transaction((tx) =>
-          certificateDAL.findOne({ serialNumber: certObj.serialNumber }, tx)
+          certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber }, tx)
         );
         if (concurrentCert && concurrentCert.caId !== ca.id) throw differentCaError;
         return concurrentCert?.id ?? null;

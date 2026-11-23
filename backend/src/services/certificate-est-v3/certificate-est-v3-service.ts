@@ -36,7 +36,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findOneLiveFirst" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -361,11 +361,15 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const storedCert = await certificateDAL.transaction(async (tx) =>
-      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
-    );
+    const { storedCert, revokedCert } = await certificateDAL.transaction(async (tx) => ({
+      storedCert: await certificateDAL.findOneLiveFirst({ serialNumber: cert.serialNumber, caId: profile.caId }, tx),
+      revokedCert: await certificateDAL.findOne(
+        { serialNumber: cert.serialNumber, caId: profile.caId, status: CertStatus.REVOKED },
+        tx
+      )
+    }));
 
-    if (storedCert?.status === CertStatus.REVOKED) {
+    if (revokedCert) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 

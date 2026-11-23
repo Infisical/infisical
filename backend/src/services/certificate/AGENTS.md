@@ -37,10 +37,18 @@ Things that rely on that:
   filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
   sync the delete queued removes that copy from the destination through it.
 - **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
-- **Deleted certificates are not restored.** Serial numbers stay globally unique
-  (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
-  the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
-  rediscovery links the installation to the deleted row instead of creating a new one.
+- **Deleted certificates are not restored, but they can be imported again as a new row.** Serial numbers are
+  unique only among non-deleted rows (`certificates_serialnumber_live_unique`), so one serial can have several
+  rows. Look one certificate up by serial or fingerprint with `findOneLiveFirst` (active row first, then the most
+  recently deleted), never a `findOne` that several rows can match; thumbprint revocation (`$findCertificateToRevoke`) takes the one non-deleted
+  match and refuses several deleted ones. Treat a serial as revoked on a CA when any of its rows on that CA is (OCSP, SCEP, CRL). Match serials with `getSerialNumberSpellings`, since older rows store a leading zero byte the parsed certificate drops.
+  Import and `$completeRevocation` serialize on `lockSerialNumber`: import refuses a serial with any revoked
+  row, and revoking any row revokes every row of the certificate on that CA (one `same-certificate` audit
+  event each). If the target is deleted and a live copy appeared after the checks ran, the locked check refuses
+  on an internal CA so the retry resolves to the copy; an external CA has already revoked it by then, so the
+  copy is revoked with the others. A revocation that starts from a deleted row is resolved to its
+  non-deleted copy first (`$resolveActiveRecord`, also used by Intune), so the copy's permissions and approval
+  policy apply. A copy imported without a profile has no CA, so it is not revoked with the others.
 - **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
   record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
   which is why the key source CHECK requires a connector only while `deletedAt` is null.
