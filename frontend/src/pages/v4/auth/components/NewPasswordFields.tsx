@@ -38,7 +38,11 @@ export const NewPasswordFields = ({
         policy={policy}
         serverError={errors.password?.type === "server" ? errors.password.message : undefined}
         registration={register("password")}
-        error={showDangerState ? errors.password?.message : undefined}
+        error={
+          showDangerState || errors.password?.type === "server"
+            ? errors.password?.message
+            : undefined
+        }
         submitCount={submitCount}
       />
       <AnimatedCollapse open={isPasswordValidated}>
