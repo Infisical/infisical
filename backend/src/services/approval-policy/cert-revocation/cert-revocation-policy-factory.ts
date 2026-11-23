@@ -19,18 +19,15 @@ import {
 } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import {
+  approverKey,
   findLiveApproverEntries,
   holdsApprovingMembership,
   PKI_APPROVER_RULES,
   resolveApprovingPeople,
+  TApproverEntry,
   TPkiApprovingPeopleDeps
 } from "../pki-approvers/application-approver-checks";
-import {
-  approverKey,
-  findPeopleWhoCanApprove,
-  isRevocationRequestUndecidable,
-  TApproverEntry
-} from "./cert-revocation-policy-fns";
+import { findPeopleWhoCanApprove, isRevocationRequestUndecidable } from "./cert-revocation-policy-fns";
 import {
   TCertRevocationPolicy,
   TCertRevocationPolicyInputs,

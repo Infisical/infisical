@@ -9,7 +9,13 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { ApprovalPolicyType, ApproverType } from "../approval-policy-enums";
-import { approverKey, TApproverEntry, TApprovingPeople } from "../cert-revocation/cert-revocation-policy-fns";
+
+export type TApproverEntry = { type: ApproverType; id: string };
+
+export const approverKey = (approver: TApproverEntry) => `${approver.type}:${approver.id}`;
+
+// The users who can approve through each approver entry, keyed by approverKey.
+export type TApprovingPeople = Map<string, Set<string>>;
 
 export type TPkiApproverMembershipDeps = {
   membershipDAL: Pick<TMembershipDALFactory, "find">;

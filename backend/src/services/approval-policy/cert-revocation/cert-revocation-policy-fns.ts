@@ -1,6 +1,4 @@
-import { ApproverType } from "../approval-policy-enums";
-
-export type TApproverEntry = { type: ApproverType; id: string };
+import { approverKey, TApproverEntry, TApprovingPeople } from "../pki-approvers/application-approver-checks";
 
 export enum RevocationStepShortfallKind {
   NoApprovers = "no-approvers",
@@ -26,11 +24,6 @@ export const getRevocationStepShortfall = ({
 };
 
 export const formatApproverCount = (count: number) => `${count} approver${count === 1 ? "" : "s"}`;
-
-export const approverKey = (approver: TApproverEntry) => `${approver.type}:${approver.id}`;
-
-// The users who can approve through each approver entry, keyed by approverKey.
-export type TApprovingPeople = Map<string, Set<string>>;
 
 export const findPeopleWhoCanApprove = (approvers: TApproverEntry[], people: TApprovingPeople) =>
   new Set(approvers.flatMap((approver) => [...(people.get(approverKey(approver)) ?? [])]));
