@@ -47,12 +47,13 @@ const NEW_KEY: TCredential = { keyId: "mk_new", apiKey: "rk_test_mk_new" };
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
 // These only reach the authorization check, which is mocked, so they're never used.
-const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}] as unknown as [
+const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}, {}] as unknown as [
   Parameters<typeof stripeApiKeyRotationFactory>[1],
   Parameters<typeof stripeApiKeyRotationFactory>[2],
   Parameters<typeof stripeApiKeyRotationFactory>[3],
   Parameters<typeof stripeApiKeyRotationFactory>[4],
-  Parameters<typeof stripeApiKeyRotationFactory>[5]
+  Parameters<typeof stripeApiKeyRotationFactory>[5],
+  Parameters<typeof stripeApiKeyRotationFactory>[6]
 ];
 
 // The factory reads these four fields of the rotation row and nothing else, so the rest of the row

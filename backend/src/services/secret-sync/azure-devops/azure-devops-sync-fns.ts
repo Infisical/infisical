@@ -5,6 +5,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AzureDevOpsConnectionMethod } from "@app/services/app-connection/azure-devops/azure-devops-enums";
 import { getAzureDevopsConnection } from "@app/services/app-connection/azure-devops/azure-devops-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -13,6 +14,7 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 interface AzureDevOpsVariableGroup {
@@ -33,7 +35,11 @@ interface AzureDevOpsVariableGroupList {
   value: AzureDevOpsVariableGroup[];
 }
 
-export const azureDevOpsSyncFactory = ({ kmsDataKeyService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
+export const azureDevOpsSyncFactory = ({
+  kmsDataKeyService,
+  appConnectionDAL,
+  oidcIssuerService
+}: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
     const { credentials } = secretSync.connection;
     const isOAuth = secretSync.connection.method === AzureDevOpsConnectionMethod.OAuth;
@@ -45,7 +51,12 @@ export const azureDevOpsSyncFactory = ({ kmsDataKeyService, appConnectionDAL }: 
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsDataKeyService);
+    const accessToken = await getAzureDevopsConnection(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     return { accessToken, orgName, isOAuth };
   };

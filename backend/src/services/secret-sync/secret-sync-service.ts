@@ -21,6 +21,7 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -93,6 +94,7 @@ type TSecretSyncServiceFactoryDep = {
   >;
   licenseService: TLicenseService;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -114,7 +116,8 @@ export const secretSyncServiceFactory = ({
   secretSyncQueue,
   keyStore,
   licenseService,
-  alertService
+  alertService,
+  oidcIssuerService
 }: TSecretSyncServiceFactoryDep) => {
   const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
     sync.connectionId ?? sync.connection?.id;
@@ -140,7 +143,7 @@ export const secretSyncServiceFactory = ({
     });
   };
 
-  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService, oidcIssuerService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A sync including subfolders reads the whole

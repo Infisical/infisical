@@ -46,6 +46,7 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
@@ -165,6 +166,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type TOrderCertificateDeps = {
@@ -180,6 +182,7 @@ type TOrderCertificateDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type DBConfigurationColumn = {
@@ -380,7 +383,8 @@ export const executeAcmeOrder = async (
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   } = deps;
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
@@ -524,7 +528,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -615,7 +620,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -768,7 +774,8 @@ export const AcmeCertificateAuthorityFns = ({
   certificateProfileDAL,
   gatewayV2Service,
   gatewayPoolService,
-  keyStore
+  keyStore,
+  oidcIssuerService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1025,7 +1032,8 @@ export const AcmeCertificateAuthorityFns = ({
         kmsKeyService,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       }
     );
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
@@ -1098,7 +1106,8 @@ export const AcmeCertificateAuthorityFns = ({
         certificateProfileDAL,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       }
     );
   };

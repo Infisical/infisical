@@ -3623,7 +3623,8 @@ export const registerRoutes = async (
     projectBotService,
     keyStore,
     licenseService,
-    alertService
+    alertService,
+    oidcIssuerService
   });
 
   const kmipService = kmipServiceFactory({
@@ -3666,7 +3667,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,
-    secretValidationRuleService
+    secretValidationRuleService,
+    oidcIssuerService
   });
 
   const secretReadActivityQueue = secretReadActivityQueueServiceFactory({
@@ -3856,7 +3858,8 @@ export const registerRoutes = async (
     caKeySourceService,
     gatewayV2Service,
     gatewayPoolService,
-    auditLogService
+    auditLogService,
+    oidcIssuerService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3976,7 +3979,8 @@ export const registerRoutes = async (
     keyStore,
     pkiAlertV2Queue,
     certificateAlertEventEmitter,
-    auditLogService
+    auditLogService,
+    oidcIssuerService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -4203,7 +4207,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({

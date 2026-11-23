@@ -3,25 +3,23 @@ import { isAxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import {
-  getAzureDnsAccessToken,
+  getAzureDnsConnectionAccessToken,
   validateAzureDnsZoneResourceId
 } from "@app/services/app-connection/azure-dns/azure-dns-connection-fns";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 export const azureDnsInsertTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,
   recordName: string,
-  value: string
+  value: string,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const {
-    credentials: { tenantId, clientId, clientSecret }
-  } = connection;
-
   validateAzureDnsZoneResourceId(hostedZoneId);
 
   try {
-    const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    const accessToken = await getAzureDnsConnectionAccessToken(connection, oidcIssuerService);
 
     // e.g., /subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/dnsZones/{zoneName}
     await request.put(
@@ -54,16 +52,13 @@ export const azureDnsDeleteTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,
   recordName: string,
-  value: string
+  value: string,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const {
-    credentials: { tenantId, clientId, clientSecret }
-  } = connection;
-
   validateAzureDnsZoneResourceId(hostedZoneId);
 
   try {
-    const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    const accessToken = await getAzureDnsConnectionAccessToken(connection, oidcIssuerService);
 
     await request.delete(
       `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(recordName)}?api-version=2018-05-01`,

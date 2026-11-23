@@ -17,6 +17,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -38,6 +39,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
@@ -71,6 +73,7 @@ export const certificateAuthorityQueueFactory = ({
   queueService,
   cronJob,
   keyStore,
+  oidcIssuerService,
   appConnectionDAL,
   appConnectionService,
   externalCertificateAuthorityDAL,
@@ -99,7 +102,8 @@ export const certificateAuthorityQueueFactory = ({
     pkiSyncQueue,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

@@ -24,6 +24,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -172,6 +173,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
@@ -207,6 +209,7 @@ export const certificateAuthorityServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  oidcIssuerService,
   licenseService,
   usageMeteringService,
   caKeySourceService,
@@ -231,7 +234,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

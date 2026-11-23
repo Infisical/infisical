@@ -4,6 +4,7 @@ import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/se
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -558,6 +559,7 @@ export type TRotationFactory<
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   keyStore: Pick<TKeyStoreFactory, "acquireLock">,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
   passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
