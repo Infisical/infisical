@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -51,9 +51,7 @@ export const CertManagerNotConfiguredModal = ({ isOpen, onOpenChange }: Props) =
     if (!selectedId) return;
     try {
       await setActive.mutateAsync(selectedId);
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : "Failed to set the active project.";
-      createNotification({ type: "error", text: detail });
+    } catch {
       return;
     }
     setCertManagerActiveProjectCookie(currentOrg.id, selectedId);
@@ -65,7 +63,7 @@ export const CertManagerNotConfiguredModal = ({ isOpen, onOpenChange }: Props) =
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" isPending={setActive.isPending}>
         <DialogHeader className="gap-6">
           <DialogTitle>Select an active Certificate Manager project</DialogTitle>
           <DialogDescription>
@@ -95,9 +93,9 @@ export const CertManagerNotConfiguredModal = ({ isOpen, onOpenChange }: Props) =
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
           {canSelect && (
             <Button
               variant="project"
