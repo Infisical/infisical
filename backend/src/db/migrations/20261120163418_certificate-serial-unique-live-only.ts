@@ -30,7 +30,7 @@ export async function down(knex: Knex): Promise<void> {
     const sharedSerialCount = (duplicates.rows[0] as { count: number }).count;
     if (sharedSerialCount > 0) {
       throw new Error(
-        `Can't restore the unique constraint on certificate serial numbers: ${sharedSerialCount} serial numbers belong to more than one certificate, because deleted certificates were imported again. Remove the extra certificate rows first.`
+        `Can't restore the unique constraint on certificate serial numbers: ${sharedSerialCount} serial numbers are shared by more than one certificate because deleted certificates were imported again. Delete the extra certificate rows first.`
       );
     }
 

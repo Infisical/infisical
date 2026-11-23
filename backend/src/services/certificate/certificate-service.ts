@@ -43,7 +43,7 @@ import {
   TCertRevocationRequestData,
   TMatchedCertRevocationPolicy
 } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -627,6 +627,7 @@ export const certificateServiceFactory = ({
     }
 
     const { deletedCert, pkiSyncIdsHoldingCertificate } = await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.lockSerialNumber(cert.serialNumber, tx);
       const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
       if (!lockedCert || lockedCert.deletedAt) {
         throw new BadRequestError({
@@ -731,7 +732,7 @@ export const certificateServiceFactory = ({
       const activeMatchCount = matches.filter((match) => !match.deletedAt).length;
       if (activeMatchCount === 0 && matches.length > 1) {
         throw new BadRequestError({
-          message: "Multiple deleted certificates match the provided thumbprint. Revoke by certificate ID instead"
+          message: "Several deleted certificates match this thumbprint. Revoke by certificate ID instead."
         });
       }
       if (activeMatchCount > 1) {
@@ -827,7 +828,7 @@ export const certificateServiceFactory = ({
     const isOwnRecord = (await projectDAL.findById(revokedCert.projectId, tx))?.orgId === actorOrgId;
     throw new BadRequestError({
       message: isOwnRecord
-        ? `The certificate with serial number '${serialNumber}' was revoked, so it can't be imported.`
+        ? `Certificate with serial number '${serialNumber}' is revoked and can't be imported.`
         : "A certificate with this serial number already exists"
     });
   };
@@ -946,7 +947,7 @@ export const certificateServiceFactory = ({
         );
         if (activeCopy) {
           throw new BadRequestError({
-            message: `Certificate '${getCertificateDisplayName(cert)}' was imported again while it was being revoked. Revoke it again so the active certificate's permissions and approval policy apply.`
+            message: `Certificate '${getCertificateDisplayName(cert)}' was imported again while it was being revoked. Revoke it again so the imported certificate's permissions and approval policy apply.`
           });
         }
       }
@@ -1479,7 +1480,7 @@ export const certificateServiceFactory = ({
         if (activeRecord.status === CertStatus.REVOKED) return { kind: ApprovedRevocationOutcomeKind.AlreadyRevoked };
         return {
           kind: ApprovedRevocationOutcomeKind.Failed,
-          reason: `Certificate '${getCertificateDisplayName(cert)}' was deleted and imported again after this request was made. Request the revocation of the active certificate, so its approval policy applies.`
+          reason: `Certificate '${getCertificateDisplayName(cert)}' was deleted and imported again after this request was made. Request revocation of the imported certificate instead, so its approval policy applies.`
         };
       }
 
@@ -1920,6 +1921,63 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $assertCanReimportDeletedRecords = async (
+    serialNumber: string,
+    {
+      caId,
+      projectId,
+      applicationId,
+      profileId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    }: {
+      caId: string;
+      projectId: string;
+      applicationId?: string | null;
+      profileId?: string | null;
+      actor: ActorType;
+      actorId: string;
+      actorAuthMethod: ActorAuthMethod;
+      actorOrgId: string;
+    },
+    tx: Knex
+  ) => {
+    const deletedRecords = await certificateDAL.find(
+      { $in: { serialNumber: getSerialNumberSpellings(serialNumber) }, caId, $notNull: ["deletedAt"] },
+      { tx }
+    );
+    for (const deletedRecord of deletedRecords) {
+      const { canRevokeDirectly } = await assertCanRevokeOrRequestRevocation({
+        certificate: deletedRecord,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
+        permissionService,
+        resourceMetadataDAL
+      });
+      const recordApproval = await $matchRevocationApprovalPolicy(deletedRecord, deletedRecord.projectId);
+      if (!recordApproval && !canRevokeDirectly) {
+        throw new ForbiddenRequestError({
+          message: `Importing certificate '${getCertificateDisplayName(deletedRecord)}' again needs permission to revoke it, because revoking the imported certificate also revokes the deleted one.`
+        });
+      }
+      if (recordApproval) {
+        const copyApproval = await $matchRevocationApprovalPolicy(
+          { ...deletedRecord, applicationId: applicationId ?? null, profileId: profileId ?? null },
+          projectId
+        );
+        if (copyApproval?.policy.id !== recordApproval.policy.id) {
+          throw new BadRequestError({
+            message: `Certificate '${getCertificateDisplayName(deletedRecord)}' is covered by revocation approval policy '${recordApproval.policy.name}'. Import it into an Application and profile covered by the same policy.`
+          });
+        }
+      }
+    }
+  };
+
   /**
    * Import certificate
    */
@@ -2040,6 +2098,20 @@ export const certificateServiceFactory = ({
 
     const leafCert = new x509.X509Certificate(certificatePem);
     await $assertSerialNumberImportable(leafCert.serialNumber, actorOrgId, certificateDAL.primaryNode());
+    const reimportCheck = linkage?.caId
+      ? {
+          caId: linkage.caId,
+          projectId,
+          applicationId,
+          profileId,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        }
+      : null;
+    if (reimportCheck)
+      await $assertCanReimportDeletedRecords(leafCert.serialNumber, reimportCheck, certificateDAL.primaryNode());
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
@@ -2229,6 +2301,7 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.transaction(async (tx) => {
       await certificateDAL.lockSerialNumber(serialNumber, tx);
       await $assertSerialNumberImportable(serialNumber, actorOrgId, tx);
+      if (reimportCheck) await $assertCanReimportDeletedRecords(serialNumber, reimportCheck, tx);
 
       try {
         const txCert = await certificateDAL.create(

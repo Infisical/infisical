@@ -46,7 +46,10 @@ Things that rely on that:
   row, and revoking any row revokes every row of the certificate on that CA (one `same-certificate` audit
   event each). If the target is deleted and a live copy appeared after the checks ran, the locked check refuses
   on an internal CA so the retry resolves to the copy; an external CA has already revoked it by then, so the
-  copy is revoked with the others. A revocation that starts from a deleted row is resolved to its
+  copy is revoked with the others. Because of that cascade, importing a deleted row again onto its CA needs
+  revoke permission on the deleted row, and when a revocation approval policy covers it the new row must land
+  where the same policy matches (`importCert`), or the import would let someone revoke it under another
+  Application's rules. A revocation that starts from a deleted row is resolved to its
   non-deleted copy first (`$resolveActiveRecord`, also used by Intune), so the copy's permissions and approval
   policy apply. A copy imported without a profile has no CA, so it is not revoked with the others.
 - **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
