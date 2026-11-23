@@ -17,6 +17,47 @@ If 2-factor authentication is enabled in the Personal settings page, email will 
 You can use any mobile authenticator app (Authy, Google Authenticator, Duo, etc.) to secure your account. After registration with an authenticator, select **Mobile Authenticator** as your 2FA method.
 ![Authenticator-based MFA](/images/mfa-authenticator.png)
 
+## Enforce MFA for an organization
+
+Organization admins can require every member to complete MFA when they sign in to the organization, and choose which MFA methods members can use.
+
+<Steps>
+  <Step>
+    In your organization, go to **Settings** > **Security**.
+  </Step>
+  <Step>
+    In the **Multi-Factor Authentication** card, under **Allowed MFA Methods**, select each method members can use: **Passkey**, **Authenticator app**, or **Email**.
+  </Step>
+  <Step>
+    Turn on the toggle in the same card.
+  </Step>
+</Steps>
+
+The setting also applies to the organization's [sub-organizations](/documentation/platform/sub-organizations).
+
+<Note>
+  If you self-host Infisical, you can allow email codes only if you've [configured SMTP](/self-hosting/configuration/envars#email-service).
+</Note>
+
+### Which method members sign in with
+
+When a member signs in, Infisical asks for one of these methods, in this order:
+
+1. The member's **Preferred 2FA method** from the **Authentication** tab of their personal settings, if your organization allows it and the member has set it up
+2. The strongest method your organization allows and the member has set up: a passkey, then an authenticator app, then email
+
+On the sign-in screen, the member can select **More Options** to switch to another allowed method they've set up, or to enter a recovery code.
+
+### Members who haven't set up an allowed method
+
+If a member hasn't set up any method your organization allows, Infisical asks them to set one up when they sign in. Email doesn't need setup, so this only happens when your organization doesn't allow email.
+
+Before a member adds a passkey or an authenticator app, at sign-in or in their personal settings, they verify with the strongest method they already have: a passkey, then an authenticator app, then email. Infisical asks for that method even if your organization doesn't allow it. Every member can receive email codes, so a member adding their first passkey or authenticator app enters an email code first.
+
+<Note>
+  If you self-host Infisical without [SMTP configured](/self-hosting/configuration/envars#email-service), members can't receive email codes, so a member adding their first method doesn't verify first.
+</Note>
+
 ## MFA for SSO logins
 
 If your organization enforces MFA and your users sign in through [SAML or OIDC SSO](/documentation/platform/sso/overview), you can let the MFA they completed at your identity provider count, so Infisical doesn't prompt them again. Password, LDAP, and Google, GitHub, or GitLab logins are always prompted, so a break-glass account keeps Infisical MFA. The setting only takes effect while your organization enforces MFA, and then it also covers users who turned on MFA for their own account.

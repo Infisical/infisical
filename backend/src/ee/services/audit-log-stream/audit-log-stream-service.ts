@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
@@ -10,9 +11,8 @@ import {
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
@@ -26,7 +26,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
@@ -35,7 +35,7 @@ export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
   licenseService,
-  kmsService
+  kmsDataKeyService
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -54,7 +54,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
     if (plan.exceeds(PlanLimit.AuditLogStreams, totalStreams.length)) {
@@ -69,7 +72,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: actor.orgId,
-      kmsService
+      kmsDataKeyService
     });
 
     const logStream = await auditLogStreamDAL.create({
@@ -109,7 +112,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -140,7 +146,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsDataKeyService
       })) as TCustomProviderCredentials;
 
       const oldHeadersMap = decryptedOldCredentials.headers.reduce<Record<string, string>>((acc, header) => {
@@ -170,7 +176,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsDataKeyService
       })) as TSumoLogicProviderCredentials;
 
       (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
@@ -182,7 +188,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsDataKeyService
       })) as TSplunkProviderCredentials;
 
       (finalCredentials as TSplunkProviderCredentials).port = decryptedOldCredentials.port;
@@ -194,7 +200,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: logStream.orgId,
-      kmsService
+      kmsDataKeyService
     });
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
@@ -225,7 +231,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -235,7 +244,7 @@ export const auditLogStreamServiceFactory = ({
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
 
-    return decryptLogStream(deletedLogStream, kmsService);
+    return decryptLogStream(deletedLogStream, kmsDataKeyService);
   };
 
   const getById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
@@ -251,7 +260,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -259,7 +271,7 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    return decryptLogStream(logStream, kmsService);
+    return decryptLogStream(logStream, kmsDataKeyService);
   };
 
   const list = async (actor: OrgServiceActor) => {
@@ -272,11 +284,14 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 
-    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsService)));
+    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsDataKeyService)));
   };
 
   return {

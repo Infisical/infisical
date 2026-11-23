@@ -83,6 +83,7 @@ export const Route = createFileRoute(
       project,
       implicitProjectId: projectId,
       implicitProductType: ProjectType.CertificateManager,
+      productType: ProjectType.CertificateManager,
       breadcrumbs: []
     };
   }

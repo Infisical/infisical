@@ -15,10 +15,7 @@ type Props = {
 // before an org is selected and the popup's route requires one.
 export const EnrollmentStepUp = ({ challenge, onVerified, variant }: Props) => (
   <div className="flex flex-col gap-4">
-    <p className="text-sm text-muted">
-      Verify with your existing two-factor method before adding a new one.{" "}
-      {MFA_CHALLENGE_PROMPTS[challenge.mfaMethod]}
-    </p>
+    <p className="text-sm text-muted">{MFA_CHALLENGE_PROMPTS[challenge.mfaMethod]}</p>
     <MfaSessionChallenge
       key={challenge.mfaSessionId}
       mfaSessionId={challenge.mfaSessionId}

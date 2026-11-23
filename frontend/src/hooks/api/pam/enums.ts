@@ -50,14 +50,9 @@ export enum PamAccountWarning {
   SessionLogMaskingDegraded = "session-log-masking-degraded"
 }
 
-// Windows is brokered over RDP, whose recordings the gateway never masks; AWS IAM is gateway-less
-// and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
-// backend/src/ee/services/pam/pam-enums.ts.
-export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
-  PamAccountType.Windows,
-  PamAccountType.WindowsAd,
-  PamAccountType.AwsIam
-];
+// Windows is brokered over RDP, whose recordings the gateway never masks. Mirrors
+// accountTypeSupportsSessionLogMasking in backend/src/ee/services/pam/pam-enums.ts.
+export const UNMASKABLE_PAM_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd];
 
 export const pamAccountTypeSupportsSessionLogMasking = (type: PamAccountType | string) =>
   !(UNMASKABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
@@ -124,7 +119,19 @@ export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
-  CommandBlocking = "command-blocking"
+  CommandBlocking = "command-blocking",
+  OutputMasking = "output-masking"
+}
+
+export enum PamOutputMaskingPreset {
+  Email = "email",
+  PhoneNumber = "phone-number",
+  Ssn = "ssn",
+  CreditCard = "credit-card",
+  IpAddress = "ip-address",
+  Jwt = "jwt",
+  ConnectionString = "connection-string",
+  AccountCredentials = "account-credentials"
 }
 
 export enum SessionChannelType {

@@ -28,7 +28,9 @@ const agenticLimits = {
   maxFileChars: 20000,
   maxTotalToolResultChars: 220000,
   maxCompletionTokens: 5000,
-  maxTurns: 20
+  // parallelToolCalls is off, so each tool call takes a turn. maxTurns must exceed maxToolCalls,
+  // or the run ends before the tool budget can tell the model to stop and answer.
+  maxTurns: 50
 };
 
 const evidenceForFile = (file: string, description?: string) => ({

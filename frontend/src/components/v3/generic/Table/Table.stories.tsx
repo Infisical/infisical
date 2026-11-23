@@ -95,7 +95,8 @@ const identities: Identity[] = [
  * - **`sticky`** on `TableHeader` pins the header while scrolling a table
  *   with a height-constrained container (`containerClassName="max-h-40"`).
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
- *   ellipsis instead of letting the column blow out the row width.
+ *   ellipsis instead of letting the column blow out the row width. A clipped
+ *   plain-text `TableCell` shows its full value in a tooltip on hover.
  * - **`isWrappable`** on `TableCell` wraps long text (descriptions, paths,
  *   error messages) onto more lines within a bounded column width
  *   (`max-w-md`, overridable through `className`). Set it on every cell of
@@ -513,7 +514,7 @@ export const TruncatedCells: Story = {
     docs: {
       description: {
         story:
-          "Pass `isTruncatable` to `TableHead` and `TableCell` for any column that can carry long, single-line content (descriptions, paths, signatures). The column collapses to whatever space the row gives it, with the overflow clipped behind an ellipsis. Pair with the cell's `title` attribute so the full value is hover-discoverable."
+          "Pass `isTruncatable` to `TableHead` and `TableCell` for any column that can carry long, single-line content (descriptions, paths, signatures). The column collapses to whatever space the row gives it, with the overflow clipped behind an ellipsis. When a cell's content is plain text and it is actually clipped, hovering it shows the full value in a tooltip; cells that fit show nothing."
       }
     }
   },
@@ -548,9 +549,7 @@ export const TruncatedCells: Story = {
         ].map((id) => (
           <TableRow key={id.name}>
             <TableCell className="font-medium">{id.name}</TableCell>
-            <TableCell isTruncatable title={id.description}>
-              {id.description}
-            </TableCell>
+            <TableCell isTruncatable>{id.description}</TableCell>
             <TableCell>{id.role}</TableCell>
           </TableRow>
         ))}

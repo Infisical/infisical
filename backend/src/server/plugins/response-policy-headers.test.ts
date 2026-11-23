@@ -6,6 +6,7 @@ import { responsePolicyHeaders } from "./response-policy-headers";
 const ROUTE_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
 const ROUTE_DEVICE_POLICY = "camera=(self)";
 const API_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const DOCUMENT_POLICY = "frame-ancestors 'self'; base-uri 'self'; object-src 'none'";
 const DEVICE_POLICY =
   "accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), " +
   "magnetometer=(), microphone=(), midi=(), serial=(), usb=(), xr-spatial-tracking=()";
@@ -31,7 +32,7 @@ describe("responsePolicyHeaders", () => {
 
   test("sends only frame-ancestors, base-uri and object-src on HTML responses", async () => {
     const res = await app.inject({ url: "/page" });
-    expect(res.headers["content-security-policy"]).toBe("frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
+    expect(res.headers["content-security-policy"]).toBe(DOCUMENT_POLICY);
   });
 
   test("keeps the policies a route set itself", async () => {

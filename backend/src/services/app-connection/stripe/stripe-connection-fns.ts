@@ -1,7 +1,8 @@
 import { AxiosError } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -11,7 +12,6 @@ import {
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { StripeConnectionMethod } from "./stripe-connection-enums";
@@ -36,9 +36,13 @@ type TStripeOAuthTokenResponse = {
   account_id?: string;
 };
 
-export const getStripeConnectionListItem = () => {
-  const { INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID, INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL } = getConfig();
-
+export const getStripeConnectionListItem = ({
+  INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
+  INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
+}: {
+  INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID?: string;
+  INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL?: string;
+}) => {
   return {
     name: "Stripe" as const,
     app: AppConnection.Stripe as const,
@@ -60,17 +64,18 @@ const REFRESH_LOCK_SETTINGS = { retryCount: 60, retryDelay: 250, retryJitter: 10
 
 export type TStripeConnectionAuthorizationDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  instanceConfigService: TInstanceConfigService;
 };
 
-const requestStripeTokens = async (params: Record<string, string>) => {
+const requestStripeTokens = async (params: Record<string, string>, stripeSecretKey?: string) => {
   const { data } = await request.post<TStripeOAuthTokenResponse>(
     IntegrationUrls.STRIPE_TOKEN_URL,
     new URLSearchParams(params),
     {
       headers: {
-        Authorization: `Bearer ${getStripeSecretKey()}`,
+        Authorization: `Bearer ${getStripeSecretKey(stripeSecretKey)}`,
         "Content-Type": "application/x-www-form-urlencoded"
       }
     }
@@ -86,11 +91,14 @@ const getStripeOAuthErrorCode = (error: AxiosError) =>
  * The exchange is also the only proof that the installer controls the account they are claiming: a
  * client-supplied account ID would be unverified.
  */
-const exchangeStripeOAuthCode = async (code: string): Promise<TStripeConnectionCredentials> => {
+const exchangeStripeOAuthCode = async (
+  code: string,
+  stripeSecretKey?: string
+): Promise<TStripeConnectionCredentials> => {
   let data: TStripeOAuthTokenResponse;
 
   try {
-    data = await requestStripeTokens({ grant_type: "authorization_code", code });
+    data = await requestStripeTokens({ grant_type: "authorization_code", code }, stripeSecretKey);
   } catch (error) {
     if (!(error instanceof AxiosError)) throw error;
 
@@ -124,18 +132,22 @@ const exchangeStripeOAuthCode = async (code: string): Promise<TStripeConnectionC
  * Probes the Managed API Keys API with the same credentials rotation will use, so a connection that
  * cannot manage keys fails here rather than at rotation time.
  */
-const assertCanManageApiKeys = async (accountId: string) => {
+const assertCanManageApiKeys = async (accountId: string, stripeSecretKey?: string) => {
   try {
-    await request.get(STRIPE_API_KEYS_URL, getStripeAppRequestConfig(accountId));
+    await request.get(STRIPE_API_KEYS_URL, getStripeAppRequestConfig(accountId, stripeSecretKey));
   } catch (error) {
     throwStripeApiKeyManagementError(accountId, error);
   }
 };
 
-export const validateStripeConnectionCredentials = async (config: TStripeConnectionConfig) => {
-  const credentials = await exchangeStripeOAuthCode(config.credentials.code);
+export const validateStripeConnectionCredentials = async (
+  config: TStripeConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await instanceConfigService.getOverridableEnv();
+  const credentials = await exchangeStripeOAuthCode(config.credentials.code, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
 
-  await assertCanManageApiKeys(credentials.accountId);
+  await assertCanManageApiKeys(credentials.accountId, INF_APP_CONNECTION_STRIPE_SECRET_KEY);
 
   return credentials;
 };
@@ -146,7 +158,10 @@ export const validateStripeConnectionCredentials = async (config: TStripeConnect
  */
 const getStoredStripeConnection = async (
   connectionId: string,
-  { appConnectionDAL, kmsService }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsService">
+  {
+    appConnectionDAL,
+    kmsDataKeyService
+  }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsDataKeyService">
 ) => {
   const appConnection = await appConnectionDAL.transaction((tx) => appConnectionDAL.findById(connectionId, tx));
 
@@ -162,7 +177,7 @@ const getStoredStripeConnection = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
+    kmsDataKeyService
   })) as TStripeConnectionCredentials;
 
   return { appConnection, credentials };
@@ -171,11 +186,15 @@ const getStoredStripeConnection = async (
 const refreshStripeConnection = async (connectionId: string, deps: TStripeConnectionAuthorizationDeps) => {
   const { appConnection, credentials } = await getStoredStripeConnection(connectionId, deps);
   const { accountId } = credentials;
+  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = await deps.instanceConfigService.getOverridableEnv();
 
   let data: TStripeOAuthTokenResponse;
 
   try {
-    data = await requestStripeTokens({ grant_type: "refresh_token", refresh_token: credentials.refreshToken });
+    data = await requestStripeTokens(
+      { grant_type: "refresh_token", refresh_token: credentials.refreshToken },
+      INF_APP_CONNECTION_STRIPE_SECRET_KEY
+    );
   } catch (error) {
     if (!(error instanceof AxiosError)) throw error;
 
@@ -211,7 +230,7 @@ const refreshStripeConnection = async (connectionId: string, deps: TStripeConnec
     credentials: { accountId, refreshToken: data.refresh_token },
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
-    kmsService: deps.kmsService
+    kmsDataKeyService: deps.kmsDataKeyService
   });
 
   try {

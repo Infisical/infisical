@@ -4,6 +4,7 @@ import { gunzipSync } from "node:zlib";
 
 import { ClickHouseClient, createClient } from "@clickhouse/client";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -159,7 +160,7 @@ export const validateClickHouseConnectionCredentials = async (
 
     return config.credentials;
   } catch (err) {
-    if (err instanceof BadRequestError) {
+    if (err instanceof BadRequestError || err instanceof RuleViolationError) {
       throw err;
     }
     throw new BadRequestError({

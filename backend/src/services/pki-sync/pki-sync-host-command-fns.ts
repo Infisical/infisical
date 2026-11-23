@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -247,7 +248,9 @@ const isTimeoutFailure = (err: unknown, message: string): boolean =>
 
 const classifyFailure = (err: unknown, message: string): HostCommandFailure => {
   if (isTimeoutFailure(err, message)) return HostCommandFailure.TimedOut;
-  return err instanceof BadRequestError ? HostCommandFailure.Rejected : HostCommandFailure.Unreachable;
+  return err instanceof BadRequestError || err instanceof RuleViolationError
+    ? HostCommandFailure.Rejected
+    : HostCommandFailure.Unreachable;
 };
 
 const withHostCommandDeadline = <T>(execute: () => Promise<T>, timeoutMs: number, graceMs: number): Promise<T> => {

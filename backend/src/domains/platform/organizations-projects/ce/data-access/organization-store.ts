@@ -1,7 +1,5 @@
-import { Knex } from "knex";
-
 import { ProjectType, TableName } from "@app/db/schemas";
-import { toCount } from "@app/domains/lib/data-access";
+import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { TOrganization, TOrganizationStore } from "../services/dependencies";
@@ -18,14 +16,14 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
 export class OrganizationStore implements TOrganizationStore {
-  // A source, not a handle: replicaNode() picks a replica per call, and the stores bundle passes its transaction.
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
-  async findRootOrgId(orgId: string): Promise<string | null> {
+  async findRootOrgId(orgId: string, options?: TReadOptions): Promise<string | null> {
     try {
-      const row = (await this.knex()(TableName.Organization)
+      const knex = this.connection.reader(options);
+      const row = (await knex(TableName.Organization)
         .where("id", orgId)
-        .select(this.knex().raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
+        .select(knex.raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
         .first()) as { rootOrgId?: string } | undefined;
       return row?.rootOrgId ?? null;
     } catch (error) {
@@ -33,9 +31,10 @@ export class OrganizationStore implements TOrganizationStore {
     }
   }
 
-  async findById(orgId: string): Promise<TOrganization | null> {
+  async findById(orgId: string, options?: TReadOptions): Promise<TOrganization | null> {
     try {
-      const row = (await this.knex()(TableName.Organization)
+      const row = (await this.connection
+        .reader(options)(TableName.Organization)
         .where("id", orgId)
         .select("id", "name", "slug")
         .first()) as TOrganization | undefined;
@@ -45,17 +44,15 @@ export class OrganizationStore implements TOrganizationStore {
     }
   }
 
-  async countWorkspaces(orgId: string): Promise<number> {
+  async countWorkspaces(orgId: string, options?: TReadOptions): Promise<number> {
     try {
-      const knex = this.knex();
+      const knex = this.connection.reader(options);
       const row = (await knex(TableName.Project)
         .whereNull("deleteAfter")
         .whereNotIn("type", UNCOUNTED_WORKSPACE_TYPES)
-        .where((bd) => {
-          void bd
-            .where({ orgId })
-            .orWhereIn("orgId", knex(TableName.Organization).where({ rootOrgId: orgId }).select("id"));
-        })
+        // One IN over the org and its sub-orgs, not "orgId = ? OR orgId IN (...)": the OR keeps Postgres off the
+        // index and scans every project.
+        .whereIn("orgId", knex(TableName.Organization).where("id", orgId).orWhere("rootOrgId", orgId).select("id"))
         .count("* as count")
         .first()) as { count?: string | number } | undefined;
       return toCount(row?.count);

@@ -300,19 +300,31 @@ export const groupServiceFactory = ({
       });
     }
 
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+    const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+
+    // IdP group syncs match groups by name, so a rename can pull an IdP group's members into this
+    // group, which can be more privileged. Bound it like adding a member.
+    if (name && name !== group.name) {
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.AddMembers,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to rename a more privileged group"
+      });
+    }
+
     let customRole: TRoles | undefined;
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
-
-      const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
-        ignoreUnresolvedRoles: true
-      });
 
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
@@ -531,7 +543,6 @@ export const groupServiceFactory = ({
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
       usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
@@ -539,7 +550,6 @@ export const groupServiceFactory = ({
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 

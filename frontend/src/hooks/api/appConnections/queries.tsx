@@ -97,7 +97,7 @@ export const useListAppConnections = (
   });
 };
 
-const fetchAvailableAppConnections = async (app: AppConnection, projectId: string) => {
+export const fetchAvailableAppConnections = async (app: AppConnection, projectId?: string) => {
   const { data } = await apiRequest.get<TAvailableAppConnectionsResponse>(
     `/api/v1/app-connections/${app}/available`,
     { params: { projectId } }
