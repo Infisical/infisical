@@ -289,7 +289,9 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
             <SheetHeader className="flex-row items-start gap-4 pr-12">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex min-w-0 items-center gap-2">
-                  <SheetTitle className={twMerge("break-words", !session.label && "text-muted")}>
+                  <SheetTitle
+                    className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
+                  >
                     {session.label ?? "Unlabeled session"}
                   </SheetTitle>
                   <SessionStatusBadge status={session.status} />
