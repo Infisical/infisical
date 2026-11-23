@@ -24,6 +24,8 @@ import { bootstrapCheck } from "@app/server/boot-strap-check";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
+// Keeps the suite off api.pwnedpasswords.com; the unit tests cover the breach check.
+process.env.BREACHED_PASSWORD_CHECK_ENABLED = "false";
 export default {
   name: "knex-env",
   transformMode: "ssr",
