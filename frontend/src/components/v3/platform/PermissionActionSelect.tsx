@@ -48,7 +48,7 @@ export const PermissionActionSelect = <T extends PermissionActionOption>({
       option.description ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>{option.label}</span>
+            <span className="pointer-events-auto">{option.label}</span>
           </TooltipTrigger>
           <TooltipContent>{option.description}</TooltipContent>
         </Tooltip>
