@@ -57,14 +57,14 @@ export const SecretSyncPreserveFolderStructureField = ({
 
   const { rows, keyCount, pathCount } = useMemo(() => {
     const conflictingFolders = new Set(conflicts.flatMap((conflict) => conflict.paths));
-    const names = applySecretSyncKeySchema(keySchema, "*", environment?.slug ?? "");
+    const names = applySecretSyncKeySchema(keySchema, "/", environment?.slug ?? "");
 
     const mapped = folders.map(({ path }) => {
       const folder = preserveFolderStructure ? getSecretSyncRelativeFolder(path, secretPath) : "";
 
       return {
-        source: `${path === "/" ? "" : path}/*`,
-        destination: `${destinationPrefix}${folder ? `${folder}/` : ""}${names}`,
+        source: `${path === "/" ? "" : path}/`,
+        destination: `${destinationPrefix}${folder ? `${folder}` : ""}${names}`,
         isDuplicate: conflictingFolders.has(path)
       };
     });
@@ -143,7 +143,9 @@ export const SecretSyncPreserveFolderStructureField = ({
       {canPreserve && rows.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-label">Where keys land</p>
+            <p className="text-xs text-label">
+              How secret paths map from Infisical to {destinationName}
+            </p>
             <p className="text-xs text-muted">
               {keyCount} {keyCount === 1 ? "key" : "keys"} · {pathCount}{" "}
               {pathCount === 1 ? "path" : "paths"}
