@@ -537,13 +537,15 @@ const SettingsTab = ({
     return () => onDirtyChange?.(false);
   }, [isDirty, onDirtyChange]);
 
+  const templateBackend = (template?.settings as { recordingStorageBackend?: string } | undefined)
+    ?.recordingStorageBackend;
+  const isTemplateLoaded = Boolean(template) || !account?.templateId;
+
   useEffect(() => {
-    if (account) {
+    if (account && isTemplateLoaded) {
       const s3 = account.settingsOverrides?.recordingS3Config;
       const azure = account.settingsOverrides?.recordingAzureBlobConfig;
-      const azureTemplate =
-        (template?.settings as { recordingStorageBackend?: string } | undefined)
-          ?.recordingStorageBackend === "azure-blob";
+      const azureTemplate = templateBackend === "azure-blob";
       reset({
         gatewayId: account.gatewayId,
         gatewayPoolId: account.gatewayPoolId,
@@ -555,7 +557,7 @@ const SettingsTab = ({
       setShowGatewayPicker(false);
       setShowRecordingPicker(false);
     }
-  }, [account, template, reset]);
+  }, [account, isTemplateLoaded, templateBackend, reset]);
 
   if (isLoading) {
     return (

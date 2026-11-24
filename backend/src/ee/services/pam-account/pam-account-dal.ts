@@ -343,7 +343,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
   // Accounts stopped by a rejected credential stay stopped: a settings change is not what clears that.
   const findRecordingConnectionOverridesByTemplateId = async (templateId: string, tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.PamAccount)
+    (tx || db)(TableName.PamAccount)
       .join(TableName.AppConnection, `${TableName.AppConnection}.id`, `${TableName.PamAccount}.recordingConnectionId`)
       .where(`${TableName.PamAccount}.templateId`, templateId)
       .select<{ name: string; app: string }[]>(`${TableName.PamAccount}.name`, `${TableName.AppConnection}.app`);

@@ -962,16 +962,19 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
+    // A new template can store recordings somewhere the account's saved connection and overrides can't reach
+    const templateChanged = Boolean(template) && templateId !== existing.templateId;
+    const accountConnectionId =
+      recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
     const resolvedRecordingConfig = await resolveOverridesRecordingConfig(
       deps,
       template ? template.settings : existing.templateSettings,
-      recordingConnectionId && settingsOverrides === undefined
+      (recordingConnectionId || templateChanged) && settingsOverrides === undefined
         ? (existing.settingsOverrides as TPamAccountSettingsOverrides | null)
         : settingsOverrides,
-      (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
-        (template ? template.recordingConnectionId : existing.templateRecordingConnectionId),
+      accountConnectionId ?? (template ? template.recordingConnectionId : existing.templateRecordingConnectionId),
       ctx,
-      { inheritLocation: Boolean(recordingConnectionId) }
+      { inheritLocation: Boolean(recordingConnectionId) || (templateChanged && Boolean(accountConnectionId)) }
     );
 
     const updateData: Record<string, unknown> = {};
