@@ -62,6 +62,18 @@ func (h *ErrorHandler) writeHTTPError(ctx context.Context, w http.ResponseWriter
 		status = http.StatusInternalServerError
 	}
 
+	if httpErr.Name == errutil.ValidationFailureName {
+		h.Logger.WarnContext(ctx, "validation error", slog.String("reqId", reqID), slog.Any("issues", httpErr.Details))
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(struct {
+			ReqID      string `json:"reqId"`
+			StatusCode int    `json:"statusCode"`
+			Message    any    `json:"message"`
+			ErrorData  string `json:"error"`
+		}{reqID, status, httpErr.Details, httpErr.Name})
+		return
+	}
+
 	resp := Error{
 		ReqID:      reqID,
 		StatusCode: status,

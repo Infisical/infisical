@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/infisical/api/internal/ee/services/ratelimit"
+	"github.com/infisical/api/internal/server/api/secretmanager/folder"
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auth/apiauth"
@@ -40,5 +41,21 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 		// V3 endpoints (deprecated)
 		r.Get("/api/v3/secrets/raw", secretsAdapter.ListSecretsRawV3)
 		r.Get("/api/v3/secrets/raw/{secretName}", secretsAdapter.GetSecretByNameRawV3)
+	})
+
+	foldersHandler := folder.NewHandler(&folder.Deps{
+		Logger:     l,
+		Permission: platform.Permission,
+		Folders:    svc.SecretFolder,
+	})
+	foldersAdapter := folder.NewHTTPAdapter(foldersHandler, shared.NewErrorHandler(l))
+
+	router.Group(func(r chi.Router) {
+		r.Use(platform.ApiAuthenticator.RequireAuth(
+			apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
+		))
+		r.Use(platform.RateLimit.Middleware(ratelimit.PresetRead))
+
+		r.Get("/api/v2/folders", foldersAdapter.ListSecretFolders)
 	})
 }
