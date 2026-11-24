@@ -1,6 +1,7 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -23,6 +24,7 @@ import {
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
@@ -167,6 +169,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -200,6 +203,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -212,6 +216,7 @@ export const certificateIssuanceQueueFactory = ({
   certificateDAL,
   projectDAL,
   kmsDataKeyService,
+  instanceConfigService,
   kmsKeyService,
   queueService,
   certificateBodyDAL,
@@ -231,7 +236,8 @@ export const certificateIssuanceQueueFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  telemetryService
+  telemetryService,
+  oidcIssuerService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -242,6 +248,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     pkiSubscriberDAL,
     pkiSyncDAL,
@@ -249,7 +256,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -292,6 +300,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });
@@ -329,6 +338,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
+    instanceConfigService,
     kmsKeyService,
     certificateProfileDAL
   });

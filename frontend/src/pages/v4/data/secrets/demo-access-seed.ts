@@ -33,6 +33,7 @@ const grant = (
   permission,
   environment,
   secretPath,
+  isPermissionRecursive: false,
   isTemporary: Boolean(window),
   temporaryMode: window ? "relative" : null,
   temporaryRange: window?.range ?? null,

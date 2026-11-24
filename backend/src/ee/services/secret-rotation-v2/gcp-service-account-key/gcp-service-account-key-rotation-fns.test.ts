@@ -43,12 +43,15 @@ const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
 // The factory only talks to GCP through the mocked connection token and request client, so none of
 // these are reached.
-const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}] as unknown as [
+const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}, {}, undefined, {}] as unknown as [
   Parameters<typeof gcpServiceAccountKeyRotationFactory>[1],
   Parameters<typeof gcpServiceAccountKeyRotationFactory>[2],
   Parameters<typeof gcpServiceAccountKeyRotationFactory>[3],
   Parameters<typeof gcpServiceAccountKeyRotationFactory>[4],
-  Parameters<typeof gcpServiceAccountKeyRotationFactory>[5]
+  Parameters<typeof gcpServiceAccountKeyRotationFactory>[5],
+  Parameters<typeof gcpServiceAccountKeyRotationFactory>[6],
+  Parameters<typeof gcpServiceAccountKeyRotationFactory>[7],
+  Parameters<typeof gcpServiceAccountKeyRotationFactory>[8]
 ];
 
 const makeFactory = ({ activeIndex = 0 }: { activeIndex?: number } = {}) =>

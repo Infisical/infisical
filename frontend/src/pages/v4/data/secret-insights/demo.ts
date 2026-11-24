@@ -271,7 +271,8 @@ const unusedActors = (scenario: Scenario): TUnusedAccessActor[] => {
                   folderId: `folder-${index}`,
                   environment: "prod",
                   secretPath: stressed ? LONG_PATH : "/billing",
-                  role: SecretFolderRole.Read
+                  role: SecretFolderRole.Read,
+                  isPermissionRecursive: false
                 }
               ]
             : []

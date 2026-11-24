@@ -119,6 +119,16 @@ Agent Vault is a normal project type that users create, like Secrets Management,
 
 Secret Scanning has one active project per organization (the newest). Like Certificate Manager, its URLs are `/organizations/$orgId/secret-scanning/…` with no `$projectId`; legacy orgs can still hold several projects, so the frontend pins the one being viewed (see `frontend/AGENTS.md`). New orgs and sub-orgs get it at creation (`bootstrapSecretScanningProject`), older orgs lazily from `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
 
+### Instance Config
+
+The `super_admin` row (instance settings, Slack, Teams and GitHub app credentials, env overrides) belongs to Instance
+Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getSettings()`, `getLoginPolicy()`, `getSignUpPolicy()`,
+`isInstanceAdminIdentity()` and the credential getters; change it through `updateConfig()` and the other intent
+methods. Never query `super_admin` or decrypt its columns elsewhere; its cached value is shared with pods of the
+previous release. The env values an instance admin can override (`EnvOverrides.KEYS` in Instance Config Core) are not
+in `lib/config/env.ts` and never go back into `envSchema`: read them from `getOverridableEnv()` per use, never at boot,
+and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
+
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.
@@ -359,7 +369,7 @@ When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design syste
 
 Before deprecating or removing a shared frontend component, follow the component lifecycle rules in [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`). A federated connection (`isFederatedAppConnection`) is the exception: keep the dialog open on it with `isNewConnection`, and select it and call `complete` only after it verifies. The provider can trust it only once it exists, its setup values are shown there, and selecting it earlier starts lookups (such as GCP project discovery) that fail and are not refetched.
 
 ## Issue and PR Guidelines
 

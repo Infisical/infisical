@@ -10,7 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -49,9 +49,33 @@ const getErrorStatus = (error: unknown) => (error instanceof AxiosError ? error.
 export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   TGcpServiceAccountKeyRotationWithConnection,
   TGcpServiceAccountKeyRotationGeneratedCredentials
-> = (secretRotation) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  _keyStore,
+  instanceConfigService,
+  _passwordValidationContext,
+  oidcIssuerService
+) => {
+  const getAccessToken = () => {
+    if (!oidcIssuerService) {
+      throw new InternalServerError({
+        message: "GCP service account key rotation was started without the OIDC issuer service"
+      });
+    }
+
+    return getGcpConnectionAuthToken(secretRotation.connection, {
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
+    });
+  };
+
   const {
-    connection,
     parameters: { serviceAccountEmail },
     secretsMapping
   } = secretRotation;
@@ -175,7 +199,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   const issueCredentials: TRotationFactoryIssueCredentials<TGcpServiceAccountKeyRotationGeneratedCredentials> = async (
     callback
   ) => {
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getAccessToken();
 
     const credentials = await $createKey(accessToken);
 
@@ -187,7 +211,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   > = async (credentials, callback) => {
     if (!credentials?.length) return callback();
 
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getAccessToken();
 
     // The key apps are using is deleted last, so a failure part way through leaves the rotation and its
     // secret in place with a key that still works, rather than one that is already gone.
@@ -207,7 +231,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TGcpServiceAccountKeyRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getAccessToken();
 
     // The new key is created before the previous one is deleted, so a failed create can't leave the service
     // account with fewer working keys than before. The cost is room for a third key under GCP's 10 key limit

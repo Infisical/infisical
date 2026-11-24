@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
@@ -77,11 +78,15 @@ const parseErrorMessage = (error: unknown): string => {
   return "Unknown error occurred";
 };
 
-const getSecretsManagerClient = async (pkiSync: TAwsSecretsManagerPkiSyncWithCredentials) => {
+const getSecretsManagerClient = async (
+  pkiSync: TAwsSecretsManagerPkiSyncWithCredentials,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { destinationConfig, connection } = pkiSync;
 
   const config = await getAwsConnectionConfig(
     connection as TAwsConnectionConfig,
+    instanceConfigService,
     destinationConfig.region as AWSRegion
   );
 
@@ -112,17 +117,19 @@ type TAwsSecretsManagerPkiSyncFactoryDeps = {
     | "findExternalIdentifiersInUse"
     | "claimExternalIdentifier"
   >;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export const awsSecretsManagerPkiSyncFactory = ({
   certificateDAL,
-  certificateSyncDAL
+  certificateSyncDAL,
+  instanceConfigService
 }: TAwsSecretsManagerPkiSyncFactoryDeps) => {
   const $getSecretsManagerSecrets = async (
     pkiSync: TAwsSecretsManagerPkiSyncWithCredentials,
     syncId = "unknown"
   ): Promise<Record<string, string>> => {
-    const client = await getSecretsManagerClient(pkiSync);
+    const client = await getSecretsManagerClient(pkiSync, instanceConfigService);
     const secrets: Record<string, string> = {};
     let hasNext = true;
     let nextToken: string | undefined;
@@ -178,7 +185,7 @@ export const awsSecretsManagerPkiSyncFactory = ({
     certificateMap: TCertificateMap
   ): Promise<SyncCertificatesResult> => {
     const awsPkiSync = pkiSync as unknown as TAwsSecretsManagerPkiSyncWithCredentials;
-    const client = await getSecretsManagerClient(awsPkiSync);
+    const client = await getSecretsManagerClient(awsPkiSync, instanceConfigService);
 
     const existingSecrets = await $getSecretsManagerSecrets(awsPkiSync, pkiSync.id);
 
@@ -483,7 +490,7 @@ export const awsSecretsManagerPkiSyncFactory = ({
     certificateMap: TCertificateMap
   ): Promise<{ removed: number; failed: number }> => {
     const awsPkiSync = pkiSync as unknown as TAwsSecretsManagerPkiSyncWithCredentials;
-    const client = await getSecretsManagerClient(awsPkiSync);
+    const client = await getSecretsManagerClient(awsPkiSync, instanceConfigService);
 
     const existingSecrets = await $getSecretsManagerSecrets(awsPkiSync, pkiSync.id);
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);

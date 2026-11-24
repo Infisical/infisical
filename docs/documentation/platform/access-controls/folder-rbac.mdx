@@ -1,9 +1,9 @@
 ---
 title: "Folder-level access controls"
-description: "Grant users and machine identities a specific role inside a single folder."
+description: "Grant users and machine identities a role on a single folder, or on every folder in an environment."
 ---
 
-Folder-level access controls assign a role to a user or machine identity on a single [folder](/documentation/platform/folder). Inside that folder, the grant replaces whatever their project roles would otherwise allow, so it can widen access or narrow it.
+Folder-level access controls assign a role to a user or machine identity on a single [folder](/documentation/platform/folder). Inside that folder, the grant replaces whatever their project roles would otherwise allow, so it can widen access or narrow it. On the root folder of an environment, you can also apply the role to every folder below it.
 
 <Info>
   Folder-level access controls are a paid feature.
@@ -19,14 +19,10 @@ When you give a single user or machine identity a role on a folder, that role ta
 
 - Give someone access to a single folder their project role doesn't reach
 - Hold someone to a lower role inside a sensitive folder
+- Give someone one role across a whole environment
 - Hand out short-lived access for an incident or a one-off task
 
-A folder role only applies to the exact folder you set it on.
-
-<Warning>
-  Folder access isn't recursive. If you have a certain role on `/payments`, the same role doesn't automatically apply to `/payments/keys`. Inside a subfolder, the user or identity falls back to
-  whatever their project roles allow.
-</Warning>
+A folder role only applies to the exact folder you set it on, unless you set it on the root folder `/` and [apply it to subfolders](#applying-access-to-subfolders).
 
 ## Folder access roles
 
@@ -36,9 +32,11 @@ There are five different folder access roles, listed here from least to most pri
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **List**        | See secret names and metadata without their values. Read secret imports, tags, and the configuration of secret syncs, secret rotations, and honey tokens.             |
 | **Read**        | Everything in List, plus reading secret values, viewing commit history, generating dynamic secret leases, and subscribing to secret events.                           |
-| **Edit**        | Everything in Read, plus creating, editing, and deleting secrets and secret imports.                                                                                  |
+| **Edit**        | Everything in Read, plus creating, editing, and deleting secrets and secret imports. If permission is recursive, it can also edit and create folders                 |
 | **Manage**      | Everything in Edit, plus managing secret rotations, dynamic secret root credentials, honey tokens, and secret syncs, including reading the credentials they generate. |
 | **Full Access** | Everything in Manage, plus deleting subfolders of this folder and granting or revoking access to it. This role doesn't grant access to delete the folder itself, because deleting a folder is authorized on its parent.                                     |
+
+If you [apply a role to subfolders](#applying-access-to-subfolders), Edit, Manage, and Full Access also let someone create and edit folders anywhere in the environment. With Full Access, they can also delete any folder in the environment.
 
 <Warning>
   If you move or rename a folder, it keeps the same role. Deleting the folder removes the role permanently.
@@ -81,13 +79,53 @@ There are five different folder access roles, listed here from least to most pri
   </Step>
 </Steps>
 
+## Applying access to subfolders
+
+A folder role on the root folder (`/`) of an environment can also apply to every folder below it, including folders created later. Use this to give someone one role across a whole environment, or to hold them to a lower role everywhere in it. 
+
+To apply a role to subfolders, or to change or remove a role that applies to them, you need a role that can manage access on `/` and every folder below it, such as the Admin project role or Full Access on `/` applied to subfolders.
+
+<Steps>
+  <Step>
+    On your project's **Secrets** page, select an environment. On the environment's root folder (`/`), select **Manage Access** at the right end of the folder path.
+  </Step>
+  <Step>
+    Find the member in the list, then:
+
+    - If the member has no folder role, select **Grant Access**, select **Apply to Subfolders**, then choose a role
+    - If the member already has a folder role on `/`, open their role menu and select **Apply to Subfolders**
+
+    If the row only shows a **Project** badge, choose a folder role from its role menu first, then open the menu again and select **Apply to Subfolders**.
+
+  </Step>
+  <Step>
+    Confirm that the member's row shows a **Recursive** badge.
+  </Step>
+</Steps>
+
+To stop applying the role to subfolders, select **Apply to Subfolders** in the row's role menu again. The role stays on `/`. You can also apply a role to subfolders from a member's detail page, as [Reviewing folder access](#reviewing-folder-access) describes.
+
+### Combining with a role on a nested folder
+
+If someone also has a role on a nested folder, that role applies inside that folder only, and it can be higher or lower than the role from `/`. The folders below the nested folder use the role from `/` again. For example, if someone has Read on `/` applied to subfolders and Edit on `/payments`:
+
+- In `/payments`, they can edit secrets
+- In `/` and `/payments/keys`, they can only read secrets
+
+### Seeing inherited access in a subfolder
+
+In a subfolder's **Manage Permissions** sheet, the member's row shows the role from `/` with a `/` badge. You can't change or remove that role from the subfolder. Instead, open the row's role menu and:
+
+- Select **Manage on /** to open the root folder's sheet, where you can change or remove the role
+- Choose a role under **Add a Role on This Folder** to set a different role on this folder only
+
 ## Setting temporary access
 
 To set an expiration, open an existing folder grant's role menu and select **Add Temporary Access** or **Edit Temporary Access**. Enter a duration, such as `4h`, then select **Apply**.
 
 ![Set a duration in the Temporary Access dialog](/images/platform/access-controls/folder-rbac/temporary-access-dialog.png)
 
-The row shows the time remaining. Once the grant expires, the user or machine identity falls back to their project roles.
+The row shows the time remaining. Once the grant expires, the user or machine identity falls back to their project roles, or to their role on `/` if that role applies to subfolders.
 
 <Note>
   Full Access can't be temporary. A Full Access holder can grant folder
@@ -97,6 +135,8 @@ The row shows the time remaining. Once the grant expires, the user or machine id
 
 ## Reviewing folder access
 
-To see every folder a user or machine identity has been granted access to, go to your project's **Access Control** page and open that user/identity. The Folder Access lists each grant with its folder, environment, role, and duration, and lets you change or revoke it.
+To see every folder a user or machine identity has been granted access to, go to your project's **Access Control** page and open the user or machine identity. The **Folder Access** section lists each grant with its folder, environment, role, and duration, and lets you change or revoke it.
+
+If a grant applies to subfolders, its row shows a **Recursive** badge. To apply a grant on `/` to subfolders, or to stop applying it, turn **Apply to subfolders** on or off in the **Grant Folder Access** or **Edit Folder Access** sheet.
 
 ![Folder access on a user's detail page](/images/platform/access-controls/folder-rbac/user-folder-access-details.png)
