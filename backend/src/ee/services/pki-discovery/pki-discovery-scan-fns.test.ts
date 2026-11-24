@@ -1,8 +1,9 @@
 import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { DatabaseError } from "@app/lib/errors";
 
-import { findOrCreateNetworkInstallation } from "./pki-discovery-scan-fns";
+import { findOrCreateNetworkInstallation, processDiscoveredCertificate } from "./pki-discovery-scan-fns";
 
-vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
 type TDeps = Parameters<typeof findOrCreateNetworkInstallation>[0];
 
@@ -51,5 +52,42 @@ describe("findOrCreateNetworkInstallation", () => {
     expect(result).toEqual({ id: "installation-2" });
     expect(findByFingerprint).toHaveBeenCalledTimes(2);
     expect(updateById).toHaveBeenCalledWith("installation-2", { lastSeenAt: data.scanTime }, tx);
+  });
+});
+
+describe("processDiscoveredCertificate", () => {
+  const certResult = {
+    pemChain: [],
+    fingerprint: "ab".repeat(32),
+    fingerprintSha1: "cd".repeat(20),
+    commonName: "web.example.com",
+    notBefore: new Date("2026-01-01T00:00:00.000Z"),
+    notAfter: new Date("2026-04-01T00:00:00.000Z"),
+    serialNumber: "0a1b2c"
+  } as Parameters<typeof processDiscoveredCertificate>[0];
+
+  it("links the certificate a concurrent scan inserted when the insert hits the unique index", async () => {
+    const primary = { node: "primary" };
+    const findOneLiveFirst = vi.fn().mockResolvedValueOnce(undefined).mockResolvedValueOnce({ id: "cert-2" });
+    const certificateDAL = {
+      findOneLiveFirst,
+      primaryNode: vi.fn().mockReturnValue(primary),
+      transaction: vi
+        .fn()
+        .mockRejectedValue(new DatabaseError({ name: "Create", error: { code: DatabaseErrorCode.UniqueViolation } }))
+    };
+
+    const result = await processDiscoveredCertificate(certResult, "project-1", {
+      certificateDAL,
+      certificateBodyDAL: {},
+      kmsEncryptor: vi.fn()
+    } as unknown as Parameters<typeof processDiscoveredCertificate>[2]);
+
+    expect(result).toBe("cert-2");
+    expect(findOneLiveFirst).toHaveBeenNthCalledWith(
+      2,
+      { projectId: "project-1", fingerprintSha256: certResult.fingerprint },
+      primary
+    );
   });
 });

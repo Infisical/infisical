@@ -3,6 +3,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
@@ -864,6 +865,16 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionAgentVaultHookActions.Create,
+      ProjectPermissionAgentVaultHookActions.Edit,
+      ProjectPermissionAgentVaultHookActions.Delete
+    ],
+    ProjectPermissionSub.AgentVaultHooks
+  );
+
+  can(
+    [
       ProjectPermissionAppConnectionActions.Read,
       ProjectPermissionAppConnectionActions.Create,
       ProjectPermissionAppConnectionActions.Edit,
@@ -955,6 +966,7 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
   );
   can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
   can([ProjectPermissionAgentVaultSkillActions.Read], ProjectPermissionSub.AgentVaultSkills);
+  can([ProjectPermissionAgentVaultHookActions.Read], ProjectPermissionSub.AgentVaultHooks);
 
   return rules;
 };

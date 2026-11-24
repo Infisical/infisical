@@ -1,5 +1,7 @@
 import ConnectionString from "mongodb-connection-string-url";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   generateAwsIamSessionCredentials,
@@ -451,6 +453,7 @@ type CloudConnectionValidator = (params: {
   connectionDetails: Record<string, unknown>;
   credentials: Record<string, unknown> | null;
   orgId: string;
+  instanceConfigService: TInstanceConfigService;
 }) => Promise<void>;
 
 export const CLOUD_CONNECTION_VALIDATORS: Partial<Record<PamAccountType, CloudConnectionValidator>> = {
@@ -471,13 +474,14 @@ export const CLOUD_CONNECTION_VALIDATORS: Partial<Record<PamAccountType, CloudCo
       scope: AZURE_SCOPES.arm
     });
   },
-  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials, orgId }) => {
+  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials, orgId, instanceConfigService }) => {
     if (!credentials) return;
     await mintGcpAccessToken({
       serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
       authMethod: credentials.authMethod as string,
       serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
-      orgId
+      orgId,
+      instanceConfigService
     });
   }
 };

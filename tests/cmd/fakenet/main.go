@@ -17,6 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Infisical/infisical/tests/fakes/acmeca"
 	"github.com/Infisical/infisical/tests/fakes/alicloud"
@@ -28,6 +29,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/digicert"
 	"github.com/Infisical/infisical/tests/fakes/dnsmadeeasy"
 	"github.com/Infisical/infisical/tests/fakes/f5bigip"
+	"github.com/Infisical/infisical/tests/fakes/gcp"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/godaddy"
 	"github.com/Infisical/infisical/tests/fakes/imperva"
@@ -42,6 +44,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oci"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/panos"
+	"github.com/Infisical/infisical/tests/fakes/pwnedpasswords"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fakes/venaficloud"
@@ -72,7 +75,8 @@ func main() {
 		webhook.Slack,
 		webhook.Splunk,
 		vercel.Service,
-		oauth.Google, oauth.GitHub, oauth.GitLab, oauth.GCPIAMCredentials, oauth.GCPCertificateManager,
+		oauth.Google, oauth.GitHub, oauth.GitLab, oauth.GCPCertificateManager,
+		gcp.STS, gcpIAMCredentials{},
 		kubernetes.Service, azure.Service, azure.KeyVault, alicloud.Service, oci.Service,
 		ldap.Service, linuxserver.Service,
 		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
@@ -80,6 +84,7 @@ func main() {
 		digicert.Service, godaddy.Service, venafitpp.Service, venaficloud.Service, azureadcs.Service,
 		chef.Service,
 		imperva.Provisioning, imperva.REST,
+		pwnedpasswords.Service,
 	}
 	srv := fakenet.New(append(services, aws.Services...)...)
 
@@ -119,4 +124,28 @@ func main() {
 	}
 	log.Printf("fakenet: %s serving %v", selfIP, srv.Hosts())
 	log.Fatalf("fakenet: https listener: %v", http.Serve(ln, srv))
+}
+
+// gcpIAMCredentials serves iamcredentials.googleapis.com for both of its callers,
+// since fakenet keeps one service per host. A token the instance's own service account
+// redeemed impersonates an account (oauth, scoped by its email); a token STS issued
+// for a workload identity pool impersonates through federation (gcp, scoped by pool).
+type gcpIAMCredentials struct{}
+
+func (gcpIAMCredentials) Host() string { return gcp.IAMCredentials.Host() }
+
+func (gcpIAMCredentials) Scope(r *http.Request) (string, bool) {
+	if key, ok := oauth.GCPIAMCredentials.Scope(r); ok {
+		return key, true
+	}
+	return gcp.IAMCredentials.Scope(r)
+}
+
+// New picks the fake by scope key: pool ids cannot contain a dot, so only the oauth
+// side's keys are service account emails.
+func (gcpIAMCredentials) New(events fakenet.Emitter) fakenet.Fake {
+	if strings.HasSuffix(events.Scope(), ".iam.gserviceaccount.com") {
+		return oauth.GCPIAMCredentials.New(events)
+	}
+	return gcp.IAMCredentials.New(events)
 }

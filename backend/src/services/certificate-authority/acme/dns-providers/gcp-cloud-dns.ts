@@ -8,7 +8,7 @@ import { logger } from "@app/lib/logger";
 import { GCP_CLOUD_DNS_ZONE_RESOURCE_PATTERN } from "@app/services/app-connection/gcp/gcp-connection-constants";
 import { isGcpServiceDisabledError, TGoogleApiError } from "@app/services/app-connection/gcp/gcp-connection-errors";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp/gcp-connection-fns";
-import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
+import { TGcpConnection, TGcpConnectionAuthDeps } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { TDnsRecordLockKeyStore, withDnsRecordLock } from "./dns-record-lock";
@@ -100,12 +100,13 @@ const submitChange = async (zoneUrl: string, accessToken: string, change: TRecor
 
 const submitWithRetry = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   zoneUrl: string,
   fqdn: string,
   buildChange: TBuildChange
 ) => {
-  const accessToken = await getGcpConnectionAuthToken(connection);
+  const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
   for (let attempt = 1; attempt <= MAX_CHANGE_ATTEMPTS; attempt += 1) {
     let changeHadDeletions = false;
@@ -131,6 +132,7 @@ const submitWithRetry = async (
 
 const applyTxtRecordChange = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   buildChange: TBuildChange,
@@ -150,12 +152,13 @@ const applyTxtRecordChange = async (
       abortSignal
     },
     keyStore,
-    () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange)
+    () => submitWithRetry(connection, authDeps, hostedZoneId, zoneUrl, fqdn, buildChange)
   );
 };
 
 export const gcpCloudDnsInsertTxtRecord = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   value: string,
@@ -164,6 +167,7 @@ export const gcpCloudDnsInsertTxtRecord = async (
 ) => {
   await applyTxtRecordChange(
     connection,
+    authDeps,
     hostedZoneId,
     recordName,
     (fqdn, existing) => {
@@ -187,6 +191,7 @@ export const gcpCloudDnsInsertTxtRecord = async (
 
 export const gcpCloudDnsDeleteTxtRecord = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   value: string,
@@ -194,6 +199,7 @@ export const gcpCloudDnsDeleteTxtRecord = async (
 ) => {
   await applyTxtRecordChange(
     connection,
+    authDeps,
     hostedZoneId,
     recordName,
     (fqdn, existing) => {

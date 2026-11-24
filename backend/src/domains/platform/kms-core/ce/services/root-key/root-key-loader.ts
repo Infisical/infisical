@@ -42,7 +42,7 @@ export class RootKeyLoader {
     else if (!isHsmConfigured) this.rootKeyWrappings.for(RootKeyEncryptionStrategy.Software).assertCanBoot();
 
     const rootKey = await this.resolve(isHsmConfigured);
-    logger.info("KMS: Loading ROOT Key into Memory.");
+    logger?.info("KMS: Loading ROOT Key into Memory.");
 
     if (this.skipRotationState) return rootKey;
     await this.ensureLegacyKeyMaterial(rootKey);
@@ -75,7 +75,7 @@ export class RootKeyLoader {
     const label = this.rootKeyWrappings.currentKekLabel;
     const history = await this.stores.kekHistoryStore.findPage({ offset: 0, limit: 5 }).catch(() => []);
     const known = history.map((entry) => entry.kekLabel).join(", ");
-    logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
+    logger?.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
     throw new ExternalSystemError({
       message: `The configured encryption key (label ${label ?? "unknown"}) does not decrypt this database's root key. ${
         known
@@ -86,7 +86,7 @@ export class RootKeyLoader {
   }
 
   private async bootstrap(isHsmConfigured: boolean): Promise<RootKeyConfig> {
-    logger.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
+    logger?.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
     const strategy = isHsmConfigured ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
     const wrapping = this.rootKeyWrappings.for(strategy);
     const rootKey = await wrapping.generate();
@@ -94,7 +94,7 @@ export class RootKeyLoader {
     // Wrap before the transaction opens, since this can be an HSM round trip. A pod that loses the race below
     // discards its key unused.
     const encryptedRootKey = await wrapping.wrap(rootKey).catch((err) => {
-      logger.error({ hsmEnabled: isHsmConfigured, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
+      logger?.error({ hsmEnabled: isHsmConfigured, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
       throw err;
     });
 
@@ -116,20 +116,20 @@ export class RootKeyLoader {
   private async recordResolution(row: RootKeyConfig) {
     const label = this.rootKeyWrappings.currentKekLabel;
     if (row.isStaged && (await this.promote(row.id, label))) {
-      logger.info(`KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`);
+      logger?.info(`KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`);
     }
 
     if (!row.kekLabel && label) {
       await this.updateRow(row.id, (current) => current.labelWith(label)).catch((err: unknown) =>
-        logger.warn({ err }, "KMS: Failed to label a root key row")
+        logger?.warn({ err }, "KMS: Failed to label a root key row")
       );
     }
 
     if (row.supersededAt) {
       await this.updateRow(row.id, (current) => current.recordResolution(new Date())).catch((err: unknown) =>
-        logger.warn({ err }, "KMS: Failed to record use of a superseded root key")
+        logger?.warn({ err }, "KMS: Failed to record use of a superseded root key")
       );
-      logger.warn(
+      logger?.warn(
         `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [label=${
           label ?? "hsm"
         }]. Roll it onto the current key before the previous one is removed.`
@@ -162,7 +162,7 @@ export class RootKeyLoader {
       for (const stale of superseded) {
         // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
         await removeRootKeyConfig(stores, stale);
-        logger.info(
+        logger?.info(
           `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${stale.kekLabel ?? "unknown"}]`
         );
       }
@@ -230,7 +230,7 @@ export class RootKeyLoader {
       })
       .catch((err: unknown) => {
         // Never block boot on a bookkeeping row.
-        logger.warn({ err }, "KMS: Failed to record initial encryption key history entry");
+        logger?.warn({ err }, "KMS: Failed to record initial encryption key history entry");
       });
   }
 }

@@ -2364,6 +2364,7 @@ func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermis
 // Defines values for UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject.
 const (
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultAccessBundles     UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-access-bundles"
+	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultHooks             UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-hooks"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies           UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-proxies"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions          UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-sessions"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-skills"
@@ -2427,6 +2428,8 @@ const (
 func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject) Valid() bool {
 	switch e {
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultHooks:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies:
 		return true
@@ -2718,6 +2721,7 @@ func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsAction) Vali
 // Defines values for CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject.
 const (
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
+	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks             CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-hooks"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
@@ -2781,6 +2785,8 @@ const (
 func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject) Valid() bool {
 	switch e {
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
@@ -3057,6 +3063,7 @@ func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsAction) Vali
 // Defines values for CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject.
 const (
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
+	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks             CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-hooks"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
@@ -3120,6 +3127,8 @@ const (
 func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject) Valid() bool {
 	switch e {
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
@@ -6698,13 +6707,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections6RotationRotationStat
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections7App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections7AppAzureKeyVault ListAppConnections200JSONResponseBodyAppConnections7App = "azure-key-vault"
+	ListAppConnections200JSONResponseBodyAppConnections7AppGcp ListAppConnections200JSONResponseBodyAppConnections7App = "gcp"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections7App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections7App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections7AppAzureKeyVault:
+	case ListAppConnections200JSONResponseBodyAppConnections7AppGcp:
 		return true
 	default:
 		return false
@@ -6713,13 +6722,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections7App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections7Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections7MethodOauth ListAppConnections200JSONResponseBodyAppConnections7Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections7MethodWorkloadIdentityFederation ListAppConnections200JSONResponseBodyAppConnections7Method = "workload-identity-federation"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections7Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections7Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections7MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections7MethodWorkloadIdentityFederation:
 		return true
 	default:
 		return false
@@ -6761,13 +6770,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections8App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections8Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections8MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections8Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections8MethodOauth ListAppConnections200JSONResponseBodyAppConnections8Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections8Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections8Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections8MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections8MethodOauth:
 		return true
 	default:
 		return false
@@ -6809,13 +6818,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections9App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections9Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections9MethodCertificate ListAppConnections200JSONResponseBodyAppConnections9Method = "certificate"
+	ListAppConnections200JSONResponseBodyAppConnections9MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections9Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections9Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections9Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections9MethodCertificate:
+	case ListAppConnections200JSONResponseBodyAppConnections9MethodClientSecret:
 		return true
 	default:
 		return false
@@ -6857,13 +6866,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections10App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections10Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections10MethodManagedIdentity ListAppConnections200JSONResponseBodyAppConnections10Method = "managed-identity"
+	ListAppConnections200JSONResponseBodyAppConnections10MethodCertificate ListAppConnections200JSONResponseBodyAppConnections10Method = "certificate"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections10Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections10Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections10MethodManagedIdentity:
+	case ListAppConnections200JSONResponseBodyAppConnections10MethodCertificate:
 		return true
 	default:
 		return false
@@ -6890,13 +6899,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections10RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections11App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections11AppAzureAppConfiguration ListAppConnections200JSONResponseBodyAppConnections11App = "azure-app-configuration"
+	ListAppConnections200JSONResponseBodyAppConnections11AppAzureKeyVault ListAppConnections200JSONResponseBodyAppConnections11App = "azure-key-vault"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections11App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections11App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections11AppAzureAppConfiguration:
+	case ListAppConnections200JSONResponseBodyAppConnections11AppAzureKeyVault:
 		return true
 	default:
 		return false
@@ -6905,13 +6914,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections11App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections11Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections11MethodOauth ListAppConnections200JSONResponseBodyAppConnections11Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections11MethodManagedIdentity ListAppConnections200JSONResponseBodyAppConnections11Method = "managed-identity"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections11Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections11Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections11MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections11MethodManagedIdentity:
 		return true
 	default:
 		return false
@@ -6953,13 +6962,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections12App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections12Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections12MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections12Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections12MethodOauth ListAppConnections200JSONResponseBodyAppConnections12Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections12Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections12Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections12MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections12MethodOauth:
 		return true
 	default:
 		return false
@@ -6986,13 +6995,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections12RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections13App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections13AppAzureDevops ListAppConnections200JSONResponseBodyAppConnections13App = "azure-devops"
+	ListAppConnections200JSONResponseBodyAppConnections13AppAzureAppConfiguration ListAppConnections200JSONResponseBodyAppConnections13App = "azure-app-configuration"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections13App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections13App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections13AppAzureDevops:
+	case ListAppConnections200JSONResponseBodyAppConnections13AppAzureAppConfiguration:
 		return true
 	default:
 		return false
@@ -7001,13 +7010,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections13App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections13Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections13MethodOauth ListAppConnections200JSONResponseBodyAppConnections13Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections13MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections13Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections13Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections13Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections13MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections13MethodClientSecret:
 		return true
 	default:
 		return false
@@ -7049,13 +7058,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections14App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections14Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections14MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections14Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections14MethodOauth ListAppConnections200JSONResponseBodyAppConnections14Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections14Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections14Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections14MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections14MethodOauth:
 		return true
 	default:
 		return false
@@ -7097,13 +7106,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections15App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections15Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections15MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections15Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections15MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections15Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections15Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections15Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections15MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections15MethodAccessToken:
 		return true
 	default:
 		return false
@@ -7130,34 +7139,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections15RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections16App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections16AppDatabricks ListAppConnections200JSONResponseBodyAppConnections16App = "databricks"
+	ListAppConnections200JSONResponseBodyAppConnections16AppAzureDevops ListAppConnections200JSONResponseBodyAppConnections16App = "azure-devops"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections16App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections16App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections16AppDatabricks:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes.
-const (
-	ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesAuthentication ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes = "authentication"
-	ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesScim           ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes = "scim"
-	ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesSecrets        ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes = "secrets"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes) Valid() bool {
-	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesAuthentication:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesScim:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopesSecrets:
+	case ListAppConnections200JSONResponseBodyAppConnections16AppAzureDevops:
 		return true
 	default:
 		return false
@@ -7166,13 +7154,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes) 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections16Method.
 const (
-	ServicePrincipal ListAppConnections200JSONResponseBodyAppConnections16Method = "service-principal"
+	ListAppConnections200JSONResponseBodyAppConnections16MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections16Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections16Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections16Method) Valid() bool {
 	switch e {
-	case ServicePrincipal:
+	case ListAppConnections200JSONResponseBodyAppConnections16MethodClientSecret:
 		return true
 	default:
 		return false
@@ -7199,13 +7187,34 @@ func (e ListAppConnections200JSONResponseBodyAppConnections16RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections17App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections17AppHumanitec ListAppConnections200JSONResponseBodyAppConnections17App = "humanitec"
+	ListAppConnections200JSONResponseBodyAppConnections17AppDatabricks ListAppConnections200JSONResponseBodyAppConnections17App = "databricks"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections17App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections17App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections17AppHumanitec:
+	case ListAppConnections200JSONResponseBodyAppConnections17AppDatabricks:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesAuthentication ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes = "authentication"
+	ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesScim           ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes = "scim"
+	ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesSecrets        ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes = "secrets"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesAuthentication:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesScim:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopesSecrets:
 		return true
 	default:
 		return false
@@ -7214,13 +7223,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections17App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections17Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections17MethodApiToken ListAppConnections200JSONResponseBodyAppConnections17Method = "api-token"
+	ServicePrincipal ListAppConnections200JSONResponseBodyAppConnections17Method = "service-principal"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections17Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections17Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections17MethodApiToken:
+	case ServicePrincipal:
 		return true
 	default:
 		return false
@@ -7247,13 +7256,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections17RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections18App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections18AppTerraformCloud ListAppConnections200JSONResponseBodyAppConnections18App = "terraform-cloud"
+	ListAppConnections200JSONResponseBodyAppConnections18AppHumanitec ListAppConnections200JSONResponseBodyAppConnections18App = "humanitec"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections18App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections18App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections18AppTerraformCloud:
+	case ListAppConnections200JSONResponseBodyAppConnections18AppHumanitec:
 		return true
 	default:
 		return false
@@ -7295,13 +7304,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections18RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections19App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections19AppVercel ListAppConnections200JSONResponseBodyAppConnections19App = "vercel"
+	ListAppConnections200JSONResponseBodyAppConnections19AppTerraformCloud ListAppConnections200JSONResponseBodyAppConnections19App = "terraform-cloud"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections19App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections19App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections19AppVercel:
+	case ListAppConnections200JSONResponseBodyAppConnections19AppTerraformCloud:
 		return true
 	default:
 		return false
@@ -7343,13 +7352,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections19RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections20App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections20AppPostgres ListAppConnections200JSONResponseBodyAppConnections20App = "postgres"
+	ListAppConnections200JSONResponseBodyAppConnections20AppVercel ListAppConnections200JSONResponseBodyAppConnections20App = "vercel"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections20App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections20App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections20AppPostgres:
+	case ListAppConnections200JSONResponseBodyAppConnections20AppVercel:
 		return true
 	default:
 		return false
@@ -7358,13 +7367,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections20App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections20Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections20MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections20Method = "username-and-password"
+	ListAppConnections200JSONResponseBodyAppConnections20MethodApiToken ListAppConnections200JSONResponseBodyAppConnections20Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections20Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections20Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections20MethodUsernameAndPassword:
+	case ListAppConnections200JSONResponseBodyAppConnections20MethodApiToken:
 		return true
 	default:
 		return false
@@ -7391,13 +7400,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections20RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections21App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections21AppMssql ListAppConnections200JSONResponseBodyAppConnections21App = "mssql"
+	ListAppConnections200JSONResponseBodyAppConnections21AppPostgres ListAppConnections200JSONResponseBodyAppConnections21App = "postgres"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections21App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections21App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections21AppMssql:
+	case ListAppConnections200JSONResponseBodyAppConnections21AppPostgres:
 		return true
 	default:
 		return false
@@ -7439,13 +7448,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections21RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections22App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections22AppMysql ListAppConnections200JSONResponseBodyAppConnections22App = "mysql"
+	ListAppConnections200JSONResponseBodyAppConnections22AppMssql ListAppConnections200JSONResponseBodyAppConnections22App = "mssql"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections22App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections22App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections22AppMysql:
+	case ListAppConnections200JSONResponseBodyAppConnections22AppMssql:
 		return true
 	default:
 		return false
@@ -7487,13 +7496,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections22RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections23App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections23AppCamunda ListAppConnections200JSONResponseBodyAppConnections23App = "camunda"
+	ListAppConnections200JSONResponseBodyAppConnections23AppMysql ListAppConnections200JSONResponseBodyAppConnections23App = "mysql"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections23App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections23App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections23AppCamunda:
+	case ListAppConnections200JSONResponseBodyAppConnections23AppMysql:
 		return true
 	default:
 		return false
@@ -7502,13 +7511,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections23App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections23Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections23MethodClientCredentials ListAppConnections200JSONResponseBodyAppConnections23Method = "client-credentials"
+	ListAppConnections200JSONResponseBodyAppConnections23MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections23Method = "username-and-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections23Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections23Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections23MethodClientCredentials:
+	case ListAppConnections200JSONResponseBodyAppConnections23MethodUsernameAndPassword:
 		return true
 	default:
 		return false
@@ -7535,13 +7544,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections23RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections24App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections24AppAuth0 ListAppConnections200JSONResponseBodyAppConnections24App = "auth0"
+	ListAppConnections200JSONResponseBodyAppConnections24AppCamunda ListAppConnections200JSONResponseBodyAppConnections24App = "camunda"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections24App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections24App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections24AppAuth0:
+	case ListAppConnections200JSONResponseBodyAppConnections24AppCamunda:
 		return true
 	default:
 		return false
@@ -7583,13 +7592,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections24RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections25App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections25AppHashicorpVault ListAppConnections200JSONResponseBodyAppConnections25App = "hashicorp-vault"
+	ListAppConnections200JSONResponseBodyAppConnections25AppAuth0 ListAppConnections200JSONResponseBodyAppConnections25App = "auth0"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections25App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections25App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections25AppHashicorpVault:
+	case ListAppConnections200JSONResponseBodyAppConnections25AppAuth0:
 		return true
 	default:
 		return false
@@ -7598,13 +7607,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections25App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections25Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections25MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections25Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections25MethodClientCredentials ListAppConnections200JSONResponseBodyAppConnections25Method = "client-credentials"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections25Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections25Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections25MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections25MethodClientCredentials:
 		return true
 	default:
 		return false
@@ -7646,13 +7655,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections26App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections26Method.
 const (
-	AppRole ListAppConnections200JSONResponseBodyAppConnections26Method = "app-role"
+	ListAppConnections200JSONResponseBodyAppConnections26MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections26Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections26Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections26Method) Valid() bool {
 	switch e {
-	case AppRole:
+	case ListAppConnections200JSONResponseBodyAppConnections26MethodAccessToken:
 		return true
 	default:
 		return false
@@ -7679,13 +7688,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections26RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections27App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections27AppAzureClientSecrets ListAppConnections200JSONResponseBodyAppConnections27App = "azure-client-secrets"
+	ListAppConnections200JSONResponseBodyAppConnections27AppHashicorpVault ListAppConnections200JSONResponseBodyAppConnections27App = "hashicorp-vault"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections27App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections27App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections27AppAzureClientSecrets:
+	case ListAppConnections200JSONResponseBodyAppConnections27AppHashicorpVault:
 		return true
 	default:
 		return false
@@ -7694,13 +7703,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections27App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections27Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections27MethodOauth ListAppConnections200JSONResponseBodyAppConnections27Method = "oauth"
+	AppRole ListAppConnections200JSONResponseBodyAppConnections27Method = "app-role"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections27Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections27Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections27MethodOauth:
+	case AppRole:
 		return true
 	default:
 		return false
@@ -7742,13 +7751,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections28App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections28Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections28MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections28Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections28MethodOauth ListAppConnections200JSONResponseBodyAppConnections28Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections28Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections28Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections28MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections28MethodOauth:
 		return true
 	default:
 		return false
@@ -7790,13 +7799,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections29App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections29Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections29MethodCertificate ListAppConnections200JSONResponseBodyAppConnections29Method = "certificate"
+	ListAppConnections200JSONResponseBodyAppConnections29MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections29Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections29Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections29Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections29MethodCertificate:
+	case ListAppConnections200JSONResponseBodyAppConnections29MethodClientSecret:
 		return true
 	default:
 		return false
@@ -7823,13 +7832,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections29RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections30App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections30AppWindmill ListAppConnections200JSONResponseBodyAppConnections30App = "windmill"
+	ListAppConnections200JSONResponseBodyAppConnections30AppAzureClientSecrets ListAppConnections200JSONResponseBodyAppConnections30App = "azure-client-secrets"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections30App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections30App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections30AppWindmill:
+	case ListAppConnections200JSONResponseBodyAppConnections30AppAzureClientSecrets:
 		return true
 	default:
 		return false
@@ -7838,13 +7847,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections30App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections30Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections30MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections30Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections30MethodCertificate ListAppConnections200JSONResponseBodyAppConnections30Method = "certificate"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections30Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections30Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections30MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections30MethodCertificate:
 		return true
 	default:
 		return false
@@ -7871,28 +7880,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections30RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections31App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections31AppLdap ListAppConnections200JSONResponseBodyAppConnections31App = "ldap"
+	ListAppConnections200JSONResponseBodyAppConnections31AppWindmill ListAppConnections200JSONResponseBodyAppConnections31App = "windmill"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections31App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections31App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections31AppLdap:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider.
-const (
-	ActiveDirectory ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider = "active-directory"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider) Valid() bool {
-	switch e {
-	case ActiveDirectory:
+	case ListAppConnections200JSONResponseBodyAppConnections31AppWindmill:
 		return true
 	default:
 		return false
@@ -7901,13 +7895,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections31Method.
 const (
-	SimpleBind ListAppConnections200JSONResponseBodyAppConnections31Method = "simple-bind"
+	ListAppConnections200JSONResponseBodyAppConnections31MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections31Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections31Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections31Method) Valid() bool {
 	switch e {
-	case SimpleBind:
+	case ListAppConnections200JSONResponseBodyAppConnections31MethodAccessToken:
 		return true
 	default:
 		return false
@@ -7934,13 +7928,28 @@ func (e ListAppConnections200JSONResponseBodyAppConnections31RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections32App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections32AppTeamcity ListAppConnections200JSONResponseBodyAppConnections32App = "teamcity"
+	ListAppConnections200JSONResponseBodyAppConnections32AppLdap ListAppConnections200JSONResponseBodyAppConnections32App = "ldap"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections32App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections32App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections32AppTeamcity:
+	case ListAppConnections200JSONResponseBodyAppConnections32AppLdap:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider.
+const (
+	ActiveDirectory ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider = "active-directory"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider) Valid() bool {
+	switch e {
+	case ActiveDirectory:
 		return true
 	default:
 		return false
@@ -7949,13 +7958,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections32App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections32Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections32MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections32Method = "access-token"
+	SimpleBind ListAppConnections200JSONResponseBodyAppConnections32Method = "simple-bind"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections32Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections32Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections32MethodAccessToken:
+	case SimpleBind:
 		return true
 	default:
 		return false
@@ -7982,13 +7991,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections32RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections33App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections33AppOci ListAppConnections200JSONResponseBodyAppConnections33App = "oci"
+	ListAppConnections200JSONResponseBodyAppConnections33AppTeamcity ListAppConnections200JSONResponseBodyAppConnections33App = "teamcity"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections33App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections33App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections33AppOci:
+	case ListAppConnections200JSONResponseBodyAppConnections33AppTeamcity:
 		return true
 	default:
 		return false
@@ -7997,13 +8006,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections33App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections33Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections33MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections33Method = "access-key"
+	ListAppConnections200JSONResponseBodyAppConnections33MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections33Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections33Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections33Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections33MethodAccessKey:
+	case ListAppConnections200JSONResponseBodyAppConnections33MethodAccessToken:
 		return true
 	default:
 		return false
@@ -8030,13 +8039,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections33RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections34App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections34AppOracledb ListAppConnections200JSONResponseBodyAppConnections34App = "oracledb"
+	ListAppConnections200JSONResponseBodyAppConnections34AppOci ListAppConnections200JSONResponseBodyAppConnections34App = "oci"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections34App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections34App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections34AppOracledb:
+	case ListAppConnections200JSONResponseBodyAppConnections34AppOci:
 		return true
 	default:
 		return false
@@ -8045,13 +8054,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections34App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections34Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections34MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections34Method = "username-and-password"
+	ListAppConnections200JSONResponseBodyAppConnections34MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections34Method = "access-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections34Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections34Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections34MethodUsernameAndPassword:
+	case ListAppConnections200JSONResponseBodyAppConnections34MethodAccessKey:
 		return true
 	default:
 		return false
@@ -8078,13 +8087,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections34RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections35App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections35AppN1password ListAppConnections200JSONResponseBodyAppConnections35App = "1password"
+	ListAppConnections200JSONResponseBodyAppConnections35AppOracledb ListAppConnections200JSONResponseBodyAppConnections35App = "oracledb"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections35App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections35App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections35AppN1password:
+	case ListAppConnections200JSONResponseBodyAppConnections35AppOracledb:
 		return true
 	default:
 		return false
@@ -8093,13 +8102,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections35App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections35Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections35MethodApiToken ListAppConnections200JSONResponseBodyAppConnections35Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections35MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections35Method = "username-and-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections35Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections35Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections35MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections35MethodUsernameAndPassword:
 		return true
 	default:
 		return false
@@ -8126,13 +8135,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections35RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections36App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections36AppHeroku ListAppConnections200JSONResponseBodyAppConnections36App = "heroku"
+	ListAppConnections200JSONResponseBodyAppConnections36AppN1password ListAppConnections200JSONResponseBodyAppConnections36App = "1password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections36App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections36App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections36AppHeroku:
+	case ListAppConnections200JSONResponseBodyAppConnections36AppN1password:
 		return true
 	default:
 		return false
@@ -8141,13 +8150,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections36App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections36Method.
 const (
-	AuthToken ListAppConnections200JSONResponseBodyAppConnections36Method = "auth-token"
+	ListAppConnections200JSONResponseBodyAppConnections36MethodApiToken ListAppConnections200JSONResponseBodyAppConnections36Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections36Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections36Method) Valid() bool {
 	switch e {
-	case AuthToken:
+	case ListAppConnections200JSONResponseBodyAppConnections36MethodApiToken:
 		return true
 	default:
 		return false
@@ -8189,13 +8198,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections37App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections37Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections37MethodOauth ListAppConnections200JSONResponseBodyAppConnections37Method = "oauth"
+	AuthToken ListAppConnections200JSONResponseBodyAppConnections37Method = "auth-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections37Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections37Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections37MethodOauth:
+	case AuthToken:
 		return true
 	default:
 		return false
@@ -8222,13 +8231,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections37RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections38App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections38AppHasuraCloud ListAppConnections200JSONResponseBodyAppConnections38App = "hasura-cloud"
+	ListAppConnections200JSONResponseBodyAppConnections38AppHeroku ListAppConnections200JSONResponseBodyAppConnections38App = "heroku"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections38App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections38App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections38AppHasuraCloud:
+	case ListAppConnections200JSONResponseBodyAppConnections38AppHeroku:
 		return true
 	default:
 		return false
@@ -8237,13 +8246,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections38App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections38Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections38MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections38Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections38MethodOauth ListAppConnections200JSONResponseBodyAppConnections38Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections38Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections38Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections38MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections38MethodOauth:
 		return true
 	default:
 		return false
@@ -8270,13 +8279,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections38RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections39App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections39AppRender ListAppConnections200JSONResponseBodyAppConnections39App = "render"
+	ListAppConnections200JSONResponseBodyAppConnections39AppHasuraCloud ListAppConnections200JSONResponseBodyAppConnections39App = "hasura-cloud"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections39App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections39App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections39AppRender:
+	case ListAppConnections200JSONResponseBodyAppConnections39AppHasuraCloud:
 		return true
 	default:
 		return false
@@ -8285,13 +8294,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections39App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections39Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections39MethodApiKey ListAppConnections200JSONResponseBodyAppConnections39Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections39MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections39Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections39Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections39Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections39MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections39MethodAccessToken:
 		return true
 	default:
 		return false
@@ -8318,13 +8327,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections39RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections40App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections40AppFlyio ListAppConnections200JSONResponseBodyAppConnections40App = "flyio"
+	ListAppConnections200JSONResponseBodyAppConnections40AppRender ListAppConnections200JSONResponseBodyAppConnections40App = "render"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections40App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections40App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections40AppFlyio:
+	case ListAppConnections200JSONResponseBodyAppConnections40AppRender:
 		return true
 	default:
 		return false
@@ -8333,13 +8342,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections40App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections40Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections40MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections40Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections40MethodApiKey ListAppConnections200JSONResponseBodyAppConnections40Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections40Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections40Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections40MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections40MethodApiKey:
 		return true
 	default:
 		return false
@@ -8366,13 +8375,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections40RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections41App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections41AppTriggerDev ListAppConnections200JSONResponseBodyAppConnections41App = "trigger-dev"
+	ListAppConnections200JSONResponseBodyAppConnections41AppFlyio ListAppConnections200JSONResponseBodyAppConnections41App = "flyio"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections41App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections41App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections41AppTriggerDev:
+	case ListAppConnections200JSONResponseBodyAppConnections41AppFlyio:
 		return true
 	default:
 		return false
@@ -8381,13 +8390,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections41App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections41Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections41MethodApiKey ListAppConnections200JSONResponseBodyAppConnections41Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections41MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections41Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections41Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections41Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections41MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections41MethodAccessToken:
 		return true
 	default:
 		return false
@@ -8414,34 +8423,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections41RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections42App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections42AppGitlab ListAppConnections200JSONResponseBodyAppConnections42App = "gitlab"
+	ListAppConnections200JSONResponseBodyAppConnections42AppTriggerDev ListAppConnections200JSONResponseBodyAppConnections42App = "trigger-dev"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections42App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections42App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections42AppGitlab:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType.
-const (
-	ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypeGroup    ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType = "group"
-	ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypePersonal ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType = "personal"
-	ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypeProject  ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType = "project"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType) Valid() bool {
-	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypeGroup:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypePersonal:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenTypeProject:
+	case ListAppConnections200JSONResponseBodyAppConnections42AppTriggerDev:
 		return true
 	default:
 		return false
@@ -8450,13 +8438,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTo
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections42Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections42MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections42Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections42MethodApiKey ListAppConnections200JSONResponseBodyAppConnections42Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections42Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections42Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections42MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections42MethodApiKey:
 		return true
 	default:
 		return false
@@ -8496,15 +8484,36 @@ func (e ListAppConnections200JSONResponseBodyAppConnections43App) Valid() bool {
 	}
 }
 
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypeGroup    ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType = "group"
+	ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypePersonal ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType = "personal"
+	ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypeProject  ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType = "project"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypeGroup:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypePersonal:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenTypeProject:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections43Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections43MethodOauth ListAppConnections200JSONResponseBodyAppConnections43Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections43MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections43Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections43Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections43Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections43MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections43MethodAccessToken:
 		return true
 	default:
 		return false
@@ -8531,13 +8540,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections43RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections44App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections44AppCloudflare ListAppConnections200JSONResponseBodyAppConnections44App = "cloudflare"
+	ListAppConnections200JSONResponseBodyAppConnections44AppGitlab ListAppConnections200JSONResponseBodyAppConnections44App = "gitlab"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections44App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections44App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections44AppCloudflare:
+	case ListAppConnections200JSONResponseBodyAppConnections44AppGitlab:
 		return true
 	default:
 		return false
@@ -8546,13 +8555,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections44App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections44Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections44MethodApiToken ListAppConnections200JSONResponseBodyAppConnections44Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections44MethodOauth ListAppConnections200JSONResponseBodyAppConnections44Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections44Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections44Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections44MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections44MethodOauth:
 		return true
 	default:
 		return false
@@ -8579,13 +8588,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections44RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections45App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections45AppBitbucket ListAppConnections200JSONResponseBodyAppConnections45App = "bitbucket"
+	ListAppConnections200JSONResponseBodyAppConnections45AppCloudflare ListAppConnections200JSONResponseBodyAppConnections45App = "cloudflare"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections45App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections45App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections45AppBitbucket:
+	case ListAppConnections200JSONResponseBodyAppConnections45AppCloudflare:
 		return true
 	default:
 		return false
@@ -8627,13 +8636,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections45RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections46App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections46AppZabbix ListAppConnections200JSONResponseBodyAppConnections46App = "zabbix"
+	ListAppConnections200JSONResponseBodyAppConnections46AppBitbucket ListAppConnections200JSONResponseBodyAppConnections46App = "bitbucket"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections46App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections46App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections46AppZabbix:
+	case ListAppConnections200JSONResponseBodyAppConnections46AppBitbucket:
 		return true
 	default:
 		return false
@@ -8675,13 +8684,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections46RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections47App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections47AppRailway ListAppConnections200JSONResponseBodyAppConnections47App = "railway"
+	ListAppConnections200JSONResponseBodyAppConnections47AppZabbix ListAppConnections200JSONResponseBodyAppConnections47App = "zabbix"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections47App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections47App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections47AppRailway:
+	case ListAppConnections200JSONResponseBodyAppConnections47AppZabbix:
 		return true
 	default:
 		return false
@@ -8690,19 +8699,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections47App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections47Method.
 const (
-	AccountToken ListAppConnections200JSONResponseBodyAppConnections47Method = "account-token"
-	ProjectToken ListAppConnections200JSONResponseBodyAppConnections47Method = "project-token"
-	TeamToken    ListAppConnections200JSONResponseBodyAppConnections47Method = "team-token"
+	ListAppConnections200JSONResponseBodyAppConnections47MethodApiToken ListAppConnections200JSONResponseBodyAppConnections47Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections47Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections47Method) Valid() bool {
 	switch e {
-	case AccountToken:
-		return true
-	case ProjectToken:
-		return true
-	case TeamToken:
+	case ListAppConnections200JSONResponseBodyAppConnections47MethodApiToken:
 		return true
 	default:
 		return false
@@ -8729,13 +8732,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections47RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections48App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections48AppCheckly ListAppConnections200JSONResponseBodyAppConnections48App = "checkly"
+	ListAppConnections200JSONResponseBodyAppConnections48AppRailway ListAppConnections200JSONResponseBodyAppConnections48App = "railway"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections48App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections48App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections48AppCheckly:
+	case ListAppConnections200JSONResponseBodyAppConnections48AppRailway:
 		return true
 	default:
 		return false
@@ -8744,13 +8747,19 @@ func (e ListAppConnections200JSONResponseBodyAppConnections48App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections48Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections48MethodApiKey ListAppConnections200JSONResponseBodyAppConnections48Method = "api-key"
+	AccountToken ListAppConnections200JSONResponseBodyAppConnections48Method = "account-token"
+	ProjectToken ListAppConnections200JSONResponseBodyAppConnections48Method = "project-token"
+	TeamToken    ListAppConnections200JSONResponseBodyAppConnections48Method = "team-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections48Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections48Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections48MethodApiKey:
+	case AccountToken:
+		return true
+	case ProjectToken:
+		return true
+	case TeamToken:
 		return true
 	default:
 		return false
@@ -8777,13 +8786,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections48RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections49App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections49AppCircleci ListAppConnections200JSONResponseBodyAppConnections49App = "circleci"
+	ListAppConnections200JSONResponseBodyAppConnections49AppCheckly ListAppConnections200JSONResponseBodyAppConnections49App = "checkly"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections49App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections49App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections49AppCircleci:
+	case ListAppConnections200JSONResponseBodyAppConnections49AppCheckly:
 		return true
 	default:
 		return false
@@ -8792,13 +8801,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections49App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections49Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections49MethodApiToken ListAppConnections200JSONResponseBodyAppConnections49Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections49MethodApiKey ListAppConnections200JSONResponseBodyAppConnections49Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections49Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections49Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections49MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections49MethodApiKey:
 		return true
 	default:
 		return false
@@ -8825,13 +8834,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections49RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections50App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections50AppCloud66 ListAppConnections200JSONResponseBodyAppConnections50App = "cloud-66"
+	ListAppConnections200JSONResponseBodyAppConnections50AppCircleci ListAppConnections200JSONResponseBodyAppConnections50App = "circleci"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections50App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections50App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections50AppCloud66:
+	case ListAppConnections200JSONResponseBodyAppConnections50AppCircleci:
 		return true
 	default:
 		return false
@@ -8840,13 +8849,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections50App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections50Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections50MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections50Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections50MethodApiToken ListAppConnections200JSONResponseBodyAppConnections50Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections50Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections50Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections50MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections50MethodApiToken:
 		return true
 	default:
 		return false
@@ -8873,13 +8882,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections50RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections51App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections51AppSupabase ListAppConnections200JSONResponseBodyAppConnections51App = "supabase"
+	ListAppConnections200JSONResponseBodyAppConnections51AppCloud66 ListAppConnections200JSONResponseBodyAppConnections51App = "cloud-66"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections51App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections51App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections51AppSupabase:
+	case ListAppConnections200JSONResponseBodyAppConnections51AppCloud66:
 		return true
 	default:
 		return false
@@ -8921,13 +8930,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections51RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections52App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections52AppDigitalOcean ListAppConnections200JSONResponseBodyAppConnections52App = "digital-ocean"
+	ListAppConnections200JSONResponseBodyAppConnections52AppSupabase ListAppConnections200JSONResponseBodyAppConnections52App = "supabase"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections52App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections52App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections52AppDigitalOcean:
+	case ListAppConnections200JSONResponseBodyAppConnections52AppSupabase:
 		return true
 	default:
 		return false
@@ -8936,13 +8945,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections52App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections52Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections52MethodApiToken ListAppConnections200JSONResponseBodyAppConnections52Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections52MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections52Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections52Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections52Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections52MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections52MethodAccessToken:
 		return true
 	default:
 		return false
@@ -8969,13 +8978,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections52RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections53App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections53AppNetlify ListAppConnections200JSONResponseBodyAppConnections53App = "netlify"
+	ListAppConnections200JSONResponseBodyAppConnections53AppDigitalOcean ListAppConnections200JSONResponseBodyAppConnections53App = "digital-ocean"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections53App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections53App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections53AppNetlify:
+	case ListAppConnections200JSONResponseBodyAppConnections53AppDigitalOcean:
 		return true
 	default:
 		return false
@@ -8984,13 +8993,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections53App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections53Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections53MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections53Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections53MethodApiToken ListAppConnections200JSONResponseBodyAppConnections53Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections53Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections53Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections53MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections53MethodApiToken:
 		return true
 	default:
 		return false
@@ -9017,13 +9026,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections53RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections54App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections54AppNorthflank ListAppConnections200JSONResponseBodyAppConnections54App = "northflank"
+	ListAppConnections200JSONResponseBodyAppConnections54AppNetlify ListAppConnections200JSONResponseBodyAppConnections54App = "netlify"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections54App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections54App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections54AppNorthflank:
+	case ListAppConnections200JSONResponseBodyAppConnections54AppNetlify:
 		return true
 	default:
 		return false
@@ -9032,13 +9041,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections54App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections54Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections54MethodApiToken ListAppConnections200JSONResponseBodyAppConnections54Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections54MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections54Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections54Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections54Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections54MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections54MethodAccessToken:
 		return true
 	default:
 		return false
@@ -9065,13 +9074,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections54RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections55App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections55AppOkta ListAppConnections200JSONResponseBodyAppConnections55App = "okta"
+	ListAppConnections200JSONResponseBodyAppConnections55AppNorthflank ListAppConnections200JSONResponseBodyAppConnections55App = "northflank"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections55App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections55App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections55AppOkta:
+	case ListAppConnections200JSONResponseBodyAppConnections55AppNorthflank:
 		return true
 	default:
 		return false
@@ -9113,13 +9122,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections55RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections56App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections56AppAzureAdcs ListAppConnections200JSONResponseBodyAppConnections56App = "azure-adcs"
+	ListAppConnections200JSONResponseBodyAppConnections56AppOkta ListAppConnections200JSONResponseBodyAppConnections56App = "okta"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections56App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections56App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections56AppAzureAdcs:
+	case ListAppConnections200JSONResponseBodyAppConnections56AppOkta:
 		return true
 	default:
 		return false
@@ -9128,13 +9137,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections56App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections56Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections56MethodUsernamePassword ListAppConnections200JSONResponseBodyAppConnections56Method = "username-password"
+	ListAppConnections200JSONResponseBodyAppConnections56MethodApiToken ListAppConnections200JSONResponseBodyAppConnections56Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections56Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections56Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections56MethodUsernamePassword:
+	case ListAppConnections200JSONResponseBodyAppConnections56MethodApiToken:
 		return true
 	default:
 		return false
@@ -9161,13 +9170,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections56RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections57App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections57AppAdcs ListAppConnections200JSONResponseBodyAppConnections57App = "adcs"
+	ListAppConnections200JSONResponseBodyAppConnections57AppAzureAdcs ListAppConnections200JSONResponseBodyAppConnections57App = "azure-adcs"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections57App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections57App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections57AppAdcs:
+	case ListAppConnections200JSONResponseBodyAppConnections57AppAzureAdcs:
 		return true
 	default:
 		return false
@@ -9209,13 +9218,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections57RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections58App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections58AppWinrm ListAppConnections200JSONResponseBodyAppConnections58App = "winrm"
+	ListAppConnections200JSONResponseBodyAppConnections58AppAdcs ListAppConnections200JSONResponseBodyAppConnections58App = "adcs"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections58App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections58App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections58AppWinrm:
+	case ListAppConnections200JSONResponseBodyAppConnections58AppAdcs:
 		return true
 	default:
 		return false
@@ -9257,13 +9266,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections58RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections59App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections59AppRedis ListAppConnections200JSONResponseBodyAppConnections59App = "redis"
+	ListAppConnections200JSONResponseBodyAppConnections59AppWinrm ListAppConnections200JSONResponseBodyAppConnections59App = "winrm"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections59App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections59App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections59AppRedis:
+	case ListAppConnections200JSONResponseBodyAppConnections59AppWinrm:
 		return true
 	default:
 		return false
@@ -9272,13 +9281,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections59App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections59Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections59MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections59Method = "username-and-password"
+	ListAppConnections200JSONResponseBodyAppConnections59MethodUsernamePassword ListAppConnections200JSONResponseBodyAppConnections59Method = "username-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections59Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections59Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections59MethodUsernameAndPassword:
+	case ListAppConnections200JSONResponseBodyAppConnections59MethodUsernamePassword:
 		return true
 	default:
 		return false
@@ -9305,13 +9314,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections59RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections60App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections60AppMongodb ListAppConnections200JSONResponseBodyAppConnections60App = "mongodb"
+	ListAppConnections200JSONResponseBodyAppConnections60AppRedis ListAppConnections200JSONResponseBodyAppConnections60App = "redis"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections60App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections60App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections60AppMongodb:
+	case ListAppConnections200JSONResponseBodyAppConnections60AppRedis:
 		return true
 	default:
 		return false
@@ -9353,13 +9362,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections60RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections61App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections61AppLaravelForge ListAppConnections200JSONResponseBodyAppConnections61App = "laravel-forge"
+	ListAppConnections200JSONResponseBodyAppConnections61AppMongodb ListAppConnections200JSONResponseBodyAppConnections61App = "mongodb"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections61App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections61App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections61AppLaravelForge:
+	case ListAppConnections200JSONResponseBodyAppConnections61AppMongodb:
 		return true
 	default:
 		return false
@@ -9368,13 +9377,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections61App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections61Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections61MethodApiToken ListAppConnections200JSONResponseBodyAppConnections61Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections61MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections61Method = "username-and-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections61Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections61Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections61MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections61MethodUsernameAndPassword:
 		return true
 	default:
 		return false
@@ -9401,13 +9410,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections61RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections62App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections62AppChef ListAppConnections200JSONResponseBodyAppConnections62App = "chef"
+	ListAppConnections200JSONResponseBodyAppConnections62AppLaravelForge ListAppConnections200JSONResponseBodyAppConnections62App = "laravel-forge"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections62App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections62App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections62AppChef:
+	case ListAppConnections200JSONResponseBodyAppConnections62AppLaravelForge:
 		return true
 	default:
 		return false
@@ -9416,13 +9425,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections62App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections62Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections62MethodUserKey ListAppConnections200JSONResponseBodyAppConnections62Method = "user-key"
+	ListAppConnections200JSONResponseBodyAppConnections62MethodApiToken ListAppConnections200JSONResponseBodyAppConnections62Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections62Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections62Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections62MethodUserKey:
+	case ListAppConnections200JSONResponseBodyAppConnections62MethodApiToken:
 		return true
 	default:
 		return false
@@ -9449,13 +9458,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections62RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections63App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections63AppDnsMadeEasy ListAppConnections200JSONResponseBodyAppConnections63App = "dns-made-easy"
+	ListAppConnections200JSONResponseBodyAppConnections63AppChef ListAppConnections200JSONResponseBodyAppConnections63App = "chef"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections63App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections63App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections63AppDnsMadeEasy:
+	case ListAppConnections200JSONResponseBodyAppConnections63AppChef:
 		return true
 	default:
 		return false
@@ -9464,13 +9473,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections63App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections63Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections63MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections63Method = "api-key-secret"
+	ListAppConnections200JSONResponseBodyAppConnections63MethodUserKey ListAppConnections200JSONResponseBodyAppConnections63Method = "user-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections63Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections63Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections63MethodApiKeySecret:
+	case ListAppConnections200JSONResponseBodyAppConnections63MethodUserKey:
 		return true
 	default:
 		return false
@@ -9497,31 +9506,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections63RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections64App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections64AppUltradns ListAppConnections200JSONResponseBodyAppConnections64App = "ultradns"
+	ListAppConnections200JSONResponseBodyAppConnections64AppDnsMadeEasy ListAppConnections200JSONResponseBodyAppConnections64App = "dns-made-easy"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections64App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections64App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections64AppUltradns:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment.
-const (
-	ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironmentProduction ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment = "production"
-	ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironmentTest       ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment = "test"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment) Valid() bool {
-	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironmentProduction:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironmentTest:
+	case ListAppConnections200JSONResponseBodyAppConnections64AppDnsMadeEasy:
 		return true
 	default:
 		return false
@@ -9530,13 +9521,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironm
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections64Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections64MethodUsernamePassword ListAppConnections200JSONResponseBodyAppConnections64Method = "username-password"
+	ListAppConnections200JSONResponseBodyAppConnections64MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections64Method = "api-key-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections64Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections64Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections64MethodUsernamePassword:
+	case ListAppConnections200JSONResponseBodyAppConnections64MethodApiKeySecret:
 		return true
 	default:
 		return false
@@ -9563,13 +9554,31 @@ func (e ListAppConnections200JSONResponseBodyAppConnections64RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections65App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections65AppAzureDns ListAppConnections200JSONResponseBodyAppConnections65App = "azure-dns"
+	ListAppConnections200JSONResponseBodyAppConnections65AppUltradns ListAppConnections200JSONResponseBodyAppConnections65App = "ultradns"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections65App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections65App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections65AppAzureDns:
+	case ListAppConnections200JSONResponseBodyAppConnections65AppUltradns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironmentProduction ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment = "production"
+	ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironmentTest       ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment = "test"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironmentProduction:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironmentTest:
 		return true
 	default:
 		return false
@@ -9578,13 +9587,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections65App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections65Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections65MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections65Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections65MethodUsernamePassword ListAppConnections200JSONResponseBodyAppConnections65Method = "username-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections65Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections65Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections65MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections65MethodUsernamePassword:
 		return true
 	default:
 		return false
@@ -9611,13 +9620,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections65RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections66App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections66AppOctopusDeploy ListAppConnections200JSONResponseBodyAppConnections66App = "octopus-deploy"
+	ListAppConnections200JSONResponseBodyAppConnections66AppAzureDns ListAppConnections200JSONResponseBodyAppConnections66App = "azure-dns"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections66App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections66App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections66AppOctopusDeploy:
+	case ListAppConnections200JSONResponseBodyAppConnections66AppAzureDns:
 		return true
 	default:
 		return false
@@ -9626,13 +9635,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections66App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections66Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections66MethodApiKey ListAppConnections200JSONResponseBodyAppConnections66Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections66MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections66Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections66Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections66Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections66MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections66MethodClientSecret:
 		return true
 	default:
 		return false
@@ -9659,13 +9668,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections66RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections67App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections67AppSmb ListAppConnections200JSONResponseBodyAppConnections67App = "smb"
+	ListAppConnections200JSONResponseBodyAppConnections67AppOctopusDeploy ListAppConnections200JSONResponseBodyAppConnections67App = "octopus-deploy"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections67App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections67App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections67AppSmb:
+	case ListAppConnections200JSONResponseBodyAppConnections67AppOctopusDeploy:
 		return true
 	default:
 		return false
@@ -9674,13 +9683,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections67App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections67Method.
 const (
-	Credentials ListAppConnections200JSONResponseBodyAppConnections67Method = "credentials"
+	ListAppConnections200JSONResponseBodyAppConnections67MethodApiKey ListAppConnections200JSONResponseBodyAppConnections67Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections67Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections67Method) Valid() bool {
 	switch e {
-	case Credentials:
+	case ListAppConnections200JSONResponseBodyAppConnections67MethodApiKey:
 		return true
 	default:
 		return false
@@ -9707,13 +9716,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections67RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections68App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections68AppSsh ListAppConnections200JSONResponseBodyAppConnections68App = "ssh"
+	ListAppConnections200JSONResponseBodyAppConnections68AppSmb ListAppConnections200JSONResponseBodyAppConnections68App = "smb"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections68App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections68App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections68AppSsh:
+	case ListAppConnections200JSONResponseBodyAppConnections68AppSmb:
 		return true
 	default:
 		return false
@@ -9722,13 +9731,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections68App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections68Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections68MethodPassword ListAppConnections200JSONResponseBodyAppConnections68Method = "password"
+	Credentials ListAppConnections200JSONResponseBodyAppConnections68Method = "credentials"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections68Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections68Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections68MethodPassword:
+	case Credentials:
 		return true
 	default:
 		return false
@@ -9770,13 +9779,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections69App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections69Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections69MethodSshKey ListAppConnections200JSONResponseBodyAppConnections69Method = "ssh-key"
+	ListAppConnections200JSONResponseBodyAppConnections69MethodPassword ListAppConnections200JSONResponseBodyAppConnections69Method = "password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections69Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections69Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections69MethodSshKey:
+	case ListAppConnections200JSONResponseBodyAppConnections69MethodPassword:
 		return true
 	default:
 		return false
@@ -9803,13 +9812,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections69RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections70App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections70AppDbt ListAppConnections200JSONResponseBodyAppConnections70App = "dbt"
+	ListAppConnections200JSONResponseBodyAppConnections70AppSsh ListAppConnections200JSONResponseBodyAppConnections70App = "ssh"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections70App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections70App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections70AppDbt:
+	case ListAppConnections200JSONResponseBodyAppConnections70AppSsh:
 		return true
 	default:
 		return false
@@ -9818,13 +9827,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections70App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections70Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections70MethodApiToken ListAppConnections200JSONResponseBodyAppConnections70Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections70MethodSshKey ListAppConnections200JSONResponseBodyAppConnections70Method = "ssh-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections70Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections70Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections70MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections70MethodSshKey:
 		return true
 	default:
 		return false
@@ -9851,13 +9860,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections70RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections71App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections71AppOpenRouter ListAppConnections200JSONResponseBodyAppConnections71App = "open-router"
+	ListAppConnections200JSONResponseBodyAppConnections71AppDbt ListAppConnections200JSONResponseBodyAppConnections71App = "dbt"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections71App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections71App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections71AppOpenRouter:
+	case ListAppConnections200JSONResponseBodyAppConnections71AppDbt:
 		return true
 	default:
 		return false
@@ -9866,13 +9875,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections71App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections71Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections71MethodApiKey ListAppConnections200JSONResponseBodyAppConnections71Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections71MethodApiToken ListAppConnections200JSONResponseBodyAppConnections71Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections71Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections71Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections71MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections71MethodApiToken:
 		return true
 	default:
 		return false
@@ -9899,13 +9908,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections71RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections72App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections72AppOpenai ListAppConnections200JSONResponseBodyAppConnections72App = "openai"
+	ListAppConnections200JSONResponseBodyAppConnections72AppOpenRouter ListAppConnections200JSONResponseBodyAppConnections72App = "open-router"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections72App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections72App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections72AppOpenai:
+	case ListAppConnections200JSONResponseBodyAppConnections72AppOpenRouter:
 		return true
 	default:
 		return false
@@ -9947,13 +9956,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections72RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections73App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections73AppAnthropic ListAppConnections200JSONResponseBodyAppConnections73App = "anthropic"
+	ListAppConnections200JSONResponseBodyAppConnections73AppOpenai ListAppConnections200JSONResponseBodyAppConnections73App = "openai"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections73App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections73App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections73AppAnthropic:
+	case ListAppConnections200JSONResponseBodyAppConnections73AppOpenai:
 		return true
 	default:
 		return false
@@ -9995,13 +10004,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections73RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections74App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections74AppDevin ListAppConnections200JSONResponseBodyAppConnections74App = "devin"
+	ListAppConnections200JSONResponseBodyAppConnections74AppAnthropic ListAppConnections200JSONResponseBodyAppConnections74App = "anthropic"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections74App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections74App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections74AppDevin:
+	case ListAppConnections200JSONResponseBodyAppConnections74AppAnthropic:
 		return true
 	default:
 		return false
@@ -10043,13 +10052,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections74RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections75App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections75AppAzureEntraId ListAppConnections200JSONResponseBodyAppConnections75App = "azure-entra-id"
+	ListAppConnections200JSONResponseBodyAppConnections75AppDevin ListAppConnections200JSONResponseBodyAppConnections75App = "devin"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections75App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections75App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections75AppAzureEntraId:
+	case ListAppConnections200JSONResponseBodyAppConnections75AppDevin:
 		return true
 	default:
 		return false
@@ -10058,13 +10067,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections75App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections75Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections75MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections75Method = "client-secret"
+	ListAppConnections200JSONResponseBodyAppConnections75MethodApiKey ListAppConnections200JSONResponseBodyAppConnections75Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections75Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections75Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections75MethodClientSecret:
+	case ListAppConnections200JSONResponseBodyAppConnections75MethodApiKey:
 		return true
 	default:
 		return false
@@ -10091,13 +10100,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections75RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections76App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections76AppMicrosoftIntune ListAppConnections200JSONResponseBodyAppConnections76App = "microsoft-intune"
+	ListAppConnections200JSONResponseBodyAppConnections76AppAzureEntraId ListAppConnections200JSONResponseBodyAppConnections76App = "azure-entra-id"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections76App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections76App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections76AppMicrosoftIntune:
+	case ListAppConnections200JSONResponseBodyAppConnections76AppAzureEntraId:
 		return true
 	default:
 		return false
@@ -10139,43 +10148,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections76RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections77App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections77AppVenafi ListAppConnections200JSONResponseBodyAppConnections77App = "venafi"
+	ListAppConnections200JSONResponseBodyAppConnections77AppMicrosoftIntune ListAppConnections200JSONResponseBodyAppConnections77App = "microsoft-intune"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections77App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections77App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections77AppVenafi:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion.
-const (
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionAu ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "au"
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionCa ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "ca"
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionEu ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "eu"
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionSg ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "sg"
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionUk ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "uk"
-	ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionUs ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion = "us"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion) Valid() bool {
-	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionAu:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionCa:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionEu:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionSg:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionUk:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegionUs:
+	case ListAppConnections200JSONResponseBodyAppConnections77AppMicrosoftIntune:
 		return true
 	default:
 		return false
@@ -10184,13 +10163,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion) 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections77Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections77MethodApiKey ListAppConnections200JSONResponseBodyAppConnections77Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections77MethodClientSecret ListAppConnections200JSONResponseBodyAppConnections77Method = "client-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections77Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections77Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections77MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections77MethodClientSecret:
 		return true
 	default:
 		return false
@@ -10217,13 +10196,43 @@ func (e ListAppConnections200JSONResponseBodyAppConnections77RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections78App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections78AppVenafiTpp ListAppConnections200JSONResponseBodyAppConnections78App = "venafi-tpp"
+	ListAppConnections200JSONResponseBodyAppConnections78AppVenafi ListAppConnections200JSONResponseBodyAppConnections78App = "venafi"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections78App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections78App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections78AppVenafiTpp:
+	case ListAppConnections200JSONResponseBodyAppConnections78AppVenafi:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionAu ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "au"
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionCa ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "ca"
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionEu ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "eu"
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionSg ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "sg"
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionUk ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "uk"
+	ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionUs ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion = "us"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionAu:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionCa:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionEu:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionSg:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionUk:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegionUs:
 		return true
 	default:
 		return false
@@ -10232,13 +10241,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections78App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections78Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections78MethodOauth ListAppConnections200JSONResponseBodyAppConnections78Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections78MethodApiKey ListAppConnections200JSONResponseBodyAppConnections78Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections78Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections78Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections78MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections78MethodApiKey:
 		return true
 	default:
 		return false
@@ -10265,13 +10274,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections78RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections79App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections79AppExternalInfisical ListAppConnections200JSONResponseBodyAppConnections79App = "external-infisical"
+	ListAppConnections200JSONResponseBodyAppConnections79AppVenafiTpp ListAppConnections200JSONResponseBodyAppConnections79App = "venafi-tpp"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections79App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections79App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections79AppExternalInfisical:
+	case ListAppConnections200JSONResponseBodyAppConnections79AppVenafiTpp:
 		return true
 	default:
 		return false
@@ -10280,13 +10289,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections79App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections79Method.
 const (
-	MachineIdentityUniversalAuth ListAppConnections200JSONResponseBodyAppConnections79Method = "machine-identity-universal-auth"
+	ListAppConnections200JSONResponseBodyAppConnections79MethodOauth ListAppConnections200JSONResponseBodyAppConnections79Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections79Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections79Method) Valid() bool {
 	switch e {
-	case MachineIdentityUniversalAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections79MethodOauth:
 		return true
 	default:
 		return false
@@ -10313,13 +10322,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections79RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections80App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections80AppNetscaler ListAppConnections200JSONResponseBodyAppConnections80App = "netscaler"
+	ListAppConnections200JSONResponseBodyAppConnections80AppExternalInfisical ListAppConnections200JSONResponseBodyAppConnections80App = "external-infisical"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections80App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections80App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections80AppNetscaler:
+	case ListAppConnections200JSONResponseBodyAppConnections80AppExternalInfisical:
 		return true
 	default:
 		return false
@@ -10328,13 +10337,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections80App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections80Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections80MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections80Method = "basic-auth"
+	MachineIdentityUniversalAuth ListAppConnections200JSONResponseBodyAppConnections80Method = "machine-identity-universal-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections80Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections80Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections80MethodBasicAuth:
+	case MachineIdentityUniversalAuth:
 		return true
 	default:
 		return false
@@ -10361,13 +10370,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections80RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections81App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections81AppPaloAltoNetworks ListAppConnections200JSONResponseBodyAppConnections81App = "palo-alto-networks"
+	ListAppConnections200JSONResponseBodyAppConnections81AppNetscaler ListAppConnections200JSONResponseBodyAppConnections81App = "netscaler"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections81App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections81App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections81AppPaloAltoNetworks:
+	case ListAppConnections200JSONResponseBodyAppConnections81AppNetscaler:
 		return true
 	default:
 		return false
@@ -10409,13 +10418,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections81RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections82App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections82AppKempLoadmaster ListAppConnections200JSONResponseBodyAppConnections82App = "kemp-loadmaster"
+	ListAppConnections200JSONResponseBodyAppConnections82AppPaloAltoNetworks ListAppConnections200JSONResponseBodyAppConnections82App = "palo-alto-networks"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections82App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections82App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections82AppKempLoadmaster:
+	case ListAppConnections200JSONResponseBodyAppConnections82AppPaloAltoNetworks:
 		return true
 	default:
 		return false
@@ -10457,13 +10466,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections82RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections83App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections83AppImperva ListAppConnections200JSONResponseBodyAppConnections83App = "imperva"
+	ListAppConnections200JSONResponseBodyAppConnections83AppKempLoadmaster ListAppConnections200JSONResponseBodyAppConnections83App = "kemp-loadmaster"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections83App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections83App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections83AppImperva:
+	case ListAppConnections200JSONResponseBodyAppConnections83AppKempLoadmaster:
 		return true
 	default:
 		return false
@@ -10472,13 +10481,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections83App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections83Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections83MethodApiKey ListAppConnections200JSONResponseBodyAppConnections83Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections83MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections83Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections83Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections83Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections83MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections83MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -10505,13 +10514,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections83RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections84App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections84AppDoppler ListAppConnections200JSONResponseBodyAppConnections84App = "doppler"
+	ListAppConnections200JSONResponseBodyAppConnections84AppImperva ListAppConnections200JSONResponseBodyAppConnections84App = "imperva"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections84App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections84App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections84AppDoppler:
+	case ListAppConnections200JSONResponseBodyAppConnections84AppImperva:
 		return true
 	default:
 		return false
@@ -10520,13 +10529,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections84App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections84Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections84MethodApiToken ListAppConnections200JSONResponseBodyAppConnections84Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections84MethodApiKey ListAppConnections200JSONResponseBodyAppConnections84Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections84Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections84Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections84MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections84MethodApiKey:
 		return true
 	default:
 		return false
@@ -10553,13 +10562,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections84RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections85App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections85AppOvh ListAppConnections200JSONResponseBodyAppConnections85App = "ovh"
+	ListAppConnections200JSONResponseBodyAppConnections85AppDoppler ListAppConnections200JSONResponseBodyAppConnections85App = "doppler"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections85App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections85App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections85AppOvh:
+	case ListAppConnections200JSONResponseBodyAppConnections85AppDoppler:
 		return true
 	default:
 		return false
@@ -10568,13 +10577,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections85App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections85Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections85MethodCertificate ListAppConnections200JSONResponseBodyAppConnections85Method = "certificate"
+	ListAppConnections200JSONResponseBodyAppConnections85MethodApiToken ListAppConnections200JSONResponseBodyAppConnections85Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections85Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections85Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections85MethodCertificate:
+	case ListAppConnections200JSONResponseBodyAppConnections85MethodApiToken:
 		return true
 	default:
 		return false
@@ -10616,13 +10625,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections86App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections86Method.
 const (
-	BearerToken ListAppConnections200JSONResponseBodyAppConnections86Method = "bearer-token"
+	ListAppConnections200JSONResponseBodyAppConnections86MethodCertificate ListAppConnections200JSONResponseBodyAppConnections86Method = "certificate"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections86Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections86Method) Valid() bool {
 	switch e {
-	case BearerToken:
+	case ListAppConnections200JSONResponseBodyAppConnections86MethodCertificate:
 		return true
 	default:
 		return false
@@ -10649,13 +10658,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections86RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections87App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections87AppOna ListAppConnections200JSONResponseBodyAppConnections87App = "ona"
+	ListAppConnections200JSONResponseBodyAppConnections87AppOvh ListAppConnections200JSONResponseBodyAppConnections87App = "ovh"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections87App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections87App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections87AppOna:
+	case ListAppConnections200JSONResponseBodyAppConnections87AppOvh:
 		return true
 	default:
 		return false
@@ -10664,13 +10673,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections87App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections87Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections87MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections87Method = "personal-access-token"
+	BearerToken ListAppConnections200JSONResponseBodyAppConnections87Method = "bearer-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections87Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections87Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections87MethodPersonalAccessToken:
+	case BearerToken:
 		return true
 	default:
 		return false
@@ -10697,31 +10706,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections87RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections88App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections88AppDigicert ListAppConnections200JSONResponseBodyAppConnections88App = "digicert"
+	ListAppConnections200JSONResponseBodyAppConnections88AppOna ListAppConnections200JSONResponseBodyAppConnections88App = "ona"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections88App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections88App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections88AppDigicert:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion.
-const (
-	ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegionEu ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion = "eu"
-	ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegionUs ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion = "us"
-)
-
-// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion enum.
-func (e ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion) Valid() bool {
-	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegionEu:
-		return true
-	case ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegionUs:
+	case ListAppConnections200JSONResponseBodyAppConnections88AppOna:
 		return true
 	default:
 		return false
@@ -10730,13 +10721,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion) 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections88Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections88MethodApiKey ListAppConnections200JSONResponseBodyAppConnections88Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections88MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections88Method = "personal-access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections88Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections88Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections88MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections88MethodPersonalAccessToken:
 		return true
 	default:
 		return false
@@ -10763,13 +10754,31 @@ func (e ListAppConnections200JSONResponseBodyAppConnections88RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections89App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections89AppGodaddy ListAppConnections200JSONResponseBodyAppConnections89App = "godaddy"
+	ListAppConnections200JSONResponseBodyAppConnections89AppDigicert ListAppConnections200JSONResponseBodyAppConnections89App = "digicert"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections89App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections89App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections89AppGodaddy:
+	case ListAppConnections200JSONResponseBodyAppConnections89AppDigicert:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegionEu ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion = "eu"
+	ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegionUs ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion = "us"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegionEu:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegionUs:
 		return true
 	default:
 		return false
@@ -10811,13 +10820,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections89RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections90App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections90AppTravisCi ListAppConnections200JSONResponseBodyAppConnections90App = "travis-ci"
+	ListAppConnections200JSONResponseBodyAppConnections90AppGodaddy ListAppConnections200JSONResponseBodyAppConnections90App = "godaddy"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections90App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections90App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections90AppTravisCi:
+	case ListAppConnections200JSONResponseBodyAppConnections90AppGodaddy:
 		return true
 	default:
 		return false
@@ -10826,13 +10835,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections90App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections90Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections90MethodApiToken ListAppConnections200JSONResponseBodyAppConnections90Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections90MethodApiKey ListAppConnections200JSONResponseBodyAppConnections90Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections90Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections90Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections90MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections90MethodApiKey:
 		return true
 	default:
 		return false
@@ -10859,13 +10868,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections90RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections91App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections91AppSalesforce ListAppConnections200JSONResponseBodyAppConnections91App = "salesforce"
+	ListAppConnections200JSONResponseBodyAppConnections91AppTravisCi ListAppConnections200JSONResponseBodyAppConnections91App = "travis-ci"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections91App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections91App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections91AppSalesforce:
+	case ListAppConnections200JSONResponseBodyAppConnections91AppTravisCi:
 		return true
 	default:
 		return false
@@ -10874,13 +10883,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections91App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections91Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections91MethodClientCredentials ListAppConnections200JSONResponseBodyAppConnections91Method = "client-credentials"
+	ListAppConnections200JSONResponseBodyAppConnections91MethodApiToken ListAppConnections200JSONResponseBodyAppConnections91Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections91Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections91Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections91MethodClientCredentials:
+	case ListAppConnections200JSONResponseBodyAppConnections91MethodApiToken:
 		return true
 	default:
 		return false
@@ -10907,13 +10916,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections91RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections92App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections92AppSnowflake ListAppConnections200JSONResponseBodyAppConnections92App = "snowflake"
+	ListAppConnections200JSONResponseBodyAppConnections92AppSalesforce ListAppConnections200JSONResponseBodyAppConnections92App = "salesforce"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections92App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections92App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections92AppSnowflake:
+	case ListAppConnections200JSONResponseBodyAppConnections92AppSalesforce:
 		return true
 	default:
 		return false
@@ -10922,13 +10931,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections92App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections92Method.
 const (
-	UsernameAndToken ListAppConnections200JSONResponseBodyAppConnections92Method = "username-and-token"
+	ListAppConnections200JSONResponseBodyAppConnections92MethodClientCredentials ListAppConnections200JSONResponseBodyAppConnections92Method = "client-credentials"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections92Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections92Method) Valid() bool {
 	switch e {
-	case UsernameAndToken:
+	case ListAppConnections200JSONResponseBodyAppConnections92MethodClientCredentials:
 		return true
 	default:
 		return false
@@ -10955,13 +10964,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections92RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections93App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections93AppDatadog ListAppConnections200JSONResponseBodyAppConnections93App = "datadog"
+	ListAppConnections200JSONResponseBodyAppConnections93AppSnowflake ListAppConnections200JSONResponseBodyAppConnections93App = "snowflake"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections93App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections93App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections93AppDatadog:
+	case ListAppConnections200JSONResponseBodyAppConnections93AppSnowflake:
 		return true
 	default:
 		return false
@@ -10970,13 +10979,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections93App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections93Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections93MethodToken ListAppConnections200JSONResponseBodyAppConnections93Method = "token"
+	UsernameAndToken ListAppConnections200JSONResponseBodyAppConnections93Method = "username-and-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections93Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections93Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections93MethodToken:
+	case UsernameAndToken:
 		return true
 	default:
 		return false
@@ -11018,13 +11027,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections94App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections94Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections94MethodApiKey ListAppConnections200JSONResponseBodyAppConnections94Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections94MethodToken ListAppConnections200JSONResponseBodyAppConnections94Method = "token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections94Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections94Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections94MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections94MethodToken:
 		return true
 	default:
 		return false
@@ -11051,13 +11060,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections94RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections95App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections95AppF5BigIp ListAppConnections200JSONResponseBodyAppConnections95App = "f5-big-ip"
+	ListAppConnections200JSONResponseBodyAppConnections95AppDatadog ListAppConnections200JSONResponseBodyAppConnections95App = "datadog"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections95App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections95App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections95AppF5BigIp:
+	case ListAppConnections200JSONResponseBodyAppConnections95AppDatadog:
 		return true
 	default:
 		return false
@@ -11066,13 +11075,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections95App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections95Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections95MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections95Method = "basic-auth"
+	ListAppConnections200JSONResponseBodyAppConnections95MethodApiKey ListAppConnections200JSONResponseBodyAppConnections95Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections95Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections95Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections95MethodBasicAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections95MethodApiKey:
 		return true
 	default:
 		return false
@@ -11099,13 +11108,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections95RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections96App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections96AppConvex ListAppConnections200JSONResponseBodyAppConnections96App = "convex"
+	ListAppConnections200JSONResponseBodyAppConnections96AppF5BigIp ListAppConnections200JSONResponseBodyAppConnections96App = "f5-big-ip"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections96App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections96App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections96AppConvex:
+	case ListAppConnections200JSONResponseBodyAppConnections96AppF5BigIp:
 		return true
 	default:
 		return false
@@ -11114,13 +11123,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections96App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections96Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections96MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections96Method = "personal-access-token"
+	ListAppConnections200JSONResponseBodyAppConnections96MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections96Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections96Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections96Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections96MethodPersonalAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections96MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -11147,13 +11156,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections96RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections97App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections97AppRundeck ListAppConnections200JSONResponseBodyAppConnections97App = "rundeck"
+	ListAppConnections200JSONResponseBodyAppConnections97AppConvex ListAppConnections200JSONResponseBodyAppConnections97App = "convex"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections97App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections97App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections97AppRundeck:
+	case ListAppConnections200JSONResponseBodyAppConnections97AppConvex:
 		return true
 	default:
 		return false
@@ -11162,13 +11171,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections97App) Valid() bool {
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections97Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections97MethodApiToken ListAppConnections200JSONResponseBodyAppConnections97Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections97MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections97Method = "personal-access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections97Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections97Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections97MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections97MethodPersonalAccessToken:
 		return true
 	default:
 		return false
@@ -11195,13 +11204,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections97RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections98App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections98AppPortainer ListAppConnections200JSONResponseBodyAppConnections98App = "portainer"
+	ListAppConnections200JSONResponseBodyAppConnections98AppRundeck ListAppConnections200JSONResponseBodyAppConnections98App = "rundeck"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections98App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections98App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections98AppPortainer:
+	case ListAppConnections200JSONResponseBodyAppConnections98AppRundeck:
 		return true
 	default:
 		return false
@@ -11243,13 +11252,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections98RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections99App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections99AppJenkins ListAppConnections200JSONResponseBodyAppConnections99App = "jenkins"
+	ListAppConnections200JSONResponseBodyAppConnections99AppPortainer ListAppConnections200JSONResponseBodyAppConnections99App = "portainer"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections99App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections99App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections99AppJenkins:
+	case ListAppConnections200JSONResponseBodyAppConnections99AppPortainer:
 		return true
 	default:
 		return false
@@ -11291,13 +11300,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections99RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections100App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections100AppCoolify ListAppConnections200JSONResponseBodyAppConnections100App = "coolify"
+	ListAppConnections200JSONResponseBodyAppConnections100AppJenkins ListAppConnections200JSONResponseBodyAppConnections100App = "jenkins"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections100App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections100App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections100AppCoolify:
+	case ListAppConnections200JSONResponseBodyAppConnections100AppJenkins:
 		return true
 	default:
 		return false
@@ -11339,13 +11348,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections100RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections101App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections101AppQovery ListAppConnections200JSONResponseBodyAppConnections101App = "qovery"
+	ListAppConnections200JSONResponseBodyAppConnections101AppCoolify ListAppConnections200JSONResponseBodyAppConnections101App = "coolify"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections101App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections101App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections101AppQovery:
+	case ListAppConnections200JSONResponseBodyAppConnections101AppCoolify:
 		return true
 	default:
 		return false
@@ -11354,13 +11363,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections101App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections101Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections101MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections101Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections101MethodApiToken ListAppConnections200JSONResponseBodyAppConnections101Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections101Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections101Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections101MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections101MethodApiToken:
 		return true
 	default:
 		return false
@@ -11387,13 +11396,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections101RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections102App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections102AppLitellm ListAppConnections200JSONResponseBodyAppConnections102App = "litellm"
+	ListAppConnections200JSONResponseBodyAppConnections102AppQovery ListAppConnections200JSONResponseBodyAppConnections102App = "qovery"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections102App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections102App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections102AppLitellm:
+	case ListAppConnections200JSONResponseBodyAppConnections102AppQovery:
 		return true
 	default:
 		return false
@@ -11402,13 +11411,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections102App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections102Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections102MethodApiKey ListAppConnections200JSONResponseBodyAppConnections102Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections102MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections102Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections102Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections102Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections102MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections102MethodAccessToken:
 		return true
 	default:
 		return false
@@ -11435,13 +11444,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections102RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections103App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections103AppFireworks ListAppConnections200JSONResponseBodyAppConnections103App = "fireworks"
+	ListAppConnections200JSONResponseBodyAppConnections103AppLitellm ListAppConnections200JSONResponseBodyAppConnections103App = "litellm"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections103App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections103App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections103AppFireworks:
+	case ListAppConnections200JSONResponseBodyAppConnections103AppLitellm:
 		return true
 	default:
 		return false
@@ -11483,13 +11492,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections103RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections104App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections104AppNutanixPrismCentral ListAppConnections200JSONResponseBodyAppConnections104App = "nutanix-prism-central"
+	ListAppConnections200JSONResponseBodyAppConnections104AppFireworks ListAppConnections200JSONResponseBodyAppConnections104App = "fireworks"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections104App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections104App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections104AppNutanixPrismCentral:
+	case ListAppConnections200JSONResponseBodyAppConnections104AppFireworks:
 		return true
 	default:
 		return false
@@ -11546,13 +11555,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections105App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections105Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections105MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections105Method = "basic-auth"
+	ListAppConnections200JSONResponseBodyAppConnections105MethodApiKey ListAppConnections200JSONResponseBodyAppConnections105Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections105Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections105Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections105MethodBasicAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections105MethodApiKey:
 		return true
 	default:
 		return false
@@ -11579,13 +11588,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections105RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections106App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections106AppPowerdns ListAppConnections200JSONResponseBodyAppConnections106App = "powerdns"
+	ListAppConnections200JSONResponseBodyAppConnections106AppNutanixPrismCentral ListAppConnections200JSONResponseBodyAppConnections106App = "nutanix-prism-central"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections106App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections106App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections106AppPowerdns:
+	case ListAppConnections200JSONResponseBodyAppConnections106AppNutanixPrismCentral:
 		return true
 	default:
 		return false
@@ -11594,13 +11603,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections106App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections106Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections106MethodApiKey ListAppConnections200JSONResponseBodyAppConnections106Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections106MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections106Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections106Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections106Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections106MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections106MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -11627,13 +11636,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections106RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections107App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections107AppSpacelift ListAppConnections200JSONResponseBodyAppConnections107App = "spacelift"
+	ListAppConnections200JSONResponseBodyAppConnections107AppPowerdns ListAppConnections200JSONResponseBodyAppConnections107App = "powerdns"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections107App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections107App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections107AppSpacelift:
+	case ListAppConnections200JSONResponseBodyAppConnections107AppPowerdns:
 		return true
 	default:
 		return false
@@ -11642,13 +11651,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections107App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections107Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections107MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections107Method = "api-key-secret"
+	ListAppConnections200JSONResponseBodyAppConnections107MethodApiKey ListAppConnections200JSONResponseBodyAppConnections107Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections107Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections107Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections107MethodApiKeySecret:
+	case ListAppConnections200JSONResponseBodyAppConnections107MethodApiKey:
 		return true
 	default:
 		return false
@@ -11675,13 +11684,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections107RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections108App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections108AppDaytona ListAppConnections200JSONResponseBodyAppConnections108App = "daytona"
+	ListAppConnections200JSONResponseBodyAppConnections108AppSpacelift ListAppConnections200JSONResponseBodyAppConnections108App = "spacelift"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections108App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections108App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections108AppDaytona:
+	case ListAppConnections200JSONResponseBodyAppConnections108AppSpacelift:
 		return true
 	default:
 		return false
@@ -11690,13 +11699,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections108App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections108Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections108MethodApiKey ListAppConnections200JSONResponseBodyAppConnections108Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections108MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections108Method = "api-key-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections108Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections108Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections108MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections108MethodApiKeySecret:
 		return true
 	default:
 		return false
@@ -11723,13 +11732,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections108RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections109App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections109AppStripe ListAppConnections200JSONResponseBodyAppConnections109App = "stripe"
+	ListAppConnections200JSONResponseBodyAppConnections109AppDaytona ListAppConnections200JSONResponseBodyAppConnections109App = "daytona"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections109App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections109App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections109AppStripe:
+	case ListAppConnections200JSONResponseBodyAppConnections109AppDaytona:
 		return true
 	default:
 		return false
@@ -11738,13 +11747,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections109App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections109Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections109MethodOauth ListAppConnections200JSONResponseBodyAppConnections109Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections109MethodApiKey ListAppConnections200JSONResponseBodyAppConnections109Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections109Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections109Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections109MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections109MethodApiKey:
 		return true
 	default:
 		return false
@@ -11771,13 +11780,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections109RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections110App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections110AppKeeper ListAppConnections200JSONResponseBodyAppConnections110App = "keeper"
+	ListAppConnections200JSONResponseBodyAppConnections110AppStripe ListAppConnections200JSONResponseBodyAppConnections110App = "stripe"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections110App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections110App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections110AppKeeper:
+	case ListAppConnections200JSONResponseBodyAppConnections110AppStripe:
 		return true
 	default:
 		return false
@@ -11786,13 +11795,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections110App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections110Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections110MethodApiKey ListAppConnections200JSONResponseBodyAppConnections110Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections110MethodOauth ListAppConnections200JSONResponseBodyAppConnections110Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections110Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections110Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections110MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections110MethodOauth:
 		return true
 	default:
 		return false
@@ -11819,13 +11828,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections110RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections111App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections111AppHpeIlo ListAppConnections200JSONResponseBodyAppConnections111App = "hpe-ilo"
+	ListAppConnections200JSONResponseBodyAppConnections111AppKeeper ListAppConnections200JSONResponseBodyAppConnections111App = "keeper"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections111App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections111App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections111AppHpeIlo:
+	case ListAppConnections200JSONResponseBodyAppConnections111AppKeeper:
 		return true
 	default:
 		return false
@@ -11834,13 +11843,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections111App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections111Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections111MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections111Method = "basic-auth"
+	ListAppConnections200JSONResponseBodyAppConnections111MethodApiKey ListAppConnections200JSONResponseBodyAppConnections111Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections111Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections111Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections111MethodBasicAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections111MethodApiKey:
 		return true
 	default:
 		return false
@@ -11867,13 +11876,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections111RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections112App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections112AppServicenow ListAppConnections200JSONResponseBodyAppConnections112App = "servicenow"
+	ListAppConnections200JSONResponseBodyAppConnections112AppHpeIlo ListAppConnections200JSONResponseBodyAppConnections112App = "hpe-ilo"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections112App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections112App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections112AppServicenow:
+	case ListAppConnections200JSONResponseBodyAppConnections112AppHpeIlo:
 		return true
 	default:
 		return false
@@ -11915,13 +11924,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections112RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections113App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections113AppS3Compatible ListAppConnections200JSONResponseBodyAppConnections113App = "s3-compatible"
+	ListAppConnections200JSONResponseBodyAppConnections113AppServicenow ListAppConnections200JSONResponseBodyAppConnections113App = "servicenow"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections113App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections113App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections113AppS3Compatible:
+	case ListAppConnections200JSONResponseBodyAppConnections113AppServicenow:
 		return true
 	default:
 		return false
@@ -11930,13 +11939,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections113App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections113Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections113MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections113Method = "access-key"
+	ListAppConnections200JSONResponseBodyAppConnections113MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections113Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections113Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections113Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections113MethodAccessKey:
+	case ListAppConnections200JSONResponseBodyAppConnections113MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -11963,13 +11972,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections113RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections114App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections114AppJira ListAppConnections200JSONResponseBodyAppConnections114App = "jira"
+	ListAppConnections200JSONResponseBodyAppConnections114AppS3Compatible ListAppConnections200JSONResponseBodyAppConnections114App = "s3-compatible"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections114App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections114App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections114AppJira:
+	case ListAppConnections200JSONResponseBodyAppConnections114AppS3Compatible:
 		return true
 	default:
 		return false
@@ -11978,13 +11987,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections114App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections114Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections114MethodApiToken ListAppConnections200JSONResponseBodyAppConnections114Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections114MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections114Method = "access-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections114Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections114Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections114MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections114MethodAccessKey:
 		return true
 	default:
 		return false
@@ -12026,13 +12035,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections115App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections115Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections115MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections115Method = "personal-access-token"
+	ListAppConnections200JSONResponseBodyAppConnections115MethodApiToken ListAppConnections200JSONResponseBodyAppConnections115Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections115Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections115Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections115MethodPersonalAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections115MethodApiToken:
 		return true
 	default:
 		return false
@@ -12059,13 +12068,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections115RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections116App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections116AppClickhouse ListAppConnections200JSONResponseBodyAppConnections116App = "clickhouse"
+	ListAppConnections200JSONResponseBodyAppConnections116AppJira ListAppConnections200JSONResponseBodyAppConnections116App = "jira"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections116App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections116App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections116AppClickhouse:
+	case ListAppConnections200JSONResponseBodyAppConnections116AppJira:
 		return true
 	default:
 		return false
@@ -12074,13 +12083,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections116App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections116Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections116MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections116Method = "username-and-password"
+	ListAppConnections200JSONResponseBodyAppConnections116MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections116Method = "personal-access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections116Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections116Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections116MethodUsernameAndPassword:
+	case ListAppConnections200JSONResponseBodyAppConnections116MethodPersonalAccessToken:
 		return true
 	default:
 		return false
@@ -12107,13 +12116,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections116RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections117App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections117AppIncidentIo ListAppConnections200JSONResponseBodyAppConnections117App = "incident-io"
+	ListAppConnections200JSONResponseBodyAppConnections117AppClickhouse ListAppConnections200JSONResponseBodyAppConnections117App = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections117App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections117App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections117AppIncidentIo:
+	case ListAppConnections200JSONResponseBodyAppConnections117AppClickhouse:
 		return true
 	default:
 		return false
@@ -12122,13 +12131,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections117App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections117Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections117MethodApiKey ListAppConnections200JSONResponseBodyAppConnections117Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections117MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections117Method = "username-and-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections117Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections117Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections117MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections117MethodUsernameAndPassword:
 		return true
 	default:
 		return false
@@ -12147,6 +12156,54 @@ func (e ListAppConnections200JSONResponseBodyAppConnections117RotationRotationSt
 	case ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusFailed:
 		return true
 	case ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections118App.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections118AppIncidentIo ListAppConnections200JSONResponseBodyAppConnections118App = "incident-io"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections118App enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections118App) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections118AppIncidentIo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections118Method.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections118MethodApiKey ListAppConnections200JSONResponseBodyAppConnections118Method = "api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections118Method enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections118Method) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections118MethodApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatusFailed  ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus = "failed"
+	ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatusSuccess ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatusFailed:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatusSuccess:
 		return true
 	default:
 		return false
@@ -16080,6 +16137,21 @@ func (e CreateGcpAppConnectionJSONBody0Method) Valid() bool {
 	}
 }
 
+// Defines values for CreateGcpAppConnectionJSONBody1Method.
+const (
+	CreateGcpAppConnectionJSONBody1MethodWorkloadIdentityFederation CreateGcpAppConnectionJSONBody1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnectionJSONBody1Method enum.
+func (e CreateGcpAppConnectionJSONBody1Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnectionJSONBody1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection0App.
 const (
 	CreateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp CreateGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
@@ -16122,6 +16194,54 @@ func (e CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationS
 	case CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
 		return true
 	case CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp CreateGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation CreateGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
 		return true
 	default:
 		return false
@@ -16212,6 +16332,408 @@ const (
 func (e CreateGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateGcpAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0AppGcp GetGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation GetGcpAppConnection200JSONResponseBodyAppConnection0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1AppGcp GetGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation GetGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection400JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection400JSONResponseBodyStatusCodeN400 GetGcpAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection400JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection401JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection401JSONResponseBodyStatusCodeN401 GetGcpAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection401JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection403JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection403JSONResponseBodyStatusCodeN403 GetGcpAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection403JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection404JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection404JSONResponseBodyStatusCodeN404 GetGcpAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection404JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection422JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection422JSONResponseBodyStatusCodeN422 GetGcpAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection422JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection500JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection500JSONResponseBodyStatusCodeN500 GetGcpAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection500JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp UpdateGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp UpdateGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection400JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection400JSONResponseBodyStatusCodeN400 UpdateGcpAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection400JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection401JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection401JSONResponseBodyStatusCodeN401 UpdateGcpAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection401JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection403JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection403JSONResponseBodyStatusCodeN403 UpdateGcpAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection403JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection404JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection404JSONResponseBodyStatusCodeN404 UpdateGcpAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection404JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection422JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection422JSONResponseBodyStatusCodeN422 UpdateGcpAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection422JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection500JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection500JSONResponseBodyStatusCodeN500 UpdateGcpAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection500JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -57594,6 +58116,36 @@ func (e RevokeCertificateJSONBodyRevocationReason) Valid() bool {
 	}
 }
 
+// Defines values for RevokeCertificate200JSONResponseBodyStatus.
+const (
+	RevokeCertificate200JSONResponseBodyStatusRevoked RevokeCertificate200JSONResponseBodyStatus = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the RevokeCertificate200JSONResponseBodyStatus enum.
+func (e RevokeCertificate200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case RevokeCertificate200JSONResponseBodyStatusRevoked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevokeCertificate202JSONResponseBodyStatus.
+const (
+	RevokeCertificate202JSONResponseBodyStatusPendingApproval RevokeCertificate202JSONResponseBodyStatus = "pending_approval"
+)
+
+// Valid indicates whether the value is a known member of the RevokeCertificate202JSONResponseBodyStatus enum.
+func (e RevokeCertificate202JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case RevokeCertificate202JSONResponseBodyStatusPendingApproval:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RevokeCertificate400JSONResponseBodyStatusCode.
 const (
 	RevokeCertificate400JSONResponseBodyStatusCodeN400 RevokeCertificate400JSONResponseBodyStatusCode = 400
@@ -80301,6 +80853,51 @@ const (
 func (e CreateDynamicSecretJSONBodyProvider29Type) Valid() bool {
 	switch e {
 	case Openrouter:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType.
+const (
+	CreateDynamicSecretJSONBodyProvider30Inputs0LeaseTypeRole CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType = "role"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType enum.
+func (e CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType) Valid() bool {
+	switch e {
+	case CreateDynamicSecretJSONBodyProvider30Inputs0LeaseTypeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType.
+const (
+	Branch CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType = "branch"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType enum.
+func (e CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType) Valid() bool {
+	switch e {
+	case Branch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider30Type.
+const (
+	Neon CreateDynamicSecretJSONBodyProvider30Type = "neon"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Type enum.
+func (e CreateDynamicSecretJSONBodyProvider30Type) Valid() bool {
+	switch e {
+	case Neon:
 		return true
 	default:
 		return false
@@ -108984,6 +109581,33 @@ func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessP
 	}
 }
 
+// Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionList       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionManage     ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionRead       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission.
 const (
 	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission = "edit"
@@ -109005,6 +109629,33 @@ func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFold
 	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionManage:
 		return true
 	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionList       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionManage     ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionRead       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionRead:
 		return true
 	default:
 		return false
@@ -110478,6 +111129,33 @@ func (e ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission)
 	}
 }
 
+// Defines values for ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionList       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionManage     ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionRead       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission.
 const (
 	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission = "edit"
@@ -110499,6 +111177,33 @@ func (e ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAcce
 	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionManage:
 		return true
 	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionList       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionManage     ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionRead       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionRead:
 		return true
 	default:
 		return false
@@ -148221,7 +148926,18 @@ type ListAppConnections200JSONResponseBodyAppConnections7 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections7App `json:"app"`
 	CreatedAt   time.Time                                               `json:"createdAt"`
 	Credentials struct {
-		TenantId *string `json:"tenantId,omitempty"`
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
 	Description                  *string                                                    `json:"description,omitempty"`
@@ -148282,8 +148998,7 @@ type ListAppConnections200JSONResponseBodyAppConnections8 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections8App `json:"app"`
 	CreatedAt   time.Time                                               `json:"createdAt"`
 	Credentials struct {
-		ClientId string `json:"clientId"`
-		TenantId string `json:"tenantId"`
+		TenantId *string `json:"tenantId,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
 	Description                  *string                                                    `json:"description,omitempty"`
@@ -148407,13 +149122,6 @@ type ListAppConnections200JSONResponseBodyAppConnections10 struct {
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
 		ClientId string `json:"clientId"`
-
-		// FederatedCredential The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set.
-		FederatedCredential struct {
-			Audience          string  `json:"audience"`
-			IssuerUrl         *string `json:"issuerUrl"`
-			SubjectIdentifier string  `json:"subjectIdentifier"`
-		} `json:"federatedCredential"`
 		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -148475,7 +149183,15 @@ type ListAppConnections200JSONResponseBodyAppConnections11 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections11App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		TenantId *string `json:"tenantId,omitempty"`
+		ClientId string `json:"clientId"`
+
+		// FederatedCredential The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -148536,8 +149252,7 @@ type ListAppConnections200JSONResponseBodyAppConnections12 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections12App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		ClientId string `json:"clientId"`
-		TenantId string `json:"tenantId"`
+		TenantId *string `json:"tenantId,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -148598,7 +149313,7 @@ type ListAppConnections200JSONResponseBodyAppConnections13 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections13App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		OrgName  string `json:"orgName"`
+		ClientId string `json:"clientId"`
 		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -148660,7 +149375,8 @@ type ListAppConnections200JSONResponseBodyAppConnections14 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections14App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		OrgName string `json:"orgName"`
+		OrgName  string `json:"orgName"`
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -148721,9 +149437,7 @@ type ListAppConnections200JSONResponseBodyAppConnections15 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections15App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		ClientId string `json:"clientId"`
-		OrgName  string `json:"orgName"`
-		TenantId string `json:"tenantId"`
+		OrgName string `json:"orgName"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -148785,10 +149499,8 @@ type ListAppConnections200JSONResponseBodyAppConnections16 struct {
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
 		ClientId string `json:"clientId"`
-
-		// Scopes The OAuth scopes to request for the service principal's token: secrets for secret syncs, and authentication and scim for secret rotations. Each must be assigned to the client secret. Defaults to all-apis when omitted or empty.
-		Scopes       *[]ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes `json:"scopes,omitempty"`
-		WorkspaceUrl string                                                                    `json:"workspaceUrl"`
+		OrgName  string `json:"orgName"`
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -148838,9 +149550,6 @@ type ListAppConnections200JSONResponseBodyAppConnections16 struct {
 // ListAppConnections200JSONResponseBodyAppConnections16App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections16App string
 
-// ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections16CredentialsScopes string
-
 // ListAppConnections200JSONResponseBodyAppConnections16Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections16Method string
 
@@ -148849,9 +149558,15 @@ type ListAppConnections200JSONResponseBodyAppConnections16RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections17 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections17 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections17App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections17App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+
+		// Scopes The OAuth scopes to request for the service principal's token: secrets for secret syncs, and authentication and scim for secret rotations. Each must be assigned to the client secret. Defaults to all-apis when omitted or empty.
+		Scopes       *[]ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes `json:"scopes,omitempty"`
+		WorkspaceUrl string                                                                    `json:"workspaceUrl"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -148899,6 +149614,9 @@ type ListAppConnections200JSONResponseBodyAppConnections17 struct {
 
 // ListAppConnections200JSONResponseBodyAppConnections17App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections17App string
+
+// ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections17CredentialsScopes string
 
 // ListAppConnections200JSONResponseBodyAppConnections17Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections17Method string
@@ -149026,30 +149744,9 @@ type ListAppConnections200JSONResponseBodyAppConnections19RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections20 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections20 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections20App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// Database The name of the database to connect to.
-		Database string `json:"database"`
-
-		// Host The hostname of the database server.
-		Host string `json:"host"`
-
-		// Port The port number of the database.
-		Port float32 `json:"port"`
-
-		// SslCertificate The SSL certificate to use for connection.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslEnabled Whether or not to use SSL when connecting to the database.
-		SslEnabled bool `json:"sslEnabled"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
-		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
-
-		// Username The username to connect to the database with.
-		Username string `json:"username"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections20App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -149269,8 +149966,26 @@ type ListAppConnections200JSONResponseBodyAppConnections23 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections23App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// ClientId The client ID used to authenticate with Camunda.
-		ClientId string `json:"clientId"`
+		// Database The name of the database to connect to.
+		Database string `json:"database"`
+
+		// Host The hostname of the database server.
+		Host string `json:"host"`
+
+		// Port The port number of the database.
+		Port float32 `json:"port"`
+
+		// SslCertificate The SSL certificate to use for connection.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslEnabled Whether or not to use SSL when connecting to the database.
+		SslEnabled bool `json:"sslEnabled"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
+		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
+
+		// Username The username to connect to the database with.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149331,14 +150046,8 @@ type ListAppConnections200JSONResponseBodyAppConnections24 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections24App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Audience The unique identifier of the target API you want to access.
-		Audience string `json:"audience"`
-
-		// ClientId Your Auth0 application's Client ID.
+		// ClientId The client ID used to authenticate with Camunda.
 		ClientId string `json:"clientId"`
-
-		// Domain The domain of the Auth0 instance to connect to.
-		Domain string `json:"domain"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149399,11 +150108,14 @@ type ListAppConnections200JSONResponseBodyAppConnections25 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections25App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Hashicrop Vault instance URL to connect with.
-		InstanceUrl string `json:"instanceUrl"`
+		// Audience The unique identifier of the target API you want to access.
+		Audience string `json:"audience"`
 
-		// Namespace The Hashicrop Vault namespace to connect with.
-		Namespace *string `json:"namespace,omitempty"`
+		// ClientId Your Auth0 application's Client ID.
+		ClientId string `json:"clientId"`
+
+		// Domain The domain of the Auth0 instance to connect to.
+		Domain string `json:"domain"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149469,9 +150181,6 @@ type ListAppConnections200JSONResponseBodyAppConnections26 struct {
 
 		// Namespace The Hashicrop Vault namespace to connect with.
 		Namespace *string `json:"namespace,omitempty"`
-
-		// RoleId The Role ID used to connect with Hashicorp Vault.
-		RoleId string `json:"roleId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149532,7 +150241,14 @@ type ListAppConnections200JSONResponseBodyAppConnections27 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections27App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		TenantId string `json:"tenantId"`
+		// InstanceUrl The Hashicrop Vault instance URL to connect with.
+		InstanceUrl string `json:"instanceUrl"`
+
+		// Namespace The Hashicrop Vault namespace to connect with.
+		Namespace *string `json:"namespace,omitempty"`
+
+		// RoleId The Role ID used to connect with Hashicorp Vault.
+		RoleId string `json:"roleId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149593,7 +150309,6 @@ type ListAppConnections200JSONResponseBodyAppConnections28 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections28App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		ClientId string `json:"clientId"`
 		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -149717,8 +150432,8 @@ type ListAppConnections200JSONResponseBodyAppConnections30 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections30App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Windmill instance URL to connect with (defaults to https://app.windmill.dev).
-		InstanceUrl *string `json:"instanceUrl,omitempty"`
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149779,20 +150494,8 @@ type ListAppConnections200JSONResponseBodyAppConnections31 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections31App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Dn The Distinguished Name (DN) or User Principal Name (UPN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').
-		Dn string `json:"dn"`
-
-		// Provider The type of LDAP provider. Determines provider-specific behaviors.
-		Provider ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider `json:"provider"`
-
-		// SslCertificate The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
-
-		// Url The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').
-		Url string `json:"url"`
+		// InstanceUrl The Windmill instance URL to connect with (defaults to https://app.windmill.dev).
+		InstanceUrl *string `json:"instanceUrl,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149842,9 +150545,6 @@ type ListAppConnections200JSONResponseBodyAppConnections31 struct {
 // ListAppConnections200JSONResponseBodyAppConnections31App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections31App string
 
-// ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections31CredentialsProvider string
-
 // ListAppConnections200JSONResponseBodyAppConnections31Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections31Method string
 
@@ -149856,8 +150556,20 @@ type ListAppConnections200JSONResponseBodyAppConnections32 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections32App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The TeamCity instance URL to connect with.
-		InstanceUrl string `json:"instanceUrl"`
+		// Dn The Distinguished Name (DN) or User Principal Name (UPN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').
+		Dn string `json:"dn"`
+
+		// Provider The type of LDAP provider. Determines provider-specific behaviors.
+		Provider ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider `json:"provider"`
+
+		// SslCertificate The SSL certificate (PEM format) to use for secure connection when using ldaps:// with a self-signed certificate.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Url The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').
+		Url string `json:"url"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149907,6 +150619,9 @@ type ListAppConnections200JSONResponseBodyAppConnections32 struct {
 // ListAppConnections200JSONResponseBodyAppConnections32App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections32App string
 
+// ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections32CredentialsProvider string
+
 // ListAppConnections200JSONResponseBodyAppConnections32Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections32Method string
 
@@ -149918,17 +150633,8 @@ type ListAppConnections200JSONResponseBodyAppConnections33 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections33App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Fingerprint The fingerprint of the public key uploaded to the user's API keys.
-		Fingerprint string `json:"fingerprint"`
-
-		// Region The region identifier in Oracle Cloud Infrastructure where the vault is located.
-		Region string `json:"region"`
-
-		// TenancyOcid The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.
-		TenancyOcid string `json:"tenancyOcid"`
-
-		// UserOcid The OCID (Oracle Cloud Identifier) of the user making the request.
-		UserOcid string `json:"userOcid"`
+		// InstanceUrl The TeamCity instance URL to connect with.
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -149989,26 +150695,17 @@ type ListAppConnections200JSONResponseBodyAppConnections34 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections34App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Database The name of the database to connect to.
-		Database string `json:"database"`
+		// Fingerprint The fingerprint of the public key uploaded to the user's API keys.
+		Fingerprint string `json:"fingerprint"`
 
-		// Host The hostname of the database server.
-		Host string `json:"host"`
+		// Region The region identifier in Oracle Cloud Infrastructure where the vault is located.
+		Region string `json:"region"`
 
-		// Port The port number of the database.
-		Port float32 `json:"port"`
+		// TenancyOcid The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.
+		TenancyOcid string `json:"tenancyOcid"`
 
-		// SslCertificate The SSL certificate to use for connection.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslEnabled Whether or not to use SSL when connecting to the database.
-		SslEnabled bool `json:"sslEnabled"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
-		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
-
-		// Username The username to connect to the database with.
-		Username string `json:"username"`
+		// UserOcid The OCID (Oracle Cloud Identifier) of the user making the request.
+		UserOcid string `json:"userOcid"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -150069,8 +150766,26 @@ type ListAppConnections200JSONResponseBodyAppConnections35 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections35App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The URL of the 1Password Connect Server instance to authenticate with.
-		InstanceUrl string `json:"instanceUrl"`
+		// Database The name of the database to connect to.
+		Database string `json:"database"`
+
+		// Host The hostname of the database server.
+		Host string `json:"host"`
+
+		// Port The port number of the database.
+		Port float32 `json:"port"`
+
+		// SslCertificate The SSL certificate to use for connection.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslEnabled Whether or not to use SSL when connecting to the database.
+		SslEnabled bool `json:"sslEnabled"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
+		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
+
+		// Username The username to connect to the database with.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -150128,9 +150843,12 @@ type ListAppConnections200JSONResponseBodyAppConnections35RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections36 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections36 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections36App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections36App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The URL of the 1Password Connect Server instance to authenticate with.
+		InstanceUrl string `json:"instanceUrl"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -150423,12 +151141,9 @@ type ListAppConnections200JSONResponseBodyAppConnections40RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections41 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections41 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections41App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev.
-		InstanceUrl *string `json:"instanceUrl,omitempty"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections41App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -150488,10 +151203,7 @@ type ListAppConnections200JSONResponseBodyAppConnections42 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections42App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// AccessTokenType The type of token used to connect with GitLab.
-		AccessTokenType ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType `json:"accessTokenType"`
-
-		// InstanceUrl The GitLab instance URL to connect with.
+		// InstanceUrl The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev.
 		InstanceUrl *string `json:"instanceUrl,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -150542,9 +151254,6 @@ type ListAppConnections200JSONResponseBodyAppConnections42 struct {
 // ListAppConnections200JSONResponseBodyAppConnections42App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections42App string
 
-// ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections42CredentialsAccessTokenType string
-
 // ListAppConnections200JSONResponseBodyAppConnections42Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections42Method string
 
@@ -150556,6 +151265,9 @@ type ListAppConnections200JSONResponseBodyAppConnections43 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections43App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
+		// AccessTokenType The type of token used to connect with GitLab.
+		AccessTokenType ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType `json:"accessTokenType"`
+
 		// InstanceUrl The GitLab instance URL to connect with.
 		InstanceUrl *string `json:"instanceUrl,omitempty"`
 	} `json:"credentials"`
@@ -150607,6 +151319,9 @@ type ListAppConnections200JSONResponseBodyAppConnections43 struct {
 // ListAppConnections200JSONResponseBodyAppConnections43App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections43App string
 
+// ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections43CredentialsAccessTokenType string
+
 // ListAppConnections200JSONResponseBodyAppConnections43Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections43Method string
 
@@ -150618,7 +151333,8 @@ type ListAppConnections200JSONResponseBodyAppConnections44 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections44App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		AccountId string `json:"accountId"`
+		// InstanceUrl The GitLab instance URL to connect with.
+		InstanceUrl *string `json:"instanceUrl,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -150679,8 +151395,7 @@ type ListAppConnections200JSONResponseBodyAppConnections45 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections45App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Email The email used to access Bitbucket.
-		Email openapi_types.Email `json:"email"`
+		AccountId string `json:"accountId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -150741,8 +151456,8 @@ type ListAppConnections200JSONResponseBodyAppConnections46 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections46App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Zabbix instance URL to connect with.
-		InstanceUrl string `json:"instanceUrl"`
+		// Email The email used to access Bitbucket.
+		Email openapi_types.Email `json:"email"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -150800,22 +151515,23 @@ type ListAppConnections200JSONResponseBodyAppConnections46RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections47 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections47 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections47App `json:"app"`
-	CreatedAt                    time.Time                                                `json:"createdAt"`
-	Credentials                  map[string]interface{}                                   `json:"credentials"`
-	CredentialsHash              *string                                                  `json:"credentialsHash,omitempty"`
-	Description                  *string                                                  `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID                                      `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID                                      `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID                                       `json:"id"`
-	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
-
-	// Method The method used to authenticate with Railway.
-	Method  ListAppConnections200JSONResponseBodyAppConnections47Method `json:"method"`
-	Name    string                                                      `json:"name"`
-	OrgId   openapi_types.UUID                                          `json:"orgId"`
-	Project *struct {
+	App         ListAppConnections200JSONResponseBodyAppConnections47App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The Zabbix instance URL to connect with.
+		InstanceUrl string `json:"instanceUrl"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
+	Description                  *string                                                     `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                          `json:"id"`
+	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections47Method `json:"method"`
+	Name                         string                                                      `json:"name"`
+	OrgId                        openapi_types.UUID                                          `json:"orgId"`
+	Project                      *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -150872,7 +151588,7 @@ type ListAppConnections200JSONResponseBodyAppConnections48 struct {
 	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
 	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
 
-	// Method The method used to authenticate with Checkly.
+	// Method The method used to authenticate with Railway.
 	Method  ListAppConnections200JSONResponseBodyAppConnections48Method `json:"method"`
 	Name    string                                                      `json:"name"`
 	OrgId   openapi_types.UUID                                          `json:"orgId"`
@@ -150922,22 +151638,22 @@ type ListAppConnections200JSONResponseBodyAppConnections48RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections49 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections49 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections49App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		Host *string `json:"host,omitempty"`
-	} `json:"credentials"`
-	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
-	Description                  *string                                                     `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID                                          `json:"id"`
-	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
-	Method                       ListAppConnections200JSONResponseBodyAppConnections49Method `json:"method"`
-	Name                         string                                                      `json:"name"`
-	OrgId                        openapi_types.UUID                                          `json:"orgId"`
-	Project                      *struct {
+	App                          ListAppConnections200JSONResponseBodyAppConnections49App `json:"app"`
+	CreatedAt                    time.Time                                                `json:"createdAt"`
+	Credentials                  map[string]interface{}                                   `json:"credentials"`
+	CredentialsHash              *string                                                  `json:"credentialsHash,omitempty"`
+	Description                  *string                                                  `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                      `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                      `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                       `json:"id"`
+	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Method The method used to authenticate with Checkly.
+	Method  ListAppConnections200JSONResponseBodyAppConnections49Method `json:"method"`
+	Name    string                                                      `json:"name"`
+	OrgId   openapi_types.UUID                                          `json:"orgId"`
+	Project *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -150983,9 +151699,11 @@ type ListAppConnections200JSONResponseBodyAppConnections49RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections50 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections50 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections50App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections50App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		Host *string `json:"host,omitempty"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -151042,25 +151760,20 @@ type ListAppConnections200JSONResponseBodyAppConnections50RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections51 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections51 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections51App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The URL used to access Supabase.
-		InstanceUrl *string `json:"instanceUrl,omitempty"`
-	} `json:"credentials"`
-	CredentialsHash              *string             `json:"credentialsHash,omitempty"`
-	Description                  *string             `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID  `json:"id"`
-	IsAutoRotationEnabled        *bool               `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool               `json:"isPlatformManagedCredentials,omitempty"`
-
-	// Method The method used to authenticate with Supabase.
-	Method  ListAppConnections200JSONResponseBodyAppConnections51Method `json:"method"`
-	Name    string                                                      `json:"name"`
-	OrgId   openapi_types.UUID                                          `json:"orgId"`
-	Project *struct {
+	App                          ListAppConnections200JSONResponseBodyAppConnections51App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
+	Description                  *string                                                     `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                          `json:"id"`
+	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections51Method `json:"method"`
+	Name                         string                                                      `json:"name"`
+	OrgId                        openapi_types.UUID                                          `json:"orgId"`
+	Project                      *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -151106,18 +151819,21 @@ type ListAppConnections200JSONResponseBodyAppConnections51RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections52 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections52 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections52App `json:"app"`
-	CreatedAt                    time.Time                                                `json:"createdAt"`
-	Credentials                  map[string]interface{}                                   `json:"credentials"`
-	CredentialsHash              *string                                                  `json:"credentialsHash,omitempty"`
-	Description                  *string                                                  `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID                                      `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID                                      `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID                                       `json:"id"`
-	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
+	App         ListAppConnections200JSONResponseBodyAppConnections52App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The URL used to access Supabase.
+		InstanceUrl *string `json:"instanceUrl,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string             `json:"credentialsHash,omitempty"`
+	Description                  *string             `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID  `json:"id"`
+	IsAutoRotationEnabled        *bool               `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool               `json:"isPlatformManagedCredentials,omitempty"`
 
-	// Method The method used to authenticate with DigitalOcean App Platform.
+	// Method The method used to authenticate with Supabase.
 	Method  ListAppConnections200JSONResponseBodyAppConnections52Method `json:"method"`
 	Name    string                                                      `json:"name"`
 	OrgId   openapi_types.UUID                                          `json:"orgId"`
@@ -151178,7 +151894,7 @@ type ListAppConnections200JSONResponseBodyAppConnections53 struct {
 	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
 	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
 
-	// Method The method used to authenticate with Netlify.
+	// Method The method used to authenticate with DigitalOcean App Platform.
 	Method  ListAppConnections200JSONResponseBodyAppConnections53Method `json:"method"`
 	Name    string                                                      `json:"name"`
 	OrgId   openapi_types.UUID                                          `json:"orgId"`
@@ -151228,20 +151944,22 @@ type ListAppConnections200JSONResponseBodyAppConnections53RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections54 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections54 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections54App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
-	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
-	Description                  *string                                                     `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID                                          `json:"id"`
-	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
-	Method                       ListAppConnections200JSONResponseBodyAppConnections54Method `json:"method"`
-	Name                         string                                                      `json:"name"`
-	OrgId                        openapi_types.UUID                                          `json:"orgId"`
-	Project                      *struct {
+	App                          ListAppConnections200JSONResponseBodyAppConnections54App `json:"app"`
+	CreatedAt                    time.Time                                                `json:"createdAt"`
+	Credentials                  map[string]interface{}                                   `json:"credentials"`
+	CredentialsHash              *string                                                  `json:"credentialsHash,omitempty"`
+	Description                  *string                                                  `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                      `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                      `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                       `json:"id"`
+	IsAutoRotationEnabled        *bool                                                    `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                    `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Method The method used to authenticate with Netlify.
+	Method  ListAppConnections200JSONResponseBodyAppConnections54Method `json:"method"`
+	Name    string                                                      `json:"name"`
+	OrgId   openapi_types.UUID                                          `json:"orgId"`
+	Project *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -151287,12 +152005,9 @@ type ListAppConnections200JSONResponseBodyAppConnections54RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections55 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections55 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections55App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The URL used to access your Okta organization.
-		InstanceUrl string `json:"instanceUrl"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections55App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -151352,17 +152067,8 @@ type ListAppConnections200JSONResponseBodyAppConnections56 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections56App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// AdcsUrl The HTTPS URL of the Azure ADCS instance to connect with (e.g., 'https://adcs.yourdomain.com/certsrv').
-		AdcsUrl string `json:"adcsUrl"`
-
-		// SslCertificate The SSL certificate (PEM format) to use for secure connection.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
-
-		// Username The username used to access Azure ADCS (format: 'DOMAIN\username' or 'username@domain.com').
-		Username string `json:"username"`
+		// InstanceUrl The URL used to access your Okta organization.
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -151423,10 +152129,16 @@ type ListAppConnections200JSONResponseBodyAppConnections57 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections57App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Host The AD CS server's DNS name (FQDN), for example ca01.corp.example.com.
-		Host string `json:"host"`
+		// AdcsUrl The HTTPS URL of the Azure ADCS instance to connect with (e.g., 'https://adcs.yourdomain.com/certsrv').
+		AdcsUrl string `json:"adcsUrl"`
 
-		// Username Windows login: DOMAIN\user or user@domain.
+		// SslCertificate The SSL certificate (PEM format) to use for secure connection.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Username The username used to access Azure ADCS (format: 'DOMAIN\username' or 'username@domain.com').
 		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -151488,20 +152200,8 @@ type ListAppConnections200JSONResponseBodyAppConnections58 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections58App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Host The Windows host's DNS name (FQDN) or IP address.
+		// Host The AD CS server's DNS name (FQDN), for example ca01.corp.example.com.
 		Host string `json:"host"`
-
-		// Port The WinRM port. 5985 for HTTP with NTLM message encryption, 5986 for HTTPS.
-		Port *int `json:"port,omitempty"`
-
-		// SslCertificate CA certificate (PEM) used to verify a self-signed WinRM HTTPS listener (HTTPS only).
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslEnabled Connect over HTTPS. When disabled, HTTP with NTLM message encryption is used.
-		SslEnabled *bool `json:"sslEnabled,omitempty"`
-
-		// SslRejectUnauthorized Verify the listener's TLS certificate (HTTPS only).
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 
 		// Username Windows login: DOMAIN\user or user@domain.
 		Username string `json:"username"`
@@ -151565,12 +152265,23 @@ type ListAppConnections200JSONResponseBodyAppConnections59 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections59App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Host                  string  `json:"host"`
-		Port                  float32 `json:"port"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslEnabled            bool    `json:"sslEnabled"`
-		SslRejectUnauthorized bool    `json:"sslRejectUnauthorized"`
-		Username              string  `json:"username"`
+		// Host The Windows host's DNS name (FQDN) or IP address.
+		Host string `json:"host"`
+
+		// Port The WinRM port. 5985 for HTTP with NTLM message encryption, 5986 for HTTPS.
+		Port *int `json:"port,omitempty"`
+
+		// SslCertificate CA certificate (PEM) used to verify a self-signed WinRM HTTPS listener (HTTPS only).
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslEnabled Connect over HTTPS. When disabled, HTTP with NTLM message encryption is used.
+		SslEnabled *bool `json:"sslEnabled,omitempty"`
+
+		// SslRejectUnauthorized Verify the listener's TLS certificate (HTTPS only).
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Username Windows login: DOMAIN\user or user@domain.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -151631,12 +152342,11 @@ type ListAppConnections200JSONResponseBodyAppConnections60 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections60App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Database              string  `json:"database"`
 		Host                  string  `json:"host"`
 		Port                  float32 `json:"port"`
-		TlsCertificate        *string `json:"tlsCertificate,omitempty"`
-		TlsEnabled            bool    `json:"tlsEnabled"`
-		TlsRejectUnauthorized bool    `json:"tlsRejectUnauthorized"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslEnabled            bool    `json:"sslEnabled"`
+		SslRejectUnauthorized bool    `json:"sslRejectUnauthorized"`
 		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -151695,9 +152405,17 @@ type ListAppConnections200JSONResponseBodyAppConnections60RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections61 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections61 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections61App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections61App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		Database              string  `json:"database"`
+		Host                  string  `json:"host"`
+		Port                  float32 `json:"port"`
+		TlsCertificate        *string `json:"tlsCertificate,omitempty"`
+		TlsEnabled            bool    `json:"tlsEnabled"`
+		TlsRejectUnauthorized bool    `json:"tlsRejectUnauthorized"`
+		Username              string  `json:"username"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -151754,18 +152472,9 @@ type ListAppConnections200JSONResponseBodyAppConnections61RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections62 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections62 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections62App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// OrgName The short name of the Chef organization to connect to.
-		OrgName string `json:"orgName"`
-
-		// ServerUrl The URL of the Chef server to connect to.
-		ServerUrl *string `json:"serverUrl,omitempty"`
-
-		// UserName The username used to access Chef.
-		UserName string `json:"userName"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections62App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -151825,7 +152534,14 @@ type ListAppConnections200JSONResponseBodyAppConnections63 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections63App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		ApiKey string `json:"apiKey"`
+		// OrgName The short name of the Chef organization to connect to.
+		OrgName string `json:"orgName"`
+
+		// ServerUrl The URL of the Chef server to connect to.
+		ServerUrl *string `json:"serverUrl,omitempty"`
+
+		// UserName The username used to access Chef.
+		UserName string `json:"userName"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -151886,11 +152602,7 @@ type ListAppConnections200JSONResponseBodyAppConnections64 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections64App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Environment The UltraDNS API to connect to: production (api.ultradns.com) or test (the UltraDNS customer test environment at test-api.ultradns.com).
-		Environment ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment `json:"environment"`
-
-		// Username The username of the UltraDNS user. The user can't have Two Factor Mobile Authentication enabled.
-		Username string `json:"username"`
+		ApiKey string `json:"apiKey"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -151940,9 +152652,6 @@ type ListAppConnections200JSONResponseBodyAppConnections64 struct {
 // ListAppConnections200JSONResponseBodyAppConnections64App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections64App string
 
-// ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections64CredentialsEnvironment string
-
 // ListAppConnections200JSONResponseBodyAppConnections64Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections64Method string
 
@@ -151954,11 +152663,11 @@ type ListAppConnections200JSONResponseBodyAppConnections65 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections65App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// SubscriptionId Subscription ID must be a valid GUID
-		SubscriptionId string `json:"subscriptionId"`
+		// Environment The UltraDNS API to connect to: production (api.ultradns.com) or test (the UltraDNS customer test environment at test-api.ultradns.com).
+		Environment ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment `json:"environment"`
 
-		// TenantId Tenant ID must be a valid GUID
-		TenantId string `json:"tenantId"`
+		// Username The username of the UltraDNS user. The user can't have Two Factor Mobile Authentication enabled.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152008,6 +152717,9 @@ type ListAppConnections200JSONResponseBodyAppConnections65 struct {
 // ListAppConnections200JSONResponseBodyAppConnections65App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections65App string
 
+// ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections65CredentialsEnvironment string
+
 // ListAppConnections200JSONResponseBodyAppConnections65Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections65Method string
 
@@ -152019,8 +152731,11 @@ type ListAppConnections200JSONResponseBodyAppConnections66 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections66App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Octopus Deploy instance URL to connect to.
-		InstanceUrl string `json:"instanceUrl"`
+		// SubscriptionId Subscription ID must be a valid GUID
+		SubscriptionId string `json:"subscriptionId"`
+
+		// TenantId Tenant ID must be a valid GUID
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152081,10 +152796,8 @@ type ListAppConnections200JSONResponseBodyAppConnections67 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections67App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Domain   *string `json:"domain,omitempty"`
-		Host     string  `json:"host"`
-		Port     float32 `json:"port"`
-		Username string  `json:"username"`
+		// InstanceUrl The Octopus Deploy instance URL to connect to.
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152142,13 +152855,10 @@ type ListAppConnections200JSONResponseBodyAppConnections67RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections68 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections68 struct {
-	App           ListAppConnections200JSONResponseBodyAppConnections68App `json:"app"`
-	Configuration *struct {
-		// BlockedUsers A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu').
-		BlockedUsers *string `json:"blockedUsers,omitempty"`
-	} `json:"configuration,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
+	App         ListAppConnections200JSONResponseBodyAppConnections68App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
+		Domain   *string `json:"domain,omitempty"`
 		Host     string  `json:"host"`
 		Port     float32 `json:"port"`
 		Username string  `json:"username"`
@@ -152276,28 +152986,28 @@ type ListAppConnections200JSONResponseBodyAppConnections69RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections70 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections70 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections70App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
+	App           ListAppConnections200JSONResponseBodyAppConnections70App `json:"app"`
+	Configuration *struct {
+		// BlockedUsers A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu').
+		BlockedUsers *string `json:"blockedUsers,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
-		// AccountId The account ID of your DBT account.
-		AccountId string `json:"accountId"`
-
-		// InstanceUrl The base URL of your DBT instance.
-		InstanceUrl string `json:"instanceUrl"`
+		Host     string  `json:"host"`
+		Port     float32 `json:"port"`
+		Username string  `json:"username"`
 	} `json:"credentials"`
-	CredentialsHash              *string             `json:"credentialsHash,omitempty"`
-	Description                  *string             `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID  `json:"id"`
-	IsAutoRotationEnabled        *bool               `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool               `json:"isPlatformManagedCredentials,omitempty"`
-
-	// Method The method used to authenticate with DBT.
-	Method  ListAppConnections200JSONResponseBodyAppConnections70Method `json:"method"`
-	Name    string                                                      `json:"name"`
-	OrgId   openapi_types.UUID                                          `json:"orgId"`
-	Project *struct {
+	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
+	Description                  *string                                                     `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                          `json:"id"`
+	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections70Method `json:"method"`
+	Name                         string                                                      `json:"name"`
+	OrgId                        openapi_types.UUID                                          `json:"orgId"`
+	Project                      *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -152343,20 +153053,28 @@ type ListAppConnections200JSONResponseBodyAppConnections70RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections71 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections71 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections71App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
-	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
-	Description                  *string                                                     `json:"description,omitempty"`
-	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
-	GatewayPoolId                *openapi_types.UUID                                         `json:"gatewayPoolId,omitempty"`
-	Id                           openapi_types.UUID                                          `json:"id"`
-	IsAutoRotationEnabled        *bool                                                       `json:"isAutoRotationEnabled,omitempty"`
-	IsPlatformManagedCredentials *bool                                                       `json:"isPlatformManagedCredentials,omitempty"`
-	Method                       ListAppConnections200JSONResponseBodyAppConnections71Method `json:"method"`
-	Name                         string                                                      `json:"name"`
-	OrgId                        openapi_types.UUID                                          `json:"orgId"`
-	Project                      *struct {
+	App         ListAppConnections200JSONResponseBodyAppConnections71App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// AccountId The account ID of your DBT account.
+		AccountId string `json:"accountId"`
+
+		// InstanceUrl The base URL of your DBT instance.
+		InstanceUrl string `json:"instanceUrl"`
+	} `json:"credentials"`
+	CredentialsHash              *string             `json:"credentialsHash,omitempty"`
+	Description                  *string             `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID  `json:"id"`
+	IsAutoRotationEnabled        *bool               `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool               `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Method The method used to authenticate with DBT.
+	Method  ListAppConnections200JSONResponseBodyAppConnections71Method `json:"method"`
+	Name    string                                                      `json:"name"`
+	OrgId   openapi_types.UUID                                          `json:"orgId"`
+	Project *struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -152579,12 +153297,9 @@ type ListAppConnections200JSONResponseBodyAppConnections74RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections75 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections75 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections75App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		ClientId string `json:"clientId"`
-		TenantId string `json:"tenantId"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections75App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -152706,8 +153421,8 @@ type ListAppConnections200JSONResponseBodyAppConnections77 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections77App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Region The region of the Venafi TLS Protect Cloud instance
-		Region ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion `json:"region"`
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152757,9 +153472,6 @@ type ListAppConnections200JSONResponseBodyAppConnections77 struct {
 // ListAppConnections200JSONResponseBodyAppConnections77App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections77App string
 
-// ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections77CredentialsRegion string
-
 // ListAppConnections200JSONResponseBodyAppConnections77Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections77Method string
 
@@ -152771,14 +153483,8 @@ type ListAppConnections200JSONResponseBodyAppConnections78 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections78App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// ClientId The OAuth client ID registered in the Venafi TPP API Integration. Used for token-based authentication.
-		ClientId string `json:"clientId"`
-
-		// TppUrl The HTTPS URL of the Venafi TPP instance (e.g., 'https://tpp.example.com'). Must use HTTPS.
-		TppUrl string `json:"tppUrl"`
-
-		// Username The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\username', 'username@domain.com', or local usernames.
-		Username string `json:"username"`
+		// Region The region of the Venafi TLS Protect Cloud instance
+		Region ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion `json:"region"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152828,6 +153534,9 @@ type ListAppConnections200JSONResponseBodyAppConnections78 struct {
 // ListAppConnections200JSONResponseBodyAppConnections78App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections78App string
 
+// ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections78CredentialsRegion string
+
 // ListAppConnections200JSONResponseBodyAppConnections78Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections78Method string
 
@@ -152839,8 +153548,14 @@ type ListAppConnections200JSONResponseBodyAppConnections79 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections79App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		InstanceUrl             string             `json:"instanceUrl"`
-		MachineIdentityClientId openapi_types.UUID `json:"machineIdentityClientId"`
+		// ClientId The OAuth client ID registered in the Venafi TPP API Integration. Used for token-based authentication.
+		ClientId string `json:"clientId"`
+
+		// TppUrl The HTTPS URL of the Venafi TPP instance (e.g., 'https://tpp.example.com'). Must use HTTPS.
+		TppUrl string `json:"tppUrl"`
+
+		// Username The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\username', 'username@domain.com', or local usernames.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152901,11 +153616,8 @@ type ListAppConnections200JSONResponseBodyAppConnections80 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections80App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Hostname              string  `json:"hostname"`
-		Port                  *int    `json:"port,omitempty"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
-		Username              string  `json:"username"`
+		InstanceUrl             string             `json:"instanceUrl"`
+		MachineIdentityClientId openapi_types.UUID `json:"machineIdentityClientId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -152966,20 +153678,11 @@ type ListAppConnections200JSONResponseBodyAppConnections81 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections81App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Hostname The IP address or hostname of the management interface of the firewall or Panorama.
-		Hostname string `json:"hostname"`
-
-		// Port The HTTPS port of the management interface. Defaults to 443.
-		Port *int `json:"port,omitempty"`
-
-		// SslCertificate The PEM-encoded CA certificate to trust for the management interface's TLS certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether to reject the management interface's TLS certificate if it isn't trusted.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
-
-		// Username The username of the PAN-OS administrator to connect with.
-		Username string `json:"username"`
+		Hostname              string  `json:"hostname"`
+		Port                  *int    `json:"port,omitempty"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153040,11 +153743,20 @@ type ListAppConnections200JSONResponseBodyAppConnections82 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections82App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Hostname              string  `json:"hostname"`
-		Port                  *int    `json:"port,omitempty"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
-		Username              string  `json:"username"`
+		// Hostname The IP address or hostname of the management interface of the firewall or Panorama.
+		Hostname string `json:"hostname"`
+
+		// Port The HTTPS port of the management interface. Defaults to 443.
+		Port *int `json:"port,omitempty"`
+
+		// SslCertificate The PEM-encoded CA certificate to trust for the management interface's TLS certificate.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether to reject the management interface's TLS certificate if it isn't trusted.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Username The username of the PAN-OS administrator to connect with.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153105,11 +153817,11 @@ type ListAppConnections200JSONResponseBodyAppConnections83 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections83App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// AccountId The numeric Imperva account ID to act on. Set it to manage websites in a sub-account. Defaults to the account the API key belongs to.
-		AccountId *string `json:"accountId,omitempty"`
-
-		// ApiId The API ID of an Imperva API key, shown beside the key in the Cloud Security Console.
-		ApiId string `json:"apiId"`
+		Hostname              string  `json:"hostname"`
+		Port                  *int    `json:"port,omitempty"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153167,9 +153879,15 @@ type ListAppConnections200JSONResponseBodyAppConnections83RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections84 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections84 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections84App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections84App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// AccountId The numeric Imperva account ID to act on. Set it to manage websites in a sub-account. Defaults to the account the API key belongs to.
+		AccountId *string `json:"accountId,omitempty"`
+
+		// ApiId The API ID of an Imperva API key, shown beside the key in the Cloud Security Console.
+		ApiId string `json:"apiId"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153226,15 +153944,9 @@ type ListAppConnections200JSONResponseBodyAppConnections84RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections85 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections85 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections85App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// OkmsDomain The OVHcloud KMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').
-		OkmsDomain string `json:"okmsDomain"`
-
-		// OkmsId The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.
-		OkmsId openapi_types.UUID `json:"okmsId"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections85App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153356,9 +154068,15 @@ type ListAppConnections200JSONResponseBodyAppConnections86RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections87 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections87 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections87App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections87App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// OkmsDomain The OVHcloud KMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').
+		OkmsDomain string `json:"okmsDomain"`
+
+		// OkmsId The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.
+		OkmsId openapi_types.UUID `json:"okmsId"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153415,12 +154133,9 @@ type ListAppConnections200JSONResponseBodyAppConnections87RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections88 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections88 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections88App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// Region The CertCentral region the API key belongs to (us or eu).
-		Region ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion `json:"region"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections88App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153469,9 +154184,6 @@ type ListAppConnections200JSONResponseBodyAppConnections88 struct {
 // ListAppConnections200JSONResponseBodyAppConnections88App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections88App string
 
-// ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion defines parameters for ListAppConnections.
-type ListAppConnections200JSONResponseBodyAppConnections88CredentialsRegion string
-
 // ListAppConnections200JSONResponseBodyAppConnections88Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections88Method string
 
@@ -153480,9 +154192,12 @@ type ListAppConnections200JSONResponseBodyAppConnections88RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections89 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections89 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections89App    `json:"app"`
-	CreatedAt                    time.Time                                                   `json:"createdAt"`
-	Credentials                  map[string]interface{}                                      `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections89App `json:"app"`
+	CreatedAt   time.Time                                                `json:"createdAt"`
+	Credentials struct {
+		// Region The CertCentral region the API key belongs to (us or eu).
+		Region ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion `json:"region"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153530,6 +154245,9 @@ type ListAppConnections200JSONResponseBodyAppConnections89 struct {
 
 // ListAppConnections200JSONResponseBodyAppConnections89App defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections89App string
+
+// ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections89CredentialsRegion string
 
 // ListAppConnections200JSONResponseBodyAppConnections89Method defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections89Method string
@@ -153598,12 +154316,9 @@ type ListAppConnections200JSONResponseBodyAppConnections90RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections91 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections91 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections91App `json:"app"`
-	CreatedAt   time.Time                                                `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The instance URL of the Salesforce org to connect to.
-		InstanceUrl string `json:"instanceUrl"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections91App    `json:"app"`
+	CreatedAt                    time.Time                                                   `json:"createdAt"`
+	Credentials                  map[string]interface{}                                      `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                         `json:"gatewayId,omitempty"`
@@ -153663,11 +154378,8 @@ type ListAppConnections200JSONResponseBodyAppConnections92 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections92App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Account The Snowflake account identifier (e.g., xy12345.us-east-1).
-		Account string `json:"account"`
-
-		// Username The username (login name) used to authenticate with Snowflake.
-		Username string `json:"username"`
+		// InstanceUrl The instance URL of the Salesforce org to connect to.
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153728,8 +154440,11 @@ type ListAppConnections200JSONResponseBodyAppConnections93 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections93App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// Url The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').
-		Url string `json:"url"`
+		// Account The Snowflake account identifier (e.g., xy12345.us-east-1).
+		Account string `json:"account"`
+
+		// Username The username (login name) used to authenticate with Snowflake.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153852,11 +154567,8 @@ type ListAppConnections200JSONResponseBodyAppConnections95 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections95App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		Hostname              string  `json:"hostname"`
-		Port                  *int    `json:"port,omitempty"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
-		Username              string  `json:"username"`
+		// Url The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').
+		Url string `json:"url"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153917,8 +154629,11 @@ type ListAppConnections200JSONResponseBodyAppConnections96 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections96App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided.
-		InstanceUrl *string `json:"instanceUrl,omitempty"`
+		Hostname              string  `json:"hostname"`
+		Port                  *int    `json:"port,omitempty"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -153979,8 +154694,8 @@ type ListAppConnections200JSONResponseBodyAppConnections97 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections97App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Rundeck instance URL to connect to.
-		InstanceUrl string `json:"instanceUrl"`
+		// InstanceUrl The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided.
+		InstanceUrl *string `json:"instanceUrl,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -154041,7 +154756,7 @@ type ListAppConnections200JSONResponseBodyAppConnections98 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections98App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Portainer instance URL to connect to.
+		// InstanceUrl The Rundeck instance URL to connect to.
 		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
@@ -154103,11 +154818,8 @@ type ListAppConnections200JSONResponseBodyAppConnections99 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections99App `json:"app"`
 	CreatedAt   time.Time                                                `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Jenkins instance URL to connect to, including any context path (e.g., 'https://ci.example.com/jenkins').
+		// InstanceUrl The Portainer instance URL to connect to.
 		InstanceUrl string `json:"instanceUrl"`
-
-		// Username The username of the Jenkins user that owns the API token.
-		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                     `json:"credentialsHash,omitempty"`
 	Description                  *string                                                     `json:"description,omitempty"`
@@ -154168,8 +154880,11 @@ type ListAppConnections200JSONResponseBodyAppConnections100 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections100App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').
+		// InstanceUrl The Jenkins instance URL to connect to, including any context path (e.g., 'https://ci.example.com/jenkins').
 		InstanceUrl string `json:"instanceUrl"`
+
+		// Username The username of the Jenkins user that owns the API token.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154227,9 +154942,12 @@ type ListAppConnections200JSONResponseBodyAppConnections100RotationRotationStatu
 
 // ListAppConnections200JSONResponseBodyAppConnections101 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections101 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections101App    `json:"app"`
-	CreatedAt                    time.Time                                                    `json:"createdAt"`
-	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections101App `json:"app"`
+	CreatedAt   time.Time                                                 `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').
+		InstanceUrl string `json:"instanceUrl"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -154286,12 +155004,9 @@ type ListAppConnections200JSONResponseBodyAppConnections101RotationRotationStatu
 
 // ListAppConnections200JSONResponseBodyAppConnections102 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections102 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections102App `json:"app"`
-	CreatedAt   time.Time                                                 `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The base URL of your LiteLLM instance (e.g. https://litellm.example.com).
-		InstanceUrl string `json:"instanceUrl"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections102App    `json:"app"`
+	CreatedAt                    time.Time                                                    `json:"createdAt"`
+	Credentials                  map[string]interface{}                                       `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -154351,8 +155066,8 @@ type ListAppConnections200JSONResponseBodyAppConnections103 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections103App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// AccountId The Fireworks account ID used to identify the Fireworks account.
-		AccountId string `json:"accountId"`
+		// InstanceUrl The base URL of your LiteLLM instance (e.g. https://litellm.example.com).
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154413,10 +155128,8 @@ type ListAppConnections200JSONResponseBodyAppConnections104 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections104App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		Hostname              string  `json:"hostname"`
-		Port                  *int    `json:"port,omitempty"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		// AccountId The Fireworks account ID used to identify the Fireworks account.
+		AccountId string `json:"accountId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154481,7 +155194,6 @@ type ListAppConnections200JSONResponseBodyAppConnections105 struct {
 		Port                  *int    `json:"port,omitempty"`
 		SslCertificate        *string `json:"sslCertificate,omitempty"`
 		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
-		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154542,17 +155254,11 @@ type ListAppConnections200JSONResponseBodyAppConnections106 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections106App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
-		ApiUrl string `json:"apiUrl"`
-
-		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
-		ServerId *string `json:"serverId,omitempty"`
-
-		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+		Hostname              string  `json:"hostname"`
+		Port                  *int    `json:"port,omitempty"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154613,8 +155319,17 @@ type ListAppConnections200JSONResponseBodyAppConnections107 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections107App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		ApiKeyId string `json:"apiKeyId"`
-		ApiUrl   string `json:"apiUrl"`
+		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
+		ApiUrl string `json:"apiUrl"`
+
+		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
+		ServerId *string `json:"serverId,omitempty"`
+
+		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154675,8 +155390,8 @@ type ListAppConnections200JSONResponseBodyAppConnections108 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections108App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// OrganizationId The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created.
-		OrganizationId string `json:"organizationId"`
+		ApiKeyId string `json:"apiKeyId"`
+		ApiUrl   string `json:"apiUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154737,7 +155452,8 @@ type ListAppConnections200JSONResponseBodyAppConnections109 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections109App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		AccountId string `json:"accountId"`
+		// OrganizationId The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created.
+		OrganizationId string `json:"organizationId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154798,8 +155514,7 @@ type ListAppConnections200JSONResponseBodyAppConnections110 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections110App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com).
-		InstanceUrl string `json:"instanceUrl"`
+		AccountId string `json:"accountId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154860,20 +155575,8 @@ type ListAppConnections200JSONResponseBodyAppConnections111 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections111App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Hostname The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').
-		Hostname string `json:"hostname"`
-
-		// Port The HTTPS port of the HPE iLO Redfish API (default: 443).
-		Port *int `json:"port,omitempty"`
-
-		// SslCertificate The CA certificate (PEM format) used to verify the iLO interface's TLS certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
-
-		// Username The iLO local account username used to authenticate with the Redfish API.
-		Username string `json:"username"`
+		// InstanceUrl The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com).
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -154934,10 +155637,19 @@ type ListAppConnections200JSONResponseBodyAppConnections112 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections112App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
-		InstanceUrl string `json:"instanceUrl"`
+		// Hostname The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').
+		Hostname string `json:"hostname"`
 
-		// Username The User ID of the ServiceNow integration user.
+		// Port The HTTPS port of the HPE iLO Redfish API (default: 443).
+		Port *int `json:"port,omitempty"`
+
+		// SslCertificate The CA certificate (PEM format) used to verify the iLO interface's TLS certificate.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Username The iLO local account username used to authenticate with the Redfish API.
 		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
@@ -154999,14 +155711,11 @@ type ListAppConnections200JSONResponseBodyAppConnections113 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections113App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// AccessKeyId The Access Key ID used to authenticate with the storage provider.
-		AccessKeyId string `json:"accessKeyId"`
+		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
+		InstanceUrl string `json:"instanceUrl"`
 
-		// Endpoint The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.
-		Endpoint string `json:"endpoint"`
-
-		// Region The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint.
-		Region *string `json:"region,omitempty"`
+		// Username The User ID of the ServiceNow integration user.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -155067,11 +155776,14 @@ type ListAppConnections200JSONResponseBodyAppConnections114 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections114App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Email The email address of the Atlassian account that owns the API token.
-		Email openapi_types.Email `json:"email"`
+		// AccessKeyId The Access Key ID used to authenticate with the storage provider.
+		AccessKeyId string `json:"accessKeyId"`
 
-		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
-		InstanceUrl string `json:"instanceUrl"`
+		// Endpoint The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.
+		Endpoint string `json:"endpoint"`
+
+		// Region The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint.
+		Region *string `json:"region,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -155132,14 +155844,11 @@ type ListAppConnections200JSONResponseBodyAppConnections115 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections115App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
+		// Email The email address of the Atlassian account that owns the API token.
+		Email openapi_types.Email `json:"email"`
+
 		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
 		InstanceUrl string `json:"instanceUrl"`
-
-		// SslCertificate The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -155200,26 +155909,14 @@ type ListAppConnections200JSONResponseBodyAppConnections116 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections116App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Database The name of the database to connect to.
-		Database string `json:"database"`
+		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
+		InstanceUrl string `json:"instanceUrl"`
 
-		// Host The hostname of the database server.
-		Host string `json:"host"`
-
-		// Port The port number of the database.
-		Port int `json:"port"`
-
-		// SslCertificate The SSL certificate to use for connection.
+		// SslCertificate The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate.
 		SslCertificate *string `json:"sslCertificate,omitempty"`
 
-		// SslEnabled Whether or not to use SSL when connecting to the database.
-		SslEnabled bool `json:"sslEnabled"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
-		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
-
-		// Username The username to connect to the database with.
-		Username string `json:"username"`
+		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -155277,9 +155974,30 @@ type ListAppConnections200JSONResponseBodyAppConnections116RotationRotationStatu
 
 // ListAppConnections200JSONResponseBodyAppConnections117 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections117 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections117App    `json:"app"`
-	CreatedAt                    time.Time                                                    `json:"createdAt"`
-	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections117App `json:"app"`
+	CreatedAt   time.Time                                                 `json:"createdAt"`
+	Credentials struct {
+		// Database The name of the database to connect to.
+		Database string `json:"database"`
+
+		// Host The hostname of the database server.
+		Host string `json:"host"`
+
+		// Port The port number of the database.
+		Port int `json:"port"`
+
+		// SslCertificate The SSL certificate to use for connection.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslEnabled Whether or not to use SSL when connecting to the database.
+		SslEnabled bool `json:"sslEnabled"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
+		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
+
+		// Username The username to connect to the database with.
+		Username string `json:"username"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -155333,6 +156051,65 @@ type ListAppConnections200JSONResponseBodyAppConnections117Method string
 
 // ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus string
+
+// ListAppConnections200JSONResponseBodyAppConnections118 defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections118 struct {
+	App                          ListAppConnections200JSONResponseBodyAppConnections118App    `json:"app"`
+	CreatedAt                    time.Time                                                    `json:"createdAt"`
+	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
+	Description                  *string                                                      `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                          `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                           `json:"id"`
+	IsAutoRotationEnabled        *bool                                                        `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                        `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections118Method `json:"method"`
+	Name                         string                                                       `json:"name"`
+	OrgId                        openapi_types.UUID                                           `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// ListAppConnections200JSONResponseBodyAppConnections118App defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections118App string
+
+// ListAppConnections200JSONResponseBodyAppConnections118Method defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections118Method string
+
+// ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus string
 
 // ListAppConnections200JSONResponseBody_AppConnections_Item defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBody_AppConnections_Item struct {
@@ -158865,7 +159642,8 @@ type CreateGcpAppConnectionJSONBody_Rotation struct {
 type CreateGcpAppConnectionJSONBody0 struct {
 	// Credentials The credentials used to connect with GCP.
 	Credentials struct {
-		ServiceAccountEmail openapi_types.Email `json:"serviceAccountEmail"`
+		ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+		WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
 	} `json:"credentials"`
 
 	// Method The method used to authenticate with GCP.
@@ -158874,6 +159652,24 @@ type CreateGcpAppConnectionJSONBody0 struct {
 
 // CreateGcpAppConnectionJSONBody0Method defines parameters for CreateGcpAppConnection.
 type CreateGcpAppConnectionJSONBody0Method string
+
+// CreateGcpAppConnectionJSONBody1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody1 struct {
+	// Credentials The credentials used to connect with GCP.
+	Credentials struct {
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with GCP.
+	Method CreateGcpAppConnectionJSONBody1Method `json:"method"`
+}
+
+// CreateGcpAppConnectionJSONBody1Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody1Method string
 
 // CreateGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateGcpAppConnection.
 type CreateGcpAppConnection200JSONResponseBodyAppConnection0 struct {
@@ -158934,6 +159730,78 @@ type CreateGcpAppConnection200JSONResponseBodyAppConnection0Method string
 // CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateGcpAppConnection.
 type CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
 
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         CreateGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                  `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
 // CreateGcpAppConnection200JSONResponseBody_AppConnection defines parameters for CreateGcpAppConnection.
 type CreateGcpAppConnection200JSONResponseBody_AppConnection struct {
 	union json.RawMessage
@@ -158956,6 +159824,400 @@ type CreateGcpAppConnection422JSONResponseBodyStatusCode float32
 
 // CreateGcpAppConnection500JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
 type CreateGcpAppConnection500JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          GetGcpAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                  `json:"createdAt"`
+	Credentials                  map[string]interface{}                                     `json:"credentials"`
+	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
+	Description                  *string                                                    `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                        `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                        `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                         `json:"id"`
+	IsAutoRotationEnabled        *bool                                                      `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                      `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       GetGcpAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                     `json:"name"`
+	OrgId                        openapi_types.UUID                                         `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0App defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0App string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0Method defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0Method string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         GetGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                               `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
+	Description                  *string                                                    `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                        `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                        `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                         `json:"id"`
+	IsAutoRotationEnabled        *bool                                                      `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                      `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       GetGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                     `json:"name"`
+	OrgId                        openapi_types.UUID                                         `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// GetGcpAppConnection200JSONResponseBody_AppConnection defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// GetGcpAppConnection400JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection400JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection401JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection401JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection403JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection403JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection404JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection404JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection422JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection422JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection500JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection500JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnectionJSONBody defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody struct {
+	// Credentials The credentials used to connect with GCP.
+	Credentials *UpdateGcpAppConnectionJSONBody_Credentials `json:"credentials,omitempty"`
+
+	// Description The updated description of the GCP Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for GCP Connections.
+	GatewayId *UpdateGcpAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for GCP Connections.
+	GatewayPoolId *UpdateGcpAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for GCP Connections.
+	IsAutoRotationEnabled *UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for GCP Connections.
+	IsPlatformManagedCredentials *UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The updated name of the GCP Connection. Must be slug-friendly.
+	Name *string `json:"name,omitempty"`
+
+	// Rotation Not supported for GCP Connections.
+	Rotation *UpdateGcpAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+}
+
+// UpdateGcpAppConnectionJSONBodyCredentials0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyCredentials0 struct {
+	// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+	ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+	// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+	WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+}
+
+// UpdateGcpAppConnectionJSONBodyCredentials1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyCredentials1 struct {
+	ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+	WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
+}
+
+// UpdateGcpAppConnectionJSONBody_Credentials defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_Credentials struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyGatewayId0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayId0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyGatewayId1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayId1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_GatewayId defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyGatewayPoolId0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyGatewayPoolId1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_GatewayPoolId defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// UpdateGcpAppConnectionJSONBodyRotation0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyRotation0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyRotation1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyRotation1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_Rotation defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          UpdateGcpAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                     `json:"createdAt"`
+	Credentials                  map[string]interface{}                                        `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0App defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0App string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         UpdateGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                  `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// UpdateGcpAppConnection200JSONResponseBody_AppConnection defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnection400JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection400JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection401JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection401JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection403JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection403JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection404JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection404JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection422JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection422JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection500JSONResponseBodyStatusCode float32
 
 // ListGitHubAppConnectionsParams defines parameters for ListGitHubAppConnections.
 type ListGitHubAppConnectionsParams struct {
@@ -163565,10 +164827,10 @@ type CreateCertRequestApprovalPolicyJSONBody struct {
 		Rules []struct {
 			// Conditions Every condition in a rule must pass for the rule to approve.
 			Conditions []struct {
-				// ConnectionId The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.
+				// ConnectionId The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.
 				ConnectionId *openapi_types.UUID `json:"connectionId,omitempty"`
 
-				// Constraint Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').
+				// Constraint Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.
 				Constraint string `json:"constraint"`
 
 				// ContextConnectionIds For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).
@@ -163577,10 +164839,10 @@ type CreateCertRequestApprovalPolicyJSONBody struct {
 				// Prompt For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.
 				Prompt *string `json:"prompt,omitempty"`
 
-				// Subject What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.
+				// Subject What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.
 				Subject string `json:"subject"`
 
-				// Values The values the check accepts. Several values mean any of them; checks that take no value use an empty list.
+				// Values The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-one-of' takes users as 'user:<id>' and groups as 'group:<id>'.
 				Values []string `json:"values"`
 			} `json:"conditions"`
 
@@ -164059,10 +165321,10 @@ type UpdateCertRequestApprovalPolicyJSONBody struct {
 		Rules []struct {
 			// Conditions Every condition in a rule must pass for the rule to approve.
 			Conditions []struct {
-				// ConnectionId The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.
+				// ConnectionId The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.
 				ConnectionId *openapi_types.UUID `json:"connectionId,omitempty"`
 
-				// Constraint Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').
+				// Constraint Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.
 				Constraint string `json:"constraint"`
 
 				// ContextConnectionIds For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).
@@ -164071,10 +165333,10 @@ type UpdateCertRequestApprovalPolicyJSONBody struct {
 				// Prompt For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.
 				Prompt *string `json:"prompt,omitempty"`
 
-				// Subject What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.
+				// Subject What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.
 				Subject string `json:"subject"`
 
-				// Values The values the check accepts. Several values mean any of them; checks that take no value use an empty list.
+				// Values The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-one-of' takes users as 'user:<id>' and groups as 'group:<id>'.
 				Values []string `json:"values"`
 			} `json:"conditions"`
 
@@ -173261,6 +174523,12 @@ type RevokeCertificateJSONBody struct {
 
 // RevokeCertificateJSONBodyRevocationReason defines parameters for RevokeCertificate.
 type RevokeCertificateJSONBodyRevocationReason string
+
+// RevokeCertificate200JSONResponseBodyStatus defines parameters for RevokeCertificate.
+type RevokeCertificate200JSONResponseBodyStatus string
+
+// RevokeCertificate202JSONResponseBodyStatus defines parameters for RevokeCertificate.
+type RevokeCertificate202JSONResponseBodyStatus string
 
 // RevokeCertificate400JSONResponseBodyStatusCode defines parameters for RevokeCertificate.
 type RevokeCertificate400JSONResponseBodyStatusCode float32
@@ -185092,6 +186360,77 @@ type CreateDynamicSecretJSONBodyProvider29InputsLimitReset string
 // CreateDynamicSecretJSONBodyProvider29Type defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBodyProvider29Type string
 
+// CreateDynamicSecretJSONBodyProvider30 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30 struct {
+	Inputs CreateDynamicSecretJSONBody_Provider_30_Inputs `json:"inputs"`
+	Type   CreateDynamicSecretJSONBodyProvider30Type      `json:"type"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs0 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs0 struct {
+	// ApiKey Neon API key used to manage roles and branches.
+	ApiKey string `json:"apiKey"`
+
+	// BranchId The branch each lease's role is created on.
+	BranchId string `json:"branchId"`
+
+	// DatabaseName Database used in the returned connection string.
+	DatabaseName *string `json:"databaseName,omitempty"`
+
+	// LeaseType Each lease creates a Postgres role on an existing branch.
+	LeaseType CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType `json:"leaseType"`
+
+	// Pooled Return the pooled (PgBouncer) connection string.
+	Pooled *bool `json:"pooled,omitempty"`
+
+	// ProjectId ID of the Neon project, e.g. shiny-wind-028834.
+	ProjectId string `json:"projectId"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType string
+
+// CreateDynamicSecretJSONBodyProvider30Inputs1 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs1 struct {
+	// ApiKey Neon API key used to manage roles and branches.
+	ApiKey string `json:"apiKey"`
+
+	// DatabaseName Database used in the returned connection string.
+	DatabaseName *string `json:"databaseName,omitempty"`
+
+	// LeaseType Each lease creates a copy-on-write branch with its own compute endpoint.
+	LeaseType CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType `json:"leaseType"`
+
+	// ParentBranchId The branch each lease branches from. Defaults to the project's default branch.
+	ParentBranchId *string `json:"parentBranchId,omitempty"`
+
+	// Pooled Return the pooled (PgBouncer) connection string.
+	Pooled *bool `json:"pooled,omitempty"`
+
+	// ProjectId ID of the Neon project, e.g. shiny-wind-028834.
+	ProjectId string `json:"projectId"`
+
+	// ResetRolePassword Reset the role's password on the new branch so the lease does not share the parent branch's password.
+	ResetRolePassword *bool `json:"resetRolePassword,omitempty"`
+
+	// RoleName The existing role whose credentials are returned for the new branch.
+	RoleName string `json:"roleName"`
+
+	// SetBranchExpiration Also set the branch's Neon expiration time to the lease expiry, so Neon deletes it even if revocation never runs.
+	SetBranchExpiration *bool `json:"setBranchExpiration,omitempty"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType string
+
+// CreateDynamicSecretJSONBody_Provider_30_Inputs defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBody_Provider_30_Inputs struct {
+	union json.RawMessage
+}
+
+// CreateDynamicSecretJSONBodyProvider30Type defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Type string
+
 // CreateDynamicSecretJSONBody_Provider defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBody_Provider struct {
 	union json.RawMessage
@@ -185546,7 +186885,7 @@ type CreateExternalKmsJSONBodyProvider0InputsCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
@@ -185659,7 +186998,7 @@ type CreateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
@@ -185701,7 +187040,7 @@ type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -185775,7 +187114,7 @@ type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -185849,7 +187188,7 @@ type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 st
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -185932,7 +187271,7 @@ type UpdateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
@@ -185974,7 +187313,7 @@ type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -186048,7 +187387,7 @@ type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Cre
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
@@ -186140,7 +187479,7 @@ type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Crede
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
@@ -186229,7 +187568,7 @@ type UpdateExternalKmsJSONBodyProvider0InputsCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
@@ -194635,7 +195974,7 @@ type DeleteIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// SecretPath The path of the folder the access is on.
+	// SecretPath The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.
 	SecretPath string `json:"secretPath"`
 }
 
@@ -194685,6 +196024,9 @@ type ListIdentityFolderAccess500JSONResponseBodyStatusCode float32
 type UpdateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission *UpdateIdentityFolderAccessJSONBodyPermission `json:"permission,omitempty"`
@@ -194757,6 +196099,9 @@ type UpdateIdentityFolderAccess500JSONResponseBodyStatusCode float32
 type CreateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission CreateIdentityFolderAccessJSONBodyPermission `json:"permission"`
@@ -194846,8 +196191,14 @@ type ListFolderAccessIdentitiesParams struct {
 // ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission string
 
+// ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
+type ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission string
+
 // ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission string
+
+// ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
+type ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission string
 
 // ListFolderAccessIdentities400JSONResponseBodyStatusCode defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities400JSONResponseBodyStatusCode float32
@@ -195310,8 +196661,14 @@ type ListFolderAccessUsersParams struct {
 // ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission string
 
+// ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
+type ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission string
+
 // ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission string
+
+// ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
+type ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission string
 
 // ListFolderAccessUsers400JSONResponseBodyStatusCode defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers400JSONResponseBodyStatusCode float32
@@ -195633,7 +196990,7 @@ type DeleteUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// SecretPath The path of the folder the access is on.
+	// SecretPath The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.
 	SecretPath string `json:"secretPath"`
 }
 
@@ -195683,6 +197040,9 @@ type ListUserFolderAccess500JSONResponseBodyStatusCode float32
 type UpdateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission *UpdateUserFolderAccessJSONBodyPermission `json:"permission,omitempty"`
@@ -195755,6 +197115,9 @@ type UpdateUserFolderAccess500JSONResponseBodyStatusCode float32
 type CreateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission CreateUserFolderAccessJSONBodyPermission `json:"permission"`
@@ -207471,6 +208834,9 @@ type CreateF5BigIpAppConnectionJSONRequestBody CreateF5BigIpAppConnectionJSONBod
 // CreateGcpAppConnectionJSONRequestBody defines body for CreateGcpAppConnection for application/json ContentType.
 type CreateGcpAppConnectionJSONRequestBody CreateGcpAppConnectionJSONBody
 
+// UpdateGcpAppConnectionJSONRequestBody defines body for UpdateGcpAppConnection for application/json ContentType.
+type UpdateGcpAppConnectionJSONRequestBody UpdateGcpAppConnectionJSONBody
+
 // CreateGitHubAppConnectionJSONRequestBody defines body for CreateGitHubAppConnection for application/json ContentType.
 type CreateGitHubAppConnectionJSONRequestBody CreateGitHubAppConnectionJSONBody
 
@@ -213277,6 +214643,32 @@ func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListApp
 	return err
 }
 
+// AsListAppConnections200JSONResponseBodyAppConnections118 returns the union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as a ListAppConnections200JSONResponseBodyAppConnections118
+func (t ListAppConnections200JSONResponseBody_AppConnections_Item) AsListAppConnections200JSONResponseBodyAppConnections118() (ListAppConnections200JSONResponseBodyAppConnections118, error) {
+	var body ListAppConnections200JSONResponseBodyAppConnections118
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListAppConnections200JSONResponseBodyAppConnections118 overwrites any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as the provided ListAppConnections200JSONResponseBodyAppConnections118
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) FromListAppConnections200JSONResponseBodyAppConnections118(v ListAppConnections200JSONResponseBodyAppConnections118) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListAppConnections200JSONResponseBodyAppConnections118 performs a merge with any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item, using the provided ListAppConnections200JSONResponseBodyAppConnections118
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListAppConnections200JSONResponseBodyAppConnections118(v ListAppConnections200JSONResponseBodyAppConnections118) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ListAppConnections200JSONResponseBody_AppConnections_Item) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -217385,6 +218777,32 @@ func (t *CreateGcpAppConnectionJSONBody) MergeCreateGcpAppConnectionJSONBody0(v 
 	return err
 }
 
+// AsCreateGcpAppConnectionJSONBody1 returns the union data inside the CreateGcpAppConnectionJSONBody as a CreateGcpAppConnectionJSONBody1
+func (t CreateGcpAppConnectionJSONBody) AsCreateGcpAppConnectionJSONBody1() (CreateGcpAppConnectionJSONBody1, error) {
+	var body CreateGcpAppConnectionJSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBody1 overwrites any union data inside the CreateGcpAppConnectionJSONBody as the provided CreateGcpAppConnectionJSONBody1
+func (t *CreateGcpAppConnectionJSONBody) FromCreateGcpAppConnectionJSONBody1(v CreateGcpAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBody1 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody, using the provided CreateGcpAppConnectionJSONBody1
+func (t *CreateGcpAppConnectionJSONBody) MergeCreateGcpAppConnectionJSONBody1(v CreateGcpAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t CreateGcpAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	if err != nil {
@@ -217737,12 +219155,410 @@ func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) MergeCreateGcp
 	return err
 }
 
+// AsCreateGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as a CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t CreateGcpAppConnection200JSONResponseBody_AppConnection) AsCreateGcpAppConnection200JSONResponseBodyAppConnection1() (CreateGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body CreateGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as the provided CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) FromCreateGcpAppConnection200JSONResponseBodyAppConnection1(v CreateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection, using the provided CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) MergeCreateGcpAppConnection200JSONResponseBodyAppConnection1(v CreateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t CreateGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
 }
 
 func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetGcpAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as a GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) AsGetGcpAppConnection200JSONResponseBodyAppConnection0() (GetGcpAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body GetGcpAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGcpAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as the provided GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) FromGetGcpAppConnection200JSONResponseBodyAppConnection0(v GetGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGcpAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection, using the provided GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) MergeGetGcpAppConnection200JSONResponseBodyAppConnection0(v GetGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as a GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) AsGetGcpAppConnection200JSONResponseBodyAppConnection1() (GetGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body GetGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as the provided GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) FromGetGcpAppConnection200JSONResponseBodyAppConnection1(v GetGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection, using the provided GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) MergeGetGcpAppConnection200JSONResponseBodyAppConnection1(v GetGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyCredentials0 returns the union data inside the UpdateGcpAppConnectionJSONBody_Credentials as a UpdateGcpAppConnectionJSONBodyCredentials0
+func (t UpdateGcpAppConnectionJSONBody_Credentials) AsUpdateGcpAppConnectionJSONBodyCredentials0() (UpdateGcpAppConnectionJSONBodyCredentials0, error) {
+	var body UpdateGcpAppConnectionJSONBodyCredentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyCredentials0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Credentials as the provided UpdateGcpAppConnectionJSONBodyCredentials0
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) FromUpdateGcpAppConnectionJSONBodyCredentials0(v UpdateGcpAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyCredentials0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Credentials, using the provided UpdateGcpAppConnectionJSONBodyCredentials0
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) MergeUpdateGcpAppConnectionJSONBodyCredentials0(v UpdateGcpAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyCredentials1 returns the union data inside the UpdateGcpAppConnectionJSONBody_Credentials as a UpdateGcpAppConnectionJSONBodyCredentials1
+func (t UpdateGcpAppConnectionJSONBody_Credentials) AsUpdateGcpAppConnectionJSONBodyCredentials1() (UpdateGcpAppConnectionJSONBodyCredentials1, error) {
+	var body UpdateGcpAppConnectionJSONBodyCredentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyCredentials1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Credentials as the provided UpdateGcpAppConnectionJSONBodyCredentials1
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) FromUpdateGcpAppConnectionJSONBodyCredentials1(v UpdateGcpAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyCredentials1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Credentials, using the provided UpdateGcpAppConnectionJSONBodyCredentials1
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) MergeUpdateGcpAppConnectionJSONBodyCredentials1(v UpdateGcpAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayId0 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as a UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) AsUpdateGcpAppConnectionJSONBodyGatewayId0() (UpdateGcpAppConnectionJSONBodyGatewayId0, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayId0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as the provided UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) FromUpdateGcpAppConnectionJSONBodyGatewayId0(v UpdateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId, using the provided UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) MergeUpdateGcpAppConnectionJSONBodyGatewayId0(v UpdateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayId1 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as a UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) AsUpdateGcpAppConnectionJSONBodyGatewayId1() (UpdateGcpAppConnectionJSONBodyGatewayId1, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayId1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as the provided UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) FromUpdateGcpAppConnectionJSONBodyGatewayId1(v UpdateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId, using the provided UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) MergeUpdateGcpAppConnectionJSONBodyGatewayId1(v UpdateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as a UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) AsUpdateGcpAppConnectionJSONBodyGatewayPoolId0() (UpdateGcpAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) FromUpdateGcpAppConnectionJSONBodyGatewayPoolId0(v UpdateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId, using the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId0(v UpdateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as a UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) AsUpdateGcpAppConnectionJSONBodyGatewayPoolId1() (UpdateGcpAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) FromUpdateGcpAppConnectionJSONBodyGatewayPoolId1(v UpdateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId, using the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId1(v UpdateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyRotation0 returns the union data inside the UpdateGcpAppConnectionJSONBody_Rotation as a UpdateGcpAppConnectionJSONBodyRotation0
+func (t UpdateGcpAppConnectionJSONBody_Rotation) AsUpdateGcpAppConnectionJSONBodyRotation0() (UpdateGcpAppConnectionJSONBodyRotation0, error) {
+	var body UpdateGcpAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyRotation0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Rotation as the provided UpdateGcpAppConnectionJSONBodyRotation0
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) FromUpdateGcpAppConnectionJSONBodyRotation0(v UpdateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyRotation0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Rotation, using the provided UpdateGcpAppConnectionJSONBodyRotation0
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) MergeUpdateGcpAppConnectionJSONBodyRotation0(v UpdateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyRotation1 returns the union data inside the UpdateGcpAppConnectionJSONBody_Rotation as a UpdateGcpAppConnectionJSONBodyRotation1
+func (t UpdateGcpAppConnectionJSONBody_Rotation) AsUpdateGcpAppConnectionJSONBodyRotation1() (UpdateGcpAppConnectionJSONBodyRotation1, error) {
+	var body UpdateGcpAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyRotation1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Rotation as the provided UpdateGcpAppConnectionJSONBodyRotation1
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) FromUpdateGcpAppConnectionJSONBodyRotation1(v UpdateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyRotation1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Rotation, using the provided UpdateGcpAppConnectionJSONBodyRotation1
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) MergeUpdateGcpAppConnectionJSONBodyRotation1(v UpdateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as a UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) AsUpdateGcpAppConnection200JSONResponseBodyAppConnection0() (UpdateGcpAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) FromUpdateGcpAppConnection200JSONResponseBodyAppConnection0(v UpdateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection, using the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection0(v UpdateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as a UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) AsUpdateGcpAppConnection200JSONResponseBodyAppConnection1() (UpdateGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) FromUpdateGcpAppConnection200JSONResponseBodyAppConnection1(v UpdateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection, using the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection1(v UpdateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -232947,6 +234763,68 @@ func (t *CreateDynamicSecretJSONBody_Provider_27_Inputs) UnmarshalJSON(b []byte)
 	return err
 }
 
+// AsCreateDynamicSecretJSONBodyProvider30Inputs0 returns the union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as a CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) AsCreateDynamicSecretJSONBodyProvider30Inputs0() (CreateDynamicSecretJSONBodyProvider30Inputs0, error) {
+	var body CreateDynamicSecretJSONBodyProvider30Inputs0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30Inputs0 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as the provided CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) FromCreateDynamicSecretJSONBodyProvider30Inputs0(v CreateDynamicSecretJSONBodyProvider30Inputs0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30Inputs0 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs, using the provided CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) MergeCreateDynamicSecretJSONBodyProvider30Inputs0(v CreateDynamicSecretJSONBodyProvider30Inputs0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDynamicSecretJSONBodyProvider30Inputs1 returns the union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as a CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) AsCreateDynamicSecretJSONBodyProvider30Inputs1() (CreateDynamicSecretJSONBodyProvider30Inputs1, error) {
+	var body CreateDynamicSecretJSONBodyProvider30Inputs1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30Inputs1 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as the provided CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) FromCreateDynamicSecretJSONBodyProvider30Inputs1(v CreateDynamicSecretJSONBodyProvider30Inputs1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30Inputs1 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs, using the provided CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) MergeCreateDynamicSecretJSONBodyProvider30Inputs1(v CreateDynamicSecretJSONBodyProvider30Inputs1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCreateDynamicSecretJSONBodyProvider0 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider0
 func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider0() (CreateDynamicSecretJSONBodyProvider0, error) {
 	var body CreateDynamicSecretJSONBodyProvider0
@@ -233717,6 +235595,32 @@ func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyPr
 
 // MergeCreateDynamicSecretJSONBodyProvider29 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider29
 func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDynamicSecretJSONBodyProvider30 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider30
+func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider30() (CreateDynamicSecretJSONBodyProvider30, error) {
+	var body CreateDynamicSecretJSONBodyProvider30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider as the provided CreateDynamicSecretJSONBodyProvider30
+func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyProvider30(v CreateDynamicSecretJSONBodyProvider30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider30
+func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider30(v CreateDynamicSecretJSONBodyProvider30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -249702,6 +251606,23 @@ type ClientInterface interface {
 	// Create a GCP Connection.
 	CreateGcpAppConnection(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetGcpAppConnection performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+	//
+	// Get the specified GCP Connection by ID.
+	GetGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGcpAppConnectionWithBody performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGcpAppConnection performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGitHubAppConnections performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -252906,39 +254827,39 @@ type ClientInterface interface {
 	CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGroup performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
-	DeleteGroup(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteGroup(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGroupById performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
-	GetGroupById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetGroupById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroupWithBody performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateGroupWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroupWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroup performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateGroup(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroup(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupMachineIdentities performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
-	ListGroupMachineIdentities(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupMachineIdentities(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveMachineIdentityFromGroup performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
-	RemoveMachineIdentityFromGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveMachineIdentityFromGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddMachineIdentityToGroup performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
-	AddMachineIdentityToGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddMachineIdentityToGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupProjects performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
-	ListGroupProjects(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupProjects(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupUsers performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
-	ListGroupUsers(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupUsers(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
-	RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveUserFromGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
-	AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddUserToGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateHoneyTokenWithBody performs a POST /api/v1/honey-tokens (the `CreateHoneyToken` operationId) request,
 	// with any type of body and a specified content type.
@@ -257990,6 +259911,53 @@ func (c *Client) CreateGcpAppConnectionWithBody(ctx context.Context, contentType
 // Create a GCP Connection.
 func (c *Client) CreateGcpAppConnection(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateGcpAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGcpAppConnection performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+//
+// Get the specified GCP Connection by ID.
+func (c *Client) GetGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGcpAppConnectionRequest(c.Server, connectionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGcpAppConnectionWithBody performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified GCP Connection.
+func (c *Client) UpdateGcpAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGcpAppConnectionRequestWithBody(c.Server, connectionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGcpAppConnection performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the specified GCP Connection.
+func (c *Client) UpdateGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGcpAppConnectionRequest(c.Server, connectionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -267483,7 +269451,7 @@ func (c *Client) CreateGroup(ctx context.Context, body CreateGroupJSONRequestBod
 }
 
 // DeleteGroup performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
-func (c *Client) DeleteGroup(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteGroup(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteGroupRequest(c.Server, id)
 	if err != nil {
 		return nil, err
@@ -267496,7 +269464,7 @@ func (c *Client) DeleteGroup(ctx context.Context, id string, reqEditors ...Reque
 }
 
 // GetGroupById performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
-func (c *Client) GetGroupById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetGroupById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGroupByIdRequest(c.Server, id)
 	if err != nil {
 		return nil, err
@@ -267510,7 +269478,7 @@ func (c *Client) GetGroupById(ctx context.Context, id string, reqEditors ...Requ
 
 // UpdateGroupWithBody performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateGroupWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroupWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
@@ -267524,7 +269492,7 @@ func (c *Client) UpdateGroupWithBody(ctx context.Context, id string, contentType
 
 // UpdateGroup performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateGroup(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroup(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
@@ -267537,7 +269505,7 @@ func (c *Client) UpdateGroup(ctx context.Context, id string, body UpdateGroupJSO
 }
 
 // ListGroupMachineIdentities performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
-func (c *Client) ListGroupMachineIdentities(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupMachineIdentities(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupMachineIdentitiesRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -267550,7 +269518,7 @@ func (c *Client) ListGroupMachineIdentities(ctx context.Context, id string, para
 }
 
 // RemoveMachineIdentityFromGroup performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
-func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveMachineIdentityFromGroupRequest(c.Server, id, machineIdentityId)
 	if err != nil {
 		return nil, err
@@ -267563,7 +269531,7 @@ func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id string, 
 }
 
 // AddMachineIdentityToGroup performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
-func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddMachineIdentityToGroupRequest(c.Server, id, machineIdentityId)
 	if err != nil {
 		return nil, err
@@ -267576,7 +269544,7 @@ func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id string, machi
 }
 
 // ListGroupProjects performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
-func (c *Client) ListGroupProjects(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupProjects(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupProjectsRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -267589,7 +269557,7 @@ func (c *Client) ListGroupProjects(ctx context.Context, id string, params *ListG
 }
 
 // ListGroupUsers performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
-func (c *Client) ListGroupUsers(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupUsers(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupUsersRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -267602,7 +269570,7 @@ func (c *Client) ListGroupUsers(ctx context.Context, id string, params *ListGrou
 }
 
 // RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
-func (c *Client) RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RemoveUserFromGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveUserFromGroupRequest(c.Server, id, username)
 	if err != nil {
 		return nil, err
@@ -267615,7 +269583,7 @@ func (c *Client) RemoveUserFromGroup(ctx context.Context, id string, username st
 }
 
 // AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
-func (c *Client) AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AddUserToGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddUserToGroupRequest(c.Server, id, username)
 	if err != nil {
 		return nil, err
@@ -281915,6 +283883,87 @@ func NewCreateGcpAppConnectionRequestWithBody(server string, contentType string,
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetGcpAppConnectionRequest constructs an http.Request for the GetGcpAppConnection method
+func NewGetGcpAppConnectionRequest(server string, connectionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/gcp/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateGcpAppConnectionRequest calls the generic UpdateGcpAppConnection builder with application/json body
+func NewUpdateGcpAppConnectionRequest(server string, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGcpAppConnectionRequestWithBody(server, connectionId, "application/json", bodyReader)
+}
+
+// NewUpdateGcpAppConnectionRequestWithBody constructs an http.Request for the UpdateGcpAppConnection method, with any body, and a specified content type
+func NewUpdateGcpAppConnectionRequestWithBody(server string, connectionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/gcp/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -300392,12 +302441,12 @@ func NewCreateGroupRequestWithBody(server string, contentType string, body io.Re
 }
 
 // NewDeleteGroupRequest constructs an http.Request for the DeleteGroup method
-func NewDeleteGroupRequest(server string, id string) (*http.Request, error) {
+func NewDeleteGroupRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300426,12 +302475,12 @@ func NewDeleteGroupRequest(server string, id string) (*http.Request, error) {
 }
 
 // NewGetGroupByIdRequest constructs an http.Request for the GetGroupById method
-func NewGetGroupByIdRequest(server string, id string) (*http.Request, error) {
+func NewGetGroupByIdRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300460,7 +302509,7 @@ func NewGetGroupByIdRequest(server string, id string) (*http.Request, error) {
 }
 
 // NewUpdateGroupRequest calls the generic UpdateGroup builder with application/json body
-func NewUpdateGroupRequest(server string, id string, body UpdateGroupJSONRequestBody) (*http.Request, error) {
+func NewUpdateGroupRequest(server string, id openapi_types.UUID, body UpdateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -300471,12 +302520,12 @@ func NewUpdateGroupRequest(server string, id string, body UpdateGroupJSONRequest
 }
 
 // NewUpdateGroupRequestWithBody constructs an http.Request for the UpdateGroup method, with any body, and a specified content type
-func NewUpdateGroupRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateGroupRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300507,12 +302556,12 @@ func NewUpdateGroupRequestWithBody(server string, id string, contentType string,
 }
 
 // NewListGroupMachineIdentitiesRequest constructs an http.Request for the ListGroupMachineIdentities method
-func NewListGroupMachineIdentitiesRequest(server string, id string, params *ListGroupMachineIdentitiesParams) (*http.Request, error) {
+func NewListGroupMachineIdentitiesRequest(server string, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300604,19 +302653,19 @@ func NewListGroupMachineIdentitiesRequest(server string, id string, params *List
 }
 
 // NewRemoveMachineIdentityFromGroupRequest constructs an http.Request for the RemoveMachineIdentityFromGroup method
-func NewRemoveMachineIdentityFromGroupRequest(server string, id string, machineIdentityId string) (*http.Request, error) {
+func NewRemoveMachineIdentityFromGroupRequest(server string, id openapi_types.UUID, machineIdentityId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300645,19 +302694,19 @@ func NewRemoveMachineIdentityFromGroupRequest(server string, id string, machineI
 }
 
 // NewAddMachineIdentityToGroupRequest constructs an http.Request for the AddMachineIdentityToGroup method
-func NewAddMachineIdentityToGroupRequest(server string, id string, machineIdentityId string) (*http.Request, error) {
+func NewAddMachineIdentityToGroupRequest(server string, id openapi_types.UUID, machineIdentityId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300686,12 +302735,12 @@ func NewAddMachineIdentityToGroupRequest(server string, id string, machineIdenti
 }
 
 // NewListGroupProjectsRequest constructs an http.Request for the ListGroupProjects method
-func NewListGroupProjectsRequest(server string, id string, params *ListGroupProjectsParams) (*http.Request, error) {
+func NewListGroupProjectsRequest(server string, id openapi_types.UUID, params *ListGroupProjectsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300807,12 +302856,12 @@ func NewListGroupProjectsRequest(server string, id string, params *ListGroupProj
 }
 
 // NewListGroupUsersRequest constructs an http.Request for the ListGroupUsers method
-func NewListGroupUsersRequest(server string, id string, params *ListGroupUsersParams) (*http.Request, error) {
+func NewListGroupUsersRequest(server string, id openapi_types.UUID, params *ListGroupUsersParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300916,12 +302965,12 @@ func NewListGroupUsersRequest(server string, id string, params *ListGroupUsersPa
 }
 
 // NewRemoveUserFromGroupRequest constructs an http.Request for the RemoveUserFromGroup method
-func NewRemoveUserFromGroupRequest(server string, id string, username string) (*http.Request, error) {
+func NewRemoveUserFromGroupRequest(server string, id openapi_types.UUID, username string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -300957,12 +303006,12 @@ func NewRemoveUserFromGroupRequest(server string, id string, username string) (*
 }
 
 // NewAddUserToGroupRequest constructs an http.Request for the AddUserToGroup method
-func NewAddUserToGroupRequest(server string, id string, username string) (*http.Request, error) {
+func NewAddUserToGroupRequest(server string, id openapi_types.UUID, username string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -326667,6 +328716,27 @@ type ClientWithResponsesInterface interface {
 	// Create a GCP Connection.
 	CreateGcpAppConnectionWithResponse(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGcpAppConnectionResponse, error)
 
+	// GetGcpAppConnectionWithResponse performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+	//
+	// Get the specified GCP Connection by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGcpAppConnectionResponse, error)
+
+	// UpdateGcpAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified GCP Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateGcpAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error)
+
+	// UpdateGcpAppConnectionWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error)
+
 	// ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -330739,57 +332809,57 @@ type ClientWithResponsesInterface interface {
 	// DeleteGroupWithResponse performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteGroupWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
+	DeleteGroupWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
 
 	// GetGroupByIdWithResponse performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetGroupByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error)
+	GetGroupByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error)
 
 	// UpdateGroupWithBodyWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateGroupWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// UpdateGroupWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateGroupWithResponse(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// ListGroupMachineIdentitiesWithResponse performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupMachineIdentitiesWithResponse(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error)
+	ListGroupMachineIdentitiesWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error)
 
 	// RemoveMachineIdentityFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error)
+	RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error)
 
 	// AddMachineIdentityToGroupWithResponse performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddMachineIdentityToGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error)
+	AddMachineIdentityToGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error)
 
 	// ListGroupProjectsWithResponse performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupProjectsWithResponse(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error)
+	ListGroupProjectsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error)
 
 	// ListGroupUsersWithResponse performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupUsersWithResponse(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error)
+	ListGroupUsersWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error)
 
 	// RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error)
+	RemoveUserFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error)
 
 	// AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error)
+	AddUserToGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error)
 
 	// CreateHoneyTokenWithBodyWithResponse performs a POST /api/v1/honey-tokens (the `CreateHoneyToken` operationId) request,
 	// with any type of body and a specified content type.
@@ -348280,6 +350350,308 @@ func (r CreateGcpAppConnectionResponse) ContentType() string {
 	return ""
 }
 
+type GetGcpAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON200() *struct {
+	AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGcpAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGcpAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGcpAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGcpAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateGcpAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON200() *struct {
+	AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateGcpAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGcpAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGcpAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGcpAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListGitHubAppConnectionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -351793,9 +354165,12 @@ type ApproveCertCodeSigningApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -351942,9 +354317,12 @@ func (r ApproveCertCodeSigningApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -352660,9 +355038,12 @@ type ListCertRequestApprovalRequestsResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -352865,9 +355246,12 @@ func (r ListCertRequestApprovalRequestsResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -353121,9 +355505,12 @@ type GetCertRequestApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -353326,9 +355713,12 @@ func (r GetCertRequestApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -353582,9 +355972,12 @@ type ApproveCertRequestApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -353787,9 +356180,12 @@ func (r ApproveCertRequestApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -354043,9 +356439,12 @@ type BreakGlassCertRequestApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -354248,9 +356647,12 @@ func (r BreakGlassCertRequestApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -354504,9 +356906,12 @@ type CancelCertRequestApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -354709,9 +357114,12 @@ func (r CancelCertRequestApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -354965,9 +357373,12 @@ type RejectCertRequestApprovalRequestResponse struct {
 					Passed bool   `json:"passed"`
 				} `json:"rules"`
 			} `json:"autoApproval,omitempty"`
-			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-			BypassReason      *string             `json:"bypassReason,omitempty"`
-			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+			BypassReason   *string    `json:"bypassReason,omitempty"`
+			CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+			// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+			CanReview         *bool               `json:"canReview,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			CurrentStep       float32             `json:"currentStep"`
 			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -355170,9 +357581,12 @@ func (r RejectCertRequestApprovalRequestResponse) GetJSON200() *struct {
 				Passed bool   `json:"passed"`
 			} `json:"rules"`
 		} `json:"autoApproval,omitempty"`
-		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-		BypassReason      *string             `json:"bypassReason,omitempty"`
-		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+		BypassReason   *string    `json:"bypassReason,omitempty"`
+		CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+		// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+		CanReview         *bool               `json:"canReview,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		CurrentStep       float32             `json:"currentStep"`
 		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -397337,8 +399751,23 @@ type RevokeCertificateResponse struct {
 		// RevokedAt The date and time when the certificate was revoked.
 		RevokedAt time.Time `json:"revokedAt"`
 
-		// SerialNumber The serial number of the revoked certificate.
+		// SerialNumber The serial number of the certificate.
 		SerialNumber string `json:"serialNumber"`
+
+		// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+		Status RevokeCertificate200JSONResponseBodyStatus `json:"status"`
+	}
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *struct {
+		// ApprovalRequestId The ID of the approval request created for the revocation.
+		ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+		Message           string             `json:"message"`
+
+		// SerialNumber The serial number of the certificate.
+		SerialNumber string `json:"serialNumber"`
+
+		// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+		Status RevokeCertificate202JSONResponseBodyStatus `json:"status"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -397395,10 +399824,28 @@ func (r RevokeCertificateResponse) GetJSON200() *struct {
 	// RevokedAt The date and time when the certificate was revoked.
 	RevokedAt time.Time `json:"revokedAt"`
 
-	// SerialNumber The serial number of the revoked certificate.
+	// SerialNumber The serial number of the certificate.
 	SerialNumber string `json:"serialNumber"`
+
+	// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+	Status RevokeCertificate200JSONResponseBodyStatus `json:"status"`
 } {
 	return r.JSON200
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RevokeCertificateResponse) GetJSON202() *struct {
+	// ApprovalRequestId The ID of the approval request created for the revocation.
+	ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+	Message           string             `json:"message"`
+
+	// SerialNumber The serial number of the certificate.
+	SerialNumber string `json:"serialNumber"`
+
+	// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+	Status RevokeCertificate202JSONResponseBodyStatus `json:"status"`
+} {
+	return r.JSON202
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -423732,10 +426179,13 @@ type CreateAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -423803,10 +426253,13 @@ func (r CreateAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -423925,10 +426378,13 @@ type DeleteAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -423996,10 +426452,13 @@ func (r DeleteAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -424118,10 +426577,13 @@ type GetAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                             `json:"id"`
-			Provider        string                                                         `json:"provider"`
-			Status          *string                                                        `json:"status,omitempty"`
-			StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -424189,10 +426651,13 @@ func (r GetAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                             `json:"id"`
-		Provider        string                                                         `json:"provider"`
-		Status          *string                                                        `json:"status,omitempty"`
-		StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -424311,10 +426776,13 @@ type UpdateAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -424382,10 +426850,13 @@ func (r UpdateAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -467418,9 +469889,14 @@ type GetProjectIdentityMembershipByIdResponse struct {
 			CreatedAt time.Time `json:"createdAt"`
 			Id        string    `json:"id"`
 			Identity  struct {
-				AuthMethods []string           `json:"authMethods"`
-				Id          openapi_types.UUID `json:"id"`
-				Metadata    *[]struct {
+				// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+				ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+				AuthMethods              []string `json:"authMethods"`
+
+				// HasDeleteProtection Whether the machine identity is protected from deletion.
+				HasDeleteProtection bool               `json:"hasDeleteProtection"`
+				Id                  openapi_types.UUID `json:"id"`
+				Metadata            *[]struct {
 					Id    string `json:"id"`
 					Key   string `json:"key"`
 					Value string `json:"value"`
@@ -467498,9 +469974,14 @@ func (r GetProjectIdentityMembershipByIdResponse) GetJSON200() *struct {
 		CreatedAt time.Time `json:"createdAt"`
 		Id        string    `json:"id"`
 		Identity  struct {
-			AuthMethods []string           `json:"authMethods"`
-			Id          openapi_types.UUID `json:"id"`
-			Metadata    *[]struct {
+			// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+			ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+			AuthMethods              []string `json:"authMethods"`
+
+			// HasDeleteProtection Whether the machine identity is protected from deletion.
+			HasDeleteProtection bool               `json:"hasDeleteProtection"`
+			Id                  openapi_types.UUID `json:"id"`
+			Metadata            *[]struct {
 				Id    string `json:"id"`
 				Key   string `json:"key"`
 				Value string `json:"value"`
@@ -467957,6 +470438,7 @@ type DeleteIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -468022,6 +470504,7 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -468138,6 +470621,7 @@ type ListIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                `json:"folderId"`
 			Id                       openapi_types.UUID                                                `json:"id"`
 			IdentityId               openapi_types.UUID                                                `json:"identityId"`
+			IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                              `json:"isTemporary"`
 			Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                            `json:"projectId"`
@@ -468203,6 +470687,7 @@ func (r ListIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                `json:"folderId"`
 		Id                       openapi_types.UUID                                                `json:"id"`
 		IdentityId               openapi_types.UUID                                                `json:"identityId"`
+		IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                              `json:"isTemporary"`
 		Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                            `json:"projectId"`
@@ -468319,6 +470804,7 @@ type UpdateIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -468384,6 +470870,7 @@ func (r UpdateIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -468500,6 +470987,7 @@ type CreateIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -468565,6 +471053,7 @@ func (r CreateIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -468675,13 +471164,14 @@ type ListFolderAccessIdentitiesResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 		Identities []struct {
 			FolderRBACAccess *struct {
 				CreatedAt                time.Time                                                                         `json:"createdAt"`
 				Environment              string                                                                            `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 				Id                       openapi_types.UUID                                                                `json:"id"`
+				IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                              `json:"isTemporary"`
 				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                            `json:"projectId"`
@@ -468692,7 +471182,23 @@ type ListFolderAccessIdentitiesResponse struct {
 				TemporaryRange           *string                                                                           `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
-			IdentityId openapi_types.UUID `json:"identityId"`
+			IdentityId                openapi_types.UUID `json:"identityId"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                  `json:"createdAt"`
+				Environment              string                                                                                     `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+				Id                       openapi_types.UUID                                                                         `json:"id"`
+				IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                       `json:"isTemporary"`
+				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                     `json:"projectId"`
+				SecretPath               string                                                                                     `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
 				IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -468705,13 +471211,14 @@ type ListFolderAccessIdentitiesResponse struct {
 			Name string `json:"name"`
 		} `json:"identities"`
 
-		// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+		// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 		IdentitiesWithoutAccess []struct {
 			FolderRBACAccess *struct {
 				CreatedAt                time.Time                                                                                      `json:"createdAt"`
 				Environment              string                                                                                         `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 				Id                       openapi_types.UUID                                                                             `json:"id"`
+				IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                                           `json:"isTemporary"`
 				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                                         `json:"projectId"`
@@ -468722,7 +471229,23 @@ type ListFolderAccessIdentitiesResponse struct {
 				TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
-			IdentityId openapi_types.UUID `json:"identityId"`
+			IdentityId                openapi_types.UUID `json:"identityId"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                               `json:"createdAt"`
+				Environment              string                                                                                                  `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+				Id                       openapi_types.UUID                                                                                      `json:"id"`
+				IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                                    `json:"isTemporary"`
+				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                                  `json:"projectId"`
+				SecretPath               string                                                                                                  `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
 				IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -468786,13 +471309,14 @@ type ListFolderAccessIdentitiesResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
-	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 	Identities []struct {
 		FolderRBACAccess *struct {
 			CreatedAt                time.Time                                                                         `json:"createdAt"`
 			Environment              string                                                                            `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 			Id                       openapi_types.UUID                                                                `json:"id"`
+			IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                              `json:"isTemporary"`
 			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                            `json:"projectId"`
@@ -468803,7 +471327,23 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                           `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
-		IdentityId openapi_types.UUID `json:"identityId"`
+		IdentityId                openapi_types.UUID `json:"identityId"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                  `json:"createdAt"`
+			Environment              string                                                                                     `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+			Id                       openapi_types.UUID                                                                         `json:"id"`
+			IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                       `json:"isTemporary"`
+			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                     `json:"projectId"`
+			SecretPath               string                                                                                     `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
 			IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -468816,13 +471356,14 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 		Name string `json:"name"`
 	} `json:"identities"`
 
-	// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+	// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 	IdentitiesWithoutAccess []struct {
 		FolderRBACAccess *struct {
 			CreatedAt                time.Time                                                                                      `json:"createdAt"`
 			Environment              string                                                                                         `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 			Id                       openapi_types.UUID                                                                             `json:"id"`
+			IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                                           `json:"isTemporary"`
 			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                                         `json:"projectId"`
@@ -468833,7 +471374,23 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
-		IdentityId openapi_types.UUID `json:"identityId"`
+		IdentityId                openapi_types.UUID `json:"identityId"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                               `json:"createdAt"`
+			Environment              string                                                                                                  `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+			Id                       openapi_types.UUID                                                                                      `json:"id"`
+			IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                                    `json:"isTemporary"`
+			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                                  `json:"projectId"`
+			SecretPath               string                                                                                                  `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
 			IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -471387,7 +473944,7 @@ type ListFolderAccessUsersResponse struct {
 		// TotalCount The number of users of the project that match the search, with and without access together.
 		TotalCount float32 `json:"totalCount"`
 
-		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 		Users []struct {
 			Email            *string `json:"email"`
 			FirstName        *string `json:"firstName"`
@@ -471396,6 +473953,7 @@ type ListFolderAccessUsersResponse struct {
 				Environment              string                                                                  `json:"environment"`
 				FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 				Id                       openapi_types.UUID                                                      `json:"id"`
+				IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                    `json:"isTemporary"`
 				Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                  `json:"projectId"`
@@ -471406,6 +473964,22 @@ type ListFolderAccessUsersResponse struct {
 				TemporaryRange           *string                                                                 `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                               `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                        `json:"createdAt"`
+				Environment              string                                                                           `json:"environment"`
+				FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+				Id                       openapi_types.UUID                                                               `json:"id"`
+				IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                             `json:"isTemporary"`
+				Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                           `json:"projectId"`
+				SecretPath               string                                                                           `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                          `json:"temporaryMode"`
+				TemporaryRange           *string                                                                          `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			LastName   *string `json:"lastName"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
@@ -471420,7 +473994,7 @@ type ListFolderAccessUsersResponse struct {
 			Username string             `json:"username"`
 		} `json:"users"`
 
-		// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+		// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 		UsersWithoutAccess []struct {
 			Email            *string `json:"email"`
 			FirstName        *string `json:"firstName"`
@@ -471429,6 +474003,7 @@ type ListFolderAccessUsersResponse struct {
 				Environment              string                                                                               `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 				Id                       openapi_types.UUID                                                                   `json:"id"`
+				IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                                 `json:"isTemporary"`
 				Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                               `json:"projectId"`
@@ -471439,6 +474014,22 @@ type ListFolderAccessUsersResponse struct {
 				TemporaryRange           *string                                                                              `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                     `json:"createdAt"`
+				Environment              string                                                                                        `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+				Id                       openapi_types.UUID                                                                            `json:"id"`
+				IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                          `json:"isTemporary"`
+				Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                        `json:"projectId"`
+				SecretPath               string                                                                                        `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			LastName   *string `json:"lastName"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
@@ -471504,7 +474095,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 	// TotalCount The number of users of the project that match the search, with and without access together.
 	TotalCount float32 `json:"totalCount"`
 
-	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 	Users []struct {
 		Email            *string `json:"email"`
 		FirstName        *string `json:"firstName"`
@@ -471513,6 +474104,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			Environment              string                                                                  `json:"environment"`
 			FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 			Id                       openapi_types.UUID                                                      `json:"id"`
+			IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                    `json:"isTemporary"`
 			Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                  `json:"projectId"`
@@ -471523,6 +474115,22 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                 `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                               `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                        `json:"createdAt"`
+			Environment              string                                                                           `json:"environment"`
+			FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+			Id                       openapi_types.UUID                                                               `json:"id"`
+			IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                             `json:"isTemporary"`
+			Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                           `json:"projectId"`
+			SecretPath               string                                                                           `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                          `json:"temporaryMode"`
+			TemporaryRange           *string                                                                          `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		LastName   *string `json:"lastName"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
@@ -471537,7 +474145,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 		Username string             `json:"username"`
 	} `json:"users"`
 
-	// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+	// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 	UsersWithoutAccess []struct {
 		Email            *string `json:"email"`
 		FirstName        *string `json:"firstName"`
@@ -471546,6 +474154,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			Environment              string                                                                               `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 			Id                       openapi_types.UUID                                                                   `json:"id"`
+			IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                                 `json:"isTemporary"`
 			Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                               `json:"projectId"`
@@ -471556,6 +474165,22 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                              `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                     `json:"createdAt"`
+			Environment              string                                                                                        `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+			Id                       openapi_types.UUID                                                                            `json:"id"`
+			IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                          `json:"isTemporary"`
+			Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                        `json:"projectId"`
+			SecretPath               string                                                                                        `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		LastName   *string `json:"lastName"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
@@ -474116,6 +476741,7 @@ type DeleteUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -474181,6 +476807,7 @@ func (r DeleteUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -474297,6 +476924,7 @@ type ListUserFolderAccessResponse struct {
 			Environment              string                                                        `json:"environment"`
 			FolderId                 openapi_types.UUID                                            `json:"folderId"`
 			Id                       openapi_types.UUID                                            `json:"id"`
+			IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                          `json:"isTemporary"`
 			Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                        `json:"projectId"`
@@ -474362,6 +476990,7 @@ func (r ListUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                        `json:"environment"`
 		FolderId                 openapi_types.UUID                                            `json:"folderId"`
 		Id                       openapi_types.UUID                                            `json:"id"`
+		IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                          `json:"isTemporary"`
 		Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                        `json:"projectId"`
@@ -474478,6 +477107,7 @@ type UpdateUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -474543,6 +477173,7 @@ func (r UpdateUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -474659,6 +477290,7 @@ type CreateUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -474724,6 +477356,7 @@ func (r CreateUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -502515,7 +505148,13 @@ type ListGatewaysResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *[]struct {
-		Capabilities            interface{}        `json:"capabilities,omitempty"`
+		Capabilities interface{} `json:"capabilities,omitempty"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 		ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 		CreatedAt               time.Time          `json:"createdAt"`
 		DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -502580,7 +505219,13 @@ type ListGatewaysResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListGatewaysResponse) GetJSON200() *[]struct {
-	Capabilities            interface{}        `json:"capabilities,omitempty"`
+	Capabilities interface{} `json:"capabilities,omitempty"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 	ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 	CreatedAt               time.Time          `json:"createdAt"`
 	DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -503181,17 +505826,23 @@ type DeleteGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		Capabilities    interface{}         `json:"capabilities,omitempty"`
-		CreatedAt       time.Time           `json:"createdAt"`
-		DirectAddress   *string             `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID  `json:"id"`
-		IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-		Name            string              `json:"name"`
-		RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-		UpdatedAt       time.Time           `json:"updatedAt"`
+		Capabilities interface{} `json:"capabilities,omitempty"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -503241,17 +505892,23 @@ type DeleteGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteGatewayResponse) GetJSON200() *struct {
-	Capabilities    interface{}         `json:"capabilities,omitempty"`
-	CreatedAt       time.Time           `json:"createdAt"`
-	DirectAddress   *string             `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID  `json:"id"`
-	IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-	Name            string              `json:"name"`
-	RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-	UpdatedAt       time.Time           `json:"updatedAt"`
+	Capabilities interface{} `json:"capabilities,omitempty"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -521514,18 +524171,24 @@ type CreateGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                        `json:"canRevoke"`
-		CreatedAt       time.Time                                   `json:"createdAt"`
-		DirectAddress   *string                                     `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                          `json:"id"`
-		IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-		Name            string                                      `json:"name"`
-		RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                   `json:"updatedAt"`
+		AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                        `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -521575,18 +524238,24 @@ type CreateGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateGatewayResponse) GetJSON200() *struct {
-	AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                        `json:"canRevoke"`
-	CreatedAt       time.Time                                   `json:"createdAt"`
-	DirectAddress   *string                                     `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                          `json:"id"`
-	IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-	Name            string                                      `json:"name"`
-	RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                   `json:"updatedAt"`
+	AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                        `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -522017,18 +524686,24 @@ type GetGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                     `json:"canRevoke"`
-		CreatedAt       time.Time                                `json:"createdAt"`
-		DirectAddress   *string                                  `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                       `json:"id"`
-		IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-		Name            string                                   `json:"name"`
-		RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                `json:"updatedAt"`
+		AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                     `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -522078,18 +524753,24 @@ type GetGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetGatewayResponse) GetJSON200() *struct {
-	AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                     `json:"canRevoke"`
-	CreatedAt       time.Time                                `json:"createdAt"`
-	DirectAddress   *string                                  `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                       `json:"id"`
-	IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-	Name            string                                   `json:"name"`
-	RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                `json:"updatedAt"`
+	AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                     `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -522190,18 +524871,24 @@ type UpdateGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                        `json:"canRevoke"`
-		CreatedAt       time.Time                                   `json:"createdAt"`
-		DirectAddress   *string                                     `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                          `json:"id"`
-		IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-		Name            string                                      `json:"name"`
-		RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                   `json:"updatedAt"`
+		AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                        `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -522251,18 +524938,24 @@ type UpdateGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateGatewayResponse) GetJSON200() *struct {
-	AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                        `json:"canRevoke"`
-	CreatedAt       time.Time                                   `json:"createdAt"`
-	DirectAddress   *string                                     `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                          `json:"id"`
-	IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-	Name            string                                      `json:"name"`
-	RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                   `json:"updatedAt"`
+	AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                        `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -526950,6 +529643,45 @@ func (c *ClientWithResponses) CreateGcpAppConnectionWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseCreateGcpAppConnectionResponse(rsp)
+}
+
+// GetGcpAppConnectionWithResponse performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+//
+// Get the specified GCP Connection by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGcpAppConnectionResponse, error) {
+	rsp, err := c.GetGcpAppConnection(ctx, connectionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGcpAppConnectionResponse(rsp)
+}
+
+// UpdateGcpAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified GCP Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateGcpAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error) {
+	rsp, err := c.UpdateGcpAppConnectionWithBody(ctx, connectionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGcpAppConnectionResponse(rsp)
+}
+
+// UpdateGcpAppConnectionWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the specified GCP Connection.
+func (c *ClientWithResponses) UpdateGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error) {
+	rsp, err := c.UpdateGcpAppConnection(ctx, connectionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGcpAppConnectionResponse(rsp)
 }
 
 // ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
@@ -534792,7 +537524,7 @@ func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, body 
 // DeleteGroupWithResponse performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
+func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
 	rsp, err := c.DeleteGroup(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534803,7 +537535,7 @@ func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id st
 // GetGroupByIdWithResponse performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error) {
+func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error) {
 	rsp, err := c.GetGroupById(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534815,7 +537547,7 @@ func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id s
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroupWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534825,7 +537557,7 @@ func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Contex
 
 // UpdateGroupWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroup(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534836,7 +537568,7 @@ func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id st
 // ListGroupMachineIdentitiesWithResponse performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error) {
+func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error) {
 	rsp, err := c.ListGroupMachineIdentities(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534847,7 +537579,7 @@ func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context
 // RemoveMachineIdentityFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error) {
+func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error) {
 	rsp, err := c.RemoveMachineIdentityFromGroup(ctx, id, machineIdentityId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534858,7 +537590,7 @@ func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx con
 // AddMachineIdentityToGroupWithResponse performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error) {
+func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error) {
 	rsp, err := c.AddMachineIdentityToGroup(ctx, id, machineIdentityId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534869,7 +537601,7 @@ func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.
 // ListGroupProjectsWithResponse performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error) {
+func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error) {
 	rsp, err := c.ListGroupProjects(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534880,7 +537612,7 @@ func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context,
 // ListGroupUsersWithResponse performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error) {
+func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error) {
 	rsp, err := c.ListGroupUsers(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534891,7 +537623,7 @@ func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id
 // RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error) {
+func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error) {
 	rsp, err := c.RemoveUserFromGroup(ctx, id, username, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -534902,7 +537634,7 @@ func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Contex
 // AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error) {
+func (c *ClientWithResponses) AddUserToGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error) {
 	rsp, err := c.AddUserToGroup(ctx, id, username, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -552375,6 +555107,210 @@ func ParseCreateGcpAppConnectionResponse(rsp *http.Response) (*CreateGcpAppConne
 	return response, nil
 }
 
+// ParseGetGcpAppConnectionResponse parses an HTTP response from a GetGcpAppConnectionWithResponse call
+func ParseGetGcpAppConnectionResponse(rsp *http.Response) (*GetGcpAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGcpAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGcpAppConnectionResponse parses an HTTP response from a UpdateGcpAppConnectionWithResponse call
+func ParseUpdateGcpAppConnectionResponse(rsp *http.Response) (*UpdateGcpAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGcpAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListGitHubAppConnectionsResponse parses an HTTP response from a ListGitHubAppConnectionsWithResponse call
 func ParseListGitHubAppConnectionsResponse(rsp *http.Response) (*ListGitHubAppConnectionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -554772,9 +557708,12 @@ func ParseApproveCertCodeSigningApprovalRequestResponse(rsp *http.Response) (*Ap
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -555285,9 +558224,12 @@ func ParseListCertRequestApprovalRequestsResponse(rsp *http.Response) (*ListCert
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -555542,9 +558484,12 @@ func ParseGetCertRequestApprovalRequestResponse(rsp *http.Response) (*GetCertReq
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -555799,9 +558744,12 @@ func ParseApproveCertRequestApprovalRequestResponse(rsp *http.Response) (*Approv
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -556056,9 +559004,12 @@ func ParseBreakGlassCertRequestApprovalRequestResponse(rsp *http.Response) (*Bre
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -556313,9 +559264,12 @@ func ParseCancelCertRequestApprovalRequestResponse(rsp *http.Response) (*CancelC
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -556570,9 +559524,12 @@ func ParseRejectCertRequestApprovalRequestResponse(rsp *http.Response) (*RejectC
 						Passed bool   `json:"passed"`
 					} `json:"rules"`
 				} `json:"autoApproval,omitempty"`
-				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
-				BypassReason      *string             `json:"bypassReason,omitempty"`
-				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				AutoApprovedAt *time.Time `json:"autoApprovedAt,omitempty"`
+				BypassReason   *string    `json:"bypassReason,omitempty"`
+				CanBreakGlass  *bool      `json:"canBreakGlass,omitempty"`
+
+				// CanReview Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step.
+				CanReview         *bool               `json:"canReview,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				CurrentStep       float32             `json:"currentStep"`
 				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
@@ -583753,13 +586710,33 @@ func ParseRevokeCertificateResponse(rsp *http.Response) (*RevokeCertificateRespo
 			// RevokedAt The date and time when the certificate was revoked.
 			RevokedAt time.Time `json:"revokedAt"`
 
-			// SerialNumber The serial number of the revoked certificate.
+			// SerialNumber The serial number of the certificate.
 			SerialNumber string `json:"serialNumber"`
+
+			// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+			Status RevokeCertificate200JSONResponseBodyStatus `json:"status"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest struct {
+			// ApprovalRequestId The ID of the approval request created for the revocation.
+			ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+			Message           string             `json:"message"`
+
+			// SerialNumber The serial number of the certificate.
+			SerialNumber string `json:"serialNumber"`
+
+			// Status revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.
+			Status RevokeCertificate202JSONResponseBodyStatus `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {
@@ -600521,10 +603498,13 @@ func ParseCreateAwsExternalKmsResponse(rsp *http.Response) (*CreateAwsExternalKm
 			ExternalKms struct {
 				Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -600644,10 +603624,13 @@ func ParseDeleteAwsExternalKmsResponse(rsp *http.Response) (*DeleteAwsExternalKm
 			ExternalKms struct {
 				Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -600767,10 +603750,13 @@ func ParseGetAwsExternalKmsResponse(rsp *http.Response) (*GetAwsExternalKmsRespo
 			ExternalKms struct {
 				Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                             `json:"id"`
-				Provider        string                                                         `json:"provider"`
-				Status          *string                                                        `json:"status,omitempty"`
-				StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -600890,10 +603876,13 @@ func ParseUpdateAwsExternalKmsResponse(rsp *http.Response) (*UpdateAwsExternalKm
 			ExternalKms struct {
 				Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -628907,9 +631896,14 @@ func ParseGetProjectIdentityMembershipByIdResponse(rsp *http.Response) (*GetProj
 				CreatedAt time.Time `json:"createdAt"`
 				Id        string    `json:"id"`
 				Identity  struct {
-					AuthMethods []string           `json:"authMethods"`
-					Id          openapi_types.UUID `json:"id"`
-					Metadata    *[]struct {
+					// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+					ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+					AuthMethods              []string `json:"authMethods"`
+
+					// HasDeleteProtection Whether the machine identity is protected from deletion.
+					HasDeleteProtection bool               `json:"hasDeleteProtection"`
+					Id                  openapi_types.UUID `json:"id"`
+					Metadata            *[]struct {
 						Id    string `json:"id"`
 						Key   string `json:"key"`
 						Value string `json:"value"`
@@ -629257,6 +632251,7 @@ func ParseDeleteIdentityFolderAccessResponse(rsp *http.Response) (*DeleteIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -629374,6 +632369,7 @@ func ParseListIdentityFolderAccessResponse(rsp *http.Response) (*ListIdentityFol
 				FolderId                 openapi_types.UUID                                                `json:"folderId"`
 				Id                       openapi_types.UUID                                                `json:"id"`
 				IdentityId               openapi_types.UUID                                                `json:"identityId"`
+				IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                              `json:"isTemporary"`
 				Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                            `json:"projectId"`
@@ -629491,6 +632487,7 @@ func ParseUpdateIdentityFolderAccessResponse(rsp *http.Response) (*UpdateIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -629608,6 +632605,7 @@ func ParseCreateIdentityFolderAccessResponse(rsp *http.Response) (*CreateIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -629719,13 +632717,14 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 			Identities []struct {
 				FolderRBACAccess *struct {
 					CreatedAt                time.Time                                                                         `json:"createdAt"`
 					Environment              string                                                                            `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 					Id                       openapi_types.UUID                                                                `json:"id"`
+					IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                              `json:"isTemporary"`
 					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                            `json:"projectId"`
@@ -629736,7 +632735,23 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 					TemporaryRange           *string                                                                           `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
-				IdentityId openapi_types.UUID `json:"identityId"`
+				IdentityId                openapi_types.UUID `json:"identityId"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                  `json:"createdAt"`
+					Environment              string                                                                                     `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+					Id                       openapi_types.UUID                                                                         `json:"id"`
+					IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                       `json:"isTemporary"`
+					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                     `json:"projectId"`
+					SecretPath               string                                                                                     `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
 					IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -629749,13 +632764,14 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 				Name string `json:"name"`
 			} `json:"identities"`
 
-			// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+			// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 			IdentitiesWithoutAccess []struct {
 				FolderRBACAccess *struct {
 					CreatedAt                time.Time                                                                                      `json:"createdAt"`
 					Environment              string                                                                                         `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 					Id                       openapi_types.UUID                                                                             `json:"id"`
+					IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                                           `json:"isTemporary"`
 					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                                         `json:"projectId"`
@@ -629766,7 +632782,23 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 					TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
-				IdentityId openapi_types.UUID `json:"identityId"`
+				IdentityId                openapi_types.UUID `json:"identityId"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                               `json:"createdAt"`
+					Environment              string                                                                                                  `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+					Id                       openapi_types.UUID                                                                                      `json:"id"`
+					IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                                    `json:"isTemporary"`
+					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                                  `json:"projectId"`
+					SecretPath               string                                                                                                  `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
 					IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -631474,7 +634506,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 			// TotalCount The number of users of the project that match the search, with and without access together.
 			TotalCount float32 `json:"totalCount"`
 
-			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 			Users []struct {
 				Email            *string `json:"email"`
 				FirstName        *string `json:"firstName"`
@@ -631483,6 +634515,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					Environment              string                                                                  `json:"environment"`
 					FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 					Id                       openapi_types.UUID                                                      `json:"id"`
+					IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                    `json:"isTemporary"`
 					Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                  `json:"projectId"`
@@ -631493,6 +634526,22 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					TemporaryRange           *string                                                                 `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                               `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                        `json:"createdAt"`
+					Environment              string                                                                           `json:"environment"`
+					FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+					Id                       openapi_types.UUID                                                               `json:"id"`
+					IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                             `json:"isTemporary"`
+					Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                           `json:"projectId"`
+					SecretPath               string                                                                           `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                          `json:"temporaryMode"`
+					TemporaryRange           *string                                                                          `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				LastName   *string `json:"lastName"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
@@ -631507,7 +634556,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 				Username string             `json:"username"`
 			} `json:"users"`
 
-			// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+			// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 			UsersWithoutAccess []struct {
 				Email            *string `json:"email"`
 				FirstName        *string `json:"firstName"`
@@ -631516,6 +634565,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					Environment              string                                                                               `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 					Id                       openapi_types.UUID                                                                   `json:"id"`
+					IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                                 `json:"isTemporary"`
 					Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                               `json:"projectId"`
@@ -631526,6 +634576,22 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					TemporaryRange           *string                                                                              `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                     `json:"createdAt"`
+					Environment              string                                                                                        `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+					Id                       openapi_types.UUID                                                                            `json:"id"`
+					IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                          `json:"isTemporary"`
+					Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                        `json:"projectId"`
+					SecretPath               string                                                                                        `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				LastName   *string `json:"lastName"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
@@ -633237,6 +636303,7 @@ func ParseDeleteUserFolderAccessResponse(rsp *http.Response) (*DeleteUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -633354,6 +636421,7 @@ func ParseListUserFolderAccessResponse(rsp *http.Response) (*ListUserFolderAcces
 				Environment              string                                                        `json:"environment"`
 				FolderId                 openapi_types.UUID                                            `json:"folderId"`
 				Id                       openapi_types.UUID                                            `json:"id"`
+				IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                          `json:"isTemporary"`
 				Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                        `json:"projectId"`
@@ -633471,6 +636539,7 @@ func ParseUpdateUserFolderAccessResponse(rsp *http.Response) (*UpdateUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -633588,6 +636657,7 @@ func ParseCreateUserFolderAccessResponse(rsp *http.Response) (*CreateUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -651036,7 +654106,13 @@ func ParseListGatewaysResponse(rsp *http.Response) (*ListGatewaysResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []struct {
-			Capabilities            interface{}        `json:"capabilities,omitempty"`
+			Capabilities interface{} `json:"capabilities,omitempty"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 			ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 			CreatedAt               time.Time          `json:"createdAt"`
 			DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -651475,17 +654551,23 @@ func ParseDeleteGatewayResponse(rsp *http.Response) (*DeleteGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			Capabilities    interface{}         `json:"capabilities,omitempty"`
-			CreatedAt       time.Time           `json:"createdAt"`
-			DirectAddress   *string             `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID  `json:"id"`
-			IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-			Name            string              `json:"name"`
-			RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-			UpdatedAt       time.Time           `json:"updatedAt"`
+			Capabilities interface{} `json:"capabilities,omitempty"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -663104,18 +666186,24 @@ func ParseCreateGatewayResponse(rsp *http.Response) (*CreateGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                        `json:"canRevoke"`
-			CreatedAt       time.Time                                   `json:"createdAt"`
-			DirectAddress   *string                                     `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                          `json:"id"`
-			IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-			Name            string                                      `json:"name"`
-			RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                   `json:"updatedAt"`
+			AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                        `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -663435,18 +666523,24 @@ func ParseGetGatewayResponse(rsp *http.Response) (*GetGatewayResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                     `json:"canRevoke"`
-			CreatedAt       time.Time                                `json:"createdAt"`
-			DirectAddress   *string                                  `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                       `json:"id"`
-			IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-			Name            string                                   `json:"name"`
-			RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                `json:"updatedAt"`
+			AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                     `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -663548,18 +666642,24 @@ func ParseUpdateGatewayResponse(rsp *http.Response) (*UpdateGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                        `json:"canRevoke"`
-			CreatedAt       time.Time                                   `json:"createdAt"`
-			DirectAddress   *string                                     `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                          `json:"id"`
-			IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-			Name            string                                      `json:"name"`
-			RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                   `json:"updatedAt"`
+			AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                        `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -5,6 +5,7 @@ import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/c
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
@@ -23,6 +24,13 @@ import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { TAgentVaultHookDALFactory } from "../agent-vault-hook/agent-vault-hook-dal";
+import {
+  assertAgentVaultHooksOnPlan,
+  hookNotFoundByName,
+  NO_SERVICE_HOOK,
+  toServiceHookColumns
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
@@ -31,7 +39,6 @@ import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vau
 import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import { isForeignKeyViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
-import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns";
 import {
   getAgentVaultPermission,
   getAgentVaultReachability,
@@ -90,6 +97,7 @@ export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
+  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findByNamesForService" | "findNamesByIds">;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
@@ -127,6 +135,7 @@ const readHostPattern = (type: AgentVaultServiceType, hostPattern?: string | nul
 
 export const agentVaultSessionServiceFactory = ({
   agentVaultSessionDAL,
+  agentVaultHookDAL,
   agentVaultSessionAccessBundleDAL,
   agentVaultSessionInlineServiceDAL,
   agentVaultSessionServiceDAL,
@@ -218,6 +227,14 @@ export const agentVaultSessionServiceFactory = ({
     return new Map(variables.map((variable) => [variable.id, { id: variable.id, key: variable.key }]));
   };
 
+  const findInlineHookNames = async (
+    rows: { projectId: string; hookId?: string | null }[]
+  ): Promise<ReadonlyMap<string, string>> => {
+    const hookIds = rows.flatMap((row) => (row.hookId ? [row.hookId] : []));
+    if (!hookIds.length) return new Map();
+    return agentVaultHookDAL.findNamesByIds({ ids: hookIds, projectId: rows[0].projectId });
+  };
+
   // Each session's services or skills, listed by name or sent inline, as one list in the order they were sent. A listed
   // one is read from the live catalog, so one the reader no longer reaches is left out, the same as a deleted one: its
   // later name, description and hosts are the catalog's to show, not the session's. The reach is read only when a
@@ -265,19 +282,27 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionAgentVaultVariableActions.Read,
       ProjectPermissionSub.AgentVaultVariables
     );
+    const canReadHooks = permission.can(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
     // Filled once the inline rows are loaded, which findSessionEntries awaits before it maps any of them.
     let oauthVariables: TInlineOauthVariableKeys = new Map();
+    let hookNames: ReadonlyMap<string, string> | undefined;
     return findSessionEntries({
       sessionIds,
       loadInline: async (ids) => {
         const rows = await agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(ids);
-        if (canReadVariables) oauthVariables = await findInlineOauthVariableKeys(rows);
+        [oauthVariables, hookNames] = await Promise.all([
+          canReadVariables ? findInlineOauthVariableKeys(rows) : oauthVariables,
+          canReadHooks ? findInlineHookNames(rows) : undefined
+        ]);
         return rows;
       },
       loadListed: (ids) => agentVaultSessionServiceDAL.findSummariesBySessionIds(ids),
       loadReachableIds: () => serviceIdsReachedThrough(agentVaultServiceDAL, readerAccessBundleIds),
       fromInline: (row): TAgentVaultSessionServiceSummary => ({
-        ...toInlineServiceSummary(row, oauthVariables),
+        ...toInlineServiceSummary(row, oauthVariables, hookNames),
         isInline: true
       }),
       fromListed: ({ id, name, type, description, hostPattern }): TAgentVaultSessionServiceSummary => ({
@@ -422,9 +447,21 @@ export const agentVaultSessionServiceFactory = ({
         await agentVaultVariableDAL.findKeys({ projectId, owner: null })
       );
     }
-    if (preparedInlineServices.some((service) => service.hookUrl)) {
+    // Naming a saved hook takes reading hooks, and the plan's hooks feature, as setting one on a project service does.
+    const inlineHookNames = [
+      ...new Set(preparedInlineServices.flatMap((service) => (service.hook ? [service.hook.name] : [])))
+    ];
+    if (inlineHookNames.length) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultHookActions.Read,
+        ProjectPermissionSub.AgentVaultHooks
+      );
       await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
+    const canReadHooks = permission.can(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
     const preparedInlineSkills = prepareInlineSkills(
       inlineSkillEntries.map(({ input }) => input),
       inlineSkillEntries.map(({ position }) => position)
@@ -699,12 +736,11 @@ export const agentVaultSessionServiceFactory = ({
     }
     const seal = (value: unknown) => encrypt!(Buffer.from(JSON.stringify(value)));
     const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
-      ({ secrets, customHeaders, substitutions, oauthVariableKey, ...service }) => ({
+      ({ secrets, customHeaders, substitutions, oauthVariableKey, hook, ...service }) => ({
         ...service,
         projectId,
         credentialType: service.credentialConfig.type,
         encryptedCredential: secrets?.credential ? seal(secrets.credential) : null,
-        encryptedHookSecret: secrets?.hookSecret ? seal({ value: secrets.hookSecret }) : null,
         customHeaders: customHeaders.map((header, index) => ({
           ...header,
           encryptedValue: seal({ value: secrets!.customHeaders[index] })
@@ -757,8 +793,8 @@ export const agentVaultSessionServiceFactory = ({
       })
     };
 
-    const { session, insertedInlineServices, insertedInlineSkills } = await agentVaultSessionDAL.transaction(
-      async (tx) => {
+    const { session, insertedInlineServices, insertedInlineSkills, inlineHookNamesById } =
+      await agentVaultSessionDAL.transaction(async (tx) => {
         if ((preparedInlineServices.length && accessBundles.length) || orderedServices.length) {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
           await assertNoBundleConflicts(tx);
@@ -798,8 +834,22 @@ export const agentVaultSessionServiceFactory = ({
           );
         }
 
+        // Read in this transaction, so a hook deleted since the request arrived is a 404 rather than a failed key.
+        const savedHooks = inlineHookNames.length
+          ? await agentVaultHookDAL.findByNamesForService({ names: inlineHookNames, projectId }, tx)
+          : [];
+        const hooksByName = new Map(savedHooks.map((hook) => [hook.name.toLowerCase(), hook]));
         const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
-          { sessionId: created.id, services: inlineServiceRows },
+          {
+            sessionId: created.id,
+            services: inlineServiceRows.map((row, index) => {
+              const { hook } = preparedInlineServices[index];
+              if (!hook) return { ...row, ...NO_SERVICE_HOOK };
+              const saved = hooksByName.get(hook.name);
+              if (!saved) throw hookNotFoundByName(hook.name);
+              return { ...row, ...toServiceHookColumns(saved.id, hook) };
+            })
+          },
           tx
         );
 
@@ -844,9 +894,13 @@ export const agentVaultSessionServiceFactory = ({
 
         await insertSessionMetadata({ orgId: ctx.actorOrgId, sessionId: created.id, metadata }, tx);
 
-        return { session: created, insertedInlineServices: inserted, insertedInlineSkills: insertedSkills };
-      }
-    );
+        return {
+          session: created,
+          insertedInlineServices: inserted,
+          insertedInlineSkills: insertedSkills,
+          inlineHookNamesById: new Map(savedHooks.map((hook) => [hook.id, hook.name]))
+        };
+      });
     const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
 
     return {
@@ -871,7 +925,10 @@ export const agentVaultSessionServiceFactory = ({
           })),
           ...insertedInlineServices.map((row) => ({
             position: row.position,
-            service: { ...toInlineServiceSummary(row, oauthVariables), isInline: true as const }
+            service: {
+              ...toInlineServiceSummary(row, oauthVariables, canReadHooks ? inlineHookNamesById : undefined),
+              isInline: true as const
+            }
           }))
         ]
           .sort((a, b) => a.position - b.position)

@@ -40,9 +40,12 @@ const createService = (
     additionalPrivilegeDAL,
     groupDAL: {} as never,
     secretFolderDAL: {
-      findSecretPathByFolderIds: vi
-        .fn()
-        .mockResolvedValue(folderPrivileges.map(() => ({ environmentSlug: "dev", path: "/app" })))
+      findSecretPathByFolderIds: vi.fn().mockResolvedValue(
+        folderPrivileges.map((folderPrivilege) => ({
+          environmentSlug: "dev",
+          path: (folderPrivilege as { appliesToSubfolders?: boolean }).appliesToSubfolders ? "/" : "/app"
+        }))
+      )
     }
   } as never);
 
@@ -274,6 +277,28 @@ describe("getActorGrantAbilities folder grants", () => {
         subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath: "/app" })
       )
     ).toBe(true);
+  });
+
+  test("a recursive folder-scoped grant reaches the folders below it", async () => {
+    const abilityAt = async (overrides: object) => {
+      const { service } = createService(
+        [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+        [],
+        { folderPrivileges: [folderPrivilege(overrides)] }
+      );
+      const grants = await service.getActorGrantAbilities({
+        scopeData: projectScope,
+        actorId: "identity-1",
+        actorType: ActorType.IDENTITY
+      });
+      return grants[0].permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath: "/app/deeper" })
+      );
+    };
+
+    expect(await abilityAt({ appliesToSubfolders: true })).toBe(true);
+    expect(await abilityAt({})).toBe(false);
   });
 
   test("only the allow half reaches the boundary", async () => {

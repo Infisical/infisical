@@ -48,7 +48,7 @@ const applyFolderReadRules = (can: TProjectCan) => {
   );
 };
 
-const applyFolderEditRules = (can: TProjectCan) => {
+const applyFolderEditRules = (can: TProjectCan, recursive: boolean) => {
   applyFolderReadRules(can);
 
   can(
@@ -59,10 +59,13 @@ const applyFolderEditRules = (can: TProjectCan) => {
     [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretImports
   );
+  if (recursive) {
+    can([ProjectPermissionActions.Create, ProjectPermissionActions.Edit], ProjectPermissionSub.SecretFolders);
+  }
 };
 
-const applyFolderManageRules = (can: TProjectCan) => {
-  applyFolderEditRules(can);
+const applyFolderManageRules = (can: TProjectCan, recursive: boolean) => {
+  applyFolderEditRules(can, recursive);
 
   can(
     [
@@ -106,8 +109,8 @@ const applyFolderManageRules = (can: TProjectCan) => {
   );
 };
 
-const applyFolderFullAccessRules = (can: TProjectCan) => {
-  applyFolderManageRules(can);
+const applyFolderFullAccessRules = (can: TProjectCan, recursive: boolean) => {
+  applyFolderManageRules(can, recursive);
 
   can(
     [ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionActions.Delete],
@@ -121,20 +124,18 @@ const buildFolderRoleRules = (applyRules: (can: TProjectCan) => void) => {
   return rules;
 };
 
-export const folderListPermissions = buildFolderRoleRules(applyFolderListRules);
-export const folderReadPermissions = buildFolderRoleRules(applyFolderReadRules);
-export const folderEditPermissions = buildFolderRoleRules(applyFolderEditRules);
-export const folderManagePermissions = buildFolderRoleRules(applyFolderManageRules);
-export const folderFullAccessPermissions = buildFolderRoleRules(applyFolderFullAccessRules);
+const buildFolderRoleTable = (
+  recursive: boolean
+): Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]> => ({
+  [SecretFolderRole.List]: buildFolderRoleRules(applyFolderListRules),
+  [SecretFolderRole.Read]: buildFolderRoleRules(applyFolderReadRules),
+  [SecretFolderRole.Edit]: buildFolderRoleRules((can) => applyFolderEditRules(can, recursive)),
+  [SecretFolderRole.Manage]: buildFolderRoleRules((can) => applyFolderManageRules(can, recursive)),
+  [SecretFolderRole.FullAccess]: buildFolderRoleRules((can) => applyFolderFullAccessRules(can, recursive))
+});
 
-export const SECRET_FOLDER_ROLE_PERMISSIONS: Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]> =
-  {
-    [SecretFolderRole.List]: folderListPermissions,
-    [SecretFolderRole.Read]: folderReadPermissions,
-    [SecretFolderRole.Edit]: folderEditPermissions,
-    [SecretFolderRole.Manage]: folderManagePermissions,
-    [SecretFolderRole.FullAccess]: folderFullAccessPermissions
-  };
+export const SECRET_FOLDER_ROLE_PERMISSIONS = buildFolderRoleTable(false);
+export const RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS = buildFolderRoleTable(true);
 
 const buildFolderScopedDenyRules = () => {
   const { cannot, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
