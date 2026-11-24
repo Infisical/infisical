@@ -18,19 +18,9 @@ describe("getSessionLogEntitlement", () => {
       agentVaultManagedStorage: hasDefault,
       agentVaultSessionLogRetentionDays: retentionDays
     }) as TLicensePlan;
-  const license = ({
-    plan,
-    fallback = false,
-    lastKnown = null
-  }: {
-    plan: TPlanFeatures;
-    fallback?: boolean;
-    lastKnown?: { plan: TPlanFeatures; ageMs: number } | null;
-  }) => {
+  const license = ({ plan, fallback = false }: { plan: TPlanFeatures; fallback?: boolean }) => {
     const fake = new FakeLicenseService().setPlan("org-1", toPlan(plan));
     if (fallback) fake.fallbackOrgs.add("org-1");
-    if (lastKnown)
-      fake.lastKnown.set("org-1", { plan: toPlan(lastKnown.plan), fetchedAt: Date.now() - lastKnown.ageMs });
     return fake;
   };
 
@@ -41,22 +31,7 @@ describe("getSessionLogEntitlement", () => {
   test.each([
     { why: "a paid plan", service: { plan: paid }, expected: "licensed" },
     { why: "a real free plan", service: { plan: free }, expected: "unlicensed" },
-    {
-      why: "a fallback with a recent paid answer",
-      service: { plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 10 * 60_000 } },
-      expected: "licensed"
-    },
-    {
-      why: "a fallback with a recent free answer",
-      service: { plan: free, fallback: true, lastKnown: { plan: free, ageMs: 10 * 60_000 } },
-      expected: "unlicensed"
-    },
-    {
-      why: "a fallback whose last answer is over an hour old",
-      service: { plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 61 * 60_000 } },
-      expected: "unknown"
-    },
-    { why: "a fallback with no real answer on record", service: { plan: free, fallback: true }, expected: "unknown" }
+    { why: "a fallback", service: { plan: free, fallback: true }, expected: "unknown" }
   ])("external storage: reads $why as $expected", async ({ service, expected }) => {
     expect((await getSessionLogEntitlement(license(service), "org-1", ObjectStorageType.External)).entitlement).toBe(
       expected
@@ -67,12 +42,7 @@ describe("getSessionLogEntitlement", () => {
     { why: "a plan with default storage", service: { plan: free }, expected: "licensed" },
     { why: "a plan without it", service: { plan: none }, expected: "unlicensed" },
     {
-      why: "a fallback whose recent real answer leaves it out",
-      service: { plan: free, fallback: true, lastKnown: { plan: none, ageMs: 10 * 60_000 } },
-      expected: "unlicensed"
-    },
-    {
-      why: "a fallback with no real answer, which includes it",
+      why: "a fallback, which includes it",
       service: { plan: free, fallback: true },
       expected: "licensed"
     }
@@ -82,23 +52,13 @@ describe("getSessionLogEntitlement", () => {
     );
   });
 
-  test("during an outage, uploads keep the retention of the last real plan", async () => {
-    const { plan } = await getSessionLogEntitlement(
-      license({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 10 * 60_000 } }),
-      "org-1",
-      ObjectStorageType.Default
-    );
-    expect(getSessionLogRetentionDays(plan)).toBe(365);
-  });
-
-  test("after the first hour of an outage, retention still comes from the last real plan", async () => {
+  test("a fallback answers unknown with no plan to take retention from", async () => {
     const { entitlement, plan } = await getSessionLogEntitlement(
-      license({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 3 * 60 * 60_000 } }),
+      license({ plan: free, fallback: true }),
       "org-1",
-      ObjectStorageType.Default
+      ObjectStorageType.External
     );
-    expect(entitlement).toBe("licensed");
-    expect(getSessionLogRetentionDays(plan)).toBe(365);
+    expect([entitlement, plan]).toEqual(["unknown", null]);
   });
 
   test("retention is 30 days when the plan doesn't say", () => {

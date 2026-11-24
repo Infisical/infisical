@@ -3282,7 +3282,6 @@ export const registerRoutes = async (
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
-    licenseService,
     eventEmitter,
     projectEnvService,
     projectDAL,
@@ -3499,8 +3498,7 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     caKeySourceService,
     keyStore,
-    auditLogService,
-    licenseService
+    auditLogService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
@@ -5044,6 +5042,7 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     licenseService,
+    organizationsProjects: organizationsProjectsService,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,

@@ -15,7 +15,7 @@ const DAILY_COUNTER_TTL_SECONDS = 2 * 24 * 60 * 60;
 
 type TOrgInviteQuotaFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry" | "incrementBy" | "getItemPrimary">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "countSeatHolders">;
 };
 
@@ -29,11 +29,7 @@ export const orgInviteQuotaFactory = ({ keyStore, licenseService, orgMembershipD
   const $getFreePlan = async (orgId: string): Promise<Plan | null> => {
     if (!getConfig().isCloud) return null;
 
-    let plan = await licenseService.getPlan(orgId);
-    if (plan.isFallback) {
-      const lastKnown = await licenseService.getLastKnownPlan(orgId);
-      plan = lastKnown?.plan ?? plan;
-    }
+    const plan = await licenseService.getPlan(orgId);
     return plan.isPaid ? null : plan;
   };
 

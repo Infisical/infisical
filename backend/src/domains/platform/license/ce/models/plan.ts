@@ -24,7 +24,6 @@ export type TPlanFeatures = {
   isOffline?: boolean;
   tier: number;
   workspaceLimit: number | null;
-  workspacesUsed: number;
   dynamicSecret: boolean;
   memberLimit: number | null;
   identityLimit: number | null;
@@ -381,10 +380,6 @@ export class Plan {
   // Whether the plan explicitly includes this product, as a purchase or an override does. Null proves nothing.
   grants(product: PlanProduct): boolean {
     return this.features[product] === true;
-  }
-
-  withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.features, workspacesUsed }, this.fallback);
   }
 
   // A mutable copy, for the cache and API responses.

@@ -6,6 +6,7 @@ import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
@@ -431,6 +432,7 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseService: TLicenseService;
+    organizationsProjects: TOrganizationsProjectsService;
     kmsDataKeyService: TKmsDataKeyService;
     kmsRootKeyService: TKmsRootKeyService;
     licenseV2: TLicenseV2ServiceFactory;

@@ -9,7 +9,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
 // lives on the License Server v2 routes in license-v2-router.
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
-  // Any member of the org can read its plan, which is always its root org's.
+  // Any member of the org can read its plan, which is always its root org's. The project count isn't part of the
+  // plan, so it is counted live here; the project limit itself is enforced under the create lock.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
     await server.services.permission.getOrgPermission({
       actorId: req.permission.id,
@@ -22,7 +23,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     if (refreshCache) {
       await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
     }
-    return server.services.licenseService.getPlan(req.permission.rootOrgId);
+    const [plan, workspacesUsed] = await Promise.all([
+      server.services.licenseService.getPlan(req.permission.rootOrgId),
+      server.services.organizationsProjects.countWorkspaces(req.permission.rootOrgId)
+    ]);
+    return { ...plan.toJSON(), workspacesUsed };
   };
 
   server.route({
@@ -46,8 +51,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const plan = await readOrgPlan(req, req.params.organizationId, req.query.refreshCache);
-      return { plan: plan.toJSON() };
+      return { plan: await readOrgPlan(req, req.params.organizationId, req.query.refreshCache) };
     }
   });
 
@@ -66,7 +70,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
+      return readOrgPlan(req, req.params.organizationId, false);
     }
   });
 };

@@ -12,18 +12,16 @@ const PlanKeys = {
   plan: (rootOrgId: string) => `infisical-cloud-plan-${rootOrgId}`,
   // Marks a cached plan as the fallback (License Server was down), not a real answer.
   fallback: (rootOrgId: string) => `infisical-cloud-plan-fallback-${rootOrgId}`,
-  lastKnown: (rootOrgId: string) => `infisical-cloud-plan-last-known-${rootOrgId}`,
   passThrough: (rootOrgId: string) => `license-cache-passthrough-${rootOrgId}`,
   revalidateLock: (rootOrgId: string) => `license-cache-revalidate-lock-${rootOrgId}`,
-  // Expires before the plan, so busy orgs refresh in the background and never miss the cache.
-  fresh: (rootOrgId: string) => `infisical-cloud-plan-fresh-${rootOrgId}`,
-  // Kept apart from the plan so a recount after a project change can't overwrite a newer plan.
-  workspacesUsed: (rootOrgId: string) => `infisical-cloud-plan-workspaces-used-${rootOrgId}`
+  // The soft TTL: past it the plan is still served, and refreshed in the background.
+  fresh: (rootOrgId: string) => `infisical-cloud-plan-fresh-${rootOrgId}`
 };
 
 const PlanKeyTtls = {
-  planInSeconds: 900,
-  lastKnownInSeconds: 86400,
+  // The hard TTL: how long a plan outlives a License Server outage.
+  planInSeconds: 86400,
+  freshInSeconds: 900,
   // Covers Stripe reconciling a billing change.
   passThroughInSeconds: 180,
   // Hosted checkout only applies once the customer finishes it, which can take minutes.
@@ -32,67 +30,47 @@ const PlanKeyTtls = {
   refreshAheadInSeconds: 120
 };
 
-const jitteredPlanTtl = () => applyJitter(PlanKeyTtls.planInSeconds, 90);
+const jitteredFreshTtl = () => applyJitter(PlanKeyTtls.freshInSeconds, 90);
 
 export class PlanCache implements TPlanCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 
   async read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean; stale: boolean }> {
-    const [raw, passThrough, fallback, fresh, workspacesUsed] = await this.keyStore.getItems([
+    const [raw, passThrough, fallback, fresh] = await this.keyStore.getItems([
       PlanKeys.plan(rootOrgId),
       PlanKeys.passThrough(rootOrgId),
       PlanKeys.fallback(rootOrgId),
-      PlanKeys.fresh(rootOrgId),
-      PlanKeys.workspacesUsed(rootOrgId)
+      PlanKeys.fresh(rootOrgId)
     ]);
     if (!raw) return { plan: null, passThrough: Boolean(passThrough), stale: false };
-    let plan = Plan.restore(JSON.parse(raw) as TPlanFeatures);
-    if (workspacesUsed !== null) plan = plan.withWorkspacesUsed(Number(workspacesUsed));
+    const plan = Plan.restore(JSON.parse(raw) as TPlanFeatures);
     return { plan: fallback ? plan.asFallback() : plan, passThrough: Boolean(passThrough), stale: !fresh };
   }
 
-  async write(rootOrgId: string, plan: Plan, workspacesUsed: number) {
-    const json = JSON.stringify(plan.toJSON());
-    const ttl = jitteredPlanTtl();
-    await this.keyStore.setItemWithExpiry(PlanKeys.plan(rootOrgId), ttl, json);
-    await this.markFresh(rootOrgId, ttl);
-    await this.writeWorkspacesUsed(rootOrgId, workspacesUsed);
+  async write(rootOrgId: string, plan: Plan) {
     await this.keyStore.setItemWithExpiry(
-      PlanKeys.lastKnown(rootOrgId),
-      PlanKeyTtls.lastKnownInSeconds,
-      JSON.stringify({ plan: plan.toJSON(), fetchedAt: Date.now() })
+      PlanKeys.plan(rootOrgId),
+      PlanKeyTtls.planInSeconds,
+      JSON.stringify(plan.toJSON())
     );
+    await this.markFresh(rootOrgId);
     await this.keyStore.deleteItem(PlanKeys.fallback(rootOrgId));
   }
 
+  // Lives only as long as the soft TTL, so a miss during an outage is retried soon rather than served for a day.
   async writeFallback(rootOrgId: string, plan: Plan) {
-    const ttl = jitteredPlanTtl();
+    const ttl = jitteredFreshTtl();
     await this.keyStore.setItemWithExpiry(PlanKeys.plan(rootOrgId), ttl, JSON.stringify(plan.toJSON()));
     await this.keyStore.setItemWithExpiry(PlanKeys.fallback(rootOrgId), ttl, "1");
     await this.markFresh(rootOrgId, ttl);
   }
 
-  async writeWorkspacesUsed(rootOrgId: string, workspacesUsed: number) {
-    await this.keyStore.setItemWithExpiry(
-      PlanKeys.workspacesUsed(rootOrgId),
-      PlanKeyTtls.lastKnownInSeconds,
-      String(workspacesUsed)
-    );
-  }
-
-  private async markFresh(rootOrgId: string, planTtlInSeconds: number) {
+  private async markFresh(rootOrgId: string, ttlInSeconds = jitteredFreshTtl()) {
     await this.keyStore.setItemWithExpiry(
       PlanKeys.fresh(rootOrgId),
-      Math.max(planTtlInSeconds - PlanKeyTtls.refreshAheadInSeconds, 1),
+      Math.max(ttlInSeconds - PlanKeyTtls.refreshAheadInSeconds, 1),
       "1"
     );
-  }
-
-  async lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
-    const [raw] = await this.keyStore.getItems([PlanKeys.lastKnown(rootOrgId)]);
-    if (!raw) return null;
-    const { plan, fetchedAt } = JSON.parse(raw) as { plan: TPlanFeatures; fetchedAt: number };
-    return { plan: Plan.restore(plan), fetchedAt };
   }
 
   // The License Server settles billing changes async (Stripe webhook), so reads keep serving the cached plan
@@ -105,12 +83,18 @@ export class PlanCache implements TPlanCache {
     );
   }
 
+  // Marks the plan stale without removing it: the next read serves it and refreshes it in the background.
   async invalidate(rootOrgId: string) {
-    await this.keyStore.deleteItem(PlanKeys.plan(rootOrgId));
     await this.keyStore.deleteItem(PlanKeys.fresh(rootOrgId));
   }
 
-  // Single-flight for a plan fetch: only the caller that sets the lock fetches. Returns the holder's token, or null.
+  async delete(rootOrgId: string) {
+    await this.keyStore.deleteItem(PlanKeys.plan(rootOrgId));
+    await this.keyStore.deleteItem(PlanKeys.fresh(rootOrgId));
+    await this.keyStore.deleteItem(PlanKeys.fallback(rootOrgId));
+  }
+
+  // Single-flight for a background refresh: only the caller that sets the lock refreshes. Expires on its own.
   async acquireRevalidateLock(rootOrgId: string): Promise<string | null> {
     const token = randomUUID();
     const acquired = await this.keyStore.setItemWithExpiryNX(
@@ -119,10 +103,5 @@ export class PlanCache implements TPlanCache {
       token
     );
     return acquired === "OK" ? token : null;
-  }
-
-  // A fetch can outlive the lock's TTL, so only the holder's own lock is released, never one taken after it.
-  async releaseRevalidateLock(rootOrgId: string, token: string) {
-    await this.keyStore.deleteItemIfValue(PlanKeys.revalidateLock(rootOrgId), token);
   }
 }

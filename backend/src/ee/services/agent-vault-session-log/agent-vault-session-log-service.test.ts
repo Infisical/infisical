@@ -143,7 +143,6 @@ type TOverrides = {
   isAdmin?: boolean;
   plan?: TPlanFeatures;
   planFallback?: boolean;
-  lastKnownPlan?: { plan: TPlanFeatures; ageMs: number } | null;
   statsFail?: boolean;
 };
 
@@ -167,12 +166,6 @@ const build = (overrides: TOverrides = {}) => {
   const streamRange = vi.fn(async () => overrides.feed ?? []);
   const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
   if (overrides.planFallback) licenseService.fallbackOrgs.add("org-1");
-  if (overrides.lastKnownPlan) {
-    licenseService.lastKnown.set("org-1", {
-      plan: toPlan(overrides.lastKnownPlan.plan),
-      fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs
-    });
-  }
   const addChunkCounts = vi.fn(async () => {
     if (overrides.statsFail) throw new Error("db is down");
   });
@@ -535,32 +528,10 @@ describe("createChunkUploadUrl: the plan for the storage in use", () => {
     });
   });
 
-  test("while the License Server is down, a chunk from a paid org is accepted on its last known plan", async () => {
+  test("a chunk is held, not refused, when the plan can't be read", async () => {
     const { service } = build({
       plan: { hasExternal: false },
-      planFallback: true,
-      lastKnownPlan: { plan: { hasExternal: true }, ageMs: 10 * 60_000 }
-    });
-    await record(service);
-    expect(presignPut).toHaveBeenCalledTimes(1);
-  });
-
-  test("while the License Server is down, default storage keeps the retention of the last real plan", async () => {
-    defaultStorage.configured = true;
-    const { service } = build({
-      config: undefined,
-      planFallback: true,
-      lastKnownPlan: { plan: { retentionDays: 365 }, ageMs: 10 * 60_000 }
-    });
-    await record(service);
-    expect(presignPut).toHaveBeenCalledWith(expect.objectContaining({ retentionDays: 365 }));
-  });
-
-  test("a chunk is held, not refused, when there is no recent real answer", async () => {
-    const { service } = build({
-      plan: { hasExternal: false },
-      planFallback: true,
-      lastKnownPlan: { plan: { hasExternal: true }, ageMs: 2 * 60 * 60_000 }
+      planFallback: true
     });
     await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
     expect(presignPut).not.toHaveBeenCalled();
