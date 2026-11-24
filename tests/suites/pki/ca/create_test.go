@@ -15,6 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// rootNotAfter is whole seconds, so the CA's notAfter can be compared to it exactly.
+var rootNotAfter = time.Now().AddDate(10, 0, 0).UTC().Truncate(time.Second)
+
 func rootBody(p *pki.Project, name string) api.CreateInternalCertificateAuthorityV1JSONRequestBody {
 	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
 		ProjectId: &p.ID,
@@ -25,7 +28,7 @@ func rootBody(p *pki.Project, name string) api.CreateInternalCertificateAuthorit
 	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1
 	body.Configuration.CommonName = new("Harness Root " + name)
 	body.Configuration.Organization = new("Acme")
-	body.Configuration.NotAfter = new("2034-01-01T00:00:00.000Z")
+	body.Configuration.NotAfter = new(rootNotAfter.Format(time.RFC3339))
 	return body
 }
 
@@ -53,7 +56,7 @@ func TestInternalCA_Create(t *testing.T) {
 		require.IsType(t, &ecdsa.PublicKey{}, cert.PublicKey)
 		require.Equal(t, "Harness Root "+name, cert.Subject.CommonName)
 		require.Equal(t, []string{"Acme"}, cert.Subject.Organization)
-		require.Equal(t, time.Date(2034, 1, 1, 0, 0, 0, 0, time.UTC), cert.NotAfter.UTC())
+		require.Equal(t, rootNotAfter, cert.NotAfter.UTC())
 	})
 
 	t.Run("should refuse a Product Member and create no CA", func(t *testing.T) {

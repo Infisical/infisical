@@ -44,7 +44,7 @@ func CreateRootCA(tt *testing.T, p *Project, keyAlgorithm api.CreateInternalCert
 	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot
 	body.Configuration.KeyAlgorithm = keyAlgorithm
 	body.Configuration.Organization = new("Infisical Harness")
-	body.Configuration.NotAfter = new("2035-11-07")
+	body.Configuration.NotAfter = new(time.Now().AddDate(10, 0, 0).UTC().Format(time.RFC3339))
 	body.Configuration.MaxPathLength = new(float32(-1))
 
 	res, err := p.tn.Admin.API.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)

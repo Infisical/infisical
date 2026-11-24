@@ -32,13 +32,18 @@ func policyBody(t *testing.T, tn *harness.Tenant) api.CreateCertificatePolicyJSO
 	return body
 }
 
-// createPolicyStatus is the status a principal gets creating a certificate policy, an
-// action only a Certificate Manager admin may take.
-func createPolicyStatus(t *testing.T, tn *harness.Tenant, as *harness.Principal) int {
+// requirePolicyCreated requires a principal to create a certificate policy, an action
+// only a Certificate Manager admin may take, and the admin to read it back.
+func requirePolicyCreated(t *testing.T, tn *harness.Tenant, as *harness.Principal) {
 	t.Helper()
-	res, err := as.API.CreateCertificatePolicyWithResponse(t.Context(), policyBody(t, tn))
+	body := policyBody(t, tn)
+	res, err := as.API.CreateCertificatePolicyWithResponse(t.Context(), body)
 	require.NoError(t, err)
-	return res.StatusCode()
+	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	read, err := tn.Admin.API.GetCertificatePolicyWithResponse(t.Context(), res.JSON200.CertificatePolicy.Id, nil)
+	require.NoError(t, err)
+	require.NotNilf(t, read.JSON200, "reading the policy returned %d: %s", read.StatusCode(), apierr.Body(read.Body))
+	require.Equal(t, body.Name, read.JSON200.CertificatePolicy.Name)
 }
 
 // requirePolicyRefused requires a principal to be refused creating a certificate policy

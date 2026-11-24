@@ -24,7 +24,6 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
-		ca := p.caCerts(t)[1]
 
 		// Action
 		got, _ := p.enroll(t, newDevice(t, "test-device.example.com"), "test-device.example.com", "testpassword123")
@@ -32,7 +31,7 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Assert
 		require.Equal(t, scep.SUCCESS, got.status)
 		require.Equal(t, "test-device.example.com", got.cert.Subject.CommonName)
-		require.Equal(t, ca.Subject.String(), got.cert.Issuer.String())
+		require.NoError(t, got.cert.CheckSignatureFrom(p.ca))
 	})
 
 	t.Run("should issue for a name in another domain under another challenge password", func(t *testing.T) {

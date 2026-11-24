@@ -23,6 +23,8 @@ import (
 
 // CA is one scope's certificate authority.
 type CA struct {
+	// Orders is every order an account placed, oldest first.
+	Orders []Order `json:"orders"`
 	// Issued is every certificate the CA signed, oldest first.
 	Issued []Issued `json:"issued"`
 
@@ -35,6 +37,12 @@ type CA struct {
 	orders     map[string]*order
 	authzs     map[string]*authorization
 	challenges map[string]*challenge
+}
+
+// Order is one order an account placed.
+type Order struct {
+	ID    string   `json:"id"`
+	Names []string `json:"names"`
 }
 
 // Issued is one certificate the CA signed.
@@ -93,8 +101,9 @@ func (c *CA) Snapshot() ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return json.Marshal(struct {
+		Orders []Order  `json:"orders"`
 		Issued []Issued `json:"issued"`
-	}{c.Issued})
+	}{c.Orders, c.Issued})
 }
 
 // Seed accepts nothing: everything the CA holds is what a client asked it for.

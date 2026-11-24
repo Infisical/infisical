@@ -44,17 +44,17 @@ func TestSigner_ExternalCA(t *testing.T) {
 		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, pca.Acct.ACMPCA.State(t).Authorities[pca.ARN].Certificate)))
 	})
 
-	t.Run("should fail a signer issued by Azure AD CS under the WebServer template it requests", func(t *testing.T) {
+	t.Run("should fail a signer whose Azure AD CS certificate lacks the code signing usage", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `[BUG?] Infisical requests Azure AD CS signer certificates under the default
-			WebServer template, which AD CS issues for server authentication only, so the code
-			signing check rejects every certificate and no Azure AD CS signer can become active.
-			The signer has no setting to choose a code signing template for this CA type.`)
+		spec.Why(t, `A signer only signs code, so Infisical checks the certificate an external CA
+			returns and refuses one without the codeSigning extended key usage.`)
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
 		ca, adcs := pki.NewAzureADCSCA(t, proj)
+		// Infisical orders signer certificates under AD CS's default template, and the fake
+		// refuses a template it has not published.
 		adcs.Seed(t, azureadcs.WithTemplates("WebServer"))
 
 		// Action
@@ -63,9 +63,7 @@ func TestSigner_ExternalCA(t *testing.T) {
 		// Assert
 		require.Equal(t, "failed", status)
 		require.Equal(t, "The issued certificate does not have the codeSigning extended key usage set.", reason)
-		adcs.ExpectEvent[azureadcs.CertificateIssued](t, func(e azureadcs.CertificateIssued) bool {
-			return e.Template == "WebServer"
-		})
+		adcs.ExpectEvent[azureadcs.CertificateIssued](t, nil)
 	})
 }
 

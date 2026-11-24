@@ -37,7 +37,7 @@ func DirectoryURL(scope string) string {
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
 	c := &CA{
-		Issued: []Issued{}, events: events, root: issuer.New("Fake ACME Root CA"),
+		Orders: []Order{}, Issued: []Issued{}, events: events, root: issuer.New("Fake ACME Root CA"),
 		nonces: map[string]bool{}, accounts: map[string]*account{}, orders: map[string]*order{},
 		authzs: map[string]*authorization{}, challenges: map[string]*challenge{},
 	}
@@ -169,6 +169,11 @@ func (c *CA) newOrder(w http.ResponseWriter, r *http.Request) {
 		o.authzIDs = append(o.authzIDs, az.id)
 	}
 	c.orders[o.id] = o
+	names := make([]string, len(in.Identifiers))
+	for i, id := range in.Identifiers {
+		names[i] = id.Value
+	}
+	c.Orders = append(c.Orders, Order{ID: o.id, Names: names})
 	body := c.orderJSON(base(r), o)
 	c.mu.Unlock()
 

@@ -342,8 +342,8 @@ func TestAwsCertificateManagerPkiSync_Update(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the filters: %s", apierr.Body(res.Body))
-		acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == droppedARN }, fakenet.Since(mark))
-		acct.ACM.ExpectEvent[aws.CertificateImported](t, func(e aws.CertificateImported) bool { return !e.Reimported }, fakenet.Since(mark))
+		acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == droppedARN }, fakenet.Since(mark), cloudSyncRemoval)
+		acct.ACM.ExpectEvent[aws.CertificateImported](t, func(e aws.CertificateImported) bool { return !e.Reimported }, fakenet.Since(mark), cloudSyncRemoval)
 		held := acct.Certificates(t)
 		require.Len(t, held, 1)
 		require.NotNil(t, acmCertificateFor(t, acct, kept), "ACM should hold the certificate the new filter matches")

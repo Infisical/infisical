@@ -70,7 +70,7 @@ func newEcdsaEstProfile(t *testing.T, tn *harness.Tenant) estProfile {
 	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot
 	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1
 	body.Configuration.Organization = new("Infisical Harness")
-	body.Configuration.NotAfter = new("2035-11-07")
+	body.Configuration.NotAfter = new(time.Now().AddDate(10, 0, 0).UTC().Format(time.RFC3339))
 	res, err := tn.Admin.API.CreateInternalCertificateAuthorityV1WithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the ECDSA CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))

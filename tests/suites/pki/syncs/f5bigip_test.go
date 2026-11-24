@@ -58,6 +58,17 @@ func f5Path(certID string) string {
 	return "/Common/Infisical-" + strings.ReplaceAll(certID, "-", "")
 }
 
+// privateKeyOf is the private key Infisical holds for a certificate, which a renewal
+// response does not return.
+func privateKeyOf(t *testing.T, as *harness.Principal, certID string) string {
+	t.Helper()
+	bundle, err := as.API.GetCertificateBundleWithResponse(t.Context(), uuid.MustParse(certID))
+	require.NoError(t, err)
+	require.NotNilf(t, bundle.JSON200, "reading the bundle returned %d: %s", bundle.StatusCode(), apierr.Body(bundle.Body))
+	require.NotNil(t, bundle.JSON200.PrivateKey)
+	return strings.TrimSpace(*bundle.JSON200.PrivateKey)
+}
+
 func TestF5BigIpPkiSync_Sync(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -101,9 +112,14 @@ func TestF5BigIpPkiSync_Sync(t *testing.T) {
 		s.trigger(t, tn)
 		cloudSyncSucceeded(t, tn.Admin.API.GetF5BigIpPkiSync, s.id, done.LastSyncedAt)
 		s.bigip.ExpectEvent[f5bigip.FileObjectInstalled](t, func(e f5bigip.FileObjectInstalled) bool { return e.Kind == "ssl-cert" && e.Path == path })
+		s.bigip.ExpectEvent[f5bigip.FileObjectInstalled](t, func(e f5bigip.FileObjectInstalled) bool { return e.Kind == "ssl-key" && e.Path == path })
 		state := s.bigip.State(t)
+		key := privateKeyOf(t, g.Operator, renewed.JSON200.CertificateId)
+		require.NotEqual(t, strings.TrimSpace(cert.PrivateKey), key)
 		require.Equal(t, strings.TrimSpace(renewed.JSON200.Certificate), strings.TrimSpace(state.SSLCerts[path]))
+		require.Equal(t, key, strings.TrimSpace(state.SSLKeys[path]))
 		require.NotContains(t, state.SSLCerts, f5Path(renewed.JSON200.CertificateId))
+		require.NotContains(t, state.SSLKeys, f5Path(renewed.JSON200.CertificateId))
 	})
 
 	t.Run("should install a renewed certificate under its own name and delete the old objects when preserving the item is off", func(t *testing.T) {
@@ -125,10 +141,14 @@ func TestF5BigIpPkiSync_Sync(t *testing.T) {
 		fresh := f5Path(renewed.JSON200.CertificateId)
 		old := f5Path(cert.ID.String())
 		s.bigip.ExpectEvent[f5bigip.FileObjectInstalled](t, func(e f5bigip.FileObjectInstalled) bool { return e.Kind == "ssl-cert" && e.Path == fresh })
+		s.bigip.ExpectEvent[f5bigip.FileObjectInstalled](t, func(e f5bigip.FileObjectInstalled) bool { return e.Kind == "ssl-key" && e.Path == fresh })
 		s.bigip.ExpectEvent[f5bigip.FileObjectDeleted](t, func(e f5bigip.FileObjectDeleted) bool { return e.Kind == "ssl-cert" && e.Path == old })
+		s.bigip.ExpectEvent[f5bigip.FileObjectDeleted](t, func(e f5bigip.FileObjectDeleted) bool { return e.Kind == "ssl-key" && e.Path == old })
 		state := s.bigip.State(t)
 		require.Equal(t, strings.TrimSpace(renewed.JSON200.Certificate), strings.TrimSpace(state.SSLCerts[fresh]))
+		require.Equal(t, privateKeyOf(t, g.Operator, renewed.JSON200.CertificateId), strings.TrimSpace(state.SSLKeys[fresh]))
 		require.NotContains(t, state.SSLCerts, old)
+		require.NotContains(t, state.SSLKeys, old)
 	})
 
 	t.Run("should unbind the certificate from the Client SSL profiles using it, then delete its objects", func(t *testing.T) {

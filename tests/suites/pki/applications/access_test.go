@@ -38,13 +38,17 @@ func TestApplicationAccess_Operator(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
+		name := id.Short() + ".app.test"
+		cert := g.Issue(t, pki.ServerCertificate(name))
 
 		// Action
 		res := pki.Renew(t, g.Operator, cert.ID, map[string]any{})
 
 		// Assert
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "renewing: %s", apierr.Body(res.Body))
+		renewed := pki.ParseLeaf(t, res.JSON200.Certificate)
+		require.Equal(t, []string{name}, renewed.DNSNames)
+		require.Equal(t, res.JSON200.SerialNumber, renewed.SerialNumber.Text(16))
 		require.NotEqual(t, cert.SerialNumber, res.JSON200.SerialNumber)
 	})
 
@@ -212,13 +216,15 @@ func TestApplicationAccess_Membership(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		user, _ := operatorGroupMember(t, tn, g)
+		name := id.Short() + ".app.test"
 
 		// Action
-		res := pki.Request(t, user, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"))
+		res := pki.Request(t, user, g.App, g.Profile, pki.ServerCertificate(name))
 
 		// Assert
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "issuing: %s", apierr.Body(res.Body))
 		require.NotNil(t, res.JSON200.Certificate)
+		require.Equal(t, []string{name}, pki.ParseLeaf(t, res.JSON200.Certificate.Certificate).DNSNames)
 	})
 
 	t.Run("should refuse a removed operator issuing", func(t *testing.T) {

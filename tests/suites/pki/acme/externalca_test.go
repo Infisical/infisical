@@ -211,7 +211,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 
 				// Assert
 				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www")))
-				require.Empty(t, up.State(t).Issued)
+				require.Empty(t, up.State(t).Orders)
 			})
 		}
 	})
@@ -257,7 +257,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 
 				// Assert
 				requireProblem(t, res, http.StatusBadRequest, "badCSR", row.detail)
-				require.Empty(t, up.State(t).Issued)
+				require.Empty(t, up.State(t).Orders)
 			})
 		}
 	})

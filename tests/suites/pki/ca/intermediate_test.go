@@ -59,11 +59,12 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		root := pki.NewInternalCA(t, p)
 		inter := pki.NewPendingIntermediateCA(t, p)
 		csr := pki.PendingCSR(t, p, inter)
+		pastRoot := pki.CACertificate(t, tn.Admin, root.ID).NotAfter.AddDate(0, 0, 1)
 
 		// Action
 		res, err := tn.Admin.API.SignIntermediateCaWithResponse(t.Context(), root.ID.String(), api.SignIntermediateCaJSONRequestBody{
 			Csr:      csr,
-			NotAfter: "2036-01-01T00:00:00.000Z",
+			NotAfter: pastRoot.UTC().Format(time.RFC3339),
 		})
 
 		// Assert

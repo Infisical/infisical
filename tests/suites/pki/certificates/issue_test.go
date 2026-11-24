@@ -67,11 +67,13 @@ func TestCertificate_Issue(t *testing.T) {
 		identity := tn.NewMachineIdentity(t)
 		g.Project.Grant(t, identity)
 		pki.AddMember(t, g.App, identity, "operator")
+		name := id.Short() + ".identity.test"
 
 		// Action
-		got := g.Issue(t, pki.ServerCertificate(id.Short()+".identity.test"), pki.As(identity))
+		got := g.Issue(t, pki.ServerCertificate(name), pki.As(identity))
 
 		// Assert
+		require.Equal(t, []string{name}, pki.ParseLeaf(t, got.Certificate).DNSNames)
 		read := pki.ReadCertificate(t, identity, got.ID)
 		require.Equal(t, &g.App.ID, read.JSON200.Certificate.ApplicationId)
 	})

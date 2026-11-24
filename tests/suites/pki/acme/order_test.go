@@ -19,7 +19,7 @@ func requirePendingOrder(t *testing.T, c *acmeClient, url string, o orderBody, n
 	require.Equal(t, "pending", o.Status)
 	require.Equal(t, []identifier{{Type: "dns", Value: name}}, o.Identifiers)
 	require.Regexp(t, "^"+orders+"[^/]+/finalize$", o.Finalize)
-	require.NotEmpty(t, o.Authorizations)
+	require.Len(t, o.Authorizations, 1)
 	for _, a := range o.Authorizations {
 		require.True(t, strings.HasPrefix(a, c.URL(c.profilePath()+"/authorizations/")), a)
 	}

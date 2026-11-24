@@ -85,7 +85,7 @@ func TestCertManagerAccess_Users(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireOK(t, res.StatusCode(), res.Body, "updating the user's role")
-		require.Equal(t, http.StatusOK, createPolicyStatus(t, tn, u))
+		requirePolicyCreated(t, tn, u)
 	})
 
 	t.Run("should stop a removed user listing the project's CAs", func(t *testing.T) {

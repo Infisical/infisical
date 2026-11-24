@@ -76,7 +76,7 @@ func TestCertManagerAccess_Identities(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireOK(t, res.StatusCode(), res.Body, "updating the identity's role")
-		require.Equal(t, http.StatusOK, createPolicyStatus(t, tn, mi))
+		requirePolicyCreated(t, tn, mi)
 	})
 
 	t.Run("should stop a removed identity listing the project's CAs", func(t *testing.T) {

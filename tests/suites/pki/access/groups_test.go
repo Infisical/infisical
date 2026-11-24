@@ -47,7 +47,7 @@ func TestCertManagerAccess_Groups(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "reading the group membership returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		require.Equal(t, "admin", res.JSON200.GroupMembership.Roles[0].Role)
-		require.Equal(t, http.StatusOK, createPolicyStatus(t, tn, u))
+		requirePolicyCreated(t, tn, u)
 	})
 
 	t.Run("should list the added group", func(t *testing.T) {

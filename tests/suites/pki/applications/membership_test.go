@@ -62,7 +62,9 @@ func TestApplicationMembership_Role(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "changing the role: %s", apierr.Body(res.Body))
 
 		// Assert
-		pki.Issue(t, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"), pki.As(auditor))
+		name := id.Short() + ".app.test"
+		got := pki.Issue(t, g.App, g.Profile, pki.ServerCertificate(name), pki.As(auditor))
+		require.Equal(t, []string{name}, pki.ParseLeaf(t, got.Certificate).DNSNames)
 	})
 
 	t.Run("should refuse an auditor promoting themselves to operator", func(t *testing.T) {
