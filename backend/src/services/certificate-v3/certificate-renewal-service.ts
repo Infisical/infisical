@@ -53,7 +53,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, findLatestRenewalOf } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -214,8 +214,6 @@ type TCertificateRenewalServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy" | "createRequestFromPolicy">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
 };
-
-const MAX_RENEWAL_CHAIN_HOPS = 10;
 
 // An imported or discovered certificate was never reviewed by Infisical, so every renewal of it is held.
 const isSourcedOutsideInfisical = (certificate: TCertificates) =>
@@ -2221,17 +2219,6 @@ export const certificateRenewalServiceFactory = ({
     };
   };
 
-  const $findLatestRenewalOf = async (certificateId: string) => {
-    let latestCertificateId = certificateId;
-    for (let hop = 0; hop < MAX_RENEWAL_CHAIN_HOPS; hop += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      const certificate = await certificateDAL.findById(latestCertificateId);
-      if (!certificate?.renewedByCertificateId) return latestCertificateId;
-      latestCertificateId = certificate.renewedByCertificateId;
-    }
-    return latestCertificateId;
-  };
-
   const renewApprovedCertificate = async ({
     certificateRequestId,
     organizationId,
@@ -2243,7 +2230,7 @@ export const certificateRenewalServiceFactory = ({
     renewal: NonNullable<TCertRequestRequestData["renewal"]>;
     reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
   }) => {
-    const renewedCertificateId = await $findLatestRenewalOf(renewal.certificateId);
+    const renewedCertificateId = await findLatestRenewalOf(certificateDAL, renewal.certificateId);
     const renewed = await renewCertificate({
       actor: ActorType.PLATFORM,
       actorId: "",

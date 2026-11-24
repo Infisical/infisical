@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { Certificate, ContentInfo, SignedData } from "pkijs";
 
-import { ProjectType, TableName } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import {
   ApprovalPolicyType,
@@ -10,7 +10,6 @@ import {
   CertRequestPolicyOperation
 } from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { getSerialNumberSpellings } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {
@@ -153,11 +152,10 @@ describe("EST enrollment through an application profile", async () => {
   };
 
   const stored = async (cert: x509.X509Certificate) => {
-    const row = await testDb(TableName.Certificate)
-      .whereIn("serialNumber", getSerialNumberSpellings(cert.serialNumber))
-      .first();
-    expect(row, `certificate ${cert.serialNumber} is in the inventory`).toBeTruthy();
-    return getCertificate({ authToken, certificateId: row!.id as string });
+    const { certificates } = await post("/api/v1/cert-manager/certificates/search", { search: cert.serialNumber });
+    const [match] = certificates as { id: string }[];
+    expect(certificates, `certificate ${cert.serialNumber} is in the inventory`).toHaveLength(1);
+    return getCertificate({ authToken, certificateId: match.id });
   };
 
   test("issues a certificate on simpleenroll and renews it on simplereenroll", async () => {
@@ -177,7 +175,7 @@ describe("EST enrollment through an application profile", async () => {
     expect(replacement.renewedFromCertificateId, "the new certificate points back to the old one").toBe(original.id);
   });
 
-  test("still issues when a client re-enrolls again with a certificate that was already renewed", async () => {
+  test("links a re-enrollment with an already-renewed certificate to the latest one in its chain", async () => {
     const issued = await enrolled();
     const firstRenewal = await reenrolled(issued);
 
@@ -186,14 +184,10 @@ describe("EST enrollment through an application profile", async () => {
     expect(secondRenewal.serialNumber, "the second re-enrollment issues a new certificate").not.toBe(
       firstRenewal.serialNumber
     );
-    const original = await stored(issued);
-    expect(original.renewedByCertificateId, "the old certificate keeps pointing to the first replacement").toBe(
-      (await stored(firstRenewal)).id
-    );
-    expect(
-      (await stored(secondRenewal)).renewedFromCertificateId ?? null,
-      "the second replacement isn't linked"
-    ).toBeNull();
+    const [original, first, second] = [await stored(issued), await stored(firstRenewal), await stored(secondRenewal)];
+    expect(original.renewedByCertificateId, "the old certificate keeps its first replacement").toBe(first.id);
+    expect(first.renewedByCertificateId, "the first replacement is renewed by the second").toBe(second.id);
+    expect(second.renewedFromCertificateId).toBe(first.id);
   });
 
   test("rejects a wrong passphrase", async () => {
