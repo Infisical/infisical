@@ -731,7 +731,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     - `renew-certificate` with `platform` as the actor: after the approvers approved the request, Infisical renewed the certificate (the status is `issued`) or sent the renewal to an external CA (the status is `pending`)
     - A second `renew-certificate` with `platform` as the actor and the status `issued`, for an external CA such as ACME or Microsoft ADCS: the CA issued the renewed certificate, and `event.metadata.newCertificateId` is the new certificate
     - `certificate-issuance-failed` with `platform` as the actor and the operation `renew`: the approved renewal failed, and `event.metadata.error` holds the reason
-    - For an EST or SCEP re-enrollment, Infisical records `approval-request-approve` or `approval-request-reject`, and `certificate-issuance-failed` if the approved renewal fails, but not `renew-certificate`.
+    - For an EST or SCEP re-enrollment, Infisical records `approval-request-approve` or `approval-request-reject`, and `certificate-issuance-failed` if the approved renewal fails, but not `renew-certificate`
 
     Each event that Infisical records after the approval includes the approval request ID in `event.metadata.approvalRequestId` and the requester's name in `requesterName`. If the requester has an email address, the event also includes it in `requesterEmail`. If the approval policy still exists, the event also includes the policy's name in `approvalPolicyName`.
 
