@@ -93,7 +93,10 @@ export const CertificatesTab = ({
     direction: "asc"
   });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiApplicationCertificatesTable", 25);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiApplicationCertificatesTable",
+    25
+  );
   const [revoking, setRevoking] = useState<TCertificate>();
   const [deleting, setDeleting] = useState<TCertificate>();
   const [importing, setImporting] = useState(false);
@@ -348,7 +351,7 @@ export const CertificatesTab = ({
           totalCount ? plural(totalCount, "certificate", "certificates") : undefined
         }
         pagination={
-          totalCount > Math.min(pageSize, 25) ? (
+          showPagination(totalCount) ? (
             <Pagination
               label="Certificate pages"
               variant="compact"

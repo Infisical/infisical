@@ -136,7 +136,7 @@ const ScanRuns = ({
   const access = useDiscoveryAccess(projectId);
   const triggerScan = adapter.useTriggerScan();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryScansTable", 10);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiDiscoveryScansTable", 10);
   const { data, isPending } = adapter.useScanHistory(
     { discoveryId: discovery.id, offset: (page - 1) * pageSize, limit: pageSize },
     { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
@@ -244,7 +244,7 @@ const ScanRuns = ({
         rowLabel={(scan) => timestamp(scan.startedAt)}
         empty={<EmptyState size="sm" icon="history" title="No scans yet" />}
         pagination={
-          total > Math.min(pageSize, 10) ? (
+          showPagination(total) ? (
             <Pagination
               label="Scan run pages"
               variant="compact"
@@ -278,7 +278,10 @@ const FoundInstallations = ({
 }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryDetailInstallationsTable", 10);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiDiscoveryDetailInstallationsTable",
+    10
+  );
   const { data, isPending } = useV4Adapter("pkiDiscovery").useInstallations(
     { projectId, discoveryId, offset: (page - 1) * pageSize, limit: pageSize },
     { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
@@ -334,7 +337,7 @@ const FoundInstallations = ({
         rowLabel={(installation) => installationName(installation)}
         empty={<EmptyState size="sm" icon="server" title="No installations found" />}
         pagination={
-          total > Math.min(pageSize, 10) ? (
+          showPagination(total) ? (
             <Pagination
               label="Installation pages"
               variant="compact"

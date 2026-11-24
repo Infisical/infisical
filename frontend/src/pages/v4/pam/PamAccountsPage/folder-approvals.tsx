@@ -224,7 +224,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const revoke = pam.useRevokeAccessRequest();
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = usePageSize(TABLE_PREFERENCE, 10);
+  const [perPage, setPerPage, showPagination] = usePageSize(TABLE_PREFERENCE, 10);
   const [status, setStatus] = useState("all");
   const [revoking, setRevoking] = useState<TPamAccessRequest | null>(null);
   const [selected, setSelected] = useState<TPamAccessRequest>();
@@ -383,7 +383,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
             />
           }
           pagination={
-            total > Math.min(perPage, 10) ? (
+            showPagination(total) ? (
               <Pagination
                 label="Access request pages"
                 variant="compact"

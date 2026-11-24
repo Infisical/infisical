@@ -51,7 +51,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
   const { permission } = useProjectPermission(projectId);
   const pki = useV4Adapter("pkiPolicies");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiCertificateProfilesTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiCertificateProfilesTable", 20);
   const [editing, setEditing] = useState<Editing>();
   const [deleting, setDeleting] = useState<TCertificateProfile>();
   const { data, isPending, error } = pki.useProfiles({
@@ -220,7 +220,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
           }
         }}
         pagination={
-          total > Math.min(pageSize, 20) ? (
+          showPagination(total) ? (
             <Pagination
               label="Certificate profile pages"
               variant="compact"

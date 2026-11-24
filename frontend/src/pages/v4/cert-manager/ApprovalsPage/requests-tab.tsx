@@ -54,7 +54,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>(openOnly);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("CertApprovalRequestTable", 10);
+  const [pageSize, setPageSize, showPagination] = usePageSize("CertApprovalRequestTable", 10);
   const me = { userId: user.id, groupIds: viewer?.groupIds ?? [] };
   const status = filters.find((filter) => filter.field === "status")?.values[0];
   const term = query.trim().toLowerCase();
@@ -186,7 +186,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
           )
         }
         pagination={
-          rows.length > Math.min(pageSize, 10) ? (
+          showPagination(rows.length) ? (
             <Pagination
               label="Certificate approval request pages"
               variant="compact"

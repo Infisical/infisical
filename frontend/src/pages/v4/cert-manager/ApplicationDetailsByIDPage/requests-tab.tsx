@@ -147,7 +147,7 @@ export const RequestsTab = ({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiApplicationRequestsTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiApplicationRequestsTable", 20);
   const [busyId, setBusyId] = useState<string>();
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | StatusFilter
@@ -380,7 +380,7 @@ export const RequestsTab = ({
         }
         persistentStatus={totalCount ? plural(totalCount, "request", "requests") : undefined}
         pagination={
-          totalCount > Math.min(pageSize, 20) ? (
+          showPagination(totalCount) ? (
             <Pagination
               label="Certificate request pages"
               variant="compact"

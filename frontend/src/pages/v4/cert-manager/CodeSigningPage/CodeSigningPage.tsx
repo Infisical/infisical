@@ -48,7 +48,10 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiCodeSigningSignersTable", SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiCodeSigningSignersTable",
+    SIGNERS_PAGE_SIZE
+  );
   const [creating, setCreating] = useState(false);
   const { data, isPending, error } = adapter.useSigners({
     projectId,
@@ -185,7 +188,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         empty={empty}
         persistentStatus={total ? `${total} ${total === 1 ? "signer" : "signers"}` : undefined}
         pagination={
-          total > Math.min(pageSize, 25) ? (
+          showPagination(total) ? (
             <Pagination
               label="Signer pages"
               variant="compact"

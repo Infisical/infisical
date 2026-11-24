@@ -39,7 +39,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiCertificatePoliciesTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiCertificatePoliciesTable", 20);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TCertificatePolicy>();
   const [deleting, setDeleting] = useState<TCertificatePolicy>();
@@ -171,7 +171,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
           }
         }}
         pagination={
-          total > Math.min(pageSize, 20) ? (
+          showPagination(total) ? (
             <Pagination
               label="Certificate policy pages"
               variant="compact"

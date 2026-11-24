@@ -72,7 +72,10 @@ export const ActivityTab = ({
 }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiSignerActivityTable", SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiSignerActivityTable",
+    SIGNERS_PAGE_SIZE
+  );
   const [connecting, setConnecting] = useState(false);
   const { data, isPending, error } = useV4Adapter("codeSigning").useSigningOperations({
     signerId: signer.id,
@@ -185,7 +188,7 @@ export const ActivityTab = ({
           total ? `${total} ${total === 1 ? "operation" : "operations"}` : undefined
         }
         pagination={
-          total > Math.min(pageSize, 25) ? (
+          showPagination(total) ? (
             <Pagination
               label="Signing history pages"
               variant="compact"
