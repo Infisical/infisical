@@ -358,6 +358,7 @@ const envSchema = z
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
 
     OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
+    ALLOW_CRON_JOB_TRIGGER: zodStrBool.default("false"),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -678,13 +679,6 @@ const envSchema = z
 
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
-
-    /* Go Sidecar ----------------------------------------------------------------------------- */
-    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
-    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
-    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
-    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
-    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())

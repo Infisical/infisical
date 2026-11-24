@@ -35,6 +35,7 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   assertCaSupportsCustomExtensions,
+  caSignsCsrAsSent,
   caUsesExternalIssuanceQueue
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
@@ -127,7 +128,13 @@ import {
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
 import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  getFixedDefaultSubjectAltNames,
+  resolveEffectiveTtl,
+  toCommonNameDefaults
+} from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TIssueCertificateFromProfileDTO,
@@ -656,7 +663,17 @@ export const certificateV3ServiceFactory = ({
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
     );
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+    const profileDefaultedRequest = applyProfileDefaults(certificateRequest, profile.defaults);
+    const certificateRequestWithDefaults = {
+      ...profileDefaultedRequest,
+      altNames: applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.API,
+        commonName: profileDefaultedRequest.commonName,
+        subjectAlternativeNames: profileDefaultedRequest.altNames,
+        requestedSubjectAlternativeNames: certificateRequest.altNames ?? []
+      }).subjectAlternativeNames
+    };
 
     const quotaUsage = await validateCertificateRequestLicense({
       request: certificateRequestWithDefaults,
@@ -883,7 +900,10 @@ export const certificateV3ServiceFactory = ({
 
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
+      {
+        commonName: certificateRequestWithDefaults.commonName,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
+      },
       policy?.sans
     );
 
@@ -1354,7 +1374,8 @@ export const certificateV3ServiceFactory = ({
     applicationId: explicitApplicationId,
     acmeOrderId,
     issuanceOperation,
-    originalCertificateId
+    originalCertificateId,
+    renewalCommonNameSanTypes
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const isRenewal = issuanceOperation === CertificateIssuanceOperation.RENEW;
     const profile = await validateProfileAndPermissions({
@@ -1409,6 +1430,17 @@ export const certificateV3ServiceFactory = ({
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
     const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const {
+      subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+      altNameEntries: altNameEntriesWithCommonName
+    } = applyCommonNameDefaultSan({
+      defaults: renewalCommonNameSanTypes ? toCommonNameDefaults(renewalCommonNameSanTypes) : profile.defaults,
+      enrollmentType,
+      commonName: certificateRequest.commonName,
+      csrCommonName: csrCertificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames
+    });
+    mappedCertificateRequest.subjectAlternativeNames = subjectAlternativeNamesWithCommonName;
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
@@ -1710,6 +1742,7 @@ export const certificateV3ServiceFactory = ({
         pathLength: effectiveBasicConstraints?.pathLength,
         ttl: effectiveTtl,
         altNames: undefined,
+        altNameEntries: altNameEntriesWithCommonName,
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         keyUsages: certificateRequest.keyUsages
@@ -1906,7 +1939,9 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
-        subjectAlternativeNames: certificateOrder.altNames,
+        subjectAlternativeNames: certificateOrder.altNames?.length
+          ? certificateOrder.altNames
+          : getFixedDefaultSubjectAltNames(profile.defaults),
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
@@ -1927,6 +1962,17 @@ export const certificateV3ServiceFactory = ({
     }
 
     const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+      defaults: profile.defaults,
+      enrollmentType: EnrollmentType.API,
+      commonName: certificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+      requestedSubjectAlternativeNames: certificateOrder.csr
+        ? certificateRequest.subjectAlternativeNames
+        : (certificateOrder.altNames ?? []),
+      isCsrSignedAsSent:
+        Boolean(certificateOrder.csr) && caSignsCsrAsSent(preflightCa?.externalCa?.type as CaType | undefined)
+    }).subjectAlternativeNames;
     if (preflightCa) {
       assertCaInProfileProject(preflightCa, profile);
     }
@@ -2001,7 +2047,7 @@ export const certificateV3ServiceFactory = ({
       validateAcmIssuanceInputs({
         csr: certificateOrder.csr,
         keyAlgorithm: certificateOrder.keyAlgorithm,
-        altNames: certificateOrder.altNames,
+        altNames: certificateRequest.subjectAlternativeNames,
         ttl: orderEffectiveTtl,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
@@ -2010,6 +2056,20 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality
+      });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.GODADDY) {
+      // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+      // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+      // extra SANs past the guard and on to GoDaddy.
+      const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certificateOrder.csr
+          ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+          : certificateOrder.keyAlgorithm,
+        altNames: csrDerived?.subjectAlternativeNames ?? certificateRequest.subjectAlternativeNames,
+        commonName: csrDerived?.commonName ?? certificateRequest.commonName
       });
     }
 
@@ -2175,7 +2235,7 @@ export const certificateV3ServiceFactory = ({
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
           keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
+          altNames: certificateRequest.subjectAlternativeNames,
           ttl: orderEffectiveTtl,
           notBefore: certificateOrder.notBefore,
           notAfter: certificateOrder.notAfter,
@@ -2184,20 +2244,6 @@ export const certificateV3ServiceFactory = ({
           country: certificateRequest.country,
           state: certificateRequest.state,
           locality: certificateRequest.locality
-        });
-      }
-
-      if (caType === CaType.GODADDY) {
-        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
-        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
-        // extra SANs past the guard and on to GoDaddy.
-        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
-        validateGoDaddyIssuanceInputs({
-          keyAlgorithm: certificateOrder.csr
-            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
-            : certificateOrder.keyAlgorithm,
-          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
-          commonName: csrDerived?.commonName ?? certificateOrder.commonName
         });
       }
 

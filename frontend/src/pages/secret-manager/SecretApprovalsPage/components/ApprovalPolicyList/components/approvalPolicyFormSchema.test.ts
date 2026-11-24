@@ -189,4 +189,21 @@ describe("approval policy form schema", () => {
     assert.ok(issuePaths.includes("userApprovers"));
     assert.ok(!issuePaths.includes("delegatedApproval.connectionId"));
   });
+
+  it("leaves imported secrets unenforced unless the policy asks for it", () => {
+    const result = approvalPolicyFormSchema.safeParse(basePolicy);
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.enforceImportReplication, false);
+  });
+
+  it("keeps a change policy's import enforcement", () => {
+    const result = approvalPolicyFormSchema.safeParse({
+      ...basePolicy,
+      enforceImportReplication: true
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.enforceImportReplication, true);
+  });
 });

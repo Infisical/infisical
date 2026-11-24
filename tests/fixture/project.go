@@ -70,6 +70,12 @@ func NewProject(tt *testing.T, tn *harness.Tenant, opts ...ProjectOption) *Proje
 
 func (p *Project) Tenant() *harness.Tenant { return p.tn }
 
+// ExistingProject is a project the organization already has, such as one a product
+// provisions on its own, so its members can be managed like any other.
+func ExistingProject(tn *harness.Tenant, projectID string) *Project {
+	return &Project{ID: projectID, Slug: projectID, tn: tn}
+}
+
 type PrincipalOption func(*principalConfig)
 
 type principalConfig struct {

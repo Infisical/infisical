@@ -149,6 +149,7 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
+import { pamSessionActivityServiceFactory } from "@app/ee/services/pam-session-activity/pam-session-activity-service";
 import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
 import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -278,6 +279,8 @@ import { secretReminderAlertDALFactory } from "@app/services/alert/providers/sec
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
 import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
+import { secretScanningAlertDALFactory } from "@app/services/alert/providers/secret-scanning-alert-dal";
+import { secretScanningAlertProviderFactory } from "@app/services/alert/providers/secret-scanning-alert-provider";
 import { secretSyncAlertDALFactory } from "@app/services/alert/providers/secret-sync-alert-dal";
 import { secretSyncAlertProviderFactory } from "@app/services/alert/providers/secret-sync-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -607,9 +610,6 @@ import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
-import { goSidecarPlugin } from "../plugins/go-sidecar";
-// import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
-import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -1092,6 +1092,12 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    secretScanningAlertProviderFactory({
+      secretScanningAlertDAL: secretScanningAlertDALFactory(db),
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     pamFolderAlertProviderFactory({
       pamFolderAlertDAL: pamFolderAlertDALFactory(db),
       permissionService,
@@ -1177,13 +1183,6 @@ export const registerRoutes = async (
     smtpService,
     slackIntegrationDAL,
     keyStore
-  });
-
-  const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseService,
-    permissionService,
-    auditLogStreamDAL,
-    kmsDataKeyService
   });
 
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
@@ -1328,6 +1327,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectDAL,
     userDAL,
+    secretImportDAL,
+    folderDAL,
     permissionService,
     licenseService
   });
@@ -2160,6 +2161,14 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    licenseService,
+    permissionService,
+    auditLogStreamDAL,
+    kmsDataKeyService,
+    pamProjectResolver
+  });
+
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
@@ -2573,6 +2582,7 @@ export const registerRoutes = async (
   });
   const secretImportService = secretImportServiceFactory({
     eventEmitter,
+    secretChangePolicyService,
     licenseService,
     projectBotService,
     projectFolderGrantDAL,
@@ -4403,6 +4413,14 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const pamSessionActivityService = pamSessionActivityServiceFactory({
+    queueService,
+    auditLogStreamDAL,
+    auditLogStreamOutboxService,
+    pamSessionDAL,
+    pamSessionChunkService
+  });
+
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
     pamAccessRequestService,
@@ -4864,7 +4882,8 @@ export const registerRoutes = async (
     keyStore,
     appConnectionDAL,
     notificationService,
-    telemetryService
+    telemetryService,
+    eventEmitter
   });
 
   const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({
@@ -4889,7 +4908,9 @@ export const registerRoutes = async (
     kmsDataKeyService,
     instanceConfigService,
     appConnectionDAL,
-    keyStore
+    keyStore,
+    projectDAL,
+    alertService
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -4945,6 +4966,7 @@ export const registerRoutes = async (
   digicertRevocationSyncQueue.init();
   scepIntuneRevocationSyncQueue.init();
   pamSessionExpirationService.init();
+  pamSessionActivityService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
@@ -4970,6 +4992,7 @@ export const registerRoutes = async (
     oauthClient: oauthClientService,
     oidcIssuer: oidcIssuerService,
     superAdmin: superAdminService,
+    cronJob,
     kmsDataKeyService,
     kmsRootKeyService,
     offlineUsageReport: offlineUsageReportService,
@@ -5065,6 +5088,7 @@ export const registerRoutes = async (
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,
+    pamSessionActivity: pamSessionActivityService,
     pamAccessRequest: pamAccessRequestService,
     pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
@@ -5184,37 +5208,6 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
-
-  // Spawn Go sidecar as subprocess (must be registered before shadowing plugin)
-  if (envConfig.GO_SIDECAR_SPAWN_ENABLED) {
-    logger.info(`Go sidecar spawn enabled: ${envConfig.GO_SIDECAR_BINARY_PATH || "./go-sidecar"}`);
-    await server.register(goSidecarPlugin, {
-      enabled: true,
-      binaryPath: envConfig.GO_SIDECAR_BINARY_PATH,
-      env: {
-        // Pass through relevant env vars to Go sidecar
-        DB_CONNECTION_URI: envConfig.DB_CONNECTION_URI,
-        REDIS_URL: envConfig.REDIS_URL || "",
-        ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY || "",
-        AUTH_SECRET: envConfig.AUTH_SECRET || ""
-      }
-    });
-  }
-
-  if (envConfig.GOLANG_SIDECAR_URL && envConfig.GO_SIDECAR_SHADOW_ENABLED) {
-    logger.info(
-      `Go sidecar shadowing enabled: ${envConfig.GOLANG_SIDECAR_URL} [sampleRate=${envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE}%]`
-    );
-    await server.register(shadowToGoSidecar, {
-      sidecarUrl: envConfig.GOLANG_SIDECAR_URL,
-      sampleRate: envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE
-    });
-  }
-  // Forwarding plugin disabled in favor of shadowing
-  // if (envConfig.GOLANG_SIDECAR_URL) {
-  //   logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
-  //   await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
-  // }
 
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {

@@ -74,7 +74,11 @@ import {
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { normalizeSlugInput } from "@app/lib/schemas";
-import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
+import {
+  filterUsages,
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
 import {
   CertPolicyState,
@@ -107,7 +111,7 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAlternativeNameType),
-          value: z.string()
+          value: z.string().refine(isSupportedSanRuleValue, UNSUPPORTED_REFERENCE_MESSAGE)
         })
       )
       .optional(),

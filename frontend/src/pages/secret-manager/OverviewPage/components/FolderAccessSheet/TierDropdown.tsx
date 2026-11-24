@@ -92,7 +92,7 @@ const RecursiveItem = ({
     }}
   >
     <FolderTreeIcon />
-    Apply to Subfolders
+    Apply to Environment
   </DropdownMenuCheckboxItem>
 );
 

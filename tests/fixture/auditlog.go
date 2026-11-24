@@ -47,3 +47,14 @@ func WaitForAuditEvents(tt *testing.T, tn *harness.Tenant, eventType string, n i
 	require.NoErrorf(tt, err, "waiting for %d %s audit events", n, eventType)
 	return got
 }
+
+// RequireAuditedBy requires the single audit event of the type whose metadata holds value under key,
+// such as a CA's "caId", and requires it to name the user as its actor. It returns the event's metadata.
+func RequireAuditedBy(tt *testing.T, tn *harness.Tenant, user *harness.Principal, eventType, key, value string) map[string]any {
+	tt.Helper()
+	events := WaitForAuditEvents(tt, tn, eventType, 1, func(e AuditEvent) bool { return e.Metadata[key] == value })
+	require.Lenf(tt, events, 1, "%s audit events about %s %s", eventType, key, value)
+	require.Equalf(tt, "user", events[0].ActorType, "%s actor type", eventType)
+	require.Equalf(tt, user.ID.String(), events[0].Actor["userId"], "%s actor", eventType)
+	return events[0].Metadata
+}

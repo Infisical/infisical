@@ -10,8 +10,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TProjectPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
+import { TAltNameEntry } from "@app/services/certificate-v3/certificate-v3-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -243,7 +243,7 @@ type TIssueCertFromCaBaseDTO = {
   friendlyName?: string;
   commonName: string;
   altNames: string;
-  altNameEntries?: { type: CertSubjectAlternativeNameType; value: string }[];
+  altNameEntries?: TAltNameEntry[];
   ttl: string;
   notBefore?: string;
   notAfter?: string;
@@ -288,6 +288,7 @@ export type TSignCertFromCaDTO =
       friendlyName?: string;
       commonName?: string;
       altNames?: string;
+      altNameEntries?: TAltNameEntry[];
       ttl?: string;
       notBefore?: string;
       notAfter?: string;

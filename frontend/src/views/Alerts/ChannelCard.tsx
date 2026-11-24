@@ -28,6 +28,7 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { getChannelIcon } from "./channelIcons";
+import { getChannelErrors, useChannelPath } from "./channelPath";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
 import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
 import { SlackAppChannelFields } from "./SlackAppChannelFields";
@@ -71,20 +72,21 @@ export const ChannelCard = ({
     trigger,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
+  const channelPath = useChannelPath(index);
   const testChannel = useTestAlertChannel();
 
-  const channel = useWatch({ control, name: `channels.${index}` });
+  const channel = useWatch({ control, name: `${channelPath}` });
   const channelType = channel?.channelType;
   const isExisting = Boolean(channel?.id);
-  const channelErrors = errors.channels?.[index];
+  const channelErrors = getChannelErrors(errors, channelPath);
 
   const Icon = getChannelIcon(channelType);
   const channelLabel = ALERT_CHANNEL_TYPE_LABELS[channelType];
 
   const onTest = async () => {
-    if (!(await trigger(`channels.${index}`))) return;
+    if (!(await trigger(`${channelPath}`))) return;
 
-    const { config, recipients } = toChannelInput(getValues(`channels.${index}`));
+    const { config, recipients } = toChannelInput(getValues(`${channelPath}`));
     try {
       const result = await testChannel.mutateAsync({
         resourceType,
@@ -145,17 +147,17 @@ export const ChannelCard = ({
           </Button>
           <div className="flex items-center gap-2">
             <Label
-              htmlFor={`channel-${index}-enabled`}
+              htmlFor={`${channelPath}-enabled`}
               className="cursor-pointer text-xs font-normal text-muted"
             >
               Enabled
             </Label>
             <Controller
               control={control}
-              name={`channels.${index}.enabled`}
+              name={`${channelPath}.enabled`}
               render={({ field }) => (
                 <Toggle
-                  id={`channel-${index}-enabled`}
+                  id={`${channelPath}-enabled`}
                   aria-label={`Toggle ${channelLabel} channel`}
                   variant={scopeVariant}
                   checked={field.value}
@@ -178,7 +180,7 @@ export const ChannelCard = ({
           <FieldContent>
             <Controller
               control={control}
-              name={`channels.${index}.recipients`}
+              name={`${channelPath}.recipients`}
               render={({ field }) =>
                 renderRecipients ? (
                   renderRecipients({
@@ -213,17 +215,17 @@ export const ChannelCard = ({
 
       {channelType === AlertChannelType.Slack && (
         <Field>
-          <FieldLabel htmlFor={`channel-${index}-webhookUrl`}>Webhook URL</FieldLabel>
+          <FieldLabel htmlFor={`${channelPath}-webhookUrl`}>Webhook URL</FieldLabel>
           <FieldContent>
             <ChannelSecretInput
-              id={`channel-${index}-webhookUrl`}
+              id={`${channelPath}-webhookUrl`}
               placeholder={
                 isExisting && channel?.hasWebhookUrl
                   ? KEEP_PLACEHOLDER
                   : "https://hooks.slack.com/..."
               }
               isError={Boolean(channelErrors?.webhookUrl)}
-              registration={register(`channels.${index}.webhookUrl`)}
+              registration={register(`${channelPath}.webhookUrl`)}
             />
             <FieldError errors={[channelErrors?.webhookUrl]} />
           </FieldContent>
@@ -233,13 +235,13 @@ export const ChannelCard = ({
       {channelType === AlertChannelType.Webhook && (
         <>
           <Field>
-            <FieldLabel htmlFor={`channel-${index}-url`}>URL</FieldLabel>
+            <FieldLabel htmlFor={`${channelPath}-url`}>URL</FieldLabel>
             <FieldContent>
               <Input
-                id={`channel-${index}-url`}
+                id={`${channelPath}-url`}
                 placeholder="https://example.com/webhook"
                 isError={Boolean(channelErrors?.url)}
-                {...register(`channels.${index}.url`)}
+                {...register(`${channelPath}.url`)}
               />
               <FieldError errors={[channelErrors?.url]} />
             </FieldContent>
@@ -252,17 +254,17 @@ export const ChannelCard = ({
 
       {channelType === AlertChannelType.PagerDuty && (
         <Field>
-          <FieldLabel htmlFor={`channel-${index}-integrationKey`}>Integration key</FieldLabel>
+          <FieldLabel htmlFor={`${channelPath}-integrationKey`}>Integration key</FieldLabel>
           <FieldContent>
             <ChannelSecretInput
-              id={`channel-${index}-integrationKey`}
+              id={`${channelPath}-integrationKey`}
               placeholder={
                 isExisting && channel?.hasIntegrationKey
                   ? KEEP_PLACEHOLDER
                   : "32-character integration key"
               }
               isError={Boolean(channelErrors?.integrationKey)}
-              registration={register(`channels.${index}.integrationKey`)}
+              registration={register(`${channelPath}.integrationKey`)}
             />
             <FieldError errors={[channelErrors?.integrationKey]} />
           </FieldContent>

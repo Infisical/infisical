@@ -12,10 +12,10 @@ import (
 
 // Short is a name suffix, unique enough that two parallel tests creating "app" do
 // not collide.
-func Short() string { return random(4) }
+func Short() string { return Hex(4) }
 
 // binary is shared by every nonce this test binary mints.
-var binary = random(4)
+var binary = Hex(4)
 
 // Binary is the prefix of every nonce from this process, so fakenet can send this
 // binary only its own events while other packages run beside it.
@@ -25,9 +25,10 @@ func Binary() string { return binary }
 //
 // Unguessable is not the point; unique is. It is what tells one tenant's outbound
 // requests from another's on a shared fakenet.
-func Nonce() string { return binary + random(16) }
+func Nonce() string { return binary + Hex(16) }
 
-func random(n int) string {
+// Hex is n random bytes as lowercase hex, for tokens and identifiers fakes mint.
+func Hex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)

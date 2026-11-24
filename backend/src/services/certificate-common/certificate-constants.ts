@@ -94,6 +94,11 @@ export enum CertSubjectAlternativeNameType {
   UPN = "upn"
 }
 
+export const ACME_SAN_TYPES: CertSubjectAlternativeNameType[] = [
+  CertSubjectAlternativeNameType.DNS_NAME,
+  CertSubjectAlternativeNameType.IP_ADDRESS
+];
+
 export enum TAltNameType {
   EMAIL = "email",
   DNS = "dns",

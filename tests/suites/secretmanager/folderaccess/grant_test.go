@@ -627,7 +627,7 @@ func TestFolderAccess_Recursive(t *testing.T) {
 
 func addIdentityToGroup(t *testing.T, tn *harness.Tenant, g *fixture.Group, pr *harness.Principal) {
 	t.Helper()
-	res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), g.ID.String(), pr.ID.String())
+	res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), g.ID, pr.ID)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "adding %s to group %s: %s", pr.Name, g.Name, apierr.Body(res.Body))
 }
