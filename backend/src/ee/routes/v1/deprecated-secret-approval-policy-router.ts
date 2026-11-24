@@ -59,10 +59,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          enforceOnSecretImports: z
-            .boolean()
-            .default(false)
-            .describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),

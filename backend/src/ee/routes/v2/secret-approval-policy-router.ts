@@ -63,10 +63,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          enforceOnSecretImports: z
-            .boolean()
-            .default(false)
-            .describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."

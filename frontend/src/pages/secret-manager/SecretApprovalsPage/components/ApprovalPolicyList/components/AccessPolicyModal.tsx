@@ -486,10 +486,7 @@ const Form = ({
     }
     if (!saved) return;
 
-    if (
-      saved.changePolicy?.enforceOnSecretImports &&
-      (await showDirectImports(saved.changePolicy))
-    )
+    if (saved.changePolicy?.enforceOnSecretImports && (await showDirectImports(saved.changePolicy)))
       return;
     onToggle(false);
   };
