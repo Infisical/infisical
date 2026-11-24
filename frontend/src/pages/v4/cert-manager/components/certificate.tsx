@@ -203,9 +203,9 @@ export const certificateBlocks = (
   delete: deleteBlock(cert, isInventoryView)
 });
 
-export const useCertManagerProjectId = (orgId: string) => {
+export const useCertManagerProjectId = (orgId: string, options?: { enabled?: boolean }) => {
   const { projects } = useV4Session();
-  const { data, isPending } = useV4Adapter("certificates").useInstanceState(orgId);
+  const { data, isPending } = useV4Adapter("certificates").useInstanceState(orgId, options);
   const projectId = data
     ? resolveCertManagerProjectId({
         orgId,
@@ -214,6 +214,14 @@ export const useCertManagerProjectId = (orgId: string) => {
       })
     : null;
   return { projectId, isPending };
+};
+
+export const useHasProjectCertificateSyncs = (orgId: string, enabled: boolean) => {
+  const { projectId } = useCertManagerProjectId(orgId, { enabled });
+  const { data } = useV4Adapter("pkiSyncs").useSyncs(projectId ?? "", {
+    enabled: enabled && Boolean(projectId)
+  });
+  return Boolean(data?.some((sync) => !sync.applicationId));
 };
 
 export const CertManagerNotSetUp = ({ orgId }: { orgId: string }) => (

@@ -28,6 +28,14 @@ export type ShellLocation = {
   projectId?: string;
 };
 
+export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLocation => ({
+  ...location,
+  sections: location.sections.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => item.id !== itemId)
+  }))
+});
+
 const productResources = new Set([
   "insights",
   "secret-sharing",
