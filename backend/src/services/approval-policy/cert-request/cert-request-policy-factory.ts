@@ -93,6 +93,9 @@ export const certRequestApprovalResourceFactory = ({
 
   validateConstraints: () => ({ valid: true }),
 
+  // An update names only the setting it changes, so the stored operation survives it.
+  updateConstraints: (stored, update) => ({ ...stored, ...update }),
+
   // A request saves its approvers when it is raised, so someone removed from the Application since then (or, for a
   // policy without one, from Certificate Management) would still get its notices, including a failure's reason.
   filterActiveApprovers: async (request, approvers) =>

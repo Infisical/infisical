@@ -41,7 +41,11 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { CertRequestRenewalApproval } from "../approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  CertRequestPolicyOperation,
+  CertRequestRenewalApproval
+} from "../approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   extractAlgorithmsFromCSR,
@@ -2738,6 +2742,11 @@ describe("CertificateV3Service", () => {
         expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
         expect(result.certificateRequestId).toBe("renewal-req-1");
         expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+        expect(mockApprovalPolicyService.matchPolicy).toHaveBeenCalledWith(
+          ApprovalPolicyType.CertRequest,
+          expect.any(String),
+          expect.objectContaining({ operation: CertRequestPolicyOperation.Renewal })
+        );
         expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(
           expect.objectContaining({ status: CertificateRequestStatus.PENDING_APPROVAL })
         );

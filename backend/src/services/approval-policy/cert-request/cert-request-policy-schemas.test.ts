@@ -48,10 +48,14 @@ describe("cert-request policy renewal approval setting", () => {
     ).toEqual({ renewalApproval: CertRequestRenewalApproval.Always });
   });
 
-  it("changes the operation when an update names it", () => {
+  it("drops an operation an update names, since a policy's operation can't change", () => {
     expect(
-      UpdateCertRequestPolicySchema.parse({ constraints: { operation: CertRequestPolicyOperation.Renewal } })
-        .constraints
-    ).toEqual({ operation: CertRequestPolicyOperation.Renewal });
+      UpdateCertRequestPolicySchema.parse({
+        constraints: {
+          operation: CertRequestPolicyOperation.Renewal,
+          renewalApproval: CertRequestRenewalApproval.Always
+        }
+      }).constraints
+    ).toEqual({ renewalApproval: CertRequestRenewalApproval.Always });
   });
 });

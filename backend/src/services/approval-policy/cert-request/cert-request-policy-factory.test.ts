@@ -12,7 +12,8 @@ import {
   ApprovalPolicyScope,
   ApprovalRequestStatus,
   ApproverType,
-  CertRequestPolicyOperation
+  CertRequestPolicyOperation,
+  CertRequestRenewalApproval
 } from "../approval-policy-enums";
 import { certRequestApprovalResourceFactory } from "./cert-request-policy-factory";
 
@@ -64,6 +65,16 @@ describe("certRequestApprovalResourceFactory.matchPolicy", () => {
       expect(await match([policy("other", other)], operation)).toBeNull();
     }
   );
+
+  it("keeps a policy's operation when an update changes only its renewal setting", () => {
+    const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
+    expect(
+      updateConstraints!(
+        { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.OnChange },
+        { renewalApproval: CertRequestRenewalApproval.Always }
+      )
+    ).toEqual({ operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always });
+  });
 
   it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
     "matches a policy created before the split on a %s",

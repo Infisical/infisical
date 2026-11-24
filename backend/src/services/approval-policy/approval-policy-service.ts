@@ -1005,7 +1005,7 @@ export const approvalPolicyServiceFactory = ({
       : undefined;
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
-      await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
       const updateDoc: Partial<TApprovalPolicies> = {};
 
       if (name !== undefined) {
@@ -1021,7 +1021,16 @@ export const approvalPolicyServiceFactory = ({
       }
 
       if (constraints !== undefined) {
-        updateDoc.constraints = { version: 1, constraints };
+        const { updateConstraints } = resources[policy.type as ApprovalPolicyType] ?? {};
+        updateDoc.constraints = {
+          version: 1,
+          constraints: updateConstraints
+            ? updateConstraints(
+                (lockedPolicy?.constraints as TApprovalPolicy["constraints"] | null | undefined)?.constraints,
+                constraints
+              )
+            : constraints
+        };
       }
 
       if (bypassForMachineIdentities !== undefined) {
