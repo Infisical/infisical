@@ -50,7 +50,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -611,7 +611,8 @@ export const certificateApprovalServiceFactory = (
 
         if (renewalOfCertificateId) {
           // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
-          await certificateDAL.findByIdForUpdate(renewalOfCertificateId, tx);
+          const original = await certificateDAL.findByIdForUpdate(renewalOfCertificateId, tx);
+          if (original) assertCertificateNotDeleted(original);
           await linkRenewedCertificate(certificateDAL, renewalOfCertificateId, newCert.id, tx);
         }
 
@@ -1136,6 +1137,12 @@ export const certificateApprovalServiceFactory = (
     });
 
     try {
+      // Deleting a certificate doesn't cancel a re-enrollment of it waiting for approval.
+      if (renewalOfCertificateId) {
+        const original = await certificateDAL.findById(renewalOfCertificateId, certificateDAL.primaryNode());
+        if (original) assertCertificateNotDeleted(original);
+      }
+
       const targetProfile = await $validateProfileAndPermissions({
         profileId,
         requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,

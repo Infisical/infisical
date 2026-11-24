@@ -1793,7 +1793,8 @@ export const certificateV3ServiceFactory = ({
 
           if (isRenewal && originalCertificateId) {
             // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
-            await certificateDAL.findByIdForUpdate(originalCertificateId, tx);
+            const original = await certificateDAL.findByIdForUpdate(originalCertificateId, tx);
+            if (original) assertCertificateNotDeleted(original);
             await linkRenewedCertificate(certificateDAL, originalCertificateId, newCert.id, tx);
           }
 
