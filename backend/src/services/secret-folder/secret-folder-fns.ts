@@ -539,11 +539,12 @@ export type TEnforcedImportDestination = {
   policyName: string;
 };
 
-// returns the first folder, in `folders` order, holding a direct same-project import that the rename would carry from
-// a path without import enforcement to one whose policy requires approval for imported secrets. unlike
+// returns the first folder, in `folders` order, holding a direct same-project import that the rename would carry into
+// the scope of a policy requiring approval for imported secrets that does not govern it today. unlike
 // findPolicyProtectedFolder the actor is ignored: the import keeps passing every later change to its source into the
-// governed folder, including changes by people the policy applies to. imports already under enforcement stay movable
-// within or out of it, since enforcement never converts existing imports.
+// governed folder, including changes by people the policy applies to. an import that predates its policy's
+// enforcement stays movable within that policy or out of it, since enforcement never converts existing imports, but
+// not into another enforcing policy, which never had it.
 export const findDirectImportEnteringEnforcedPath = async (
   {
     folders,
@@ -575,7 +576,7 @@ export const findDirectImportEnteringEnforcedPath = async (
     const destinationPolicy = policyByPath.get(folder.path);
     if (
       destinationPolicy?.enforceImportReplication &&
-      !policyByPath.get(folder.contentPath)?.enforceImportReplication
+      policyByPath.get(folder.contentPath)?.id !== destinationPolicy.id
     ) {
       return {
         environment,
