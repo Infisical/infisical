@@ -19,10 +19,11 @@ type AppConnectionKind struct {
 	// App is the name in errors and the /api/v1/app-connections/<app> segment.
 	App string
 
-	// Host is what the app's client has hardcoded, taken from its fake. It has to be
-	// hardcoded for the test to mean anything: a configurable base URL could be
-	// pointed straight at fakenet, which would prove the fake works and nothing about
-	// interception.
+	// Host is the fake's host. For a vendor-hosted API it is the one the app's client
+	// calls by default: pointing a configurable base URL at fakenet would prove the fake
+	// works and nothing about interception. A customer-hosted service, such as an
+	// appliance, has no default, so its fixed .test name goes through the connection's
+	// normal host setting.
 	Host string
 
 	create func(ctx context.Context, c *api.ClientWithResponses, name, credential string) (uuid.UUID, error)

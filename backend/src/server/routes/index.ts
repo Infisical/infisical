@@ -4970,6 +4970,7 @@ export const registerRoutes = async (
     oauthClient: oauthClientService,
     oidcIssuer: oidcIssuerService,
     superAdmin: superAdminService,
+    cronJob,
     kmsDataKeyService,
     kmsRootKeyService,
     offlineUsageReport: offlineUsageReportService,

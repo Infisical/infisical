@@ -88,6 +88,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
@@ -334,6 +335,7 @@ declare module "fastify" {
     orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
+    cronJob: TCronJobFactory;
     user: TUserServiceFactory;
     group: TGroupServiceFactory;
     groupProject: TGroupProjectServiceFactory;

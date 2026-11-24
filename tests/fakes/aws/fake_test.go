@@ -72,7 +72,13 @@ func (a *account) as(id, secret string) *account { return &account{r: a.r, id: i
 // send signs the way the SDK does: every header it sends, and the payload hash.
 func (a *account) send(t *testing.T, host, svc, region string, headers map[string]string, body []byte) (int, []byte) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, a.r.fakes.URL+"/", bytes.NewReader(body))
+	return a.sendAt(t, http.MethodPost, "/", host, svc, region, headers, body)
+}
+
+// sendAt is send for a REST service, which puts the operation in the method and path.
+func (a *account) sendAt(t *testing.T, method, path, host, svc, region string, headers map[string]string, body []byte) (int, []byte) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), method, a.r.fakes.URL+path, bytes.NewReader(body))
 	require.NoError(t, err)
 	req.Host = host
 	stamp := time.Now().UTC().Format("20060102T150405Z")
@@ -97,7 +103,7 @@ func (a *account) send(t *testing.T, host, svc, region string, headers map[strin
 		canon.WriteString(h + ":" + v + "\n")
 	}
 	payload := sha256.Sum256(body)
-	canonical := strings.Join([]string{"POST", "/", "", canon.String(), strings.Join(signed, ";"), hex.EncodeToString(payload[:])}, "\n")
+	canonical := strings.Join([]string{method, path, "", canon.String(), strings.Join(signed, ";"), hex.EncodeToString(payload[:])}, "\n")
 	scope := stamp[:8] + "/" + region + "/" + svc + "/aws4_request"
 	sum := sha256.Sum256([]byte(canonical))
 	toSign := "AWS4-HMAC-SHA256\n" + stamp + "\n" + scope + "\n" + hex.EncodeToString(sum[:])
