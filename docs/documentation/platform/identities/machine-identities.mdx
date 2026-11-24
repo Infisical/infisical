@@ -198,6 +198,8 @@ Infisical sends each webhook as a [CloudEvents](https://cloudevents.io/) 1.0 JSO
 - `com.infisical.identity.authentication.expiration` for credential expiration
 - `com.infisical.identity.authentication.auth-method-changed` for an auth method change
 
+If the alert has a description, `data.alert.description` holds it; otherwise, the request leaves the field out.
+
 For credential expiration, `data.items` lists each credential that the daily check found:
 
 ```json expandable
@@ -214,7 +216,8 @@ For credential expiration, `data.items` lists each credential that the daily che
       "id": "1bd09748-1d5b-4642-8034-f4ca88f59996",
       "name": "ua-secret-expiry",
       "resourceType": "identity.authentication",
-      "condition": "7d"
+      "condition": "7d",
+      "description": "Rotate the client secret in the CI vault before it expires."
     },
     "items": [
       {
