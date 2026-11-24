@@ -5,13 +5,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import {
-  ApprovalPolicyType,
-  ApproverType,
-  CertRequestPolicyOperation
-} from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 
-import { getCertPolicyTypeLabel, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
+import { getCertPolicyTypeLabel } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
@@ -35,7 +31,6 @@ export const PolicyReviewStep = () => {
     operation,
     conditions,
     maxRequestTtl,
-    renewalApproval,
     bypassForMachineIdentities,
     steps
   } = watch();
@@ -73,21 +68,10 @@ export const PolicyReviewStep = () => {
             }
           />
           {!isRevocationPolicy && (
-            <>
-              {operation !== CertRequestPolicyOperation.Issuance && (
-                <ReviewField
-                  label="Renewals Require Approval"
-                  value={
-                    RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
-                      ?.title ?? "Not set"
-                  }
-                />
-              )}
-              <ReviewField
-                label="Machine Identity Bypass"
-                value={bypassForMachineIdentities ? "Enabled" : "Disabled"}
-              />
-            </>
+            <ReviewField
+              label="Machine Identity Bypass"
+              value={bypassForMachineIdentities ? "Enabled" : "Disabled"}
+            />
           )}
         </div>
       </div>

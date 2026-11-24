@@ -59,15 +59,9 @@ export enum CertRequestPolicyOperation {
   Renewal = "renewal"
 }
 
-export enum CertRequestRenewalApproval {
-  OnChange = "on-change",
-  Always = "always"
-}
-
-// Policies created before renewalApproval existed store {}, which the backend reads as OnChange
+// Policies created before Renewal policies existed store no operation, and are Issuance policies.
 export type CertRequestPolicyConstraints = {
   operation?: CertRequestPolicyOperation;
-  renewalApproval?: CertRequestRenewalApproval;
 };
 
 export type CodeSigningPolicyConditions = Record<string, never>[];

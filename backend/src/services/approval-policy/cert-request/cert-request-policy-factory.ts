@@ -34,6 +34,7 @@ import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
 import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { findLiveApproverEntries, PKI_APPROVER_RULES } from "../pki-approvers/application-approver-checks";
+import { parseCertRequestPolicyOperation } from "./cert-request-policy-schemas";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConstraints,
@@ -80,21 +81,26 @@ export const certRequestApprovalResourceFactory = ({
 
     const inputAppId = inputs.applicationId ?? null;
     const expectedScopeType = inputAppId ? ApprovalPolicyScope.PkiApplication : null;
+    // An Issuance policy also holds renewals that change the certificate, so a renewal can match either kind.
+    const isRenewal = inputs.operation === CertRequestPolicyOperation.Renewal;
     const candidates = (policies as TCertRequestPolicy[]).filter(
       (p) =>
         p.isActive &&
         (p.scopeType ?? null) === expectedScopeType &&
         (p.scopeId ?? null) === inputAppId &&
-        (!p.constraints?.constraints?.operation ||
-          p.constraints.constraints.operation === (inputs.operation ?? CertRequestPolicyOperation.Issuance))
+        (isRenewal || parseCertRequestPolicyOperation(p) === CertRequestPolicyOperation.Issuance)
     );
 
     const covering = candidates.filter((p) =>
       p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))
     );
 
-    // A policy created for this operation wins over one created before the split, which covers both.
-    return covering.find((p) => p.constraints?.constraints?.operation) ?? covering[0] ?? null;
+    // A Renewal policy holds every renewal, which includes everything an Issuance policy would hold of it.
+    return (
+      covering.find((p) => parseCertRequestPolicyOperation(p) === CertRequestPolicyOperation.Renewal) ??
+      covering[0] ??
+      null
+    );
   },
 
   // Certificate approvals issue a certificate rather than leaving a standing grant behind.
@@ -106,10 +112,10 @@ export const certRequestApprovalResourceFactory = ({
   // when it's created, and the edit form sends it back unchanged.
   updateConstraints: (stored, update) => {
     const { operation } = update as TCertRequestPolicyConstraints;
-    const storedOperation = (stored as TCertRequestPolicyConstraints | undefined)?.operation;
+    const storedOperation = parseCertRequestPolicyOperation({ constraints: { constraints: stored } });
     if (operation && operation !== storedOperation) {
       throw new BadRequestError({
-        message: `This policy covers ${storedOperation ?? "issuance and renewal"}, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new ${operation} policy.`
+        message: `This is ${storedOperation === CertRequestPolicyOperation.Issuance ? "an issuance" : "a renewal"} policy, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new ${operation} policy.`
       });
     }
     return { ...stored, ...update };

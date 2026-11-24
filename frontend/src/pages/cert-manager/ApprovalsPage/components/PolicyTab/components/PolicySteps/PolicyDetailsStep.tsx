@@ -11,10 +11,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldTitle,
   Input,
-  RadioGroup,
-  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -32,7 +29,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
-import { getCertPolicyTypeLabel, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
+import { getCertPolicyTypeLabel } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 type ProfileOption = {
@@ -46,12 +43,10 @@ type Props = {
 };
 
 const REVOCATION_PICKER_VALUE = "revocation";
-const LEGACY_PICKER_VALUE = "issuance-and-renewal";
 
 const BYPASS_ACTION = {
   [CertRequestPolicyOperation.Issuance]: "issue",
-  [CertRequestPolicyOperation.Renewal]: "renew",
-  [LEGACY_PICKER_VALUE]: "issue and renew"
+  [CertRequestPolicyOperation.Renewal]: "renew"
 };
 
 export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
@@ -200,7 +195,7 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
         render={({ field: { onChange, ...field } }) => {
           const pickerValue = isRevocationPolicy
             ? REVOCATION_PICKER_VALUE
-            : (operation ?? LEGACY_PICKER_VALUE);
+            : (operation ?? CertRequestPolicyOperation.Issuance);
           return (
             <Field>
               <FieldLabel htmlFor="policy-type">Policy Type</FieldLabel>
@@ -223,11 +218,6 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {pickerValue === LEGACY_PICKER_VALUE && (
-                      <SelectItem value={LEGACY_PICKER_VALUE}>
-                        {getCertPolicyTypeLabel(ApprovalPolicyType.CertRequest)}
-                      </SelectItem>
-                    )}
                     <SelectItem value={CertRequestPolicyOperation.Issuance}>
                       {getCertPolicyTypeLabel(
                         ApprovalPolicyType.CertRequest,
@@ -305,68 +295,30 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
       />
 
       {!isRevocationPolicy && (
-        <>
-          {operation !== CertRequestPolicyOperation.Issuance && (
-            <Controller
-              control={control}
-              name="renewalApproval"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Renewals Require Approval</FieldLabel>
-                  <RadioGroup
-                    value={value}
-                    onValueChange={onChange}
-                    aria-label="Renewals require approval"
-                  >
-                    {RENEWAL_APPROVAL_OPTIONS.map((option) => (
-                      <FieldLabel
-                        key={option.value}
-                        htmlFor={`renewal-approval-${option.value}`}
-                        variant="project"
-                      >
-                        <Field orientation="horizontal">
-                          <FieldContent>
-                            <FieldTitle>{option.title}</FieldTitle>
-                            <FieldDescription>{option.description}</FieldDescription>
-                          </FieldContent>
-                          <RadioGroupItem
-                            id={`renewal-approval-${option.value}`}
-                            value={option.value}
-                          />
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                  </RadioGroup>
-                </Field>
-              )}
-            />
+        <Controller
+          control={control}
+          name="bypassForMachineIdentities"
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal" className="mt-2">
+              <Checkbox
+                id="bypassForMachineIdentities"
+                variant="project"
+                isChecked={value}
+                onCheckedChange={onChange}
+              />
+              <FieldContent>
+                <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
+                  Bypass approval for machine identities
+                </FieldLabel>
+                <FieldDescription>
+                  When enabled, machine identities can{" "}
+                  {BYPASS_ACTION[operation ?? CertRequestPolicyOperation.Issuance]} certificates
+                  without requiring approval
+                </FieldDescription>
+              </FieldContent>
+            </Field>
           )}
-
-          <Controller
-            control={control}
-            name="bypassForMachineIdentities"
-            render={({ field: { value, onChange } }) => (
-              <Field orientation="horizontal" className="mt-2">
-                <Checkbox
-                  id="bypassForMachineIdentities"
-                  variant="project"
-                  isChecked={value}
-                  onCheckedChange={onChange}
-                />
-                <FieldContent>
-                  <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
-                    Bypass approval for machine identities
-                  </FieldLabel>
-                  <FieldDescription>
-                    When enabled, machine identities can{" "}
-                    {BYPASS_ACTION[operation ?? LEGACY_PICKER_VALUE]} certificates without requiring
-                    approval
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </>
+        />
       )}
     </div>
   );

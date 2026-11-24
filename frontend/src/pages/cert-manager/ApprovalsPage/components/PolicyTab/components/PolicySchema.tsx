@@ -2,11 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
-import {
-  ApprovalPolicyType,
-  CertRequestPolicyOperation,
-  CertRequestRenewalApproval
-} from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, CertRequestPolicyOperation } from "@app/hooks/api/approvalPolicies";
 
 const DurationSchema = (
   min = 86400,
@@ -33,9 +29,6 @@ export const PolicyFormSchema = z.object({
     .array()
     .min(1, "At least one condition is required"),
   operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
-  renewalApproval: z
-    .nativeEnum(CertRequestRenewalApproval)
-    .default(CertRequestRenewalApproval.OnChange),
   bypassForMachineIdentities: z.boolean().optional().default(false),
   steps: ApprovalStepsSchema
 });

@@ -12,8 +12,7 @@ import {
   ApprovalPolicyScope,
   ApprovalRequestStatus,
   ApproverType,
-  CertRequestPolicyOperation,
-  CertRequestRenewalApproval
+  CertRequestPolicyOperation
 } from "../approval-policy-enums";
 import { certRequestApprovalResourceFactory } from "./cert-request-policy-factory";
 
@@ -40,73 +39,52 @@ describe("certRequestApprovalResourceFactory.matchPolicy", () => {
       approvalPolicyDAL: { findByProjectId: vi.fn().mockResolvedValue(policies) }
     } as never).matchPolicy("project-1", { profileName: "web-servers", operation });
 
+  const { Issuance, Renewal } = CertRequestPolicyOperation;
+
   it.each([
-    [CertRequestPolicyOperation.Issuance, "issuance-policy"],
-    [CertRequestPolicyOperation.Renewal, "renewal-policy"],
-    [undefined, "issuance-policy"]
-  ])("matches a %s only to the policy for it", async (operation, expected) => {
-    const result = await match(
-      [
-        policy("renewal-policy", CertRequestPolicyOperation.Renewal),
-        policy("issuance-policy", CertRequestPolicyOperation.Issuance)
-      ],
-      operation
-    );
-    expect(result?.id).toBe(expected);
+    [Issuance, "issuance-policy"],
+    [undefined, "issuance-policy"],
+    [Renewal, "renewal-policy"]
+  ])("matches a %s to the policy for it when both kinds cover the profile", async (operation, expected) => {
+    const policies = [policy("renewal-policy", Renewal), policy("issuance-policy", Issuance)];
+    expect((await match(policies, operation))?.id).toBe(expected);
   });
 
-  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
-    "skips a policy for the other operation on a %s",
-    async (operation) => {
-      const other =
-        operation === CertRequestPolicyOperation.Issuance
-          ? CertRequestPolicyOperation.Renewal
-          : CertRequestPolicyOperation.Issuance;
-      expect(await match([policy("other", other)], operation)).toBeNull();
-    }
-  );
+  it("never matches an issuance to a Renewal policy", async () => {
+    expect(await match([policy("renewal-policy", Renewal)], Issuance)).toBeNull();
+  });
 
   it.each([
-    [CertRequestPolicyOperation.Renewal, CertRequestPolicyOperation.Issuance],
-    [undefined, CertRequestPolicyOperation.Issuance]
-  ])("refuses an update that changes a %s policy's operation to %s", (stored, operation) => {
+    ["an Issuance policy", Issuance],
+    ["a policy stored without a type", undefined]
+  ])("matches a renewal to %s when no Renewal policy covers the profile", async (_label, operation) => {
+    expect((await match([policy("issuance-policy", operation)], Renewal))?.id).toBe("issuance-policy");
+  });
+
+  it("matches an issuance to a policy stored without a type", async () => {
+    expect((await match([policy("untyped")], Issuance))?.id).toBe("untyped");
+  });
+
+  it.each([
+    [Renewal, Issuance],
+    [undefined, Renewal]
+  ])("refuses an update that changes a %s policy's type to %s", (stored, operation) => {
     const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
     expect(() => updateConstraints!(stored ? { operation: stored } : {}, { operation })).toThrow(BadRequestError);
   });
 
-  it("accepts an update that sends the policy's operation back unchanged", () => {
+  it.each([
+    [Renewal, Renewal],
+    [undefined, Issuance]
+  ])("accepts an update that sends a %s policy's type back as %s", (stored, operation) => {
     const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
-    expect(
-      updateConstraints!(
-        { operation: CertRequestPolicyOperation.Renewal },
-        { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always }
-      )
-    ).toEqual({ operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always });
+    expect(updateConstraints!(stored ? { operation: stored } : {}, { operation })).toEqual({ operation });
   });
 
-  it("keeps a policy's operation when an update changes only its renewal setting", () => {
+  it("keeps a policy's type when an update sends none", () => {
     const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
-    expect(
-      updateConstraints!(
-        { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.OnChange },
-        { renewalApproval: CertRequestRenewalApproval.Always }
-      )
-    ).toEqual({ operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always });
+    expect(updateConstraints!({ operation: Renewal }, {})).toEqual({ operation: Renewal });
   });
-
-  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
-    "prefers the %s policy over one created before the split on the same profile",
-    async (operation) => {
-      expect((await match([policy("legacy"), policy("specific", operation)], operation))?.id).toBe("specific");
-    }
-  );
-
-  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
-    "matches a policy created before the split on a %s",
-    async (operation) => {
-      expect((await match([policy("legacy")], operation))?.id).toBe("legacy");
-    }
-  );
 });
 
 describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {

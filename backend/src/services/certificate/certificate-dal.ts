@@ -16,7 +16,7 @@ import { isUuidV4 } from "@app/lib/validator";
 import {
   ApprovalPolicyType,
   ApprovalRequestStatus,
-  CertRequestRenewalApproval
+  CertRequestPolicyOperation
 } from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -988,8 +988,8 @@ export const certificateDALFactory = (db: TDbClient) => {
                     .select(db.raw("1"))
                     .from(TableName.ApprovalPolicies)
                     .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.ApprovalRequests}"."policyId"`)
-                    .whereRaw(`"${TableName.ApprovalPolicies}"."constraints"->'constraints'->>'renewalApproval' = ?`, [
-                      CertRequestRenewalApproval.Always
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."constraints"->'constraints'->>'operation' = ?`, [
+                      CertRequestPolicyOperation.Renewal
                     ]);
                 });
             })

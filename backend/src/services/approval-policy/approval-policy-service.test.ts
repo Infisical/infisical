@@ -10,8 +10,7 @@ import {
   ApprovalPolicyType,
   ApprovalRequestStatus,
   ApproverType,
-  CertRequestPolicyOperation,
-  CertRequestRenewalApproval
+  CertRequestPolicyOperation
 } from "./approval-policy-enums";
 import { approvalPolicyServiceFactory } from "./approval-policy-service";
 import { certRequestApprovalResourceFactory } from "./cert-request/cert-request-policy-factory";
@@ -56,22 +55,16 @@ describe("approvalPolicyService.updateById constraints", () => {
     return { service, written };
   };
 
-  it("keeps a cert-request policy's operation when an update names only its renewal setting", async () => {
+  it("keeps a cert-request policy's type when an update sends no type", async () => {
     const { service, written } = setup(ApprovalPolicyType.CertRequest, {
-      operation: CertRequestPolicyOperation.Renewal,
-      renewalApproval: CertRequestRenewalApproval.OnChange
+      operation: CertRequestPolicyOperation.Renewal
     });
 
-    await service.updateById(
-      "policy-1",
-      { constraints: { renewalApproval: CertRequestRenewalApproval.Always } } as never,
-      actor,
-      ApprovalPolicyType.CertRequest
-    );
+    await service.updateById("policy-1", { constraints: {} } as never, actor, ApprovalPolicyType.CertRequest);
 
     expect(written()?.constraints).toEqual({
       version: 1,
-      constraints: { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always }
+      constraints: { operation: CertRequestPolicyOperation.Renewal }
     });
   });
 
@@ -88,7 +81,7 @@ describe("approvalPolicyService.updateById constraints", () => {
         ApprovalPolicyType.CertRequest
       )
     ).rejects.toThrow(
-      "This policy covers renewal, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new issuance policy."
+      "This is a renewal policy, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new issuance policy."
     );
     expect(written()).toBeUndefined();
   });

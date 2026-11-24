@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { ApprovalPolicyScope, CertRequestPolicyOperation, CertRequestRenewalApproval } from "../approval-policy-enums";
+import { ApprovalPolicyScope, CertRequestPolicyOperation } from "../approval-policy-enums";
 import {
-  CertRequestPolicySchema,
   CreateCertRequestPolicySchema,
-  parseCertRequestRenewalApproval,
+  parseCertRequestPolicyOperation,
   UpdateCertRequestPolicySchema
 } from "./cert-request-policy-schemas";
 
-describe("cert-request policy renewal approval setting", () => {
-  it("stores a policy created without constraints as holding renewals on change", () => {
+describe("cert-request policy type", () => {
+  it("stores a policy created without a type with no type", () => {
     const body = CreateCertRequestPolicySchema.parse({
       scope: ApprovalPolicyScope.Project,
       scopeId: "00000000-0000-4000-8000-000000000000",
@@ -18,44 +17,26 @@ describe("cert-request policy renewal approval setting", () => {
       steps: [{ requiredApprovals: 1, approvers: [{ type: "user", id: "00000000-0000-4000-8000-000000000001" }] }]
     });
 
-    expect(body.constraints).toEqual({ renewalApproval: CertRequestRenewalApproval.OnChange });
+    expect(body.constraints).toEqual({});
   });
 
   it.each([
-    [{ version: 1, constraints: {} }, CertRequestRenewalApproval.OnChange],
-    [{ version: 1, constraints: { renewalApproval: "always" } }, CertRequestRenewalApproval.Always],
-    [null, CertRequestRenewalApproval.OnChange]
-  ])("reads the setting of a stored policy %j", (constraints, expected) => {
-    expect(parseCertRequestRenewalApproval({ constraints })).toBe(expected);
+    [{ version: 1, constraints: { operation: "renewal" } }, CertRequestPolicyOperation.Renewal],
+    [{ version: 1, constraints: { operation: "issuance" } }, CertRequestPolicyOperation.Issuance],
+    [{ version: 1, constraints: {} }, CertRequestPolicyOperation.Issuance],
+    [null, CertRequestPolicyOperation.Issuance]
+  ])("reads the type of a stored policy %j", (constraints, expected) => {
+    expect(parseCertRequestPolicyOperation({ constraints })).toBe(expected);
   });
 
-  it("returns a policy stored before the setting existed as holding renewals on change", () => {
-    const { shape } = CertRequestPolicySchema;
-    expect(shape.constraints.parse({ version: 1, constraints: {} })).toEqual({
-      version: 1,
-      constraints: { renewalApproval: CertRequestRenewalApproval.OnChange }
-    });
-  });
-
-  it.each([{}, undefined])("keeps the stored setting when an update sends constraints %j", (constraints) => {
+  it.each([{}, undefined])("keeps the stored type when an update sends constraints %j", (constraints) => {
     expect(UpdateCertRequestPolicySchema.parse({ constraints }).constraints).toBeUndefined();
   });
 
-  it("changes the setting when an update names it", () => {
+  it("passes a type an update names on for the policy type to check", () => {
     expect(
-      UpdateCertRequestPolicySchema.parse({ constraints: { renewalApproval: CertRequestRenewalApproval.Always } })
+      UpdateCertRequestPolicySchema.parse({ constraints: { operation: CertRequestPolicyOperation.Renewal } })
         .constraints
-    ).toEqual({ renewalApproval: CertRequestRenewalApproval.Always });
-  });
-
-  it("passes an operation an update names on for the policy type to check", () => {
-    expect(
-      UpdateCertRequestPolicySchema.parse({
-        constraints: {
-          operation: CertRequestPolicyOperation.Renewal,
-          renewalApproval: CertRequestRenewalApproval.Always
-        }
-      }).constraints
-    ).toEqual({ operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always });
+    ).toEqual({ operation: CertRequestPolicyOperation.Renewal });
   });
 });

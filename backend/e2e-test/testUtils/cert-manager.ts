@@ -302,14 +302,18 @@ export const getCertificate = (dto: { certificateId: string; authToken: string }
     (res) => ok<{ certificate: TCertificate }>(res).certificate
   );
 
-// Renews with no body: the certificate as it is, with a new key pair.
-export const renewCertificate = (dto: { certificateId: string; authToken: string }) =>
+// Renews with a new key pair: the certificate as it is, or with the attributes passed.
+export const renewCertificate = (dto: {
+  certificateId: string;
+  authToken: string;
+  attributes?: { commonName?: string };
+}) =>
   request(
     {
       method: "POST",
       url: `/api/v1/cert-manager/certificates/${dto.certificateId}/renew`,
       headers: auth(dto.authToken),
-      body: {}
+      body: dto.attributes ? { attributes: dto.attributes } : {}
     },
     ok<{ status: string; certificateId: string; certificateRequestId: string; serialNumber: string }>
   );

@@ -7,7 +7,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
-import { CertRequestPolicyOperation, CertRequestRenewalApproval } from "../approval-policy-enums";
+import { CertRequestPolicyOperation } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -30,16 +30,13 @@ export const CertRequestPolicyConditionsSchema = z
   .array();
 
 export const CertRequestPolicyConstraintsSchema = z.object({
-  // Policies created before this setting store none and gate both issuance and renewal.
-  operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
-  renewalApproval: z.nativeEnum(CertRequestRenewalApproval).default(CertRequestRenewalApproval.OnChange)
+  operation: z.nativeEnum(CertRequestPolicyOperation).optional()
 });
 
-// Policy rows reach callers unparsed, and policies created before this setting store no value for it.
-export const parseCertRequestRenewalApproval = (policy: { constraints?: unknown }) =>
-  CertRequestPolicyConstraintsSchema.parse(
-    (policy.constraints as { constraints?: unknown } | null | undefined)?.constraints ?? {}
-  ).renewalApproval;
+// Policy rows reach callers unparsed, and policies created before Renewal policies existed store no operation.
+export const parseCertRequestPolicyOperation = (policy: { constraints?: unknown }) =>
+  (policy.constraints as { constraints?: { operation?: CertRequestPolicyOperation } } | null | undefined)?.constraints
+    ?.operation ?? CertRequestPolicyOperation.Issuance;
 
 export const CertRequestPolicyRequestDataSchema = z.object({
   profileId: z.string().uuid(),
@@ -119,21 +116,11 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default.
+  // Clients that predate the setting send `{}`: keep the stored value instead of clearing it.
   constraints: z
-    .object({
-      operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
-      renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional()
-    })
+    .object({ operation: z.nativeEnum(CertRequestPolicyOperation).optional() })
     .optional()
-    .transform((constraints) =>
-      constraints?.operation || constraints?.renewalApproval
-        ? {
-            ...(constraints.operation && { operation: constraints.operation }),
-            ...(constraints.renewalApproval && { renewalApproval: constraints.renewalApproval })
-          }
-        : undefined
-    )
+    .transform((constraints) => (constraints?.operation ? { operation: constraints.operation } : undefined))
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({

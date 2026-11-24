@@ -17,7 +17,6 @@ export {
   AutoApprovalConstraintValue,
   type CertRequestPolicyConditions,
   CertRequestPolicyOperation,
-  CertRequestRenewalApproval,
   type CodeSigningPolicyConstraints,
   EnforcementLevel,
   type PamAccessPolicyConditions,

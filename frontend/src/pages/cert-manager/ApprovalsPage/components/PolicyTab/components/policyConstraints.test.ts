@@ -1,24 +1,33 @@
 import { describe, expect, it } from "vitest";
 
-import { CertRequestRenewalApproval } from "@app/hooks/api/approvalPolicies/types";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { CertRequestPolicyOperation } from "@app/hooks/api/approvalPolicies/types";
 
-import { getPolicyRenewalApproval } from "./policyConstraints";
+import { getCertPolicyTypeLabel, getPolicyOperation } from "./policyConstraints";
 
-describe("getPolicyRenewalApproval", () => {
-  it("reads the stored setting", () => {
+describe("getPolicyOperation", () => {
+  it("reads the stored type", () => {
     expect(
-      getPolicyRenewalApproval({
-        constraints: {
-          version: 1,
-          constraints: { renewalApproval: CertRequestRenewalApproval.Always }
-        }
+      getPolicyOperation({
+        constraints: { version: 1, constraints: { operation: CertRequestPolicyOperation.Renewal } }
       })
-    ).toBe(CertRequestRenewalApproval.Always);
+    ).toBe(CertRequestPolicyOperation.Renewal);
   });
 
-  it("falls back to on-change for a policy stored before the setting existed", () => {
-    expect(getPolicyRenewalApproval({ constraints: { version: 1, constraints: {} } })).toBe(
-      CertRequestRenewalApproval.OnChange
+  it("reads a policy stored before Renewal policies existed as an Issuance policy", () => {
+    expect(getPolicyOperation({ constraints: { version: 1, constraints: {} } })).toBe(
+      CertRequestPolicyOperation.Issuance
     );
+  });
+});
+
+describe("getCertPolicyTypeLabel", () => {
+  it.each([
+    [ApprovalPolicyType.CertRequest, CertRequestPolicyOperation.Issuance, "Issuance"],
+    [ApprovalPolicyType.CertRequest, CertRequestPolicyOperation.Renewal, "Renewal"],
+    [ApprovalPolicyType.CertRequest, undefined, "Issuance"],
+    [ApprovalPolicyType.CertRevocation, undefined, "Revocation"]
+  ])("labels a %s policy with operation %s as %s", (type, operation, label) => {
+    expect(getCertPolicyTypeLabel(type, operation)).toBe(label);
   });
 });

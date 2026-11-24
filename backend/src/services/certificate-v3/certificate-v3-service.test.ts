@@ -41,11 +41,7 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import {
-  ApprovalPolicyType,
-  CertRequestPolicyOperation,
-  CertRequestRenewalApproval
-} from "../approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, CertRequestPolicyOperation } from "../approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   extractAlgorithmsFromCSR,
@@ -3229,10 +3225,10 @@ describe("CertificateV3Service", () => {
         });
       });
 
-      describe("when the policy holds every renewal for approval", () => {
+      describe("when a Renewal policy covers the certificate", () => {
         const alwaysPolicy = {
           ...approvalPolicy,
-          constraints: { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.Always } }
+          constraints: { version: 1, constraints: { operation: CertRequestPolicyOperation.Renewal } }
         };
 
         it("holds an unchanged manual renewal of a certificate it issued", async () => {
@@ -3341,12 +3337,9 @@ describe("CertificateV3Service", () => {
       });
 
       it.each([
-        [
-          "holds renewals on change",
-          { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.OnChange } }
-        ],
-        ["predates the renewal setting", { version: 1, constraints: {} }]
-      ])("renews an unchanged certificate it issued without approval when the policy %s", async (_, constraints) => {
+        ["an Issuance policy", { version: 1, constraints: { operation: CertRequestPolicyOperation.Issuance } }],
+        ["a policy stored without a type", { version: 1, constraints: {} }]
+      ])("renews an unchanged certificate it issued without approval under %s", async (_, constraints) => {
         setupRenewal(mockOriginalCert);
         mockApprovalPolicyService.matchPolicy.mockResolvedValue({ ...approvalPolicy, constraints });
 

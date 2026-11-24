@@ -16,12 +16,9 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import {
-  CertRequestPolicyOperation,
-  CertRequestRenewalApproval
-} from "@app/services/approval-policy/approval-policy-enums";
+import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { parseCertRequestRenewalApproval } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
+import { parseCertRequestPolicyOperation } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
@@ -222,8 +219,8 @@ const isSourcedOutsideInfisical = (certificate: TCertificates) =>
 const getRenewedCertificateName = (certificate: TCertificates) =>
   certificate.commonName || certificate.altNames?.split(",")[0]?.trim() || undefined;
 
-const isEveryRenewalHeldForApproval = (certificate: TCertificates, renewalApproval: CertRequestRenewalApproval) =>
-  renewalApproval === CertRequestRenewalApproval.Always || isSourcedOutsideInfisical(certificate);
+const isEveryRenewalHeldForApproval = (certificate: TCertificates, policyOperation: CertRequestPolicyOperation) =>
+  policyOperation === CertRequestPolicyOperation.Renewal || isSourcedOutsideInfisical(certificate);
 
 class RenewalBlockedError extends BadRequestError {
   readonly renewalError: string;
@@ -1572,7 +1569,7 @@ export const certificateRenewalServiceFactory = ({
       ? {
           policy: approvalPolicy,
           requester: await $resolveRequesterInfo(actor, actorId, EnrollmentType.API),
-          renewalApproval: parseCertRequestRenewalApproval(approvalPolicy)
+          policyOperation: parseCertRequestPolicyOperation(approvalPolicy)
         }
       : null;
 
@@ -1745,7 +1742,7 @@ export const certificateRenewalServiceFactory = ({
           changedAttributes.length > 0 ||
           haveDifferentSubjectAlternativeNames(replayedRequest, certificateRequest) ||
           haveDifferentCustomExtensions(originalCert.customExtensions, resolvedCustomExtensions);
-        if (approval && (isEveryRenewalHeldForApproval(originalCert, approval.renewalApproval) || changesCertificate)) {
+        if (approval && (isEveryRenewalHeldForApproval(originalCert, approval.policyOperation) || changesCertificate)) {
           const { certificateRequestId: heldRequestId, notifyApprovers } = await $holdRenewalForApproval(
             {
               approval,
