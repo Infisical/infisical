@@ -38,34 +38,18 @@ export const getSanTypeLabels = () => ({
 export type SubjectAltName = {
   type: CertSubjectAlternativeNameType;
   value: string;
+  isFromCommonName?: boolean;
 };
 
 export const getProfileReferenceSans = (
   defaults?: TCertificateProfileDefaults | null
 ): SubjectAltName[] =>
-  (defaults?.subjectAltNames ?? []).filter((san): san is SubjectAltName =>
-    isRequestReference(san.value)
-  );
-
-export const getProfileStaticSans = (
-  defaults?: TCertificateProfileDefaults | null
-): SubjectAltName[] =>
   (defaults?.subjectAltNames ?? []).filter(
-    (san): san is SubjectAltName => !isRequestReference(san.value)
+    (san, index, sans): san is SubjectAltName =>
+      isRequestReference(san.value) &&
+      sans.findIndex((other) => other.type === san.type && isRequestReference(other.value)) ===
+        index
   );
-
-export const isOnlyProfileStaticSans = (
-  subjectAltNames: SubjectAltName[],
-  profileStaticSans: SubjectAltName[]
-): boolean => {
-  const toKeys = (sans: SubjectAltName[]) =>
-    sans
-      .filter((san) => san.value.trim())
-      .map((san) => `${san.type}:${san.value.trim()}`)
-      .sort()
-      .join("\n");
-  return profileStaticSans.length > 0 && toKeys(subjectAltNames) === toKeys(profileStaticSans);
-};
 
 const REQUEST_REFERENCE_OPENING = "{{";
 

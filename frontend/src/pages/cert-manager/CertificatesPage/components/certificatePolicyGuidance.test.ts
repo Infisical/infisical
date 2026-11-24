@@ -55,144 +55,42 @@ describe("evaluateSubjectStep with a required common name SAN", () => {
   });
 });
 
-describe("evaluateSubjectStep with the profile's common name default SAN", () => {
-  const dnsCommonNameDefault = [
-    { type: CertSubjectAlternativeNameType.DNS_NAME, value: CertRequestReference.COMMON_NAME }
-  ];
-  const evaluate = (sans: TCertificatePolicy["sans"], subjectAltNames: { value: string }[]) =>
-    evaluateSubjectStep({
-      rules: buildPolicyRules({ sans } as unknown as TCertificatePolicy),
-      subjectAttributes: [{ type: CertSubjectAttributeType.COMMON_NAME, value: "app.example.com" }],
-      subjectAltNames: subjectAltNames.map(({ value }) => ({
-        type: CertSubjectAlternativeNameType.DNS_NAME,
-        value
-      })),
+describe("evaluateSubjectStep with a SAN row the profile fills from the common name", () => {
+  it("checks it against the policy like any other row", () => {
+    const { sans } = evaluateSubjectStep({
+      rules: buildPolicyRules({
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["*.example.com"] }]
+      } as unknown as TCertificatePolicy),
+      subjectAttributes: [{ type: CertSubjectAttributeType.COMMON_NAME, value: "app.other.org" }],
+      subjectAltNames: [
+        {
+          type: CertSubjectAlternativeNameType.DNS_NAME,
+          value: "app.other.org",
+          isFromCommonName: true
+        }
+      ],
       isSubjectSectionShown: true,
-      isSanSectionShown: true,
-      profileReferenceSans: dnsCommonNameDefault
-    }).sans;
-
-  it("counts the added SAN toward a required rule when the request lists no SANs", () => {
-    const sans = evaluate(
-      [
-        {
-          type: CertSubjectAlternativeNameType.DNS_NAME,
-          required: [CertRequestReference.COMMON_NAME]
-        }
-      ],
-      []
-    );
-
-    expect(sans.isBlocking).toBe(false);
-  });
-
-  it("adds nothing once the request lists its own SANs", () => {
-    const sans = evaluate(
-      [
-        {
-          type: CertSubjectAlternativeNameType.DNS_NAME,
-          required: [CertRequestReference.COMMON_NAME]
-        }
-      ],
-      [{ value: "other.example.com" }]
-    );
+      isSanSectionShown: true
+    });
 
     expect(sans.isBlocking).toBe(true);
-  });
-
-  it("blocks when the policy denies the SAN the profile would add", () => {
-    const sans = evaluate(
-      [{ type: CertSubjectAlternativeNameType.DNS_NAME, denied: ["*.example.com"] }],
-      []
-    );
-
-    expect(sans.isBlocking).toBe(true);
-    expect(sans.notices[0]?.message).toContain("The profile adds the common name as a SAN.");
+    expect(sans.rows[0].error).toBeDefined();
   });
 });
 
 describe("withRequiredRows with the profile's common name default SAN", () => {
-  const rules = buildPolicyRules({
-    sans: [
-      { type: CertSubjectAlternativeNameType.DNS_NAME, required: ["*"] },
-      { type: CertSubjectAlternativeNameType.URI, required: ["spiffe://example.com/service"] }
-    ]
-  } as unknown as TCertificatePolicy);
-  const profileReferenceSans = [
-    { type: CertSubjectAlternativeNameType.DNS_NAME, value: CertRequestReference.COMMON_NAME }
-  ];
-  const dnsRows = (subjectAltNames: { type: CertSubjectAlternativeNameType; value: string }[]) =>
-    withRequiredRows(
-      rules,
-      [],
-      subjectAltNames,
-      profileReferenceSans,
-      subjectAltNames
-    ).subjectAltNames.filter((san) => san.type === CertSubjectAlternativeNameType.DNS_NAME);
+  it("leaves a required wildcard DNS SAN to the row the common name fills", () => {
+    const rules = buildPolicyRules({
+      sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: ["*"] }]
+    } as unknown as TCertificatePolicy);
 
-  it("seeds a DNS row once another required row means the profile will not add the common name", () => {
-    expect(dnsRows([])).toEqual([{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "" }]);
-  });
-
-  it("seeds nothing when an existing DNS row already satisfies the requirement", () => {
     expect(
-      dnsRows([{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "static.example.com" }])
-    ).toEqual([{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "static.example.com" }]);
-  });
-});
-
-describe("evaluateSubjectStep with the profile's static default SANs still in place", () => {
-  it("still counts the common name SAN the profile adds", () => {
-    const { sans } = evaluateSubjectStep({
-      rules: buildPolicyRules({
-        sans: [
-          {
-            type: CertSubjectAlternativeNameType.DNS_NAME,
-            allowed: ["*"],
-            required: [CertRequestReference.COMMON_NAME]
-          }
-        ]
-      } as unknown as TCertificatePolicy),
-      subjectAttributes: [{ type: CertSubjectAttributeType.COMMON_NAME, value: "app.example.com" }],
-      subjectAltNames: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "edge.example.com" }
-      ],
-      isSubjectSectionShown: true,
-      isSanSectionShown: true,
-      profileReferenceSans: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: CertRequestReference.COMMON_NAME }
-      ],
-      profileStaticSans: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "edge.example.com" }
-      ]
-    });
-
-    expect(sans.isBlocking).toBe(false);
-  });
-});
-
-describe("evaluateSubjectStep when the common name equals a static default SAN", () => {
-  it("does not flag a second copy the server would not add", () => {
-    const { sans } = evaluateSubjectStep({
-      rules: buildPolicyRules({
-        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["edge.example.com"] }]
-      } as unknown as TCertificatePolicy),
-      subjectAttributes: [
-        { type: CertSubjectAttributeType.COMMON_NAME, value: "edge.example.com." }
-      ],
-      subjectAltNames: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "edge.example.com" }
-      ],
-      isSubjectSectionShown: true,
-      isSanSectionShown: true,
-      profileReferenceSans: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: CertRequestReference.COMMON_NAME }
-      ],
-      profileStaticSans: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "edge.example.com" }
-      ]
-    });
-
-    expect(sans.isBlocking).toBe(false);
+      withRequiredRows(
+        rules,
+        [],
+        [],
+        [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: CertRequestReference.COMMON_NAME }]
+      ).subjectAltNames
+    ).toEqual([]);
   });
 });

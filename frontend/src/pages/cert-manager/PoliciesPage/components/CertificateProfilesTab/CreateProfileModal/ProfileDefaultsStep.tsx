@@ -43,6 +43,14 @@ import type { FormData } from "../CreateProfileModal";
 import { CustomExtensionDefaults } from "./CustomExtensionDefaults";
 import { SectionHeading } from "./SectionHeading";
 
+const COMMON_NAME_SAN_TYPE_NOUNS: Record<CertSubjectAlternativeNameType, string> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: "DNS name",
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: "IP address",
+  [CertSubjectAlternativeNameType.EMAIL]: "email address",
+  [CertSubjectAlternativeNameType.URI]: "URI",
+  [CertSubjectAlternativeNameType.UPN]: "UPN"
+};
+
 export type PolicyConstraints = {
   allowedKeyUsages: string[];
   allowedExtendedKeyUsages: string[];
@@ -156,7 +164,7 @@ const AttributeListEditor = <T extends string>({
               <RequestReferenceCombobox
                 aria-label="Default value"
                 placeholder={getPlaceholder(entry.type)}
-                referenceHint="Added as this SAN type when the request lists no SANs and its common name is valid for the type."
+                referenceHint={`Uses the request's common name, if it's a valid ${COMMON_NAME_SAN_TYPE_NOUNS[entry.type as CertSubjectAlternativeNameType]}.`}
                 value={entry.value}
                 onChange={(value) => {
                   const next = [...items];

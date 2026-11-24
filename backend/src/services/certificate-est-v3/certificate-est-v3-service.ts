@@ -400,30 +400,18 @@ export const certificateEstV3ServiceFactory = ({
       throw await $rejectReenrollCsr("Subject mismatch");
     }
 
-    let csrSanSet: Set<string> = new Set();
-    const csrSanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (csrSanExtension) {
-      const sanNames = new x509.GeneralNames(csrSanExtension.value);
-      csrSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
-
+    const toSanSet = (sanExtension?: x509.Extension | null): Set<string> =>
+      new Set(
+        sanExtension ? new x509.GeneralNames(sanExtension.value).items.map((name) => `${name.type}-${name.value}`) : []
+      );
+    const csrSanSet = toSanSet(csrObj.extensions.find((ext) => ext.type === "2.5.29.17"));
+    const certSanSet = toSanSet(cert.extensions.find((ext) => ext.type === "2.5.29.17"));
     const commonNameDefaultSanExtension = getCommonNameDefaultSubjectAltNames({
       defaults: profile.defaults,
       enrollmentType: EnrollmentType.EST,
-      csr: csrObj
+      csr
     });
-    const commonNameDefaultSanSet = commonNameDefaultSanExtension
-      ? new Set(
-          new x509.GeneralNames(commonNameDefaultSanExtension.value).items.map((name) => `${name.type}-${name.value}`)
-        )
-      : null;
-
-    let certSanSet: Set<string> = new Set();
-    const certSanExtension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (certSanExtension) {
-      const sanNames = new x509.GeneralNames(certSanExtension.value);
-      certSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
+    const commonNameDefaultSanSet = commonNameDefaultSanExtension ? toSanSet(commonNameDefaultSanExtension) : null;
 
     const matchesCertSans = (sanSet: Set<string>) =>
       sanSet.size === certSanSet.size && [...sanSet].every((element) => certSanSet.has(element));

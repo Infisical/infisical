@@ -656,12 +656,8 @@ export const certificateRenewalServiceFactory = ({
 
   // The CSR a keyless certificate renews on its existing key pair from: the one its originating request
   // carried, or the one supplied when it was imported (imports have no request row).
-  const $findStoredCsr = async (certificateId: string, originatingRequestCsr?: string | null) => {
-    const requestCsr =
-      originatingRequestCsr === undefined
-        ? (await certificateDAL.getOriginatingRequestByCertId(certificateId)).csr
-        : originatingRequestCsr;
-    if (requestCsr) return requestCsr;
+  const $findStoredCsr = async (certificateId: string, originatingRequestCsr: string | null) => {
+    if (originatingRequestCsr) return originatingRequestCsr;
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId });
     return certificateBody?.importedCsr ?? null;
   };
@@ -1347,8 +1343,15 @@ export const certificateRenewalServiceFactory = ({
     let keySource = callerKeySource;
     let csr = requestedCsr;
 
+    // Read once for both licence checks. They run before the transaction because getPlan can reach
+    // Redis and the License Server, and the renewal transaction must hold no network call.
+    const certForLicenseChecks = await certificateDAL.findById(certificateId);
+    if (!certForLicenseChecks) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
-    // it runs as a CSR renewal: the CSR is the source of truth for the subject and names on every CA type.
+    // it runs as a CSR renewal that keeps the names the current certificate has.
     let isStoredCsr = false;
     let issuedNames: { commonName: string | null; altNames: TCertificateRequest["subjectAlternativeNames"] | null } = {
       commonName: null,
@@ -1361,7 +1364,12 @@ export const certificateRenewalServiceFactory = ({
       const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificateId);
       const storedCsr = await $findStoredCsr(certificateId, originatingRequest.csr);
       if (storedCsr) {
-        issuedNames = originatingRequest;
+        issuedNames = {
+          commonName: originatingRequest.exists
+            ? originatingRequest.commonName
+            : certForLicenseChecks.commonName || null,
+          altNames: resolveRenewalAltNames(originatingRequest, certForLicenseChecks.altNames)
+        };
         keySource = CertificateRenewalKeySource.Csr;
         csr = storedCsr;
         isStoredCsr = true;
@@ -1380,13 +1388,6 @@ export const certificateRenewalServiceFactory = ({
     // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
     const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
-
-    // Read once for both licence checks. They run before the transaction because getPlan can reach
-    // Redis and the License Server, and the renewal transaction must hold no network call.
-    const certForLicenseChecks = await certificateDAL.findById(certificateId);
-    if (!certForLicenseChecks) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
 
     let checkedRenewalCaId: string | null = null;
     if (isStoredCsr) {

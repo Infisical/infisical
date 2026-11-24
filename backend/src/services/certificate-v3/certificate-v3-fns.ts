@@ -6,12 +6,12 @@ import { CertExtendedKeyUsage, CertKeyUsage, toAltNameMappings } from "@app/serv
 
 import {
   ACME_SAN_TYPES,
-  SUPPORTED_GENERAL_NAME_TYPES,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
 import {
   includesSan,
   isRequestReference,
@@ -103,6 +103,9 @@ export const resolveEffectiveTtl = ({
  * For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
  * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
  */
+export const getFixedDefaultSubjectAltNames = (defaults: TCertificateProfileDefaults | null | undefined) =>
+  defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value));
+
 export const applyProfileDefaults = <
   T extends {
     commonName?: string;
@@ -126,9 +129,7 @@ export const applyProfileDefaults = <
   if (!defaults) return request;
 
   const altNames =
-    request.altNames && request.altNames.length > 0
-      ? request.altNames
-      : defaults.subjectAltNames?.filter((san) => !isRequestReference(san.value));
+    request.altNames && request.altNames.length > 0 ? request.altNames : getFixedDefaultSubjectAltNames(defaults);
 
   // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
   // CSR extraction (extractCertificateRequestFromCSR) omits keys for absent fields,
@@ -198,28 +199,25 @@ export const getCommonNameDefaultSubjectAltNames = ({
 }: {
   defaults: TCertificateProfileDefaults | null | undefined;
   enrollmentType: EnrollmentType;
-  csr: x509.Pkcs10CertificateRequest;
+  csr: string;
   isCsrSignedAsSent?: boolean;
 }): x509.Extension | null => {
   const hasCommonNameDefault = defaults?.subjectAltNames?.some((san) => san.value === RequestReference.CommonName);
   if (!hasCommonNameDefault) return null;
 
-  const sanExtension = csr.extensions.find((extension) => extension.type === "2.5.29.17");
-  if (sanExtension) {
-    try {
-      const names = new x509.GeneralNames(sanExtension.value).items;
-      if (names.some((name) => SUPPORTED_GENERAL_NAME_TYPES.has(name.type))) return null;
-    } catch {
-      return null;
-    }
+  let csrRequest: ReturnType<typeof extractCertificateRequestFromCSR>;
+  try {
+    csrRequest = extractCertificateRequestFromCSR(csr);
+  } catch {
+    return null;
   }
+  if (csrRequest.subjectAlternativeNames?.length) return null;
 
-  const [commonName] = csr.subjectName.getField("CN");
   const { altNameEntries } = applyCommonNameDefaultSan({
     defaults,
     enrollmentType,
-    commonName,
-    csrCommonName: commonName,
+    commonName: csrRequest.commonName,
+    csrCommonName: csrRequest.commonName,
     subjectAlternativeNames: [],
     isCsrSignedAsSent
   });

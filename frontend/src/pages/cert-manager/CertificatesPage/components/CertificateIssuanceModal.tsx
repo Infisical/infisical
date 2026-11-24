@@ -84,7 +84,8 @@ const subjectAltNamesField = z
   .array(
     z.object({
       type: z.nativeEnum(CertSubjectAlternativeNameType),
-      value: z.string().min(1, "Value is required")
+      value: z.string().min(1, "Value is required"),
+      isFromCommonName: z.boolean().optional()
     })
   )
   .default([]);
@@ -415,8 +416,7 @@ export const CertificateIssuanceModal = ({
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints,
-    profileReferenceSans,
-    profileStaticSans
+    dismissCommonNameSan
   } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
@@ -434,9 +434,7 @@ export const CertificateIssuanceModal = ({
     customExtensionDeclarations: requestableCustomExtensions,
     isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
     isValidityEvaluated: !isAdcsProfile,
-    resetKey: actualSelectedProfileId,
-    profileReferenceSans,
-    profileStaticSans
+    resetKey: actualSelectedProfileId
   });
 
   const resetAllState = useCallback(() => {
@@ -854,7 +852,7 @@ export const CertificateIssuanceModal = ({
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
-              profileReferenceSans={profileReferenceSans}
+              onDismissCommonNameSan={dismissCommonNameSan}
             />
           )}
 

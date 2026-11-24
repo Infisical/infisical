@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-import { Combobox } from "@app/components/v3";
+import { Combobox, FieldError } from "@app/components/v3";
 import {
   isSupportedSanRuleValue,
   UNSUPPORTED_REFERENCE_MESSAGE
@@ -36,9 +36,19 @@ export const RequestReferenceCombobox = ({
 }: Props) => {
   const typedValueRef = useRef<string | null>(null);
   const typedBeforeCloseRef = useRef<string | null>(null);
+  const isClearedByUserRef = useRef(false);
+
+  const commitClear = () => {
+    if (!isClearedByUserRef.current) return false;
+    isClearedByUserRef.current = false;
+    typedValueRef.current = null;
+    typedBeforeCloseRef.current = null;
+    if (value) onChange("");
+    return true;
+  };
 
   const commitTypedValueOnClose = (isOpen: boolean) => {
-    if (isOpen) return;
+    if (isOpen || commitClear()) return;
     const typedValue = typedBeforeCloseRef.current?.trim();
     typedValueRef.current = null;
     typedBeforeCloseRef.current = null;
@@ -59,6 +69,7 @@ export const RequestReferenceCombobox = ({
         value={value ? { value, label: formatRequestReferenceValue(value) } : null}
         onValueChange={(option) => {
           typedValueRef.current = null;
+          isClearedByUserRef.current = false;
           onChange(option?.value ?? "");
         }}
         onInputValueChange={(inputValue) => {
@@ -66,8 +77,15 @@ export const RequestReferenceCombobox = ({
           typedValueRef.current = inputValue;
         }}
         onPopupOpenChange={commitTypedValueOnClose}
+        onKeyUp={(event) => {
+          isClearedByUserRef.current =
+            event.target instanceof HTMLInputElement && !event.target.value.trim();
+        }}
+        onBlur={commitClear}
         onKeyDown={(event) => {
-          if (event.key === "Escape") typedValueRef.current = null;
+          if (event.key !== "Escape") return;
+          typedValueRef.current = null;
+          isClearedByUserRef.current = false;
         }}
         creation={{
           onCreate: (inputValue) => {
@@ -100,9 +118,9 @@ export const RequestReferenceCombobox = ({
       {referenceHint && isRequestReference(value) && (
         <p className="mt-1 text-xs text-muted">{referenceHint}</p>
       )}
-      {!isSupportedSanRuleValue(value) && (
-        <p className="mt-1 text-xs text-danger">{UNSUPPORTED_REFERENCE_MESSAGE}</p>
-      )}
+      <FieldError className="mt-1">
+        {isSupportedSanRuleValue(value) ? undefined : UNSUPPORTED_REFERENCE_MESSAGE}
+      </FieldError>
     </div>
   );
 };

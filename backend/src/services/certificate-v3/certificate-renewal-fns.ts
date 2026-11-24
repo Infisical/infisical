@@ -23,8 +23,8 @@ import {
   CertSignatureAlgorithm,
   CertStatus,
   mapLegacyAltNameType,
-  mapSanTypeToX509Type,
-  TAltNameType
+  TAltNameType,
+  toAltNameMappings
 } from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
@@ -706,10 +706,7 @@ export const buildCsrFromExistingKey = async ({
   const algorithm = keyAlgorithmToAlgCfg(keyAlgorithm);
   const { privateKey, publicKey } = await importKeyPairFromPem({ privateKeyPem, keyAlgorithm });
 
-  const altNames = (certificateRequest.subjectAlternativeNames ?? []).map((san) => ({
-    type: mapSanTypeToX509Type(san.type),
-    value: san.value
-  }));
+  const altNames = toAltNameMappings(certificateRequest.subjectAlternativeNames ?? []);
 
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
     name: buildRenewalDistinguishedName(certificateRequest),

@@ -8,7 +8,6 @@ import {
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -20,10 +19,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import {
-  CertSubjectAlternativeNameType,
-  formatSANType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
 import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
@@ -43,13 +39,7 @@ type SubjectAltNamesFieldProps = {
   revealPolicyErrors?: boolean;
   shouldUnregister?: boolean;
   namePrefix?: string;
-  profileReferenceSans?: SubjectAltName[];
-};
-
-const describeProfileReferenceSans = (sans: SubjectAltName[]): string | undefined => {
-  if (sans.length === 0) return undefined;
-  const types = [...new Set(sans.map((san) => formatSANType(san.type)))];
-  return `If you leave the SANs empty, this profile adds the common name as a SAN of each of these types it is valid for: ${types.join(", ")}.`;
+  onDismissCommonNameSan?: (type: CertSubjectAlternativeNameType) => void;
 };
 
 export const SubjectAltNamesField = ({
@@ -62,9 +52,8 @@ export const SubjectAltNamesField = ({
   revealPolicyErrors,
   shouldUnregister,
   namePrefix = "subjectAltNames",
-  profileReferenceSans = []
+  onDismissCommonNameSan
 }: SubjectAltNamesFieldProps) => {
-  const profileReferenceNote = describeProfileReferenceSans(profileReferenceSans);
   const sanTypeLabels = getSanTypeLabels();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -87,7 +76,6 @@ export const SubjectAltNamesField = ({
           return (
             <Field className="mb-4">
               <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
-              {profileReferenceNote && <FieldDescription>{profileReferenceNote}</FieldDescription>}
               <div className="space-y-3">
                 {currentValues.map((san, index) => {
                   const policy = policyRows?.[index];
@@ -113,7 +101,10 @@ export const SubjectAltNamesField = ({
                           onChange(newValue);
                         }}
                       >
-                        <SelectTrigger className="w-32" disabled={policy?.isLocked}>
+                        <SelectTrigger
+                          className="w-32"
+                          disabled={policy?.isLocked || san.isFromCommonName}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -146,19 +137,33 @@ export const SubjectAltNamesField = ({
                           }}
                           placeholder={getSanPlaceholder(san.type)}
                           isError={Boolean(rowError)}
+                          readOnly={san.isFromCommonName}
                           className="w-full"
                         />
                         {rowError && <PolicyRowMessage isError lines={[rowError]} />}
-                        {!rowError && policy?.hint && <PolicyRowMessage lines={policy.hint} />}
+                        {!rowError && san.isFromCommonName && (
+                          <PolicyRowMessage lines={["Same as common name, added by the profile"]} />
+                        )}
+                        {!rowError && !san.isFromCommonName && policy?.hint && (
+                          <PolicyRowMessage lines={policy.hint} />
+                        )}
                       </div>
-                      {policy?.isLocked ? (
+                      {policy?.isLocked ||
+                      (san.isFromCommonName &&
+                        currentValues.filter((row) => row.value.trim()).length === 1) ? (
                         <span className="w-9 shrink-0" />
                       ) : (
                         <IconButton
                           type="button"
                           variant="ghost"
                           aria-label="Remove entry"
-                          onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
+                          onClick={() => {
+                            if (san.isFromCommonName) {
+                              onDismissCommonNameSan?.(san.type);
+                              return;
+                            }
+                            onChange(currentValues.filter((_, i) => i !== index));
+                          }}
                         >
                           <Trash2 />
                         </IconButton>

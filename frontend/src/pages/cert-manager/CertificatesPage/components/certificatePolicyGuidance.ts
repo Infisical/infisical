@@ -15,13 +15,7 @@ import {
   validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import {
-  isOnlyProfileStaticSans,
-  isValidSanValue,
-  SUBJECT_ATTRIBUTE_LABELS,
-  SubjectAltName,
-  SubjectAttribute
-} from "./certificateUtils";
+import { SUBJECT_ATTRIBUTE_LABELS, SubjectAltName, SubjectAttribute } from "./certificateUtils";
 
 type SanRule = NonNullable<TCertificatePolicyRule["sans"]>[number];
 
@@ -85,7 +79,7 @@ const canonicalIp = (value: string): string => {
   }
 };
 
-const normalizeSanValue = (value: string, sanType?: CertSubjectAlternativeNameType) => {
+export const normalizeSanValue = (value: string, sanType?: CertSubjectAlternativeNameType) => {
   if (sanType === CertSubjectAlternativeNameType.URI) return normalizeUri(value);
   if (sanType === CertSubjectAlternativeNameType.IP_ADDRESS && isIPv6(value))
     return canonicalIp(value);
@@ -620,8 +614,7 @@ export const withRequiredRows = (
   rules: CertificatePolicyRules,
   subjectAttributes: SubjectAttribute[],
   subjectAltNames: SubjectAltName[],
-  profileReferenceSans: SubjectAltName[] = [],
-  profileStaticSans: SubjectAltName[] = []
+  profileReferenceSans: SubjectAltName[] = []
 ): { subjectAttributes: SubjectAttribute[]; subjectAltNames: SubjectAltName[] } => {
   const subject = subjectAttributes.map((attr) => ({ ...attr }));
 
@@ -645,7 +638,6 @@ export const withRequiredRows = (
   });
 
   const sans = subjectAltNames.map((san) => ({ ...san }));
-  const requirementsLeftToProfile: { type: CertSubjectAlternativeNameType; pattern: string }[] = [];
 
   Object.entries(rules.sans).forEach(([rawType, rule]) => {
     const type = rawType as CertSubjectAlternativeNameType;
@@ -657,7 +649,6 @@ export const withRequiredRows = (
     rule.required.forEach((pattern) => {
       const isLeftToProfile =
         isWildcardPattern(pattern) && profileReferenceSans.some((san) => san.type === type);
-      if (isLeftToProfile) requirementsLeftToProfile.push({ type, pattern });
       if (isRequestReference(pattern) || isLeftToProfile) return;
       const isSatisfied = sans.some(
         (san) =>
@@ -674,20 +665,6 @@ export const withRequiredRows = (
       }
     });
   });
-
-  const isListingSans =
-    sans.some((san) => san.value.trim()) && !isOnlyProfileStaticSans(sans, profileStaticSans);
-  if (isListingSans) {
-    requirementsLeftToProfile.forEach(({ type, pattern }) => {
-      const isCovered = sans.some(
-        (san) =>
-          san.type === type &&
-          (!san.value.trim() ||
-            matchesAny(san.value.trim(), [pattern], type === CertSubjectAlternativeNameType.URI))
-      );
-      if (!isCovered) sans.push({ type, value: "" });
-    });
-  }
 
   return { subjectAttributes: subject, subjectAltNames: sans };
 };
@@ -810,46 +787,19 @@ export const evaluateSubjectStep = ({
   subjectAttributes,
   subjectAltNames,
   isSubjectSectionShown,
-  isSanSectionShown,
-  profileReferenceSans = [],
-  profileStaticSans = []
+  isSanSectionShown
 }: {
   rules: CertificatePolicyRules;
   subjectAttributes: SubjectAttribute[];
   subjectAltNames: SubjectAltName[];
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;
-  profileReferenceSans?: SubjectAltName[];
-  profileStaticSans?: SubjectAltName[];
 }): SubjectPolicyGuidance => {
   const request: TCertRequestReferenceValues = {
     commonName: subjectAttributes
       .find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
       ?.value.trim()
   };
-  const isRequestListingSans =
-    subjectAltNames.some((san) => san.value.trim()) &&
-    !isOnlyProfileStaticSans(subjectAltNames, profileStaticSans);
-  const profileAddedSans = isRequestListingSans
-    ? []
-    : profileReferenceSans.reduce<SubjectAltName[]>((added, { type }) => {
-        const { commonName } = request;
-        if (!commonName || !isValidSanValue(type, commonName)) return added;
-        const isPresent = [...subjectAltNames, ...added].some(
-          (san) =>
-            san.type === type &&
-            san.value.trim() &&
-            normalizeSanValue(san.value.trim(), type) === normalizeSanValue(commonName, type)
-        );
-        return isPresent ? added : [...added, { type, value: commonName }];
-      }, []);
-  const isAddedByProfile = (type: CertSubjectAlternativeNameType, pattern: string) =>
-    profileAddedSans.some(
-      (san) =>
-        san.type === type &&
-        matchesAny(san.value, [pattern], type === CertSubjectAlternativeNameType.URI, request, type)
-    );
-
   const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
 
   // Domain components are one ordered sequence spread across rows, so they are judged in row order
@@ -949,8 +899,7 @@ export const evaluateSubjectStep = ({
       if (isRequestReference(pattern)) return;
       const isSatisfiedBy = (san: SubjectAltName) =>
         Boolean(san.value.trim()) && matchesAny(san.value.trim(), [pattern], isUri);
-      if (claim(isSatisfiedBy) || isAddedByProfile(type, pattern)) return;
-      claim((san) => !san.value.trim());
+      if (!claim(isSatisfiedBy)) claim((san) => !san.value.trim());
     });
   });
 
@@ -982,7 +931,6 @@ export const evaluateSubjectStep = ({
       rule.required.forEach((pattern) => {
         if (presentValues.some((value) => matchesAny(value, [pattern], isUri, request, type)))
           return;
-        if (isAddedByProfile(type, pattern)) return;
         if (unclaimedBlankRows > 0) {
           unclaimedBlankRows -= 1;
           return;
@@ -997,20 +945,6 @@ export const evaluateSubjectStep = ({
         }
         sanNotices.push(toNotice({ message }));
       });
-    });
-    profileAddedSans.forEach((san) => {
-      const error = validateSanValue(
-        san.type,
-        san.value,
-        rules.sans[san.type],
-        rules.hasSanPolicy,
-        request
-      );
-      if (error) {
-        sanNotices.push(
-          toNotice({ message: `The profile adds the common name as a SAN. ${error}` })
-        );
-      }
     });
   }
 

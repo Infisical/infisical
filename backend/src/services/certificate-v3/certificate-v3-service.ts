@@ -102,7 +102,6 @@ import {
   removeRootCaFromChain,
   validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
-import { isRequestReference } from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   holdCertificateRequestForApproval,
@@ -127,7 +126,12 @@ import {
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyCommonNameDefaultSan, applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  getFixedDefaultSubjectAltNames,
+  resolveEffectiveTtl
+} from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TIssueCertificateFromProfileDTO,
@@ -1919,7 +1923,7 @@ export const certificateV3ServiceFactory = ({
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
         subjectAlternativeNames: certificateOrder.altNames?.length
           ? certificateOrder.altNames
-          : profile.defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value)),
+          : getFixedDefaultSubjectAltNames(profile.defaults),
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
@@ -2034,6 +2038,20 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality
+      });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.GODADDY) {
+      // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+      // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+      // extra SANs past the guard and on to GoDaddy.
+      const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certificateOrder.csr
+          ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+          : certificateOrder.keyAlgorithm,
+        altNames: csrDerived?.subjectAlternativeNames ?? certificateRequest.subjectAlternativeNames,
+        commonName: csrDerived?.commonName ?? certificateRequest.commonName
       });
     }
 
@@ -2208,20 +2226,6 @@ export const certificateV3ServiceFactory = ({
           country: certificateRequest.country,
           state: certificateRequest.state,
           locality: certificateRequest.locality
-        });
-      }
-
-      if (caType === CaType.GODADDY) {
-        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
-        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
-        // extra SANs past the guard and on to GoDaddy.
-        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
-        validateGoDaddyIssuanceInputs({
-          keyAlgorithm: certificateOrder.csr
-            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
-            : certificateOrder.keyAlgorithm,
-          altNames: csrDerived?.subjectAlternativeNames ?? certificateRequest.subjectAlternativeNames,
-          commonName: csrDerived?.commonName ?? certificateRequest.commonName
         });
       }
 

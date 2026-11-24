@@ -1692,6 +1692,46 @@ describe("CertificateV3Service", () => {
       });
     });
 
+    it("refuses a GoDaddy order whose default SAN GoDaddy cannot issue before holding it for approval", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-godaddy",
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "godaddy-profile",
+        apiConfigId: "api-config-1",
+        defaults: {
+          subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "other.example.com" }]
+        }
+      } as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        status: CaStatus.ACTIVE,
+        externalCa: { id: "ext-ca-1", type: CaType.GODADDY }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: []
+      } as any);
+      mockApprovalPolicyService.matchPolicy.mockResolvedValue({ id: "approval-policy-1", isActive: true } as any);
+
+      await expect(
+        service.orderCertificate({
+          profileId: "profile-godaddy",
+          certificateOrder: {
+            ...mockCertificateOrder,
+            commonName: "app.example.com",
+            altNames: []
+          },
+          ...mockActor
+        })
+      ).rejects.toThrow('additional domain "other.example.com" is not supported');
+      expect(mockCertificateRequestDAL.transaction).not.toHaveBeenCalled();
+    });
+
     describe("CA certificate orders", () => {
       const profileId = "profile-ca-order";
       const caOrder = {

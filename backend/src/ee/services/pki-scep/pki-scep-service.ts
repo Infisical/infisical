@@ -716,6 +716,7 @@ export const pkiScepServiceFactory = ({
     }
 
     const csrSanExt = csrObj.getExtension("2.5.29.17");
+    const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
     const signerSanExt = signerCertObj ? signerCertObj.getExtension("2.5.29.17") : null;
 
     const renewalAuth: TScepRenewalAuthResult = signerCertObj
@@ -732,7 +733,7 @@ export const pkiScepServiceFactory = ({
           csrCommonNameDefaultSubjectAltNames: getCommonNameDefaultSubjectAltNames({
             defaults: profile.defaults,
             enrollmentType: EnrollmentType.SCEP,
-            csr: csrObj,
+            csr: csrPem,
             isCsrSignedAsSent: caSignsCsrAsSent(caType)
           }),
           signerCertSubjectAltNames: signerSanExt
@@ -795,8 +796,6 @@ export const pkiScepServiceFactory = ({
         failInfo
       });
     }
-
-    const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const result = await issueOrQueueCertificate({

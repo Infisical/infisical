@@ -17,10 +17,10 @@ import {
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
+import { buildPolicyRules, normalizeSanValue, withRequiredRows } from "./certificatePolicyGuidance";
 import {
   getProfileReferenceSans,
-  getProfileStaticSans,
+  isValidSanValue,
   SubjectAltName,
   SubjectAttribute
 } from "./certificateUtils";
@@ -45,12 +45,17 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   }
 };
 
-type PolicyRow = { type: string; value: string };
+type PolicyRow = { type: string; value: string; isFromCommonName?: boolean };
 
 const isSameRows = (current: PolicyRow[] | undefined, next: PolicyRow[]): boolean =>
   Boolean(current) &&
   current!.length === next.length &&
-  current!.every((row, index) => row.type === next[index].type && row.value === next[index].value);
+  current!.every(
+    (row, index) =>
+      row.type === next[index].type &&
+      row.value === next[index].value &&
+      Boolean(row.isFromCommonName) === Boolean(next[index].isFromCommonName)
+  );
 
 const parseTtlToMs = (ttl: string): number => {
   const match = ttl.match(/^(\d+)([dhmy])$/);
@@ -243,10 +248,6 @@ export const useCertificatePolicy = (
     () => getProfileReferenceSans(selectedProfile?.defaults),
     [selectedProfile]
   );
-  const profileStaticSans = useMemo(
-    () => getProfileStaticSans(selectedProfile?.defaults),
-    [selectedProfile]
-  );
 
   const prevProfileIdRef = useRef<string | undefined>(undefined);
 
@@ -375,8 +376,7 @@ export const useCertificatePolicy = (
         buildPolicyRules(templateData),
         nextSubjectAttrs,
         nextSans,
-        getProfileReferenceSans(defaults),
-        getProfileStaticSans(defaults)
+        getProfileReferenceSans(defaults)
       );
       if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
         setValue("subjectAltNames", seeded.subjectAltNames);
@@ -467,6 +467,71 @@ export const useCertificatePolicy = (
     setValue
   ]);
 
+  const [dismissedCommonNameSanTypes, setDismissedCommonNameSanTypes] = useState<
+    CertSubjectAlternativeNameType[]
+  >([]);
+  useEffect(() => {
+    setDismissedCommonNameSanTypes([]);
+  }, [selectedProfile?.id, isModalOpen]);
+
+  const subjectAttributeRows = watch("subjectAttributes") as SubjectAttribute[] | undefined;
+  const sanRows = watch("subjectAltNames") as SubjectAltName[] | undefined;
+  const commonName =
+    subjectAttributeRows
+      ?.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+      ?.value?.trim() ?? "";
+
+  useEffect(() => {
+    const currentRows = watch("subjectAltNames") as SubjectAltName[] | undefined;
+    if (!isModalOpen || !currentRows) return;
+    const currentCommonName =
+      (watch("subjectAttributes") as SubjectAttribute[] | undefined)
+        ?.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+        ?.value?.trim() ?? "";
+    const requestedRows = currentRows.filter((san) => !san.isFromCommonName);
+    const isListed = (type: CertSubjectAlternativeNameType) =>
+      requestedRows.some(
+        (san) =>
+          san.type === type &&
+          normalizeSanValue(san.value.trim(), type) === normalizeSanValue(currentCommonName, type)
+      );
+    const commonNameRows = currentCommonName
+      ? profileReferenceSans
+          .filter(
+            ({ type }) =>
+              !dismissedCommonNameSanTypes.includes(type) &&
+              isValidSanValue(type, currentCommonName) &&
+              !isListed(type)
+          )
+          .map(({ type }) => ({ type, value: currentCommonName, isFromCommonName: true }))
+      : [];
+    if (dismissedCommonNameSanTypes.length && !requestedRows.length && !commonNameRows.length) {
+      setDismissedCommonNameSanTypes([]);
+      return;
+    }
+    const nextRows = [...requestedRows, ...commonNameRows];
+    const isUnchanged =
+      nextRows.length === currentRows.length &&
+      nextRows.every(
+        (san, index) =>
+          san.type === currentRows[index].type &&
+          san.value === currentRows[index].value &&
+          Boolean(san.isFromCommonName) === Boolean(currentRows[index].isFromCommonName)
+      );
+    if (!isUnchanged) setValue("subjectAltNames", nextRows);
+  }, [
+    isModalOpen,
+    sanRows,
+    commonName,
+    profileReferenceSans,
+    dismissedCommonNameSanTypes,
+    setValue,
+    watch
+  ]);
+
+  const dismissCommonNameSan = (type: CertSubjectAlternativeNameType) =>
+    setDismissedCommonNameSanTypes((dismissed) => [...dismissed, type]);
+
   return {
     constraints,
     filteredKeyUsages,
@@ -474,7 +539,6 @@ export const useCertificatePolicy = (
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints,
-    profileReferenceSans,
-    profileStaticSans
+    dismissCommonNameSan
   };
 };

@@ -46,8 +46,6 @@ type UsePolicyGuidanceParams = {
   isValidityEvaluated?: boolean;
   /** Identity of the current policy source; a change here starts every violation hidden again. */
   resetKey?: string;
-  profileReferenceSans?: SubjectAltName[];
-  profileStaticSans?: SubjectAltName[];
 };
 
 export type PolicyGuidance = {
@@ -79,9 +77,7 @@ export const usePolicyGuidance = ({
   customExtensionDeclarations = EMPTY_CUSTOM_EXTENSION_DECLARATIONS,
   isSubjectEvaluated = true,
   isValidityEvaluated = true,
-  resetKey,
-  profileReferenceSans = EMPTY_SUBJECT_ALT_NAMES,
-  profileStaticSans = EMPTY_SUBJECT_ALT_NAMES
+  resetKey
 }: UsePolicyGuidanceParams): PolicyGuidance => {
   const subjectAttributes: SubjectAttribute[] =
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
@@ -102,19 +98,9 @@ export const usePolicyGuidance = ({
         subjectAttributes,
         subjectAltNames,
         isSubjectSectionShown,
-        isSanSectionShown,
-        profileReferenceSans,
-        profileStaticSans
+        isSanSectionShown
       }),
-    [
-      rules,
-      subjectAttributes,
-      subjectAltNames,
-      isSubjectSectionShown,
-      isSanSectionShown,
-      profileReferenceSans,
-      profileStaticSans
-    ]
+    [rules, subjectAttributes, subjectAltNames, isSubjectSectionShown, isSanSectionShown]
   );
 
   const customExtensions = useMemo(
