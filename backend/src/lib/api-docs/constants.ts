@@ -2035,7 +2035,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
+      "Whether the folder access also applies to every folder below this one. Where folder access that applies to subfolders overlaps, the one on the deepest folder decides, and folder access granted on a folder without this setting decides that folder. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -2051,7 +2051,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
+      "Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
   },
   DELETE: {
     projectId: "The ID of the project the folder is in.",
@@ -2070,7 +2070,7 @@ export const FOLDER_ACCESS = {
     limit: "The number of users to return, counting both lists together.",
     search: "The text string that user names and email addresses will be filtered by.",
     users:
-      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     usersWithoutAccess:
       "The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount: "The number of users of the project that match the search, with and without access together."
@@ -2084,7 +2084,7 @@ export const FOLDER_ACCESS = {
     limit: "The number of machine identities to return, counting both lists together.",
     search: "The text string that machine identity names will be filtered by.",
     identities:
-      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     identitiesWithoutAccess:
       "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount:
