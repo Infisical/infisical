@@ -198,7 +198,7 @@ export const agentVaultDynamicSecretServiceFactory = ({
     let fallback: { credential: TClientCertificateCredential } | null = null;
     const fallbackOr = (problem: string): TResolvedDynamicSecretCredential => fallback ?? { problem };
 
-    const backoffKey = KeyStorePrefixes.AgentVaultDynamicSecretLeaseBackoff(serviceId);
+    const backoffKey = KeyStorePrefixes.AgentVaultDynamicSecretLeaseBackoff(serviceId, reference.dynamicSecretId);
     const readBackoff = async () => {
       try {
         const stored = await keyStore.getItemPrimary(backoffKey);

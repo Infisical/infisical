@@ -342,6 +342,23 @@ describe("backing off after a failed lease", () => {
     expect(createLease).toHaveBeenCalledTimes(1);
   });
 
+  test("doesn't delay a different dynamic secret the service switched to", async () => {
+    const { service, createLease } = setup({
+      createSystemLease: async () => {
+        throw new BadRequestError({ message: "Namespace is unavailable" });
+      }
+    });
+    await resolve(service);
+    await service.resolveClientCertificate({
+      serviceId: SERVICE_ID,
+      serviceName: "engine",
+      agentVaultProjectId: AGENT_VAULT_PROJECT_ID,
+      reference: { ...reference, dynamicSecretId: "other-secret" },
+      pollIntervalSeconds: 60
+    });
+    expect(createLease).toHaveBeenCalledTimes(2);
+  });
+
   test("still serves the older certificate while waiting", async () => {
     const { service, createLease } = setup({
       leases: [[lease({ id: "lease-old", ageMs: 57 * MINUTE, leftMs: 3 * MINUTE })]],
