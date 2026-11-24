@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { TProfileCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
@@ -272,7 +273,10 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
         id: string;
         slug: string;
         description?: string;
-        defaults?: { customExtensions?: TProfileCustomExtension[] } | null;
+        defaults?: {
+          customExtensions?: TProfileCustomExtension[];
+          subjectAltNames?: { type: CertSubjectAlternativeNameType; value: string }[];
+        } | null;
       }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get profiles using certificate policy" });

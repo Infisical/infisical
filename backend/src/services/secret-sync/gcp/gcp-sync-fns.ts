@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
-import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
+import { getGcpConnectionAuthToken, TGcpConnectionAuthDeps } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -137,11 +136,11 @@ export const GcpSyncFns = {
   syncSecrets: async (
     secretSync: TGcpSyncWithCredentials,
     payload: TSecretSyncPayload,
-    instanceConfigService: TInstanceConfigService
+    authDeps: TGcpConnectionAuthDeps
   ) => {
     const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     const gcpSecretKeys = await listGcpSecretKeys(accessToken, secretSync);
     const existingKeys = new Set(gcpSecretKeys);
@@ -249,12 +248,9 @@ export const GcpSyncFns = {
     }
   },
 
-  getSecrets: async (
-    secretSync: TGcpSyncWithCredentials,
-    instanceConfigService: TInstanceConfigService
-  ): Promise<TSecretMap> => {
+  getSecrets: async (secretSync: TGcpSyncWithCredentials, authDeps: TGcpConnectionAuthDeps): Promise<TSecretMap> => {
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     // the caller drops keys outside the key schema, so reading their values would be wasted
     const gcpSecrets = await getGcpSecretValues(
@@ -268,11 +264,11 @@ export const GcpSyncFns = {
   removeSecrets: async (
     secretSync: TGcpSyncWithCredentials,
     payload: TSecretSyncPayload,
-    instanceConfigService: TInstanceConfigService
+    authDeps: TGcpConnectionAuthDeps
   ) => {
     const secretMap = payload.flatten();
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     const gcpSecretKeys = await listGcpSecretKeys(accessToken, secretSync);
     for await (const key of gcpSecretKeys) {

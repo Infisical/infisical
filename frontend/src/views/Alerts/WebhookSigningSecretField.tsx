@@ -5,6 +5,7 @@ import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms
 import { Button, Field, FieldContent, FieldError, IconButton } from "@app/components/v3";
 import { TChannelsForm } from "@app/hooks/api/alerts";
 
+import { getChannelErrors, useChannelPath } from "./channelPath";
 import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
 
 type Props = {
@@ -18,24 +19,25 @@ export const WebhookSigningSecretField = ({ index }: Props) => {
     setValue,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
+  const channelPath = useChannelPath(index);
   const [isEnabled, hasSigningSecret, channelId] = useWatch({
     control,
     name: [
-      `channels.${index}.signingSecretEnabled`,
-      `channels.${index}.hasSigningSecret`,
-      `channels.${index}.id`
+      `${channelPath}.signingSecretEnabled`,
+      `${channelPath}.hasSigningSecret`,
+      `${channelPath}.id`
     ]
   });
 
   const setEnabled = (enabled: boolean) => {
-    setValue(`channels.${index}.signingSecretEnabled`, enabled, { shouldDirty: true });
-    setValue(`channels.${index}.signingSecret`, "");
+    setValue(`${channelPath}.signingSecretEnabled`, enabled, { shouldDirty: true });
+    setValue(`${channelPath}.signingSecret`, "");
   };
 
   return (
     <Field>
       <FieldLabelWithTooltip
-        htmlFor={isEnabled ? `channel-${index}-signingSecret` : undefined}
+        htmlFor={isEnabled ? `${channelPath}-signingSecret` : undefined}
         tooltip="Signs each request in the x-infisical-signature header so your endpoint can verify it came from Infisical."
       >
         Signing secret <span className="text-muted">(optional)</span>
@@ -46,10 +48,10 @@ export const WebhookSigningSecretField = ({ index }: Props) => {
             <div className="flex items-start gap-2">
               <div className="grow">
                 <ChannelSecretInput
-                  id={`channel-${index}-signingSecret`}
+                  id={`${channelPath}-signingSecret`}
                   placeholder={channelId && hasSigningSecret ? KEEP_PLACEHOLDER : ""}
-                  isError={Boolean(errors.channels?.[index]?.signingSecret)}
-                  registration={register(`channels.${index}.signingSecret`)}
+                  isError={Boolean(getChannelErrors(errors, channelPath)?.signingSecret)}
+                  registration={register(`${channelPath}.signingSecret`)}
                 />
               </div>
               <IconButton
@@ -60,7 +62,7 @@ export const WebhookSigningSecretField = ({ index }: Props) => {
                 <TrashIcon className="size-4" />
               </IconButton>
             </div>
-            <FieldError errors={[errors.channels?.[index]?.signingSecret]} />
+            <FieldError errors={[getChannelErrors(errors, channelPath)?.signingSecret]} />
           </>
         ) : (
           <Button

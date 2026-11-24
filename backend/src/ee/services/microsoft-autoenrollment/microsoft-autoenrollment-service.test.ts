@@ -18,6 +18,7 @@ import { findDirectoryComputerBySid } from "@app/services/app-connection/ldap/ld
 import { getCaCertChain } from "@app/services/certificate-authority/certificate-authority-fns";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { getSerialNumberSpellings } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { channelBindingCacheFactory } from "./microsoft-autoenrollment-channel-binding-cache";
@@ -174,7 +175,7 @@ describe("microsoftAutoenrollmentService", () => {
     certificatePolicyDAL: { findById: vi.fn() },
     certificateAuthorityDAL: { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() },
     certificateAuthorityCertDAL: { find: vi.fn(), findById: vi.fn() },
-    certificateDAL: { findOne: vi.fn(), transaction: vi.fn(), primaryNode: vi.fn() },
+    certificateDAL: { findOne: vi.fn(), findOneLiveFirst: vi.fn(), transaction: vi.fn(), primaryNode: vi.fn() },
     certificateRequestDAL: { findById: vi.fn() },
     certificateBodyDAL: { findOne: vi.fn() },
     resourceMetadataDAL: { find: vi.fn() },
@@ -1002,13 +1003,13 @@ describe("microsoftAutoenrollmentService", () => {
 
     test("renews a certificate this profile's CA issued to the computer, even after a rename in AD", async () => {
       vi.mocked(isSignerCertIssuedByCa).mockResolvedValue(true);
-      deps.certificateDAL.findOne.mockResolvedValue({ id: "current-certificate-id", deletedAt: null });
+      deps.certificateDAL.findOneLiveFirst.mockResolvedValue({ id: "current-certificate-id", deletedAt: null });
 
       const response = await renew("old-name.corp.example.com");
 
       expect(response.statusCode).toBe(200);
-      expect(deps.certificateDAL.findOne.mock.calls[0][0]).toEqual({
-        serialNumber: "0a1b2c3d",
+      expect(deps.certificateDAL.findOneLiveFirst.mock.calls[0][0]).toEqual({
+        $in: { serialNumber: getSerialNumberSpellings("0a1b2c3d") },
         caId: CA_ID,
         profileId: PROFILE_ID,
         applicationId: APPLICATION_ID
@@ -1033,7 +1034,7 @@ describe("microsoftAutoenrollmentService", () => {
       ]
     ])("refuses to renew a certificate that %s", async (_name, isIssuedByCa, storedCertificate) => {
       vi.mocked(isSignerCertIssuedByCa).mockResolvedValue(isIssuedByCa);
-      deps.certificateDAL.findOne.mockResolvedValue(storedCertificate);
+      deps.certificateDAL.findOneLiveFirst.mockResolvedValue(storedCertificate);
 
       const response = await renew(DNS_HOST_NAME);
 
@@ -1058,7 +1059,7 @@ describe("microsoftAutoenrollmentService", () => {
       ["no computer", null]
     ])("refuses to renew a certificate issued to %s", async (_name, currentSid) => {
       vi.mocked(isSignerCertIssuedByCa).mockResolvedValue(true);
-      deps.certificateDAL.findOne.mockResolvedValue({ id: "current-certificate-id", deletedAt: null });
+      deps.certificateDAL.findOneLiveFirst.mockResolvedValue({ id: "current-certificate-id", deletedAt: null });
 
       const response = await renew(DNS_HOST_NAME, currentSid);
 

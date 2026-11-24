@@ -39,6 +39,7 @@ import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/c
 import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
@@ -83,7 +84,8 @@ const subjectAltNamesField = z
   .array(
     z.object({
       type: z.nativeEnum(CertSubjectAlternativeNameType),
-      value: z.string().min(1, "Value is required")
+      value: z.string().min(1, "Value is required"),
+      isFromCommonName: z.boolean().optional()
     })
   )
   .default([]);
@@ -413,7 +415,8 @@ export const CertificateIssuanceModal = ({
     filteredExtendedKeyUsages,
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
-    resetConstraints
+    resetConstraints,
+    dismissCommonNameSan
   } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
@@ -613,6 +616,7 @@ export const CertificateIssuanceModal = ({
         const response = await issueCertificate(request);
         handleIssuanceResponse(response);
       } catch (error) {
+        if (wasErrorReported(error)) return;
         createNotification({
           text: `Failed to request certificate: ${(error as Error)?.message || "Unknown error"}`,
           type: "error"
@@ -848,6 +852,7 @@ export const CertificateIssuanceModal = ({
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
+              onDismissCommonNameSan={dismissCommonNameSan}
             />
           )}
 

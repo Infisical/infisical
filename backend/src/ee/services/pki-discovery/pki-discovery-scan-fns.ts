@@ -621,13 +621,13 @@ export const processDiscoveredCertificate = async (
   const { certificateDAL, certificateBodyDAL, kmsEncryptor } = deps;
 
   try {
-    const existingCerts = await certificateDAL.find({
-      projectId,
-      fingerprintSha256: certResult.fingerprint
-    });
+    const existingCert = await certificateDAL.findOneLiveFirst(
+      { projectId, fingerprintSha256: certResult.fingerprint },
+      certificateDAL.primaryNode()
+    );
 
-    if (existingCerts.length > 0) {
-      return existingCerts[0].id;
+    if (existingCert) {
+      return existingCert.id;
     }
 
     const friendlyName =
@@ -702,16 +702,15 @@ export const processDiscoveredCertificate = async (
 
     return newCert.id;
   } catch (error) {
-    const dbError = error as { code?: string };
     // PG unique constraint violation — another concurrent scan already inserted this certificate
-    if (dbError.code === "23505") {
-      const existingCerts = await certificateDAL.find({
-        projectId,
-        fingerprintSha256: certResult.fingerprint
-      });
-      if (existingCerts.length > 0) {
+    if (hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) {
+      const existingCert = await certificateDAL.findOneLiveFirst(
+        { projectId, fingerprintSha256: certResult.fingerprint },
+        certificateDAL.primaryNode()
+      );
+      if (existingCert) {
         logger.debug({ fingerprint: certResult.fingerprint }, "Certificate already exists (concurrent insert)");
-        return existingCerts[0].id;
+        return existingCert.id;
       }
     }
     logger.error({ error, fingerprint: certResult.fingerprint, projectId }, "Failed to process discovered certificate");

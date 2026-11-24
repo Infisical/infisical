@@ -46,5 +46,22 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   `findingIds`) still resolve through `findings.findByIdsOrLocationIds`.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
   never only the new ones. Its counts are distinct findings.
-- Notifications count distinct unresolved findings with a location this scan found first (`findings.countByScanId`),
-  read back from the database so a resumed full scan counts every batch.
+- Notifications are alerts on the shared alert module (`secret-scanning.data-source` provider), bound to one data
+  source each: never send email or in-app notifications from this module. A scan emits `secrets-detected` or
+  `scan-failed` (`secret-scanning-v2-events.ts`) with its data source as the `resourceId`, in the transaction that
+  closes it, guarded on the status update matching, so a scan the reaper already closed emits nothing.
+- Close a scan only through `completeFullScan`, `completeDiffScan` or `failScan` (`secret-scanning-v2-fns.ts`), never
+  with a status update from the queue. It owns the closing transaction and the alert decision, so
+  an alert is emitted exactly when its scan closes; the DAL keeps only the guarded transitions (`scans.markCompleted`,
+  `scans.markFailed`), and the queue keeps what runs after commit (pull request check, telemetry, audit logs).
+- `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`),
+  plus, for diff scans only, findings it reopened. The creating scan is the finding's `scanId`, set under the
+  resource lock; never infer it from location `createdAt` (transaction start time), and keep that column when the
+  rollback-only finding columns go. A new location of a finding that's still unresolved was already alerted on. A
+  resource's first full scan alerts like any other: don't exempt it, since a scan that found secrets and stayed silent
+  looks broken.
+- Every data source gets its alerts in the transaction that creates it: the ones its creator passed in `alerts`
+  (`prepareAlertForNewResource`, which needs edit on data sources), or `SECRET_SCANNING_DEFAULT_ALERTS` when `alerts` is
+  left out. Its id is chosen before that transaction so the alerts can be prepared, a KMS call, outside it. Never put
+  `alerts` in an audit log as sent, since channel configs hold webhook URLs and secrets. Deleting a data source
+  reaps its alerts in the delete transaction (`deleteAlertsForDeletedResource`), since alerts have no foreign key to it.

@@ -73,6 +73,7 @@ export type TSignCertificateFromProfileDTO = {
   issuerNameOverride?: TIssuerNameOverride;
   additionalExtensions?: TIssuerAddedExtension[];
   onCertificateRequestPersisted?: (certificateRequest: { id: string; createdAt: Date }, tx: Knex) => Promise<void>;
+  renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

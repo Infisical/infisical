@@ -21,6 +21,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
 | `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                   |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
 | `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
@@ -268,6 +269,13 @@ resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Adm
 read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
 playback), as it does for scope-less audit-log rows. `getSessionCredentials` still refuses — no account
 means no credentials to mint.
+
+**Recordings are also read server-side.** `pam-session-activity/` decrypts each newly stored chunk and
+maps its events in `buildPamSessionActivityEvents` for log streams with `filters.pamSessionActivity`, so
+a change to the recording event format (database entries, terminal events, HTTP events) needs the
+same change there as in the session viewer. Only a PAM product admin can create or change a stream
+that receives session activity (`assertCanStreamPamSessionActivity`), since org-level stream access
+would otherwise hand session content to people PAM never let view it.
 
 ## Conventions
 

@@ -1067,6 +1067,11 @@ export enum EventType {
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
 
+  // Audit log streams
+  CREATE_AUDIT_LOG_STREAM = "create-audit-log-stream",
+  UPDATE_AUDIT_LOG_STREAM = "update-audit-log-stream",
+  DELETE_AUDIT_LOG_STREAM = "delete-audit-log-stream",
+
   // Authorization
   PERMISSION_DENIED = "permission-denied",
 
@@ -3449,6 +3454,8 @@ interface RevokeCert {
     requesterEmail?: string;
     crlWarning?: string;
     source?: CertificateRevocationSource;
+    revokedThroughCertId?: string;
+    revokedThroughCertName?: string;
   };
 }
 
@@ -6037,7 +6044,10 @@ interface SecretScanningDataSourceGetEvent {
 
 interface SecretScanningDataSourceCreateEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_CREATE;
-  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId"> & { dataSourceId: string };
+  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "alerts"> & {
+    dataSourceId: string;
+    alerts?: { eventType: string; channelTypes: string[] }[];
+  };
 }
 
 interface SecretScanningDataSourceUpdateEvent {
@@ -6189,7 +6199,6 @@ interface OrgUpdateEvent {
     scimEnabled?: boolean;
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
-    selectedMfaMethod?: string;
     allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;
@@ -8977,6 +8986,28 @@ interface DeleteAlertEvent {
   };
 }
 
+type TAuditLogStreamEventMetadata = {
+  logStreamId: string;
+  provider: string;
+  destinationHost: string;
+  filters: { products?: string[]; pamSessionActivity?: { includeOutput: boolean } | null } | null;
+};
+
+interface CreateAuditLogStreamEvent {
+  type: EventType.CREATE_AUDIT_LOG_STREAM;
+  metadata: TAuditLogStreamEventMetadata;
+}
+
+interface UpdateAuditLogStreamEvent {
+  type: EventType.UPDATE_AUDIT_LOG_STREAM;
+  metadata: TAuditLogStreamEventMetadata;
+}
+
+interface DeleteAuditLogStreamEvent {
+  type: EventType.DELETE_AUDIT_LOG_STREAM;
+  metadata: { logStreamId: string; provider: string; destinationHost: string };
+}
+
 interface TestAlertChannelEvent {
   type: EventType.TEST_ALERT_CHANNEL;
   metadata: {
@@ -8996,6 +9027,9 @@ export type Event =
   | UpdateAlertEvent
   | DeleteAlertEvent
   | TestAlertChannelEvent
+  | CreateAuditLogStreamEvent
+  | UpdateAuditLogStreamEvent
+  | DeleteAuditLogStreamEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

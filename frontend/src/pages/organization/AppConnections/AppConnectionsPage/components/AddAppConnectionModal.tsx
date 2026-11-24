@@ -9,10 +9,10 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionForm } from "./AppConnectionForm";
@@ -81,16 +81,22 @@ export const AddAppConnectionModal = ({
   };
 
   const handleComplete = (appConnection: TAppConnection) => {
-    onComplete?.(appConnection);
-
-    // Azure can only be told to trust a managed identity connection once it has an ID, so the sheet stays open on
-    // its credentials, which show the federated credential values and verify the setup on reconnect
-    if (appConnection.method === AzureKeyVaultConnectionMethod.ManagedIdentity) {
+    // The sheet stays open on a federated connection's credentials, which show the values to configure in the
+    // provider and verify the setup on reconnect. Callers hear about it only once it verifies: they select it,
+    // which starts lookups (such as GCP project discovery) that fail until the provider trusts it and are not
+    // refetched afterwards.
+    if (isFederatedAppConnection(appConnection)) {
       setIsDirty(false);
       setCreatedConnection(appConnection);
       return;
     }
 
+    onComplete?.(appConnection);
+    closeSheet();
+  };
+
+  const handleVerified = (appConnection: TAppConnection) => {
+    onComplete?.(appConnection);
     closeSheet();
   };
 
@@ -139,7 +145,7 @@ export const AddAppConnectionModal = ({
                 <AppConnectionForm
                   appConnection={createdConnection}
                   isNewConnection
-                  onComplete={closeSheet}
+                  onComplete={handleVerified}
                   onCancel={() => requestDiscardAction(closeSheet)}
                   onDirtyChange={setIsDirty}
                 />

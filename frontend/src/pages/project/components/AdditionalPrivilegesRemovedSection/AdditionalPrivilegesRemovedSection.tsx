@@ -9,9 +9,9 @@ export const AdditionalPrivilegesRemovedSection = () => {
   return (
     <Alert variant="info">
       <InfoIcon />
-      <AlertTitle>Additional Privileges Moved to Folder-Level Access</AlertTitle>
+      <AlertTitle>Additional Privileges Were Replaced by Folder-Level Access</AlertTitle>
       <AlertDescription>
-        Folder-level grants override roles and keep working when folders are renamed or moved.{" "}
+        Folder-level access override roles and keep working when folders are renamed or moved.{" "}
         <a
           href={FOLDER_ACCESS_DOCS_URL}
           target="_blank"

@@ -8,17 +8,21 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionHsmConnectorActions
 } from "@app/context/ProjectPermissionContext/types";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AlertsTab } from "./components/AlertsTab";
 import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
+import { ProjectsTab } from "./components/ProjectsTab";
 
 export const SettingsPage = () => {
   const { orgId } = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
+  const { data: instanceState } = useCertManagerInstanceState();
+  const isMultiInstance = Boolean(instanceState?.isMultiInstance);
   const activeTab = search.selectedTab ?? "app-connections";
 
   return (
@@ -46,6 +50,7 @@ export const SettingsPage = () => {
             <TabsTrigger value="hsm-connectors">HSM Connectors</TabsTrigger>
             <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            {isMultiInstance && <TabsTrigger value="projects">Projects</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="app-connections">
@@ -80,6 +85,10 @@ export const SettingsPage = () => {
             >
               <AlertsTab />
             </ProjectPermissionCan>
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <ProjectsTab />
           </TabsContent>
         </Tabs>
       </div>

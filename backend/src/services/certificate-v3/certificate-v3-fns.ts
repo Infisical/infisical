@@ -1,19 +1,38 @@
+import * as x509 from "@peculiar/x509";
+
 import { BadRequestError } from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType,
+  mapLegacyAltNameType,
+  TAltNameType,
+  toAltNameMappings
+} from "@app/services/certificate/certificate-types";
 
 import { createDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import {
+  ACME_SAN_TYPES,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
-import { buildSubjectOverrideForCsr } from "../certificate-common/certificate-csr-utils";
+import {
+  buildSubjectOverrideForCsr,
+  extractCertificateRequestFromCSR
+} from "../certificate-common/certificate-csr-utils";
+import {
+  includesSan,
+  isRequestReference,
+  isValidSanValue,
+  RequestReference
+} from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { TIssuerNameOverride } from "./certificate-v3-types";
+import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import { TAltNameEntry, TIssuerNameOverride } from "./certificate-v3-types";
 
 export const calculateRenewalThreshold = (
   profileRenewBeforeDays: number | undefined,
@@ -91,6 +110,9 @@ export const resolveEffectiveTtl = ({
   });
 };
 
+export const getFixedDefaultSubjectAltNames = (defaults: TCertificateProfileDefaults | null | undefined) =>
+  defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value));
+
 /**
  * Applies profile defaults to certificate request
  * Request values always take precedence over defaults.
@@ -119,7 +141,8 @@ export const applyProfileDefaults = <
 ): T => {
   if (!defaults) return request;
 
-  const altNames = request.altNames && request.altNames.length > 0 ? request.altNames : defaults.subjectAltNames;
+  const altNames =
+    request.altNames && request.altNames.length > 0 ? request.altNames : getFixedDefaultSubjectAltNames(defaults);
 
   // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
   // CSR extraction (extractCertificateRequestFromCSR) omits keys for absent fields,
@@ -179,6 +202,105 @@ export const buildIssuanceSubject = (
         domainComponents: request.domainComponents
       })
     : buildSubjectOverrideForCsr(csr, request);
+export const applyCommonNameDefaultSan = ({
+  defaults,
+  enrollmentType,
+  commonName: requestedCommonName,
+  csrCommonName,
+  subjectAlternativeNames,
+  requestedSubjectAlternativeNames = subjectAlternativeNames,
+  isCsrSignedAsSent = false
+}: {
+  defaults: TCertificateProfileDefaults | null | undefined;
+  enrollmentType: EnrollmentType;
+  commonName?: string | null;
+  csrCommonName?: string | null;
+  subjectAlternativeNames?: TAltNameEntry[];
+  requestedSubjectAlternativeNames?: TAltNameEntry[];
+  isCsrSignedAsSent?: boolean;
+}): {
+  subjectAlternativeNames?: TAltNameEntry[];
+  altNameEntries?: TAltNameEntry[];
+} => {
+  const isAcme = enrollmentType === EnrollmentType.ACME;
+  const commonName = isAcme ? csrCommonName : requestedCommonName;
+  if (!commonName || isCsrSignedAsSent || requestedSubjectAlternativeNames?.length) {
+    return { subjectAlternativeNames };
+  }
+
+  const subjectAlternativeNamesWithCommonName = (defaults?.subjectAltNames ?? [])
+    .filter(({ type, value }) => value === RequestReference.CommonName && (!isAcme || ACME_SAN_TYPES.includes(type)))
+    .reduce<TAltNameEntry[]>((sans, { type }) => {
+      const san = { type, value: commonName };
+      return isValidSanValue(type, commonName) && !includesSan(sans, san) ? [...sans, san] : sans;
+    }, subjectAlternativeNames ?? []);
+
+  if (subjectAlternativeNamesWithCommonName.length === (subjectAlternativeNames?.length ?? 0)) {
+    return { subjectAlternativeNames };
+  }
+  return {
+    subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+    altNameEntries: subjectAlternativeNamesWithCommonName
+  };
+};
+
+export const toCommonNameDefaults = (types: CertSubjectAlternativeNameType[]): TCertificateProfileDefaults => ({
+  subjectAltNames: [...new Set(types)].map((type) => ({
+    type,
+    value: RequestReference.CommonName
+  }))
+});
+
+export const getSubjectAltNameTypes = (
+  sanExtension: x509.Extension | null | undefined
+): CertSubjectAlternativeNameType[] => {
+  if (!sanExtension) return [];
+  try {
+    return new x509.GeneralNames(sanExtension.value).items.flatMap((name) => {
+      try {
+        return [mapLegacyAltNameType(name.type as TAltNameType)];
+      } catch {
+        return [];
+      }
+    });
+  } catch {
+    return [];
+  }
+};
+
+export const getCommonNameCopySubjectAltNames = ({
+  issuedSubjectAltNames,
+  enrollmentType,
+  csr,
+  isCsrSignedAsSent
+}: {
+  issuedSubjectAltNames: x509.Extension | null | undefined;
+  enrollmentType: EnrollmentType;
+  csr: string;
+  isCsrSignedAsSent?: boolean;
+}): x509.Extension | null => {
+  const issuedTypes = getSubjectAltNameTypes(issuedSubjectAltNames);
+  if (!issuedTypes.length) return null;
+  const defaults = toCommonNameDefaults(issuedTypes);
+
+  let csrRequest: ReturnType<typeof extractCertificateRequestFromCSR>;
+  try {
+    csrRequest = extractCertificateRequestFromCSR(csr);
+  } catch {
+    return null;
+  }
+  if (csrRequest.subjectAlternativeNames?.length) return null;
+
+  const { altNameEntries } = applyCommonNameDefaultSan({
+    defaults,
+    enrollmentType,
+    commonName: csrRequest.commonName,
+    csrCommonName: csrRequest.commonName,
+    subjectAlternativeNames: [],
+    isCsrSignedAsSent
+  });
+  return altNameEntries?.length ? new x509.SubjectAlternativeNameExtension(toAltNameMappings(altNameEntries)) : null;
+};
 
 export const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
   if (!keyUsages) return [];

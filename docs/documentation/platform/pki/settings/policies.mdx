@@ -129,6 +129,16 @@ Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to 
 
 Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
+To match a request's own common name, select **Same as common name** in the value field of a SAN rule. The API stores it as `{{request.commonName}}`, the whole value. It matches a SAN of the rule's type that equals the common name. DNS names and email addresses ignore case, and a DNS name may end in a dot. IP addresses match by value, so `::1` matches `0:0:0:0:0:0:0:1`. In a URI with `://`, only the scheme and authority ignore case, and other URIs must match exactly. Any other value that contains `{{` is refused.
+
+- If the value is required, the request must include a SAN equal to its common name, so a request without a common name is refused
+- If the value is allowed, a SAN equal to the common name is accepted unless a denied value matches it, so the rule accepts any name that the policy's common name rule accepts
+- If the value is denied, a SAN equal to the common name is refused
+
+To use **Same as common name**, the policy's subject rules must allow or require a common name.
+
+To add the common name to the SANs without asking requesters to enter it, set a [default SAN](/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san) on the certificate profile.
+
 ### Key & signature algorithms
 
 Restrict which cryptographic algorithms are permitted:

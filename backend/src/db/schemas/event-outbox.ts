@@ -12,7 +12,6 @@ export const EventOutboxSchema = z.object({
   consumer: z.string(),
   eventType: z.string(),
   payload: z.unknown(),
-  idempotencyKey: z.string().nullable().optional(),
   occurredAt: z.date(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),
@@ -22,7 +21,7 @@ export const EventOutboxSchema = z.object({
   lastError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  eventId: z.string().uuid().nullable().optional()
+  eventId: z.string().uuid().default("00000000-0000-0000-0000-000000000000")
 });
 
 export type TEventOutbox = z.infer<typeof EventOutboxSchema>;

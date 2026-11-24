@@ -62,6 +62,7 @@ import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discover
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
+import { TPamSessionActivityServiceFactory } from "@app/ee/services/pam-session-activity/pam-session-activity-service";
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
@@ -89,6 +90,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
@@ -337,6 +339,7 @@ declare module "fastify" {
     orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
+    cronJob: TCronJobFactory;
     user: TUserServiceFactory;
     group: TGroupServiceFactory;
     groupProject: TGroupProjectServiceFactory;
@@ -509,6 +512,7 @@ declare module "fastify" {
     pamMembership: TPamMembershipServiceFactory;
     pamSession: TPamSessionServiceFactory;
     pamSessionChunk: TPamSessionChunkServiceFactory;
+    pamSessionActivity: TPamSessionActivityServiceFactory;
     pamAccessRequest: TPamAccessRequestServiceFactory;
     pamWebAccess: TPamWebAccessServiceFactory;
     mfaSession: TMfaSessionServiceFactory;

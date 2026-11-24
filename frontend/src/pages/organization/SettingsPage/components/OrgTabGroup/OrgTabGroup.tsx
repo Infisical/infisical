@@ -14,7 +14,6 @@ import { useOrganization, useSubscription } from "@app/context";
 
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
-import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
 
@@ -49,14 +48,6 @@ export const OrgTabGroup = () => {
       description: `Configure the key management systems (KMS) used to encrypt your ${
         isSubOrganization ? "sub-" : ""
       }organization's data.`
-    },
-    {
-      name: "Product Settings",
-      key: "product-settings",
-      component: OrgProductSettingsTab,
-      description: `Configure product-specific defaults and features across your ${
-        isSubOrganization ? "sub-" : ""
-      }organization.`
     },
     {
       name: "Sub Organizations",

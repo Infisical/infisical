@@ -45,6 +45,7 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { getSerialNumberSpellings } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentEnrollmentConfigDALFactory } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -106,7 +107,7 @@ type TMicrosoftAutoenrollmentServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction" | "primaryNode">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
@@ -503,9 +504,9 @@ export const microsoftAutoenrollmentServiceFactory = ({
       shouldThrowLookupErrors: true
     });
     const storedCertificate = isCurrentCertificateValid
-      ? await certificateDAL.findOne(
+      ? await certificateDAL.findOneLiveFirst(
           {
-            serialNumber: currentCertificate.serialNumber,
+            $in: { serialNumber: getSerialNumberSpellings(currentCertificate.serialNumber) },
             caId: context.caId,
             profileId: context.profile.id,
             applicationId: context.applicationId

@@ -19,10 +19,14 @@ import { recordCertificateIssuanceFailure } from "@app/services/certificate-comm
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  getCommonNameCopySubjectAltNames,
+  getSubjectAltNameTypes,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { getSerialNumberSpellings, isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -36,7 +40,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -361,11 +365,15 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const storedCert = await certificateDAL.transaction(async (tx) =>
-      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
+    const storedRecords = await certificateDAL.transaction((tx) =>
+      certificateDAL.find(
+        { $in: { serialNumber: getSerialNumberSpellings(cert.serialNumber) }, caId: profile.caId },
+        { tx, sort: [["deletedAt", "desc", "first"]] }
+      )
     );
+    const [storedCert] = storedRecords;
 
-    if (storedCert?.status === CertStatus.REVOKED) {
+    if (storedRecords.some((record) => record.status === CertStatus.REVOKED)) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
@@ -394,21 +402,24 @@ export const certificateEstV3ServiceFactory = ({
       throw await $rejectReenrollCsr("Subject mismatch");
     }
 
-    let csrSanSet: Set<string> = new Set();
-    const csrSanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (csrSanExtension) {
-      const sanNames = new x509.GeneralNames(csrSanExtension.value);
-      csrSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
-
-    let certSanSet: Set<string> = new Set();
+    const toSanSet = (sanExtension?: x509.Extension | null): Set<string> =>
+      new Set(
+        sanExtension ? new x509.GeneralNames(sanExtension.value).items.map((name) => `${name.type}-${name.value}`) : []
+      );
+    const csrSanSet = toSanSet(csrObj.extensions.find((ext) => ext.type === "2.5.29.17"));
     const certSanExtension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (certSanExtension) {
-      const sanNames = new x509.GeneralNames(certSanExtension.value);
-      certSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
+    const certSanSet = toSanSet(certSanExtension);
+    const commonNameCopySanExtension = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: certSanExtension,
+      enrollmentType: EnrollmentType.EST,
+      csr
+    });
+    const commonNameCopySanSet = commonNameCopySanExtension ? toSanSet(commonNameCopySanExtension) : null;
 
-    if (csrSanSet.size !== certSanSet.size || ![...csrSanSet].every((element) => certSanSet.has(element))) {
+    const matchesCertSans = (sanSet: Set<string>) =>
+      sanSet.size === certSanSet.size && [...sanSet].every((element) => certSanSet.has(element));
+    const isCsrSanMatch = matchesCertSans(csrSanSet);
+    if (!isCsrSanMatch && !(commonNameCopySanSet && matchesCertSans(commonNameCopySanSet))) {
       throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
@@ -437,6 +448,7 @@ export const certificateEstV3ServiceFactory = ({
       applicationId,
       issuanceOperation: CertificateIssuanceOperation.RENEW,
       originalCertificateId: storedCert?.id,
+      renewalCommonNameSanTypes: isCsrSanMatch ? [] : getSubjectAltNameTypes(certSanExtension),
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }

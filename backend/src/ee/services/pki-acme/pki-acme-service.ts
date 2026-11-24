@@ -29,6 +29,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -36,7 +37,7 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ACME_SAN_TYPES, CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -60,7 +61,11 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -1266,11 +1271,7 @@ export const pkiAcmeServiceFactory = ({
         return error;
       };
 
-      const allowedSanTypes = new Set([
-        CertSubjectAlternativeNameType.DNS_NAME,
-        CertSubjectAlternativeNameType.IP_ADDRESS
-      ]);
-      if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+      if (certificateRequest.subjectAlternativeNames?.some((san) => !ACME_SAN_TYPES.includes(san.type))) {
         throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 
@@ -1308,6 +1309,14 @@ export const pkiAcmeServiceFactory = ({
       ) {
         throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
+
+      certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.ACME,
+        csrCommonName: certificateRequest.commonName,
+        subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+        isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
+      }).subjectAlternativeNames;
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
       // holding a pooled connection across signing is what let concurrent finalizations exhaust

@@ -300,7 +300,7 @@ export const FolderAccessRow = ({
   const triggerLabel = (() => {
     if (access) return FOLDER_ROLE_TIER_LABELS[access.permission];
     if (inheritedTierLabel) return inheritedTierLabel;
-    return "Set Access";
+    return "Override Access";
   })();
 
   return (

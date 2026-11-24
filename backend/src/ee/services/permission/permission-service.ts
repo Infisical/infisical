@@ -187,8 +187,7 @@ export const buildProjectPermissionRules = (
           default:
             // Membership rows can still hold role slugs whose products were removed
             // (e.g. "ssh-host-bootstrapper"). Contribute no rules instead of failing
-            // the whole permission build, so the actor's other roles keep working;
-            // backend-go skips unknown slugs the same way.
+            // the whole permission build, so the actor's other roles keep working.
             logger.warn(`buildProjectPermissionRules: unknown project role slug, granting no rules [role=${role}]`);
             return [];
         }

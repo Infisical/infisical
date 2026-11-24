@@ -17,7 +17,7 @@ import { getCaCertChains, getCaSigner } from "@app/services/certificate-authorit
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { getSerialNumberSpellings, isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 const RA_CERT_VALIDITY_YEARS = 10;
@@ -259,7 +259,7 @@ export const isSignerCertIssuedByCa = async ({
   signerCertDer: Buffer;
   signerCert?: x509.X509Certificate;
   caId: string;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOneLiveFirst" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -308,14 +308,15 @@ export const isSignerCertIssuedByCa = async ({
     // Use transaction to read from primary DB (not replica) since this is a security-critical check
     const isRevoked = await lookUp(
       certificateDAL.transaction(async (tx) => {
-        const storedCert = await certificateDAL.findOne(
+        const revokedCert = await certificateDAL.findOneLiveFirst(
           {
-            serialNumber: signerCert.serialNumber,
-            caId
+            $in: { serialNumber: getSerialNumberSpellings(signerCert.serialNumber) },
+            caId,
+            status: CertStatus.REVOKED
           },
           tx
         );
-        return storedCert?.status === CertStatus.REVOKED;
+        return Boolean(revokedCert);
       })
     );
 
@@ -339,7 +340,9 @@ export enum ScepRenewalDenyReason {
   SubjectAltNameMismatch = "subject-alt-name-mismatch"
 }
 
-export type TScepRenewalAuthResult = { authorized: true } | { authorized: false; reason: ScepRenewalDenyReason };
+export type TScepRenewalAuthResult =
+  | { authorized: true; isCsrSanMatch: boolean }
+  | { authorized: false; reason: ScepRenewalDenyReason };
 
 const DN_WHITESPACE_RE = new RE2("\\s+", "g");
 
@@ -427,6 +430,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName,
   signerCertSubjectName,
   csrSubjectAltNames,
+  csrCommonNameCopySubjectAltNames,
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
@@ -438,6 +442,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
   csrSubjectAltNames?: x509.Extension | null;
+  csrCommonNameCopySubjectAltNames?: x509.Extension | null;
   signerCertSubjectAltNames?: x509.Extension | null;
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
@@ -460,8 +465,12 @@ export const evaluateScepRenewalAuthorization = ({
     return { authorized: false, reason: ScepRenewalDenyReason.SubjectMismatch };
   }
 
+  const signerCertSans = normalizeIssuedSubjectAltNames(signerCertSubjectAltNames);
+  const isCsrSanMatch = normalizeIssuedSubjectAltNames(csrSubjectAltNames) === signerCertSans;
   if (
-    normalizeIssuedSubjectAltNames(csrSubjectAltNames) !== normalizeIssuedSubjectAltNames(signerCertSubjectAltNames)
+    !isCsrSanMatch &&
+    (!csrCommonNameCopySubjectAltNames ||
+      normalizeIssuedSubjectAltNames(csrCommonNameCopySubjectAltNames) !== signerCertSans)
   ) {
     return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };
   }
@@ -479,7 +488,7 @@ export const evaluateScepRenewalAuthorization = ({
     }
   }
 
-  return { authorized: true };
+  return { authorized: true, isCsrSanMatch };
 };
 
 export const getScepCapabilities = ({ allowCertBasedRenewal }: { allowCertBasedRenewal: boolean }): string => {
