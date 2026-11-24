@@ -1682,6 +1682,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  IMPORTED_SECRETS: {
+    importId:
+      "The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."
@@ -5779,6 +5783,27 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
     "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const SECRET_CHANGE_POLICIES = {
+  enforceImportReplication:
+    "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",
+  LIST_IMPORTS: {
+    description:
+      "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+    sapId: "The ID of the secret change policy whose folders to list imports from.",
+    isReplicationFilter:
+      "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false). Omit it to list both.",
+    imports: "The imports in folders this policy governs, leaving out folders a more specific policy governs.",
+    id: "The ID of the secret import.",
+    environment: "The environment the import is in, which is where the imported secrets are read.",
+    environmentSlug: "The slug of the environment.",
+    environmentName: "The name of the environment.",
+    secretPath: "The path of the folder the import is in.",
+    sourceEnvironment: "The environment the import reads its secrets from.",
+    sourceSecretPath: "The path of the folder the import reads its secrets from.",
+    isReplication: "True when the import respects approval policies, false when it reads its source directly."
+  }
 };
 
 export const HONEY_TOKENS = {
