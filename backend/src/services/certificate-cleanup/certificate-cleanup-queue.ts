@@ -28,7 +28,7 @@ type TCertificateCleanupQueueFactoryDep = {
   db: TDbClient;
   cronJob: TCronJobFactory;
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "update">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "lockSerialNumbers" | "update">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "delete">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "delete">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
@@ -159,8 +159,13 @@ export const certificateCleanupQueueFactory = ({
       if (idsToDelete.length > 0) {
         try {
           const { deletedCertificates: deleted, pkiSyncIdsHoldingCertificates } =
-            await certificateCleanupConfigDAL.transaction((tx) =>
-              softDeleteCertificates(
+            await certificateCleanupConfigDAL.transaction(async (tx) => {
+              const batchCertificates = await certificateDAL.find({ $in: { id: idsToDelete } }, { tx });
+              await certificateDAL.lockSerialNumbers(
+                batchCertificates.map((cert) => cert.serialNumber),
+                tx
+              );
+              return softDeleteCertificates(
                 { certificateIds: idsToDelete, actorType: ActorType.PLATFORM },
                 {
                   certificateDAL,
@@ -171,8 +176,8 @@ export const certificateCleanupQueueFactory = ({
                   certificateSyncDAL
                 },
                 tx
-              )
-            );
+              );
+            });
           deletedCount += deleted.length;
           await queueAutoSyncsForRemoval(pkiSyncIdsHoldingCertificates);
 
