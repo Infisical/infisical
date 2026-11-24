@@ -31,11 +31,9 @@ Approval workflows add a human review step before certificates are issued or rev
 
 An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of three actions:
 
-- **Issuance:** new certificates
-- **Renewal:** renewals of existing certificates, including EST re-enrollment and SCEP renewal requests that a device signs with its existing certificate instead of a challenge password
+- **Issuance:** new certificates, and renewals that change a certificate
+- **Renewal:** every renewal, including automatic renewals, EST re-enrollment, and SCEP renewal requests that a device signs with its existing certificate instead of a challenge password
 - **Revocation:** revoking certificates
-
-Policies created before **Issuance** and **Renewal** were separate show as **Issuance and Renewal**. They hold issuance, and hold renewals according to their **Renewals Require Approval** setting. If an **Issuance** or **Renewal** policy covers the same profile, that policy applies instead.
 
 When a certificate request is made through an enrollment method:
 
@@ -46,10 +44,12 @@ When a certificate request is made through an enrollment method:
 
 ### Renewals
 
-If a **Renewal** or **Issuance and Renewal** policy covers the certificate's profile, the policy's **Renewals Require Approval** setting decides which [renewals](/documentation/platform/pki/applications/certificate-renewal) wait for approval:
+If an **Issuance** policy covers the certificate's profile, a [renewal](/documentation/platform/pki/applications/certificate-renewal) waits for approval in these cases:
 
-- **When the certificate changes** (the default): a renewal waits if it uses a CSR, if the certificate was imported or discovered, or if it changes any of the certificate's details, such as its subject, SANs, key usages, algorithms, validity, or custom extensions
-- **Every renewal**: every renewal waits, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued
+- The certificate was imported or discovered, including when it renews automatically
+- The renewal changes the certificate, such as its common name, SANs, validity, or custom extensions, or uses a CSR
+
+If a **Renewal** policy covers the profile, every renewal waits for approval, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued. If both kinds of policy cover the profile, the Renewal policy's approvers review the renewals.
 
 The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
 
@@ -88,7 +88,6 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | **Max. Request TTL** | How long a request can remain pending before expiring |
     | **Policy Type** | **Issuance**, **Renewal**, or **Revocation** (you can't change it after you create the policy) |
     | **Certificate Profiles** | Which profiles require approval |
-    | **Renewals Require Approval** | Which [renewals](#renewals) wait for approval: **When the certificate changes** or **Every renewal** (not Issuance or Revocation policies) |
     | **Bypass approval for machine identities** | Allow automated systems to skip approval (not Revocation policies) |
   </Step>
   <Step title="Configure approval steps">
