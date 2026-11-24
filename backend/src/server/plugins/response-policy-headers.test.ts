@@ -64,4 +64,34 @@ describe("responsePolicyHeaders", () => {
     expect(revalidated.headers["content-security-policy"]).toBeUndefined();
     expect(revalidated.headers["permissions-policy"]).toBeUndefined();
   });
+
+  // inject does not reproduce the double send, so this goes over a real socket.
+  test("sends a 304 an async route sends itself only once", async () => {
+    const logLines: string[] = [];
+    const server = Fastify({ logger: { level: "warn", stream: { write: (line: string) => logLines.push(line) } } });
+    await server.register(etag);
+    await server.register(responsePolicyHeaders);
+    server.setErrorHandler((error: Error, _req, res) => {
+      void res.status(500).send({ message: error.message });
+    });
+    server.get("/secrets", async (_req, reply) => {
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+      void reply.header("ETag", '"stored"');
+      return reply.code(304).send();
+    });
+
+    try {
+      const address = await server.listen({ port: 0, host: "127.0.0.1" });
+      const responses = await Promise.all(
+        Array.from({ length: 10 }, () => fetch(`${address}/secrets`, { headers: { "if-none-match": '"stored"' } }))
+      );
+
+      expect(responses.map((res) => res.status)).toEqual(Array(10).fill(304));
+      expect(logLines.filter((line) => line.includes("FST_ERR_REP_ALREADY_SENT"))).toEqual([]);
+    } finally {
+      await server.close();
+    }
+  });
 });
