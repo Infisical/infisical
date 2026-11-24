@@ -102,7 +102,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create" | "primaryNode">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findById" | "findByIdForUpdate" | "updateById" | "transaction" | "create" | "primaryNode"
+  >;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -607,6 +610,8 @@ export const certificateApprovalServiceFactory = (
         );
 
         if (renewalOfCertificateId) {
+          // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
+          await certificateDAL.findByIdForUpdate(renewalOfCertificateId, tx);
           await linkRenewedCertificate(certificateDAL, renewalOfCertificateId, newCert.id, tx);
         }
 
