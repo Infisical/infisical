@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_PROFILES } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -24,19 +24,16 @@ import {
   pkiDescriptionSchema,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
+import { refineRequestReference } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const SubjectAltNameDefaultsSchema = z
-  .array(
-    z.object({
-      type: z.nativeEnum(CertSubjectAlternativeNameType),
-      value: z.string().trim().min(1)
-    })
-  )
-  .optional();
+const SubjectAltNameDefaultSchema = z.object({
+  type: z.nativeEnum(CertSubjectAlternativeNameType),
+  value: z.string().trim().min(1)
+});
 
 const CustomExtensionDefaultsSchema = z
   .array(
@@ -72,7 +69,14 @@ const CertificateProfileDefaultsSchema = z
     country: subjectAttributeSchema.optional(),
     state: subjectAttributeSchema.optional(),
     locality: subjectAttributeSchema.optional(),
-    subjectAltNames: SubjectAltNameDefaultsSchema,
+    subjectAltNames: z
+      .array(
+        SubjectAltNameDefaultSchema.extend({
+          value: SubjectAltNameDefaultSchema.shape.value.superRefine(refineRequestReference)
+        })
+      )
+      .optional()
+      .describe(CERTIFICATE_PROFILES.DEFAULT_SUBJECT_ALT_NAMES),
     domainComponents: domainComponentsSchema.optional(),
     customExtensions: CustomExtensionDefaultsSchema
   })
@@ -97,7 +101,7 @@ const CertificateProfileDefaultsResponseSchema = z
     country: z.string().optional(),
     state: z.string().optional(),
     locality: z.string().optional(),
-    subjectAltNames: SubjectAltNameDefaultsSchema,
+    subjectAltNames: z.array(SubjectAltNameDefaultSchema).optional(),
     domainComponents: z.array(z.string()).optional(),
     customExtensions: CustomExtensionDefaultsSchema
   })

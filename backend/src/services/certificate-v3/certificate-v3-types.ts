@@ -70,6 +70,7 @@ export type TSignCertificateFromProfileDTO = {
   auditLogInfo?: AuditLogInfo;
   issuanceOperation?: CertificateIssuanceOperation;
   originalCertificateId?: string;
+  renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
 } & TCertificateIssuanceCaller;
 
 export type TOrderCertificateFromProfileDTO = {

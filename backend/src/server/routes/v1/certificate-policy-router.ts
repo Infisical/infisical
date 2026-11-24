@@ -18,7 +18,8 @@ import {
 import {
   certificatePolicyResponseSchema,
   policyCustomExtensionSchema,
-  policySubjectSchema
+  policySubjectSchema,
+  refineRequestReference
 } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -106,12 +107,14 @@ const policyExtendedKeyUsagesSchema = z
     }
   );
 
+const sanRuleValueSchema = z.string().superRefine(refineRequestReference);
+
 const policySanSchema = z
   .object({
     type: sanTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
+    allowed: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.allowed),
+    required: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.required),
+    denied: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.denied)
   })
   .refine(
     (data) => {

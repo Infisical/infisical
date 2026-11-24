@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import {
   CertExtendedKeyUsageType,
@@ -18,7 +18,9 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "../certificate-common/certificate-constants";
+import { buildSubjectAlternativeNamesFromTemplate } from "../certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
+import { RequestReference } from "./certificate-policy-fns";
 import { certificatePolicyServiceFactory, TCertificatePolicyServiceFactory } from "./certificate-policy-service";
 import {
   TCertificatePolicy,
@@ -187,6 +189,41 @@ describe("CertificatePolicyService", () => {
       expect(result).toEqual(sampleTemplate);
     });
 
+    it("refuses a same-as-common-name SAN rule when the subject rules allow no common name", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+            sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+          }
+        })
+      ).rejects.toThrow('To use "Same as common name"');
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a SAN rule that requires and denies the same value", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            sans: [
+              {
+                type: CertSubjectAlternativeNameType.DNS_NAME,
+                required: [RequestReference.CommonName],
+                denied: [RequestReference.CommonName]
+              }
+            ]
+          }
+        })
+      ).rejects.toThrow("both requires and denies");
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
     // Previously tested service-level validations that are now schema-level:
     // - Missing attributes validation (now mandatory in schema)
     // - Missing key usages validation (now mandatory in schema)
@@ -272,6 +309,71 @@ describe("CertificatePolicyService", () => {
     });
   });
 
+  describe("SAN rules that reference the request common name", () => {
+    const dns = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+    const sanRulePolicy = (rule: { allowed?: string[]; required?: string[]; denied?: string[] }) =>
+      ({
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }]
+      }) as never;
+    const isValid = (policy: never, commonName: string | undefined, sanValue: string) =>
+      service.validateRequestAgainstPolicy(policy, { commonName, subjectAlternativeNames: [dns(sanValue)] }).isValid;
+
+    it("requires a DNS SAN equal to the request's common name in any case, and a common name to be present", () => {
+      const policy = sanRulePolicy({ required: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "APP.example.com")).toBe(true);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(false);
+      expect(isValid(policy, undefined, "app.example.com")).toBe(false);
+    });
+
+    it("refuses a SAN equal to the request's common name when the policy denies it", () => {
+      const policy = sanRulePolicy({ denied: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "app.example.com")).toBe(false);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(true);
+    });
+
+    it("matches an IP address common name by address, not by spelling", () => {
+      const policy = {
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, required: [RequestReference.CommonName] }]
+      } as never;
+
+      expect(
+        service.validateRequestAgainstPolicy(policy, {
+          commonName: "::1",
+          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "0:0:0:0:0:0:0:1" }]
+        }).isValid
+      ).toBe(true);
+    });
+
+    it("matches an allowed common name reference as a whole value, never as a wildcard pattern", () => {
+      const policy = sanRulePolicy({ allowed: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "*.example.com", "*.example.com")).toBe(true);
+      expect(isValid(policy, "*.example.com", "api.example.com")).toBe(false);
+    });
+
+    it("applies the same reference rules when building the SANs for a CSR", () => {
+      const sans = (rule: { required?: string[]; denied?: string[] }) => [
+        { type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }
+      ];
+      const request = { commonName: "app.example.com", subjectAlternativeNames: [dns("app.example.com")] };
+
+      expect(buildSubjectAlternativeNamesFromTemplate(request, sans({ required: [RequestReference.CommonName] }))).toBe(
+        "app.example.com"
+      );
+      expect(() =>
+        buildSubjectAlternativeNamesFromTemplate(request, sans({ denied: [RequestReference.CommonName] }))
+      ).toThrow(BadRequestError);
+    });
+  });
+
   describe("updatePolicy", () => {
     it("should update policy with valid data", async () => {
       const updateData = { name: "updated-template-name" };
@@ -304,6 +406,42 @@ describe("CertificatePolicyService", () => {
           data: { name: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("refuses a SAN rule change that leaves a bound profile's common name default without a matching rule", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([
+        {
+          id: "profile-1",
+          slug: "web-servers",
+          defaults: {
+            subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
+          }
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*@example.com"] }] }
+        })
+      ).rejects.toThrow("Certificate profile 'web-servers' uses this policy and would no longer be valid.");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("accepts turning off the subject restriction while a SAN rule uses the common name", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({
+        ...sampleTemplate,
+        subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+      });
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { subject: null } });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
   });
 

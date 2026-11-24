@@ -14,6 +14,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
@@ -2616,7 +2617,15 @@ const domainComponentRule = (rule: string) =>
 
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
+const sanRuleValues = (rule: string, reference: string) =>
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
+
 export const CERTIFICATE_POLICIES = {
+  SAN_RULE: {
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
+    required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
+    denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
+  },
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
@@ -2632,6 +2641,10 @@ export const CERTIFICATE_POLICIES = {
     required: domainComponentRule("required"),
     denied: DOMAIN_COMPONENT_DENIED_RULE
   }
+};
+
+export const CERTIFICATE_PROFILES = {
+  DEFAULT_SUBJECT_ALT_NAMES: `Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {

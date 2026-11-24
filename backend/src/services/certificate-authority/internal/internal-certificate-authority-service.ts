@@ -32,7 +32,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -62,7 +61,8 @@ import {
   CertKeyUsage,
   CertStatus,
   TAltNameMapping,
-  TAltNameType
+  TAltNameType,
+  toAltNameMappings
 } from "../../certificate/certificate-types";
 import { isExternalCaKeySource } from "../ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
@@ -2201,10 +2201,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     let altNamesArray: TAltNameMapping[] = [];
 
     if (altNameEntries?.length) {
-      altNamesArray = altNameEntries.map(({ type, value }) => ({
-        type: CERT_SUBJECT_ALTERNATIVE_NAMES[type].generalNameType,
-        value
-      }));
+      altNamesArray = toAltNameMappings(altNameEntries);
     } else if (altNames) {
       altNamesArray = altNames
         .split(",")
@@ -2388,6 +2385,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       subjectOverride,
       customExtensions
     } = dto;
+    const altNameEntries = dto.isInternal ? dto.altNameEntries : undefined;
 
     let collectionId = pkiCollectionId;
 
@@ -2660,7 +2658,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     let altNamesFromCsr: string = "";
     let altNamesArray: TAltNameMapping[] = [];
 
-    if (altNames) {
+    if (altNameEntries?.length) {
+      altNamesArray = toAltNameMappings(altNameEntries);
+    } else if (altNames) {
       altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
@@ -2780,7 +2780,9 @@ export const internalCertificateAuthorityServiceFactory = ({
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
-          altNames: altNamesFromCsr || altNames,
+          altNames: altNameEntries?.length
+            ? altNameEntries.map(({ value }) => value).join(",")
+            : altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
