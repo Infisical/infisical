@@ -2,12 +2,39 @@ version: v0.167.15
 releasedAt: 2026-11-24T11:42:33-03:00
 sourceTag: v0.167.15
 previousTag: v0.167.14
-impactLevel: low
-summary: Startup runs five database migrations. Most are additive; one changes
-  certificate serial uniqueness to allow re-importing deleted certificates and
-  can block rollback if duplicate serials exist.
+impactLevel: medium
+summary: The organization API no longer accepts selectedMfaMethod, so
+  automation must set allowedMfaMethods instead. Startup runs five database
+  migrations. Most are additive; one drops organizations.selectedMfaMethod, and
+  one changes certificate serial uniqueness to allow re-importing deleted
+  certificates and can block rollback if duplicate serials exist.
 requiresDbMigration: true
-breakingChanges: []
+breakingChanges:
+  - title: Organization selectedMfaMethod removed
+    description: PATCH /api/v1/organization/:organizationId ignores
+      selectedMfaMethod, and organization responses no longer return it. A
+      request that sets enforceMfa to true with selectedMfaMethod keeps the
+      organization's allowed methods, which default to email only, so it
+      leaves email allowed or, without SMTP, fails with a 400 error. Pods
+      still running v0.167.14 write the dropped column when MFA settings
+      change, so those changes fail until every pod runs v0.167.15.
+    action: Before upgrading, change automation that sets selectedMfaMethod to
+      send allowedMfaMethods (for example ["totp"]) instead. Don't change
+      organization MFA settings until every pod runs v0.167.15.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9787"
+        url: https://github.com/Infisical/infisical/pull/9787
+        description: Remove selectedMfaMethod from organizations
+      - type: file
+        ref: backend/src/server/routes/v1/organization-router.ts
+        path: backend/src/server/routes/v1/organization-router.ts
+        description: PATCH body accepts allowedMfaMethods only
+      - type: file
+        ref: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        path: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        description: Drops selectedMfaMethod column
 dbSchemaChanges:
   - title: Agent Vault hooks migration
     description: Adds Agent Vault hooks tables and service hook columns, then
