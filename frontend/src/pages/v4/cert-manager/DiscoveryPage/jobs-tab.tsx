@@ -269,7 +269,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
           )
         }}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Discovery job pages"
               variant="compact"

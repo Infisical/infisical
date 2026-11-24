@@ -244,7 +244,7 @@ const ScanRuns = ({
         rowLabel={(scan) => timestamp(scan.startedAt)}
         empty={<EmptyState size="sm" icon="history" title="No scans yet" />}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 10) ? (
             <Pagination
               label="Scan run pages"
               variant="compact"
@@ -334,7 +334,7 @@ const FoundInstallations = ({
         rowLabel={(installation) => installationName(installation)}
         empty={<EmptyState size="sm" icon="server" title="No installations found" />}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 10) ? (
             <Pagination
               label="Installation pages"
               variant="compact"

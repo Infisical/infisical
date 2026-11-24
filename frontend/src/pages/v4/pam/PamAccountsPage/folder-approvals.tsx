@@ -383,7 +383,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
             />
           }
           pagination={
-            total > perPage ? (
+            total > Math.min(perPage, 10) ? (
               <Pagination
                 label="Access request pages"
                 variant="compact"

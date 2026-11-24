@@ -508,7 +508,7 @@ const RequestsCard = ({
         }}
         persistentStatus={total ? `${total} ${total === 1 ? "request" : "requests"}` : undefined}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Request pages"
               variant="compact"

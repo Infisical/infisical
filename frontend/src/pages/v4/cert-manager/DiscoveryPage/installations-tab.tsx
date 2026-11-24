@@ -219,7 +219,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
           )
         }}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Installation pages"
               variant="compact"

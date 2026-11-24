@@ -185,7 +185,7 @@ export const ActivityTab = ({
           total ? `${total} ${total === 1 ? "operation" : "operations"}` : undefined
         }
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Signing history pages"
               variant="compact"

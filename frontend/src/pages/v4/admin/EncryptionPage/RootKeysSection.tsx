@@ -230,7 +230,7 @@ export const RootKeysSection = () => {
           }}
           empty={<EmptyState size="sm" icon="key" title="No root keys yet" />}
           pagination={
-            totalCount > pageSize ? (
+            totalCount > Math.min(pageSize, 10) ? (
               <Pagination
                 label="Root key pages"
                 variant="compact"

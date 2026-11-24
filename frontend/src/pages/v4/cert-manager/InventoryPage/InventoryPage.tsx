@@ -712,7 +712,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               : sourceLine(total, authorities.length)
           }
           pagination={
-            totalCount > pageSize && (
+            totalCount > Math.min(pageSize, 25) && (
               <Pagination
                 label="Certificate pages"
                 variant="compact"

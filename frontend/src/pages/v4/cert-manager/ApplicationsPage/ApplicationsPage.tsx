@@ -207,7 +207,7 @@ const Page = () => {
             )
           }}
           pagination={
-            total > pageSize ? (
+            total > Math.min(pageSize, 20) ? (
               <Pagination
                 label="Application pages"
                 variant="compact"

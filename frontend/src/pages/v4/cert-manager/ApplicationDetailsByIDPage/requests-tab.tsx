@@ -380,7 +380,7 @@ export const RequestsTab = ({
         }
         persistentStatus={totalCount ? plural(totalCount, "request", "requests") : undefined}
         pagination={
-          totalCount > pageSize ? (
+          totalCount > Math.min(pageSize, 20) ? (
             <Pagination
               label="Certificate request pages"
               variant="compact"

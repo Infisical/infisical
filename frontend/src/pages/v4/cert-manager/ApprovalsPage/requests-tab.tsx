@@ -186,7 +186,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
           )
         }
         pagination={
-          rows.length > pageSize ? (
+          rows.length > Math.min(pageSize, 10) ? (
             <Pagination
               label="Certificate approval request pages"
               variant="compact"

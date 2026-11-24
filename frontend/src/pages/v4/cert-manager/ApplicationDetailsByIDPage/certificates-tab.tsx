@@ -348,7 +348,7 @@ export const CertificatesTab = ({
           totalCount ? plural(totalCount, "certificate", "certificates") : undefined
         }
         pagination={
-          totalCount > pageSize ? (
+          totalCount > Math.min(pageSize, 25) ? (
             <Pagination
               label="Certificate pages"
               variant="compact"

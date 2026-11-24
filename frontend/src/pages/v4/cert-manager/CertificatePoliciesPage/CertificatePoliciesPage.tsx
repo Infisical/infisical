@@ -171,7 +171,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
           }
         }}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 20) ? (
             <Pagination
               label="Certificate policy pages"
               variant="compact"

@@ -185,7 +185,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         empty={empty}
         persistentStatus={total ? `${total} ${total === 1 ? "signer" : "signers"}` : undefined}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Signer pages"
               variant="compact"

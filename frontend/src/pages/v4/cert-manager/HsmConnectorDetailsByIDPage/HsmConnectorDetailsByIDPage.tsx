@@ -192,7 +192,7 @@ const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: s
             getRowId={(cert) => cert.id}
             rowLabel={(cert) => cert.commonName}
             pagination={
-              totalCount > pageSize ? (
+              totalCount > Math.min(pageSize, 20) ? (
                 <Pagination
                   label="Linked certificate pages"
                   variant="compact"
