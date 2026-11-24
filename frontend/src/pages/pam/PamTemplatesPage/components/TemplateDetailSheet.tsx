@@ -423,7 +423,8 @@ const SettingsTab = ({
   // These only change how an approval is reached, so they follow Require Approval
   const approvalDependentPolicies = [
     PamPolicyType.AllowAutoApproval,
-    PamPolicyType.AllowBreakGlass
+    PamPolicyType.AllowBreakGlass,
+    PamPolicyType.MaxAccessDuration
   ];
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key] && (!approvalDependentPolicies.includes(p.key) || requiresApproval)

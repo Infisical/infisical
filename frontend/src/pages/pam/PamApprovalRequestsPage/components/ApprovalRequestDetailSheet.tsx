@@ -24,6 +24,7 @@ import {
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
+import { formatAccessDurationLimit, isAccessDurationCapped } from "../../components/accessDuration";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import {
@@ -61,6 +62,7 @@ export const ApprovalRequestDetailSheet = ({
     request ?? { status: PamAccessRequestStatus.Pending, grantExpiresAt: null }
   );
   const requestData = request?.requestData?.requestData;
+  const maxAccessDurationSeconds = request?.maxAccessDurationSeconds ?? null;
   const isPending = request?.status === PamAccessRequestStatus.Pending;
   // Self-approval is always blocked server-side; denying your own request stays allowed
   const isOwnRequest = Boolean(request?.requesterId && request.requesterId === user?.id);
@@ -254,6 +256,15 @@ export const ApprovalRequestDetailSheet = ({
                 <Clock className="size-4 text-muted" />
                 {formatDuration(requestData?.duration)}
               </div>
+              {isPending &&
+                maxAccessDurationSeconds !== null &&
+                isAccessDurationCapped(requestData?.duration, maxAccessDurationSeconds) && (
+                  <p className="mt-1.5 text-xs text-warning">
+                    This account&apos;s template allows up to{" "}
+                    {formatAccessDurationLimit(maxAccessDurationSeconds)}. Approving grants access
+                    for {formatAccessDurationLimit(maxAccessDurationSeconds)}.
+                  </p>
+                )}
             </div>
 
             {!isPending && !canRevoke && (

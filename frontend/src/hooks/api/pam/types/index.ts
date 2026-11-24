@@ -377,6 +377,7 @@ export type TAccessiblePamAccount = {
   // site that quietly omitted them is what stopped the break-glass action from ever rendering.
   pendingRequestId: string | null;
   canBreakGlass: boolean;
+  maxAccessDurationSeconds: number | null;
   credentialAccessStatus?: PamAccessStatus;
   credentialPendingRequestId?: string | null;
   disabledReason?: string | null;
@@ -755,6 +756,7 @@ export type TPamAccessRequest = {
   folderName?: string;
   host?: string;
   accessType?: PamAccessType;
+  maxAccessDurationSeconds?: number | null;
   grantId?: string | null;
   grantExpiresAt?: string | null;
   grantStatus?: string | null;

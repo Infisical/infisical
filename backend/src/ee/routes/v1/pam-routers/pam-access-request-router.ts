@@ -31,6 +31,10 @@ const EnrichedRequestSchema = RequestSchema.extend({
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
   accessType: z.nativeEnum(PamAccessType),
+  maxAccessDurationSeconds: z
+    .number()
+    .nullable()
+    .describe("Max Access Duration from the account's template, in seconds. Approval grants at most this long."),
   grantId: z.string().uuid().nullable(),
   grantExpiresAt: z.date().nullable(),
   grantStatus: z.string().nullable(),

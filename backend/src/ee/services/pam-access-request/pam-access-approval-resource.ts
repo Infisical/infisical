@@ -105,6 +105,7 @@ type TPamRequestDecoration = {
   accountType: string | null;
   folderName: string | null;
   accessType: PamAccessType;
+  maxAccessDurationSeconds: number | null;
 };
 
 export type TPamAccessApprovalResource = TApprovalResource<
@@ -274,13 +275,22 @@ export const pamAccessApprovalResourceFactory = ({
     return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
   };
 
+  // The template max can be lowered while a request is pending, so the grant never outlasts the current max.
+  const $effectiveAccessDurationMs = (duration: string, maxAccessDurationSeconds: number | null) => {
+    const requestedMs = parsePamAccessDuration(duration);
+    if (requestedMs === null || maxAccessDurationSeconds === null) return requestedMs;
+    return Math.min(requestedMs, maxAccessDurationSeconds * 1000);
+  };
+
   const postApprovalTxRoutine: NonNullable<TPamAccessApprovalResource["postApprovalTxRoutine"]> = async (
     request,
     tx,
     breakGlass
   ) => {
     const inputs = request.requestData.requestData as TPamAccessRequestData;
-    const durationMs = parsePamAccessDuration(inputs.duration);
+    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId, tx);
+    const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
+    const durationMs = $effectiveAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
     const grant = await approvalRequestGrantsDAL.create(
       {
@@ -447,6 +457,18 @@ export const pamAccessApprovalResourceFactory = ({
       if (!hasRevealableCredential(account.accountType as PamAccountType, credentials)) {
         throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
       }
+    }
+
+    const requestedMs = parsePamAccessDuration(inputs.duration);
+    if (
+      accessControls.maxAccessDurationSeconds !== null &&
+      requestedMs !== null &&
+      requestedMs > accessControls.maxAccessDurationSeconds * 1000
+    ) {
+      throw new BadRequestError({
+        name: "PAM_ACCESS_DURATION_EXCEEDED",
+        message: `Access duration must be at most ${formatDuration(`${accessControls.maxAccessDurationSeconds}s`)}, the maximum set on this account's template`
+      });
     }
 
     if (accessControls.requireReason && !inputs.reason) {
@@ -958,17 +980,19 @@ export const pamAccessApprovalResourceFactory = ({
 
     const templateIds = [...new Set(accounts.map((a) => a.templateId).filter(Boolean))];
     const templates = templateIds.length > 0 ? await pamAccountTemplateDAL.find({ $in: { id: templateIds } }) : [];
-    const templateTypeById = new Map(templates.map((t) => [t.id, t.type]));
+    const templateById = new Map(templates.map((t) => [t.id, t]));
 
     return requests.map((request, i) => {
       const account = inputs[i]?.accountId ? accountById.get(inputs[i]!.accountId) : null;
       const folder = inputs[i]?.folderId ? folderById.get(inputs[i]!.folderId) : null;
+      const template = account?.templateId ? templateById.get(account.templateId) : undefined;
       return {
         ...request,
         accountName: account?.name ?? null,
-        accountType: account?.templateId ? (templateTypeById.get(account.templateId) ?? null) : null,
+        accountType: template?.type ?? null,
         folderName: folder?.name ?? null,
-        accessType: inputs[i]?.accessType ?? PamAccessType.Session
+        accessType: inputs[i]?.accessType ?? PamAccessType.Session,
+        maxAccessDurationSeconds: resolveAccessControls(template?.policies).maxAccessDurationSeconds
       };
     });
   };

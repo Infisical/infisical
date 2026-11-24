@@ -71,6 +71,7 @@ export const FolderAccountRow = ({
     grantExpiresAt: account.grantExpiresAt,
     pendingRequestId: account.pendingRequestId,
     canBreakGlass: account.canBreakGlass,
+    maxAccessDurationSeconds: account.maxAccessDurationSeconds,
     credentialAccessStatus: account.credentialAccessStatus,
     credentialPendingRequestId: account.credentialPendingRequestId,
     createdAt: account.createdAt,

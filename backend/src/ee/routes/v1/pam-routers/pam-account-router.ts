@@ -73,6 +73,10 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+  maxAccessDurationSeconds: z
+    .number()
+    .nullable()
+    .describe("Longest access an approval request can ask for, in seconds, from the account's template"),
   accessStatus: z.nativeEnum(ApprovalAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
   pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
@@ -463,6 +467,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 .boolean()
                 .describe("Whether this account requires approval before launching a session"),
               requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+              maxAccessDurationSeconds: z
+                .number()
+                .nullable()
+                .describe("Longest access an approval request can ask for, in seconds, from the account's template"),
               requireMfa: z
                 .boolean()
                 .describe(

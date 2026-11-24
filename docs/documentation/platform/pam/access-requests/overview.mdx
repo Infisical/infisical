@@ -62,7 +62,7 @@ On the **Accounts** page, an account that requires approval shows a key icon ins
     Enter a **Reason**, which approvers see and the audit log records. The reason is required if the template has **Require Reason** turned on.
   </Step>
   <Step>
-    Choose how long you need access, from 15 minutes to 1 week, and select **Request session access** or **Request credentials**.
+    Choose how long you need access, from 15 minutes up to the template's **Max Access Duration** (1 week if it isn't set), and select **Request session access** or **Request credentials**.
   </Step>
 </Steps>
 
@@ -100,7 +100,7 @@ One approval from any of the folder's approvers is enough. You can't approve a r
 | **Expired** | The requested duration ended |
 | **Revoked** | An Admin of the folder ended the access before the duration ended |
 
-The duration starts when an approver approves the request, not when the member files it, so the member always gets the full duration they asked for.
+The duration starts when an approver approves the request, not when the member files it. If an Admin lowers the template's **Max Access Duration** while a request waits, approving it grants access only for the new maximum.
 
 To see every request for a folder's accounts, open the folder's **Approvals** tab and go to **Access Requests**.
 
