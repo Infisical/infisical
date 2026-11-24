@@ -206,8 +206,7 @@ export const authLoginServiceFactory = ({
     authMethod: AuthMethod;
     organizationId?: string;
     issuingRootOrgId?: string;
-    // The method the login page opens on; an email code is sent up front only for that.
-    initialMfaMethod: MfaMethod;
+    initialMfaMethod: MfaMethod; // The method the login page opens on.
     allowedMfaMethods: MfaMethod[];
     idpMfaOrgId?: string;
   }) => {
@@ -222,7 +221,6 @@ export const authLoginServiceFactory = ({
         issuingRootOrgId,
         email,
         allowedMfaMethods,
-        requiredMfaMethod: initialMfaMethod,
         idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
