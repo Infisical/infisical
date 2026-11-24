@@ -1,0 +1,48 @@
+{/* The tab titles match the method tabs in form-fields.mdx. Keep them identical. */}
+
+<Tabs>
+    <Tab title="Client Secret">
+        With the Client Secret method, Infisical signs in as a Microsoft Entra app registration that has the **Storage Blob Data Contributor** role on the storage account.
+
+        <Steps>
+            <Step>
+                In the Azure portal, go to **Microsoft Entra ID** > **App registrations** and select **New registration**. Enter a name, such as `infisical-pam-recordings`, and select **Register**.
+            </Step>
+            <Step>
+                On the app registration's **Overview** page, copy the **Application (client) ID** and the **Directory (tenant) ID**.
+            </Step>
+            <Step>
+                Go to **Certificates & secrets** > **Client secrets** and select **New client secret**. Pick an expiry, select **Add**, and copy the secret's **Value**.
+
+                Azure only shows the value once. Before the secret expires, create a new one and update the connection's credentials in Infisical.
+            </Step>
+            <Step>
+                Open the storage account, go to **Access control (IAM)**, and select **Add** > **Add role assignment**.
+            </Step>
+            <Step>
+                Search for **Storage Blob Data Contributor**, select the role, and select **Next**.
+
+                Assign the role on the storage account, not on a single container. Infisical requests a user delegation key from the storage account, and Azure only allows that with a role on the storage account or above.
+            </Step>
+            <Step>
+                Select **Select members**, search for the app registration by name, and select it. Then select **Review + assign**.
+            </Step>
+        </Steps>
+
+        A new role assignment can take a few minutes to apply. If Infisical can't check the credentials right after you assign the role, wait a few minutes and try again.
+    </Tab>
+    <Tab title="Access Key">
+        With the Access Key method, Infisical signs in with one of the storage account's access keys, which gives full access to the whole storage account.
+
+        <Steps>
+            <Step>
+                In the Azure portal, open the storage account and go to **Security + networking** > **Access keys**.
+            </Step>
+            <Step>
+                Select **Show** next to the **Key** of `key1` or `key2`, and copy the key.
+            </Step>
+        </Steps>
+
+        The Access Key method only works if **Allow storage account key access** is enabled under the storage account's **Settings** > **Configuration**. If your organization turns this setting off, use the Client Secret method.
+    </Tab>
+</Tabs>

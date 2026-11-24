@@ -78,6 +78,7 @@ import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { azureAdcsConnectionService } from "./azure-adcs/azure-adcs-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
+import { ValidateAzureBlobStorageConnectionCredentialsSchema } from "./azure-blob-storage";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
@@ -360,6 +361,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
+  [AppConnection.AzureBlobStorage]: ValidateAzureBlobStorageConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
   [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
   [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema

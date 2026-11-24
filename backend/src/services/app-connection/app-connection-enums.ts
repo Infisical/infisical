@@ -93,6 +93,7 @@ export enum AppConnection {
   HpeIloRedFish = "hpe-ilo",
   ServiceNow = "servicenow",
   S3Compatible = "s3-compatible",
+  AzureBlobStorage = "azure-blob-storage",
   Jira = "jira",
   ClickHouse = "clickhouse",
   IncidentIo = "incident-io",

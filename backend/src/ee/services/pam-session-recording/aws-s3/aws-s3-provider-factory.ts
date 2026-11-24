@@ -30,8 +30,6 @@ import {
   TPamRecordingStorageProvider
 } from "../pam-recording-storage-types";
 
-export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S3Compatible];
-
 export const resolveS3RecordingAccess = async (
   appConnection: TAppConnection,
   region: string | undefined,

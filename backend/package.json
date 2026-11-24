@@ -169,6 +169,7 @@
     "@aws-sdk/client-sts": "^3.600.0",
     "@aws-sdk/rds-signer": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1140.0",
+    "@azure/storage-blob": "12.26.x",
     "@casl/ability": "^6.7.5",
     "@clickhouse/client": "^1.17.0",
     "@elastic/elasticsearch": "^9.1.1",

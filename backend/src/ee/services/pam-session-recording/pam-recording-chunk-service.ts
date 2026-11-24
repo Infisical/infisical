@@ -10,17 +10,15 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import {
-  PamRecordingS3ConfigSchema,
-  PamTemplateSettingsSchema
-} from "../pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
-import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
+import { isExternalRecordingBackend } from "./pam-recording-backends";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
+import { buildExternalRecordingConfig, getRecordingLocation } from "./pam-recording-config-fns";
 import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
@@ -61,39 +59,25 @@ export const pamSessionChunkServiceFactory = ({
     const templateParsed = account.templateSettings
       ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
       : null;
-    const templateSettings = templateParsed?.success ? templateParsed.data : null;
-    if (!templateSettings) return null;
+    if (!templateParsed?.success) return null;
 
-    const accountS3Parsed = account.settingsOverrides
-      ? PamRecordingS3ConfigSchema.safeParse((account.settingsOverrides as Record<string, unknown>).recordingS3Config)
-      : null;
-    const accountS3 = accountS3Parsed?.success ? accountS3Parsed.data : null;
-
-    if (templateSettings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3) {
-      const connectionId = account.recordingConnectionId ?? account.templateRecordingConnectionId;
-      const s3Config = accountS3 ?? templateSettings.recordingS3Config;
-      if (!connectionId || !s3Config) return null;
-
-      const raw = await appConnectionDAL.findById(connectionId);
-      if (!raw) {
-        logger.warn({ connectionId, accountId }, `Recording app connection not found [connectionId=${connectionId}]`);
-        return null;
-      }
-
-      const appConnection = await decryptAppConnection(raw, kmsDataKeyService);
-
-      return {
-        backend: PamRecordingStorageBackend.AwsS3,
-        bucket: s3Config.bucket,
-        keyPrefix: s3Config.keyPrefix ?? null,
-        ...(await resolveS3RecordingAccess(appConnection, s3Config.region, instanceConfigService))
-      };
+    const backend = templateParsed.data.recordingStorageBackend;
+    if (!isExternalRecordingBackend(backend)) {
+      return { backend: PamRecordingStorageBackend.Postgres, keyPrefix: null };
     }
 
-    return {
-      backend: PamRecordingStorageBackend.Postgres,
-      keyPrefix: null
-    };
+    const connectionId = account.recordingConnectionId ?? account.templateRecordingConnectionId;
+    const location = getRecordingLocation(backend, account.settingsOverrides, account.templateSettings);
+    if (!connectionId || !location) return null;
+
+    const raw = await appConnectionDAL.findById(connectionId);
+    if (!raw) {
+      logger.warn({ connectionId, accountId }, `Recording app connection not found [connectionId=${connectionId}]`);
+      return null;
+    }
+
+    const appConnection = await decryptAppConnection(raw, kmsDataKeyService);
+    return buildExternalRecordingConfig(location, appConnection, instanceConfigService);
   };
   const checkSessionViewAccess = async (
     session: { accountId?: string | null; projectId: string },
@@ -266,15 +250,27 @@ export const pamSessionChunkServiceFactory = ({
       }
     }
 
-    const externalChunkObjectKey =
-      backend === PamRecordingStorageBackend.AwsS3
-        ? buildExternalChunkObjectKey(config?.keyPrefix, session.projectId, sessionId, chunkIndex, false)
-        : null;
+    const isExternal = isExternalRecordingBackend(backend);
+    const externalChunkObjectKey = isExternal
+      ? buildExternalChunkObjectKey(config?.keyPrefix, session.projectId, sessionId, chunkIndex, false)
+      : null;
 
     const externalKeyframeObjectKey =
-      backend === PamRecordingStorageBackend.AwsS3 && keyframeObjectKey
+      isExternal && keyframeObjectKey
         ? buildExternalChunkObjectKey(config?.keyPrefix, session.projectId, sessionId, chunkIndex, true)
         : null;
+
+    const { verifyUploadedObject } = PAM_RECORDING_STORAGE_FACTORY_MAP[backend]();
+    if (config && verifyUploadedObject && externalChunkObjectKey) {
+      await verifyUploadedObject({ config, objectKey: externalChunkObjectKey, ciphertextBytes });
+      if (externalKeyframeObjectKey && keyframeSizeBytes) {
+        await verifyUploadedObject({
+          config,
+          objectKey: externalKeyframeObjectKey,
+          ciphertextBytes: keyframeSizeBytes
+        });
+      }
+    }
 
     try {
       await pamSessionEventChunkDAL.insertIgnoreDuplicate({
@@ -285,7 +281,7 @@ export const pamSessionChunkServiceFactory = ({
         storageBackend: backend,
         encryptedEventsBlob: backend === PamRecordingStorageBackend.Postgres ? (ciphertext ?? null) : null,
         externalChunkObjectKey,
-        chunkSizeBytes: backend === PamRecordingStorageBackend.AwsS3 ? ciphertextBytes : null,
+        chunkSizeBytes: isExternal ? ciphertextBytes : null,
         externalKeyframeObjectKey,
         keyframeSizeBytes: keyframeSizeBytes ?? null,
         ciphertextSha256,
@@ -325,21 +321,31 @@ export const pamSessionChunkServiceFactory = ({
     const chunks = await pamSessionEventChunkDAL.findAllBySessionId(sessionId);
 
     let presignedGetByObjectKey: Record<string, { url: string }> = {};
-    const config = session.accountId ? await resolveRecordingConfig(session.accountId) : null;
-    if (config?.backend === PamRecordingStorageBackend.AwsS3) {
-      const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]();
-      const minted = await Promise.all(
-        chunks
-          .filter((c) => c.storageBackend === PamRecordingStorageBackend.AwsS3 && c.externalChunkObjectKey)
-          .map(async (c) => {
-            const presigned = await provider.mintPresignedGet({
-              config,
-              objectKey: c.externalChunkObjectKey as string
-            });
-            return [c.externalChunkObjectKey as string, { url: presigned.url }] as const;
-          })
+    let config: TPamRecordingResolvedConfig | null = null;
+    try {
+      config = session.accountId ? await resolveRecordingConfig(session.accountId) : null;
+      if (config && isExternalRecordingBackend(config.backend)) {
+        const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]();
+        const resolved = config;
+        const minted = await Promise.all(
+          chunks
+            .filter((c) => c.storageBackend === resolved.backend && c.externalChunkObjectKey)
+            .map(async (c) => {
+              const presigned = await provider.mintPresignedGet({
+                config: resolved,
+                objectKey: c.externalChunkObjectKey as string
+              });
+              return [c.externalChunkObjectKey as string, { url: presigned.url }] as const;
+            })
+        );
+        presignedGetByObjectKey = Object.fromEntries(minted);
+      }
+    } catch (err) {
+      // Chunks stored in Postgres still play; the external ones come back without a link
+      logger.error(
+        { err, sessionId },
+        `Could not create playback links for external recording chunks [sessionId=${sessionId}]`
       );
-      presignedGetByObjectKey = Object.fromEntries(minted);
     }
 
     return {
@@ -373,7 +379,8 @@ export const pamSessionChunkServiceFactory = ({
     if (!chunk) throw new NotFoundError({ message: `Chunk ${chunkIndex} not found` });
     if (chunk.storageBackend !== PamRecordingStorageBackend.Postgres) {
       throw new BadRequestError({
-        message: "Chunk is stored externally; use the presigned GET URL from the playback endpoint"
+        message:
+          "This part of the recording is in external storage, and Infisical could not create a link to it. Check the recording connection and storage settings of the session's account template."
       });
     }
     if (!chunk.encryptedEventsBlob) {

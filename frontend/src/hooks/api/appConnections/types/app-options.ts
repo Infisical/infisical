@@ -391,6 +391,10 @@ export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.S3Compatible;
 };
 
+export type TAzureBlobStorageConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureBlobStorage;
+};
+
 export type TJiraConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Jira;
 };
@@ -506,6 +510,7 @@ export type TAppConnectionOption =
   | TDaytonaConnectionOption
   | TServiceNowConnectionOption
   | TS3CompatibleConnectionOption
+  | TAzureBlobStorageConnectionOption
   | TJiraConnectionOption
   | TClickHouseConnectionOption
   | TIncidentIoConnectionOption
@@ -607,6 +612,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Daytona]: TDaytonaConnectionOption;
   [AppConnection.ServiceNow]: TServiceNowConnectionOption;
   [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
+  [AppConnection.AzureBlobStorage]: TAzureBlobStorageConnectionOption;
   [AppConnection.Jira]: TJiraConnectionOption;
   [AppConnection.ClickHouse]: TClickHouseConnectionOption;
   [AppConnection.IncidentIo]: TIncidentIoConnectionOption;

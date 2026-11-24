@@ -159,6 +159,7 @@ CodeBuild
 CodePipeline
 Azure Key Vault
 Azure App Configuration
+Azure Blob Storage
 Azure DevOps
 Azure SQL Database
 Entra ID

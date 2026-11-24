@@ -1,12 +1,18 @@
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
 import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import {
+  describeRecordingConnectionApps,
+  isExternalRecordingBackend,
+  PAM_RECORDING_BACKEND_DETAILS
+} from "../pam-session-recording/pam-recording-backends";
+import { getRecordingLocation } from "../pam-session-recording/pam-recording-config-fns";
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
@@ -16,12 +22,11 @@ import {
   TPamValidatorDeps,
   validateGatewayAttachment,
   validateRecordingConnection,
-  validateRecordingS3Config
+  validateRecordingStorageConfig
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   DEFAULT_HEARTBEAT_CONFIG,
-  PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema,
   TPamTemplateSettings,
   TPamTemplateSettingsInput
@@ -44,7 +49,9 @@ type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
   pamAccountDAL: Pick<
     TPamAccountDALFactory,
-    "reconcileRotationScheduleForTemplate" | "reconcileHeartbeatScheduleForTemplate"
+    | "reconcileRotationScheduleForTemplate"
+    | "reconcileHeartbeatScheduleForTemplate"
+    | "findRecordingConnectionOverridesByTemplateId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
@@ -102,29 +109,22 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     }
   };
 
-  const validateTemplateRecordingS3Config = async (
+  const validateTemplateRecordingConfig = async (
     recordingConnectionId: string | null | undefined,
     settings: TPamTemplateSettingsInput | undefined,
     ctx: TActorContext
   ): Promise<TPamRecordingResolvedConfig | null> => {
-    const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
+    const backend = settings?.recordingStorageBackend;
+    if (!isExternalRecordingBackend(backend)) return null;
 
-    let resolvedS3Config = null;
-    if (recordingConnectionId && settings) {
-      const s3Parsed = PamRecordingS3ConfigSchema.safeParse(settings.recordingS3Config);
-      if (s3Parsed.success) {
-        resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
-      }
-    }
-
-    if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
+    const location = getRecordingLocation(backend, null, settings);
+    if (!recordingConnectionId || !location) {
       throw new BadRequestError({
-        message:
-          "S3 storage backend requires an AWS or S3-Compatible Storage connection and valid S3 bucket configuration"
+        message: `Storing recordings in ${PAM_RECORDING_BACKEND_DETAILS[backend].name} requires ${describeRecordingConnectionApps(backend)} and a valid ${PAM_RECORDING_BACKEND_DETAILS[backend].locationName} configuration`
       });
     }
 
-    return resolvedS3Config;
+    return validateRecordingStorageConfig(deps, recordingConnectionId, location, ctx);
   };
 
   const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
@@ -165,7 +165,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const validatedPolicies = validateTemplatePolicies(type, policies ?? defaultTemplatePolicies(type));
     validateTemplateRotationConfig(type, settings);
 
-    const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
+    const resolvedRecordingConfig = await validateTemplateRecordingConfig(recordingConnectionId, settings, ctx);
 
     // Credential health checking and built-in masking are on for a new template unless the caller
     // says otherwise.
@@ -190,7 +190,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         gatewayPoolId,
         recordingConnectionId
       });
-      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      const corsProbeUrl = resolvedRecordingConfig ? await mintCorsProbeUrl(resolvedRecordingConfig) : null;
       return { ...template, corsProbeUrl };
     } catch (err) {
       if (
@@ -233,7 +233,25 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
     const resolvedSettings = (settings !== undefined ? settings : existing.settings) as TPamTemplateSettings;
 
-    const resolvedS3Config = await validateTemplateRecordingS3Config(resolvedConnId, resolvedSettings, ctx);
+    // Accounts with their own connection keep it, so it has to be able to write to the template's new storage
+    const nextBackend = resolvedSettings?.recordingStorageBackend;
+    if (isExternalRecordingBackend(nextBackend)) {
+      const { name: storeName, connectionApps } = PAM_RECORDING_BACKEND_DETAILS[nextBackend];
+      const incompatible = (await pamAccountDAL.findRecordingConnectionOverridesByTemplateId(templateId)).filter(
+        (account) => !connectionApps.includes(account.app as AppConnection)
+      );
+      if (incompatible.length) {
+        const names = incompatible
+          .slice(0, 5)
+          .map((account) => `'${account.name}'`)
+          .join(", ");
+        throw new BadRequestError({
+          message: `Accounts ${names}${incompatible.length > 5 ? ` and ${incompatible.length - 5} more` : ""} use their own recording connection, which can't store recordings in ${storeName}. Remove their recording override or give them ${describeRecordingConnectionApps(nextBackend)} first.`
+        });
+      }
+    }
+
+    const resolvedRecordingConfig = await validateTemplateRecordingConfig(resolvedConnId, resolvedSettings, ctx);
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
@@ -268,7 +286,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         }
         return updated;
       });
-      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      const corsProbeUrl = resolvedRecordingConfig ? await mintCorsProbeUrl(resolvedRecordingConfig) : null;
       return { ...template, corsProbeUrl };
     } catch (err) {
       if (

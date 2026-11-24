@@ -38,7 +38,10 @@ import {
   pausesHeartbeatForRoutingChange
 } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import {
+  PamTemplateSettingsSchema,
+  TPamAccountSettingsOverrides
+} from "../pam-account-template/pam-account-template-schemas";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
@@ -64,9 +67,8 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import {
-  getInheritedRecordingS3Config,
   mintCorsProbeUrl,
-  resolveOverridesS3Config,
+  resolveOverridesRecordingConfig,
   validateGatewayAttachment,
   validateRecordingConnection
 } from "../pam/pam-validators";
@@ -764,12 +766,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
-    const resolvedS3Config = await resolveOverridesS3Config(
+    const resolvedRecordingConfig = await resolveOverridesRecordingConfig(
       deps,
+      template.settings,
       settingsOverrides,
       recordingConnectionId ?? template.recordingConnectionId,
       ctx,
-      recordingConnectionId ? getInheritedRecordingS3Config(settingsOverrides, template.settings) : undefined
+      { inheritLocation: Boolean(recordingConnectionId) }
     );
 
     const forced = applyForcedFields(accountType, {
@@ -833,7 +836,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         return created;
       });
 
-      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      const corsProbeUrl = resolvedRecordingConfig ? await mintCorsProbeUrl(resolvedRecordingConfig) : null;
 
       return {
         id: account.id,
@@ -959,18 +962,19 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
-    const resolvedS3Config = await resolveOverridesS3Config(
+    // A new template can store recordings somewhere the account's saved connection and overrides can't reach
+    const templateChanged = Boolean(template) && templateId !== existing.templateId;
+    const accountConnectionId =
+      recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
+    const resolvedRecordingConfig = await resolveOverridesRecordingConfig(
       deps,
-      settingsOverrides,
-      (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
-        existing.templateRecordingConnectionId,
+      template ? template.settings : existing.templateSettings,
+      (recordingConnectionId || templateChanged) && settingsOverrides === undefined
+        ? (existing.settingsOverrides as TPamAccountSettingsOverrides | null)
+        : settingsOverrides,
+      accountConnectionId ?? (template ? template.recordingConnectionId : existing.templateRecordingConnectionId),
       ctx,
-      recordingConnectionId
-        ? getInheritedRecordingS3Config(
-            settingsOverrides === undefined ? existing.settingsOverrides : settingsOverrides,
-            template ? template.settings : existing.templateSettings
-          )
-        : undefined
+      { inheritLocation: Boolean(recordingConnectionId) || (templateChanged && Boolean(accountConnectionId)) }
     );
 
     const updateData: Record<string, unknown> = {};
@@ -1135,7 +1139,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         }
         return updated;
       });
-      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      const corsProbeUrl = resolvedRecordingConfig ? await mintCorsProbeUrl(resolvedRecordingConfig) : null;
       return { ...account, corsProbeUrl };
     } catch (err) {
       if (err instanceof DatabaseError) {

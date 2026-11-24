@@ -10,6 +10,7 @@ import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
+import { registerAzureBlobStorageConnectionRouter } from "./azure-blob-storage-connection-router";
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
 import { registerAzureDnsConnectionRouter } from "./azure-dns-connection-router";
@@ -200,6 +201,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
     [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
+    [AppConnection.AzureBlobStorage]: registerAzureBlobStorageConnectionRouter,
     [AppConnection.Jira]: registerJiraConnectionRouter,
     [AppConnection.ClickHouse]: registerClickHouseConnectionRouter,
     [AppConnection.IncidentIo]: registerIncidentIoConnectionRouter

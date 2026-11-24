@@ -1,0 +1,71 @@
+---
+title: "Azure Blob Storage connection"
+sidebarTitle: "Azure Blob Storage"
+description: "Learn how to configure an Azure Blob Storage connection for Infisical."
+---
+
+import StorageAccountAccess from "/snippets/app-connections/azure-blob-storage/storage-account-access.mdx";
+import ConnectionFormFields from "/snippets/app-connections/azure-blob-storage/form-fields.mdx";
+
+An Azure Blob Storage connection authenticates Infisical to an [Azure storage account](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview), so Infisical can store [PAM session recordings](/documentation/platform/pam/sessions/external-storage) in a container that you own. The connection uses either a [Microsoft Entra app registration](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) with a client secret, or one of the storage account's [access keys](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage).
+
+Each connection gives access to one storage account. Infisical connects to the storage account at `https://<storage-account-name>.blob.core.windows.net`, so only storage accounts in the Azure public cloud are supported, not Azure Government or Azure China.
+
+<Note>
+    This guide only authenticates Infisical with Azure Blob Storage. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- An Azure storage account in the Azure public cloud
+- For the Client Secret method, permission to create app registrations in Microsoft Entra ID and the **Owner** or **User Access Administrator** role on the storage account, to assign roles
+- For the Access Key method, permission to view the storage account's access keys, such as the **Storage Account Key Operator Service Role**
+
+## Step 1: Give Infisical access to the storage account
+
+Infisical needs credentials that can read, write, and delete blobs in the storage account. Pick the method you'll use in the connection form.
+
+<StorageAccountAccess />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical. PAM only uses organization-level connections for session recordings.
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **Azure Blob Storage**.
+    </Step>
+    <Step>
+        Select the method you set up in [Step 1](#step-1-give-infisical-access-to-the-storage-account), then fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to Azure Blob Storage**.
+    </Step>
+</Steps>
+
+When you submit the form, Infisical checks the credentials against the storage account:
+
+- **Client Secret:** Infisical signs in to Microsoft Entra ID and requests a user delegation key from the storage account, which fails if the client secret is wrong or the app registration has no role on the storage account
+- **Access Key:** Infisical reads the storage account's information, which fails if the key or the storage account name is wrong
+
+If the check fails, Infisical doesn't save the connection, and the error message says which part failed.
+
+The check doesn't test access to a container. Infisical tests the container when you [select it in a PAM template](/documentation/platform/pam/sessions/external-storage#step-2-configure-the-template).
+
+<Check>
+    Your Azure Blob Storage app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Azure Blob Storage app connection is configured, you can use it to set up the following integrations:
+
+<Card title="PAM session recording storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">
+    Store PAM session recordings in a container in your storage account.
+</Card>

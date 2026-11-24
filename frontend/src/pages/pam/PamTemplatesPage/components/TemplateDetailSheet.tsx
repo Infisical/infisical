@@ -35,6 +35,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionProviderName } from "@app/helpers/appConnections";
+import { getAzureContainerNameError } from "@app/helpers/pamRecordingStorage";
 import {
   AppConnection,
   useListAppConnections,
@@ -74,11 +75,13 @@ const buildSettingsSchema = (maxPwLength: number) =>
     .object({
       gatewayId: z.string().nullable(),
       gatewayPoolId: z.string().nullable(),
-      recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+      recordingStorageBackend: z.enum(["postgres", "aws-s3", "azure-blob"]),
       recordingConnectionId: z.string().nullable(),
       s3Bucket: z.string().optional(),
       s3Region: z.string().optional(),
       s3KeyPrefix: z.string().optional(),
+      azureContainer: z.string().optional(),
+      azureKeyPrefix: z.string().optional(),
       policies: z.record(z.unknown()),
       settings: z.object({
         sessionLogMaskingPatterns: z.string().optional(),
@@ -96,7 +99,7 @@ const buildSettingsSchema = (maxPwLength: number) =>
       })
     })
     .superRefine((data, ctx) => {
-      if (data.recordingStorageBackend === "aws-s3") {
+      if (data.recordingStorageBackend !== "postgres") {
         if (!data.recordingConnectionId) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -104,11 +107,21 @@ const buildSettingsSchema = (maxPwLength: number) =>
             message: "Select a connection"
           });
         }
-        if (!data.s3Bucket?.trim()) {
+      }
+      if (data.recordingStorageBackend === "aws-s3" && !data.s3Bucket?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["s3Bucket"],
+          message: "Bucket is required"
+        });
+      }
+      if (data.recordingStorageBackend === "azure-blob") {
+        const containerError = getAzureContainerNameError(data.azureContainer?.trim() ?? "");
+        if (containerError) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["s3Bucket"],
-            message: "Bucket is required"
+            path: ["azureContainer"],
+            message: containerError
           });
         }
       }
@@ -310,6 +323,8 @@ const SettingsTab = ({
       s3Bucket: "",
       s3Region: "",
       s3KeyPrefix: "",
+      azureContainer: "",
+      azureKeyPrefix: "",
       policies: {},
       settings: {
         sessionLogMaskingPatterns: "",
@@ -337,7 +352,12 @@ const SettingsTab = ({
     if (template) {
       const settings = (template.settings ?? {}) as Record<string, unknown>;
       const s3Config = (settings.recordingS3Config ?? {}) as Record<string, string>;
-      const savedBackend = settings.recordingStorageBackend as "postgres" | "aws-s3" | undefined;
+      const azureConfig = (settings.recordingAzureBlobConfig ?? {}) as Record<string, string>;
+      const savedBackend = settings.recordingStorageBackend as
+        | "postgres"
+        | "aws-s3"
+        | "azure-blob"
+        | undefined;
       reset({
         gatewayId: template.gatewayId ?? null,
         gatewayPoolId: template.gatewayPoolId ?? null,
@@ -346,6 +366,8 @@ const SettingsTab = ({
         s3Bucket: s3Config.bucket ?? "",
         s3Region: s3Config.region ?? "",
         s3KeyPrefix: s3Config.keyPrefix ?? "",
+        azureContainer: azureConfig.container ?? "",
+        azureKeyPrefix: azureConfig.keyPrefix ?? "",
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
           sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
@@ -408,6 +430,16 @@ const SettingsTab = ({
   const recordingConnectionApp = recordingConnections.find(
     (conn) => conn.id === watch("recordingConnectionId")
   )?.app;
+  const backendConnectionApps =
+    storageBackend === "azure-blob"
+      ? [AppConnection.AzureBlobStorage]
+      : [AppConnection.AWS, AppConnection.S3Compatible];
+  const backendConnections = recordingConnections.filter((conn) =>
+    backendConnectionApps.includes(conn.app)
+  );
+  const backendConnectionNames = backendConnectionApps
+    .map((app) => APP_CONNECTION_MAP[app].name)
+    .join(" or ");
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const savedSettings = (template.settings ?? {}) as {
@@ -445,6 +477,15 @@ const SettingsTab = ({
       };
     } else {
       delete settings.recordingS3Config;
+    }
+
+    if (data.recordingStorageBackend === "azure-blob" && data.azureContainer) {
+      settings.recordingAzureBlobConfig = {
+        container: data.azureContainer.trim(),
+        ...(data.azureKeyPrefix ? { keyPrefix: data.azureKeyPrefix } : {})
+      };
+    } else {
+      delete settings.recordingAzureBlobConfig;
     }
 
     const maskingPatterns = data.settings.sessionLogMaskingPatterns?.trim();
@@ -496,7 +537,7 @@ const SettingsTab = ({
         gatewayPoolId: data.gatewayPoolId,
         settings,
         recordingConnectionId:
-          data.recordingStorageBackend === "aws-s3" ? data.recordingConnectionId : null
+          data.recordingStorageBackend === "postgres" ? null : data.recordingConnectionId
       },
       {
         onError: (error) => {
@@ -539,12 +580,12 @@ const SettingsTab = ({
             } catch {
               createNotification(
                 {
-                  title: "Bucket CORS not configured",
+                  title: "Storage CORS not configured",
                   type: "warning",
-                  text: "Session playback requires the bucket to allow GET requests from this origin.",
+                  text: "Session playback requires the bucket or storage account to allow GET requests from this origin.",
                   callToAction: (
                     <a
-                      href="https://infisical.com/docs/documentation/platform/pam/recording-storage"
+                      href="https://infisical.com/docs/documentation/platform/pam/sessions/external-storage"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs underline"
@@ -862,13 +903,29 @@ const SettingsTab = ({
               <Field>
                 <FieldLabel>Storage backend</FieldLabel>
                 <FieldContent>
-                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => {
+                      field.onChange(v);
+                      const selectedApp = recordingConnections.find(
+                        (conn) => conn.id === watch("recordingConnectionId")
+                      )?.app;
+                      const fitsBackend =
+                        v === "azure-blob"
+                          ? selectedApp === AppConnection.AzureBlobStorage
+                          : selectedApp !== AppConnection.AzureBlobStorage;
+                      if (!fitsBackend) {
+                        setValue("recordingConnectionId", null, { shouldDirty: true });
+                      }
+                    }}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
                       <SelectItem value="postgres">Internal Database</SelectItem>
                       <SelectItem value="aws-s3">S3 Bucket</SelectItem>
+                      <SelectItem value="azure-blob">Azure Blob Storage</SelectItem>
                     </SelectContent>
                   </Select>
                 </FieldContent>
@@ -888,15 +945,20 @@ const SettingsTab = ({
             </Alert>
           )}
 
-          {storageBackend === "aws-s3" && (
+          {storageBackend !== "postgres" && (
             <>
               <Alert variant="warning">
                 <AlertTriangleIcon />
-                <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
+                <AlertTitle>
+                  Changing {storageBackend === "azure-blob" ? "container" : "bucket"} affects
+                  existing recordings
+                </AlertTitle>
                 <AlertDescription>
-                  Changing the bucket on a template with existing recordings makes those recordings
-                  inaccessible unless you manually migrate each object. Keep the same bucket and key
-                  prefix when rotating credentials.
+                  Existing recordings can only be played back from the{" "}
+                  {storageBackend === "azure-blob" ? "container" : "bucket"} they were stored in.
+                  After changing it, copy each object to the new one under the same name. Switching
+                  between S3 and Azure Blob Storage can&apos;t be undone by copying. Keep the same
+                  storage when rotating credentials.
                 </AlertDescription>
               </Alert>
 
@@ -915,13 +977,13 @@ const SettingsTab = ({
                           <SelectValue placeholder="Select a connection" />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {recordingConnections.length === 0 && (
+                          {backendConnections.length === 0 && (
                             <div className="px-2 py-3 text-center text-xs text-muted">
-                              No AWS or S3-Compatible Storage connections found. Create one from the
-                              App Connections page.
+                              No {backendConnectionNames} connections found. Create one from the App
+                              Connections page.
                             </div>
                           )}
-                          {recordingConnections.map((conn) => {
+                          {backendConnections.map((conn) => {
                             const connection = appConnections.find(({ id }) => id === conn.id);
                             const providerName = connection
                               ? getAppConnectionProviderName(connection)
@@ -938,7 +1000,8 @@ const SettingsTab = ({
                         <FieldError>{fieldState.error.message}</FieldError>
                       ) : (
                         <FieldDescription>
-                          The AWS or S3-Compatible Storage connection used to access the bucket.
+                          The {backendConnectionNames} connection used to access the{" "}
+                          {storageBackend === "azure-blob" ? "container" : "bucket"}.
                         </FieldDescription>
                       )}
                     </FieldContent>
@@ -946,52 +1009,93 @@ const SettingsTab = ({
                 )}
               />
 
-              <Controller
-                name="s3Bucket"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field>
-                    <FieldLabel>S3 Bucket</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        {...field}
-                        placeholder="my-recordings-bucket"
-                        isError={!!fieldState.error}
-                      />
-                      <FieldError>{fieldState.error?.message}</FieldError>
-                    </FieldContent>
-                  </Field>
-                )}
-              />
-
-              {recordingConnectionApp !== AppConnection.S3Compatible && (
-                <Controller
-                  name="s3Region"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Region</FieldLabel>
-                      <FieldContent>
-                        <Input {...field} placeholder="us-east-1" />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+              {storageBackend === "azure-blob" && (
+                <>
+                  <Controller
+                    name="azureContainer"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <Field>
+                        <FieldLabel>Container</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            {...field}
+                            placeholder="pam-recordings"
+                            isError={!!fieldState.error}
+                          />
+                          <FieldError>{fieldState.error?.message}</FieldError>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    name="azureKeyPrefix"
+                    control={control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>Blob name prefix (optional)</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder="pam-recordings/" />
+                          <FieldDescription>
+                            Optional prefix for blob names in the container.
+                          </FieldDescription>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                </>
               )}
 
-              <Controller
-                name="s3KeyPrefix"
-                control={control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel>Key prefix (optional)</FieldLabel>
-                    <FieldContent>
-                      <Input {...field} placeholder="pam-recordings/" />
-                      <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
-                    </FieldContent>
-                  </Field>
-                )}
-              />
+              {storageBackend === "aws-s3" && (
+                <>
+                  <Controller
+                    name="s3Bucket"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <Field>
+                        <FieldLabel>S3 Bucket</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            {...field}
+                            placeholder="my-recordings-bucket"
+                            isError={!!fieldState.error}
+                          />
+                          <FieldError>{fieldState.error?.message}</FieldError>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+
+                  {recordingConnectionApp !== AppConnection.S3Compatible && (
+                    <Controller
+                      name="s3Region"
+                      control={control}
+                      render={({ field }) => (
+                        <Field>
+                          <FieldLabel>Region</FieldLabel>
+                          <FieldContent>
+                            <Input {...field} placeholder="us-east-1" />
+                          </FieldContent>
+                        </Field>
+                      )}
+                    />
+                  )}
+
+                  <Controller
+                    name="s3KeyPrefix"
+                    control={control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>Key prefix (optional)</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder="pam-recordings/" />
+                          <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                </>
+              )}
             </>
           )}
 

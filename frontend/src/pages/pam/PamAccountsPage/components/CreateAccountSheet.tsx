@@ -657,10 +657,13 @@ export const CreateAccountSheet = ({
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
                           <div className="text-sm">
-                            <p className="font-medium text-warning">S3 recording not configured</p>
+                            <p className="font-medium text-warning">
+                              External recording storage not configured
+                            </p>
                             <p className="mt-1 text-muted">
                               This account will be created, but it will remain inaccessible until S3
-                              recording is configured on the account or template.
+                              or Azure Blob Storage recording is configured on the account or
+                              template.
                             </p>
                           </div>
                         </div>

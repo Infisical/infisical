@@ -1,11 +1,20 @@
 import type { Agent } from "node:https";
 
+import type { BlobServiceClient, StorageSharedKeyCredential, UserDelegationKey } from "@azure/storage-blob";
+
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 
 export type TPamRecordingChunkRef = {
   storageBackend: PamRecordingStorageBackend;
   externalChunkObjectKey?: string | null;
   encryptedEventsBlob?: Buffer | null;
+};
+
+export type TPamRecordingAzureAccess = {
+  accountName: string;
+  serviceClient: BlobServiceClient;
+  sharedKeyCredential: StorageSharedKeyCredential | null;
+  getUserDelegationKey: () => Promise<UserDelegationKey>;
 };
 
 export type TPamRecordingResolvedConfig = {
@@ -21,6 +30,8 @@ export type TPamRecordingResolvedConfig = {
     secretAccessKey: string;
     sessionToken?: string;
   };
+
+  azure?: TPamRecordingAzureAccess;
 };
 
 export type TPamRecordingValidateConfig = (input: { config: TPamRecordingResolvedConfig }) => Promise<void>;
@@ -32,12 +43,24 @@ export type TPamRecordingMintPresignedPut = (input: {
   chunkIndex: number;
   ciphertextBytes: number;
   isKeyframe?: boolean;
-}) => Promise<{ url: string; objectKey: string; expiresInSeconds: number; method: "PUT" }>;
+}) => Promise<{
+  url: string;
+  objectKey: string;
+  expiresInSeconds: number;
+  method: "PUT";
+  headers?: Record<string, string>;
+}>;
 
 export type TPamRecordingMintPresignedGet = (input: {
   config: TPamRecordingResolvedConfig;
   objectKey: string;
 }) => Promise<{ url: string; expiresInSeconds: number }>;
+
+export type TPamRecordingVerifyUploadedObject = (input: {
+  config: TPamRecordingResolvedConfig;
+  objectKey: string;
+  ciphertextBytes: number;
+}) => Promise<void>;
 
 export type TPamRecordingDeleteSession = (input: {
   config: TPamRecordingResolvedConfig;
@@ -49,6 +72,7 @@ export type TPamRecordingStorageProvider = () => {
   validateConfig: TPamRecordingValidateConfig;
   mintPresignedPut: TPamRecordingMintPresignedPut;
   mintPresignedGet: TPamRecordingMintPresignedGet;
+  verifyUploadedObject?: TPamRecordingVerifyUploadedObject;
   deleteSession: TPamRecordingDeleteSession;
 };
 

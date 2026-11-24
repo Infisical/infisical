@@ -1114,6 +1114,7 @@
                   "integrations/app-connections/aws",
                   "integrations/app-connections/azure-adcs",
                   "integrations/app-connections/azure-app-configuration",
+                  "integrations/app-connections/azure-blob-storage",
                   "integrations/app-connections/azure-client-secrets",
                   "integrations/app-connections/azure-devops",
                   "integrations/app-connections/azure-dns",

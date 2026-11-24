@@ -22,6 +22,7 @@ import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
+import { AzureBlobStorageConnectionForm } from "./AzureBlobStorageConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureDNSConnectionForm } from "./AzureDNSConnectionForm";
@@ -304,6 +305,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <SpaceliftConnectionForm onSubmit={onSubmit} />;
       case AppConnection.S3Compatible:
         return <S3CompatibleConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.AzureBlobStorage:
+        return <AzureBlobStorageConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Bitbucket:
@@ -638,6 +641,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.S3Compatible:
         return <S3CompatibleConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.AzureBlobStorage:
+        return <AzureBlobStorageConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Bitbucket:

@@ -72,6 +72,11 @@ import {
   TAzureAppConfigurationConnectionConfig,
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
+import {
+  AzureBlobStorageConnectionMethod,
+  getAzureBlobStorageConnectionListItem,
+  validateAzureBlobStorageConnectionCredentials
+} from "./azure-blob-storage";
 import { AzureClientSecretsConnectionMethod, TAzureClientSecretsConnectionConfig } from "./azure-client-secrets";
 import {
   getAzureClientSecretsConnectionListItem,
@@ -574,6 +579,7 @@ export const listAppConnectionOptions = async (
     getHpeIloConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
+    getAzureBlobStorageConnectionListItem(),
     getJiraConnectionListItem(),
     getClickHouseConnectionListItem(),
     getIncidentIoConnectionListItem()
@@ -871,6 +877,8 @@ export const validateAppConnectionCredentials = async (
         config as TS3CompatibleConnectionConfig,
         deps.instanceConfigService
       )) as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureBlobStorage]:
+      validateAzureBlobStorageConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
@@ -904,6 +912,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
     case S3CompatibleConnectionMethod.AccessKey:
+    case AzureBlobStorageConnectionMethod.AccessKey:
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
@@ -944,6 +953,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureDnsConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
     case MicrosoftIntuneConnectionMethod.ClientSecret:
+    case AzureBlobStorageConnectionMethod.ClientSecret:
       return "Client Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -1238,6 +1248,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureBlobStorage]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
   [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
   [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported

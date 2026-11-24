@@ -64,6 +64,12 @@ import {
   TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
+  TAzureBlobStorageConnection,
+  TAzureBlobStorageConnectionConfig,
+  TAzureBlobStorageConnectionInput,
+  TValidateAzureBlobStorageConnectionCredentialsSchema
+} from "./azure-blob-storage";
+import {
   TAzureClientSecretsConnection,
   TAzureClientSecretsConnectionConfig,
   TAzureClientSecretsConnectionInput,
@@ -686,6 +692,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | THpeIloConnection
   | TServiceNowConnection
   | TS3CompatibleConnection
+  | TAzureBlobStorageConnection
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
@@ -796,6 +803,7 @@ export type TAppConnectionInput = { id: string } & (
   | THpeIloConnectionInput
   | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
+  | TAzureBlobStorageConnectionInput
   | TJiraConnectionInput
   | TClickHouseConnectionInput
   | TIncidentIoConnectionInput
@@ -940,6 +948,7 @@ export type TAppConnectionConfig =
   | THpeIloConnectionConfig
   | TServiceNowConnectionConfig
   | TS3CompatibleConnectionConfig
+  | TAzureBlobStorageConnectionConfig
   | TJiraConnectionConfig
   | TClickHouseConnectionConfig
   | TIncidentIoConnectionConfig;
@@ -1041,6 +1050,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHpeIloConnectionCredentialsSchema
   | TValidateServiceNowConnectionCredentialsSchema
   | TValidateS3CompatibleConnectionCredentialsSchema
+  | TValidateAzureBlobStorageConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema
   | TValidateClickHouseConnectionCredentialsSchema
   | TValidateIncidentIoConnectionCredentialsSchema;
