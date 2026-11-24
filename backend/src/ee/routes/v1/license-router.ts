@@ -9,8 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
 // lives on the License Server v2 routes in license-v2-router.
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
-  // Any member of the org can read its plan, which is always its root org's. The project count isn't part of the
-  // plan, so it is counted live here; the project limit itself is enforced under the create lock.
+  // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
     await server.services.permission.getOrgPermission({
       actorId: req.permission.id,
@@ -23,11 +22,8 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     if (refreshCache) {
       await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
     }
-    const [plan, workspacesUsed] = await Promise.all([
-      server.services.licenseService.getPlan(req.permission.rootOrgId),
-      server.services.organizationsProjects.countWorkspaces(req.permission.rootOrgId)
-    ]);
-    return { ...plan.toJSON(), workspacesUsed };
+    const plan = await server.services.licenseService.getPlan(req.permission.rootOrgId);
+    return plan.toJSON();
   };
 
   server.route({

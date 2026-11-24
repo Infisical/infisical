@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -111,7 +110,6 @@ import {
 import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { useProjectCreationAllowance } from "@app/hooks/useProjectCreationAllowance";
 import {
   ProjectListToggle,
   ProjectListView
@@ -350,8 +348,6 @@ const ProjectTypeContent = ({
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
-  const { isAddingProjectsAllowed, upgradeIntent } = useProjectCreationAllowance(projectType);
-
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
     const storedView = localStorage.getItem("projectListView");
     if (
@@ -371,7 +367,6 @@ const ProjectTypeContent = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
-    "upgradePlan",
     "requestAccessConfirmation"
   ] as const);
 
@@ -398,8 +393,6 @@ const ProjectTypeContent = ({
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
       ) : (
@@ -408,8 +401,6 @@ const ProjectTypeContent = ({
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
       )}
@@ -417,12 +408,6 @@ const ProjectTypeContent = ({
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={projectType}
-      />
-      <UpgradeGate
-        paywallKey="organization.project-type"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={upgradeIntent}
       />
     </div>
   );
@@ -433,8 +418,6 @@ type SubViewProps = {
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
   hideProjectListToggle: boolean;
 };
 
@@ -443,9 +426,7 @@ const MyProjectsForType = ({
   projectListView,
   onProjectListViewChange,
   hideProjectListToggle,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: SubViewProps) => {
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
@@ -777,8 +758,6 @@ const MyProjectsForType = ({
         projectType={projectType}
         ProductIcon={ProductIcon}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
     );
   }
@@ -798,8 +777,6 @@ const MyProjectsForType = ({
         onProjectListViewChange={onProjectListViewChange}
         hideProjectListToggle={hideProjectListToggle}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
       {contentBody}
       {/* In list view the projects table already holds the group, unless there is no table to join. */}
@@ -831,9 +808,7 @@ const AllProjectsForType = ({
   projectListView,
   onProjectListViewChange,
   hideProjectListToggle,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: SubViewProps) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -1159,8 +1134,6 @@ const AllProjectsForType = ({
         projectType={projectType}
         ProductIcon={ProductIcon}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
     );
   }
@@ -1177,8 +1150,6 @@ const AllProjectsForType = ({
         onProjectListViewChange={onProjectListViewChange}
         hideProjectListToggle={hideProjectListToggle}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
         isGridDisabled
       />
       {contentBody}
@@ -1254,8 +1225,6 @@ const Toolbar = ({
   onProjectListViewChange,
   hideProjectListToggle,
   onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed,
   isGridDisabled
 }: {
   projectType: ProjectType;
@@ -1267,8 +1236,6 @@ const Toolbar = ({
   onProjectListViewChange: (value: ProjectListView) => void;
   hideProjectListToggle: boolean;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => {
   const { currentOrg } = useOrganization();
@@ -1347,13 +1314,7 @@ const Toolbar = ({
                     isDisabled={!isAllowed && !isOldProjectV1Allowed}
                     size="sm"
                     variant={getProductAccent(projectType).variant}
-                    onClick={() => {
-                      if (isAddingProjectsAllowed) {
-                        onAddNewProject();
-                      } else {
-                        onUpgradePlan();
-                      }
-                    }}
+                    onClick={onAddNewProject}
                   >
                     <PlusIcon />
                     New Project
@@ -1371,15 +1332,11 @@ const Toolbar = ({
 const EmptyState = ({
   projectType,
   ProductIcon,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: {
   projectType: ProjectType;
   ProductIcon: ReturnType<typeof getProjectLucideIcon>;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
   return (
@@ -1397,13 +1354,7 @@ const EmptyState = ({
             <Button
               variant={getProductAccent(projectType).variant}
               isDisabled={!isAllowed}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
+              onClick={onAddNewProject}
             >
               <PlusIcon />
               Create Project

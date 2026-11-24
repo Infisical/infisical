@@ -49,9 +49,9 @@ Rules:
   returns. So a plan outlives a License Server outage by at most its 30 minute TTL; after that a paid org gets the
   free plan (limits, invite caps, session logs) until the server answers. The entitlements call times out after
   5 seconds (`ENTITLEMENTS_TIMEOUT_MS`), since it runs on the request path whenever no plan is cached.
-- **The plan carries no usage counts.** The plan route (`ee/routes/v1/license-router.ts`) counts projects live
-  for `workspacesUsed`; the project limit is enforced by `lockAndCountWorkspaces` under the create lock. Project
-  changes do not touch the plan cache.
+- **The plan carries no usage counts, and no API reports the project count.** The project limit is enforced only
+  on the backend, by `lockAndCountWorkspaces` under the create lock; the UI shows the refusal. Project changes do
+  not touch the plan cache.
 - **`getPlan` returns a `Plan`, which keeps its features private and frozen.** Check a feature with
   `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
   with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only

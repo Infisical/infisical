@@ -5042,7 +5042,6 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     licenseService,
-    organizationsProjects: organizationsProjectsService,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,

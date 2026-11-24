@@ -89,14 +89,6 @@ export const InstanceHsmUpgradeIntent = {
   isEnterpriseFeature: true
 } satisfies CapabilityUpgradeIntent;
 
-export const ProjectLimitUpgradeIntent = {
-  scope: "platform",
-  featureKey: "workspace_limit",
-  title: "Unlock More Projects",
-  description: "Compare subscriptions to increase your organization's project allowance.",
-  isEnterpriseFeature: false
-} satisfies CapabilityUpgradeIntent;
-
 export const SubOrganizationsUpgradeIntent = {
   scope: "platform",
   featureKey: "sub_organization",
