@@ -4,7 +4,7 @@ What every request and every domain needs about orgs.
 
 - **Org permission:** `orgPermissionService.getOrgPermission({ actor, orgId?, scope? })` returns an `OrgPermission`
   built from the actor's org roles and privileges (`OrgRoles`: built-in roles as defined in
-  `models/org-permission-set.ts`, a custom role or privilege as its own rules). It refuses another org, a
+  `models/permissions/org-permission-set.ts`, a custom role or privilege as its own rules). It refuses another org, a
   non-member and the wrong org level with the legacy messages. A delegated OAuth token keeps only what its scopes
   allow and holds no roles (`hasRole` is false). `getOrgPermissionByRoles` and `getGrantPermissions` build
   permissions from roles and from another member's grants, for privilege boundaries.

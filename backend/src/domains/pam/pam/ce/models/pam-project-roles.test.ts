@@ -5,7 +5,7 @@ import { Grant } from "@app/domains/platform/access-control/ce/module";
 import { projectAdminPermissions } from "@app/domains/platform/projects/ce/module";
 
 import { PamProjectRoles } from "./pam-project-roles";
-import { pamProjectMemberPermissions } from "./pam-roles";
+import { pamProjectMemberPermissions } from "./permissions/pam-roles";
 
 describe("PamProjectRoles.rulesFor", () => {
   test("should give the product admin the full project admin rules", () => {

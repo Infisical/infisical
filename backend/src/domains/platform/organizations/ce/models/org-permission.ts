@@ -10,8 +10,8 @@ import {
 import { OauthScope } from "@app/lib/auth/oauth-scopes";
 import { delegatedOauthScopesOf, TPrincipal } from "@app/lib/auth/principal";
 
-import { OrgPermissionSet, OrgPermissionSsoActions, OrgPermissionSubjects } from "./org-permission-set";
 import { OrgRoles } from "./org-roles";
+import { OrgPermissionSet, OrgPermissionSsoActions, OrgPermissionSubjects } from "./permissions/org-permission-set";
 
 // What each delegated OAuth scope allows on org subjects. No scope reaches org subjects yet, so a delegated token
 // keeps only its deny rules at the org level.

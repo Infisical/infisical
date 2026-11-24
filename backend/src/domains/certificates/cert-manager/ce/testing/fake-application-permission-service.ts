@@ -6,7 +6,7 @@ import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
 import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
 
 import { ApplicationRoles } from "../models/application-resource-roles";
-import { ApplicationPermissionSet } from "../models/application-roles";
+import { ApplicationPermissionSet } from "../models/permissions/application-roles";
 import {
   TApplicationPermissionService,
   TGetApplicationPermissionInput

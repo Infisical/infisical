@@ -22,7 +22,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSet,
   PamResourcePermissionSub
-} from "../../models/pam-roles";
+} from "../../models/permissions/pam-roles";
 
 // Every action in allOf, and at least one in anyOf, when given.
 export type TPamActionFilter = {

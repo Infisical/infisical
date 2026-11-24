@@ -470,10 +470,10 @@ builds its own permission; read `src/domains/platform/access-control/AGENTS.md` 
 - Access Control (`domains/platform/access-control`): who holds what (`actorGrantsService.getActorGrants`), the
   `Permission` base (`can`, `assert`), `RuleSet` (rule order) and `Grant`.
 - Organizations: `orgPermissionService.getOrgPermission({ actor })`; org actions and subjects in
-  `domains/platform/organizations/ce/models/org-permission-set.ts`.
+  `domains/platform/organizations/ce/models/permissions/org-permission-set.ts`.
 - Projects: `projectPermissionService.getProjectPermission({ actor, projectId, type? })` and
   `projectResourcePermissionService`; project actions and subjects in
-  `domains/platform/projects/ce/models/project-permission-set.ts`.
+  `domains/platform/projects/ce/models/permissions/project-permission-set.ts`.
 - Products: `secretsPermissionService.getSecretsPermission` (every Secret Manager check),
   `pamPermissionService`, `accessBundlePermissionService`, `applicationPermissionService`,
   `signerPermissionService`, `kmsPermissionService`. A product whose roles mean something else passes Projects a
@@ -509,7 +509,7 @@ payload and a full re-read. Tests run with the marker off (`isTestMode`), so eve
 - Expired temporary roles and grants are dropped by the models on every read, whatever the cache holds.
 - Org grants and resource memberships are read on every request (memoized per request only).
 
-**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole`, rules in `domains/secrets-manager/secrets/ce/models/folder-roles.ts`) are Secrets' folder grants, covered by a per-project folder version counter (`project-folder-permission-version:<projectId>`). A grant's path comes from the folder tree, so a rename changes what it allows without touching its row. Therefore:
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole`, rules in `domains/secrets-manager/secrets/ce/models/permissions/folder-roles.ts`) are Secrets' folder grants, covered by a per-project folder version counter (`project-folder-permission-version:<projectId>`). A grant's path comes from the folder tree, so a rename changes what it allows without touching its row. Therefore:
 
 - **Call `secretsPermissionService.within(sealKnexTransaction(tx)).invalidateFolderGrants({ projectIds })`** (or `invalidateFolderGrants` outside a transaction) from folder-access grant create/update/delete and from every folder rename, move or delete path.
 - **Membership teardowns must not call it**: the membership row they delete is already in the grants fingerprint. This holds only while a teardown reaps grants in exactly the projects the actor is losing.

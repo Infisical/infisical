@@ -5,7 +5,7 @@ import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { ActorGrants, RuleIdentity } from "@app/domains/platform/access-control/ce/module";
 import { Project, ProjectAccess, ProjectPermission } from "@app/domains/platform/projects/ce/module";
 
-import { kmsProjectRoles } from "../models/kms-project-roles";
+import { kmsProjectRoles } from "../models/permissions/kms-project-roles";
 import { TGetKmsPermissionInput, TKmsPermissionService } from "../services/kms-permission/service";
 
 // For tests of code that checks KMS permissions: give the actor roles in a KMS project, which mean what

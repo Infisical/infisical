@@ -12,8 +12,8 @@ import {
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { OrgPermission } from "../../models/org-permission";
-import { OrgPermissionSet } from "../../models/org-permission-set";
 import { Organization } from "../../models/organization";
+import { OrgPermissionSet } from "../../models/permissions/org-permission-set";
 
 export type TGetOrgPermissionInput = {
   actor: TActorContext;

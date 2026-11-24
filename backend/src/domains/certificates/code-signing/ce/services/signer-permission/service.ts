@@ -2,8 +2,8 @@ import { ProjectType, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ProjectResourcePermission, TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
+import { SignerPermissionSet } from "../../models/permissions/signer-roles";
 import { SignerRoles } from "../../models/signer-resource-roles";
-import { SignerPermissionSet } from "../../models/signer-roles";
 
 export type TGetSignerPermissionInput = {
   actor: TActorContext;

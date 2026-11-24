@@ -15,7 +15,7 @@ import { buildProjectsModule } from "@app/domains/platform/projects/ce/testing/p
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { PamProjectRoles } from "../../models/pam-project-roles";
-import { PamResourcePermissionActions, PamResourcePermissionSub } from "../../models/pam-roles";
+import { PamResourcePermissionActions, PamResourcePermissionSub } from "../../models/permissions/pam-roles";
 import { PamModule } from "../../module";
 
 const check = (action: PamResourcePermissionActions) => ({ action, subject: PamResourcePermissionSub.PamResource });

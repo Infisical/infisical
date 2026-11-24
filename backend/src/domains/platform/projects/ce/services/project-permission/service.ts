@@ -16,10 +16,10 @@ import {
 import { ActorType } from "@app/lib/auth/actor-types";
 import { effectiveActorForProject, TPrincipal } from "@app/lib/auth/principal";
 
+import { ProjectPermissionSet } from "../../models/permissions/project-permission-set";
 import { Project } from "../../models/project";
 import { ProjectAccess } from "../../models/project-access";
 import { ProjectPermission } from "../../models/project-permission";
-import { ProjectPermissionSet } from "../../models/project-permission-set";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
 import { TProjectCache, TProjectStore } from "../dependencies";
 

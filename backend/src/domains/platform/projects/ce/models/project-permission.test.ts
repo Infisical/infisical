@@ -9,8 +9,6 @@ import { userPrincipal } from "@app/domains/platform/organizations/ce/testing/ac
 import { ActorType } from "@app/lib/auth/actor-types";
 import type { TPrincipal } from "@app/lib/auth/principal";
 
-import { Project } from "./project";
-import { ProjectPermission } from "./project-permission";
 import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
@@ -18,8 +16,10 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission-set";
-import { projectAdminPermissions, projectMemberPermissions } from "./project-roles";
+} from "./permissions/project-permission-set";
+import { projectAdminPermissions, projectMemberPermissions } from "./permissions/project-roles";
+import { Project } from "./project";
+import { ProjectPermission } from "./project-permission";
 import { TProjectRule } from "./standard-project-roles";
 
 const project = (overrides: Partial<Parameters<typeof Project.restore>[0]> = {}) =>

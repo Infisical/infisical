@@ -14,7 +14,7 @@ import { SsoSessionService, TSsoSessionService } from "./services/sso-session/se
 
 export * from "./models/organization";
 export * from "./models/org-permission";
-export * from "./models/org-permission-set";
+export * from "./models/permissions/org-permission-set";
 export * from "./models/org-roles";
 export * from "./models/sso-policy";
 export type { TActorContextService, TRequestActorContext } from "./services/actor-context/service";

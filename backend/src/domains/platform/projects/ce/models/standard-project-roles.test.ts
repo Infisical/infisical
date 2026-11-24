@@ -7,14 +7,14 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "./project-permission-set";
+} from "./permissions/project-permission-set";
 import {
   cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission
-} from "./project-roles";
+} from "./permissions/project-roles";
 import { StandardProjectRoles, TProjectRule } from "./standard-project-roles";
 
 describe("StandardProjectRoles.rulesFor", () => {

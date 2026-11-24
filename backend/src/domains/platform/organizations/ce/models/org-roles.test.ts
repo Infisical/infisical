@@ -4,6 +4,7 @@ import { OrgMembershipRole } from "@app/db/schemas";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
 
+import { OrgRoles } from "./org-roles";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
@@ -12,8 +13,7 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSchema,
   OrgPermissionSubjects
-} from "./org-permission-set";
-import { OrgRoles } from "./org-roles";
+} from "./permissions/org-permission-set";
 
 describe("OrgRoles.rulesFor", () => {
   test.each([

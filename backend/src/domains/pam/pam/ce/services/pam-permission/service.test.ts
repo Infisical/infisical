@@ -15,7 +15,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSet,
   PamResourcePermissionSub
-} from "../../models/pam-roles";
+} from "../../models/permissions/pam-roles";
 import { pamActorKey, PamPermissionService } from "./service";
 
 const actor: TActorContext = {

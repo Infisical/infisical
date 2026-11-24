@@ -14,7 +14,7 @@ import {
   ApplicationCertificatePermissionActions,
   ApplicationPermissionActions,
   ApplicationPermissionSub
-} from "../../models/application-roles";
+} from "../../models/permissions/application-roles";
 import { CertManagerModule } from "../../module";
 
 describe("ApplicationPermissionService.getApplicationPermission", () => {

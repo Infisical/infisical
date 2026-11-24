@@ -16,7 +16,7 @@ import {
   RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS,
   recursiveFolderPathGlob,
   SECRET_FOLDER_ROLE_PERMISSIONS
-} from "./folder-roles";
+} from "./permissions/folder-roles";
 
 export type TFolderGrantRecord = {
   id: string;

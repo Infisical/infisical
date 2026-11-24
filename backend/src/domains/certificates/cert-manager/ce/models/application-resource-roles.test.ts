@@ -10,7 +10,7 @@ import {
   applicationOperatorPermissions,
   ApplicationPermissionSub,
   projectAdminApplicationFallbackPermissions
-} from "./application-roles";
+} from "./permissions/application-roles";
 
 describe("ApplicationRoles.rulesFor", () => {
   test.each([

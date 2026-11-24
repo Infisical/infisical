@@ -16,7 +16,7 @@ import { AgentVaultUsageService } from "./services/usage/service";
 
 export * from "./models/access-bundle-roles";
 export * from "./models/agent-vault-project-roles";
-export * from "./models/agent-vault-roles";
+export * from "./models/permissions/agent-vault-roles";
 
 export type TAgentVaultDeps = {
   keyStore: TDomainKeyStore;

@@ -9,7 +9,7 @@ import { ApplicationPermissionService, TApplicationPermissionService } from "./s
 import { CertManagerService, TCertManagerService } from "./services/cert-manager/service";
 
 export * from "./models/application-resource-roles";
-export * from "./models/application-roles";
+export * from "./models/permissions/application-roles";
 export type {
   TApplicationPermissionService,
   TGetApplicationPermissionInput

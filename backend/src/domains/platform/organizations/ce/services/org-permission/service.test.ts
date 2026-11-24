@@ -16,7 +16,7 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "../../models/org-permission-set";
+} from "../../models/permissions/org-permission-set";
 import { actorContext, actorOrg, userPrincipal } from "../../testing/actor-context-fixture";
 import { OrgPermissionService } from "./service";
 

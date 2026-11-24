@@ -20,11 +20,11 @@ import { ProjectsService, TProjectsService } from "./services/projects/service";
 
 export * from "./models/project";
 export * from "./models/project-access";
-export * from "./models/project-oauth-scopes";
+export * from "./models/permissions/project-oauth-scopes";
 export * from "./models/project-permission";
-export * from "./models/project-permission-set";
+export * from "./models/permissions/project-permission-set";
 export * from "./models/project-resource-permission";
-export * from "./models/project-roles";
+export * from "./models/permissions/project-roles";
 export * from "./models/standard-project-roles";
 export type {
   TGetProjectPermissionInput,

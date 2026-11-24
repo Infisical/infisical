@@ -3,8 +3,6 @@ import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { ActorGrants, Grant, RuleIdentity, RuleSet } from "@app/domains/platform/access-control/ce/module";
 import type { TPrincipal } from "@app/lib/auth/principal";
 
-import { Project } from "./project";
-import { ProjectPermission } from "./project-permission";
 import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -12,7 +10,9 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission-set";
+} from "./permissions/project-permission-set";
+import { Project } from "./project";
+import { ProjectPermission } from "./project-permission";
 import { TProjectRoles, TProjectRule } from "./standard-project-roles";
 
 // A forbid written before an action was split in two also forbids the two new actions, so an old custom role keeps

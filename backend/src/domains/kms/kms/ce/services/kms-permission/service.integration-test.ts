@@ -6,7 +6,7 @@ import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/domains
 import { buildProjectsModule } from "@app/domains/platform/projects/ce/testing/projects-module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
-import { kmsProjectRoles } from "../../models/kms-project-roles";
+import { kmsProjectRoles } from "../../models/permissions/kms-project-roles";
 import { KmsModule } from "../../module";
 
 const encrypt = { action: ProjectPermissionCmekActions.Encrypt, subject: ProjectPermissionSub.Cmek } as const;

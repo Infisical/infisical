@@ -9,7 +9,7 @@ import {
   signerAuditorPermissions,
   signerOperatorPermissions,
   SignerPermissionSet
-} from "./signer-roles";
+} from "./permissions/signer-roles";
 
 type TSignerRule = TPermissionRule<SignerPermissionSet>;
 

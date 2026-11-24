@@ -14,7 +14,7 @@ import {
 import { ProjectResourcePermission, TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
 import { PamAccountRoles, PamFolderRoles } from "../models/pam-resource-roles";
-import { PamResourcePermissionSet } from "../models/pam-roles";
+import { PamResourcePermissionSet } from "../models/permissions/pam-roles";
 import {
   PamPermissionService,
   TAccountAccessInput,

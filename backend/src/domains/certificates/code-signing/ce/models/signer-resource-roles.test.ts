@@ -4,14 +4,14 @@ import { ResourceType } from "@app/db/schemas";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { Grant } from "@app/domains/platform/access-control/ce/module";
 
-import { SignerRoles } from "./signer-resource-roles";
 import {
   projectAdminSignerFallbackPermissions,
   signerAdminPermissions,
   SignerPermissionActions,
   SignerPermissionSub,
   signerOperatorPermissions
-} from "./signer-roles";
+} from "./permissions/signer-roles";
+import { SignerRoles } from "./signer-resource-roles";
 
 describe("SignerRoles.rulesFor", () => {
   test("should resolve a signer role to its rules", () => {

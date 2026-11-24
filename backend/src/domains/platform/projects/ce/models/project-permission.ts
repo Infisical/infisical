@@ -9,9 +9,9 @@ import {
 } from "@app/domains/platform/access-control/ce/module";
 import { delegatedOauthScopesOf, TPrincipal } from "@app/lib/auth/principal";
 
+import { projectOauthAllowlist } from "./permissions/project-oauth-scopes";
+import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./permissions/project-permission-set";
 import { Project } from "./project";
-import { projectOauthAllowlist } from "./project-oauth-scopes";
-import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission-set";
 
 // What an actor may do in one project, with the project and the memberships it was built from.
 export class ProjectPermission extends Permission<ProjectPermissionSet> {

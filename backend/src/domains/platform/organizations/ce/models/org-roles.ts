@@ -7,7 +7,7 @@ import {
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionSet
-} from "./org-permission-set";
+} from "./permissions/org-permission-set";
 
 type TOrgRule = TPermissionRule<OrgPermissionSet>;
 

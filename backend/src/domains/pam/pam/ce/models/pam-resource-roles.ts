@@ -12,7 +12,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSet,
   PamResourcePermissionSub
-} from "./pam-roles";
+} from "./permissions/pam-roles";
 
 type TPamResourceRule = TPermissionRule<PamResourcePermissionSet>;
 

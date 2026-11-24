@@ -2,7 +2,7 @@ import { TProjectPermissionService } from "@app/domains/platform/projects/ce/mod
 
 import { KmsPermissionService, TKmsPermissionService } from "./services/kms-permission/service";
 
-export * from "./models/kms-project-roles";
+export * from "./models/permissions/kms-project-roles";
 export type { TGetKmsPermissionInput, TKmsPermissionService } from "./services/kms-permission/service";
 
 export type TKmsDeps = {

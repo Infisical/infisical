@@ -7,7 +7,7 @@ import { PamPermissionService, TPamPermissionService } from "./services/pam-perm
 
 export * from "./models/pam-project-roles";
 export * from "./models/pam-resource-roles";
-export * from "./models/pam-roles";
+export * from "./models/permissions/pam-roles";
 export { pamActorKey } from "./services/pam-permission/service";
 export type {
   TAccountAccessInput,

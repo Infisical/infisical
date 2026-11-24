@@ -21,8 +21,8 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "../../models/project-permission-set";
-import { genericProjectRoles } from "../../models/project-roles";
+} from "../../models/permissions/project-permission-set";
+import { genericProjectRoles } from "../../models/permissions/project-roles";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
 import { buildProjects } from "../../testing/build-projects";
 import { InMemoryProjectCache } from "../../testing/in-memory-project-cache";

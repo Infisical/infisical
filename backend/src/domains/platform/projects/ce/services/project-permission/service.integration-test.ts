@@ -17,7 +17,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "../../models/project-permission-set";
+} from "../../models/permissions/project-permission-set";
 import { TProjectRule } from "../../models/standard-project-roles";
 import { buildProjectsModule } from "../../testing/projects-module";
 

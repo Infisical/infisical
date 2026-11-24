@@ -5,8 +5,8 @@ import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
 import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
 
+import { SignerPermissionSet } from "../models/permissions/signer-roles";
 import { SignerRoles } from "../models/signer-resource-roles";
-import { SignerPermissionSet } from "../models/signer-roles";
 import { TGetSignerPermissionInput, TSignerPermissionService } from "../services/signer-permission/service";
 
 // For tests of code that checks signer permissions: give the actor signer roles, or make it a project admin, and

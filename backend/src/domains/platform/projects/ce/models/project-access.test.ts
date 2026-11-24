@@ -9,8 +9,6 @@ import { PAST, TSeedRole } from "@app/domains/platform/access-control/ce/testing
 import { userPrincipal } from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
 import { ActorType } from "@app/lib/auth/actor-types";
 
-import { Project } from "./project";
-import { ProjectAccess } from "./project-access";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -19,7 +17,9 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission-set";
+} from "./permissions/project-permission-set";
+import { Project } from "./project";
+import { ProjectAccess } from "./project-access";
 import { StandardProjectRoles, TProjectRule } from "./standard-project-roles";
 
 const roles = StandardProjectRoles.generic(ProjectType.SecretManager);

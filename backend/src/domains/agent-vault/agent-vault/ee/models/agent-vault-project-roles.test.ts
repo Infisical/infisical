@@ -21,7 +21,7 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 
 import { AgentVaultProjectRoles } from "./agent-vault-project-roles";
-import { agentVaultProjectAdminPermissions, agentVaultProjectMemberPermissions } from "./agent-vault-roles";
+import { agentVaultProjectAdminPermissions, agentVaultProjectMemberPermissions } from "./permissions/agent-vault-roles";
 
 const permissionFor = (slug: string, packedRules?: unknown) =>
   Permission.fromRules<ProjectPermissionSet>({

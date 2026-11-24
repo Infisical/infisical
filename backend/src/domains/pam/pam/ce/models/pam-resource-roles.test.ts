@@ -8,7 +8,7 @@ import {
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
   pamResourceOperatorPermissions
-} from "./pam-roles";
+} from "./permissions/pam-roles";
 
 describe("PamFolderRoles.rulesFor", () => {
   test.each([

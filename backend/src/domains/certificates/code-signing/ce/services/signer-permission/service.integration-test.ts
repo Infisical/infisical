@@ -8,7 +8,7 @@ import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing
 import { buildProjectsModule } from "@app/domains/platform/projects/ce/testing/projects-module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
-import { SignerPermissionActions, SignerPermissionSub } from "../../models/signer-roles";
+import { SignerPermissionActions, SignerPermissionSub } from "../../models/permissions/signer-roles";
 import { CodeSigningModule } from "../../module";
 
 const check = (action: SignerPermissionActions) => ({ action, subject: SignerPermissionSub.Signer });

@@ -2,7 +2,7 @@ import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { Grant } from "@app/domains/platform/access-control/ce/module";
 import { TProjectRoles, TProjectRule } from "@app/domains/platform/projects/ce/module";
 
-import { pamProjectAdminPermissions, pamProjectMemberPermissions } from "./pam-roles";
+import { pamProjectAdminPermissions, pamProjectMemberPermissions } from "./permissions/pam-roles";
 
 // A PAM project's role slugs are the PAM product roles, and they mean something different from the generic project
 // roles: everything a product member can do comes from their folder/account memberships, which PAM resolves

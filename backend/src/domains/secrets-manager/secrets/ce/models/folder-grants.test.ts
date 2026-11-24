@@ -28,7 +28,7 @@ import { logger } from "@app/lib/logger";
 
 import { FolderGrant, TFolderGrantRecord } from "./folder-grant";
 import { FolderGrants } from "./folder-grants";
-import { FOLDER_SCOPED_DENY_RULES, FolderRoles } from "./folder-roles";
+import { FOLDER_SCOPED_DENY_RULES, FolderRoles } from "./permissions/folder-roles";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 

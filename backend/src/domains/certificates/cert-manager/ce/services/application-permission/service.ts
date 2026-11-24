@@ -3,7 +3,7 @@ import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ProjectResourcePermission, TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
 import { ApplicationRoles } from "../../models/application-resource-roles";
-import { ApplicationPermissionSet } from "../../models/application-roles";
+import { ApplicationPermissionSet } from "../../models/permissions/application-roles";
 
 export type TGetApplicationPermissionInput = {
   actor: TActorContext;

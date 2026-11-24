@@ -9,7 +9,7 @@ import {
   applicationOperatorPermissions,
   ApplicationPermissionSet,
   projectAdminApplicationFallbackPermissions
-} from "./application-roles";
+} from "./permissions/application-roles";
 
 type TApplicationRule = TPermissionRule<ApplicationPermissionSet>;
 

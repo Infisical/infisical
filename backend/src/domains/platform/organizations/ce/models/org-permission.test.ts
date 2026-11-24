@@ -19,7 +19,7 @@ import {
   OrgPermissionSet,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
-} from "./org-permission-set";
+} from "./permissions/org-permission-set";
 
 type TOrgRule = TPermissionRule<OrgPermissionSet>;
 

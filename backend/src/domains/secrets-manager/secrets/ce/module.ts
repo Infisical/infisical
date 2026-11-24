@@ -14,7 +14,7 @@ import { SecretsPermissionService, TSecretsPermissionService } from "./services/
 
 export * from "./models/folder-grant";
 export * from "./models/folder-grants";
-export * from "./models/folder-roles";
+export * from "./models/permissions/folder-roles";
 export * from "./models/secret-read-access";
 export * from "./models/service-token";
 export type {

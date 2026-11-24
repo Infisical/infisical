@@ -3,7 +3,7 @@ import { TProjectResourcePermissionService } from "@app/domains/platform/project
 import { SignerPermissionService, TSignerPermissionService } from "./services/signer-permission/service";
 
 export * from "./models/signer-resource-roles";
-export * from "./models/signer-roles";
+export * from "./models/permissions/signer-roles";
 export type { TGetSignerPermissionInput, TSignerPermissionService } from "./services/signer-permission/service";
 
 export type TCodeSigningDeps = {

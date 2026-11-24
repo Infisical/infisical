@@ -2,8 +2,8 @@ import { ProjectType } from "@app/db/schemas";
 import { Grant, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { ProjectPermissionSet } from "./project-permission-set";
-import { genericProjectRoles } from "./project-roles";
+import { ProjectPermissionSet } from "./permissions/project-permission-set";
+import { genericProjectRoles } from "./permissions/project-roles";
 
 export type TProjectRule = TPermissionRule<ProjectPermissionSet>;
 
