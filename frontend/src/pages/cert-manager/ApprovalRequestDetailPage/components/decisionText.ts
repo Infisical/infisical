@@ -1,5 +1,9 @@
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
-import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
+import {
+  CertRequestRequestData,
+  isCertRenewalRequest,
+  TApprovalRequest
+} from "@app/hooks/api/approvalRequests";
 
 const DECISION_TEXT = {
   revocation: {
@@ -31,9 +35,9 @@ const DECISION_TEXT = {
 export const getDecisionText = (request: TApprovalRequest) => {
   if (request.type === ApprovalPolicyType.CertRevocation) return DECISION_TEXT.revocation;
   if (request.type === ApprovalPolicyType.CertRequest) {
-    const { renewal } = request.requestData.requestData as CertRequestRequestData;
-    if (!renewal) return DECISION_TEXT.issuance;
-    return renewal.raisedByAutoRenewal ? DECISION_TEXT.autoRenewal : DECISION_TEXT.renewal;
+    const data = request.requestData.requestData as CertRequestRequestData;
+    if (!isCertRenewalRequest(data)) return DECISION_TEXT.issuance;
+    return data.renewal?.raisedByAutoRenewal ? DECISION_TEXT.autoRenewal : DECISION_TEXT.renewal;
   }
   return DECISION_TEXT.access;
 };

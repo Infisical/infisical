@@ -13,6 +13,7 @@ export {
   ApprovalRequestStepStatus,
   type CertRequestRequestData,
   type CertRevocationRequestData,
+  isCertRenewalRequest,
   type CodeSigningRequestData,
   type PamAccessRequestData,
   type TApprovalRequest,

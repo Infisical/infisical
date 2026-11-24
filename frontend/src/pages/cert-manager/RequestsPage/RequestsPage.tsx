@@ -48,6 +48,7 @@ import {
   CertRequestRequestData,
   CertRevocationRequestData,
   CodeSigningRequestData,
+  isCertRenewalRequest,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
@@ -121,7 +122,7 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
   const renewal = data && "renewal" in data ? data.renewal : undefined;
   const commonName = data?.certificateRequest?.commonName ?? "";
   return {
-    typeLabel: renewal ? "Renewal" : "Issuance",
+    typeLabel: data && isCertRenewalRequest(data) ? "Renewal" : "Issuance",
     commonName,
     renewedCertificateName: renewal?.certificateName ?? "",
     displayName: commonName,

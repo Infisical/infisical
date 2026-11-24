@@ -1498,6 +1498,17 @@ export const certificateV3ServiceFactory = ({
     );
 
     if (approvalPolicy) {
+      if (
+        isRenewal &&
+        originalCertificateId &&
+        (await certificateDAL.hasRenewalAwaitingApproval({
+          certificateId: originalCertificateId,
+          projectId: profile.projectId
+        }))
+      ) {
+        throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
+      }
+
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
       const {

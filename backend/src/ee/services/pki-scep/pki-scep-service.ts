@@ -96,7 +96,10 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode" | "hasRenewalAwaitingApproval"
+  >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
@@ -1046,6 +1049,17 @@ export const pkiScepServiceFactory = ({
       });
 
     if (approvalPolicy) {
+      if (
+        isRenewal &&
+        originalCertificateId &&
+        (await certificateDAL.hasRenewalAwaitingApproval({
+          certificateId: originalCertificateId,
+          projectId: profile.projectId
+        }))
+      ) {
+        throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
+      }
+
       const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction((tx) =>
         holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },

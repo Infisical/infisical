@@ -31,6 +31,7 @@ import {
   CertRequestRequestData,
   CertRevocationRequestData,
   CodeSigningRequestData,
+  isCertRenewalRequest,
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
@@ -421,7 +422,7 @@ const PageContent = () => {
       <>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-normal text-foreground">
-            {reqData.renewal
+            {isCertRenewalRequest(reqData)
               ? "Certificate Renewal Approval Request"
               : "Certificate Approval Request"}
           </h1>
@@ -430,7 +431,7 @@ const PageContent = () => {
           </Badge>
         </div>
         <p className="mt-1 text-sm text-muted">
-          Certificate {reqData.renewal ? "renewal" : "issuance"} request for{" "}
+          Certificate {isCertRenewalRequest(reqData) ? "renewal" : "issuance"} request for{" "}
           <span className="font-medium text-foreground-secondary">
             {reqData.renewal?.certificateName ||
               reqData.certificateRequest?.commonName ||

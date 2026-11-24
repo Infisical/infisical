@@ -122,6 +122,7 @@ export type TOriginatingCertificateRequest = {
 };
 
 const PENDING_RENEWAL_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'certificateId'`;
+const PENDING_RE_ENROLLMENT_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'renewalOfCertificateId'`;
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
@@ -1035,7 +1036,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where((unexpiredQb) => {
           void unexpiredQb.whereNull("expiresAt").orWhere("expiresAt", ">", new Date());
         })
-        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+        .where((renewalQb) => {
+          void renewalQb
+            .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+            .orWhereRaw(`${PENDING_RE_ENROLLMENT_CERTIFICATE_ID} = ?`, [certificateId]);
+        })
         .first("id");
       return Boolean(row);
     } catch (error) {

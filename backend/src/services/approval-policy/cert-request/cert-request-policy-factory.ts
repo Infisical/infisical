@@ -131,18 +131,20 @@ export const certRequestApprovalResourceFactory = ({
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
   buildNotification: async ({ event, request, failureReason }) => {
-    const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
-      .requestData;
+    const { renewal, renewalOfCertificateId, certificateRequest } = (
+      request.requestData as { requestData: TCertRequestRequestData }
+    ).requestData;
+    const isRenewal = Boolean(renewal || renewalOfCertificateId);
     const certificateName =
       renewal?.certificateName || certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
 
     if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
-      const action = renewal ? "renewal" : "issuance";
+      const action = isRenewal ? "renewal" : "issuance";
       const certificate = certificateName ? ` of the certificate '${certificateName}'` : "";
       return {
         inApp: {
           type: NotificationType.APPROVED_ACTION_FAILED,
-          title: renewal ? "Certificate Renewal Failed" : "Certificate Issuance Failed",
+          title: isRenewal ? "Certificate Renewal Failed" : "Certificate Issuance Failed",
           body: `The approved ${action}${certificate} didn't complete. Reason: ${failureReason}`,
           link: `${getConfig().SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`
         }
@@ -153,9 +155,9 @@ export const certRequestApprovalResourceFactory = ({
 
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
-    const title = renewal ? "Certificate Renewal Approval Request" : "Certificate Approval Request";
+    const title = isRenewal ? "Certificate Renewal Approval Request" : "Certificate Approval Request";
     let body = `You have a new approval request for ${request.type} from ${request.requesterName}.`;
-    if (renewal) {
+    if (isRenewal) {
       body = certificateName
         ? `${request.requesterName} asked to renew the certificate '${certificateName}'.`
         : `${request.requesterName} asked to renew a certificate.`;
@@ -176,7 +178,7 @@ export const certRequestApprovalResourceFactory = ({
               requesterName: request.requesterName,
               requesterEmail: request.requesterEmail || undefined,
               title,
-              requestType: renewal ? "certificate renewal request" : "certificate request",
+              requestType: isRenewal ? "certificate renewal request" : "certificate request",
               justification: request.justification || undefined,
               approvalUrl
             }
@@ -241,9 +243,9 @@ export const certRequestApprovalResourceFactory = ({
       }
       await certificateRequestService.recordIssuanceFailure(failedRequest, {
         error,
-        ...(renewal && {
+        ...((renewal || renewalOfCertificateId) && {
           operation: CertificateIssuanceOperation.RENEW,
-          originalCertificateId: renewal.certificateId
+          originalCertificateId: renewal?.certificateId ?? renewalOfCertificateId
         })
       });
       // External CAs are only reached from a background job, and internal-CA signing is Infisical's own, so a
@@ -251,10 +253,10 @@ export const certRequestApprovalResourceFactory = ({
       await approvalPolicyService.notifyApprovedActionFailed(
         request,
         describeCaOperationFailure({
-          action: renewal ? "Renewing the certificate" : "Issuing the certificate",
+          action: renewal || renewalOfCertificateId ? "Renewing the certificate" : "Issuing the certificate",
           stage: CaOperationFailureStage.Infisical,
           error,
-          fallback: `An unexpected error stopped the certificate from being ${renewal ? "renewed" : "issued"}.`
+          fallback: `An unexpected error stopped the certificate from being ${renewal || renewalOfCertificateId ? "renewed" : "issued"}.`
         })
       );
       logger.error(

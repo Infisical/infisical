@@ -20,6 +20,7 @@ import {
 } from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { overrideLicenseFeatures } from "../../testUtils/license";
+import { listUserNotifications } from "../../testUtils/notifications";
 
 const PASSPHRASE = "est-passphrase-123";
 const COMMON_NAME = "device.example.com";
@@ -51,6 +52,8 @@ describe("EST enrollment through an application profile", async () => {
   let estBaseUrl = "";
   let applicationId = "";
   let profileSlug = "";
+  let projectId = "";
+  let profileId = "";
 
   const post = async (path: string, body: Record<string, unknown>) => {
     const res = await testServer.inject({
@@ -65,11 +68,15 @@ describe("EST enrollment through an application profile", async () => {
 
   const enroll = async (
     operation: "simpleenroll" | "simplereenroll",
-    { passphrase = PASSPHRASE, clientCert }: { passphrase?: string; clientCert?: string } = {}
+    {
+      passphrase = PASSPHRASE,
+      clientCert,
+      baseUrl = estBaseUrl
+    }: { passphrase?: string; clientCert?: string; baseUrl?: string } = {}
   ) =>
     testServer.inject({
       method: "POST",
-      url: `${estBaseUrl}/${operation}`,
+      url: `${baseUrl}/${operation}`,
       headers: {
         authorization: basicAuth(passphrase),
         "content-type": "application/pkcs10",
@@ -77,6 +84,24 @@ describe("EST enrollment through an application profile", async () => {
       },
       payload: await generateCsr()
     });
+
+  const estUrlFor = (appId: string) => `/.well-known/est/applications/${appId}/profiles/${profileId}`;
+
+  const createEstApplication = async (name: string) => {
+    const { application } = await post(`/api/v1/cert-manager/applications?projectId=${projectId}`, {
+      name,
+      profileIds: [profileId]
+    });
+
+    const estRes = await testServer.inject({
+      method: "PUT",
+      url: `/api/v1/cert-manager/applications/${application.id}/profiles/${profileId}/enrollment/est?projectId=${projectId}`,
+      headers: { authorization: `Bearer ${authToken}` },
+      body: { passphrase: PASSPHRASE, disableBootstrapCaValidation: true }
+    });
+    expect(estRes.statusCode, estRes.payload).toBe(200);
+    return application.id as string;
+  };
 
   beforeAll(async () => {
     restoreLicense = overrideLicenseFeatures({ pkiEst: true, pkiApprovals: true, maxCas: 100, maxInternalCas: 100 });
@@ -86,7 +111,7 @@ describe("EST enrollment through an application profile", async () => {
       projectName: "EST application enrollment",
       type: ProjectType.CertificateManager
     });
-    const projectId = project.id as string;
+    projectId = project.id as string;
     // Org creation already bootstraps a Certificate Manager project, and Applications only run on the active one.
     await post("/api/v1/cert-manager/instance/active-project", { projectId });
 
@@ -116,22 +141,10 @@ describe("EST enrollment through an application profile", async () => {
       slug: "est-profile"
     });
 
-    const { application } = await post(`/api/v1/cert-manager/applications?projectId=${projectId}`, {
-      name: "est-application",
-      profileIds: [certificateProfile.id]
-    });
-
-    const estRes = await testServer.inject({
-      method: "PUT",
-      url: `/api/v1/cert-manager/applications/${application.id}/profiles/${certificateProfile.id}/enrollment/est?projectId=${projectId}`,
-      headers: { authorization: `Bearer ${authToken}` },
-      body: { passphrase: PASSPHRASE, disableBootstrapCaValidation: true }
-    });
-    expect(estRes.statusCode, estRes.payload).toBe(200);
-
-    estBaseUrl = `/.well-known/est/applications/${application.id}/profiles/${certificateProfile.id}`;
-    applicationId = application.id;
+    profileId = certificateProfile.id;
     profileSlug = certificateProfile.slug;
+    applicationId = await createEstApplication("est-application");
+    estBaseUrl = estUrlFor(applicationId);
   });
 
   afterAll(async () => {
@@ -190,6 +203,18 @@ describe("EST enrollment through an application profile", async () => {
     expect(second.renewedFromCertificateId).toBe(first.id);
   });
 
+  test("doesn't mark another Application's certificate renewed when a client re-enrolls with it here", async () => {
+    const issued = await enrolled();
+    const otherApplicationUrl = estUrlFor(await createEstApplication("est-other-application"));
+
+    const res = await enroll("simplereenroll", { clientCert: issued.toString("pem"), baseUrl: otherApplicationUrl });
+
+    expect(res.statusCode, res.payload).toBe(200);
+    const original = await stored(issued);
+    expect(original.renewedByCertificateId ?? null, "the first Application's certificate isn't linked").toBeNull();
+    expect((await stored(leafCertificateFromPkcs7(res.payload))).renewedFromCertificateId ?? null).toBeNull();
+  });
+
   test("rejects a wrong passphrase", async () => {
     const res = await enroll("simpleenroll", { passphrase: "not-the-passphrase" });
 
@@ -199,6 +224,11 @@ describe("EST enrollment through an application profile", async () => {
   // Runs last: the policy it creates covers every later re-enrollment on this profile.
   describe("with a Renewal approval policy on the profile", async () => {
     let issued: x509.X509Certificate;
+
+    const pendingApprovals = async () =>
+      (
+        await listApplicationApprovalRequests({ policyType: ApprovalPolicyType.CertRequest, applicationId, authToken })
+      ).filter((req) => req.status === ApprovalRequestStatus.Pending);
 
     beforeAll(async () => {
       issued = await enrolled();
@@ -220,13 +250,25 @@ describe("EST enrollment through an application profile", async () => {
       expect(res.statusCode, res.payload).toBe(400);
       expect(res.json<{ message: string }>().message).toContain("requires approval");
       expect((await stored(issued)).renewedByCertificateId ?? null, "nothing is linked while it waits").toBeNull();
+
+      const [held] = await pendingApprovals();
+      const notice = (await listUserNotifications(authToken)).find((n) => n.link?.includes(`/approvals/${held.id}`));
+      expect(notice?.body, "approvers are told it's a renewal").toContain("asked to renew");
+    });
+
+    test("refuses another re-enrollment while one waits for approval", async () => {
+      const res = await enroll("simplereenroll", { clientCert: issued.toString("pem") });
+
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(res.json<{ message: string }>().message).toBe(
+        "A renewal of this certificate is already waiting for approval."
+      );
+      expect(await pendingApprovals(), "no second approval request was raised").toHaveLength(1);
     });
 
     test("links the approved re-enrollment to the certificate it replaces", async () => {
       const original = await stored(issued);
-      const [held] = (
-        await listApplicationApprovalRequests({ policyType: ApprovalPolicyType.CertRequest, applicationId, authToken })
-      ).filter((req) => req.status === ApprovalRequestStatus.Pending);
+      const [held] = await pendingApprovals();
       expect(held, "the re-enrollment raised an approval request").toBeTruthy();
 
       await decideApprovalRequest({

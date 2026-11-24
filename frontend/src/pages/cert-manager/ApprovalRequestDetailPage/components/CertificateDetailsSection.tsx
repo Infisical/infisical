@@ -20,7 +20,11 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
+import {
+  CertRequestRequestData,
+  isCertRenewalRequest,
+  TApprovalRequest
+} from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
   certKeyAlgorithmToNameMap,
@@ -109,7 +113,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       <Card>
         <CardHeader>
           <CardTitle role="heading" aria-level={2}>
-            {requestData.renewal ? "Renewal Request" : "Request"} for{" "}
+            {isCertRenewalRequest(requestData) ? "Renewal Request" : "Request"} for{" "}
             {requestData.renewal?.certificateName ||
               certRequest?.altNames?.[0]?.value ||
               certRequest?.commonName ||

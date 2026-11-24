@@ -112,7 +112,12 @@ const $findApprovalRequest = async (deps: TApprovalLookupDeps, approvalRequestId
     ? await deps.approvalPolicyDAL.findById(approvalRequest.policyId).catch(() => undefined)
     : undefined;
   const { requestData } = (approvalRequest.requestData as { requestData?: TCertRequestRequestData } | null) ?? {};
-  return { approvalRequest, policy, renewal: requestData?.renewal };
+  return {
+    approvalRequest,
+    policy,
+    renewal: requestData?.renewal,
+    isRenewal: Boolean(requestData?.renewal || requestData?.renewalOfCertificateId)
+  };
 };
 
 const $warnLookupFailed = (certificateRequestId: string) => (err: unknown) => {
@@ -200,12 +205,12 @@ export const recordCertificateRequestFailure = async (
   await deps.approvalPolicyService.notifyApprovedActionFailed(
     approval.approvalRequest,
     describeCaOperationFailure({
-      action: approval.renewal ? "Renewing the certificate" : "Issuing the certificate",
+      action: approval.isRenewal ? "Renewing the certificate" : "Issuing the certificate",
       stage: failureStage,
       ca,
       error,
       message: certificateRequest.errorMessage,
-      fallback: `An unexpected error stopped the certificate from being ${approval.renewal ? "renewed" : "issued"}.`
+      fallback: `An unexpected error stopped the certificate from being ${approval.isRenewal ? "renewed" : "issued"}.`
     })
   );
 };

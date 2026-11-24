@@ -84,7 +84,13 @@ export type CertRequestRequestData = {
   removeRootsFromChain?: boolean;
   certificateRequestId: string;
   renewal?: { certificateId: string; raisedByAutoRenewal?: boolean; certificateName?: string };
+  // The certificate an EST or SCEP re-enrollment replaces. These renewals carry no `renewal`.
+  renewalOfCertificateId?: string;
 };
+
+export const isCertRenewalRequest = (
+  data: Pick<CertRequestRequestData, "renewal" | "renewalOfCertificateId">
+) => Boolean(data.renewal || data.renewalOfCertificateId);
 
 export type CertRevocationRequestData = {
   certificateId: string;
