@@ -17,7 +17,7 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -61,6 +61,10 @@ export const useAppConnectionCreation = <TOption,>({
   const [selectedApp, setSelectedApp] = useState<AppConnection | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  // A federated connection stays in the dialog after create and is selected only once it verifies: the provider
+  // can only trust it once it exists, and selecting it earlier runs lookups (such as GCP project discovery) that
+  // fail until then and are not refetched
+  const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   const attemptRef = useRef(0);
 
@@ -70,6 +74,7 @@ export const useAppConnectionCreation = <TOption,>({
       onDiscard: () => {
         attemptRef.current += 1;
         setIsDirty(false);
+        setCreatedConnection(null);
         cancelRef.current();
       }
     });
@@ -111,10 +116,27 @@ export const useAppConnectionCreation = <TOption,>({
         onClose={() => {
           setSelectedApp(null);
           setIsDirty(false);
+          setCreatedConnection(null);
           onClose?.();
         }}
       >
-        {app ? (
+        {createdConnection && (
+          <AppConnectionForm
+            appConnection={createdConnection}
+            isNewConnection
+            layout="dialog"
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setCreatedConnection(null);
+              onCreated(connection);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        )}
+        {!createdConnection && app && (
           <AppConnectionForm
             key={app}
             app={app}
@@ -127,12 +149,17 @@ export const useAppConnectionCreation = <TOption,>({
               if (attempt !== attemptRef.current) return;
               setIsDirty(false);
               setIsDiscardDialogOpen(false);
+              if (isFederatedAppConnection(connection)) {
+                setCreatedConnection(connection);
+                return;
+              }
               onCreated(connection);
               complete();
             }}
             onCancel={() => requestCancel(cancel)}
           />
-        ) : (
+        )}
+        {!createdConnection && !app && (
           <>
             <ItemGroup>
               {apps.map((option) => {

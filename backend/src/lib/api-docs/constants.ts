@@ -14,6 +14,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
@@ -1681,6 +1682,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  IMPORTED_SECRETS: {
+    importId:
+      "The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."
@@ -2616,7 +2621,15 @@ const domainComponentRule = (rule: string) =>
 
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
+const sanRuleValues = (rule: string, reference: string) =>
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
+
 export const CERTIFICATE_POLICIES = {
+  SAN_RULE: {
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
+    required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
+    denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
+  },
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
@@ -2632,6 +2645,10 @@ export const CERTIFICATE_POLICIES = {
     required: domainComponentRule("required"),
     denied: DOMAIN_COMPONENT_DENIED_RULE
   }
+};
+
+export const CERTIFICATE_PROFILES = {
+  DEFAULT_SUBJECT_ALT_NAMES: `Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {
@@ -4311,7 +4328,10 @@ export const SecretScanningDataSources = {
       isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
       isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
       isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
-      config: `The configuration parameters to use for this Data Source.`
+      config: `The configuration parameters to use for this Data Source.`,
+      alerts: `The alerts to create with this Data Source, at most one per event. Leave it out to get the default alerts, which email project admins when secrets are detected and when a scan fails. Pass an empty list to create none.`,
+      alertEventType: `The event the alert fires on.`,
+      alertChannels: `Where the alert is sent. Takes the same channels as the alert API.`
     };
   },
   UPDATE: (type: SecretScanningDataSource) => {
@@ -5768,6 +5788,27 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
     "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const SECRET_CHANGE_POLICIES = {
+  enforceImportReplication:
+    "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",
+  LIST_IMPORTS: {
+    description:
+      "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+    sapId: "The ID of the secret change policy whose folders to list imports from.",
+    isReplicationFilter:
+      "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false). Omit it to list both.",
+    imports: "The imports in folders this policy governs, leaving out folders a more specific policy governs.",
+    id: "The ID of the secret import.",
+    environment: "The environment the import is in, which is where the imported secrets are read.",
+    environmentSlug: "The slug of the environment.",
+    environmentName: "The name of the environment.",
+    secretPath: "The path of the folder the import is in.",
+    sourceEnvironment: "The environment the import reads its secrets from.",
+    sourceSecretPath: "The path of the folder the import reads its secrets from.",
+    isReplication: "True when the import respects approval policies, false when it reads its source directly."
+  }
 };
 
 export const HONEY_TOKENS = {

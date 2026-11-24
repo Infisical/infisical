@@ -160,7 +160,7 @@ endpoint**: secret access (`ee/services/access-approval-*`) and secret change
 (`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
 longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
 `secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
-Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A secret change policy with `enforceImportReplication` refuses same-project imports in the folders it governs that read their source directly: `createImport` and a repoint in `updateImport` return a 400, and existing direct imports are never converted, only listed after the policy is saved (`listSecretApprovalPolicyImports` with `isReplication: false`) for the admin to recreate. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
@@ -369,7 +369,7 @@ When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design syste
 
 Before deprecating or removing a shared frontend component, follow the component lifecycle rules in [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`). A federated connection (`isFederatedAppConnection`) is the exception: keep the dialog open on it with `isNewConnection`, and select it and call `complete` only after it verifies. The provider can trust it only once it exists, its setup values are shown there, and selecting it earlier starts lookups (such as GCP project discovery) that fail and are not refetched.
 
 ## Issue and PR Guidelines
 

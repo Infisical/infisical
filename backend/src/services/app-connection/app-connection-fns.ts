@@ -179,8 +179,10 @@ import {
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import {
   GcpConnectionMethod,
+  getGcpConnectionFederatedCredential,
   getGcpConnectionListItem,
   TGcpConnectionConfig,
+  TGcpConnectionFederatedCredential,
   validateGcpConnectionCredentials
 } from "./gcp";
 import {
@@ -732,6 +734,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GCP]: ((config: TAppConnectionConfig) =>
       validateGcpConnectionCredentials(
         config as TGcpConnectionConfig,
+        deps.oidcIssuerService,
         deps.instanceConfigService
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: ((config: TAppConnectionConfig) =>
@@ -906,6 +909,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Assume Role";
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return "Service Account Impersonation";
+    case GcpConnectionMethod.WorkloadIdentityFederation:
+      return "Workload Identity Federation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case CamundaConnectionMethod.ClientCredentials:
@@ -1075,28 +1080,56 @@ type TAzureKeyVaultManagedIdentityConnection = Extract<
   { app: AppConnection.AzureKeyVault; method: AzureKeyVaultConnectionMethod.ManagedIdentity }
 >;
 
-// Only for connections returned to the user, who copies these values into Azure
+type TGcpWorkloadIdentityFederationConnection = Extract<
+  TAppConnection,
+  { app: AppConnection.GCP; method: GcpConnectionMethod.WorkloadIdentityFederation }
+>;
+
+// Only for connections returned to the user, who copies these values into the cloud provider
 export const addAppConnectionFederatedCredential = (
   appConnection: TAppConnection
 ):
-  | Exclude<TAppConnection, TAzureKeyVaultManagedIdentityConnection>
+  | Exclude<TAppConnection, TAzureKeyVaultManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection>
   | (TAzureKeyVaultManagedIdentityConnection & {
       credentials: { federatedCredential: TAzureKeyVaultConnectionFederatedCredential };
+    })
+  | (TGcpWorkloadIdentityFederationConnection & {
+      credentials: { federatedCredential: TGcpConnectionFederatedCredential };
     }) => {
   if (
-    appConnection.app !== AppConnection.AzureKeyVault ||
-    appConnection.method !== AzureKeyVaultConnectionMethod.ManagedIdentity
+    appConnection.app === AppConnection.AzureKeyVault &&
+    appConnection.method === AzureKeyVaultConnectionMethod.ManagedIdentity
   ) {
-    return appConnection;
+    return {
+      ...appConnection,
+      credentials: {
+        ...appConnection.credentials,
+        federatedCredential: getAzureKeyVaultConnectionFederatedCredential(appConnection)
+      }
+    };
   }
 
-  return {
-    ...appConnection,
-    credentials: {
-      ...appConnection.credentials,
-      federatedCredential: getAzureKeyVaultConnectionFederatedCredential(appConnection)
-    }
-  };
+  if (
+    appConnection.app === AppConnection.GCP &&
+    appConnection.method === GcpConnectionMethod.WorkloadIdentityFederation
+  ) {
+    return {
+      ...appConnection,
+      credentials: {
+        ...appConnection.credentials,
+        federatedCredential: getGcpConnectionFederatedCredential({
+          id: appConnection.id,
+          orgId: appConnection.orgId,
+          workloadIdentityProvider: appConnection.credentials.workloadIdentityProvider
+        })
+      }
+    };
+  }
+
+  return appConnection as Exclude<
+    TAppConnection,
+    TAzureKeyVaultManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection
+  >;
 };
 
 const platformManagedCredentialsNotSupported: TAppConnectionTransitionCredentialsToPlatform = ({ app }) => {

@@ -51,8 +51,6 @@ export const CronJobName = {
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   MonthlyLegacyPkiDeprecationNotice: "monthly-legacy-pki-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
-  EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
-  EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check",
   SecretReadActivityFlush: "secret-read-activity-flush",

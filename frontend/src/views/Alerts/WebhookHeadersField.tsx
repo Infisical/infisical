@@ -12,6 +12,8 @@ import {
 } from "@app/components/v3";
 import { TChannelsForm } from "@app/hooks/api/alerts";
 
+import { getChannelErrors, useChannelPath } from "./channelPath";
+
 type Props = {
   index: number;
 };
@@ -22,8 +24,9 @@ export const WebhookHeadersField = ({ index }: Props) => {
     register,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
-  const { fields, append, remove } = useFieldArray({ control, name: `channels.${index}.headers` });
-  const headerErrors = errors.channels?.[index]?.headers;
+  const channelPath = useChannelPath(index);
+  const { fields, append, remove } = useFieldArray({ control, name: `${channelPath}.headers` });
+  const headerErrors = getChannelErrors(errors, channelPath)?.headers;
 
   return (
     <Field>
@@ -39,7 +42,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
                   aria-label="Header name"
                   placeholder="X-Env"
                   isError={Boolean(headerErrors?.[i]?.key)}
-                  {...register(`channels.${index}.headers.${i}.key`)}
+                  {...register(`${channelPath}.headers.${i}.key`)}
                 />
                 <FieldError errors={[headerErrors?.[i]?.key]} />
               </Field>
@@ -48,7 +51,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
                   aria-label="Header value"
                   placeholder="Production"
                   isError={Boolean(headerErrors?.[i]?.value)}
-                  {...register(`channels.${index}.headers.${i}.value`)}
+                  {...register(`${channelPath}.headers.${i}.value`)}
                 />
                 <FieldError errors={[headerErrors?.[i]?.value]} />
               </Field>

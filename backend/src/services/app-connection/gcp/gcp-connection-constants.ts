@@ -7,3 +7,10 @@ export const GCP_CLOUD_DNS_ZONE_RESOURCE_PATTERN = new RE2(
 );
 
 export const GCP_GLOBAL_LOCATION = "global";
+
+export const GCP_WORKLOAD_IDENTITY_PROVIDER_PATTERN = new RE2(
+  "^projects/[0-9]{1,20}/locations/global/workloadIdentityPools/[a-z0-9-]{4,32}/providers/[a-z0-9-]{4,32}$"
+);
+
+export const GCP_STS_TOKEN_URL = "https://sts.googleapis.com/v1/token";
+export const GCP_IAM_CREDENTIALS_URL = "https://iamcredentials.googleapis.com";

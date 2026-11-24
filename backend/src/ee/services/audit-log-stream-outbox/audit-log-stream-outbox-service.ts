@@ -4,13 +4,13 @@ import { TAuditLogs } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import {
   auditLogStreamDeliveryDurationHistogram,
   auditLogStreamDeliveryExhaustedCounter
 } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";

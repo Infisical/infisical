@@ -86,6 +86,7 @@ output-options:
     - deleteSecretApprovalPolicy
     - getSecretApprovalPolicy
     - getSecretApprovalPolicyBoard
+    - listSecretApprovalPolicyImports
     - listSecretApprovalRequests
     - getSecretApprovalRequestCount
     - getSecretApprovalRequest
@@ -742,6 +743,9 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createGcpAppConnection
+    - updateGcpAppConnection
+    - getGcpAppConnection
     - createKmsKey
     - updateKmsKey
     - rotateKmsKey

@@ -3414,6 +3414,8 @@ interface RevokeCert {
     requesterEmail?: string;
     crlWarning?: string;
     source?: CertificateRevocationSource;
+    revokedThroughCertId?: string;
+    revokedThroughCertName?: string;
   };
 }
 
@@ -5961,7 +5963,10 @@ interface SecretScanningDataSourceGetEvent {
 
 interface SecretScanningDataSourceCreateEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_CREATE;
-  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId"> & { dataSourceId: string };
+  metadata: Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "alerts"> & {
+    dataSourceId: string;
+    alerts?: { eventType: string; channelTypes: string[] }[];
+  };
 }
 
 interface SecretScanningDataSourceUpdateEvent {
@@ -6113,7 +6118,6 @@ interface OrgUpdateEvent {
     scimEnabled?: boolean;
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
-    selectedMfaMethod?: string;
     allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;
