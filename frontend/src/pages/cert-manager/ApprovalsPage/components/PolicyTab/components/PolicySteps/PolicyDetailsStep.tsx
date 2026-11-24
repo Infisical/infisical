@@ -45,7 +45,7 @@ type Props = {
 const REVOCATION_PICKER_VALUE = "revocation";
 
 const BYPASS_ACTION = {
-  [CertRequestPolicyOperation.Issuance]: "issue and renew",
+  [CertRequestPolicyOperation.Issuance]: "issue or renew",
   [CertRequestPolicyOperation.Renewal]: "renew"
 };
 
@@ -311,9 +311,8 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                   Bypass approval for machine identities
                 </FieldLabel>
                 <FieldDescription>
-                  When enabled, machine identities can{" "}
-                  {BYPASS_ACTION[operation ?? CertRequestPolicyOperation.Issuance]} certificates
-                  without requiring approval
+                  When enabled, this policy doesn&apos;t hold certificates that machine identities{" "}
+                  {BYPASS_ACTION[operation ?? CertRequestPolicyOperation.Issuance]}
                 </FieldDescription>
               </FieldContent>
             </Field>

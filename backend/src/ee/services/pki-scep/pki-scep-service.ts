@@ -931,12 +931,6 @@ export const pkiScepServiceFactory = ({
     isRenewal: boolean;
     originalCertificateId?: string;
   }): Promise<TIssuanceResult> => {
-    // A client that resends a renewal it already sent gets the pending reply again, not a second request.
-    if (isRenewal) {
-      const sentBefore = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
-      if (sentBefore && new Date(sentBefore.expiresAt) > new Date()) return { status: ScepIssuanceStatus.Pending };
-    }
-
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
       const result = await certificateV3Service.signCertificateFromProfile({
