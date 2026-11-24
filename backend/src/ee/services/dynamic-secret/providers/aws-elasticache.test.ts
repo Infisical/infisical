@@ -1,4 +1,5 @@
 import {
+  InvalidReplicationGroupStateFault,
   InvalidUserGroupStateFault,
   UserAlreadyExistsFault,
   UserGroupAlreadyExistsFault,
@@ -48,12 +49,14 @@ const BUSY_MESSAGE = "ElastiCache is still updating the user group for this clus
 
 // Enforces the AWS rules the provider has to work around, as observed on live clusters: a cluster holds one user
 // group, a new group is "creating" and can't be attached or modified, and a group whose users just changed is
-// "modifying", which can be attached but not modified again. activateUserGroups() stands in for AWS finishing.
+// "modifying", which can be attached but not modified again. pendingRemovals holds groups the customer is removing
+// from a cluster, which keeps the cluster busy. activateUserGroups() stands in for AWS finishing.
 const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroups: Record<string, string[]>) => {
   const clusters = { ...initialClusters };
   const userGroups = { ...initialUserGroups };
   const users: Record<string, { UserName: string; AccessString: string }> = {};
   const pendingStatus = new Map<string, "creating" | "modifying">();
+  const pendingRemovals: Record<string, string[]> = {};
   const invalidState = (userGroupId: string) =>
     new InvalidUserGroupStateFault({
       message: `User group ${userGroupId} has status ${pendingStatus.get(userGroupId)}.`,
@@ -63,7 +66,14 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
   aws.handle = ({ constructor: { name }, input }) => {
     switch (name) {
       case "DescribeReplicationGroupsCommand":
-        return { ReplicationGroups: [{ UserGroupIds: clusters[input.ReplicationGroupId] }] };
+        return {
+          ReplicationGroups: [
+            {
+              UserGroupIds: clusters[input.ReplicationGroupId],
+              PendingModifiedValues: { UserGroups: { UserGroupIdsToRemove: pendingRemovals[input.ReplicationGroupId] } }
+            }
+          ]
+        };
       case "DescribeUserGroupsCommand":
         if (!userGroups[input.UserGroupId]) throw new UserGroupNotFoundFault({ message: "not found", $metadata: {} });
         return {
@@ -79,6 +89,9 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         pendingStatus.set(input.UserGroupId, "creating");
         return {};
       case "ModifyReplicationGroupCommand": {
+        if (pendingRemovals[input.ReplicationGroupId]) {
+          throw new InvalidReplicationGroupStateFault({ message: "Cluster is modifying.", $metadata: {} });
+        }
         const creatingGroupId = input.UserGroupIdsToAdd.find((id) => pendingStatus.get(id) === "creating");
         if (creatingGroupId) throw invalidState(creatingGroupId);
         const kept = clusters[input.ReplicationGroupId].filter((id) => !input.UserGroupIdsToRemove.includes(id));
@@ -107,7 +120,14 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         return {};
     }
   };
-  return { clusters, userGroups, users, activateUserGroups: () => pendingStatus.clear() };
+  const activateUserGroups = () => {
+    pendingStatus.clear();
+    Object.entries(pendingRemovals).forEach(([clusterName, removedIds]) => {
+      clusters[clusterName] = clusters[clusterName].filter((id) => !removedIds.includes(id));
+      Reflect.deleteProperty(pendingRemovals, clusterName);
+    });
+  };
+  return { clusters, userGroups, users, pendingRemovals, activateUserGroups };
 };
 
 const inputs = (clusterName: string) => ({
@@ -128,14 +148,13 @@ const inputs = (clusterName: string) => ({
 const saveDynamicSecret = (clusterName: string) =>
   AwsElastiCacheDatabaseProvider().validateConnection(inputs(clusterName), { projectId: "proj-1" });
 
-// existingLeaseUsernames: usernames of the leases Infisical already holds for this dynamic secret
-const createLease = (clusterName: string, existingLeaseUsernames: string[] = []) =>
+const createLease = (clusterName: string) =>
   AwsElastiCacheDatabaseProvider().create({
     inputs: inputs(clusterName),
     expireAt: Date.now() + 60 * 60 * 1000,
     identity: { name: "user@example.com" },
     dynamicSecret: { id: "dynamic-secret-1" } as TDynamicSecrets,
-    metadata: { projectId: "proj-1", getLeaseEntityIds: async () => existingLeaseUsernames }
+    metadata: { projectId: "proj-1" }
   });
 
 describe("AwsElastiCacheDatabaseProvider user groups", () => {
@@ -204,29 +223,36 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
     expect(Object.keys(account.userGroups)).toEqual(["customer-user-group"]);
   });
 
-  test("moves a cluster off the legacy shared group, keeping only this dynamic secret's leases", async () => {
+  test("keeps a cluster on the legacy shared group, so its existing leases keep working", async () => {
     const account = fakeAccount(
-      { "cluster-a": [LEGACY_SHARED_USER_GROUP_ID], "cluster-b": [LEGACY_SHARED_USER_GROUP_ID] },
-      { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease", "inf-lease-for-cluster-b"] }
+      { "cluster-a": [LEGACY_SHARED_USER_GROUP_ID] },
+      { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease"] }
     );
-    // AWS stores user IDs in lowercase, while Infisical keeps the lease username as generated
-    const existingLeases = ["inf-Existing-Lease"];
 
-    await expect(createLease("cluster-a", existingLeases)).rejects.toThrow(BUSY_MESSAGE);
-    // A server still running the previous version issues a lease for this dynamic secret mid-upgrade
-    account.userGroups[LEGACY_SHARED_USER_GROUP_ID].push("inf-lease-from-previous-version");
-    existingLeases.push("inf-lease-from-previous-version");
+    await saveDynamicSecret("cluster-a");
+    const lease = await createLease("cluster-a");
+
+    expect(account.clusters["cluster-a"]).toEqual([LEGACY_SHARED_USER_GROUP_ID]);
+    expect(account.userGroups).toEqual({
+      [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease", lease.entityId]
+    });
+    expect(Object.keys(account.users)).toEqual([lease.entityId]);
+  });
+
+  test("gives a cluster its own user group once the customer removes the legacy shared group", async () => {
+    const account = fakeAccount(
+      { "cluster-a": [LEGACY_SHARED_USER_GROUP_ID] },
+      { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease"] }
+    );
+    account.pendingRemovals["cluster-a"] = [LEGACY_SHARED_USER_GROUP_ID];
+
+    await expect(createLease("cluster-a")).rejects.toThrow(BUSY_MESSAGE);
     account.activateUserGroups();
-    const lease = await createLease("cluster-a", existingLeases);
+    const lease = await createLease("cluster-a");
 
     const [groupA] = account.clusters["cluster-a"];
     expect(groupA).not.toBe(LEGACY_SHARED_USER_GROUP_ID);
-    expect(account.userGroups[groupA]).toEqual([
-      DISABLED_DEFAULT_USER_ID,
-      lease.entityId,
-      "inf-existing-lease",
-      "inf-lease-from-previous-version"
-    ]);
-    expect(account.clusters["cluster-b"]).toEqual([LEGACY_SHARED_USER_GROUP_ID]);
+    expect(account.userGroups[groupA]).toEqual([DISABLED_DEFAULT_USER_ID, lease.entityId]);
+    expect(account.userGroups[LEGACY_SHARED_USER_GROUP_ID]).toEqual(["default", "inf-existing-lease"]);
   });
 });
