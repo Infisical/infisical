@@ -328,7 +328,7 @@ export const certificateServiceFactory = ({
   const $assertCanRevokeOrRequestRevocationExplained = async (
     certificate: Parameters<typeof assertCanRevokeOrRequestRevocation>[0]["certificate"],
     actorContext: { actor: ActorType; actorId: string; actorAuthMethod: ActorAuthMethod; actorOrgId: string },
-    permissionMessage?: string
+    permissionMessages?: { member: string; nonMember: string }
   ) => {
     try {
       return await assertCanRevokeOrRequestRevocation({
@@ -338,8 +338,11 @@ export const certificateServiceFactory = ({
         resourceMetadataDAL
       });
     } catch (error) {
-      if (permissionMessage && (error instanceof ForbiddenError || error instanceof ForbiddenRequestError)) {
-        throw $buildRevokePermissionError(permissionMessage, error);
+      if (permissionMessages && error instanceof ForbiddenError) {
+        throw $buildRevokePermissionError(permissionMessages.member, error);
+      }
+      if (permissionMessages && error instanceof ForbiddenRequestError) {
+        throw $buildRevokePermissionError(permissionMessages.nonMember, error);
       }
       throw error;
     }
@@ -1056,7 +1059,8 @@ export const certificateServiceFactory = ({
                 }),
                 revocationReason,
                 source: CertificateRevocationSource.SameCertificate,
-                revokedThroughCertId: revokedCertId
+                revokedThroughCertId: revokedCertId,
+                revokedThroughCertName: getCertificateDisplayName(cert)
               }
             }
           });
@@ -1209,17 +1213,21 @@ export const certificateServiceFactory = ({
     const cert = await $resolveActiveRecord(requestedCert);
     const ca = await $loadRevocationCa(cert);
 
-    let redirectedPermissionMessage: string | undefined;
+    let redirectedPermissionMessages: { member: string; nonMember: string } | undefined;
     if (cert.id !== requestedCert.id && (await projectDAL.findById(cert.projectId))?.orgId === actorOrgId) {
       const redirectedApplicationName = await $resolveApplicationName(cert.applicationId);
-      redirectedPermissionMessage = redirectedApplicationName
-        ? `Certificate '${getCertificateDisplayName(cert)}' was imported again into Application '${redirectedApplicationName}', so revoking it needs permission in '${redirectedApplicationName}'.`
-        : `Certificate '${getCertificateDisplayName(cert)}' was imported again, so revoking it needs permission to revoke the imported certificate.`;
+      redirectedPermissionMessages = {
+        member: redirectedApplicationName
+          ? `Certificate '${getCertificateDisplayName(cert)}' was imported again into Application '${redirectedApplicationName}', so revoking it needs permission in '${redirectedApplicationName}'.`
+          : `Certificate '${getCertificateDisplayName(cert)}' was imported again, so revoking it needs permission to revoke the imported certificate.`,
+        nonMember:
+          "This certificate was imported again into an Application you don't have access to, so you can't revoke it."
+      };
     }
     const { canRevokeDirectly } = await $assertCanRevokeOrRequestRevocationExplained(
       { ...cert, projectId: ca.projectId },
       { actor, actorId, actorAuthMethod, actorOrgId },
-      redirectedPermissionMessage
+      redirectedPermissionMessages
     );
 
     await $assertNotUsedBySigner(cert);
@@ -2030,7 +2038,11 @@ export const certificateServiceFactory = ({
       const { canRevokeDirectly } = await $assertCanRevokeOrRequestRevocationExplained(
         deletedRecord,
         { actor, actorId, actorAuthMethod, actorOrgId },
-        permissionMessage
+        {
+          member: permissionMessage,
+          nonMember:
+            "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
+        }
       );
       const recordApproval = await $matchRevocationApprovalPolicy(deletedRecord, deletedRecord.projectId);
       if (!recordApproval && !canRevokeDirectly) throw $buildRevokePermissionError(permissionMessage);

@@ -3412,6 +3412,7 @@ interface RevokeCert {
     crlWarning?: string;
     source?: CertificateRevocationSource;
     revokedThroughCertId?: string;
+    revokedThroughCertName?: string;
   };
 }
 

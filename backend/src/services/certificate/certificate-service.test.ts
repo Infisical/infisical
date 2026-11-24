@@ -527,6 +527,7 @@ describe("certificateService.importCert of a deleted certificate into a profile 
 
   const buildReimportService = ({
     originalPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[],
+    isMemberOfOriginalApplication = true,
     policyByScope = {} as Record<string, typeof originalPolicy>,
     deletedRecords = [deletedOriginal] as Record<string, unknown>[],
     deletedRecordsUnderLock = undefined as Record<string, unknown>[] | undefined
@@ -597,11 +598,16 @@ describe("certificateService.importCert of a deleted certificate into a profile 
         getProjectPermission: vi
           .fn()
           .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-        getResourcePermission: vi.fn().mockImplementation(async ({ resourceId }: { resourceId: string }) => ({
-          permission: createMongoAbility(
-            resourceId === "app-a" ? originalPermissions : [{ action: "manage", subject: "all" }]
-          )
-        }))
+        getResourcePermission: vi.fn().mockImplementation(async ({ resourceId }: { resourceId: string }) => {
+          if (resourceId === "app-a" && !isMemberOfOriginalApplication) {
+            throw new ForbiddenRequestError({ message: "You are not a member of this certificate-application." });
+          }
+          return {
+            permission: createMongoAbility(
+              resourceId === "app-a" ? originalPermissions : [{ action: "manage", subject: "all" }]
+            )
+          };
+        })
       }
     } as unknown as TDeps;
     return {
@@ -664,6 +670,21 @@ describe("certificateService.importCert of a deleted certificate into a profile 
           "Certificate 'web' was deleted from Application 'app-a'. Importing it again needs permission to revoke it in 'app-a'.",
         details: { missingPermissions: [{ action: "request-revocation", subject: "certificates" }] }
       })
+    );
+  });
+
+  it("names neither the certificate nor its Application to an importer who isn't a member of that Application", async () => {
+    const { service } = buildReimportService({ isMemberOfOriginalApplication: false });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow(
+      "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
     );
   });
 
@@ -1234,7 +1255,8 @@ describe("certificate revocation behind an approval policy", () => {
             metadata: expect.objectContaining({
               certId: "cert-0",
               source: CertificateRevocationSource.SameCertificate,
-              revokedThroughCertId: applicationCertificate.id
+              revokedThroughCertId: applicationCertificate.id,
+              revokedThroughCertName: applicationCertificate.friendlyName
             }) as object
           }) as object
         })
