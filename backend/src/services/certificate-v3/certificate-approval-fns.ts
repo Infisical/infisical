@@ -47,6 +47,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -118,7 +119,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
 };
 
 export type TCertificateApprovalService = {
-  issueCertificate: (certificateRequestId: string) => Promise<TCertificateIssuanceResponse>;
+  issueCertificate: (
+    certificateRequestId: string,
+    renewalOfCertificateId?: string
+  ) => Promise<TCertificateIssuanceResponse>;
 };
 
 const buildRevalidationRequest = ({
@@ -390,7 +394,8 @@ export const certificateApprovalServiceFactory = (
     certRequest: NonNullable<Awaited<ReturnType<TCertificateRequestDALFactory["findById"]>>>,
     certificateRequestId: string,
     profileId: string,
-    ttl: string
+    ttl: string,
+    renewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse> => {
     const { csr } = certRequest;
 
@@ -574,6 +579,10 @@ export const certificateApprovalServiceFactory = (
           tx
         );
 
+        if (renewalOfCertificateId) {
+          await linkRenewedCertificate(certificateDAL, renewalOfCertificateId, newCert.id, tx);
+        }
+
         // Copy metadata from cert request to newly issued cert
         await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
           certificateRequestId,
@@ -625,7 +634,8 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     altNames: TAltNameEntry[] | null,
-    ttl?: string
+    ttl?: string,
+    renewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse | null> => {
     if (!profile.caId) {
       return null;
@@ -746,7 +756,8 @@ export const certificateApprovalServiceFactory = (
       locality: mappedReconstructedRequest.locality || undefined,
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       customExtensions: revalidationResult.resolvedCustomExtensions,
-      ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
+      ...(certRequest.applicationId && { applicationId: certRequest.applicationId }),
+      ...(renewalOfCertificateId && { isRenewal: true, originalCertificateId: renewalOfCertificateId })
     });
 
     return {
@@ -1063,7 +1074,10 @@ export const certificateApprovalServiceFactory = (
     };
   };
 
-  const issueCertificate = async (certificateRequestId: string): Promise<TCertificateIssuanceResponse> => {
+  const issueCertificate = async (
+    certificateRequestId: string,
+    renewalOfCertificateId?: string
+  ): Promise<TCertificateIssuanceResponse> => {
     const certRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
@@ -1098,7 +1112,8 @@ export const certificateApprovalServiceFactory = (
         certificateRequestId,
         targetProfile,
         altNames,
-        ttl || undefined
+        ttl || undefined,
+        renewalOfCertificateId
       );
       if (externalCaResult) {
         return externalCaResult;
@@ -1109,7 +1124,13 @@ export const certificateApprovalServiceFactory = (
       }
 
       if (certRequest.csr) {
-        return await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
+        return await $processCSRSigningRequest(
+          certRequest,
+          certificateRequestId,
+          profileId,
+          ttl,
+          renewalOfCertificateId
+        );
       }
 
       const basicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | null;

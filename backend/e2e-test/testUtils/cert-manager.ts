@@ -286,6 +286,7 @@ export type TCertificate = {
   serialNumber: string;
   commonName: string;
   renewedByCertificateId?: string | null;
+  renewedFromCertificateId?: string | null;
   renewBeforeDays?: number | null;
   renewalError?: string | null;
   revokedAt?: string | null;

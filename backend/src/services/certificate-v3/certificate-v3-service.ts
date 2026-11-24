@@ -24,6 +24,7 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -53,7 +54,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -1350,8 +1351,11 @@ export const certificateV3ServiceFactory = ({
     removeRootsFromChain,
     basicConstraints,
     applicationId: explicitApplicationId,
-    acmeOrderId
+    acmeOrderId,
+    issuanceOperation,
+    originalCertificateId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    const isRenewal = issuanceOperation === CertificateIssuanceOperation.RENEW;
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -1484,7 +1488,13 @@ export const certificateV3ServiceFactory = ({
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
+      {
+        projectId: profile.projectId,
+        profileName: profile.slug,
+        applicationId,
+        actor,
+        operation: isRenewal ? CertRequestPolicyOperation.Renewal : CertRequestPolicyOperation.Issuance
+      }
     );
 
     if (approvalPolicy) {
@@ -1573,7 +1583,8 @@ export const certificateV3ServiceFactory = ({
                 keyAlgorithm: extractedKeyAlgorithm,
                 basicConstraints: resolvedBasicConstraints,
                 customExtensions: resolvedCustomExtensions
-              }
+              },
+              ...(isRenewal && originalCertificateId && { renewalOfCertificateId: originalCertificateId })
             },
             justification: `Certificate signing request for ${mappedCertificateRequest.commonName || profile.slug}`,
             requester: { actor, actorId, name: requesterName, email: requesterEmail },
@@ -1738,6 +1749,10 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
+
+          if (isRenewal && originalCertificateId) {
+            await linkRenewedCertificate(certificateDAL, originalCertificateId, newCert.id, tx);
+          }
 
           await $emitIssuanceAlert(
             {

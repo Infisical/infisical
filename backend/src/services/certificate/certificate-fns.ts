@@ -644,9 +644,24 @@ export const linkRenewedCertificate = async (
 ) => {
   const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
 
-  if (originalCertificate?.orderId) {
-    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  // A certificate points to one replacement. Renewing one that's already renewed (an EST or SCEP client that
+  // re-enrolls again with the old certificate) still issues, but the new certificate stays unlinked.
+  if (
+    originalCertificate?.renewedByCertificateId &&
+    originalCertificate.renewedByCertificateId !== renewedCertificateId
+  ) {
+    await certificateDAL.updateById(renewedCertificateId, { renewedFromCertificateId: null }, tx);
+    return;
   }
+
+  await certificateDAL.updateById(
+    renewedCertificateId,
+    {
+      renewedFromCertificateId: originalCertificateId,
+      ...(originalCertificate?.orderId && { orderId: originalCertificate.orderId })
+    },
+    tx
+  );
 
   await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };

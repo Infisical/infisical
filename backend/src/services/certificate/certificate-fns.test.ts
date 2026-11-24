@@ -14,6 +14,7 @@ import {
   extractExternallyIssuedCertificateFields,
   getCertificateDisplayName,
   getSerialNumberSpellings,
+  linkRenewedCertificate,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
@@ -473,5 +474,53 @@ describe("parsePemCertificateChain", () => {
     const rootLines = (await makeCertPem("Root")).split("\n");
     rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
     expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
+  });
+});
+
+describe("linkRenewedCertificate", () => {
+  const ORIGINAL_ID = "original";
+  const RENEWED_ID = "renewed";
+
+  const dal = (original: { renewedByCertificateId?: string | null; orderId?: string | null } | undefined) => ({
+    findById: vi.fn().mockResolvedValue(original && { id: ORIGINAL_ID, ...original }),
+    updateById: vi.fn()
+  });
+
+  it("links both ways and carries the order over", async () => {
+    const certificateDAL = dal({ renewedByCertificateId: null, orderId: "order-1" });
+
+    await linkRenewedCertificate(certificateDAL, ORIGINAL_ID, RENEWED_ID);
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(
+      RENEWED_ID,
+      { renewedFromCertificateId: ORIGINAL_ID, orderId: "order-1" },
+      undefined
+    );
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(
+      ORIGINAL_ID,
+      { renewedByCertificateId: RENEWED_ID },
+      undefined
+    );
+  });
+
+  it("leaves a certificate that was already renewed pointing to its first replacement", async () => {
+    const certificateDAL = dal({ renewedByCertificateId: "first-replacement" });
+
+    await linkRenewedCertificate(certificateDAL, ORIGINAL_ID, RENEWED_ID);
+
+    expect(certificateDAL.updateById).toHaveBeenCalledTimes(1);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(RENEWED_ID, { renewedFromCertificateId: null }, undefined);
+  });
+
+  it("links again when the certificate already points to this replacement", async () => {
+    const certificateDAL = dal({ renewedByCertificateId: RENEWED_ID });
+
+    await linkRenewedCertificate(certificateDAL, ORIGINAL_ID, RENEWED_ID);
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(
+      ORIGINAL_ID,
+      { renewedByCertificateId: RENEWED_ID },
+      undefined
+    );
   });
 });

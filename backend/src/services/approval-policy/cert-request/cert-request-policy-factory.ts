@@ -199,6 +199,7 @@ export const certRequestApprovalResourceFactory = ({
     const {
       certificateRequestId: certReqId,
       renewal,
+      renewalOfCertificateId,
       certificateRequest: reviewedCertificateRequest
     } = request.requestData.requestData as TCertRequestRequestData;
 
@@ -217,7 +218,7 @@ export const certRequestApprovalResourceFactory = ({
           reviewedCertificateRequest
         });
       } else {
-        await certificateApprovalService.issueCertificate(certReqId);
+        await certificateApprovalService.issueCertificate(certReqId, renewalOfCertificateId);
       }
       logger.info(
         { certificateRequestId: certReqId, approvalRequestId: request.id },

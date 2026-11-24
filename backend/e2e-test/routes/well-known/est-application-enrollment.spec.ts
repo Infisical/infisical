@@ -1,10 +1,24 @@
 import * as x509 from "@peculiar/x509";
 import { Certificate, ContentInfo, SignedData } from "pkijs";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  ApproverType,
+  CertRequestPolicyOperation
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getSerialNumberSpellings } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
+import {
+  createApprovalPolicy,
+  decideApprovalRequest,
+  getCertificate,
+  listApplicationApprovalRequests
+} from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 
@@ -36,6 +50,8 @@ describe("EST enrollment through an application profile", async () => {
   let cleanup: () => Promise<void>;
   let restoreLicense: () => void;
   let estBaseUrl = "";
+  let applicationId = "";
+  let profileSlug = "";
 
   const post = async (path: string, body: Record<string, unknown>) => {
     const res = await testServer.inject({
@@ -64,7 +80,7 @@ describe("EST enrollment through an application profile", async () => {
     });
 
   beforeAll(async () => {
-    restoreLicense = overrideLicenseFeatures({ pkiEst: true, maxCas: 100, maxInternalCas: 100 });
+    restoreLicense = overrideLicenseFeatures({ pkiEst: true, pkiApprovals: true, maxCas: 100, maxInternalCas: 100 });
     ({ authToken, cleanup } = await createIsolatedOrgAndProject("est-application"));
 
     const { project } = await post("/api/v1/projects", {
@@ -115,12 +131,34 @@ describe("EST enrollment through an application profile", async () => {
     expect(estRes.statusCode, estRes.payload).toBe(200);
 
     estBaseUrl = `/.well-known/est/applications/${application.id}/profiles/${certificateProfile.id}`;
+    applicationId = application.id;
+    profileSlug = certificateProfile.slug;
   });
 
   afterAll(async () => {
     restoreLicense?.();
     await cleanup?.();
   });
+
+  const enrolled = async () => {
+    const res = await enroll("simpleenroll");
+    expect(res.statusCode, res.payload).toBe(200);
+    return leafCertificateFromPkcs7(res.payload);
+  };
+
+  const reenrolled = async (clientCert: x509.X509Certificate) => {
+    const res = await enroll("simplereenroll", { clientCert: clientCert.toString("pem") });
+    expect(res.statusCode, res.payload).toBe(200);
+    return leafCertificateFromPkcs7(res.payload);
+  };
+
+  const stored = async (cert: x509.X509Certificate) => {
+    const row = await testDb(TableName.Certificate)
+      .whereIn("serialNumber", getSerialNumberSpellings(cert.serialNumber))
+      .first();
+    expect(row, `certificate ${cert.serialNumber} is in the inventory`).toBeTruthy();
+    return getCertificate({ authToken, certificateId: row!.id as string });
+  };
 
   test("issues a certificate on simpleenroll and renews it on simplereenroll", async () => {
     const enrollRes = await enroll("simpleenroll");
@@ -130,17 +168,84 @@ describe("EST enrollment through an application profile", async () => {
     const issued = leafCertificateFromPkcs7(enrollRes.payload);
     expect(issued.subject).toBe(`CN=${COMMON_NAME}`);
 
-    const reenrollRes = await enroll("simplereenroll", { clientCert: issued.toString("pem") });
-
-    expect(reenrollRes.statusCode, reenrollRes.payload).toBe(200);
-    const renewed = leafCertificateFromPkcs7(reenrollRes.payload);
+    const renewed = await reenrolled(issued);
     expect(renewed.subject).toBe(`CN=${COMMON_NAME}`);
     expect(renewed.serialNumber).not.toBe(issued.serialNumber);
+
+    const [original, replacement] = [await stored(issued), await stored(renewed)];
+    expect(original.renewedByCertificateId, "the old certificate points to its replacement").toBe(replacement.id);
+    expect(replacement.renewedFromCertificateId, "the new certificate points back to the old one").toBe(original.id);
+  });
+
+  test("still issues when a client re-enrolls again with a certificate that was already renewed", async () => {
+    const issued = await enrolled();
+    const firstRenewal = await reenrolled(issued);
+
+    const secondRenewal = await reenrolled(issued);
+
+    expect(secondRenewal.serialNumber, "the second re-enrollment issues a new certificate").not.toBe(
+      firstRenewal.serialNumber
+    );
+    const original = await stored(issued);
+    expect(original.renewedByCertificateId, "the old certificate keeps pointing to the first replacement").toBe(
+      (await stored(firstRenewal)).id
+    );
+    expect(
+      (await stored(secondRenewal)).renewedFromCertificateId ?? null,
+      "the second replacement isn't linked"
+    ).toBeNull();
   });
 
   test("rejects a wrong passphrase", async () => {
     const res = await enroll("simpleenroll", { passphrase: "not-the-passphrase" });
 
     expect(res.statusCode, res.payload).toBe(401);
+  });
+
+  // Runs last: the policy it creates covers every later re-enrollment on this profile.
+  describe("with a Renewal approval policy on the profile", async () => {
+    let issued: x509.X509Certificate;
+
+    beforeAll(async () => {
+      issued = await enrolled();
+      await createApprovalPolicy({
+        policyType: ApprovalPolicyType.CertRequest,
+        authToken,
+        applicationId,
+        profileSlug,
+        constraints: { operation: CertRequestPolicyOperation.Renewal },
+        steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: seedData1.id }] }]
+      });
+    });
+
+    test("holds re-enrollment for approval but not a new enrollment", async () => {
+      await enrolled();
+
+      const res = await enroll("simplereenroll", { clientCert: issued.toString("pem") });
+
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(res.json<{ message: string }>().message).toContain("requires approval");
+      expect((await stored(issued)).renewedByCertificateId ?? null, "nothing is linked while it waits").toBeNull();
+    });
+
+    test("links the approved re-enrollment to the certificate it replaces", async () => {
+      const original = await stored(issued);
+      const [held] = (
+        await listApplicationApprovalRequests({ policyType: ApprovalPolicyType.CertRequest, applicationId, authToken })
+      ).filter((req) => req.status === ApprovalRequestStatus.Pending);
+      expect(held, "the re-enrollment raised an approval request").toBeTruthy();
+
+      await decideApprovalRequest({
+        policyType: ApprovalPolicyType.CertRequest,
+        requestId: held.id,
+        decision: "approve",
+        authToken
+      });
+
+      const renewed = await getCertificate({ authToken, certificateId: original.id });
+      expect(renewed.renewedByCertificateId, "the old certificate points to the approved replacement").toBeTruthy();
+      const replacement = await getCertificate({ authToken, certificateId: renewed.renewedByCertificateId! });
+      expect(replacement.renewedFromCertificateId).toBe(original.id);
+    });
   });
 });

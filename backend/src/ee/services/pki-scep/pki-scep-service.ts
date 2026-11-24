@@ -24,6 +24,7 @@ import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -790,6 +791,7 @@ export const pkiScepServiceFactory = ({
       csrPem,
       applicationId,
       isRenewal: true,
+      originalCertificateId: storedSignerCert?.id,
       clientIp
     });
 
@@ -911,7 +913,9 @@ export const pkiScepServiceFactory = ({
     parsed,
     csrPem,
     ttl,
-    applicationId
+    applicationId,
+    isRenewal,
+    originalCertificateId
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -920,6 +924,8 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
+    isRenewal: boolean;
+    originalCertificateId?: string;
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
@@ -932,7 +938,8 @@ export const pkiScepServiceFactory = ({
         csr: csrPem,
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
-        applicationId
+        applicationId,
+        ...(isRenewal && { issuanceOperation: CertificateIssuanceOperation.RENEW, originalCertificateId })
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -994,7 +1001,13 @@ export const pkiScepServiceFactory = ({
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
+      {
+        projectId: profile.projectId,
+        profileName: profile.slug,
+        applicationId,
+        actor: ActorType.SCEP_ACCOUNT,
+        operation: isRenewal ? CertRequestPolicyOperation.Renewal : CertRequestPolicyOperation.Issuance
+      }
     );
 
     const createScepCertificateRequest = (
@@ -1061,7 +1074,8 @@ export const pkiScepServiceFactory = ({
                 keyAlgorithm,
                 customExtensions: validationResult.resolvedCustomExtensions,
                 basicConstraints: certRequestWithDefaults.basicConstraints
-              }
+              },
+              ...(isRenewal && originalCertificateId && { renewalOfCertificateId: originalCertificateId })
             },
             justification: `SCEP certificate request for ${certRequestWithDefaults.commonName || profile.slug}`,
             requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },
@@ -1097,7 +1111,8 @@ export const pkiScepServiceFactory = ({
       country: certRequest.country,
       state: certRequest.state,
       locality: certRequest.locality,
-      ...(applicationId && { applicationId })
+      ...(applicationId && { applicationId }),
+      ...(isRenewal && originalCertificateId && { isRenewal: true, originalCertificateId })
     });
 
     await $recordScepTransaction(profile.id, parsed, newCertRequest.id, applicationId);
@@ -1109,10 +1124,10 @@ export const pkiScepServiceFactory = ({
     isRenewal,
     clientIp,
     ...params
-  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { isRenewal: boolean; clientIp: string }) => {
+  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { clientIp: string }) => {
     try {
       const { ttl } = await resolveIssuanceParams(params.profile);
-      return await $issueOrQueueCertificate({ ...params, ttl });
+      return await $issueOrQueueCertificate({ ...params, isRenewal, ttl });
     } catch (error) {
       let operation =
         params.caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER;
@@ -1141,7 +1156,8 @@ export const pkiScepServiceFactory = ({
             profileName: params.profile.slug,
             caId: params.profile.caId,
             commonName,
-            applicationId: params.applicationId
+            applicationId: params.applicationId,
+            originalCertificateId: params.originalCertificateId
           }
         }
       );
