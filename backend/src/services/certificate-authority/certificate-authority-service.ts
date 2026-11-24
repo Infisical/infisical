@@ -1,6 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -23,6 +25,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -40,7 +43,6 @@ import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal"
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CrlReason } from "../certificate/certificate-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -151,16 +153,18 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOne" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -181,6 +185,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -197,7 +202,9 @@ export const certificateAuthorityServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -214,7 +221,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
-  auditLogService
+  auditLogService,
+  oidcIssuerService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -224,15 +232,17 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    instanceConfigService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -243,9 +253,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
@@ -259,8 +269,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -274,8 +284,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -289,8 +299,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    instanceConfigService,
+    kmsKeyService,
     certificateProfileDAL
   });
 
@@ -302,8 +313,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   });
   const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
@@ -313,8 +324,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   });
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
@@ -324,8 +335,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    instanceConfigService,
+    kmsKeyService,
     certificateProfileDAL
   });
 
@@ -1522,7 +1534,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
@@ -1538,7 +1550,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,

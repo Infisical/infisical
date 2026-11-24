@@ -1,10 +1,15 @@
 import {
+  parseEventPayload,
+  runEventsConcurrentlyByKey,
+  TEvent,
+  TEventConsumer,
+  TEventConsumerResult
+} from "@app/domains/platform/events/ce/module";
+import {
   DelegatedApprovalCallbackEventPayloadSchema,
   isDelegatedApprovalCallbackEvent,
   TDelegatedApprovalCallbackEventPayload
 } from "@app/services/delegated-approval-callback/delegated-approval-callback-events";
-import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
-import { IEventConsumer, TEvent, TEventConsumerResult } from "@app/services/event-outbox/event-outbox-types";
 
 import {
   DELEGATED_APPROVAL_DECISION_CONCURRENCY,
@@ -18,7 +23,7 @@ type TDelegatedApprovalDecisionConsumerDep = {
 
 export const delegatedApprovalDecisionConsumerFactory = ({
   delegatedApprovalDecisionService
-}: TDelegatedApprovalDecisionConsumerDep): IEventConsumer<TDelegatedApprovalCallbackEventPayload> => {
+}: TDelegatedApprovalDecisionConsumerDep): TEventConsumer<TDelegatedApprovalCallbackEventPayload> => {
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
     const { data, failure } = parseEventPayload(
       event,

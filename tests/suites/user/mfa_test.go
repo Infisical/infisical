@@ -35,7 +35,7 @@ func TestMFA_Login(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 		s := loggedIn(t, tn, alice.Email)
 
 		// Action
@@ -56,7 +56,7 @@ func TestMFA_Login(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 		c := challenge(t, tn, alice.Email)
 		mailed := code(t, tn.Mail(t).Expect(t, alice.Email, smtp.Subject(mfaSubject)))
 
@@ -77,7 +77,7 @@ func TestMFA_Login(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 		c := challenge(t, tn, alice.Email)
 
 		// Action
@@ -95,7 +95,7 @@ func TestMFA_Login(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 		c := challenge(t, tn, alice.Email)
 		wrong := otherCode(code(t, tn.Mail(t).Expect(t, alice.Email, smtp.Subject(mfaSubject))))
 
@@ -201,7 +201,7 @@ func TestMFA_StepUp(t *testing.T) {
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
 		enableEmailMFA(t, tn, alice)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 
 		// Action
 		res := deactivateMFA(t, alice.API, "")
@@ -277,7 +277,7 @@ func TestMFA_TOTP(t *testing.T) {
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
 		secret := registerTOTP(t, alice)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodTotp)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsTotp)
 		c := challenge(t, tn, alice.Email)
 		totpMethod := new(api.VerifyMfaJSONBodyMfaMethodTotp)
 
@@ -299,6 +299,86 @@ func TestMFA_TOTP(t *testing.T) {
 	})
 }
 
+func TestMFA_AllowedMethods(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should challenge the strongest allowed method the user has set up", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		registerTOTP(t, alice)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsTotp, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
+		s := loggedIn(t, tn, alice.Email)
+
+		// Action
+		res := selectOrg(t, tn, s, tn.OrgID.String())
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "selecting: %s", apierr.Body(res.Body))
+		require.True(t, res.JSON200.IsMfaEnabled)
+		require.Equal(t, "totp", *res.JSON200.MfaMethod)
+	})
+
+	t.Run("should fall back to email for a user without the stronger allowed method, and mail a code", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsTotp, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
+		s := loggedIn(t, tn, alice.Email)
+
+		// Action
+		res := selectOrg(t, tn, s, tn.OrgID.String())
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "selecting: %s", apierr.Body(res.Body))
+		require.Equal(t, "email", *res.JSON200.MfaMethod)
+		require.Len(t, code(t, tn.Mail(t).Expect(t, alice.Email, smtp.Subject(mfaSubject))), 6)
+	})
+
+	t.Run("should refuse a method the org does not allow and start no session", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsTotp, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
+		c := challenge(t, tn, alice.Email)
+
+		// Action
+		res, err := c.API.VerifyMfaWithResponse(t.Context(), api.VerifyMfaJSONRequestBody{
+			MfaToken: "123456", MfaMethod: new(api.VerifyMfaJSONBodyMfaMethodWebauthn),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Nil(t, cookieNamed(res.HTTPResponse, "jid"))
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Contains(t, apierr.Message(res.Body), "Use one of: totp, email")
+	})
+
+	t.Run("should refuse an empty allowed list and keep the current one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsTotp)
+
+		// Action
+		res := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{
+			AllowedMfaMethods: &[]api.UpdateOrganizationJSONBodyAllowedMfaMethods{},
+		})
+
+		// Assert
+		require.Equal(t, http.StatusUnprocessableEntity, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, []string{"totp"}, orgAllowedMFAMethods(t, tn))
+	})
+}
+
 func TestMFA_Refusal(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -309,7 +389,7 @@ func TestMFA_Refusal(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		enforceMFA(t, tn, api.UpdateOrganizationJSONBodySelectedMfaMethodEmail)
+		allowMFAMethods(t, tn, api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail)
 		c := challenge(t, tn, alice.Email)
 		wrong := otherCode(code(t, tn.Mail(t).Expect(t, alice.Email, smtp.Subject(mfaSubject))))
 
@@ -347,10 +427,19 @@ func require4xx(t *testing.T, status int, body []byte) {
 	require.Lessf(t, status, 500, "body: %s", apierr.Body(body))
 }
 
-func enforceMFA(t *testing.T, tn *harness.Tenant, method api.UpdateOrganizationJSONBodySelectedMfaMethod) {
+func allowMFAMethods(t *testing.T, tn *harness.Tenant, methods ...api.UpdateOrganizationJSONBodyAllowedMfaMethods) {
 	t.Helper()
-	res := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{EnforceMfa: new(true), SelectedMfaMethod: &method})
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "enforcing MFA: %s", apierr.Body(res.Body))
+	res := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{EnforceMfa: new(true), AllowedMfaMethods: &methods})
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "allowing MFA methods: %s", apierr.Body(res.Body))
+}
+
+func orgAllowedMFAMethods(t *testing.T, tn *harness.Tenant) []string {
+	t.Helper()
+	org, err := tn.Admin.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, org.StatusCode(), "reading the org: %s", apierr.Body(org.Body))
+	require.NotNil(t, org.JSON200.Organization.AllowedMfaMethods)
+	return *org.JSON200.Organization.AllowedMfaMethods
 }
 
 // challenge logs in from a fresh address and selects the tenant's organization, which

@@ -95,5 +95,7 @@ export enum AppConnection {
   S3Compatible = "s3-compatible",
   Jira = "jira",
   ClickHouse = "clickhouse",
-  Jenkins = "jenkins"
+  IncidentIo = "incident-io",
+  Jenkins = "jenkins",
+  Coolify = "coolify"
 }

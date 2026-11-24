@@ -1,3 +1,4 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -14,7 +15,6 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -113,7 +113,7 @@ export type TSecretAccessApprovalRequestServiceFactoryDep = {
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;

@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -17,13 +18,10 @@ import {
   extractExternallyIssuedCertificateFields
 } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createDigiCertApiClient, DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } from "./digicert-api-client";
 import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import {
@@ -60,13 +58,10 @@ export type TPreparedCodeSigningCertificate =
 type TDigiCertCodeSigningFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOneLiveFirst">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 export const digiCertCodeSigningFns = ({
@@ -74,8 +69,8 @@ export const digiCertCodeSigningFns = ({
   certificateAuthorityDAL,
   certificateDAL,
   certificateBodyDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TDigiCertCodeSigningFnsDeps) => {
   const assertCsOrgValidatedOrContactProvided = async ({
     appConnectionId,
@@ -92,7 +87,11 @@ export const digiCertCodeSigningFns = ({
 
     let isValidated = false;
     try {
-      const { apiKey, baseUrl } = await getDigiCertClientCredentials(appConnectionId, appConnectionDAL, kmsService);
+      const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+        appConnectionId,
+        appConnectionDAL,
+        kmsDataKeyService
+      );
       const client = createDigiCertApiClient(apiKey, baseUrl);
       const { validations } = await client.getOrganizationValidations(organizationId);
       isValidated = isDigiCertOrgValidatedForProduct(validations, productNameId);
@@ -133,7 +132,10 @@ export const digiCertCodeSigningFns = ({
     }
   };
 
-  const loadDigiCertCsContext = async (caId: string, opts?: { requireCodeSigning?: boolean }) => {
+  const loadDigiCertCsContext = async (
+    caId: string,
+    opts?: { requireCodeSigning?: boolean; requestTimeoutMs?: number }
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -157,9 +159,13 @@ export const digiCertCodeSigningFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
-    return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return {
+      ca,
+      digicertCa,
+      client: createDigiCertApiClient(apiKey, baseUrl, { requestTimeoutMs: opts?.requestTimeoutMs })
+    };
   };
 
   const $getOwnedCodeSigningOrder = async (caId: string, orderId: number) => {
@@ -300,7 +306,7 @@ export const digiCertCodeSigningFns = ({
   };
 
   const getCodeSigningOrderStatus = async (caId: string, orderId: number): Promise<TCodeSigningOrderInfo> => {
-    const { client } = await loadDigiCertCsContext(caId);
+    const { client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     const order = await client.getOrder(orderId);
     return {
       id: orderId,
@@ -356,7 +362,7 @@ export const digiCertCodeSigningFns = ({
     applicationId?: string | null;
     profileId?: string | null;
   }): Promise<TPreparedCodeSigningCertificate> => {
-    const { ca, client } = await loadDigiCertCsContext(caId);
+    const { ca, client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     if (!providedPemBundle && !digicertCertificateId) {
       throw new BadRequestError({ message: `DigiCert order ${orderId} has no certificate to download.` });
     }
@@ -369,19 +375,15 @@ export const digiCertCodeSigningFns = ({
       message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
     });
 
-    const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
+    const existingCert = await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber, caId: ca.id });
     if (existingCert) {
-      if (existingCert.caId !== ca.id) throw differentCaError;
       assertCertificateNotDeleted(existingCert, "Request a new code signing certificate instead.");
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
+    if (await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber })) throw differentCaError;
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
     });
@@ -429,10 +431,14 @@ export const digiCertCodeSigningFns = ({
       existingCertificateId: null,
       insert,
       findConcurrentInsert: async () => {
-        const concurrentCert = await certificateDAL.transaction((tx) =>
-          certificateDAL.findOne({ serialNumber: certObj.serialNumber }, tx)
-        );
-        if (concurrentCert && concurrentCert.caId !== ca.id) throw differentCaError;
+        const { concurrentCert, otherCaCert } = await certificateDAL.transaction(async (tx) => ({
+          concurrentCert: await certificateDAL.findOneLiveFirst(
+            { serialNumber: certObj.serialNumber, caId: ca.id },
+            tx
+          ),
+          otherCaCert: await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber }, tx)
+        }));
+        if (!concurrentCert && otherCaCert) throw differentCaError;
         return concurrentCert?.id ?? null;
       }
     };

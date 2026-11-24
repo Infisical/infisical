@@ -2,17 +2,17 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { containsSecretReference, expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
@@ -62,7 +62,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -75,7 +75,7 @@ export const secretValidationRuleServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   permissionService,
-  kmsService
+  kmsDataKeyService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -108,7 +108,10 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const $getCipher = (projectId: string, tx?: Knex) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx);
+    dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
   // Listed rather than spread so `encryptedInputs` can never reach a response.
   const $toRecord = (rule: TSecretValidationRuleWithEnv, config: TSecretValidationRuleConfig) =>

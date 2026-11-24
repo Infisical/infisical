@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import { FieldError as ReactHookFormFieldError, UseFormRegisterReturn } from "react-hook-form";
-import { Check, Eye, EyeOff, LoaderCircle, X } from "lucide-react";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { getPasswordRequirements } from "@app/components/utilities/checks/password/passwordPolicy";
-import { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   AnimatedCollapse,
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   InputGroup,
@@ -22,7 +20,6 @@ type PasswordFieldProps = {
   id: string;
   value: string;
   policy: TPasswordPolicy;
-  breachStatus: PasswordBreachCheckStatus;
   registration: UseFormRegisterReturn;
   label?: string;
   placeholder?: string;
@@ -36,7 +33,6 @@ export const PasswordField = ({
   id,
   value,
   policy,
-  breachStatus,
   registration,
   label = "Password",
   placeholder,
@@ -105,24 +101,7 @@ export const PasswordField = ({
               <span className={isMet ? "text-muted" : "text-accent"}>{message}</span>
             </div>
           ))}
-          {breachStatus === "checking" && (
-            <FieldDescription className="flex items-center gap-2">
-              <LoaderCircle className="size-3.5 animate-spin" /> Checking known data breaches…
-            </FieldDescription>
-          )}
-          {breachStatus === "safe" && (
-            <FieldDescription className="flex items-center gap-2 text-success">
-              <Check className="size-3.5" /> No known data breach matches found.
-            </FieldDescription>
-          )}
-          {breachStatus === "breached" && (
-            <FieldError>This password was found in a known data breach.</FieldError>
-          )}
-          {breachStatus === "unavailable" && (
-            <FieldDescription>
-              Breach check unavailable. Other requirements still apply.
-            </FieldDescription>
-          )}
+          {error?.type === "server" && <FieldError>{error.message}</FieldError>}
         </div>
       </AnimatedCollapse>
     </Field>

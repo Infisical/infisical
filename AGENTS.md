@@ -29,7 +29,6 @@ infisical/
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
-├── docker-compose.bdd.yml        # BDD testing environment
 ├── docker-compose.e2e-dbs.yml    # E2E test databases (Oracle, SAP, Snowflake, etc.)
 ├── Dockerfile.standalone-infisical       # Standalone image (frontend + backend)
 ├── Dockerfile.fips.standalone-infisical  # FIPS-compliant standalone image
@@ -114,11 +113,21 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 PAM is a product over one implicit project per organization, not projects a user creates. Its URLs are `/organizations/$orgId/pam/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, its roles are admin or member only, and it has its own metered identities dimension (`pam_identities`). See `backend/src/ee/services/pam/AGENTS.md`.
 
-Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension (each meter's count lives in the domain that owns it, see `backend/src/domains/platform/license/AGENTS.md`), so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. See `backend/src/ee/services/agent-vault/AGENTS.md`.
+Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles, so a `ProjectType.PAM` arm for roles usually needs an Agent Vault arm beside it. It bills per brokered request (`agent_vault_brokered_requests`), not per identity; its access rule and usage live in `backend/src/domains/agent-vault/agent-vault/`. See `backend/src/ee/services/agent-vault/AGENTS.md`.
 
 ### Single-Project Products
 
 Secret Scanning has one active project per organization (the newest). Like Certificate Manager, its URLs are `/organizations/$orgId/secret-scanning/…` with no `$projectId`; legacy orgs can still hold several projects, so the frontend pins the one being viewed (see `frontend/AGENTS.md`). New orgs and sub-orgs get it at creation (`bootstrapSecretScanningProject`), older orgs lazily from `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
+
+### Instance Config
+
+The `super_admin` row (instance settings, Slack, Teams and GitHub app credentials, env overrides) belongs to Instance
+Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getSettings()`, `getLoginPolicy()`, `getSignUpPolicy()`,
+`isInstanceAdminIdentity()` and the credential getters; change it through `updateConfig()` and the other intent
+methods. Never query `super_admin` or decrypt its columns elsewhere; its cached value is shared with pods of the
+previous release. The env values an instance admin can override (`EnvOverrides.KEYS` in Instance Config Core) are not
+in `lib/config/env.ts` and never go back into `envSchema`: read them from `getOverridableEnv()` per use, never at boot,
+and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
 
 ### Service Factory + Manual DI (Backend)
 
@@ -141,7 +150,7 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 All "someone has to approve this before it happens" features share one module:
 `backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
 the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
-requests, code signing.
+requests, certificate revocation, code signing.
 
 A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
 constructed with its own dependencies and registered in the `approvalResources` map in
@@ -151,10 +160,22 @@ endpoint**: secret access (`ee/services/access-approval-*`) and secret change
 (`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
 longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
 `secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
-Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A secret change policy with `enforceImportReplication` refuses same-project imports in the folders it governs that read their source directly: `createImport` and a repoint in `updateImport` return a 400, and existing direct imports are never converted, only listed after the policy is saved (`listSecretApprovalPolicyImports` with `isReplication: false`) for the admin to recreate. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
+
+A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
+can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
+requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
+action fails there, record the failure in the audit log and call
+`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
+(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
+`filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
+outlives their removal. Certificate
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
+(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
+run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
@@ -165,6 +186,10 @@ engine itself adds a reuse check (`not-used-before`) to every input, answered fr
 requests' evidence and claimed under an advisory lock in the auto-approve transaction. The
 stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
 never `autoApprovalEvidence`.
+
+An `ai` condition has the organization's AI model judge the request against the admin's prompt. It runs last,
+only when the rest of its rule passed and no earlier rule approved, and anything but a clean approval falls
+through to the approvers. See AI Features below.
 
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
 through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
@@ -257,6 +282,15 @@ consumer itself. A new delegated policy type adds its `postApprovalTxRoutine` an
 `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP`. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
 the provider reads that field alone and ignores `state`.
 
+### AI Features
+
+One model per organization (an Anthropic connection plus a model ID on `organizations`, set under Organization
+Settings > General) serves every AI feature, through `backend/src/services/ai/`. An app connection becomes usable
+as AI context by adding read-only tools to `APP_CONNECTION_AI_TOOLS` (`services/app-connection/app-connection-ai-tools.ts`);
+Jira is the first. Requester text and tool results are untrusted: they stay out of the system prompt, and the
+model is asked to answer through `submit_decision` (`tool_choice` stays `auto`, since thinking models reject a
+forced tool), and a reply without it does not approve.
+
 ### Object Storage
 
 New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
@@ -335,7 +369,7 @@ When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design syste
 
 Before deprecating or removing a shared frontend component, follow the component lifecycle rules in [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`). A federated connection (`isFederatedAppConnection`) is the exception: keep the dialog open on it with `isNewConnection`, and select it and call `complete` only after it verifies. The provider can trust it only once it exists, its setup values are shown there, and selecting it earlier starts lookups (such as GCP project discovery) that fail and are not refetched.
 
 ## Issue and PR Guidelines
 

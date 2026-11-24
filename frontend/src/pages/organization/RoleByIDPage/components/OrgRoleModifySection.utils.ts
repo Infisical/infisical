@@ -255,6 +255,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
+      "audit-log-streams": auditLogsPermissionSchema,
       member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
@@ -632,6 +633,22 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionAuditLogsActions.Edit,
         label: "Edit",
         description: "Choose which audit log event classes the organization records"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.AuditLogStreams]: {
+    title: "Audit Log Streams",
+    description: "Manage external destinations that receive the organization's audit logs",
+    actions: [
+      {
+        value: OrgPermissionAuditLogsActions.Read,
+        label: "Read",
+        description: "Read audit log streams and their alerts"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Create, update and delete audit log streams, and manage their alerts"
       }
     ]
   },

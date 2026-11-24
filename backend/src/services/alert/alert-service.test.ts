@@ -251,7 +251,7 @@ const buildService = (opts?: {
           recipients: c.recipients ?? []
         }))
     },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: async () => ({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
@@ -700,6 +700,53 @@ describe("alert service", () => {
     });
   });
 
+  describe("an alert chosen for a resource that is still being created", () => {
+    const newResourceAlert = {
+      resourceType: RESOURCE_TYPE,
+      resourceId: "new-resource",
+      projectId: "proj-1",
+      eventType: "test.resource.opened",
+      name: "New resource alert",
+      channels: [emailChannel, webhookChannel],
+      ...actor
+    };
+    const tx = {} as never;
+
+    test("is written only when applied, as the actor who chose it", async () => {
+      const { service, alerts, channels } = buildService();
+      const prepared = await service.prepareAlertForNewResource(newResourceAlert);
+      expect(alerts.size).toBe(0);
+
+      await service.applyPreparedAlert(prepared, tx);
+      expect([...alerts.values()]).toEqual([
+        expect.objectContaining({
+          resourceId: "new-resource",
+          projectId: "proj-1",
+          createdByActorId: "user-1",
+          enabled: true
+        })
+      ]);
+      expect([...channels.values()].map((c) => c.name)).toEqual(["email-ch", "webhook-ch"]);
+    });
+
+    test("leaves the resource checks to the caller, since the resource doesn't exist yet", async () => {
+      const { service, permissionCalls } = buildService({ resourceScopeThrows: true });
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(permissionCalls).toHaveLength(0);
+    });
+
+    test("still checks its channels", async () => {
+      const { service, gatedChannelTypeCalls, recipientProjectIds } = buildService();
+      await expect(service.prepareAlertForNewResource({ ...newResourceAlert, channels: [] })).rejects.toThrow(
+        "At least one channel is required"
+      );
+
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.EMAIL, AlertChannelType.WEBHOOK]);
+      expect(recipientProjectIds).toEqual(["proj-1", "proj-1"]);
+    });
+  });
+
   test("update rejects an empty channel list", async () => {
     const { service } = buildService();
     await service.createAlert(validCreate);
@@ -724,5 +771,57 @@ describe("alert service", () => {
     await expect(service.createAlert(validCreate)).rejects.toThrow(
       "An alert for this resource and event already exists"
     );
+  });
+});
+
+describe("copyAlertsToResource", () => {
+  test("copies every channel column, including the Slack integration it posts through", async () => {
+    const createdChannels: Record<string, unknown>[] = [];
+    const service = alertServiceFactory({
+      alertDAL: {
+        find: async () => [
+          { id: "alert-1", name: "reminder", resourceType: RESOURCE_TYPE, resourceId: "from", condition: null }
+        ],
+        create: async (data: Record<string, unknown>) => ({ ...data, id: "alert-2" })
+      },
+      alertChannelDAL: {
+        findByAlertIds: async () => [
+          {
+            id: "ch-1",
+            alertId: "alert-1",
+            name: "Slack",
+            channelType: AlertChannelType.SLACK_APP,
+            encryptedConfig: Buffer.from("{}"),
+            workflowIntegrationId: "wi-1",
+            enabled: true,
+            orgId: "org-1",
+            projectId: "proj-1",
+            createdByActorId: "user-1",
+            createdByActorType: "user",
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        ],
+        create: async (data: Record<string, unknown>) => {
+          createdChannels.push(data);
+          return { ...data, id: "ch-2" };
+        }
+      },
+      alertChannelMembershipDAL: { insertMany: async () => [] },
+      alertChannelRecipientDAL: { findByChannelIds: async () => [], insertMany: async () => [] }
+    } as unknown as TAlertServiceFactoryDep);
+
+    await service.copyAlertsToResource(
+      { resourceType: RESOURCE_TYPE, projectId: "proj-1", fromResourceId: "from", toResourceId: "to" },
+      {} as never
+    );
+
+    expect(createdChannels).toHaveLength(1);
+    expect(createdChannels[0]).toMatchObject({
+      channelType: AlertChannelType.SLACK_APP,
+      workflowIntegrationId: "wi-1"
+    });
+    expect(createdChannels[0]).not.toHaveProperty("id");
+    expect(createdChannels[0]).not.toHaveProperty("alertId");
   });
 });

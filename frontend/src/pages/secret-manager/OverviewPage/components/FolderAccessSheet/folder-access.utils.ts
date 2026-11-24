@@ -1,9 +1,5 @@
 import { format } from "date-fns";
 
-import {
-  FolderAccessControlsUpgradeIntent,
-  FolderSubfolderAccessUpgradeIntent
-} from "@app/components/license/UpgradeGate/upgrade-intents";
 import { getInitials } from "@app/helpers/string";
 import {
   TFolderAccess,
@@ -177,9 +173,6 @@ export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === 
 export const subfolderToggleLabelOf = (path: string) =>
   isRootFolderPath(path) ? "Apply to Environment" : "Apply to Subfolders";
 
-export const subfolderUpgradeIntentOf = (path: string) =>
-  isRootFolderPath(path) ? FolderAccessControlsUpgradeIntent : FolderSubfolderAccessUpgradeIntent;
-
 const isStrictAncestorPath = (ancestor: string, path: string) =>
   ancestor !== path && (ancestor === "/" || path.startsWith(`${ancestor}/`));
 
@@ -203,8 +196,3 @@ export const findInheritedGrant = (
       .sort((a, b) => folderDepthOf(b.secretPath) - folderDepthOf(a.secretPath))[0] ?? null
   );
 };
-
-export const canGrantFolderAccess = (
-  hasFolderRbacPlan: boolean,
-  change: { isPermissionRecursive?: boolean } = {}
-) => hasFolderRbacPlan || !change.isPermissionRecursive;

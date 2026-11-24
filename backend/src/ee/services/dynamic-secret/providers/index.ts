@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -22,7 +23,9 @@ import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
+import { NeonProvider } from "./neon";
 import { OAuth2Provider } from "./oauth2";
+import { OpenRouterProvider } from "./openrouter";
 import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
@@ -37,12 +40,14 @@ type TBuildDynamicSecretProviderDTO = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export const buildDynamicSecretProviders = ({
   gatewayV2Service,
   gatewayPoolService,
-  projectDAL
+  projectDAL,
+  instanceConfigService
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayV2Service, gatewayPoolService }),
@@ -64,7 +69,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.GcpIam]: GcpIamProvider({ projectDAL }),
+  [DynamicSecretProviders.GcpIam]: GcpIamProvider({ projectDAL, instanceConfigService }),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
   [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayV2Service, gatewayPoolService }),
@@ -72,5 +77,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
   [DynamicSecretProviders.Tailscale]: TailscaleProvider(),
   [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
-  [DynamicSecretProviders.Kafka]: KafkaProvider()
+  [DynamicSecretProviders.Kafka]: KafkaProvider(),
+  [DynamicSecretProviders.OpenRouter]: OpenRouterProvider(),
+  [DynamicSecretProviders.Neon]: NeonProvider()
 });

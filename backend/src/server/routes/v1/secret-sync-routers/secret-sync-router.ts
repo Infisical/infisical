@@ -43,6 +43,8 @@ import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { ConvexSyncListItemSchema, ConvexSyncSchema } from "@app/services/secret-sync/convex";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
@@ -115,10 +117,12 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
   CloudflareSecretsStoreSyncSchema,
+  ConvexSyncSchema,
   SupabaseSyncSchema,
   RundeckSyncSchema,
   PortainerSyncSchema,
   JenkinsSyncSchema,
+  CoolifySyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -171,6 +175,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
   CloudflareSecretsStoreSyncListItemSchema,
+  ConvexSyncListItemSchema,
   DigitalOceanAppPlatformSyncListItemSchema,
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,
@@ -179,6 +184,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RundeckSyncListItemSchema,
   PortainerSyncListItemSchema,
   JenkinsSyncListItemSchema,
+  CoolifySyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,

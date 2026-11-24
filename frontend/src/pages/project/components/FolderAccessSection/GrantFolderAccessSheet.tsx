@@ -2,7 +2,6 @@ import { useState } from "react";
 import { subject } from "@casl/ability";
 import { InfoIcon } from "lucide-react";
 
-import { useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -24,8 +23,7 @@ import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission,
-  useSubscription
+  useProjectPermission
 } from "@app/context";
 import {
   TFolderAccess,
@@ -37,11 +35,9 @@ import {
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
-  canGrantFolderAccess,
   findInheritedGrant,
   isRootFolderPath,
-  normalizeFolderPath,
-  subfolderUpgradeIntentOf
+  normalizeFolderPath
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
@@ -64,8 +60,6 @@ type FormProps = {
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { subscription } = useSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const environments = currentProject?.environments ?? [];
 
@@ -139,14 +133,6 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     (Boolean(existingGrant) && !grant.hasChanges);
 
   const handleSubmit = async () => {
-    const change = existingGrant ? grant.updateFields() : grant.createFields();
-    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), change)) {
-      openUpgradeGate({
-        intent: subfolderUpgradeIntentOf(normalizedPath),
-        paywallKey: "project.folder-access-section"
-      });
-      return;
-    }
     const target = { projectId, environmentSlug, secretPath: normalizedPath };
 
     if (existingGrant) {
@@ -248,7 +234,6 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           {existingGrant ? "Save Changes" : "Save Access"}
         </Button>
       </SheetFooter>
-      {upgradeGate}
     </>
   );
 };

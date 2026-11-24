@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
 import { redactCredentialsFromText } from "./identity-kubernetes-auth-fns";
@@ -178,7 +179,13 @@ export const handleAxiosGenericError = (
  * Checks if an error is a known error type that should be re-thrown as-is.
  */
 export const isKnownError = (err: unknown): boolean => {
-  return err instanceof UnauthorizedError || err instanceof BadRequestError || err instanceof NotFoundError;
+  return (
+    err instanceof UnauthorizedError ||
+    err instanceof BadRequestError ||
+    err instanceof NotFoundError ||
+    err instanceof RuleViolationError ||
+    err instanceof EntityNotFoundError
+  );
 };
 
 /**

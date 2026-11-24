@@ -1,13 +1,15 @@
 /* eslint-disable no-await-in-loop */
 import https from "https";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { isValidAzureAppConfigurationUrl } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -16,8 +18,9 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 interface AzureAppConfigKeyValue {
@@ -27,9 +30,10 @@ interface AzureAppConfigKeyValue {
 }
 
 export const azureAppConfigurationSyncFactory = ({
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
   const $getCompleteAzureAppConfigValues = async (accessToken: string, baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
@@ -71,19 +75,25 @@ export const azureAppConfigurationSyncFactory = ({
     });
   };
 
-  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
-    if (!secretSync.destinationConfig.configurationUrl.endsWith(".azconfig.io")) {
-      throw new BadRequestError({
-        message: "Invalid Azure App Configuration URL provided."
+  const $assertValidConfigurationUrl = (configurationUrl: string) => {
+    if (!isValidAzureAppConfigurationUrl(configurationUrl)) {
+      throw new SecretSyncError({
+        message: "Invalid Azure App Configuration URL. Use the store endpoint, https://<store-name>.azconfig.io.",
+        shouldRetry: false
       });
     }
+  };
+
+  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
 
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
@@ -167,11 +177,14 @@ export const azureAppConfigurationSyncFactory = ({
 
   const removeSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
+
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
@@ -201,11 +214,14 @@ export const azureAppConfigurationSyncFactory = ({
   };
 
   const getSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials) => {
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
+
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
-      oidcIssuerService
+      kmsDataKeyService,
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const secretMap: TSecretMap = {};

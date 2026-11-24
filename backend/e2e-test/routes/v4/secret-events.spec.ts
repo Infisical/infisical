@@ -3,7 +3,7 @@ import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder
 import { SecretImportModifiedEventV1 } from "@app/services/secret-import/secret-import-events";
 import { SecretModifiedEventV1 } from "@app/services/secret-v2-bridge/secret-events";
 
-import { SECRET_EVENTS_RECORDER } from "../../fakes/event-outbox-registry";
+import { SECRET_EVENTS_RECORDER } from "../../fakes/events-module";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createFolder, deleteFolder } from "../../testUtils/folders";
 import { createSecretImport, deleteSecretImport } from "../../testUtils/secret-imports";
@@ -18,7 +18,7 @@ type TRecordedEvent = {
 };
 
 // No API exposes outbox rows, so read them straight from the table. The recorder consumer in
-// fakes/event-outbox-registry.ts is what makes emit write them at all.
+// fakes/events-module.ts is what makes emit write them at all.
 const recordedEvents = async (projectId: string, eventType?: string): Promise<TRecordedEvent[]> => {
   const query = testDb(TableName.EventOutbox)
     .where({ consumer: SECRET_EVENTS_RECORDER })

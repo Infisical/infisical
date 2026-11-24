@@ -20,6 +20,7 @@ import {
   PageHeader
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
+import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -32,7 +33,6 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const ORDER_BY: Record<ServiceSortColumn, "name" | "type" | "createdAt"> = {
   [ServiceSortColumn.Name]: "name",
@@ -44,8 +44,8 @@ const ORDER_BY: Record<ServiceSortColumn, "name" | "type" | "createdAt"> = {
 
 export const AgentVaultServicesPage = () => {
   const { projectId } = useProject();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canManageServices = canManageAgentVaultServices(permission);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -100,7 +100,7 @@ export const AgentVaultServicesPage = () => {
         icon={PlugIcon}
         title="Services"
         description={
-          isAdmin
+          canManageServices
             ? "Define each API, MCP server, database and SSH server once, then add it to the access bundles that need it."
             : "The services your access bundles give you, and the personal values each one needs from you."
         }
@@ -130,11 +130,11 @@ export const AgentVaultServicesPage = () => {
 
       <ServicesCard
         services={data?.services ?? []}
-        canManage={isAdmin}
+        canManage={canManageServices}
         isPending={isPending}
         onRetryLoad={isError && !data ? () => refetch() : undefined}
         emptyDescription={
-          isAdmin
+          canManageServices
             ? undefined
             : "No access bundle granted to you holds a service yet. Ask an admin to grant you one."
         }
@@ -203,7 +203,7 @@ export const AgentVaultServicesPage = () => {
         }}
       />
 
-      {isAdmin && (
+      {canManageServices && (
         <ServiceSheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} service={serviceToEdit} />
       )}
 

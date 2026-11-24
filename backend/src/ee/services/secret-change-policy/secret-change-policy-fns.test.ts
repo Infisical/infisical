@@ -56,6 +56,15 @@ describe("readSecretChangePolicyConstraints", () => {
     expect(readSecretChangePolicyConstraints(null)).toEqual({});
     expect(readSecretChangePolicyConstraints({ version: 1, constraints: { allowedSelfApprovals: "yes" } })).toEqual({});
   });
+
+  test("keeps a readable field when a sibling field is malformed", () => {
+    expect(
+      readSecretChangePolicyConstraints({
+        version: 1,
+        constraints: { allowedSelfApprovals: "yes", enforceImportReplication: true }
+      })
+    ).toEqual({ enforceImportReplication: true });
+  });
 });
 
 describe("toSecretChangePolicy", () => {
@@ -74,6 +83,7 @@ describe("toSecretChangePolicy", () => {
       secretPath: "/app",
       approvals: 2,
       allowedSelfApprovals: false,
+      enforceImportReplication: false,
       envId: ENV_DEV.id,
       environment: ENV_DEV,
       environments: [ENV_DEV, ENV_PROD],
@@ -102,6 +112,14 @@ describe("toSecretChangePolicy", () => {
     expect(toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: {} } })).allowedSelfApprovals).toBe(
       true
     );
+  });
+
+  test("reads the import replication flag and defaults it to off", () => {
+    expect(
+      toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: { enforceImportReplication: true } } }))
+        .enforceImportReplication
+    ).toBe(true);
+    expect(toSecretChangePolicy(buildRow({ constraints: "corrupt" })).enforceImportReplication).toBe(false);
   });
 
   test("treats a missing machine identity bypass flag as disabled", () => {
@@ -135,6 +153,55 @@ describe("resolvePolicyForPath", () => {
     expect(resolvePolicyForPath([envWide, glob, exact], "/app/svc")).toBe(exact);
     expect(resolvePolicyForPath([envWide, glob, exact], "/app/other")).toBe(glob);
     expect(resolvePolicyForPath([envWide, glob, exact], "/elsewhere")).toBe(envWide);
+  });
+
+  test("matches the folder a non-canonical path resolves to", () => {
+    const exact = makePathPolicy("exact", "/prod");
+    const glob = makePathPolicy("glob", "/app/**");
+
+    for (const path of ["prod", "//prod", "/prod/", "/prod//"]) {
+      expect(resolvePolicyForPath([exact], path)).toBe(exact);
+    }
+    for (const path of ["app/api", "//app/api", "/app//api"]) {
+      expect(resolvePolicyForPath([glob], path)).toBe(glob);
+    }
+  });
+
+  test("matches a policy whose stored path is not canonical", () => {
+    const exact = makePathPolicy("exact", "prod");
+    const glob = makePathPolicy("glob", "app//**");
+
+    expect(resolvePolicyForPath([exact], "/prod")).toBe(exact);
+    expect(resolvePolicyForPath([glob], "/app/api")).toBe(glob);
+    expect(resolvePolicyForPath([exact, glob], "/db")).toBeUndefined();
+  });
+
+  test("never lets a policy stored with a non-canonical path win over a canonically stored one", () => {
+    const olderAlias = makePathPolicy("older-alias", "prod", "2025-01-01");
+    const canonical = makePathPolicy("canonical", "/prod", "2026-02-01");
+    const canonicalGlob = makePathPolicy("canonical-glob", "/**", "2026-03-01");
+
+    expect(resolvePolicyForPath([olderAlias, canonical], "/prod")).toBe(canonical);
+    expect(resolvePolicyForPath([olderAlias, canonicalGlob], "/prod")).toBe(canonicalGlob);
+    expect(resolvePolicyForPath([olderAlias], "/prod")).toBe(olderAlias);
+  });
+
+  test("keeps the precedence of a non-canonical pattern for the paths it already matched as stored", () => {
+    const olderBraces = makePathPolicy("older-braces", "{/prod/**,//staging/**}", "2025-01-01");
+    const newerCatchAll = makePathPolicy("newer-catch-all", "/**", "2026-02-01");
+
+    expect(resolvePolicyForPath([olderBraces, newerCatchAll], "/prod/api")).toBe(olderBraces);
+    expect(resolvePolicyForPath([olderBraces, newerCatchAll], "/staging/api")).toBe(newerCatchAll);
+    expect(resolvePolicyForPath([olderBraces], "/staging/api")).toBe(olderBraces);
+  });
+
+  test("keeps glob patterns that start with a glob character or group paths in braces", () => {
+    const braces = makePathPolicy("braces", "{/a,/b}");
+    const star = makePathPolicy("star", "*");
+
+    expect(resolvePolicyForPath([braces], "/a")).toBe(braces);
+    expect(resolvePolicyForPath([braces], "/b")).toBe(braces);
+    expect(resolvePolicyForPath([star], "/prod")).toBeUndefined();
   });
 
   test("ignores policies whose path does not match", () => {

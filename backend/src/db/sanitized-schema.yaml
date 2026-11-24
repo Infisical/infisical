@@ -804,7 +804,7 @@ tables:
       - kmsDefaultKeyId
       - defaultMembershipRole
       - enforceMfa
-      - selectedMfaMethod
+      - allowedMfaMethods
       - allowSecretSharingOutsideOrganization
       - shouldUseNewPrivilegeSystem
       - privilegeUpgradeInitiatedByUsername
@@ -824,6 +824,8 @@ tables:
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
       - requireGatewayPools
+      - aiConnectionId
+      - aiModel
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -1185,6 +1187,18 @@ tables:
       - isScanNewCommitsEnabled
       - isDiscoveryEnabled
 
+  - name: secret_scanning_finding_locations
+    source: public.secret_scanning_finding_locations
+    columns:
+      - id
+      - findingId
+      - resourceId
+      - scanId
+      - fingerprint
+      - rule
+      - details
+      - createdAt
+
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
     columns:
@@ -1201,6 +1215,7 @@ tables:
       - fingerprint
       - details
       - scanId
+      - lastDetectedAt
       - createdAt
       - updatedAt
 
@@ -1340,6 +1355,15 @@ tables:
       - createdBy
       - projectId
       - expiryNotificationSent
+
+  - name: totp_configs
+    source: public.totp_configs
+    columns:
+      - id
+      - userId
+      - isVerified
+      - createdAt
+      - updatedAt
 
   - name: user_group_membership
     source: public.user_group_membership

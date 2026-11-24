@@ -86,10 +86,13 @@ output-options:
     - deleteSecretApprovalPolicy
     - getSecretApprovalPolicy
     - getSecretApprovalPolicyBoard
+    - listSecretApprovalPolicyImports
     - listSecretApprovalRequests
     - getSecretApprovalRequestCount
     - getSecretApprovalRequest
     - reviewSecretApprovalRequest
+    - batchReviewSecretApprovalRequests
+    - batchMergeSecretApprovalRequests
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
     - createAccessApprovalPolicy
@@ -380,6 +383,7 @@ output-options:
     - requestProjectAccess
     - resetHoneyToken
     - restoreEnvironment
+    - restoreProject
     - resyncSecretImportReplication
     - revealSecretRequestValue
     - revertFolderCommit
@@ -739,6 +743,9 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createGcpAppConnection
+    - updateGcpAppConnection
+    - getGcpAppConnection
     - createKmsKey
     - updateKmsKey
     - rotateKmsKey
@@ -781,3 +788,27 @@ output-options:
     - kmipRevoke
     - kmipLocate
     - kmipRegister
+    - getAcmeApplicationDirectory
+    - createAcmeApplicationAccount
+    - getAcmeNewNonce
+    - createAcmeOrder
+    - getAcmeOrder
+    - finalizeAcmeOrder
+    - listAcmeOrders
+    - downloadAcmeCertificate
+    - getAcmeAuthorization
+    - respondToAcmeChallenge
+    - getScepOperation
+    - getScepApplicationOperation
+    - postScepApplicationOperation
+    - getCertManagerInstanceState
+    - createAcmeCertificateAuthorityV1
+    - createCertificatePolicy
+    - createCertificateProfile
+    - createPkiApplication
+    - attachPkiApplicationProfiles
+    - setPkiApplicationAcmeEnrollment
+    - revealPkiApplicationAcmeEabSecret
+    - setPkiApplicationScepEnrollment
+    - createCloudflareAppConnection
+    - createDnsMadeEasyAppConnection

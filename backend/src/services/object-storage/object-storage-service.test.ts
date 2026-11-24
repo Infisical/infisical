@@ -2,6 +2,7 @@ import { S3ServiceException } from "@aws-sdk/client-s3";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { createS3Bucket } from "@app/lib/aws/s3";
 import { DailyQuotaExceededError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -44,7 +45,10 @@ vi.mock("@app/lib/aws/s3", () => ({
 }));
 
 const site = vi.hoisted(() => ({ url: "https://app.example.com" as string | undefined, isCloud: true }));
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: site.url, isCloud: site.isCloud }) }));
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getConfig: () => ({ SITE_URL: site.url, isCloud: site.isCloud })
+}));
 
 const preflight = vi.hoisted(() => ({
   options: vi.fn(async () => ({
@@ -78,7 +82,8 @@ const build = (opts: { connection?: unknown; admit?: (key: string, value: number
   const incrementByIfUnderLimitWithFixedExpiry = vi.fn(opts.admit ?? (async (_key: string, value: number) => value));
   const service = objectStorageServiceFactory({
     appConnectionDAL: { findById: vi.fn(async () => connection) } as never,
-    kmsService: {} as never,
+    kmsDataKeyService: {} as never,
+    instanceConfigService: new FakeInstanceConfigService(),
     keyStore: { incrementByIfUnderLimitWithFixedExpiry } as never
   });
   service.registerNamespaces([logs]);
@@ -163,6 +168,7 @@ describe("external storage", () => {
     expect(bucketClient.presignCreateOnlyPut).toHaveBeenCalledWith(expect.objectContaining({ tagging: undefined }));
     expect(getAwsConnectionConfig).toHaveBeenCalledWith(
       expect.objectContaining({ projectType: ProjectType.AgentVault }),
+      expect.anything(),
       AWSRegion.EU_WEST_1,
       { stsRequestHandler: { requestTimeout: 15_000 } }
     );

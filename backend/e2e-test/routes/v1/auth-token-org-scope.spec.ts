@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
@@ -148,10 +149,55 @@ const postOauthToken = (body: Record<string, string>) =>
     payload: new URLSearchParams(body).toString()
   });
 
+// Creates an OAuth application holding the refresh_token grant and returns its first refresh token.
+const issueOauthRefreshToken = async (member: TMember) => {
+  const created = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/oauth/clients",
+    headers: { authorization: `Bearer ${jwtAuthToken}` },
+    body: {
+      name: `e2e-org-scope-${crypto.randomUUID()}`,
+      grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
+      redirectUris: [REDIRECT_URI]
+    }
+  });
+  expect(created.statusCode).toBe(200);
+  const { client, clientSecret } = created.json<{ client: { id: string; clientId: string }; clientSecret: string }>();
+  createdClientIds.push(client.id);
+
+  const consented = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/oauth/authorize/consent",
+    headers: { authorization: `Bearer ${accessToken(member, { organizationId: ROOT_ORG_ID })}` },
+    body: { client_id: client.clientId, redirect_uri: REDIRECT_URI }
+  });
+  expect(consented.statusCode).toBe(200);
+  const { callbackUrl } = consented.json<{ callbackUrl: string }>();
+
+  const issued = await postOauthToken({
+    grant_type: OauthGrantType.AuthorizationCode,
+    code: new URL(callbackUrl).searchParams.get("code") as string,
+    redirect_uri: REDIRECT_URI,
+    client_id: client.clientId,
+    client_secret: clientSecret
+  });
+  expect(issued.statusCode).toBe(200);
+  const firstRefresh = issued.json<{ refresh_token: string }>().refresh_token;
+
+  const refreshBody = (token: string) => ({
+    grant_type: OauthGrantType.RefreshToken,
+    refresh_token: token,
+    client_id: client.clientId,
+    client_secret: clientSecret
+  });
+
+  return { firstRefresh, refreshBody };
+};
+
 describe("Org scope of user tokens after root membership deactivation", () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   });
 
   afterEach(async () => {
@@ -230,7 +276,7 @@ describe("Org scope of user tokens after root membership deactivation", () => {
     expectRefused(await refresh(refreshToken(member, subScope(member))));
     expectRefused(await refresh(refreshToken(member, { organizationId: ROOT_ORG_ID })));
     expect(await refreshVersionOf(member.sessionId)).toBe(1);
-    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId))).toBeNull();
+    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId, 1))).toBeNull();
   });
 
   test("a grace-window refresh by a deprovisioned member is refused", async () => {
@@ -242,7 +288,7 @@ describe("Org scope of user tokens after root membership deactivation", () => {
 
     // The rotation parked the old refreshVersion as a grace entry, so replaying the original token now
     // takes the grace-hit branch rather than reuse detection.
-    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId))).toBe("1");
+    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId, 1))).not.toBeNull();
 
     const res = await refresh(original);
     expect(res.statusCode).toBe(403);
@@ -344,46 +390,7 @@ describe("Org scope of user tokens after root membership deactivation", () => {
 
   test("the OAuth refresh grant is refused as invalid_grant once the root membership is inactive", async () => {
     const member = await makeMember();
-
-    const created = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/oauth/clients",
-      headers: { authorization: `Bearer ${jwtAuthToken}` },
-      body: {
-        name: `e2e-org-scope-${crypto.randomUUID()}`,
-        grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
-        redirectUris: [REDIRECT_URI]
-      }
-    });
-    expect(created.statusCode).toBe(200);
-    const { client, clientSecret } = created.json<{ client: { id: string; clientId: string }; clientSecret: string }>();
-    createdClientIds.push(client.id);
-
-    const consented = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/oauth/authorize/consent",
-      headers: { authorization: `Bearer ${accessToken(member, { organizationId: ROOT_ORG_ID })}` },
-      body: { client_id: client.clientId, redirect_uri: REDIRECT_URI }
-    });
-    expect(consented.statusCode).toBe(200);
-    const { callbackUrl } = consented.json<{ callbackUrl: string }>();
-
-    const issued = await postOauthToken({
-      grant_type: OauthGrantType.AuthorizationCode,
-      code: new URL(callbackUrl).searchParams.get("code") as string,
-      redirect_uri: REDIRECT_URI,
-      client_id: client.clientId,
-      client_secret: clientSecret
-    });
-    expect(issued.statusCode).toBe(200);
-    const firstRefresh = issued.json<{ refresh_token: string }>().refresh_token;
-
-    const refreshBody = (token: string) => ({
-      grant_type: OauthGrantType.RefreshToken,
-      refresh_token: token,
-      client_id: client.clientId,
-      client_secret: clientSecret
-    });
+    const { firstRefresh, refreshBody } = await issueOauthRefreshToken(member);
 
     const active = await postOauthToken(refreshBody(firstRefresh));
     expect(active.statusCode).toBe(200);
@@ -394,5 +401,21 @@ describe("Org scope of user tokens after root membership deactivation", () => {
     const refused = await postOauthToken(refreshBody(secondRefresh));
     expect(refused.statusCode).toBe(400);
     expect(refused.json()).toMatchObject({ error: "invalid_grant" });
+  });
+
+  test("an OAuth grace-window refresh returns no refresh_token, so the client keeps its newer one", async () => {
+    const member = await makeMember();
+    const { firstRefresh, refreshBody } = await issueOauthRefreshToken(member);
+
+    const rotated = await postOauthToken(refreshBody(firstRefresh));
+    expect(rotated.statusCode).toBe(200);
+    const secondRefresh = rotated.json<{ refresh_token: string }>().refresh_token;
+
+    const graceHit = await postOauthToken(refreshBody(firstRefresh));
+    expect(graceHit.statusCode).toBe(200);
+    expect(graceHit.json()).toHaveProperty("access_token");
+    expect(graceHit.json()).not.toHaveProperty("refresh_token");
+
+    expect((await postOauthToken(refreshBody(secondRefresh))).statusCode).toBe(200);
   });
 });

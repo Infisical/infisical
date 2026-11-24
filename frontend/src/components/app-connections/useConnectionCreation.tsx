@@ -1,22 +1,27 @@
-import { useRef, useState } from "react";
+import { ComponentProps, useRef, useState } from "react";
 
 import { ComboboxDialogCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
-export const useConnectionCreation = (
+// Shared by the project and organization pickers; each supplies its permission check and form scope
+export const useConnectionCreationDialog = <TOption,>(
   app: AppConnection | undefined,
+  canCreate: boolean,
+  formProps: Pick<ComponentProps<typeof AppConnectionForm>, "projectId" | "projectType">,
   onCreated: (connection: TAppConnection) => void
-): ComboboxDialogCreationConfig<TAvailableAppConnection> | undefined => {
-  const { currentProject } = useProject();
-  const { permission } = useProjectPermission();
+): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  // A federated connection stays in the dialog after create and is selected only once it verifies: the provider
+  // can only trust it once it exists, and selecting it earlier runs lookups (such as GCP project discovery) that
+  // fail until then and are not refetched
+  const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
   const attemptRef = useRef(0);
@@ -27,6 +32,7 @@ export const useConnectionCreation = (
       onDiscard: () => {
         attemptRef.current += 1;
         setIsDirty(false);
+        setCreatedConnection(null);
         cancelRef.current();
       }
     });
@@ -36,14 +42,7 @@ export const useConnectionCreation = (
     requestDiscard();
   };
 
-  if (
-    !app ||
-    !permission.can(
-      ProjectPermissionAppConnectionActions.Create,
-      ProjectPermissionSub.AppConnections
-    )
-  )
-    return undefined;
+  if (!app || !canCreate) return undefined;
 
   const label = `Create ${APP_CONNECTION_MAP[app].name} Connection`;
   const attempt = attemptRef.current;
@@ -58,22 +57,42 @@ export const useConnectionCreation = (
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
-        <AppConnectionForm
-          app={app}
-          layout="dialog"
-          projectId={currentProject.id}
-          projectType={currentProject.type}
-          onDirtyChange={setIsDirty}
-          onPendingChange={setIsPending}
-          onComplete={(connection) => {
-            if (attempt !== attemptRef.current) return;
-            setIsDirty(false);
-            setIsDiscardDialogOpen(false);
-            onCreated(connection);
-            complete();
-          }}
-          onCancel={() => requestCancel(cancel)}
-        />
+        {createdConnection ? (
+          <AppConnectionForm
+            appConnection={createdConnection}
+            isNewConnection
+            layout="dialog"
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setCreatedConnection(null);
+              onCreated(connection);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        ) : (
+          <AppConnectionForm
+            app={app}
+            layout="dialog"
+            {...formProps}
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setIsDirty(false);
+              setIsDiscardDialogOpen(false);
+              if (isFederatedAppConnection(connection)) {
+                setCreatedConnection(connection);
+                return;
+              }
+              onCreated(connection);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        )}
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}
           onOpenChange={setIsDiscardDialogOpen}
@@ -84,4 +103,21 @@ export const useConnectionCreation = (
       </>
     )
   };
+};
+
+export const useConnectionCreation = (
+  app: AppConnection | undefined,
+  onCreated: (connection: TAppConnection) => void
+) => {
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  return useConnectionCreationDialog<TAvailableAppConnection>(
+    app,
+    permission.can(
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionSub.AppConnections
+    ),
+    { projectId: currentProject.id, projectType: currentProject.type },
+    onCreated
+  );
 };

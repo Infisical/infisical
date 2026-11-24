@@ -2,8 +2,8 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { SecretType } from "@app/db/schemas";
-import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { EventDefinition, EventModificationType } from "@app/domains/platform/events/ce/module";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import {
   PreviousSecretLocationSchema,
   TPreviousSecretLocation
@@ -14,7 +14,7 @@ import {
 // destination. A write that moves it in place (eg rotation moving its generated secrets) is one `updated`
 // event with the old location in `previous`. Personal overrides belong to one user, so nothing is emitted
 // for them.
-export const SecretModifiedEventV1 = defineEvent({
+export const SecretModifiedEventV1 = EventDefinition.define({
   domain: "secrets",
   entity: "secret",
   action: "modified",

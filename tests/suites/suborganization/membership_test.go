@@ -1,6 +1,7 @@
 package suborganization_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -127,6 +128,36 @@ func TestSubOrganization_Membership(t *testing.T) {
 		require.Equal(t, []uuid.UUID{ua.IdentityID}, groupIdentityIDs(t, tn.Admin.API, linked.ID))
 		login := ua.login(t, tn, sub.Slug)
 		requireStatus(t, http.StatusOK, login.StatusCode(), login.Body)
+	})
+
+	t.Run("should add more than ten root-org members to a sub-org in one invite", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		emails := make([]openapi_types.Email, 11)
+		for i := range emails {
+			emails[i] = openapi_types.Email(tn.Email(fmt.Sprintf("root-member-%d", i)))
+		}
+		for _, batch := range [][]openapi_types.Email{emails[:10], emails[10:]} {
+			res, err := tn.Client(t, tn.Admin.Token, infisical.ForwardedFor(sourceIP())).InviteUsersToOrganizationWithResponse(t.Context(),
+				api.InviteUsersToOrganizationJSONRequestBody{InviteeEmails: batch, OrganizationId: tn.OrgID.String()})
+			require.NoError(t, err)
+			requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		}
+		admin := tn.Client(t, sub.Admin.Token, infisical.ForwardedFor(sourceIP()))
+
+		// Action
+		res, err := admin.InviteUsersToOrganizationWithResponse(t.Context(), api.InviteUsersToOrganizationJSONRequestBody{
+			InviteeEmails:  emails,
+			OrganizationId: sub.ID.String(),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Len(t, memberUserIDs(t, sub.Admin.API, sub.ID), len(emails)+1)
 	})
 
 	t.Run("should refuse inviting a user who is not in the root org", func(t *testing.T) {

@@ -4,6 +4,7 @@ import net from "net";
 import pLimit from "p-limit";
 
 import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -15,9 +16,7 @@ import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
@@ -66,8 +65,9 @@ type TExecuteScanDeps = {
   pkiCertificateInstallationCertDAL: TPkiCertificateInstallationCertDALFactory;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -119,8 +119,15 @@ export const findOrCreateNetworkInstallation = async (
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const { pkiDiscoveryConfigDAL, projectDAL, kmsService, gatewayV2Service, gatewayPoolService, telemetryService } =
-    deps;
+  const {
+    pkiDiscoveryConfigDAL,
+    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
+    gatewayV2Service,
+    gatewayPoolService,
+    telemetryService
+  } = deps;
 
   const startedAt = new Date();
   let scanHistoryId: string | undefined;
@@ -137,13 +144,9 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       "PKI discovery scan starting"
     );
 
-    const certificateKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: discoveryConfig.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateKmsKeyId
     });
 
@@ -618,13 +621,13 @@ export const processDiscoveredCertificate = async (
   const { certificateDAL, certificateBodyDAL, kmsEncryptor } = deps;
 
   try {
-    const existingCerts = await certificateDAL.find({
-      projectId,
-      fingerprintSha256: certResult.fingerprint
-    });
+    const existingCert = await certificateDAL.findOneLiveFirst(
+      { projectId, fingerprintSha256: certResult.fingerprint },
+      certificateDAL.primaryNode()
+    );
 
-    if (existingCerts.length > 0) {
-      return existingCerts[0].id;
+    if (existingCert) {
+      return existingCert.id;
     }
 
     const friendlyName =
@@ -699,16 +702,15 @@ export const processDiscoveredCertificate = async (
 
     return newCert.id;
   } catch (error) {
-    const dbError = error as { code?: string };
     // PG unique constraint violation — another concurrent scan already inserted this certificate
-    if (dbError.code === "23505") {
-      const existingCerts = await certificateDAL.find({
-        projectId,
-        fingerprintSha256: certResult.fingerprint
-      });
-      if (existingCerts.length > 0) {
+    if (hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) {
+      const existingCert = await certificateDAL.findOneLiveFirst(
+        { projectId, fingerprintSha256: certResult.fingerprint },
+        certificateDAL.primaryNode()
+      );
+      if (existingCert) {
         logger.debug({ fingerprint: certResult.fingerprint }, "Certificate already exists (concurrent insert)");
-        return existingCerts[0].id;
+        return existingCert.id;
       }
     }
     logger.error({ error, fingerprint: certResult.fingerprint, projectId }, "Failed to process discovered certificate");

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BotIcon, SearchIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
 
-import { useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
@@ -39,7 +38,6 @@ import {
   useOrganization,
   useProject,
   useProjectPermission,
-  useSubscription,
   useUser
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
@@ -69,8 +67,6 @@ import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
   byAdminThenName,
   byName,
-  canGrantFolderAccess,
-  subfolderUpgradeIntentOf,
   TFolderAccessActor,
   toIdentityActor,
   toOrgIdentityActor,
@@ -89,7 +85,7 @@ import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
-// organization members outside the project are not paged, so each kind is capped and search narrows it
+// organization members outside the project are not paged, so each tab is capped and search narrows it
 const ORG_PREVIEW_LIMIT = 10;
 const NO_ACCESS_SECTION = "no-access";
 
@@ -139,16 +135,6 @@ export const FolderAccessSheet = ({
   const [ownAccessChange, setOwnAccessChange] = useState<TOwnFolderAccessChange | null>(null);
   const [filter, setFilter] = useState<TFolderAccessFilter>(EMPTY_FOLDER_ACCESS_FILTER);
   const [noAccessSection, setNoAccessSection] = useState("");
-  const { subscription } = useSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const isGrantBlocked = (change: Parameters<typeof canGrantFolderAccess>[1]) => {
-    if (canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), change)) return false;
-    openUpgradeGate({
-      intent: subfolderUpgradeIntentOf(folderPath),
-      paywallKey: "secret-manager.folder-access-sheet"
-    });
-    return true;
-  };
   const [noAccessTab, setNoAccessTab] = useState<TFolderAccessActor["type"]>("user");
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
 
@@ -282,11 +268,11 @@ export const FolderAccessSheet = ({
 
     return {
       actors: {
-        user: matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor).sort(byName),
+        user: matchingUsers.map(toOrgUserActor).sort(byName).slice(0, ORG_PREVIEW_LIMIT),
         identity: matchingIdentities
-          .slice(0, ORG_PREVIEW_LIMIT)
           .map(toOrgIdentityActor)
           .sort(byName)
+          .slice(0, ORG_PREVIEW_LIMIT)
       },
       totals: { user: matchingUsers.length, identity: matchingIdentities.length },
       usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username]))
@@ -373,12 +359,11 @@ export const FolderAccessSheet = ({
     permission: SecretFolderRole,
     isPermissionRecursive = false
   ) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const appliesToSubfolders = actor.access
       ? actor.access.isPermissionRecursive
       : isPermissionRecursive;
-    if (isGrantBlocked({ isPermissionRecursive: appliesToSubfolders })) return;
-    const target = { projectId, environmentSlug, secretPath: folderPath };
-    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
     const onSuccess = () =>
       notifySuccess(
@@ -408,7 +393,6 @@ export const FolderAccessSheet = ({
   };
 
   const setRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) => {
-    if (isGrantBlocked({ isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () =>
       notifySuccess(
@@ -430,7 +414,6 @@ export const FolderAccessSheet = ({
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
-    if (isGrantBlocked({ isPermissionRecursive: actor.access?.isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () =>
       notifySuccess(
@@ -451,7 +434,6 @@ export const FolderAccessSheet = ({
     tier: SecretFolderRole,
     isRecursive: boolean
   ) => {
-    if (isGrantBlocked({ isPermissionRecursive: isRecursive })) return;
     try {
       if (actor.type === "user") {
         await addUserToProject.mutateAsync({
@@ -758,8 +740,8 @@ export const FolderAccessSheet = ({
                                 </div>
                                 {orgCandidates.totals[type] > ORG_PREVIEW_LIMIT && (
                                   <p className="py-2.5 text-xs text-muted">
-                                    Showing the first {ORG_PREVIEW_LIMIT}. Search to find someone
-                                    else.
+                                    Showing the first {ORG_PREVIEW_LIMIT} of{" "}
+                                    {orgCandidates.totals[type]}. Search to find someone else.
                                   </p>
                                 )}
                               </section>
@@ -815,7 +797,6 @@ export const FolderAccessSheet = ({
         folderPath={folderPath}
         environmentName={environmentName}
       />
-      {upgradeGate}
     </>
   );
 };

@@ -8,7 +8,8 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type"
 )({
   component: ProjectTypePage,
-  context: () => ({
+  context: ({ params }) => ({
+    productType: urlSlugToProjectType(params.type) ?? undefined,
     breadcrumbs: [
       {
         label: "Projects"

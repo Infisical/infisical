@@ -1,9 +1,9 @@
+import { LoginMethod, LoginPolicy } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { LoginMethod } from "../super-admin/super-admin-types";
 import {
   AuthMethod,
   AuthModeAccountRecoveryTokenPayload,
@@ -30,21 +30,21 @@ const oauthLoginMethods = {
 
 export type OAuthAuthMethod = keyof typeof oauthLoginMethods;
 
-export const isOAuthLoginMethodDisabled = (
-  authMethod: OAuthAuthMethod,
-  enabledLoginMethods?: readonly string[] | null
-) => Boolean(enabledLoginMethods && !enabledLoginMethods.includes(oauthLoginMethods[authMethod].loginMethod));
+type TLoginMethodPolicy = Pick<LoginPolicy, "allows">;
+
+export const isOAuthLoginMethodDisabled = (authMethod: OAuthAuthMethod, loginPolicy: TLoginMethodPolicy) =>
+  !loginPolicy.allows(oauthLoginMethods[authMethod].loginMethod);
 
 export const assertOAuthLoginMethodEnabled = ({
   authMethod,
-  enabledLoginMethods,
+  loginPolicy,
   canBypass = false
 }: {
   authMethod: OAuthAuthMethod;
-  enabledLoginMethods?: readonly string[] | null;
+  loginPolicy: TLoginMethodPolicy;
   canBypass?: boolean;
 }) => {
-  if (!isOAuthLoginMethodDisabled(authMethod, enabledLoginMethods) || canBypass) return;
+  if (!isOAuthLoginMethodDisabled(authMethod, loginPolicy) || canBypass) return;
 
   throw new BadRequestError({
     message: oauthLoginMethods[authMethod].disabledMessage,
@@ -52,25 +52,44 @@ export const assertOAuthLoginMethodEnabled = ({
   });
 };
 
+export const MFA_METHOD_PRIORITY = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL] as const;
+
+type TMfaPolicyOrg = {
+  enforceMfa?: boolean | null;
+  allowedMfaMethods?: string[] | null;
+};
+type TMfaPolicyUser = { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null };
+
+export const isMfaRequired = (org: TMfaPolicyOrg, user: TMfaPolicyUser) =>
+  Boolean(org.enforceMfa) || Boolean(user.isMfaEnabled);
+
+export const getOrgAllowedMfaMethods = (org: TMfaPolicyOrg): MfaMethod[] => {
+  const allowed = MFA_METHOD_PRIORITY.filter((method) => org.allowedMfaMethods?.includes(method));
+  return allowed.length ? allowed : [MfaMethod.EMAIL];
+};
+
+export const getUserAllowedMfaMethods = (org: TMfaPolicyOrg, user: TMfaPolicyUser): MfaMethod[] =>
+  org.enforceMfa ? getOrgAllowedMfaMethods(org) : [(user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL];
+
 /*
- * Determines whether MFA is required and which method applies, based on org enforcement vs user
- * preference. Org enforcement takes precedence over the user's own selection. Shared between the
- * login flow (which challenges for MFA) and the OAuth consent flow (which must reject sessions that
- * never completed a required MFA challenge before issuing a delegation code).
+ * Picks the method to challenge: the user's preferred one if it is allowed and set up, else the strongest
+ * that is. usableMethods feeds "More options" at login; a null challengeMethod means the user must enroll
+ * an allowed method first. Shared by login, step-up and PAM so all three challenge the same method.
  */
-export const getRequiredMfaMethod = (
-  org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
-  user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
-): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
-  const isOrgMfaEnforced = Boolean(org.enforceMfa);
-  const isUserMfaEnabled = Boolean(user.isMfaEnabled);
-  const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
-
-  const requiredMfaMethod = isOrgMfaEnforced
-    ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
-    : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
-
-  return { isMfaRequired, requiredMfaMethod };
+export const resolveMfaChallenge = ({
+  allowedMethods,
+  enrolledMethods,
+  preferredMethod
+}: {
+  allowedMethods: MfaMethod[];
+  enrolledMethods: MfaMethod[];
+  preferredMethod?: string | null;
+}): { usableMethods: MfaMethod[]; challengeMethod: MfaMethod | null } => {
+  const usableMethods = MFA_METHOD_PRIORITY.filter(
+    (method) => allowedMethods.includes(method) && enrolledMethods.includes(method)
+  );
+  const challengeMethod = usableMethods.find((method) => method === preferredMethod) ?? usableMethods[0] ?? null;
+  return { usableMethods, challengeMethod };
 };
 
 export const isSsoAuthMethod = (authMethod: AuthMethod) =>

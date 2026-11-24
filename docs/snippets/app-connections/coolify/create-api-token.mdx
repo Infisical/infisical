@@ -1,0 +1,21 @@
+<Steps>
+    <Step>
+        Log in to Coolify and switch to the team that owns the resources you plan to sync to. A token can only access its own team's resources.
+    </Step>
+    <Step>
+        In the sidebar, select **Keys & Tokens**, then **API Tokens**, and select **New token**.
+    </Step>
+    <Step>
+        Fill in the **New API token** form:
+
+        - **Description**: A name that identifies the token, such as `infisical`
+        - **Expires in**: How long the token stays valid; once it expires, the sync fails until you update the connection with a new token
+        - **Permissions**: `read`, `read:sensitive`, `write`, and `delete`
+        - **Resources**: **All resources in the team**, or **Selected projects, environments, or resources** to limit the token to the resources you plan to sync to
+
+        Then select **Create token**.
+    </Step>
+    <Step>
+        Copy the token from the **Copy your token** window and store it securely. Coolify shows it only once.
+    </Step>
+</Steps>

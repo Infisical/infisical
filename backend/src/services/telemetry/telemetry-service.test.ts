@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 
 import { PostHogEventTypes } from "./telemetry-types";
@@ -112,6 +113,7 @@ const createHarness = () => {
   const telemetryService = telemetryServiceFactory({
     keyStore: keyStore as never,
     licenseService: new FakeLicenseService(),
+    instanceConfigService: new FakeInstanceConfigService(),
     orgDAL: { findOrgById: vi.fn() } as never,
     emailDomainDAL: { find: vi.fn(async () => []) } as never
   });

@@ -73,6 +73,21 @@ const CA_ISSUES_FROM_CSR: Record<CaType, boolean> = {
 
 export const caIssuesFromCsr = (caType: CaType): boolean => CA_ISSUES_FROM_CSR[caType];
 
+const CA_SIGNS_CSR_AS_SENT: Record<CaType, boolean> = {
+  [CaType.INTERNAL]: false,
+  [CaType.ACME]: false,
+  [CaType.AZURE_AD_CS]: true,
+  [CaType.ADCS]: true,
+  [CaType.AWS_PCA]: false,
+  [CaType.DIGICERT]: false,
+  [CaType.AWS_ACM_PUBLIC_CA]: false,
+  [CaType.VENAFI_TPP]: true,
+  [CaType.GODADDY]: false
+};
+
+export const caSignsCsrAsSent = (caType: CaType | undefined): boolean =>
+  Boolean(caType && CA_SIGNS_CSR_AS_SENT[caType]);
+
 export const caSupportsCapability = (caType: CaType, capability: CaCapability): boolean => {
   const capabilities = CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP[caType] || [];
   return capabilities.includes(capability);
