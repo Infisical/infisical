@@ -321,7 +321,6 @@ describe("backing off after a failed lease", () => {
         throw new BadRequestError({ message: "Namespace is unavailable" });
       }
     });
-    // The first resolve fails while holding the lock; the second only gets the lock afterwards.
     let releaseFirst!: () => void;
     const firstHolds = new Promise<void>((resolveHold) => {
       releaseFirst = resolveHold;
