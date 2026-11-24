@@ -37,7 +37,10 @@ export const AppConnectionCreationForm = ({
         layout="dialog"
         onDirtyChange={onDirtyChange}
         onPendingChange={onPendingChange}
-        onComplete={onComplete}
+        onComplete={(verifiedConnection) => {
+          onCreated(verifiedConnection);
+          onComplete();
+        }}
         onCancel={onCancel}
       />
     );
@@ -52,15 +55,15 @@ export const AppConnectionCreationForm = ({
       onDirtyChange={onDirtyChange}
       onPendingChange={onPendingChange}
       onComplete={(connection) => {
-        onCreated(connection);
-
         // Azure can only be told to trust a managed identity connection once it has an ID, so the dialog stays open on
-        // its credentials, which show the federated credential values and verify the setup
+        // its credentials, which show the federated credential values and verify the setup. It's selected only once
+        // verified, since anything that reads through it fails until then.
         if (isAzureManagedIdentityConnection(connection)) {
           setCreatedConnection(connection);
           return;
         }
 
+        onCreated(connection);
         onComplete();
       }}
       onCancel={onCancel}

@@ -81,16 +81,16 @@ export const AddAppConnectionModal = ({
   };
 
   const handleComplete = (appConnection: TAppConnection) => {
-    onComplete?.(appConnection);
-
     // Azure can only be told to trust a managed identity connection once it has an ID, so the sheet stays open on
-    // its credentials, which show the federated credential values and verify the setup on reconnect
+    // its credentials, which show the federated credential values and verify the setup on reconnect. It's handed to
+    // the caller only once verified, since anything that reads through it fails until then.
     if (isAzureManagedIdentityConnection(appConnection)) {
       setIsDirty(false);
       setCreatedConnection(appConnection);
       return;
     }
 
+    onComplete?.(appConnection);
     closeSheet();
   };
 
@@ -139,7 +139,10 @@ export const AddAppConnectionModal = ({
                 <AppConnectionForm
                   appConnection={createdConnection}
                   isNewConnection
-                  onComplete={closeSheet}
+                  onComplete={(verifiedConnection) => {
+                    onComplete?.(verifiedConnection);
+                    closeSheet();
+                  }}
                   onCancel={() => requestDiscardAction(closeSheet)}
                   onDirtyChange={setIsDirty}
                 />
