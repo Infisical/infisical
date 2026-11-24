@@ -169,7 +169,7 @@ export const SecretSyncSourceFolderTree = ({
         {rows.length > MAX_COLLAPSED_ROWS && (
           <div className="flex justify-center px-4 py-1.5">
             <Button variant="ghost" size="xs" onClick={() => setIsExpanded((prev) => !prev)}>
-              {isExpanded ? "Show fewer folders" : `Show all ${rows.length} folders`}
+              {isExpanded ? "Show Fewer Folders" : `Show All ${rows.length} Folders`}
             </Button>
           </div>
         )}

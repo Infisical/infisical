@@ -69,7 +69,8 @@ const getSecretsRecord = async (
   client: SecretsManagerClient,
   environment: string,
   keySchema?: string,
-  mirroredFolders?: Set<string>
+  mirroredFolders?: Set<string>,
+  secretMap?: TSecretMap
 ): Promise<TAwsSecretsRecord> => {
   const awsSecretsRecord: TAwsSecretsRecord = {};
   let hasNext = true;
@@ -85,7 +86,14 @@ const getSecretsRecord = async (
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          if (secretEntry.Name && matchesSchema(secretEntry.Name, environment, keySchema, { mirroredFolders })) {
+          // A name the sync writes is always its own. matchesSchema alone can miss one: a stored key
+          // containing "/" adds folders to its mirrored name, and the key schema is checked against
+          // the last segment only.
+          if (
+            secretEntry.Name &&
+            ((secretMap && Object.hasOwn(secretMap, secretEntry.Name)) ||
+              matchesSchema(secretEntry.Name, environment, keySchema, { mirroredFolders }))
+          ) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
@@ -387,7 +395,8 @@ export const AwsSecretsManagerSyncFns = {
         client,
         environment?.slug || "",
         syncOptions.keySchema,
-        mirroredFolders
+        mirroredFolders,
+        secretMap
       );
 
       const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
@@ -630,7 +639,8 @@ export const AwsSecretsManagerSyncFns = {
         client,
         environment?.slug || "",
         syncOptions.keySchema,
-        mirroredFolders
+        mirroredFolders,
+        secretMap
       );
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {

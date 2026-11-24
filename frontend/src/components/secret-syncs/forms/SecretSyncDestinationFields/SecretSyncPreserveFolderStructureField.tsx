@@ -57,14 +57,16 @@ export const SecretSyncPreserveFolderStructureField = ({
 
   const { rows, keyCount, pathCount } = useMemo(() => {
     const conflictingFolders = new Set(conflicts.flatMap((conflict) => conflict.paths));
-    const names = applySecretSyncKeySchema(keySchema, "/", environment?.slug ?? "");
+    // Rows show paths, so only the folder part of the key schema (eg "team/") belongs in them
+    const names = applySecretSyncKeySchema(keySchema, "", environment?.slug ?? "");
+    const schemaFolder = names.slice(0, names.lastIndexOf("/") + 1);
 
     const mapped = folders.map(({ path }) => {
       const folder = preserveFolderStructure ? getSecretSyncRelativeFolder(path, secretPath) : "";
 
       return {
         source: `${path === "/" ? "" : path}/`,
-        destination: `${destinationPrefix}${folder ? `${folder}` : ""}${names}`,
+        destination: `${destinationPrefix}${folder ? `${folder}/` : ""}${schemaFolder}` || "/",
         isDuplicate: conflictingFolders.has(path)
       };
     });
