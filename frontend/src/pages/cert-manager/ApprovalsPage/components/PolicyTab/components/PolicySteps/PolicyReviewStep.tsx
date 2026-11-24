@@ -5,7 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyType,
+  ApproverType,
+  CertRequestPolicyOperation
+} from "@app/hooks/api/approvalPolicies";
 
 import { getCertPolicyTypeLabel, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
@@ -28,6 +32,7 @@ export const PolicyReviewStep = () => {
   const {
     name,
     policyType,
+    operation,
     conditions,
     maxRequestTtl,
     renewalApproval,
@@ -59,7 +64,7 @@ export const PolicyReviewStep = () => {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Policy Type" value={getCertPolicyTypeLabel(policyType)} />
+          <ReviewField label="Policy Type" value={getCertPolicyTypeLabel(policyType, operation)} />
           <ReviewField label="Max. Request TTL" value={maxRequestTtl || "Not set"} />
           <ReviewField
             label="Certificate Profiles"
@@ -69,13 +74,15 @@ export const PolicyReviewStep = () => {
           />
           {!isRevocationPolicy && (
             <>
-              <ReviewField
-                label="Renewals Require Approval"
-                value={
-                  RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
-                    ?.title ?? "Not set"
-                }
-              />
+              {operation !== CertRequestPolicyOperation.Issuance && (
+                <ReviewField
+                  label="Renewals Require Approval"
+                  value={
+                    RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
+                      ?.title ?? "Not set"
+                  }
+                />
+              )}
               <ReviewField
                 label="Machine Identity Bypass"
                 value={bypassForMachineIdentities ? "Enabled" : "Disabled"}

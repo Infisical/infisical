@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, CertRequestPolicyOperation } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   PkiApplicationResourceActions,
@@ -32,7 +32,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
-import { CERT_POLICY_TYPE_LABEL, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
+import { getCertPolicyTypeLabel, RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 type ProfileOption = {
@@ -45,9 +45,13 @@ type Props = {
   isEditing?: boolean;
 };
 
+const REVOCATION_PICKER_VALUE = "revocation";
+const LEGACY_PICKER_VALUE = "issuance-and-renewal";
+
 export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
   const { control, getValues, setValue, watch } = useFormContext<TPolicyForm>();
   const isRevocationPolicy = watch("policyType") === ApprovalPolicyType.CertRevocation;
+  const operation = watch("operation");
 
   const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
     enabled: !applicationId
@@ -184,42 +188,69 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
         />
       </div>
 
-      {applicationId && (
-        <Controller
-          control={control}
-          name="policyType"
-          render={({ field: { onChange, ...field } }) => (
+      <Controller
+        control={control}
+        name="policyType"
+        render={({ field: { onChange, ...field } }) => {
+          const pickerValue = isRevocationPolicy
+            ? REVOCATION_PICKER_VALUE
+            : (operation ?? LEGACY_PICKER_VALUE);
+          return (
             <Field>
               <FieldLabel htmlFor="policy-type">Policy Type</FieldLabel>
               <FieldContent>
                 <Select
-                  value={field.value}
+                  value={pickerValue}
                   name={field.name}
-                  onValueChange={onChange}
+                  onValueChange={(value) => {
+                    if (value === REVOCATION_PICKER_VALUE) {
+                      onChange(ApprovalPolicyType.CertRevocation);
+                      setValue("operation", undefined);
+                      return;
+                    }
+                    onChange(ApprovalPolicyType.CertRequest);
+                    setValue("operation", value as CertRequestPolicyOperation);
+                  }}
                   disabled={isEditing}
                 >
                   <SelectTrigger id="policy-type" ref={field.ref} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ApprovalPolicyType.CertRequest}>
-                      {CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRequest]}
+                    {pickerValue === LEGACY_PICKER_VALUE && (
+                      <SelectItem value={LEGACY_PICKER_VALUE}>
+                        {getCertPolicyTypeLabel(ApprovalPolicyType.CertRequest)}
+                      </SelectItem>
+                    )}
+                    <SelectItem value={CertRequestPolicyOperation.Issuance}>
+                      {getCertPolicyTypeLabel(
+                        ApprovalPolicyType.CertRequest,
+                        CertRequestPolicyOperation.Issuance
+                      )}
                     </SelectItem>
-                    <SelectItem value={ApprovalPolicyType.CertRevocation}>
-                      {CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRevocation]}
+                    <SelectItem value={CertRequestPolicyOperation.Renewal}>
+                      {getCertPolicyTypeLabel(
+                        ApprovalPolicyType.CertRequest,
+                        CertRequestPolicyOperation.Renewal
+                      )}
                     </SelectItem>
+                    {applicationId && (
+                      <SelectItem value={REVOCATION_PICKER_VALUE}>
+                        {getCertPolicyTypeLabel(ApprovalPolicyType.CertRevocation)}
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
-                <FieldDescription>
-                  Issuance and Renewal covers new certificates and renewals. Revocation covers
-                  revoking certificates.
-                  {isEditing && " A policy's type can't be changed after it's created."}
-                </FieldDescription>
+                {isEditing && (
+                  <FieldDescription>
+                    A policy&apos;s type can&apos;t be changed after it&apos;s created.
+                  </FieldDescription>
+                )}
               </FieldContent>
             </Field>
-          )}
-        />
-      )}
+          );
+        }}
+      />
 
       <Controller
         control={control}
@@ -269,39 +300,41 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
 
       {!isRevocationPolicy && (
         <>
-          <Controller
-            control={control}
-            name="renewalApproval"
-            render={({ field: { value, onChange } }) => (
-              <Field>
-                <FieldLabel>Renewals Require Approval</FieldLabel>
-                <RadioGroup
-                  value={value}
-                  onValueChange={onChange}
-                  aria-label="Renewals require approval"
-                >
-                  {RENEWAL_APPROVAL_OPTIONS.map((option) => (
-                    <FieldLabel
-                      key={option.value}
-                      htmlFor={`renewal-approval-${option.value}`}
-                      variant="project"
-                    >
-                      <Field orientation="horizontal">
-                        <FieldContent>
-                          <FieldTitle>{option.title}</FieldTitle>
-                          <FieldDescription>{option.description}</FieldDescription>
-                        </FieldContent>
-                        <RadioGroupItem
-                          id={`renewal-approval-${option.value}`}
-                          value={option.value}
-                        />
-                      </Field>
-                    </FieldLabel>
-                  ))}
-                </RadioGroup>
-              </Field>
-            )}
-          />
+          {operation !== CertRequestPolicyOperation.Issuance && (
+            <Controller
+              control={control}
+              name="renewalApproval"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel>Renewals Require Approval</FieldLabel>
+                  <RadioGroup
+                    value={value}
+                    onValueChange={onChange}
+                    aria-label="Renewals require approval"
+                  >
+                    {RENEWAL_APPROVAL_OPTIONS.map((option) => (
+                      <FieldLabel
+                        key={option.value}
+                        htmlFor={`renewal-approval-${option.value}`}
+                        variant="project"
+                      >
+                        <Field orientation="horizontal">
+                          <FieldContent>
+                            <FieldTitle>{option.title}</FieldTitle>
+                            <FieldDescription>{option.description}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            id={`renewal-approval-${option.value}`}
+                            value={option.value}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    ))}
+                  </RadioGroup>
+                </Field>
+              )}
+            />
+          )}
 
           <Controller
             control={control}

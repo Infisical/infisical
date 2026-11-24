@@ -23,6 +23,7 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
+  CertRequestPolicyOperation,
   CertRequestRenewalApproval,
   TApprovalPolicy,
   useCreateApprovalPolicy,
@@ -31,7 +32,7 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { getPolicyRenewalApproval } from "./policyConstraints";
+import { getPolicyOperation, getPolicyRenewalApproval } from "./policyConstraints";
 import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
@@ -68,6 +69,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
       policyType: ApprovalPolicyType.CertRequest,
       maxRequestTtl: null,
       conditions: [{ profileNames: [] }],
+      operation: CertRequestPolicyOperation.Issuance,
       renewalApproval: CertRequestRenewalApproval.OnChange,
       bypassForMachineIdentities: false,
       steps: [
@@ -107,6 +109,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         policyType: policyData.policy.type,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions,
+        operation: getPolicyOperation(policyData.policy),
         renewalApproval: getPolicyRenewalApproval(policyData.policy),
         bypassForMachineIdentities: policyData.policy.bypassForMachineIdentities ?? false,
         steps: policyData.policy.steps.map((step) => ({
@@ -120,6 +123,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         policyType: ApprovalPolicyType.CertRequest,
         maxRequestTtl: null,
         conditions: [{ profileNames: [] }],
+        operation: CertRequestPolicyOperation.Issuance,
         renewalApproval: CertRequestRenewalApproval.OnChange,
         bypassForMachineIdentities: false,
         steps: [
@@ -135,14 +139,19 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     setSelectedStepIndex(0);
   }, [policyData, reset, isOpen]);
 
-  const onSubmit = async ({ policyType, renewalApproval, ...data }: TPolicyForm) => {
+  const onSubmit = async ({ policyType, operation, renewalApproval, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
 
     const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
     const policyFields = {
       ...data,
       bypassForMachineIdentities: isRevocationPolicy ? false : data.bypassForMachineIdentities,
-      constraints: isRevocationPolicy ? {} : { renewalApproval }
+      constraints: isRevocationPolicy
+        ? {}
+        : {
+            ...(operation && { operation }),
+            ...(operation !== CertRequestPolicyOperation.Issuance && { renewalApproval })
+          }
     };
 
     try {

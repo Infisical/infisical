@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { ms } from "@app/lib/ms";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
-import { ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
+import { ApprovalPolicyType, CertRequestPolicyOperation } from "../approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
 import { TCertRequestPolicy, TCertRequestRequestData } from "../approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "../auth/auth-type";
@@ -25,16 +25,19 @@ export const matchCertificateRequestApprovalPolicy = async (
     projectId,
     profileName,
     applicationId,
-    actor
+    actor,
+    operation = CertRequestPolicyOperation.Issuance
   }: {
     projectId: string;
     profileName: string;
     applicationId?: string | null;
     actor: ActorType;
+    operation?: CertRequestPolicyOperation;
   }
 ): Promise<TCertificateRequestApprovalPolicy | null> => {
   const policy = (await approvalPolicyService.matchPolicy(ApprovalPolicyType.CertRequest, projectId, {
     profileName,
+    operation,
     applicationId: applicationId ?? undefined
   })) as TCertRequestPolicy | null;
 

@@ -11,7 +11,8 @@ import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalRequestStatus,
-  ApproverType
+  ApproverType,
+  CertRequestPolicyOperation
 } from "../approval-policy-enums";
 import { certRequestApprovalResourceFactory } from "./cert-request-policy-factory";
 
@@ -22,6 +23,55 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.example.com" })
 }));
+
+describe("certRequestApprovalResourceFactory.matchPolicy", () => {
+  const policy = (id: string, operation?: CertRequestPolicyOperation) => ({
+    id,
+    isActive: true,
+    scopeType: null,
+    scopeId: null,
+    conditions: { version: 1, conditions: [{ profileNames: ["web-servers"] }] },
+    constraints: { version: 1, constraints: operation ? { operation } : {} }
+  });
+
+  const match = (policies: unknown[], operation?: CertRequestPolicyOperation) =>
+    certRequestApprovalResourceFactory({
+      approvalPolicyDAL: { findByProjectId: vi.fn().mockResolvedValue(policies) }
+    } as never).matchPolicy("project-1", { profileName: "web-servers", operation });
+
+  it.each([
+    [CertRequestPolicyOperation.Issuance, "issuance-policy"],
+    [CertRequestPolicyOperation.Renewal, "renewal-policy"],
+    [undefined, "issuance-policy"]
+  ])("matches a %s only to the policy for it", async (operation, expected) => {
+    const result = await match(
+      [
+        policy("renewal-policy", CertRequestPolicyOperation.Renewal),
+        policy("issuance-policy", CertRequestPolicyOperation.Issuance)
+      ],
+      operation
+    );
+    expect(result?.id).toBe(expected);
+  });
+
+  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
+    "skips a policy for the other operation on a %s",
+    async (operation) => {
+      const other =
+        operation === CertRequestPolicyOperation.Issuance
+          ? CertRequestPolicyOperation.Renewal
+          : CertRequestPolicyOperation.Issuance;
+      expect(await match([policy("other", other)], operation)).toBeNull();
+    }
+  );
+
+  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
+    "matches a policy created before the split on a %s",
+    async (operation) => {
+      expect((await match([policy("legacy")], operation))?.id).toBe("legacy");
+    }
+  );
+});
 
 describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
   const request = {

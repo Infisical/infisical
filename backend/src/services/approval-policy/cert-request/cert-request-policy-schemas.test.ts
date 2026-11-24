@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ApprovalPolicyScope, CertRequestRenewalApproval } from "../approval-policy-enums";
+import { ApprovalPolicyScope, CertRequestPolicyOperation, CertRequestRenewalApproval } from "../approval-policy-enums";
 import {
   CertRequestPolicySchema,
   CreateCertRequestPolicySchema,
@@ -46,5 +46,12 @@ describe("cert-request policy renewal approval setting", () => {
       UpdateCertRequestPolicySchema.parse({ constraints: { renewalApproval: CertRequestRenewalApproval.Always } })
         .constraints
     ).toEqual({ renewalApproval: CertRequestRenewalApproval.Always });
+  });
+
+  it("changes the operation when an update names it", () => {
+    expect(
+      UpdateCertRequestPolicySchema.parse({ constraints: { operation: CertRequestPolicyOperation.Renewal } })
+        .constraints
+    ).toEqual({ operation: CertRequestPolicyOperation.Renewal });
   });
 });

@@ -1,9 +1,13 @@
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   CertRequestPolicyConstraints,
+  CertRequestPolicyOperation,
   CertRequestRenewalApproval,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
+
+export const getPolicyOperation = (policy: Pick<TApprovalPolicy, "constraints">) =>
+  (policy.constraints?.constraints as CertRequestPolicyConstraints | undefined)?.operation;
 
 export const getPolicyRenewalApproval = (policy: Pick<TApprovalPolicy, "constraints">) =>
   (policy.constraints?.constraints as CertRequestPolicyConstraints | undefined)?.renewalApproval ??
@@ -22,12 +26,13 @@ export const RENEWAL_APPROVAL_OPTIONS = [
   }
 ] as const;
 
-export const CERT_POLICY_TYPE_LABEL = {
-  [ApprovalPolicyType.CertRequest]: "Issuance and Renewal",
-  [ApprovalPolicyType.CertRevocation]: "Revocation"
-} as const;
-
-export const getCertPolicyTypeLabel = (type: ApprovalPolicyType) =>
-  type === ApprovalPolicyType.CertRevocation
-    ? CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRevocation]
-    : CERT_POLICY_TYPE_LABEL[ApprovalPolicyType.CertRequest];
+export const getCertPolicyTypeLabel = (
+  type: ApprovalPolicyType,
+  operation?: CertRequestPolicyOperation
+) => {
+  if (type === ApprovalPolicyType.CertRevocation) return "Revocation";
+  if (operation === CertRequestPolicyOperation.Issuance) return "Issuance";
+  if (operation === CertRequestPolicyOperation.Renewal) return "Renewal";
+  // Policies created before issuance and renewal were split cover both.
+  return "Issuance and Renewal";
+};

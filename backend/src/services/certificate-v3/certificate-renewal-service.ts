@@ -16,7 +16,10 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { CertRequestRenewalApproval } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  CertRequestPolicyOperation,
+  CertRequestRenewalApproval
+} from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { parseCertRequestRenewalApproval } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
@@ -1495,7 +1498,8 @@ export const certificateRenewalServiceFactory = ({
         projectId: profile.projectId,
         profileName: profile.slug,
         applicationId: originalCert.applicationId,
-        actor
+        actor,
+        operation: CertRequestPolicyOperation.Renewal
       }
     );
   };

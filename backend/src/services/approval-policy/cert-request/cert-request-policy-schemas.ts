@@ -7,7 +7,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
-import { CertRequestRenewalApproval } from "../approval-policy-enums";
+import { CertRequestPolicyOperation, CertRequestRenewalApproval } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -19,6 +19,7 @@ import {
 
 export const CertRequestPolicyInputsSchema = z.object({
   profileName: z.string(),
+  operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
   applicationId: z.string().uuid().optional()
 });
 
@@ -29,6 +30,8 @@ export const CertRequestPolicyConditionsSchema = z
   .array();
 
 export const CertRequestPolicyConstraintsSchema = z.object({
+  // Policies created before this setting store none and gate both issuance and renewal.
+  operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
   renewalApproval: z.nativeEnum(CertRequestRenewalApproval).default(CertRequestRenewalApproval.OnChange)
 });
 
@@ -115,10 +118,18 @@ export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.exte
   conditions: CertRequestPolicyConditionsSchema.optional(),
   // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default.
   constraints: z
-    .object({ renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional() })
+    .object({
+      operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
+      renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional()
+    })
     .optional()
     .transform((constraints) =>
-      constraints?.renewalApproval ? { renewalApproval: constraints.renewalApproval } : undefined
+      constraints?.operation || constraints?.renewalApproval
+        ? {
+            ...(constraints.operation && { operation: constraints.operation }),
+            ...(constraints.renewalApproval && { renewalApproval: constraints.renewalApproval })
+          }
+        : undefined
     )
 });
 

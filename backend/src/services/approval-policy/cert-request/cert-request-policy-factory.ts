@@ -26,7 +26,8 @@ import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestStatus
+  ApprovalRequestStatus,
+  CertRequestPolicyOperation
 } from "../approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
@@ -74,7 +75,12 @@ export const certRequestApprovalResourceFactory = ({
     const inputAppId = inputs.applicationId ?? null;
     const expectedScopeType = inputAppId ? ApprovalPolicyScope.PkiApplication : null;
     const candidates = (policies as TCertRequestPolicy[]).filter(
-      (p) => p.isActive && (p.scopeType ?? null) === expectedScopeType && (p.scopeId ?? null) === inputAppId
+      (p) =>
+        p.isActive &&
+        (p.scopeType ?? null) === expectedScopeType &&
+        (p.scopeId ?? null) === inputAppId &&
+        (!p.constraints?.constraints?.operation ||
+          p.constraints.constraints.operation === (inputs.operation ?? CertRequestPolicyOperation.Issuance))
     );
 
     return (
