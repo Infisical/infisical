@@ -457,7 +457,9 @@ describe("CertificateEstV3Service", () => {
         subject: "CN=different.example.com",
         extensions: []
       }));
-      mockCertificateDAL.find.mockResolvedValue([{ id: "cert-old", status: CertStatus.ACTIVE }]);
+      mockCertificateDAL.find.mockResolvedValue([
+        { id: "cert-old", status: CertStatus.ACTIVE, profileId: "profile-123", applicationId: null }
+      ]);
 
       await expect(
         service.simpleReenrollByProfile({

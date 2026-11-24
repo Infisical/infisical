@@ -151,7 +151,6 @@ type TCertificateV3ServiceFactoryDep = {
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
     | "canRenewFromCsr"
-    | "primaryNode"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;

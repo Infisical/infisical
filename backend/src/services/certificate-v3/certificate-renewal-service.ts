@@ -167,7 +167,6 @@ type TCertificateRenewalServiceFactoryDep = {
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
     | "canRenewFromCsr"
-    | "primaryNode"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -2225,10 +2224,7 @@ export const certificateRenewalServiceFactory = ({
     renewal: NonNullable<TCertRequestRequestData["renewal"]>;
     reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
   }) => {
-    // A renewal that completed just before this approval is on the primary only, and the replica would stop short of it.
-    const renewedCertificateId = await findEndOfRenewalChain(certificateDAL, renewal.certificateId, {
-      tx: certificateDAL.primaryNode()
-    });
+    const renewedCertificateId = await findEndOfRenewalChain(certificateDAL, renewal.certificateId);
     const renewed = await renewCertificate({
       actor: ActorType.PLATFORM,
       actorId: "",
