@@ -7,6 +7,7 @@ import {
   TProjectPermissionAuditSource,
   TProjectRule
 } from "@app/domains/platform/projects/ce/module";
+import { asDate } from "@app/lib/fn/dates";
 
 import {
   FOLDER_EDITING_ROLES,
@@ -35,8 +36,6 @@ export type TFolderGrantRecord = {
   temporaryAccessEndTime: Date | null;
 };
 
-const asDate = (value: Date | string | null | undefined) => (value ? new Date(value) : null);
-
 // One folder grant: a folder role held on one secret folder, which decides what its holder may do at that folder's
 // environment and path (and below it, for a grant on the root folder that applies to subfolders), whatever the
 // project roles say there.
@@ -53,8 +52,8 @@ export class FolderGrant {
       ...record,
       appliesToSubfolders: Boolean(record.appliesToSubfolders),
       isTemporary: Boolean(record.isTemporary),
-      temporaryAccessStartTime: asDate(record.temporaryAccessStartTime),
-      temporaryAccessEndTime: asDate(record.temporaryAccessEndTime)
+      temporaryAccessStartTime: asDate(record.temporaryAccessStartTime) ?? null,
+      temporaryAccessEndTime: asDate(record.temporaryAccessEndTime) ?? null
     };
     return new FolderGrant(restored, TemporaryAccess.restore(restored));
   }

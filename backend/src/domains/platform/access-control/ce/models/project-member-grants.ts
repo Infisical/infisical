@@ -59,13 +59,9 @@ export class ProjectMemberGrants {
     includeDirect?: boolean;
   }): ActorGrants {
     const groups = new Set(groupIds);
-    const memberships = this.record.memberships.filter((membership) => {
-      if (membership.actorGroupId) return groups.has(membership.actorGroupId);
-      if (!includeDirect) return false;
-      return actor.type === ActorType.USER
-        ? membership.actorUserId === actor.id
-        : membership.actorIdentityId === actor.id;
-    });
+    const memberships = this.memberships
+      .filter((membership) => (membership.viaGroupId || includeDirect) && membership.isFor({ actor, groupIds: groups }))
+      .map((membership) => membership.toJSON());
     const owns = (row: { actorUserId?: string | null; actorIdentityId?: string | null }) =>
       actor.type === ActorType.USER ? row.actorUserId === actor.id : row.actorIdentityId === actor.id;
     const ownsAttribute = (row: TOwnedAttributeRecord) =>

@@ -26,7 +26,7 @@ export class Role {
 
   // What holding this role grants, read the way a held custom role is.
   toGrant(): Grant {
-    return Grant.restore({ slug: "custom", packedRules: this.record.permissions });
+    return Grant.custom(this.record.permissions);
   }
 
   toJSON(): TRoleRecord {

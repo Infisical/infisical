@@ -127,6 +127,17 @@ export class RuleSet<TRule extends object = TRuleLike> {
     );
   }
 
+  // The subjects and actions a list of grants allows, merged per subject, in the shape narrowTo takes.
+  static allowlistOf(entries: { subject: string; actions: string[] }[]): Map<string, Set<string>> {
+    const allowed = new Map<string, Set<string>>();
+    entries.forEach(({ subject, actions }) => {
+      const existing = allowed.get(subject) ?? new Set<string>();
+      actions.forEach((action) => existing.add(action));
+      allowed.set(subject, existing);
+    });
+    return allowed;
+  }
+
   // Cuts the set down to the allowed subjects and actions (what a delegated OAuth token's scopes cover). Purely
   // subtractive: allow rules out of scope are dropped, the rest narrowed to the allowed actions with their conditions,
   // and cannot rules kept, since they only restrict.

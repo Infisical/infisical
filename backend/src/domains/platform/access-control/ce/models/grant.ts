@@ -25,6 +25,11 @@ export class Grant {
     return new Grant(slug, packedRules);
   }
 
+  // A custom role or privilege carrying these packed rules.
+  static custom(packedRules: unknown): Grant {
+    return new Grant(CUSTOM_SLUG, packedRules);
+  }
+
   isCustom(): boolean {
     return this.slug === CUSTOM_SLUG;
   }

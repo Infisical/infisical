@@ -1,4 +1,5 @@
 import { TMembershipRoles } from "@app/db/schemas";
+import { asDate } from "@app/lib/fn/dates";
 
 import { Grant } from "./grant";
 import { TemporaryAccess } from "./temporary-access";
@@ -21,9 +22,6 @@ export type TRoleAssignmentRecord = Pick<
   customRoleName?: string | null;
   customRolePermissions?: unknown;
 };
-
-const asDate = <T extends Date | string | null | undefined>(value: T) =>
-  (value ? new Date(value) : value) as T extends string ? Date : T;
 
 // One role a membership holds: a built-in slug, or "custom" with the custom role it names.
 export class RoleAssignment {

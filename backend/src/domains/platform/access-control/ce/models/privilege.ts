@@ -1,12 +1,10 @@
 import { TAdditionalPrivileges } from "@app/db/schemas";
+import { asDate } from "@app/lib/fn/dates";
 
 import { Grant } from "./grant";
 import { TemporaryAccess } from "./temporary-access";
 
 export type TPrivilegeRecord = TAdditionalPrivileges;
-
-const asDate = <T extends Date | string | null | undefined>(value: T) =>
-  (value ? new Date(value) : value) as T extends string ? Date : T;
 
 // Permissions granted to one user or identity on top of their roles, org-wide or project-wide. A folder grant is a
 // privilege on one secret folder, holding a folder role instead of rules.
@@ -69,7 +67,7 @@ export class Privilege {
 
   // A privilege grants its rules the way a custom role does.
   toGrant(): Grant {
-    return Grant.restore({ slug: "custom", packedRules: this.record.permissions });
+    return Grant.custom(this.record.permissions);
   }
 
   toJSON(): TPrivilegeRecord {

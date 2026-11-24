@@ -1,5 +1,6 @@
 import { TMemberships } from "@app/db/schemas";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { asDate } from "@app/lib/fn/dates";
 
 import { RoleAssignment, TRoleAssignmentRecord } from "./role-assignment";
 
@@ -9,9 +10,6 @@ export type TMembershipActor =
   | { type: ActorType.USER; id: string }
   | { type: ActorType.IDENTITY; id: string }
   | { type: "group"; id: string };
-
-const asDate = <T extends Date | string | null | undefined>(value: T) =>
-  (value ? new Date(value) : value) as T extends string ? Date : T;
 
 // An actor's place in an org, a project or a resource, with the roles it holds there. A user or identity is a
 // member directly; a group's membership applies to every member of the group.

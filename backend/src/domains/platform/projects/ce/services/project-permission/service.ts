@@ -214,7 +214,9 @@ export class ProjectPermissionService implements TProjectPermissionService {
     const identity = RuleIdentity.create({ id: actor.id, username: actor.name, metadata: grants.attributeMap() });
     const now = new Date();
     const held: [Grant, TProjectRoles][] = [
-      ...grants.distinctActiveRoleGrants(now).map((grant): [Grant, TProjectRoles] => [grant, roles]),
+      ...grants
+        .distinctActiveRoleGrants({ grantsNothing: [ProjectMembershipRole.NoAccess], now })
+        .map((grant): [Grant, TProjectRoles] => [grant, roles]),
       ...grants.activePrivileges(now).map((privilege): [Grant, TProjectRoles] => [privilege.toGrant(), generic])
     ];
     return held.map(([grant, table]) =>

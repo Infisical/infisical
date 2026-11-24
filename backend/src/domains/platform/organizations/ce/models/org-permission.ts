@@ -19,17 +19,8 @@ const ORG_OAUTH_SCOPE_RULES: Record<OauthScope, { subject: OrgPermissionSubjects
   [OauthScope.SecretsRead]: []
 };
 
-const oauthAllowlist = (scopes: string[]): Map<string, Set<string>> => {
-  const allowed = new Map<string, Set<string>>();
-  scopes
-    .flatMap((scope) => ORG_OAUTH_SCOPE_RULES[scope as OauthScope] ?? [])
-    .forEach(({ subject, actions }) => {
-      const existing = allowed.get(subject) ?? new Set<string>();
-      actions.forEach((action) => existing.add(action));
-      allowed.set(subject, existing);
-    });
-  return allowed;
-};
+const oauthAllowlist = (scopes: string[]) =>
+  RuleSet.allowlistOf(scopes.flatMap((scope) => ORG_OAUTH_SCOPE_RULES[scope as OauthScope] ?? []));
 
 // What an actor may do in an org, with the memberships it was built from.
 export class OrgPermission extends Permission<OrgPermissionSet> {
