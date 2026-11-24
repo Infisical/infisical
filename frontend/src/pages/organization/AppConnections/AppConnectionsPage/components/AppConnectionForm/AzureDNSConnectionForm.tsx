@@ -104,7 +104,7 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
   });
 
-  const { handleSubmit, control, watch } = form;
+  const { handleSubmit, control, watch, setValue } = form;
 
   const selectedMethod = watch("method");
 
@@ -163,7 +163,16 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === AzureDNSConnectionMethod.ManagedIdentity) {
+                    setValue("isAutoRotationEnabled", false);
+                  }
+                }}
+              >
                 <SelectTrigger className="w-full" isError={Boolean(error)}>
                   <SelectValue placeholder="Select a method..." />
                 </SelectTrigger>

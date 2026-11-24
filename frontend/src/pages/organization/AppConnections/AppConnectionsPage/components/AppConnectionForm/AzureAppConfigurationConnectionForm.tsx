@@ -295,7 +295,16 @@ export const AzureAppConfigurationConnectionForm = ({
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === AzureAppConfigurationConnectionMethod.ManagedIdentity) {
+                    setValue("isAutoRotationEnabled", false);
+                  }
+                }}
+              >
                 <SelectTrigger
                   id="method"
                   className="w-full"

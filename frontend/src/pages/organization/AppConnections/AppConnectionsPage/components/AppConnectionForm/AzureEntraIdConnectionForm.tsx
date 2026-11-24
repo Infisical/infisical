@@ -137,6 +137,7 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { isSubmitting, isDirty }
   } = form;
 
@@ -200,7 +201,16 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === AzureEntraIdConnectionMethod.ManagedIdentity) {
+                    setValue("isAutoRotationEnabled", false);
+                  }
+                }}
+              >
                 <SelectTrigger id="method" className="w-full" isError={Boolean(error)}>
                   <SelectValue placeholder="Select a method..." />
                 </SelectTrigger>
