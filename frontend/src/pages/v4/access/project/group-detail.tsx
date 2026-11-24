@@ -439,6 +439,7 @@ export const ProjectGroupDetail = () => {
                     groupId={group.id}
                     groupName={group.name}
                     roles={membership.roles}
+                    wrap
                   />
                 ],
                 [`Joined ${accessNoun(scope.projectType)}`, formatDateTime(membership.createdAt)]

@@ -205,7 +205,15 @@ export const usePagedList = <Row,>({
   };
 };
 
-export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; max?: number }) => {
+export const RoleBadges = ({
+  roles,
+  max = 2,
+  wrap = false
+}: {
+  roles: readonly RoleGrant[];
+  max?: number;
+  wrap?: boolean;
+}) => {
   const badge = (grant: RoleGrant) => {
     const expired = isGrantExpired(grant);
     const node = (
@@ -224,7 +232,7 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
   };
   const overflow = roles.slice(max);
   return (
-    <span className={styles.roles}>
+    <span className={styles.roles} data-wrap={wrap || undefined}>
       {roles.slice(0, max).map(badge)}
       {overflow.length > 0 && (
         <Tooltip

@@ -19,6 +19,9 @@
   gap: var(--cipher-space-4);
   min-width: 0;
 }
+.roles[data-wrap] {
+  flex-wrap: wrap;
+}
 .groupRow {
   display: flex;
   align-items: center;
