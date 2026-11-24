@@ -13,10 +13,10 @@ To learn how leases work across providers, see [Dynamic secrets](/documentation/
 ## Prerequisites
 
 - An ElastiCache cluster running Redis OSS 6.0 or later, with encryption in transit turned on and set to **Required**
-- A cluster that doesn't already use a user group of your own (see [How Infisical controls access to the cluster](#how-infisical-controls-access-to-the-cluster))
+- A cluster that doesn't already use a user group of your own (see [Cluster access controls](#cluster-access-controls))
 - A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
 
-## How Infisical controls access to the cluster
+## Cluster access controls
 
 ElastiCache uses [user groups](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Clusters.RBAC.html) to decide who can log in to a cluster. Infisical creates a user group for each cluster, named `infisical-` followed by a hash of the cluster name, and attaches the group to the cluster:
 
@@ -155,7 +155,7 @@ When a lease expires, Infisical deletes its user from the cluster.
 
 Earlier versions of Infisical attached one shared user group, `infisical-managed-group-elasticache`, to every cluster. If your cluster still uses that group, Infisical keeps using it for new leases, so your existing leases keep working.
 
-To give the cluster its own user group, with the access controls in [How Infisical controls access to the cluster](#how-infisical-controls-access-to-the-cluster):
+To give the cluster its own user group, with the [cluster access controls](#cluster-access-controls):
 
 <Steps>
   <Step>
