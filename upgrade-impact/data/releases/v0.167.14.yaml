@@ -1,0 +1,83 @@
+version: v0.167.14
+releasedAt: 2026-11-20T14:15:20-08:00
+sourceTag: v0.167.14
+previousTag: v0.167.13
+impactLevel: low
+summary: Database migrations add new tables and columns for secret scanning, MFA
+  policy, external KMS, alerts, and gateway metadata. Existing deployments keep
+  compatibility during rollout.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Secret scanning findings migration
+    description: Secret scanning adds a locations table, backfills last-detected
+      timestamps, and merges duplicate findings by secret value in batches.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261112190000_secret-scanning-finding-locations.ts
+        path: backend/src/db/migrations/20261112190000_secret-scanning-finding-locations.ts
+        description: Creates locations table and lastDetectedAt column
+      - type: file
+        ref: backend/src/db/migrations/20261112190100_merge-secret-scanning-findings-by-value.ts
+        path: backend/src/db/migrations/20261112190100_merge-secret-scanning-findings-by-value.ts
+        description: Backfills and merges findings in batches
+  - title: Organization MFA methods migration
+    description: Organizations gain an allowedMfaMethods array, and existing
+      selectedMfaMethod values are copied into it.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261117092119_add-org-allowed-mfa-methods.ts
+        path: backend/src/db/migrations/20261117092119_add-org-allowed-mfa-methods.ts
+        description: Adds allowedMfaMethods and backfills from selectedMfaMethod
+  - title: External KMS versioning migration
+    description: External KMS records gain providerInputsVersion with default 1 so
+      older and newer instances can coexist during rolling deploys.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261117210000_external-kms-provider-inputs-version.ts
+        path: backend/src/db/migrations/20261117210000_external-kms-provider-inputs-version.ts
+        description: Adds providerInputsVersion with legacy-compatible default
+  - title: Alert and gateway metadata migrations
+    description: Alert channels gain workflowIntegrationId, and gateways gain
+      cliVersion and cliVersionReportedAt metadata columns.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261116205636_alert-channel-workflow-integration.ts
+        path: backend/src/db/migrations/20261116205636_alert-channel-workflow-integration.ts
+        description: Adds workflowIntegrationId to alert channels
+      - type: file
+        ref: backend/src/db/migrations/20261119120000_gateway-cli-version.ts
+        path: backend/src/db/migrations/20261119120000_gateway-cli-version.ts
+        description: Adds gateway CLI version metadata columns
+  - title: Approval requester checks migration
+    description: Approval policy auto-approval conditions relax their check
+      constraint to allow requester-based checks without input, connection, or
+      prompt fields.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261116120000_auto-approval-requester-checks.ts
+        path: backend/src/db/migrations/20261116120000_auto-approval-requester-checks.ts
+        description: Replaces auto-approval condition constraint
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-21T00:45:59.997Z
+  sourceRange:
+    from: v0.167.13
+    to: v0.167.14

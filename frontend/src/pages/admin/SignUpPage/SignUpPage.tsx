@@ -24,6 +24,7 @@ import {
 } from "@app/components/v3";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
 import { SuperAdminErrorCode } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import { AdminSignUpFormData } from "./adminSignUpSchema";
@@ -58,6 +59,7 @@ export const SignUpPage = () => {
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
   const [activationTokenError, setActivationTokenError] = useState<string>();
+  const [passwordError, setPasswordError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const {
@@ -75,6 +77,7 @@ export const SignUpPage = () => {
     setAccountData(values);
     setFormError(undefined);
     setActivationTokenError(undefined);
+    setPasswordError(undefined);
     setActiveStep(BootstrapStep.Organization);
   };
 
@@ -102,6 +105,12 @@ export const SignUpPage = () => {
       await router.invalidate();
       await navigate({ to: "/admin/setup" });
     } catch (error) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (breachedPasswordMessage) {
+        setPasswordError(breachedPasswordMessage);
+        setActiveStep(BootstrapStep.Account);
+        return;
+      }
       const responseData = axios.isAxiosError<{ message?: string; error?: string }>(error)
         ? error.response?.data
         : undefined;
@@ -137,6 +146,7 @@ export const SignUpPage = () => {
             <AdminSignUpForm
               defaultValues={accountData}
               activationTokenError={activationTokenError}
+              passwordError={passwordError}
               onContinue={handleAccountContinue}
             />
           ) : (

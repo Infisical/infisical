@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import { doesPasswordMeetPolicy } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -26,12 +26,14 @@ type AdminSignUpFormProps = {
   defaultValues?: AdminSignUpFormData;
   activationTokenError?: string;
   onContinue: (values: AdminSignUpFormData) => void;
+  passwordError?: string;
 };
 
 export const AdminSignUpForm = ({
   defaultValues,
   activationTokenError,
-  onContinue
+  onContinue,
+  passwordError
 }: AdminSignUpFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
@@ -60,11 +62,11 @@ export const AdminSignUpForm = ({
     }
   });
 
+  useEffect(() => {
+    if (passwordError) setError("password", { type: "server", message: passwordError });
+  }, [passwordError, setError]);
+
   const password = watch("password");
-  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
   const confirmPassword = watch("confirmPassword");
 
   useEffect(() => {
@@ -77,31 +79,16 @@ export const AdminSignUpForm = ({
     }
   }, [activationTokenError, setError]);
 
-  const onSubmit = async (values: AdminSignUpFormData) => {
-    const latestBreachStatus = await validatePassword(values.password);
-
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
-    }
-
-    onContinue(values);
-  };
-
   const showDangerState = submitCount > 0;
   const showActivationTokenError =
     Boolean(errors.activationToken) &&
     (showDangerState || errors.activationToken?.type === "server");
-  const isPasswordValidated =
-    passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canSubmit = isPasswordValidated && !isSubmitting;
 
   return (
-    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onContinue)}>
       <FieldGroup>
         <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
@@ -157,10 +144,11 @@ export const AdminSignUpForm = ({
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}
-          breachStatus={passwordBreachStatus}
           placeholder="••••••••"
           registration={register("password")}
-          error={showDangerState ? errors.password : undefined}
+          error={
+            showDangerState || errors.password?.type === "server" ? errors.password : undefined
+          }
           submitCount={submitCount}
         />
         <AnimatedCollapse

@@ -1460,6 +1460,7 @@ export const approvalPolicyServiceFactory = ({
             approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
+          requesterId: actor.id,
           ctx: {
             requester: { email: requesterEmail || null },
             request: {

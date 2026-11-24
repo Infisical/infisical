@@ -21,6 +21,11 @@ vi.mock("./platform/kms-core/ce/module", () => ({
   KmsCoreModule: { create: createKmsCore }
 }));
 
+// Instance Config Core creates its row in the database when it is built, which this test has none of.
+vi.mock("./platform/instance-config-core/ce/module", () => ({
+  InstanceConfigCoreModule: { create: vi.fn(async () => ({})) }
+}));
+
 const buildDeps = () =>
   ({
     db: {},

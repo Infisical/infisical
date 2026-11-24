@@ -1,3 +1,4 @@
+import { describeHookNarrowing } from "@app/components/agent-vault/hooks/hookSchema";
 import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { displayHostPattern } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault/enums";
@@ -16,6 +17,12 @@ export const inlineServiceTarget = (service: TAgentVaultSessionInlineService) =>
     return service.serverUrl.replace(/^https:\/\//i, "");
   if (service.type === AgentVaultServiceType.Http) return displayHostPattern(service.hostPattern);
   return nativeTargetText(service);
+};
+
+export const inlineServiceHookText = ({ hook }: Pick<TAgentVaultSessionInlineService, "hook">) => {
+  if (!hook) return null;
+  const narrowing = describeHookNarrowing(hook);
+  return `Hook: ${hook.name}${narrowing ? ` · ${narrowing}` : ""}`;
 };
 
 export const inlineServicesLabel = (count: number) =>

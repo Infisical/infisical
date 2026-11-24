@@ -19,11 +19,13 @@ import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { bootstrapCheck } from "@app/server/boot-strap-check";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
+// Keeps the suite off api.pwnedpasswords.com; the unit tests cover the breach check.
+process.env.BREACHED_PASSWORD_CHECK_ENABLED = "false";
 export default {
   name: "knex-env",
   transformMode: "ssr",
@@ -36,9 +38,7 @@ export default {
       dbRootCert: databaseCredentials.dbRootCert
     });
 
-    const superAdminDAL = superAdminDALFactory(db);
-
-    const envCfg = await initEnvConfig(superAdminDAL, logger);
+    const envCfg = await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(db), logger);
 
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
@@ -72,7 +72,6 @@ export default {
         logger,
         queue,
         keyStore,
-        superAdminDAL,
         redis,
         clickhouse: clickhouseClient,
         envConfig: envCfg
@@ -92,8 +91,6 @@ export default {
       globalThis.testKeyStore = keyStore;
       // @ts-expect-error type
       globalThis.testQueue = queue;
-      // @ts-expect-error type
-      globalThis.testSuperAdminDAL = superAdminDAL;
       // @ts-expect-error type
       globalThis.jwtAuthToken = crypto.jwt().sign(
         {
@@ -127,8 +124,6 @@ export default {
         delete globalThis.testRedis;
         // @ts-expect-error type
         delete globalThis.testKeyStore;
-        // @ts-expect-error type
-        delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type
         delete globalThis.jwtAuthToken;
         // @ts-expect-error type

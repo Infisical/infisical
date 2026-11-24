@@ -15,7 +15,11 @@ export const createAdminSignUpSchema = (
       password: createPasswordSchema(passwordPolicy),
       confirmPassword: z.string().min(1, "Please confirm your password"),
       activationToken: isActivationTokenRequired
-        ? z.string().trim().min(1, "Activation token is required").max(256, "Activation token must be at most 256 characters")
+        ? z
+            .string()
+            .trim()
+            .min(1, "Activation token is required")
+            .max(256, "Activation token must be at most 256 characters")
         : z.string().trim().optional()
     })
     .refine(({ confirmPassword, password }) => confirmPassword === password, {
