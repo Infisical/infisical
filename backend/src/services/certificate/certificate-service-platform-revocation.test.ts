@@ -60,8 +60,7 @@ const buildService = (
     transaction: vi.fn().mockImplementation(async (run: (trx: unknown) => Promise<unknown>) => run({})),
     primaryNode: vi.fn().mockReturnValue({}),
     lockSerialNumber: vi.fn().mockResolvedValue(undefined),
-    find: vi.fn().mockResolvedValue([]),
-    findOneLiveFirst: vi.fn().mockResolvedValue(undefined)
+    findSameCertificateRecords: vi.fn().mockResolvedValue([])
   };
   const internalCertificateAuthorityDAL = { update: vi.fn().mockResolvedValue([]) };
 
@@ -147,7 +146,7 @@ describe("certificateService.revokeCertAsPlatform", () => {
       ...activeCertificate,
       deletedAt: new Date("2026-10-01T00:00:00.000Z")
     });
-    certificateDAL.findOneLiveFirst.mockResolvedValue(reimportedCertificate);
+    certificateDAL.findSameCertificateRecords.mockResolvedValue([reimportedCertificate]);
     certificateDAL.findByIdForUpdate.mockResolvedValue(reimportedCertificate);
 
     const result = await service.revokeCertAsPlatform({
@@ -156,8 +155,12 @@ describe("certificateService.revokeCertAsPlatform", () => {
     });
 
     expect(result).toMatchObject({ outcome: PlatformRevocationOutcome.Revoked, cert: { id: "cert-2" } });
-    expect(certificateDAL.findOneLiveFirst).toHaveBeenCalledWith(
-      { $in: { serialNumber: ["0a1b", "a1b", "a1b".padStart(40, "0")] }, caId: "ca-1", deletedAt: null },
+    expect(certificateDAL.findSameCertificateRecords).toHaveBeenCalledWith(
+      {
+        serialNumbers: ["0a1b", "a1b", "a1b".padStart(40, "0")],
+        caId: "ca-1",
+        fingerprintSha256: undefined
+      },
       {}
     );
     expect(certificateDAL.update).toHaveBeenCalledWith(
@@ -172,11 +175,9 @@ describe("certificateService.revokeCertAsPlatform", () => {
       ...activeCertificate,
       deletedAt: new Date("2026-10-01T00:00:00.000Z")
     });
-    certificateDAL.findOneLiveFirst.mockResolvedValue({
-      ...activeCertificate,
-      id: "cert-2",
-      status: CertStatus.REVOKED
-    });
+    certificateDAL.findSameCertificateRecords.mockResolvedValue([
+      { ...activeCertificate, id: "cert-2", status: CertStatus.REVOKED }
+    ]);
 
     const result = await service.revokeCertAsPlatform({
       certificateId: "cert-1",

@@ -603,6 +603,65 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findBySerialNumberInOrg = async (
+    { orgId, serialNumber }: { orgId: string; serialNumber?: string },
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    if (!serialNumber) return undefined;
+    try {
+      const certificate = await (tx || db.replicaNode())(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Certificate}.serialNumber`, serialNumber)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate))
+        .first();
+      return certificate as TCertificates | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by serial number in org" });
+    }
+  };
+
+  const findSameCertificateRecords = async (
+    {
+      serialNumbers,
+      caId,
+      fingerprintSha256,
+      orgId
+    }: { serialNumbers: string[]; caId: string; fingerprintSha256?: string | null; orgId?: string },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
+    try {
+      const records = await (tx || db.replicaNode())(TableName.Certificate)
+        .whereIn("serialNumber", serialNumbers)
+        .where((sameCertificate) => {
+          void sameCertificate.where((onCa) => {
+            void onCa.where("caId", caId);
+            if (fingerprintSha256) {
+              void onCa.where((fingerprint) => {
+                void fingerprint.whereNull("fingerprintSha256").orWhere("fingerprintSha256", fingerprintSha256);
+              });
+            }
+          });
+          if (fingerprintSha256 && orgId) {
+            void sameCertificate.orWhere((withoutCa) => {
+              void withoutCa
+                .whereNull("caId")
+                .where("fingerprintSha256", fingerprintSha256)
+                .whereIn("projectId", (projectQuery) => {
+                  void projectQuery.select("id").from(TableName.Project).where("orgId", orgId);
+                });
+            });
+          }
+        })
+        .orderBy("deletedAt", "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate));
+      return records as TCertificates[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find records of the same certificate" });
+    }
+  };
+
   const findActiveCertificatesByIds = async (certificateIds: string[], tx?: Knex): Promise<TCertificates[]> => {
     try {
       if (certificateIds.length === 0) {
@@ -1200,7 +1259,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     canRenewFromCsr: boolean;
   };
 
-  type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
+  type TCertificateLookupFilter =
+    | { id: string; serialNumber?: never; orgId?: never }
+    | { id?: never; serialNumber: string; orgId: string };
 
   const findByIdForUpdate = async (id: string, tx: Knex) => {
     try {
@@ -1242,10 +1303,16 @@ export const certificateDALFactory = (db: TDbClient) => {
     return certificate;
   };
 
+  const toSerialNumberLockKey = (serialNumber: string) => `certificate-serial:${toMinimalSerialNumber(serialNumber)}`;
+
   const lockSerialNumber = async (serialNumber: string, tx: Knex) => {
-    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [
-      `certificate-serial:${toMinimalSerialNumber(serialNumber)}`
-    ]);
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [toSerialNumberLockKey(serialNumber)]);
+  };
+
+  const lockSerialNumbers = async (serialNumbers: string[], tx: Knex) => {
+    const keys = [...new Set(serialNumbers.map(toSerialNumberLockKey))];
+    if (!keys.length) return;
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
   };
 
   const findWithFullDetails = async (
@@ -1283,6 +1350,9 @@ export const certificateDALFactory = (db: TDbClient) => {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
         query = query
+          .whereIn(`${TableName.Certificate}.projectId`, (projectQuery) => {
+            void projectQuery.select("id").from(TableName.Project).where("orgId", filter.orgId);
+          })
           .where(`${TableName.Certificate}.serialNumber`, filter.serialNumber)
           .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first");
       }
@@ -1678,6 +1748,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     ...certificateOrm,
     findOneLiveFirst,
     lockSerialNumber,
+    lockSerialNumbers,
     findByIdForUpdate,
     findByIdForShare,
     create,
@@ -1691,6 +1762,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
+    findBySerialNumberInOrg,
+    findSameCertificateRecords,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesMatchingSyncFilters,

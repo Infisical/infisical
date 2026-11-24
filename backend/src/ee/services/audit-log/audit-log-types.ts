@@ -3411,6 +3411,7 @@ interface RevokeCert {
     requesterEmail?: string;
     crlWarning?: string;
     source?: CertificateRevocationSource;
+    revokedThroughCertId?: string;
   };
 }
 

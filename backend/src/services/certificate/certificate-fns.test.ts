@@ -342,6 +342,18 @@ describe("getSerialNumberSpellings", () => {
     expect(getSerialNumberSpellings(stored)).toContain(parsed);
   });
 
+  it.each([16, 20])("covers a %i-byte serial stored with the DER sign byte", (byteCount) => {
+    const parsed = `9f${"ab".repeat(byteCount - 1)}`;
+    const stored = `00${parsed}`;
+
+    expect(getSerialNumberSpellings(parsed)).toContain(stored);
+    expect(getSerialNumberSpellings(stored)).toContain(parsed);
+  });
+
+  it("adds no sign byte spelling to a serial whose top bit is clear", () => {
+    expect(getSerialNumberSpellings(`7f${"ab".repeat(15)}`)).not.toContain(`007f${"ab".repeat(15)}`);
+  });
+
   it("covers a stored serial whose second byte starts with a zero digit", () => {
     const stored = `000a${"bc".repeat(18)}`;
     const parsed = `0a${"bc".repeat(18)}`;

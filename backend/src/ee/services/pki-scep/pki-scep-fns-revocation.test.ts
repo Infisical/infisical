@@ -56,7 +56,7 @@ let signerCert: x509.X509Certificate;
 const checkSigner = async (revokedCert: unknown) => {
   const certificateDAL = {
     transaction: vi.fn(async (run: (trx: unknown) => Promise<unknown>) => run(tx)),
-    findOne: vi.fn().mockResolvedValue(revokedCert)
+    findOneLiveFirst: vi.fn().mockResolvedValue(revokedCert)
   };
   const result = await isSignerCertIssuedByCa({
     signerCertDer: Buffer.from(signerCert.rawData),
@@ -84,8 +84,12 @@ describe("isSignerCertIssuedByCa revocation check", () => {
     });
 
     expect(result).toBe(false);
-    expect(certificateDAL.findOne).toHaveBeenCalledWith(
-      { serialNumber: signerCert.serialNumber, caId: "ca-1", status: CertStatus.REVOKED },
+    expect(certificateDAL.findOneLiveFirst).toHaveBeenCalledWith(
+      {
+        $in: { serialNumber: ["0a1b2c", "a1b2c", "a1b2c".padStart(40, "0")] },
+        caId: "ca-1",
+        status: CertStatus.REVOKED
+      },
       tx
     );
   });

@@ -42,7 +42,16 @@ export const toMinimalSerialNumber = (serialNumber: string) => serialNumber.toLo
 export const getSerialNumberSpellings = (serialNumber: string) => {
   const minimal = toMinimalSerialNumber(serialNumber);
   const byteAligned = minimal.length % 2 === 0 ? minimal : `0${minimal}`;
-  return [...new Set([serialNumber, minimal, byteAligned, minimal.padStart(STORED_SERIAL_NUMBER_HEX_LENGTH, "0")])];
+  const withSignByte = /^[89a-f]/.test(byteAligned) ? [`00${byteAligned}`] : [];
+  return [
+    ...new Set([
+      serialNumber,
+      minimal,
+      byteAligned,
+      ...withSignByte,
+      minimal.padStart(STORED_SERIAL_NUMBER_HEX_LENGTH, "0")
+    ])
+  ];
 };
 
 export const keySizeToAlgorithms = (keySize: number): string[] => {
