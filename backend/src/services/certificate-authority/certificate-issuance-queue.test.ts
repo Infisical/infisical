@@ -298,3 +298,20 @@ describe("certificate issuance queue, a certificate the CA issued but Infisical 
     }
   );
 });
+
+describe("certificate issuance queue, a request approved just before the job runs", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads the request's status from the primary, where approval just set it pending", async () => {
+    const runJob = buildQueue();
+    const primary = { isPrimary: true };
+    runJob.certificateDAL.primaryNode.mockReturnValue(primary);
+    digicertFns.orderCertificate.mockResolvedValue(digicertResult);
+
+    await runJob({});
+
+    expect(runJob.certificateRequestDAL.findById).toHaveBeenCalledWith(CERTIFICATE_REQUEST_ID, primary);
+    expect(runJob.certificateRequestDAL.findById).not.toHaveBeenCalledWith(CERTIFICATE_REQUEST_ID);
+    expect(digicertFns.orderCertificate, "the job still reaches the CA").toHaveBeenCalled();
+  });
+});

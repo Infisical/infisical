@@ -437,7 +437,9 @@ export const certificateIssuanceQueueFactory = ({
 
     const isCancelled = async (): Promise<boolean> => {
       if (!certificateRequestId || !certificateRequestDAL) return false;
-      const current = await certificateRequestDAL.findById(certificateRequestId);
+      // Approval sets the request PENDING just before queueing this job, and a lagging replica would still show
+      // it awaiting approval, which reads as cancelled.
+      const current = await certificateRequestDAL.findById(certificateRequestId, certificateDAL.primaryNode());
       if (!current) return false;
       return (
         current.status !== CertificateRequestStatus.PENDING &&
