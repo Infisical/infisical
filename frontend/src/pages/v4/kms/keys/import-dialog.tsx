@@ -181,6 +181,9 @@ const ReviewTable = ({ keys, errors }: { keys: ParsedKey[]; errors: (string | un
       {keys.map((raw, index) => {
         const entry: Partial<ParsedKey> = raw && typeof raw === "object" ? raw : {};
         const error = errors[index];
+        let usage = typeof entry.keyType === "string" ? entry.keyType : "";
+        if (Object.prototype.hasOwnProperty.call(usageLabel, usage))
+          usage = usageLabel[usage as KmsKeyUsage];
         return (
           // oxlint-disable-next-line react/no-array-index-key
           <TableRow key={index}>
@@ -203,11 +206,7 @@ const ReviewTable = ({ keys, errors }: { keys: ParsedKey[]; errors: (string | un
                 )}
               </Inline>
             </TableCell>
-            <TableCell>
-              {typeof entry.keyType === "string"
-                ? (usageLabel[entry.keyType] ?? entry.keyType)
-                : ""}
-            </TableCell>
+            <TableCell>{usage}</TableCell>
             <TableCell>
               {typeof entry.algorithm === "string" ? algorithmLabel(entry.algorithm) : ""}
             </TableCell>
