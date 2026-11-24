@@ -22,6 +22,7 @@ import {
   SanitizedProxiedServiceBaseSchema,
   SanitizedProxiedServiceCredentialSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
+import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
@@ -115,7 +116,7 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
 );
 
 export const secretChangePolicyPubSchema = sapPubSchema.extend({
-  enforceImportReplication: z.boolean()
+  enforceImportReplication: z.boolean().describe(SECRET_CHANGE_POLICIES.enforceImportReplication)
 });
 
 export const SanitizedUserSchema = UsersSchema.pick({

@@ -1682,6 +1682,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  IMPORTED_SECRETS: {
+    importId:
+      "The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."
