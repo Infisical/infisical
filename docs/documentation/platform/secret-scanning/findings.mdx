@@ -68,7 +68,9 @@ Each data source has its own alerts, which notify your team by email, Slack, web
 - **Secrets Detected**: A scan found a secret for the first time, or a push or pull request brought back a resolved one (the notification links to the findings from that scan)
 - **Scan Failure**: A scan failed after all of its retries (the notification links to the data source and includes the error)
 
-When you create a data source, Infisical creates both alerts for it, and both email the project's admins. If a data source existed before alerts were available, it has the same two alerts.
+When you create a data source, its **Alerts** step lets you choose which of the two alerts it gets and where the alerts are sent. Both alerts start out on, and both email the project's admins. If your [project role](/documentation/platform/access-controls/role-based-access-controls) doesn't have the **Edit Data Sources** action, you can't change the alerts in that step, and the data source gets both alerts as they start out.
+
+If a data source existed before alerts were available, it has both alerts, and both email the project's admins.
 
 ### Change who gets a data source's alerts
 

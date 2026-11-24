@@ -2,6 +2,10 @@
 import { Knex } from "knex";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
+import {
+  SECRET_SCANNING_DEFAULT_ALERTS,
+  SECRET_SCANNING_RESOURCE_TYPE
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-events";
 import { initLogger, logger } from "@app/lib/logger";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
@@ -10,13 +14,6 @@ import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
 
-// Copied rather than imported so later changes to the secret scanning or alert code can't change what this
-// migration did.
-const RESOURCE_TYPE = "secret-scanning.data-source";
-const DEFAULT_ALERTS = [
-  { eventType: "secret-scanning.data-source.secrets-detected", name: "Secrets detected" },
-  { eventType: "secret-scanning.data-source.scan-failed", name: "Secret scanning failed" }
-];
 const PROJECT_ADMINS_PRINCIPAL_TYPE = "project-admins";
 const BATCH_SIZE = 100;
 const BATCH_STATEMENT_TIMEOUT_MS = 60_000;
@@ -73,7 +70,7 @@ export async function up(knex: Knex): Promise<void> {
     const alreadyMigrated = new Set(
       (
         await knex(TableName.Alert)
-          .where({ resourceType: RESOURCE_TYPE })
+          .where({ resourceType: SECRET_SCANNING_RESOURCE_TYPE })
           .whereIn(
             "resourceId",
             dataSources.map((dataSource) => dataSource.id)
@@ -101,11 +98,11 @@ export async function up(knex: Knex): Promise<void> {
       await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
 
       for (const dataSource of pending) {
-        for (const { eventType, name } of DEFAULT_ALERTS) {
+        for (const { eventType, name } of SECRET_SCANNING_DEFAULT_ALERTS) {
           const [alert] = (await tx(TableName.Alert)
             .insert({
               name,
-              resourceType: RESOURCE_TYPE,
+              resourceType: SECRET_SCANNING_RESOURCE_TYPE,
               resourceId: dataSource.id,
               eventType,
               triggerType: "event",
@@ -159,7 +156,7 @@ export async function down(knex: Knex): Promise<void> {
 
   const backfilledAlerts = () =>
     knex(TableName.Alert)
-      .where({ resourceType: RESOURCE_TYPE, createdByActorType: "platform" })
+      .where({ resourceType: SECRET_SCANNING_RESOURCE_TYPE, createdByActorType: "platform" })
       .whereNull("createdByActorId")
       .where("createdAt", "<=", record.migration_time);
   const channelIds = (await knex(TableName.AlertChannelMembership)

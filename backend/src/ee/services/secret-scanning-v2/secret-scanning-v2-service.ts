@@ -63,7 +63,7 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
@@ -82,7 +82,11 @@ import {
   TListSecretScanningResourcesFilter,
   TSecretScanningV2DALFactory
 } from "./secret-scanning-v2-dal";
-import { SECRET_SCANNING_DEFAULT_ALERTS, SECRET_SCANNING_RESOURCE_TYPE } from "./secret-scanning-v2-events";
+import {
+  SECRET_SCANNING_ALERT_NAMES,
+  SECRET_SCANNING_DEFAULT_ALERTS,
+  SECRET_SCANNING_RESOURCE_TYPE
+} from "./secret-scanning-v2-events";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
@@ -100,7 +104,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   alertService: Pick<
     TAlertServiceFactory,
-    "prepareDefaultAlert" | "applyPreparedAlert" | "deleteAlertsForDeletedResource"
+    "prepareDefaultAlert" | "prepareAlertForNewResource" | "applyPreparedAlert" | "deleteAlertsForDeletedResource"
   >;
 };
 
@@ -334,7 +338,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const createSecretScanningDataSource = async (
-    { isAutoScanEnabled, ...dto }: TCreateSecretScanningDataSourceDTO,
+    { isAutoScanEnabled, alerts, ...dto }: TCreateSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
     const supportsDiscovery = doesDataSourceSupportDiscovery(dto);
@@ -376,6 +380,20 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningDataSources
     );
 
+    // Choosing alerts is managing them, which the alert API allows only with edit on data sources.
+    if (
+      alerts &&
+      permission.cannot(
+        ProjectPermissionSecretScanningDataSourceActions.Edit,
+        ProjectPermissionSub.SecretScanningDataSources
+      )
+    ) {
+      throw new ForbiddenRequestError({
+        message:
+          "Choosing alerts while creating a data source requires permission to edit data sources. Leave alerts out to create the default alerts."
+      });
+    }
+
     let connection: TAppConnection | null = null;
     if (payload.connectionId) {
       // validates permission to connect and app is valid for data source
@@ -402,18 +420,33 @@ export const secretScanningV2ServiceFactory = ({
     // preparing them needs a KMS call that must not run inside it.
     const dataSourceId = crypto.randomUUID();
     const project = await projectDAL.findById(payload.projectId);
-    const defaultAlerts = await Promise.all(
-      SECRET_SCANNING_DEFAULT_ALERTS.map(({ eventType, name }) =>
-        alertService.prepareDefaultAlert({
-          orgId: project.orgId,
-          projectId: payload.projectId,
-          resourceType: SECRET_SCANNING_RESOURCE_TYPE,
-          resourceId: dataSourceId,
-          eventType,
-          name,
-          recipients: [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: payload.projectId }]
-        })
-      )
+    const preparedAlerts = await Promise.all(
+      alerts
+        ? alerts.map(({ eventType, channels }) =>
+            alertService.prepareAlertForNewResource({
+              resourceType: SECRET_SCANNING_RESOURCE_TYPE,
+              resourceId: dataSourceId,
+              projectId: payload.projectId,
+              eventType,
+              name: SECRET_SCANNING_ALERT_NAMES[eventType],
+              channels,
+              actor: actor.type,
+              actorId: actor.id,
+              actorAuthMethod: actor.authMethod,
+              actorOrgId: actor.orgId
+            })
+          )
+        : SECRET_SCANNING_DEFAULT_ALERTS.map(({ eventType, name }) =>
+            alertService.prepareDefaultAlert({
+              orgId: project.orgId,
+              projectId: payload.projectId,
+              resourceType: SECRET_SCANNING_RESOURCE_TYPE,
+              resourceId: dataSourceId,
+              eventType,
+              name,
+              recipients: [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: payload.projectId }]
+            })
+          )
     );
 
     try {
@@ -451,7 +484,7 @@ export const secretScanningV2ServiceFactory = ({
                 tx
               );
 
-              for (const alert of defaultAlerts) {
+              for (const alert of preparedAlerts) {
                 // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
                 await alertService.applyPreparedAlert(alert, tx);
               }

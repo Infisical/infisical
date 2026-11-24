@@ -1,7 +1,11 @@
+import type {
+  AlertEventType,
+  TAlertChannelInput,
+} from "@app/hooks/api/alerts/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   TGitLabDataSource,
-  TGitLabDataSourceOption
+  TGitLabDataSourceOption,
 } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { DiscriminativePick } from "@app/types";
 
@@ -13,10 +17,16 @@ import {
   SecretScanningFindingStatus,
   SecretScanningResourceOrderBy,
   SecretScanningScanStatus,
-  SecretScanningScanType
+  SecretScanningScanType,
 } from "../enums";
-import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
-import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
+import {
+  TBitbucketDataSource,
+  TBitbucketDataSourceOption,
+} from "./bitbucket-data-source";
+import {
+  TGitHubDataSource,
+  TGitHubDataSourceOption,
+} from "./github-data-source";
 
 export type TSecretScanningDataSource =
   | TGitHubDataSource
@@ -48,7 +58,9 @@ export type TListSecretScanningDataSourceOptions = {
   dataSourceOptions: TSecretScanningDataSourceOption[];
 };
 
-export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDataSource };
+export type TSecretScanningDataSourceResponse = {
+  dataSource: TSecretScanningDataSource;
+};
 
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
@@ -61,10 +73,16 @@ export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   | "isScanNewCommitsEnabled"
   | "isDiscoveryEnabled"
   | "projectId"
->;
+> & {
+  // Left out, the data source gets the default alerts.
+  alerts?: { eventType: AlertEventType; channels: TAlertChannelInput[] }[];
+};
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "type" | "connectionId" | "projectId">
+  Omit<
+    TCreateSecretScanningDataSourceDTO,
+    "type" | "connectionId" | "projectId" | "alerts"
+  >
 > & {
   type: SecretScanningDataSource;
   dataSourceId: string;

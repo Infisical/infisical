@@ -7,14 +7,11 @@ import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 import {
   ALERT_EVENT_TYPE_LABELS,
-  ALERT_PROJECT_RECIPIENT_LABELS,
-  AlertChannelType,
   AlertEventType,
-  AlertPrincipalType,
-  TAlertChannelRecipient,
-  TChannelForm
+  TChannelForm,
 } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { describeChannel } from "@app/views/Alerts";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
@@ -57,79 +54,38 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationReviewFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationReviewFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields,
+  [SecretRotation.UnixLinuxLocalAccount]:
+    UnixLinuxLocalAccountRotationReviewFields,
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
   [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationReviewFields,
-  [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationReviewFields,
+  [SecretRotation.OpenAIServiceAccount]:
+    OpenAIServiceAccountRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
-  [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
-  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields,
+  [SecretRotation.SalesforceOauthCredentials]:
+    SalesforceOauthCredentialsRotationReviewFields,
+  [SecretRotation.DatadogApplicationKeySecret]:
+    DatadogApplicationKeySecretRotationReviewFields,
   [SecretRotation.DatadogApiKey]: DatadogApiKeyRotationReviewFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields,
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
-  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
+  [SecretRotation.SnowflakeUserKeyPair]:
+    SnowflakeUserKeyPairRotationReviewFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
-  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
+  [SecretRotation.CloudflareR2AccessKey]:
+    CloudflareR2AccessKeyRotationReviewFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
-  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields,
-  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
-};
-
-const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
-const describeRecipientType = (principalType: AlertPrincipalType, count: number) => {
-  switch (principalType) {
-    case AlertPrincipalType.ProjectMembers:
-    case AlertPrincipalType.ProjectAdmins:
-      return ALERT_PROJECT_RECIPIENT_LABELS[principalType];
-    case AlertPrincipalType.User:
-      return pluralize(count, "user");
-    case AlertPrincipalType.Group:
-      return pluralize(count, "group");
-    case AlertPrincipalType.Email:
-      return pluralize(count, "email");
-    default:
-      return "";
-  }
-};
-
-const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
-  Object.values(AlertPrincipalType)
-    .map((principalType) => ({
-      principalType,
-      count: recipients.filter((recipient) => recipient.principalType === principalType).length
-    }))
-    .filter(({ count }) => count > 0)
-    .map(({ principalType, count }) => describeRecipientType(principalType, count))
-    .join(", ");
-
-const describeSlackChannels = (channels: { name: string }[] = []) =>
-  channels.map((slackChannel) => `#${slackChannel.name}`).join(", ");
-
-const describeChannel = (channel: TChannelForm) => {
-  switch (channel.channelType) {
-    case AlertChannelType.Email:
-      return describeRecipients(channel.recipients);
-    case AlertChannelType.SlackApp:
-      return describeSlackChannels(channel.slackChannels);
-    case AlertChannelType.Slack:
-      return "Slack incoming webhook";
-    case AlertChannelType.Webhook:
-      return channel.url;
-    case AlertChannelType.PagerDuty:
-      return "PagerDuty Events API v2";
-    default:
-      return "";
-  }
+  [SecretRotation.GcpServiceAccountKey]:
+    GcpServiceAccountKeyRotationReviewFields,
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields,
 };
 
 const FailureAlertReview = ({
   isFailureAlertEnabled,
   channels,
-  isFailureAlertUnavailable
+  isFailureAlertUnavailable,
 }: {
   isFailureAlertEnabled: boolean;
   channels: TChannelForm[];
@@ -137,7 +93,9 @@ const FailureAlertReview = ({
 }) => {
   if (isFailureAlertUnavailable) {
     return (
-      <span className="text-sm text-muted">Not loaded. Saving leaves the alert unchanged.</span>
+      <span className="text-sm text-muted">
+        Not loaded. Saving leaves the alert unchanged.
+      </span>
     );
   }
 
@@ -164,7 +122,9 @@ type Props = {
   isFailureAlertUnavailable: boolean;
 };
 
-export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Props) => {
+export const SecretRotationV2ReviewFields = ({
+  isFailureAlertUnavailable,
+}: Props) => {
   const { watch } = useFormContext<TSecretRotationV2Form>();
 
   const {
@@ -177,7 +137,7 @@ export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Prop
     rotationInterval,
     rotateAtUtc,
     isFailureAlertEnabled,
-    channels
+    channels,
   } = watch();
 
   const Component = COMPONENT_MAP[type];
@@ -185,7 +145,9 @@ export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Prop
   return (
     <div className="mb-4 flex flex-col gap-6">
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">Configuration</DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">
+          Configuration
+        </DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Connection">{connection.name}</ReviewField>
           <ReviewField label="Environment">{environment.name}</ReviewField>
@@ -200,14 +162,18 @@ export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Prop
       </DetailGroup>
       <Component />
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">Details</DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">
+          Details
+        </DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Name">{name}</ReviewField>
           <ReviewField label="Description">{description}</ReviewField>
         </div>
       </DetailGroup>
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">Alerts</DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">
+          Alerts
+        </DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <FailureAlertReview
             isFailureAlertEnabled={isFailureAlertEnabled}

@@ -67,9 +67,13 @@ export const emitSecretScanningScanFailed = (
   tx: Knex
 ): Promise<void> => emitScanEvent(eventEmitter, SecretScanningAlertEvent.ScanFailed, input, { errorMessage }, tx);
 
-// What every data source starts with: the notifications its project's admins got before secret scanning used alerts.
-// Existing data sources got these from a migration, new ones get them when they're created.
-export const SECRET_SCANNING_DEFAULT_ALERTS: { eventType: SecretScanningAlertEvent; name: string }[] = [
-  { eventType: SecretScanningAlertEvent.SecretsDetected, name: "Secrets detected" },
-  { eventType: SecretScanningAlertEvent.ScanFailed, name: "Secret scanning failed" }
-];
+export const SECRET_SCANNING_ALERT_NAMES: Record<SecretScanningAlertEvent, string> = {
+  [SecretScanningAlertEvent.SecretsDetected]: "Secrets detected",
+  [SecretScanningAlertEvent.ScanFailed]: "Secret scanning failed"
+};
+
+// What a data source starts with unless its creator chooses otherwise: the notifications its project's admins got
+// before secret scanning used alerts. Existing data sources got these from a migration.
+export const SECRET_SCANNING_DEFAULT_ALERTS: { eventType: SecretScanningAlertEvent; name: string }[] = Object.values(
+  SecretScanningAlertEvent
+).map((eventType) => ({ eventType, name: SECRET_SCANNING_ALERT_NAMES[eventType] }));
