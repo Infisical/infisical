@@ -32,7 +32,7 @@ Approval workflows add a human review step before certificates are issued or rev
 An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of three actions:
 
 - **Issuance:** new certificates
-- **Renewal:** renewals of existing certificates, including EST re-enrollment and SCEP renewals signed with the device's existing certificate
+- **Renewal:** renewals of existing certificates, including EST re-enrollment and SCEP renewal requests that a device signs with its existing certificate instead of a challenge password
 - **Revocation:** revoking certificates
 
 Policies created before **Issuance** and **Renewal** were separate show as **Issuance and Renewal**. They hold issuance, and hold renewals according to their **Renewals Require Approval** setting. If an **Issuance** or **Renewal** policy covers the same profile, that policy applies instead.
