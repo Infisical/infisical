@@ -21,6 +21,7 @@ import {
   type TSigningOperation
 } from "@app/hooks/api/signers/types";
 
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { dateTimeSeconds, SIGNERS_PAGE_SIZE } from "../CodeSigningPage/signer-shared";
@@ -71,7 +72,7 @@ export const ActivityTab = ({
 }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize] = usePageSize("pkiSignerActivityTable", SIGNERS_PAGE_SIZE);
   const [connecting, setConnecting] = useState(false);
   const { data, isPending, error } = useV4Adapter("codeSigning").useSigningOperations({
     signerId: signer.id,
@@ -184,7 +185,7 @@ export const ActivityTab = ({
           total ? `${total} ${total === 1 ? "operation" : "operations"}` : undefined
         }
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Signing history pages"
               variant="compact"

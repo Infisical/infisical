@@ -84,6 +84,7 @@ export const ProjectMembersTab = () => {
 
   const rows = useMemo(() => members.data ?? [], [members.data]);
   const list = usePagedList({
+    table: "projectMembersTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>

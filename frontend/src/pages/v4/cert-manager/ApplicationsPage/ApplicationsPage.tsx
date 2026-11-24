@@ -21,6 +21,7 @@ import { formatDate } from "../../access/roles";
 import { saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { APPLICATION_DOCS } from "../ApplicationDetailsByIDPage/shared";
@@ -39,7 +40,7 @@ const Page = () => {
   const access = useV4Adapter("certificates").useProjectPermission({ projectId: projectId ?? "" });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("pkiApplicationsTable", 20);
   const [creating, setCreating] = useState(false);
   const [configuring, setConfiguring] = useState<TPkiApplicationListItem>();
   const { data, isPending, error } = useV4Adapter("pkiApplications").useApplications({
@@ -206,7 +207,7 @@ const Page = () => {
             )
           }}
           pagination={
-            total > pageSize ? (
+            total > Math.min(pageSize, 20) ? (
               <Pagination
                 label="Application pages"
                 variant="compact"

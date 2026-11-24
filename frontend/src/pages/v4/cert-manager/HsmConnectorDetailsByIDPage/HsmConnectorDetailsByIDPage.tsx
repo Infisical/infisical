@@ -38,6 +38,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
@@ -59,7 +60,7 @@ const KeyLabel = ({ value }: { value: string | null }) =>
 const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: string }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("hsmConnectorLinkedResourcesTable", 20);
   const { data, isPending } = useV4Adapter("hsmConnectors").useLinkedResources(connectorId, {
     offset: (page - 1) * pageSize,
     limit: pageSize
@@ -191,7 +192,7 @@ const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: s
             getRowId={(cert) => cert.id}
             rowLabel={(cert) => cert.commonName}
             pagination={
-              totalCount > pageSize ? (
+              totalCount > Math.min(pageSize, 20) ? (
                 <Pagination
                   label="Linked certificate pages"
                   variant="compact"

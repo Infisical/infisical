@@ -62,11 +62,6 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { getProjectTitle, urlSlugToProjectType } from "@app/helpers/project";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import {
@@ -82,6 +77,7 @@ import { AccessFrame } from "../../../access/AccessFrame";
 import { useDebounced } from "../../../access/org/use-debounced";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
+import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
 import { useUpgradeGate } from "../../../license";
@@ -378,9 +374,7 @@ const MyProjects = ({
   );
   const [sort, setSort] = useState<Sort>({ columnId: SearchProjectSortBy.Name, direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
-  );
+  const [perPage, setPerPage] = usePageSize("myProjectsTable", 24);
   const { data: userProjects, isPending: projectsPending } = adapter.useUserProjects();
   const { data: favorites, isPending: favoritesPending } = adapter.useProjectFavorites(orgId);
   const updateFavorites = adapter.useUpdateProjectFavorites();
@@ -433,7 +427,6 @@ const MyProjects = ({
         pageSizeOptions={[12, 24, 48, 96]}
         onPageSizeChange={(next) => {
           setPerPage(next);
-          setUserTablePreference("myProjectsTable", PreferenceKey.PerPage, next);
         }}
       />
     ) : undefined;
@@ -649,9 +642,7 @@ const AllProjects = ({
   const debouncedSearch = useDebounced(search);
   const [sort, setSort] = useState<Sort>({ columnId: SearchProjectSortBy.Name, direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
-  );
+  const [perPage, setPerPage] = usePageSize("allProjectsTable", 50);
   const [requesting, setRequesting] = useState<Project>();
   const [leaving, setLeaving] = useState<Project>();
   const [joining, setJoining] = useState<string>();
@@ -816,7 +807,6 @@ const AllProjects = ({
                 pageSizeOptions={[12, 24, 48, 96]}
                 onPageSizeChange={(next) => {
                   setPerPage(next);
-                  setUserTablePreference("allProjectsTable", PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

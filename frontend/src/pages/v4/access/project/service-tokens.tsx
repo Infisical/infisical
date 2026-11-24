@@ -62,6 +62,7 @@ export const ServiceTokensTab = () => {
 
   const rows = useMemo(() => tokens.data ?? [], [tokens.data]);
   const list = usePagedList({
+    table: "projectServiceTokens",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (token, needle) =>

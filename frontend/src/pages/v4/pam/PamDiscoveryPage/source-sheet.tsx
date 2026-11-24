@@ -28,11 +28,6 @@ import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
-import {
   PamDiscoveryType,
   type TPamAccountTypeMetadata,
   type TPamDiscoveredAccount,
@@ -45,6 +40,7 @@ import { PamSheetTab } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { SourceFields } from "./config-fields";
@@ -73,9 +69,7 @@ const usePaging = (table: string) => {
   const [search, setSearch] = useState("");
   const [debounced] = useDebounce(search);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(table, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(table, 20);
   return {
     search,
     setSearch: (next: string) => {
@@ -96,7 +90,6 @@ const usePaging = (table: string) => {
           onPageSizeChange={(next) => {
             setPerPage(next);
             setPage(1);
-            setUserTablePreference(table, PreferenceKey.PerPage, next);
           }}
         />
       ) : undefined

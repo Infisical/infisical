@@ -37,6 +37,7 @@ import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { errorMessage, failed, toast } from "../../../../access/toast";
 import { copyText } from "../../../../clipboard";
+import { usePageSize } from "../../../../components/use-page-size";
 import { useV4Adapter } from "../../../../data/adapters";
 import { v4Path } from "../../../../links";
 import type { ResourceKind } from "../../secrets-model";
@@ -814,7 +815,7 @@ function SearchResults({
   const readSecretValue = useV4Adapter("secrets").useReadSecretValue();
   const [query, setQuery] = useState(initialQuery);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
-  const [perPage, setPerPage] = useState(PAGE_SIZES[0]);
+  const [perPage, setPerPage] = usePageSize("secretSearchAllFoldersTable", PAGE_SIZES[0]);
   const [paging, setPaging] = useState({ scope: "", page: 1 });
   const updateFilters = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
 

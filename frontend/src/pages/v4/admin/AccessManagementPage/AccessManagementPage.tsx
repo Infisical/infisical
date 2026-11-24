@@ -25,16 +25,12 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { useDebounce } from "@app/hooks";
 import type { User } from "@app/hooks/api/users/types";
 
 import { saved } from "../../access/toast";
 import { Muted } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useUpgradeGate } from "../../license";
@@ -57,9 +53,7 @@ export const AccessManagementPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() =>
-    getUserTablePreference(PREFERENCE_TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [pageSize, setPageSize] = usePageSize(PREFERENCE_TABLE, 20);
   const [selected, setSelected] = useState<User[]>([]);
   const [granting, setGranting] = useState(false);
   const [removingUser, setRemovingUser] = useState<User>();
@@ -215,7 +209,6 @@ export const AccessManagementPage = () => {
                 onPageSizeChange={(size) => {
                   setPageSize(size);
                   setPage(1);
-                  setUserTablePreference(PREFERENCE_TABLE, PreferenceKey.PerPage, size);
                 }}
               />
             ) : undefined

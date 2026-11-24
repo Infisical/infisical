@@ -26,6 +26,7 @@ import {
 import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
@@ -92,7 +93,7 @@ export const CertificatesTab = ({
     direction: "asc"
   });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = usePageSize("pkiApplicationCertificatesTable", 25);
   const [revoking, setRevoking] = useState<TCertificate>();
   const [deleting, setDeleting] = useState<TCertificate>();
   const [importing, setImporting] = useState(false);
@@ -347,7 +348,7 @@ export const CertificatesTab = ({
           totalCount ? plural(totalCount, "certificate", "certificates") : undefined
         }
         pagination={
-          totalCount > pageSize ? (
+          totalCount > Math.min(pageSize, 25) ? (
             <Pagination
               label="Certificate pages"
               variant="compact"

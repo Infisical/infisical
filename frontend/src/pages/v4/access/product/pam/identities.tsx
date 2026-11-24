@@ -286,6 +286,7 @@ export const PamIdentitiesTab = () => {
 
   const rows = useMemo(() => identities.data ?? [], [identities.data]);
   const list = usePagedList({
+    table: "pamIdentitiesTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) => member.name.toLowerCase().includes(needle),

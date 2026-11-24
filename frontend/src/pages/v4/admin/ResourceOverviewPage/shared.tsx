@@ -13,11 +13,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta } from "@infisical/cipher/ui/text";
 
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
+import { usePageSize } from "../../components/use-page-size";
 
 export const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -32,9 +28,7 @@ export const plural = (count: number, noun: string) => `${count} ${noun}${count 
 
 export const usePaging = (table: string, initialPerPage: number) => {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(table, PreferenceKey.PerPage, initialPerPage)
-  );
+  const [perPage, setPerPage] = usePageSize(table, initialPerPage);
   return {
     page,
     setPage,
@@ -43,7 +37,6 @@ export const usePaging = (table: string, initialPerPage: number) => {
     setPerPage: (next: number) => {
       setPerPage(next);
       setPage(1);
-      setUserTablePreference(table, PreferenceKey.PerPage, next);
     }
   };
 };

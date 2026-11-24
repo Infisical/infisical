@@ -52,6 +52,7 @@ import {
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
@@ -161,7 +162,7 @@ const GroupMembersCard = ({
   const [typeFilter, setTypeFilter] = useState<FilterMemberType[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("projectGroupMembersTable", 20);
   const [assuming, setAssuming] = useState<Member>();
   const debouncedSearch = useDebounced(search.trim());
 

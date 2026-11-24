@@ -23,6 +23,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -47,7 +48,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize] = usePageSize("pkiCodeSigningSignersTable", SIGNERS_PAGE_SIZE);
   const [creating, setCreating] = useState(false);
   const { data, isPending, error } = adapter.useSigners({
     projectId,
@@ -184,7 +185,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         empty={empty}
         persistentStatus={total ? `${total} ${total === 1 ? "signer" : "signers"}` : undefined}
         pagination={
-          total > pageSize ? (
+          total > Math.min(pageSize, 25) ? (
             <Pagination
               label="Signer pages"
               variant="compact"

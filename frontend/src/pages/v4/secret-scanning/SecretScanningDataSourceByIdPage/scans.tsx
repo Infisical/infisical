@@ -27,6 +27,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
@@ -78,7 +79,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>({ columnId: "started", direction: "desc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("secretScanningScansTable", 20);
   const resource = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
   const filtered = useMemo(() => {

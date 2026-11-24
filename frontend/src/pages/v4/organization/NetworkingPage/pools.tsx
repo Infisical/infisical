@@ -350,6 +350,7 @@ export const PoolsTable = ({
     return pools.filter((pool) => pool.name.toLowerCase().includes(needle));
   }, [pools, search]);
   const list = usePagedList({
+    table: "gatewayPoolsTable",
     rows: visible,
     matches: matchesAll,
     compare,
