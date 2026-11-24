@@ -532,6 +532,82 @@ export const assertFolderRenameAllowed = (
   throwFolderChangeBlockedByPolicy("rename", protectedFolder, visibleContent);
 };
 
+export type TEnforcedImportDestination = {
+  environment: string;
+  path: string;
+  contentPath: string;
+  policyName: string;
+};
+
+// returns the first folder, in `folders` order, holding a direct same-project import that the rename would carry from
+// a path without import enforcement to one whose policy requires approval for imported secrets. unlike
+// findPolicyProtectedFolder the actor is ignored: the import keeps passing every later change to its source into the
+// governed folder, including changes by people the policy applies to. imports already under enforcement stay movable
+// within or out of it, since enforcement never converts existing imports.
+export const findDirectImportEnteringEnforcedPath = async (
+  {
+    folders,
+    directImportFolderIds,
+    projectId,
+    environment
+  }: {
+    folders: { id: string; path: string; contentPath: string }[];
+    directImportFolderIds: Set<string>;
+    projectId: string;
+    environment: string;
+  },
+  {
+    secretChangePolicyService
+  }: { secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicyByPaths"> },
+  tx: Knex
+): Promise<TEnforcedImportDestination | null> => {
+  const candidates = folders.filter((folder) => directImportFolderIds.has(folder.id));
+  if (!candidates.length) return null;
+
+  const policyByPath = await secretChangePolicyService.getSecretApprovalPolicyByPaths(
+    projectId,
+    environment,
+    [...new Set(candidates.flatMap((folder) => [folder.path, folder.contentPath]))],
+    tx
+  );
+
+  for (const folder of candidates) {
+    const destinationPolicy = policyByPath.get(folder.path);
+    if (
+      destinationPolicy?.enforceImportReplication &&
+      !policyByPath.get(folder.contentPath)?.enforceImportReplication
+    ) {
+      return {
+        environment,
+        path: folder.path,
+        contentPath: folder.contentPath,
+        policyName: destinationPolicy.name
+      };
+    }
+  }
+
+  return null;
+};
+
+export const assertNoDirectImportEnteringEnforcedPath = (
+  destination: TEnforcedImportDestination | null,
+  permission: MongoAbility<ProjectPermissionSet>
+) => {
+  if (!destination) return;
+
+  const { environment, path, contentPath, policyName } = destination;
+  if (canActorReadBlock(permission, environment, "secret_import", contentPath)) {
+    throw new BadRequestError({
+      message: `You cannot rename the selected folder because its secret imports would move to folder path "${path}", where the change policy "${policyName}" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Recreate them as imports that respect approval policies, or choose a different name.`,
+      name: "RenameFolderImportIntoEnforcedPath"
+    });
+  }
+  throw new BadRequestError({
+    message: `You cannot rename the selected folder because its resources would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
+    name: "RenameFolderIntoProtectedPath"
+  });
+};
+
 export const assertNoOverlappingFolderEntries = (entries: { environment: string; path: string }[]) => {
   entries.forEach((entry, index) => {
     const overlapping = entries.find(
