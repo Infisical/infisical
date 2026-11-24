@@ -99,7 +99,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create" | "primaryNode">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -1078,7 +1078,9 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     renewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse> => {
-    const certRequest = await certificateRequestDAL.findById(certificateRequestId);
+    // Approval sets the request PENDING just before this runs, and a lagging replica would still show it awaiting
+    // approval.
+    const certRequest = await certificateRequestDAL.findById(certificateRequestId, certificateDAL.primaryNode());
     if (!certRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
