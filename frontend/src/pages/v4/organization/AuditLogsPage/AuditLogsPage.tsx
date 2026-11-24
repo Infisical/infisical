@@ -15,6 +15,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Json, type JsonValue } from "@infisical/cipher/ui/json";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import {
@@ -146,7 +147,7 @@ const makeColumns = (
           width: 264,
           maxWidth: 264,
           text: (row: AuditLog) => actorName(row.actor),
-          render: (row: AuditLog) => actorName(row.actor)
+          render: (row: AuditLog) => <MiddleTruncate text={actorName(row.actor)} />
         }
       ]
     : []),
