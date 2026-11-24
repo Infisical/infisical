@@ -1,4 +1,4 @@
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 
 import { PamPolicyType } from "../pam/pam-policies";
@@ -9,6 +9,11 @@ const ACCOUNT_ID = "6cb4b2fa-1a9f-4b31-9f2d-6f3f5f9d4a11";
 const FOLDER_ID = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e33";
 
 const buildResource = (approvalPolicyDAL: unknown) => pamAccessApprovalResourceFactory({ approvalPolicyDAL } as never);
+
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getConfig: () => ({ SITE_URL: "http://localhost" })
+}));
 
 vi.mock("../pam/pam-permission", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -71,12 +76,10 @@ describe("pam access resource: postApprovalTxRoutine", () => {
 
   const grantFor = async (duration: string, templatePolicies: unknown) => {
     const tx = { marker: "tx" };
-    const findTemplatePoliciesForShare = vi.fn(async () =>
-      templatePolicies === undefined ? undefined : { templatePolicies }
-    );
+    const findByIdWithDetails = vi.fn(async () => (templatePolicies === undefined ? null : { templatePolicies }));
     const create = vi.fn(async (...args: [{ expiresAt: Date | null }, unknown]) => ({ id: "grant", ...args[0] }));
     const { postApprovalTxRoutine } = pamAccessApprovalResourceFactory({
-      pamAccountDAL: { findTemplatePoliciesForShare },
+      pamAccountDAL: { findByIdWithDetails },
       approvalRequestGrantsDAL: { create }
     } as never);
     const request = {
@@ -87,7 +90,7 @@ describe("pam access resource: postApprovalTxRoutine", () => {
     };
     const before = Date.now();
     await postApprovalTxRoutine!(request as never, tx as never);
-    expect(findTemplatePoliciesForShare).toHaveBeenCalledWith(ACCOUNT_ID, tx);
+    expect(findByIdWithDetails).toHaveBeenCalledWith(ACCOUNT_ID, tx);
     expect(create.mock.calls[0][1]).toBe(tx);
     const expiresAt = create.mock.calls[0][0].expiresAt as Date;
     return expiresAt.getTime() - before;
@@ -120,7 +123,7 @@ describe("pam access resource: postApprovalTxRoutine", () => {
     expectTtl(await grantFor("3d", { [PamPolicyType.MaxAccessDuration]: 3600 }), 72 * HOUR_MS);
   });
 
-  test("grants the requested duration when the template cannot be read", async () => {
+  test("grants the requested duration when the account is gone", async () => {
     expectTtl(await grantFor("2h", undefined), 2 * HOUR_MS);
   });
 });
@@ -173,5 +176,31 @@ describe("pam access resource: assertCanCreateRequest", () => {
 
   test("accepts any duration when the template has no max", async () => {
     await expect(create("7d", { [PamPolicyType.RequiresApproval]: true })).rejects.toThrow(PASSED);
+  });
+});
+
+describe("pam access resource: break-glass notification", () => {
+  test("reports the granted duration when the template max cut the request short", async () => {
+    const { buildNotification } = pamAccessApprovalResourceFactory({
+      pamAccountDAL: {
+        findByIdWithDetails: vi.fn(async () => ({
+          name: "pg",
+          templatePolicies: { [PamPolicyType.RequiresApproval]: true, [PamPolicyType.MaxAccessDuration]: 3600 }
+        }))
+      },
+      pamFolderDAL: { findById: vi.fn(async () => ({ name: "folder" })) },
+      pamFolderNotificationConfigDAL: { findByFolderIdWithIntegration: vi.fn(async () => []) }
+    } as never);
+    const notification = await buildNotification!({
+      event: ApprovalNotificationEvent.Bypassed,
+      request: {
+        id: "request",
+        organizationId: "org",
+        requesterName: "Requester",
+        requestData: { version: 1, requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration: "7d" } }
+      },
+      bypassReason: "outage needs access"
+    } as never);
+    expect(notification?.email?.substitutions).toMatchObject({ accessDuration: "1 hour" });
   });
 });

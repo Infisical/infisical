@@ -193,7 +193,7 @@ template's `settings` column, not `policies`. Both are edited on the template de
 
 **Max Access Duration caps the approved access window, not a session**: it resolves only with Require Approval
 on (`resolveAccessControls`), `assertCanCreateRequest` rejects longer requests, and `postApprovalTxRoutine`
-clamps every grant, break glass included, to the template's current max read under `findTemplatePoliciesForShare`.
+clamps every grant, break glass included, to the template's current max.
 
 **Output masking fails closed**: an older gateway would silently ignore the rule, so
 `assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new

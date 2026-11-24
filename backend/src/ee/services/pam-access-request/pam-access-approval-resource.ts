@@ -283,8 +283,8 @@ export const pamAccessApprovalResourceFactory = ({
     breakGlass
   ) => {
     const inputs = request.requestData.requestData as TPamAccessRequestData;
-    const locked = await pamAccountDAL.findTemplatePoliciesForShare(inputs.accountId, tx);
-    const { maxAccessDurationSeconds } = resolveAccessControls(locked?.templatePolicies);
+    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId, tx);
+    const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
     const durationMs = effectivePamAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
     const grant = await approvalRequestGrantsDAL.create(
@@ -751,6 +751,16 @@ export const pamAccessApprovalResourceFactory = ({
     return getSlackSendTargets(configs, event);
   };
 
+  const $grantedDurationLabel = (duration: string, templatePolicies: unknown) => {
+    const grantedMs = effectivePamAccessDurationMs(
+      duration,
+      resolveAccessControls(templatePolicies).maxAccessDurationSeconds
+    );
+    return grantedMs !== null && grantedMs % 1000 === 0
+      ? formatDurationSeconds(grantedMs / 1000)
+      : formatDuration(duration);
+  };
+
   const buildNotification: NonNullable<TPamAccessApprovalResource["buildNotification"]> = async ({
     event,
     request,
@@ -834,7 +844,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail: request.requesterEmail ?? "",
             resourceName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
             bypassReason
           }
         },
@@ -847,7 +857,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail: request.requesterEmail ?? "",
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
               bypassReason: bypassReason ?? ""
             }
           }

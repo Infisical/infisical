@@ -127,7 +127,14 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     description:
       "Longest access an approval request can ask for, in seconds (60 to 604800). Defaults to 7 days. Applies to new approvals; each session is still limited by Max Session Duration.",
     appliesTo: "all",
-    schema: z.number().int().min(60).max(PAM_MAX_ACCESS_DURATION_SECONDS)
+    schema: z.number().int().min(60).max(PAM_MAX_ACCESS_DURATION_SECONDS),
+    typeOverrides: {
+      [PamAccountType.AwsIam]: {
+        description:
+          "Longest access an approval request can ask for, in seconds (900 to 604800). Defaults to 7 days. Applies to new approvals; each session is still limited by Max Session Duration.",
+        schema: z.number().int().min(900).max(PAM_MAX_ACCESS_DURATION_SECONDS)
+      }
+    }
   },
   [PamPolicyType.RequireMfa]: {
     label: "Require MFA",
