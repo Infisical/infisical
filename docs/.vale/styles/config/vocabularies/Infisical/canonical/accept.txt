@@ -205,6 +205,7 @@ Railway
 Qovery
 Northflank
 Portainer
+Coolify
 Fly.io
 DigitalOcean
 Cloudflare
@@ -351,6 +352,7 @@ Sentinel
 Elasticsearch
 Cassandra
 Couchbase
+Neon
 RabbitMQ
 Vertica
 Milvus

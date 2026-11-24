@@ -3,7 +3,6 @@ import { Knex } from "knex";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { findServiceNameRenames, TServiceNameRow } from "./utils/agent-vault-service-name-dedupe";
@@ -39,7 +38,7 @@ const resealInlineSecrets = async (knex: Knex) => {
   const hasSecrets = await knex(INLINE).whereNotNull("encryptedSecrets").first("id");
   if (!hasSecrets) return;
 
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
     createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);

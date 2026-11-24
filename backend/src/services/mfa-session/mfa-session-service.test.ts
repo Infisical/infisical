@@ -197,8 +197,9 @@ describe("mfaSessionService completing a challenge from another login session", 
       enforceMfa(
         {
           mfaSessionService: service,
-          orgDAL: { findOrgById: vi.fn().mockResolvedValue({ enforceMfa: false }) } as never,
-          userDAL: { findById: vi.fn().mockResolvedValue({ isMfaEnabled: false }) } as never
+          orgDAL: { findRootOrgDetails: vi.fn().mockResolvedValue({ enforceMfa: false }) } as never,
+          userDAL: { findById: vi.fn().mockResolvedValue({ isMfaEnabled: false }) } as never,
+          userService: { getEnrolledMfaMethods: vi.fn().mockResolvedValue([]) } as never
         },
         {
           userId: USER_ID,

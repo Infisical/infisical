@@ -17,8 +17,15 @@ import {
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertificateRevocationStatus,
+  CertKeyUsage,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { RevokeCertResponseSchemas, sendRevocationPendingApproval } from "./certificate-revoke-response";
 
 export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -489,17 +496,10 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       body: z.object({
         revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
-      response: {
-        200: z.object({
-          message: z.string().trim(),
-          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
-          crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
-        })
-      }
+      response: RevokeCertResponseSchemas
     },
-    handler: async (req) => {
-      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
+    handler: async (req, reply) => {
+      const result = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -507,6 +507,11 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+      if (result.status === CertificateRevocationStatus.PendingApproval) {
+        return sendRevocationPendingApproval(server, req, reply, result);
+      }
+
+      const { cert, applicationName, ca } = result;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -519,16 +524,18 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: cert.serialNumber,
             applicationId: cert.applicationId,
             applicationName,
-            revocationReason: req.body.revocationReason
+            revocationReason: req.body.revocationReason,
+            crlWarning: result.crlWarning
           }
         }
       });
 
       return {
         message: "Successfully revoked certificate",
+        status: result.status,
         serialNumber: req.params.serialNumber,
-        revokedAt,
-        crlWarning
+        revokedAt: result.revokedAt,
+        crlWarning: result.crlWarning
       };
     }
   });

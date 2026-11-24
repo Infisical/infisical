@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
@@ -9,7 +10,8 @@ import { FakeOrganizationsProjectsService } from "@app/domains/platform/organiza
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
 
-vi.mock("@app/lib/config/env", () => ({
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   getConfig: () => ({})
 }));
 
@@ -86,6 +88,7 @@ const createService = ({
     licenseService,
     usageMeteringService: new FakeUsageMeteringService(),
     organizationsProjectsService: new FakeOrganizationsProjectsService(),
+    instanceConfigService: new FakeInstanceConfigService(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),

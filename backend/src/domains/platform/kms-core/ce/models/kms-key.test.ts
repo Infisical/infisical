@@ -1,4 +1,4 @@
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
@@ -24,7 +24,13 @@ const internalKey = (overrides: Partial<Parameters<typeof KmsKey.createInternal>
   });
 
 const externalKey = () =>
-  KmsKey.createExternal({ orgId: "org", name: "aws", provider: "aws", encryptedProviderInputs: Buffer.alloc(1) });
+  KmsKey.createExternal({
+    orgId: "org",
+    name: "aws",
+    provider: "aws",
+    encryptedProviderInputs: Buffer.alloc(1),
+    providerInputsVersion: 1
+  });
 
 const noArchived = () => Promise.resolve([] as KmsKeyVersion[]);
 
@@ -490,9 +496,10 @@ describe("KmsKey external keys", () => {
   test("should replace provider inputs and expose a reference for the provider client", () => {
     // Setup
     const key = externalKey();
+    const read = KmsKey.restore(key.toJSON());
 
     // Action
-    key.replaceProviderInputs(Buffer.from("new"));
+    key.replaceProviderInputs(Buffer.from("new"), 2, read);
 
     // Assert
     expect(key.isExternal).toBe(true);
@@ -500,8 +507,36 @@ describe("KmsKey external keys", () => {
       kmsKeyId: key.id,
       orgId: "org",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("new")
+      encryptedProviderInputs: Buffer.from("new"),
+      providerInputsVersion: 2
     });
+  });
+
+  test("should refuse new provider inputs when the stored ones changed since they were read", () => {
+    // Setup
+    const read = externalKey();
+    const locked = KmsKey.restore(read.toJSON());
+    locked.replaceProviderInputs(Buffer.from("written-meanwhile"), 1, read);
+
+    // Action
+    const result = () => locked.replaceProviderInputs(Buffer.from("new"), 2, read);
+
+    // Assert
+    expect(result).toThrow(StateConflictError);
+    expect(locked.externalRef()?.encryptedProviderInputs).toEqual(Buffer.from("written-meanwhile"));
+  });
+
+  test("should refuse new provider inputs when only the version changed since they were read", () => {
+    // Setup
+    const read = externalKey();
+    const locked = KmsKey.restore(read.toJSON());
+    locked.replaceProviderInputs(Buffer.alloc(1), 2, read);
+
+    // Action
+    const result = () => locked.replaceProviderInputs(Buffer.from("new"), 2, read);
+
+    // Assert
+    expect(result).toThrow(StateConflictError);
   });
 
   test("should store the name as a slug, generate one when none is given, and report the provider status", () => {
@@ -510,9 +545,15 @@ describe("KmsKey external keys", () => {
       orgId: "org",
       name: "AWS Prod",
       provider: "aws",
-      encryptedProviderInputs: Buffer.alloc(1)
+      encryptedProviderInputs: Buffer.alloc(1),
+      providerInputsVersion: 2
     });
-    const unnamed = KmsKey.createExternal({ orgId: "org", provider: "gcp", encryptedProviderInputs: Buffer.alloc(1) });
+    const unnamed = KmsKey.createExternal({
+      orgId: "org",
+      provider: "gcp",
+      encryptedProviderInputs: Buffer.alloc(1),
+      providerInputsVersion: 2
+    });
 
     // Action
     const status = named.externalStatus();
@@ -529,7 +570,7 @@ describe("KmsKey external keys", () => {
     const key = internalKey();
 
     // Action
-    const result = () => key.replaceProviderInputs(Buffer.from("new"));
+    const result = () => key.replaceProviderInputs(Buffer.from("new"), 2, key);
 
     // Assert
     expect(result).toThrow(`KMS with ID '${key.id}' is not external`);

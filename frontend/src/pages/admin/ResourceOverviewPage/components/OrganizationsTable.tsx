@@ -404,7 +404,7 @@ const ViewMembersModal = ({
         onOpenAutoFocus={(event) => {
           event.preventDefault();
         }}
-        className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden sm:max-w-4xl"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-4xl"
       >
         <DialogHeader>
           <DialogTitle>Organization Members</DialogTitle>

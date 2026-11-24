@@ -53,7 +53,8 @@ export enum SecretSync {
   Daytona = "daytona",
   DenoDeploy = "deno-deploy",
   Keeper = "keeper-password-manager",
-  Jenkins = "jenkins"
+  Jenkins = "jenkins",
+  Coolify = "coolify"
 }
 
 export enum SecretSyncStatus {

@@ -1,5 +1,6 @@
 import { Job } from "bullmq";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import {
@@ -126,6 +127,12 @@ import {
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
 import { TConvexSync, TConvexSyncInput, TConvexSyncListItem, TConvexSyncWithCredentials } from "./convex";
+import {
+  TCoolifySync,
+  TCoolifySyncInput,
+  TCoolifySyncListItem,
+  TCoolifySyncWithCredentials
+} from "./coolify/coolify-sync-types";
 import {
   TDaytonaSync,
   TDaytonaSyncInput,
@@ -324,7 +331,8 @@ export type TSecretSync =
   | TDaytonaSync
   | TDenoDeploySync
   | TKeeperSync
-  | TJenkinsSync;
+  | TJenkinsSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -381,7 +389,8 @@ export type TSecretSyncWithCredentials =
   | TDaytonaSyncWithCredentials
   | TDenoDeploySyncWithCredentials
   | TKeeperSyncWithCredentials
-  | TJenkinsSyncWithCredentials;
+  | TJenkinsSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -438,7 +447,8 @@ export type TSecretSyncInput =
   | TDaytonaSyncInput
   | TDenoDeploySyncInput
   | TKeeperSyncInput
-  | TJenkinsSyncInput;
+  | TJenkinsSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -495,7 +505,8 @@ export type TSecretSyncListItem =
   | TDaytonaSyncListItem
   | TDenoDeploySyncListItem
   | TKeeperSyncListItem
-  | TJenkinsSyncListItem;
+  | TJenkinsSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -667,6 +678,7 @@ export type DestinationDuplicateCheckFn = (opts: {
   existingSync: DuplicateCheckSyncFields;
   newSync: DuplicateCheckSyncFields;
   decryptConnection: (connectionId: string) => Promise<TAppConnection>;
+  instanceConfigService: TInstanceConfigService;
 }) => Promise<boolean>;
 
 export type TPreSaveTransformDeps = {

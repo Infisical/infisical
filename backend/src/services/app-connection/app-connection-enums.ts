@@ -97,7 +97,8 @@ export enum AppConnection {
   Jira = "jira",
   ClickHouse = "clickhouse",
   IncidentIo = "incident-io",
-  Jenkins = "jenkins"
+  Jenkins = "jenkins",
+  Coolify = "coolify"
 }
 
 export enum AWSRegion {

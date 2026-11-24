@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { logger } from "@app/lib/logger";
 
@@ -12,7 +13,8 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
-vi.mock("@app/lib/config/env", () => ({
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   getConfig: () => ({ OTEL_TELEMETRY_COLLECTION_ENABLED: false })
 }));
 
@@ -91,6 +93,7 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
     licenseService: new FakeLicenseService().setPlan(ORG_ID, { ipAllowlisting: true }),
+    instanceConfigService: new FakeInstanceConfigService(),
     identityAccessTokenService: {
       issueIdentityAccessToken,
       invalidateTrustedIpsCache: vi.fn().mockResolvedValue(undefined)

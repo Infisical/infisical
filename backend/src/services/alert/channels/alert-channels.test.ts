@@ -80,11 +80,17 @@ const samplePayload = (): TAlertPayload => ({
   ]
 });
 
+const slackAppDeps = () => ({
+  kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
+  slackIntegrationDAL: { findByIdWithWorkflowIntegrationDetails: vi.fn() }
+});
+
 const baseCtx = () => ({
   channelId: "chan-1",
   payload: samplePayload(),
   deps: {
-    smtpService: { sendMail: async () => undefined }
+    smtpService: { sendMail: async () => undefined },
+    ...slackAppDeps()
   }
 });
 
@@ -104,6 +110,7 @@ const captureEmailSubstitutions = async (payload: TAlertPayload) => {
     config: {},
     recipient: { email: "user@example.com" },
     deps: {
+      ...slackAppDeps(),
       smtpService: {
         sendMail: async (opts: { substitutions: object }) => {
           substitutions = opts.substitutions;
@@ -652,6 +659,7 @@ describe("sendEmailNotification (directed)", () => {
       config: {},
       recipient: { email: "user@example.com" },
       deps: {
+        ...slackAppDeps(),
         smtpService: {
           sendMail: async (opts: { substitutions: object }) => {
             substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
@@ -673,6 +681,7 @@ describe("sendEmailNotification (directed)", () => {
       config: {},
       recipient: { email: "user@example.com" },
       deps: {
+        ...slackAppDeps(),
         smtpService: {
           sendMail: async (opts: { substitutions: object }) => {
             substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };

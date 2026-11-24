@@ -313,6 +313,7 @@ export const alertServiceFactory = ({
           orgId: dto.actorOrgId,
           projectId: projectId ?? null,
           recipientScope,
+          actor: toAlertActor(dto),
           createdByActorId: dto.actorId,
           createdByActorType: dto.actor
         },
@@ -416,7 +417,8 @@ export const alertServiceFactory = ({
               config: channelInput.config,
               enabled: channelInput.enabled,
               recipients: channelInput.recipients,
-              recipientScope
+              recipientScope,
+              actor: toAlertActor(dto)
             },
             existingById.get(channelInput.id) as TAlertChannels,
             cipher
@@ -434,6 +436,7 @@ export const alertServiceFactory = ({
               orgId: alert.orgId,
               projectId: alert.projectId,
               recipientScope,
+              actor: toAlertActor(dto),
               createdByActorId: alert.createdByActorId ?? null,
               createdByActorType: alert.createdByActorType
             },
@@ -844,20 +847,15 @@ export const alertServiceFactory = ({
         tx
       );
       for (const channel of channels.filter((row) => row.alertId === alertId)) {
+        const {
+          id: channelId,
+          alertId: channelAlertId,
+          createdAt: channelCreatedAt,
+          updatedAt: channelUpdatedAt,
+          ...channelFields
+        } = channel;
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-        const copiedChannel = await alertChannelDAL.create(
-          {
-            name: channel.name,
-            channelType: channel.channelType,
-            encryptedConfig: channel.encryptedConfig,
-            enabled: channel.enabled,
-            orgId: channel.orgId,
-            projectId: channel.projectId,
-            createdByActorId: channel.createdByActorId,
-            createdByActorType: channel.createdByActorType
-          },
-          tx
-        );
+        const copiedChannel = await alertChannelDAL.create(channelFields, tx);
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
         await alertChannelMembershipDAL.insertMany([{ alertId: copiedAlert.id, channelId: copiedChannel.id }], tx);
         const channelRecipients = recipients.filter((recipient) => recipient.channelId === channel.id);

@@ -1,6 +1,7 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
 import { RuleViolationError } from "@app/domains/lib/errors";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AWS_REQUEST_TIMEOUTS, createS3Bucket, TS3Bucket } from "@app/lib/aws/s3";
@@ -37,6 +38,7 @@ const CORS_CHECK_TIMEOUT_MS = 15_000;
 type TObjectStorageServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry">;
 };
 
@@ -45,6 +47,7 @@ export type TObjectStorageServiceFactory = ReturnType<typeof objectStorageServic
 export const objectStorageServiceFactory = ({
   appConnectionDAL,
   kmsDataKeyService,
+  instanceConfigService,
   keyStore
 }: TObjectStorageServiceFactoryDep) => {
   const registeredNamespaces = new Map<string, TStorageNamespace>();
@@ -108,6 +111,7 @@ export const objectStorageServiceFactory = ({
       const connection = await decryptAppConnection(raw, kmsDataKeyService);
       ({ credentials } = await getAwsConnectionConfig(
         { ...connection, projectType: config.projectType } as unknown as TAwsConnectionConfig,
+        instanceConfigService,
         region,
         { stsRequestHandler: AWS_REQUEST_TIMEOUTS }
       ));

@@ -74,3 +74,20 @@ describe("built-in project roles round-trip through the role API schema", () => 
     });
   });
 });
+
+describe("ProjectPermissionV2Schema secret paths", () => {
+  test("stores secret path conditions canonically and leaves glob patterns alone", () => {
+    const result = ProjectPermissionV2Schema.parse({
+      subject: ProjectPermissionSub.Secrets,
+      action: [ProjectPermissionActions.Read],
+      conditions: {
+        environment: "dev",
+        secretPath: { $eq: "//prod/", $in: ["/a//b", "/c"], $glob: "/app//**" }
+      }
+    });
+
+    expect(result).toMatchObject({
+      conditions: { secretPath: { $eq: "/prod", $in: ["/a/b", "/c"], $glob: "/app//**" } }
+    });
+  });
+});

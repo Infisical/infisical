@@ -6,6 +6,7 @@ export type LucideIcon = typeof MailIcon;
 
 const CHANNEL_ICONS: Record<AlertChannelType, LucideIcon> = {
   [AlertChannelType.Email]: MailIcon,
+  [AlertChannelType.SlackApp]: HashIcon,
   [AlertChannelType.Slack]: HashIcon,
   [AlertChannelType.Webhook]: LinkIcon,
   [AlertChannelType.PagerDuty]: AlertTriangleIcon

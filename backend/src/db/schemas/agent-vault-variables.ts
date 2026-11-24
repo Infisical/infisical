@@ -13,12 +13,14 @@ export const AgentVaultVariablesSchema = z.object({
   id: z.string().uuid(),
   accessBundleId: z.string().uuid().nullable().optional(),
   key: z.string(),
-  encryptedValue: zodBuffer,
+  encryptedValue: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
   userId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional()
+  identityId: z.string().uuid().nullable().optional(),
+  type: z.string().default("text"),
+  oauthConfig: z.unknown().nullable().optional()
 });
 
 export type TAgentVaultVariables = z.infer<typeof AgentVaultVariablesSchema>;

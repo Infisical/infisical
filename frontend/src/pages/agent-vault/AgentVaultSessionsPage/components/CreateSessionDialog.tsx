@@ -47,6 +47,7 @@ import {
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
+  CREATE_SESSION_HANDLED_ERROR_CODES,
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultProxies
@@ -55,13 +56,8 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
-import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
-import {
-  DashboardSessionForm,
-  isSessionServicesError,
-  TDashboardSessionInput
-} from "./DashboardSessionForm";
+import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
 import {
   CopyPromptButton,
@@ -72,6 +68,7 @@ import {
 } from "./SandboxPlatformPanel";
 import { hasScriptLanguages, ScriptLanguage } from "./sandboxSnippets";
 import { formatSessionExpiry } from "./SessionExpiry";
+import { sessionFieldErrorOf } from "./sessionFormErrors";
 import {
   SessionMachineIdentityField,
   TSnippetIdentity,
@@ -222,11 +219,18 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, metadata, ttl, services }: TDashboardSessionInput) => {
+  const onCreateNowSubmit = async ({
+    label,
+    metadata,
+    ttl,
+    services,
+    skills
+  }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle?.name,
         services: services.length ? services : undefined,
+        skills: skills.length ? skills : undefined,
         ttl,
         label,
         metadata
@@ -235,15 +239,23 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       setCreatedSession(session);
       return undefined;
     } catch (error) {
-      // The global request handler toasts every failure but a 400, which this dialog reports itself.
+      // The global request handler toasts every failure but these, which this dialog reports itself.
       const serverResponse = axios.isAxiosError(error)
-        ? (error.response?.data as TApiErrors | undefined)
+        ? (error.response?.data as { error?: unknown; message?: unknown } | undefined)
         : undefined;
-      if (serverResponse?.error !== ApiErrorTypes.BadRequestError) return undefined;
-      if (services.length && isSessionServicesError(serverResponse.message)) {
-        return { servicesError: serverResponse.message };
+      if (
+        typeof serverResponse?.error !== "string" ||
+        !CREATE_SESSION_HANDLED_ERROR_CODES.includes(serverResponse.error)
+      ) {
+        return undefined;
       }
-      createNotification({ title: "Bad Request", text: serverResponse.message, type: "error" });
+      const fieldErrors = sessionFieldErrorOf(serverResponse, { services, skills });
+      if (fieldErrors) return fieldErrors;
+      createNotification({
+        title: "Bad Request",
+        text: String(serverResponse.message),
+        type: "error"
+      });
       return undefined;
     }
   };
@@ -301,7 +313,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
         />
         <FieldDescription>
           {isCreateNow
-            ? "Optional when you pick services below."
+            ? "Optional when you pick services or skills below."
             : "The services an agent can reach with this session."}
         </FieldDescription>
       </FieldContent>

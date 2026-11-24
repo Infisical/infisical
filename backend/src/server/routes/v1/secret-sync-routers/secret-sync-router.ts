@@ -44,6 +44,7 @@ import {
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { ConvexSyncListItemSchema, ConvexSyncSchema } from "@app/services/secret-sync/convex";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DenoDeploySyncListItemSchema, DenoDeploySyncSchema } from "@app/services/secret-sync/deno-deploy";
@@ -122,6 +123,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   RundeckSyncSchema,
   PortainerSyncSchema,
   JenkinsSyncSchema,
+  CoolifySyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -184,6 +186,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RundeckSyncListItemSchema,
   PortainerSyncListItemSchema,
   JenkinsSyncListItemSchema,
+  CoolifySyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,

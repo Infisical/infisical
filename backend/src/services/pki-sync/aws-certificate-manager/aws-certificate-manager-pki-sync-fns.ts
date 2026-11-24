@@ -19,6 +19,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ProjectType, TCertificateSyncs } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -172,13 +173,15 @@ type TAwsCertificateManagerPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 const getAwsAcmClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ): Promise<ACMClient> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -215,6 +218,7 @@ const getAwsAcmClient = async (
 
   const awsConfig = await getAwsConnectionConfig(
     { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
     region
   );
 
@@ -225,7 +229,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
   kmsDataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
-  certificateDAL
+  certificateDAL,
+  instanceConfigService
 }: TAwsCertificateManagerPkiSyncFactoryDeps) => {
   const deleteCertificateFromAcm = async (
     acm: ACMClient,
@@ -397,7 +402,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
       pkiSync.connection.id,
       destinationConfig.region as AWSRegion,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     );
 
     const {
@@ -812,7 +818,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
       pkiSync.connection.id,
       destinationConfig.region as AWSRegion,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     );
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);

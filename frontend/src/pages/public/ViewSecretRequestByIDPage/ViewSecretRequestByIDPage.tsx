@@ -169,7 +169,7 @@ export const ViewSecretRequestByIDPage = () => {
     return (
       <>
         <title>Secret Request</title>
-        <div className="h-screen w-screen bg-page">
+        <div className="h-dvh w-screen bg-page">
           <PageLoader lottieClassName="w-34" />
         </div>
       </>
@@ -220,7 +220,7 @@ export const ViewSecretRequestByIDPage = () => {
         <title>Secret Request</title>
         <meta property="og:image" content="/images/message.png" />
         <div
-          className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
+          className="flex min-h-dvh flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
           style={backgroundStyle}
         >
           {logoUrl && (
@@ -251,7 +251,7 @@ export const ViewSecretRequestByIDPage = () => {
 
   // Default: Infisical auth page layout
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
+    <div className="relative flex max-h-dvh min-h-dvh flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
       <PageTitle title="Secret Request" />
       <meta property="og:image" content="/images/message.png" />

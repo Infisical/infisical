@@ -4,15 +4,24 @@ sidebarTitle: "AWS IAM"
 description: "Give people temporary access to AWS through an IAM role."
 ---
 
-An AWS IAM account lets people work in AWS as an IAM role without holding long-lived access keys. When someone launches a session, Infisical assumes the role through AWS STS and gives them temporary credentials. They can open the AWS Management Console in the browser or use the credentials with the AWS CLI.
+An AWS IAM account lets people work in AWS as an IAM role without holding long-lived access keys. When someone launches a session, Infisical assumes the role through AWS STS. They can open the AWS Management Console in the browser or run AWS CLI commands.
 
-AWS IAM accounts don't use a [Gateway](/documentation/platform/gateways/overview), because Infisical calls AWS STS directly.
+An account works without a [Gateway](/documentation/platform/gateways/overview), but CLI sessions through a Gateway can last longer and never expose the role's credentials:
+
+| | Without a Gateway | Through a Gateway |
+|---|---|---|
+| Longest CLI session | 1 hour | 24 hours |
+| Who holds the role's credentials | The person or AI agent running the CLI | Only the Gateway |
+| Session recording | None | Each AWS API request and its response |
+
+The AWS Management Console doesn't go through a Gateway, so a console session lasts at most one hour.
 
 ## Prerequisites
 
 - The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - Permission to create IAM roles in the AWS account
 - Your Infisical organization ID, which you can copy from **Organization ID** in your organization's settings
+- To connect through a Gateway, a Gateway on the latest version that can reach hosts under `amazonaws.com` on port `443`, and the latest [Infisical CLI](/cli/overview) for each person who connects
 
 ## Create an IAM role
 
@@ -52,9 +61,6 @@ Each account assumes one IAM role. The role's trust policy lets Infisical assume
   <Step>
     Attach permission policies to the role. People who access the account get exactly these permissions in AWS.
   </Step>
-  <Step>
-    Set the role's **Maximum session duration** to cover the longest session you'll allow, as described in [Session duration](#session-duration).
-  </Step>
 </Steps>
 
 ## Create an account
@@ -76,9 +82,17 @@ Each account assumes one IAM role. The role's trust policy lets Infisical assume
 
 To offer the same role in more than one folder, create an account with the same **Role ARN** in each folder.
 
+## Use a Gateway
+
+To send an account's CLI sessions through a Gateway, select a **Gateway** in the [template's system settings](/documentation/platform/pam/templates/overview#system-settings). To use a different Gateway for one account, [override the Gateway](/documentation/platform/pam/accounts/manage#override-the-template’s-settings) on the account's **Advanced** tab.
+
+The role's credentials never leave the Gateway, but the role's own permissions still apply. If the role can create access keys or assume other roles, a session can use those permissions to get credentials of its own.
+
 ## Session duration
 
-A session lasts for the template's maximum session duration, unless the person requests a shorter one. AWS rejects a session that's shorter than 15 minutes or longer than the role's maximum session duration, so make sure both limits allow the sessions you expect.
+A session lasts for the template's maximum session duration, unless the person requests a shorter one. The template's maximum can be 15 minutes to 24 hours.
+
+AWS limits the credentials that Infisical gets for the role to one hour. A session without a Gateway uses one set of credentials, so it ends after one hour at most. Through a Gateway, the Gateway gets new credentials before the old ones expire, so the session lasts as long as the template allows.
 
 <Warning>
   You can't end an AWS Management Console session early. Terminating the session in Infisical doesn't sign the person out of the console, which stays signed in until the session expires. To cut off access sooner, [revoke the role's active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) in AWS.
@@ -86,23 +100,45 @@ A session lasts for the template's maximum session duration, unless the person r
 
 ## Connect
 
-To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect). In the browser, the session opens the AWS Management Console, signed in as the role.
-
-The CLI writes temporary credentials to `~/.aws/credentials` as a profile named `infisical-pam/<folder>/<account>`:
+To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect). In the browser, the session opens the AWS Management Console, signed in as the role. In the CLI, the command for the account is:
 
 ```bash
 infisical pam access <folder>/<account>
 ```
 
-Pass the profile to the AWS CLI, or set `AWS_PROFILE` to use it for every command:
+<Tabs>
+  <Tab title="Without a Gateway">
+    The CLI writes temporary credentials to `~/.aws/credentials` as a profile named `infisical-pam/<folder>/<account>`. Pass the profile to the AWS CLI, or set `AWS_PROFILE` to use it for every command:
 
-```bash
-export AWS_PROFILE="infisical-pam/<folder>/<account>"
-aws sts get-caller-identity
-```
+    ```bash
+    export AWS_PROFILE="infisical-pam/<folder>/<account>"
+    aws sts get-caller-identity
+    ```
 
-Press `Ctrl+C` to end the session. The CLI then removes the profile.
+    Press `Ctrl+C` to end the session. The CLI then removes the profile.
+  </Tab>
+  <Tab title="Through a Gateway">
+    The CLI opens a new shell whose AWS CLI requests go through the Gateway. The CLI doesn't change your own AWS credentials or configuration. Run `aws` commands in that shell:
+
+    ```bash
+    aws sts get-caller-identity
+    ```
+
+    Type `exit` to end the session.
+
+    To use the session from another terminal or from your own tooling, run the command that the CLI prints. It loads the session's settings from a file that only you can read. If an AI agent or a script runs the CLI outside a terminal, the CLI prints that command instead of opening a shell. The session then lasts until you stop the CLI or the session expires.
+
+    The following don't work through a Gateway:
+
+    - Presigned URLs, such as the ones `aws s3 presign` creates
+    - Tokens that the AWS CLI signs on your machine, such as `aws eks get-token` and `aws rds generate-db-auth-token` (use a [Kubernetes](/documentation/platform/pam/accounts/kubernetes) or [PostgreSQL](/documentation/platform/pam/accounts/postgresql) account instead)
+    - S3 uploads from AWS SDKs that sign each chunk of the upload (the AWS CLI doesn't)
+    - Requests signed with SigV4a, such as requests to S3 Multi-Region Access Points
+  </Tab>
+</Tabs>
 
 ## Track activity in AWS
 
 Infisical names each STS session after the email of the person who launched it, or after the name of the [machine identity](/documentation/platform/identities/machine-identities). In [AWS CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html), the session name shows who made each call.
+
+Through a Gateway, Infisical also keeps a [session recording](/documentation/platform/pam/sessions/session-recording) of each request.
