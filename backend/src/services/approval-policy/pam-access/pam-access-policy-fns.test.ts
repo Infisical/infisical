@@ -1,7 +1,12 @@
 import { TApprovalRequestGrants } from "@app/db/schemas";
 
 import { ApprovalPolicyType } from "../approval-policy-enums";
-import { matchPamAccessGrants, parsePamAccessDuration } from "./pam-access-policy-fns";
+import {
+  effectivePamAccessDurationMs,
+  exceedsPamMaxAccessDuration,
+  matchPamAccessGrants,
+  parsePamAccessDuration
+} from "./pam-access-policy-fns";
 
 const ACCOUNT_ID = "6cb4b2fa-1a9f-4b31-9f2d-6f3f5f9d4a11";
 const OTHER_ACCOUNT_ID = "1d0e2c3b-4a59-4f68-9b77-2c8d5e6f7a22";
@@ -64,5 +69,22 @@ describe("matchPamAccessGrants", () => {
     ];
 
     expect(matchPamAccessGrants(grants, { ...inputs, accessType: "credential" })).toEqual([grants[1]]);
+  });
+});
+
+describe("exceedsPamMaxAccessDuration", () => {
+  test("compares the requested duration against the max in seconds", () => {
+    expect(exceedsPamMaxAccessDuration("1h", 3600)).toBe(false);
+    expect(exceedsPamMaxAccessDuration("3601s", 3600)).toBe(true);
+    expect(exceedsPamMaxAccessDuration("7d", null)).toBe(false);
+  });
+});
+
+describe("effectivePamAccessDurationMs", () => {
+  test("caps the requested duration at the max", () => {
+    expect(effectivePamAccessDurationMs("7d", 3600)).toBe(3_600_000);
+    expect(effectivePamAccessDurationMs("30m", 3600)).toBe(1_800_000);
+    expect(effectivePamAccessDurationMs("3d", null)).toBe(259_200_000);
+    expect(effectivePamAccessDurationMs("not-a-duration", 3600)).toBeNull();
   });
 });

@@ -10,6 +10,12 @@ const FOLDER_ID = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e33";
 
 const buildResource = (approvalPolicyDAL: unknown) => pamAccessApprovalResourceFactory({ approvalPolicyDAL } as never);
 
+vi.mock("../pam/pam-permission", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  verifyProductMembership: vi.fn(async () => undefined),
+  checkAccountAccess: vi.fn(async () => undefined)
+}));
+
 describe("pam access resource: validateConstraints", () => {
   const { validateConstraints } = buildResource({});
 
@@ -64,9 +70,13 @@ describe("pam access resource: postApprovalTxRoutine", () => {
   const HOUR_MS = 3_600_000;
 
   const grantFor = async (duration: string, templatePolicies: unknown) => {
-    const create = vi.fn(async (data: { expiresAt: Date | null }) => ({ id: "grant", ...data }));
+    const tx = { marker: "tx" };
+    const findTemplatePoliciesForShare = vi.fn(async () =>
+      templatePolicies === undefined ? undefined : { templatePolicies }
+    );
+    const create = vi.fn(async (...args: [{ expiresAt: Date | null }, unknown]) => ({ id: "grant", ...args[0] }));
     const { postApprovalTxRoutine } = pamAccessApprovalResourceFactory({
-      pamAccountDAL: { findByIdWithDetails: vi.fn(async () => ({ templatePolicies })) },
+      pamAccountDAL: { findTemplatePoliciesForShare },
       approvalRequestGrantsDAL: { create }
     } as never);
     const request = {
@@ -76,31 +86,92 @@ describe("pam access resource: postApprovalTxRoutine", () => {
       requestData: { version: 1, requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration } }
     };
     const before = Date.now();
-    await postApprovalTxRoutine!(request as never, {} as never);
+    await postApprovalTxRoutine!(request as never, tx as never);
+    expect(findTemplatePoliciesForShare).toHaveBeenCalledWith(ACCOUNT_ID, tx);
+    expect(create.mock.calls[0][1]).toBe(tx);
     const expiresAt = create.mock.calls[0][0].expiresAt as Date;
     return expiresAt.getTime() - before;
   };
 
+  const expectTtl = (ttl: number, expectedMs: number) => {
+    expect(ttl).toBeGreaterThanOrEqual(expectedMs);
+    expect(ttl).toBeLessThan(expectedMs + 5000);
+  };
+
   test("grants the requested duration when it is within the template max", async () => {
-    const ttl = await grantFor("1h", {
-      [PamPolicyType.RequiresApproval]: true,
-      [PamPolicyType.MaxAccessDuration]: 86_400
-    });
-    expect(ttl).toBeGreaterThanOrEqual(HOUR_MS);
-    expect(ttl).toBeLessThan(HOUR_MS + 5000);
+    expectTtl(
+      await grantFor("1h", { [PamPolicyType.RequiresApproval]: true, [PamPolicyType.MaxAccessDuration]: 86_400 }),
+      HOUR_MS
+    );
   });
 
   test("caps a request raised before the template max was lowered", async () => {
-    const ttl = await grantFor("7d", {
-      [PamPolicyType.RequiresApproval]: true,
-      [PamPolicyType.MaxAccessDuration]: 3600
-    });
-    expect(ttl).toBeGreaterThanOrEqual(HOUR_MS);
-    expect(ttl).toBeLessThan(HOUR_MS + 5000);
+    expectTtl(
+      await grantFor("7d", { [PamPolicyType.RequiresApproval]: true, [PamPolicyType.MaxAccessDuration]: 3600 }),
+      HOUR_MS
+    );
   });
 
   test("grants the requested duration when the template has no max", async () => {
-    const ttl = await grantFor("3d", { [PamPolicyType.RequiresApproval]: true });
-    expect(ttl).toBeGreaterThanOrEqual(72 * HOUR_MS);
+    expectTtl(await grantFor("3d", { [PamPolicyType.RequiresApproval]: true }), 72 * HOUR_MS);
+  });
+
+  test("ignores a stored max once approval is off", async () => {
+    expectTtl(await grantFor("3d", { [PamPolicyType.MaxAccessDuration]: 3600 }), 72 * HOUR_MS);
+  });
+
+  test("grants the requested duration when the template cannot be read", async () => {
+    expectTtl(await grantFor("2h", undefined), 2 * HOUR_MS);
+  });
+});
+
+describe("pam access resource: assertCanCreateRequest", () => {
+  const PASSED = "passed the duration check";
+
+  const create = (duration: string, templatePolicies: unknown) => {
+    const { assertCanCreateRequest } = pamAccessApprovalResourceFactory({
+      pamAccountDAL: {
+        findByIdWithDetails: vi.fn(async () => ({
+          id: ACCOUNT_ID,
+          projectId: "project",
+          folderId: FOLDER_ID,
+          accountType: "postgres",
+          templatePolicies
+        }))
+      },
+      approvalPolicyDAL: {
+        findStepsByPolicyId: vi.fn(async () => {
+          throw new Error(PASSED);
+        })
+      }
+    } as never);
+    return assertCanCreateRequest!({
+      projectId: "project",
+      policy: { id: "policy" },
+      requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration },
+      actor: { type: "user", id: "user", authMethod: null, orgId: "org" },
+      hasAutoApprovalRules: false,
+      skipsAutoApproval: false
+    } as never);
+  };
+
+  const capped = (seconds: number) => ({
+    [PamPolicyType.RequiresApproval]: true,
+    [PamPolicyType.MaxAccessDuration]: seconds
+  });
+
+  test("rejects a request longer than the template max, naming the exact max", async () => {
+    await expect(create("2h", capped(5400))).rejects.toMatchObject({
+      name: "PAM_ACCESS_DURATION_EXCEEDED",
+      message: "Access duration must be at most 90 minutes, the maximum set on this account's template"
+    });
+  });
+
+  test("accepts a request at exactly the template max", async () => {
+    await expect(create("90m", capped(5400))).rejects.toThrow(PASSED);
+  });
+
+  test("accepts any duration when the template has no max", async () => {
+    await expect(create("7d", { [PamPolicyType.RequiresApproval]: true })).rejects.toThrow(PASSED);
   });
 });

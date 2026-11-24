@@ -260,9 +260,8 @@ export const ApprovalRequestDetailSheet = ({
                 maxAccessDurationSeconds !== null &&
                 isAccessDurationCapped(requestData?.duration, maxAccessDurationSeconds) && (
                   <p className="mt-1.5 text-xs text-warning">
-                    This account&apos;s template allows up to{" "}
-                    {formatAccessDurationLimit(maxAccessDurationSeconds)}. Approving grants access
-                    for {formatAccessDurationLimit(maxAccessDurationSeconds)}.
+                    Approving grants {formatAccessDurationLimit(maxAccessDurationSeconds)}, the most
+                    this account&apos;s template now allows.
                   </p>
                 )}
             </div>

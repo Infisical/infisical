@@ -1,5 +1,7 @@
 import ms from "ms";
 
+import { describeDurationSeconds } from "./formatDuration";
+
 type TAccessDurationOption = { value: string; label: string };
 
 const ACCESS_DURATION_PRESETS: TAccessDurationOption[] = [
@@ -10,22 +12,6 @@ const ACCESS_DURATION_PRESETS: TAccessDurationOption[] = [
   { value: "3d", label: "3 days" },
   { value: "7d", label: "1 week" }
 ];
-
-const DURATION_UNITS = [
-  { seconds: 86_400, suffix: "d", name: "day" },
-  { seconds: 3600, suffix: "h", name: "hour" },
-  { seconds: 60, suffix: "m", name: "minute" },
-  { seconds: 1, suffix: "s", name: "second" }
-];
-
-const toDurationOption = (seconds: number): TAccessDurationOption => {
-  const unit = DURATION_UNITS.find((u) => seconds % u.seconds === 0) ?? DURATION_UNITS[3];
-  const amount = seconds / unit.seconds;
-  return {
-    value: `${amount}${unit.suffix}`,
-    label: `${amount} ${unit.name}${amount === 1 ? "" : "s"}`
-  };
-};
 
 const parseMs = (duration?: string) => {
   if (!duration) return null;
@@ -38,10 +24,11 @@ export const getAccessDurationOptions = (maxSeconds?: number | null): TAccessDur
   const maxMs = maxSeconds * 1000;
   const allowed = ACCESS_DURATION_PRESETS.filter((option) => (parseMs(option.value) ?? 0) <= maxMs);
   if (allowed.some((option) => parseMs(option.value) === maxMs)) return allowed;
-  return [...allowed, toDurationOption(maxSeconds)];
+  return [...allowed, describeDurationSeconds(maxSeconds)];
 };
 
-export const formatAccessDurationLimit = (maxSeconds: number) => toDurationOption(maxSeconds).label;
+export const formatAccessDurationLimit = (maxSeconds: number) =>
+  describeDurationSeconds(maxSeconds).label;
 
 // Approval grants at most the template max, even for requests raised before it was lowered.
 export const isAccessDurationCapped = (duration?: string, maxSeconds?: number | null) => {

@@ -122,6 +122,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     appliesTo: "all",
     schema: z.boolean()
   },
+  [PamPolicyType.MaxAccessDuration]: {
+    label: "Max Access Duration",
+    description:
+      "Longest access an approval request can ask for, in seconds (60 to 604800). Defaults to 7 days. Applies to new approvals; each session is still limited by Max Session Duration.",
+    appliesTo: "all",
+    schema: z.number().int().min(60).max(PAM_MAX_ACCESS_DURATION_SECONDS)
+  },
   [PamPolicyType.RequireMfa]: {
     label: "Require MFA",
     description: "Users must re-authenticate with MFA before accessing.",
@@ -137,23 +144,16 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.MaxSessionDuration]: {
     label: "Max Session Duration",
     description:
-      "Maximum length of a single session in seconds (60 to 86400). Max Access Duration limits how long approved access lasts.",
+      "Maximum length of a single session in seconds (60 to 86400). It doesn't limit how long approved access lasts.",
     appliesTo: "all",
     schema: z.number().int().min(60).max(86400),
     typeOverrides: {
       [PamAccountType.AwsIam]: {
         description:
-          "Maximum length of a single session in seconds (900 to 86400). CLI sessions without a gateway, and all web sessions, end after 3600 seconds. Max Access Duration limits how long approved access lasts.",
+          "Maximum length of a single session in seconds (900 to 86400). CLI sessions without a gateway, and all web sessions, end after 3600 seconds. It doesn't limit how long approved access lasts.",
         schema: z.number().int().min(900).max(86400)
       }
     }
-  },
-  [PamPolicyType.MaxAccessDuration]: {
-    label: "Max Access Duration",
-    description:
-      "Longest access an approval request can ask for, in seconds (60 to 604800). Defaults to 7 days. Each session is still limited by Max Session Duration.",
-    appliesTo: "all",
-    schema: z.number().int().min(60).max(PAM_MAX_ACCESS_DURATION_SECONDS)
   },
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",

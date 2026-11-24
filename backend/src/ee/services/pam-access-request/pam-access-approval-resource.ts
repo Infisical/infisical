@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { formatDuration, ms } from "@app/lib/ms";
+import { formatDuration, formatDurationSeconds, ms } from "@app/lib/ms";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -33,6 +33,8 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
+  effectivePamAccessDurationMs,
+  exceedsPamMaxAccessDuration,
   matchesPamAccessSubject,
   matchPamAccessGrants,
   PAM_DEFAULT_ACCESS_TYPE,
@@ -275,22 +277,15 @@ export const pamAccessApprovalResourceFactory = ({
     return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
   };
 
-  // The template max can be lowered while a request is pending, so the grant never outlasts the current max.
-  const $effectiveAccessDurationMs = (duration: string, maxAccessDurationSeconds: number | null) => {
-    const requestedMs = parsePamAccessDuration(duration);
-    if (requestedMs === null || maxAccessDurationSeconds === null) return requestedMs;
-    return Math.min(requestedMs, maxAccessDurationSeconds * 1000);
-  };
-
   const postApprovalTxRoutine: NonNullable<TPamAccessApprovalResource["postApprovalTxRoutine"]> = async (
     request,
     tx,
     breakGlass
   ) => {
     const inputs = request.requestData.requestData as TPamAccessRequestData;
-    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId, tx);
-    const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
-    const durationMs = $effectiveAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
+    const locked = await pamAccountDAL.findTemplatePoliciesForShare(inputs.accountId, tx);
+    const { maxAccessDurationSeconds } = resolveAccessControls(locked?.templatePolicies);
+    const durationMs = effectivePamAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
     const grant = await approvalRequestGrantsDAL.create(
       {
@@ -459,15 +454,13 @@ export const pamAccessApprovalResourceFactory = ({
       }
     }
 
-    const requestedMs = parsePamAccessDuration(inputs.duration);
     if (
       accessControls.maxAccessDurationSeconds !== null &&
-      requestedMs !== null &&
-      requestedMs > accessControls.maxAccessDurationSeconds * 1000
+      exceedsPamMaxAccessDuration(inputs.duration, accessControls.maxAccessDurationSeconds)
     ) {
       throw new BadRequestError({
         name: "PAM_ACCESS_DURATION_EXCEEDED",
-        message: `Access duration must be at most ${formatDuration(`${accessControls.maxAccessDurationSeconds}s`)}, the maximum set on this account's template`
+        message: `Access duration must be at most ${formatDurationSeconds(accessControls.maxAccessDurationSeconds)}, the maximum set on this account's template`
       });
     }
 
