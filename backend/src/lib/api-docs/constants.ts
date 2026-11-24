@@ -4326,7 +4326,10 @@ export const SecretScanningDataSources = {
       isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
       isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
       isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
-      config: `The configuration parameters to use for this Data Source.`
+      config: `The configuration parameters to use for this Data Source.`,
+      alerts: `The alerts to create with this Data Source, at most one per event. Leave it out to get the default alerts, which email project admins when secrets are detected and when a scan fails. Pass an empty list to create none.`,
+      alertEventType: `The event the alert fires on.`,
+      alertChannels: `Where the alert is sent. Takes the same channels as the alert API.`
     };
   },
   UPDATE: (type: SecretScanningDataSource) => {
