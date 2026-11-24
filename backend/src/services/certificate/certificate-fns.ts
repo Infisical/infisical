@@ -636,24 +636,23 @@ export const softDeleteCertificates = async (
   };
 };
 
-const MAX_RENEWAL_CHAIN_HOPS = 10;
-
 // Stops before `excludeId`, so relinking a certificate that already replaced this one doesn't walk onto itself.
+// A chain that loops back on itself stops at the certificate whose replacement was already visited.
 export const findEndOfRenewalChain = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById">,
   certificateId: string,
   { tx, excludeId }: { tx?: Knex; excludeId?: string } = {}
 ) => {
+  const visited = new Set([certificateId]);
   let latestCertificateId = certificateId;
-  for (let hop = 0; hop < MAX_RENEWAL_CHAIN_HOPS; hop += 1) {
+  for (;;) {
     // eslint-disable-next-line no-await-in-loop
     const certificate = await certificateDAL.findById(latestCertificateId, tx);
-    if (!certificate?.renewedByCertificateId || certificate.renewedByCertificateId === excludeId) {
-      return latestCertificateId;
-    }
-    latestCertificateId = certificate.renewedByCertificateId;
+    const next = certificate?.renewedByCertificateId;
+    if (!next || next === excludeId || visited.has(next)) return latestCertificateId;
+    visited.add(next);
+    latestCertificateId = next;
   }
-  return latestCertificateId;
 };
 
 export const linkRenewedCertificate = async (
@@ -670,7 +669,7 @@ export const linkRenewedCertificate = async (
   });
   const latestCertificate = await certificateDAL.findById(latestCertificateId, tx);
 
-  // A chain longer than the hop limit stops at a certificate that still has a replacement, which keeps its link.
+  // A chain that loops stops at a certificate that still has a replacement, which keeps its link.
   if (latestCertificate?.renewedByCertificateId && latestCertificate.renewedByCertificateId !== renewedCertificateId) {
     await certificateDAL.updateById(renewedCertificateId, { renewedFromCertificateId: null }, tx);
     return;

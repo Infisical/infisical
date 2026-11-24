@@ -515,9 +515,22 @@ describe("linkRenewedCertificate", () => {
     );
   });
 
-  it("leaves the new certificate unlinked when the chain runs past the hop limit", async () => {
-    const chain = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, renewedByCertificateId: `c${i + 1}` }));
-    const certificateDAL = dal(...chain);
+  it("links to the end of a long chain", async () => {
+    const chain = Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, renewedByCertificateId: `c${i + 1}` }));
+    const certificateDAL = dal(...chain, { id: "c25" });
+
+    await linkRenewedCertificate(certificateDAL, "c0", "new");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("new", { renewedFromCertificateId: "c25" }, undefined);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("c25", { renewedByCertificateId: "new" }, undefined);
+  });
+
+  it("leaves the new certificate unlinked when the chain loops", async () => {
+    const certificateDAL = dal(
+      { id: "c0", renewedByCertificateId: "c1" },
+      { id: "c1", renewedByCertificateId: "c2" },
+      { id: "c2", renewedByCertificateId: "c0" }
+    );
 
     await linkRenewedCertificate(certificateDAL, "c0", "new");
 
