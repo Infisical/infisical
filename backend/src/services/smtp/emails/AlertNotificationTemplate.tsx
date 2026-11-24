@@ -72,7 +72,7 @@ export const AlertNotificationTemplate = ({
       <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">{summary}.</Text>
 
       {description && (
-        <Text className="text-gray-700 text-[14px] leading-[22px] mt-[12px] mb-[0px] pl-[12px] border-0 border-l-[3px] border-solid border-gray-200">
+        <Text className="text-gray-700 text-[14px] leading-[22px] mt-[12px] mb-[0px] pl-[12px] border-0 border-l-[3px] border-solid border-gray-200 [overflow-wrap:anywhere]">
           {/* <br /> rather than CSS white-space, which several mail clients drop. */}
           {description.split(/\r?\n/).flatMap((line, index) => (index > 0 ? [<br key={index} />, line] : [line]))}
         </Text>

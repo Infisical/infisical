@@ -182,6 +182,8 @@ describe("alert description", () => {
     async (lineBreak) => {
       const html = await renderEmail(withDescription(`Renew it before Friday.${lineBreak}Then tell #pki-ops.`));
       expect(html).toMatch(/Renew it before Friday\.<br\s*\/?>Then tell #pki-ops\./);
+      // Without it, one long URL widens the whole email past a phone screen.
+      expect(html).toMatch(/overflow-wrap:anywhere[^>]*>Renew it before Friday/);
 
       // The summary is also the email's preview text, so the body copy is its last occurrence.
       const descriptionAt = html.indexOf("Renew it before Friday.");
