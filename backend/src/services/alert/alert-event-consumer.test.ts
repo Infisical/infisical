@@ -1,5 +1,5 @@
+import { EventResultStatus, TEvent } from "@app/domains/platform/events/ce/module";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
-import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
 
 import { alertEventConsumerFactory } from "./alert-event-consumer";
 import { AlertTriggerType } from "./alert-types";

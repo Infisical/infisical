@@ -1,7 +1,8 @@
 import pLimit from "p-limit";
 import { z } from "zod";
 
-import { EventResultStatus, TEvent, TEventConsumerResult } from "./event-outbox-types";
+import { EventResultStatus } from "../../models/outbox-entry";
+import { TEvent, TEventConsumerResult } from "../dependencies";
 
 // A payload that fails the consumer's schema is a bug at the emit site, so the event is failed with
 // the issues named rather than retried.
