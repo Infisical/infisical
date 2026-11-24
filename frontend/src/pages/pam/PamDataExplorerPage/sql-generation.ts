@@ -40,6 +40,10 @@ function baseType(type: string): string {
   return type.split("(")[0].trim().toLowerCase();
 }
 
+function isAscii(str: string): boolean {
+  return [...str].every((ch) => ch.charCodeAt(0) < 128);
+}
+
 function isHexLiteral(str: string): boolean {
   if (!str.startsWith("0x") && !str.startsWith("0X")) return false;
   return [...str.slice(2)].every((ch) => "0123456789abcdefABCDEF".includes(ch));
@@ -57,8 +61,8 @@ function quoteLiteral(
     if (MSSQL_BINARY_TYPES.has(type) && typeof value === "string" && isHexLiteral(value)) {
       return value;
     }
-    // An N'' literal makes SQL Server convert a varchar column for the comparison, which turns index seeks into scans
-    if (MSSQL_NON_UNICODE_TYPES.has(type) && typeof value === "string") {
+    // N'' makes SQL Server convert a varchar column (seeks become scans); only ASCII survives every code page unprefixed
+    if (MSSQL_NON_UNICODE_TYPES.has(type) && typeof value === "string" && isAscii(value)) {
       return `'${value.replaceAll("'", "''")}'`;
     }
   }
@@ -317,8 +321,8 @@ export function buildDeleteQuery(params: {
 // The frontend re-fetches data after save anyway.
 export function wrapInTransaction(statements: string[], dialect: SqlDialect = "postgres"): string {
   if (dialect === "mssql") {
-    // Most T-SQL errors abort only the failing statement, so the batch would otherwise go on to COMMIT
-    return `BEGIN TRY\nBEGIN TRANSACTION;\n${statements.join(";\n")};\nCOMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\nIF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\nTHROW;\nEND CATCH`;
+    // TRY/CATCH stops a failed statement from reaching COMMIT; XACT_ABORT rolls back when a timeout cancels the batch
+    return `SET XACT_ABORT ON;\nBEGIN TRY\nBEGIN TRANSACTION;\n${statements.join(";\n")};\nCOMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\nIF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\nTHROW;\nEND CATCH`;
   }
   return `BEGIN;\n${statements.join(";\n")};\nCOMMIT;`;
 }

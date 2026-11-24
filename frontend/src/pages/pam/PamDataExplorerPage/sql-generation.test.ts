@@ -122,7 +122,7 @@ describe("mssql writes", () => {
 
   test("wraps grid saves so any failure rolls back", () => {
     expect(wrapInTransaction(["DELETE FROM [dbo].[t] WHERE [id] = 1"], "mssql")).toBe(
-      "BEGIN TRY\nBEGIN TRANSACTION;\nDELETE FROM [dbo].[t] WHERE [id] = 1;\nCOMMIT TRANSACTION;\nEND TRY\n" +
+      "SET XACT_ABORT ON;\nBEGIN TRY\nBEGIN TRANSACTION;\nDELETE FROM [dbo].[t] WHERE [id] = 1;\nCOMMIT TRANSACTION;\nEND TRY\n" +
         "BEGIN CATCH\nIF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\nTHROW;\nEND CATCH"
     );
   });
@@ -141,6 +141,18 @@ describe("mssql typed columns", () => {
         dialect: "mssql"
       })
     ).toBe("DELETE FROM [dbo].[t] WHERE [code] = 'O''C42'");
+  });
+
+  test("keeps N'' for non-ASCII text in varchar columns so the code page cannot mangle it", () => {
+    expect(
+      buildDeleteQuery({
+        schema: "dbo",
+        table: "t",
+        primaryKeyMatch: { code: "訂單-42" },
+        columnTypes: typed,
+        dialect: "mssql"
+      })
+    ).toBe("DELETE FROM [dbo].[t] WHERE [code] = N'訂單-42'");
   });
 
   test("keeps N'' literals for Unicode columns", () => {

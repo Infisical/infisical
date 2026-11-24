@@ -171,6 +171,13 @@ describe("extractMssqlErrorFields", () => {
   });
 });
 
+describe("uniqueColumnNames collisions", () => {
+  test("never reuses a name a later column already has", () => {
+    expect(uniqueColumnNames(["id", "id", "id (2)"])).toEqual(["id", "id (2)", "id (2) (2)"]);
+    expect(uniqueColumnNames(["a (2)", "a", "a"])).toEqual(["a (2)", "a", "a (3)"]);
+  });
+});
+
 describe("uniqueColumnNames", () => {
   test("names unnamed columns and de-duplicates", () => {
     expect(uniqueColumnNames(["", "", "id", "id"])).toEqual([

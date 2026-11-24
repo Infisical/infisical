@@ -77,7 +77,7 @@ To open a session, follow [Connect to an account](/documentation/platform/pam/ac
     The SQL editor shows the last result set a script returns, and lists `PRINT` output and other server messages under the results. Limits:
 
     - A script can run for up to 30 seconds
-    - If a query returns more than 1,000 rows, the SQL editor shows the first 1,000 rows and stops the script there, so statements after that query don't run
+    - If a query returns more than 1,000 rows or 16 MB of data, the SQL editor shows the rows up to that limit and stops the script there, so statements after that query don't run
     - If a `GO` batch fails, the batches after it don't run, and the error says which batches completed
 
     If a statement fails or you cancel a script, an open transaction stays open. Commit it or roll it back before you close the tab.

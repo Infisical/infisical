@@ -79,7 +79,7 @@ describe("runBatch", () => {
     const conn = createConnection([selectRows(MAX_ROWS + 500)]);
     const run = await runBatch(asConn(conn), "SELECT", { kind: "none" }, 30_000);
     expect(conn.cancelCount).toBe(1);
-    expect(run.stoppedAtLimit).toBe(true);
+    expect(run.stoppedAtLimit).toBe("rows");
     expect(run.outcome).toMatchObject({ kind: "rows", isTruncated: true });
     expect(run.outcome.kind === "rows" && run.outcome.rows.length).toBe(MAX_ROWS);
   });
@@ -93,7 +93,7 @@ describe("runBatch", () => {
       }
     ]);
     const run = await runBatch(asConn(conn), "SELECT", { kind: "none" }, 30_000);
-    expect(run.stoppedAtLimit).toBe(true);
+    expect(run.stoppedAtLimit).toBe("bytes");
     expect(run.outcome.kind === "rows" && run.outcome.rows.length).toBeLessThan(4);
   });
 
@@ -209,6 +209,22 @@ describe("runScript", () => {
     const result = await runScript(asConn(conn), "SELECT d, m");
     expect(result.outcome).toMatchObject({ kind: "rows", rows: [{ m: "1.2345" }], lossyColumns: ["d"] });
     expect(result.messages[0]).toContain("Some values in d are too large to show exactly");
+  });
+});
+
+describe("runScript size limit", () => {
+  test("names the byte limit and the rows actually kept", async () => {
+    const big = "x".repeat(Math.ceil(DATA_EXPLORER_MAX_RESULT_BYTES / 4));
+    const conn = createConnection([
+      (req, c) => {
+        req.emit("columnMetadata", [{ colName: "v", type: { name: "NVarChar" } }]);
+        for (let i = 0; i < 10 && !c.isCancelled(); i += 1) req.emit("row", [{ value: big }]);
+      }
+    ]);
+    const result = await runScript(asConn(conn), "SELECT v FROM t");
+    expect(result.messages).toEqual([
+      "Stopped after 3 rows because the result reached the 16 MB limit. Statements after this query did not run."
+    ]);
   });
 });
 

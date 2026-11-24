@@ -262,11 +262,12 @@ export const formatMssqlValue = (value: unknown, typeName: string, scale?: numbe
 
 // SQL Server allows unnamed and duplicate result columns, but rows are keyed by name
 export const uniqueColumnNames = (names: string[]): string[] => {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return names.map((raw) => {
     const base = raw || "(No column name)";
-    const count = seen.get(base) ?? 0;
-    seen.set(base, count + 1);
-    return count === 0 ? base : `${base} (${count + 1})`;
+    let name = base;
+    for (let n = 2; used.has(name); n += 1) name = `${base} (${n})`;
+    used.add(name);
+    return name;
   });
 };

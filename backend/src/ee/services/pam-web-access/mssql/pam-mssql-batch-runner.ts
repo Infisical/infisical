@@ -39,7 +39,13 @@ export type TBatchOutcome =
     }
   | { kind: "count"; rowCount: number };
 
-export type TBatchRun = { outcome: TBatchOutcome; stoppedAtLimit: boolean; hiddenResultSets: number };
+export type TResultLimit = "rows" | "bytes";
+
+export type TBatchRun = {
+  outcome: TBatchOutcome;
+  stoppedAtLimit: TResultLimit | null;
+  hiddenResultSets: number;
+};
 
 export type TBatchConnection = Pick<Connection, "execSqlBatch" | "cancel">;
 
@@ -58,7 +64,7 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
     let outcome = previous;
     let current: TResultSet | null = null;
     let procResultKept = false;
-    let stoppedAtLimit = false;
+    let stoppedAtLimit: TResultLimit | null = null;
     let timedOut = false;
     let hiddenResultSets = 0;
 
@@ -98,9 +104,9 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
       else resolve({ outcome, stoppedAtLimit, hiddenResultSets });
     });
 
-    const stopAtLimit = () => {
+    const stopAtLimit = (limit: TResultLimit) => {
       if (current) current.isTruncated = true;
-      stoppedAtLimit = true;
+      stoppedAtLimit = limit;
       conn.cancel();
     };
 
@@ -121,7 +127,7 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
       const rs = current;
       if (!rs || rs.isTruncated) return;
       if (rs.rows.length === MAX_ROWS) {
-        stopAtLimit();
+        stopAtLimit("rows");
         return;
       }
       const row: Record<string, unknown> = {};
@@ -131,7 +137,7 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
       });
       rs.bytes += estimateRowBytes(row);
       if (rs.bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
-        stopAtLimit();
+        stopAtLimit("bytes");
         return;
       }
       rs.rows.push(row);
@@ -200,7 +206,7 @@ export const runScript = async (
 
   let outcome: TBatchOutcome = { kind: "none" };
   let hiddenResultSets = 0;
-  let stoppedAtLimit = false;
+  let stoppedAtLimit: TResultLimit | null = null;
   try {
     for (let i = 0; i < batches.length; i += 1) {
       const remaining = deadline - Date.now();
@@ -216,7 +222,7 @@ export const runScript = async (
         hiddenResultSets += run.hiddenResultSets;
         outcome = run.outcome;
         if (run.stoppedAtLimit) {
-          stoppedAtLimit = true;
+          stoppedAtLimit = run.stoppedAtLimit;
           break;
         }
       } catch (err) {
@@ -236,9 +242,15 @@ export const runScript = async (
       `${hiddenResultSets} earlier result ${hiddenResultSets === 1 ? "set is" : "sets are"} not shown. Run each query on its own to see it.`
     );
   }
-  if (stoppedAtLimit) {
+  if (stoppedAtLimit === "rows") {
     messages.push(
       `Stopped after the first ${MAX_ROWS.toLocaleString("en-US")} rows. Statements after this query did not run.`
+    );
+  }
+  if (stoppedAtLimit === "bytes") {
+    const kept = outcome.kind === "rows" ? outcome.rows.length : 0;
+    messages.push(
+      `Stopped after ${kept.toLocaleString("en-US")} ${kept === 1 ? "row" : "rows"} because the result reached the ${DATA_EXPLORER_MAX_RESULT_BYTES / (1024 * 1024)} MB limit. Statements after this query did not run.`
     );
   }
   if (outcome.kind === "rows" && outcome.lossyColumns.length > 0) {
