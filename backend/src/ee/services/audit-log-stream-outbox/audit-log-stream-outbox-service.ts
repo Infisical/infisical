@@ -279,13 +279,6 @@ export const auditLogStreamOutboxServiceFactory = ({
   // can't hold the worker hostage. If rows remain when we bail, the next event
   // for the stream will debounce-enqueue another flush.
   const drainStream = async ({ streamId, orgId, provider }: TAuditLogStreamFlushJobData) => {
-    // From the primary, so delivery uses the destination and session activity settings saved together.
-    const stream = await auditLogStreamDAL.findById(streamId, auditLogStreamDAL.primaryNode());
-    if (!stream) {
-      logger.warn(`audit-log-stream-outbox: stream deleted, dropping flush [streamId=${streamId}]`);
-      return;
-    }
-
     const factory = LOG_STREAM_FACTORY_MAP[provider];
     if (!factory) {
       logger.error(`audit-log-stream-outbox: unknown provider [provider=${provider}] [streamId=${streamId}]`);
@@ -295,33 +288,46 @@ export const auditLogStreamOutboxServiceFactory = ({
     // A stream whose credentials can't be decrypted (eg its org KMS key is broken) goes through the
     // same claim, retry, drop and alert path as a failing endpoint. Throwing here instead would leave
     // its rows unclaimed, so they would never use up their attempts and nobody would be told.
-    let credentials: TAuditLogStreamCredentials = {} as TAuditLogStreamCredentials;
-    let credentialsError: Error | null = null;
-    try {
-      credentials = await decryptLogStreamCredentials({
-        encryptedCredentials: stream.encryptedCredentials,
-        orgId: stream.orgId,
-        kmsDataKeyService
-      });
-    } catch (error) {
-      // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.
-      logger.error(
-        error,
-        `audit-log-stream-outbox: failed to decrypt stream credentials [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
-      );
-      credentialsError = new Error(STREAM_CREDENTIALS_DECRYPT_MESSAGE);
-    }
+    let decrypted: { from: Buffer; credentials: TAuditLogStreamCredentials; error: Error | null } | null = null;
 
     const providerImpl = factory();
 
-    // "single" streams (legacy custom/cribl receivers) get one event per request; everything
-    // else gets a JSON array per request. Single mode treats each row as its own chunk.
-    const isSingleMode = stream.streamMode === StreamMode.Single;
-
-    // Current settings apply, since once a PAM admin turns activity off anyone with stream access can repoint it.
-    const sessionActivity = (stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
-
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
+      // From the primary for every batch, so delivery uses the destination and session activity settings saved together.
+      // eslint-disable-next-line no-await-in-loop
+      const stream = await auditLogStreamDAL.findById(streamId, auditLogStreamDAL.primaryNode());
+      if (!stream) {
+        logger.warn(`audit-log-stream-outbox: stream deleted, dropping flush [streamId=${streamId}]`);
+        return;
+      }
+
+      if (!decrypted?.from.equals(stream.encryptedCredentials)) {
+        decrypted = { from: stream.encryptedCredentials, credentials: {} as TAuditLogStreamCredentials, error: null };
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          decrypted.credentials = await decryptLogStreamCredentials({
+            encryptedCredentials: stream.encryptedCredentials,
+            orgId: stream.orgId,
+            kmsDataKeyService
+          });
+        } catch (error) {
+          // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.
+          logger.error(
+            error,
+            `audit-log-stream-outbox: failed to decrypt stream credentials [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
+          );
+          decrypted.error = new Error(STREAM_CREDENTIALS_DECRYPT_MESSAGE);
+        }
+      }
+      const { credentials, error: credentialsError } = decrypted;
+
+      // "single" streams (legacy custom/cribl receivers) get one event per request; everything
+      // else gets a JSON array per request. Single mode treats each row as its own chunk.
+      const isSingleMode = stream.streamMode === StreamMode.Single;
+
+      // Current settings apply, since once a PAM admin turns activity off anyone with stream access can repoint it.
+      const sessionActivity = (stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
+
       // eslint-disable-next-line no-await-in-loop
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;

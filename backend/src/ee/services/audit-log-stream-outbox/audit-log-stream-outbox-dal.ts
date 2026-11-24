@@ -339,10 +339,19 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteByStreamId = async (streamId: string, tx: Knex) => {
+    try {
+      await tx(TableName.AuditLogStreamOutbox).where({ streamId }).del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: deleteByStreamId" });
+    }
+  };
+
   return withTransaction(db, {
     batchInsert,
     markStreamFailing,
     clearStreamFailing,
+    deleteByStreamId,
     claimBatchForStream,
     commitDeliveryResult,
     recoverStaleClaims,

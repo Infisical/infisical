@@ -1,4 +1,5 @@
 import type { Agent } from "node:https";
+import { Readable } from "node:stream";
 
 import {
   DeleteObjectCommand,
@@ -9,6 +10,7 @@ import {
   S3ServiceException
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { DeserializeMiddleware } from "@smithy/types";
 
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { createS3Client } from "@app/lib/aws/s3";
@@ -80,6 +82,29 @@ export const readUpTo = async (body: AsyncIterable<Uint8Array>, maxBytes: number
   }
   return Buffer.concat(chunks).subarray(0, maxBytes);
 };
+
+async function* takeUpTo(body: AsyncIterable<Uint8Array>, maxBytes: number) {
+  let remaining = maxBytes;
+  for await (const chunk of body) {
+    if (chunk.length >= remaining) {
+      yield chunk.subarray(0, remaining);
+      return;
+    }
+    remaining -= chunk.length;
+    yield chunk;
+  }
+}
+
+// The SDK reads an error reply's whole body before it throws, so every reply is cut off before that.
+export const capResponseBody =
+  <Input extends object, Output extends object>(maxBytes: number): DeserializeMiddleware<Input, Output> =>
+  (next) =>
+  async (args) => {
+    const result = await next(args);
+    const response = result.response as { body?: unknown };
+    if (response.body instanceof Readable) response.body = Readable.from(takeUpTo(response.body, maxBytes));
+    return result;
+  };
 
 const buildClient = (config: TPamRecordingResolvedConfig, httpsAgent?: Agent) => {
   if (!config.region || !config.awsCredentials) {
@@ -184,6 +209,11 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
   readObject: async ({ config, objectKey, maxBytes }) => {
     if (!config.bucket) throw new BadRequestError({ message: "Bucket is required" });
     const client = buildClient(config, await config.getHttpsAgent?.());
+    client.middlewareStack.addRelativeTo(capResponseBody(maxBytes), {
+      name: "capResponseBody",
+      relation: "after",
+      toMiddleware: "deserializerMiddleware"
+    });
     const object = await client.send(
       new GetObjectCommand({ Bucket: config.bucket, Key: objectKey, Range: `bytes=0-${maxBytes - 1}` }),
       { abortSignal: AbortSignal.timeout(PAM_RECORDING_SERVER_READ_TIMEOUT_MS) }

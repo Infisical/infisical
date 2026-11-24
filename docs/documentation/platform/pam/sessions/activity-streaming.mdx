@@ -38,9 +38,9 @@ Deleting a stream doesn't need the PAM **Admin** role. Anyone with the **Edit** 
   </Step>
 </Steps>
 
-Infisical sends a session's activity in batches while the session runs, usually within 20 seconds of when it happens. Infisical doesn't send activity from before you turned on **Include PAM Session Activity**.
+Infisical sends a session's activity in batches while the session runs, usually within 20 seconds of when it happens. Activity the Gateway records before you turn on **Include PAM Session Activity** but uploads afterward is sent too.
 
-## What gets sent
+## Activity by account type
 
 | Account type | Sent for each session | Added with **Include Output** |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ The account's [template](/documentation/platform/pam/templates/overview) also ch
 
 ## Event format
 
-Session activity events have the same top-level fields as [audit log events](/documentation/platform/audit-log-streams/audit-log-streams#audit-logs-structure), so the rules your logging system uses to parse audit logs also parse session activity. Infisical delivers them in the same [batches](/documentation/platform/audit-log-streams/audit-log-streams#delivery-format), with the same [retries and failure alerts](/documentation/platform/audit-log-streams/audit-log-streams#delivery-reliability-and-failure-handling).
+Session activity events have the same top-level fields as [audit log events](/documentation/platform/audit-log-streams/audit-log-streams#audit-logs-structure), except `expiresAt`, `updatedAt`, and `userAgentType`, so the rules your logging system uses to parse audit logs can parse session activity too. Infisical delivers them in the same [batches](/documentation/platform/audit-log-streams/audit-log-streams#delivery-format), with the same [retries and failure alerts](/documentation/platform/audit-log-streams/audit-log-streams#delivery-reliability-and-failure-handling).
 
 ```json
 {
@@ -102,6 +102,6 @@ Session activity events have the same top-level fields as [audit log events](/do
 | `pam-session-activity-request` | An HTTP request | `method`, `url`, `requestId`, and `body` if the stream includes output |
 | `pam-session-activity-output` | Terminal output, sent only if the stream includes output | `output` and `channel` |
 | `pam-session-activity-response` | An HTTP response, sent only if the stream includes output | `status`, `requestId`, and `body` |
-| `pam-session-activity-skipped` | Activity too large to send, which you can still view in the session recording | `reason` and `chunkIndex` |
+| `pam-session-activity-skipped` | Activity too large to send, which you can still view in the session recording | `reason`, `chunkIndex`, and, if `reason` is `too-many-events`, `skippedEvents` |
 
 Every `eventMetadata` also identifies the session and account with `sessionId`, `accountId`, `accountName`, `accountType`, `folderName`, and `host`. If a value is longer than 16,384 characters, Infisical shortens it and adds ` [truncated]` at the end.

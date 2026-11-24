@@ -8,4 +8,4 @@ export const PAM_RECORDING_MAX_CHUNK_BYTES = 256 * 1024 * 1024;
 // Server-side readers hold several copies of a chunk while decrypting and parsing it.
 export const PAM_RECORDING_MAX_SERVER_READ_BYTES = 16 * 1024 * 1024;
 
-export const PAM_RECORDING_SERVER_READ_TIMEOUT_MS = 60_000;
+export const PAM_RECORDING_SERVER_READ_TIMEOUT_MS = 20_000;

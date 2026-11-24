@@ -9,9 +9,10 @@ import {
   encryptLogStreamCredentials,
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
+import { TAuditLogStreamOutboxDALFactory } from "../audit-log-stream-outbox/audit-log-stream-outbox-dal";
 import { TPamProjectResolverFactory } from "../pam-project/pam-project-resolver";
 import { PamProductRole } from "../pam/pam-enums";
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -27,6 +28,7 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
+  auditLogStreamOutboxDAL: Pick<TAuditLogStreamOutboxDALFactory, "deleteByStreamId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
@@ -37,6 +39,7 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
+  auditLogStreamOutboxDAL,
   permissionService,
   licenseService,
   kmsDataKeyService,
@@ -266,7 +269,7 @@ export const auditLogStreamServiceFactory = ({
       const current = await auditLogStreamDAL.lockById(logStreamId, tx);
       if (!current) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
       if (!checkedPamAccess && receivesPamSessionActivity(current.filters)) {
-        throw new BadRequestError({
+        throw new ConflictError({
           message:
             "PAM session activity was turned on for this log stream while you were updating it. Reload the stream and try again."
         });
@@ -302,7 +305,11 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
+    // Its queued events go with it, since no drain or prune ever reaches a deleted stream's rows.
+    const deletedLogStream = await auditLogStreamDAL.transaction(async (tx) => {
+      await auditLogStreamOutboxDAL.deleteByStreamId(logStreamId, tx);
+      return auditLogStreamDAL.deleteById(logStreamId, tx);
+    });
 
     return decryptLogStream(deletedLogStream, kmsDataKeyService);
   };

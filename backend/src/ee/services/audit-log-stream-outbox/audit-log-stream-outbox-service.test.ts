@@ -272,6 +272,34 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
   });
 
+  test("uses session activity settings saved during a job for its later batches", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const activity = buildRow({
+      id: 2,
+      payload: { id: "act-1", eventType: "pam-session-activity-command", eventMetadata: { command: "ls" } } as never
+    });
+    const stream = {
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch
+    };
+
+    auditLogStreamDAL.findById
+      .mockResolvedValueOnce(stream)
+      .mockResolvedValueOnce({ ...stream, filters: { pamSessionActivity: { includeOutput: false } } });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow()])
+      .mockResolvedValueOnce([activity])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenLastCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
+  });
+
   test("commits delivered rows on the success path", async () => {
     const { service, auditLogStreamOutboxDAL } = createService();
 
