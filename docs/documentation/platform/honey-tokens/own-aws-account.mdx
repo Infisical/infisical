@@ -1,15 +1,12 @@
 ---
-title: "AWS honey tokens setup"
-sidebarTitle: "Setup"
-description: "One-time organization setup for AWS honey tokens."
+title: "Use your own AWS account for honey tokens"
+sidebarTitle: "Your own AWS account"
+description: "Keep honey token decoy credentials in an AWS account that your organization owns."
 ---
 
-<Info>
-  This setup is performed **once per organization** by an admin. After
-  completing these steps, any project member with the appropriate [permissions](/documentation/platform/honey-tokens/overview#permissions) can [create honey
-  tokens](/documentation/platform/honey-tokens/aws/usage) without repeating this
-  process.
-</Info>
+By default on Infisical Cloud, Infisical creates the decoy credentials for [honey tokens](/documentation/platform/honey-tokens/usage) in an AWS account that Infisical manages. To keep the decoy credentials in an AWS account that your organization owns, an organization admin connects that account once. After that, any project member who can create honey tokens can choose your AWS account for each new honey token.
+
+If you self-host Infisical, you need to connect your own AWS account before anyone can create honey tokens.
 
 ## Prerequisites
 
@@ -131,4 +128,4 @@ aws cloudformation describe-stacks \
   --query "Stacks[0].StackStatus"
 ```
 
-You can only [create honey tokens](/documentation/platform/honey-tokens/aws/usage) after the stack status is **Verified**.
+After the stack status is **Verified**, project members can select **Self hosted** as the **AWS account** when they [create a honey token](/documentation/platform/honey-tokens/usage#creating-a-honey-token).
