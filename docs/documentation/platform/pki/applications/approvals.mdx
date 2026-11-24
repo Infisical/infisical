@@ -31,11 +31,15 @@ Approval workflows add a human review step before certificates are issued or rev
 
 An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of three actions:
 
-- **Issuance:** new certificates, and the [renewals](#renewals) that change a certificate, use a CSR, or renew an imported or discovered certificate
+- **Issuance:** new certificates, and the [renewals](#renewals) that change a certificate, come with a new CSR, or renew an imported or discovered certificate
 - **Renewal:** every renewal, including automatic renewals, EST re-enrollment, and SCEP renewal requests that a device signs with its existing certificate instead of a challenge password
 - **Revocation:** revoking certificates
 
-ACME clients, and SCEP clients that renew with a challenge password such as Microsoft Intune, request a new certificate instead of renewing one, so an **Issuance** policy covers them.
+These requests get a new certificate instead of a renewal, so an **Issuance** policy covers them:
+
+- ACME orders
+- SCEP re-enrollments sent as a regular enrollment request with a valid challenge password
+- EST re-enrollments with a certificate from another profile or Application, or one Infisical doesn't hold
 
 When a certificate request is made through an enrollment method:
 
