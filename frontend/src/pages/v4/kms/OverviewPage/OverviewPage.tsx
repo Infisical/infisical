@@ -17,11 +17,6 @@ import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import FileSaver from "file-saver";
 import { FileSignatureIcon, LockOpenIcon } from "lucide-react";
 
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -29,6 +24,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectName } from "../../shell/resource-name";
 import { ImportKeysDialog } from "../keys/import-dialog";
@@ -54,7 +50,6 @@ import {
 } from "../keys/shared";
 
 const MAX_SELECTED = 100;
-const PAGE_SIZE_PREFERENCE = "cmekClientTable";
 
 type Operation = "encrypt" | "decrypt" | "sign" | "verify" | "generateMac" | "verifyMac";
 type Open =
@@ -388,9 +383,7 @@ export const OverviewPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search.trim());
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() =>
-    getUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, 20)
-  );
+  const [pageSize, setPageSize] = usePageSize("cmekClientTable", 20);
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState<Open>();
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
@@ -609,7 +602,6 @@ export const OverviewPage = () => {
                 pageSizeOptions={[10, 20, 50, 100]}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
-                  setUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, size);
                   changePage(1);
                 }}
               />
