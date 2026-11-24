@@ -25,7 +25,10 @@ import { TDynamicSecretLeaseConfig } from "./dynamic-secret-lease-types";
 
 type TDynamicSecretLeaseQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findById" | "deleteById" | "find" | "updateById">;
+  dynamicSecretLeaseDAL: Pick<
+    TDynamicSecretLeaseDALFactory,
+    "findById" | "deleteById" | "find" | "updateById" | "transaction"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
@@ -178,7 +181,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         const { leaseId, isRetry } = data as { leaseId: string; isRetry?: boolean };
         logger.info("Dynamic secret lease revocation started: ", leaseId, jobId);
 
-        const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
+        const dynamicSecretLease = await dynamicSecretLeaseDAL.transaction((tx) =>
+          dynamicSecretLeaseDAL.findById(leaseId, tx)
+        );
         if (!dynamicSecretLease) {
           return;
         }

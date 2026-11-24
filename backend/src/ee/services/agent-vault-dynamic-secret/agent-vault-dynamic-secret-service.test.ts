@@ -416,7 +416,6 @@ describe("a lease resolve creates", () => {
 
   test("is given back when the service was deleted or switched secrets meanwhile", async () => {
     const deleted = setup({ storedService: null });
-    const before = Date.now();
     expect(await resolve(deleted.service)).toEqual({ problem: expect.stringContaining("deleted") as string });
     expect(deleted.setLeaseRevocation).toHaveBeenCalledWith(
       "lease-new",
@@ -424,8 +423,6 @@ describe("a lease resolve creates", () => {
       expect.any(Date),
       "lease-new-agent-vault-revoke"
     );
-    const [[, , revokeAt]] = deleted.setLeaseRevocation.mock.calls as unknown as [string, string, Date][];
-    expect(revokeAt.getTime() - before).toBeGreaterThanOrEqual(MINUTE);
 
     const switched = setup({
       storedService: {

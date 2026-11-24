@@ -65,8 +65,12 @@ const createHarness = ({ staleFlag }: { staleFlag?: boolean } = {}) => {
 
   const cfg = { ...dynamicSecretCfg };
   const leases = new Map<string, ReturnType<typeof lease>>();
+  const notOnReplica = new Set<string>();
+  const primary = { primary: true };
   const dynamicSecretLeaseDAL = {
-    findById: vi.fn(async (id: string) => {
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(primary)),
+    findById: vi.fn(async (id: string, tx?: unknown) => {
+      if (tx !== primary && notOnReplica.has(id)) return undefined;
       const found = leases.get(id);
       if (!found) return undefined;
       return { ...found, dynamicSecret: { ...cfg, revocationFailing: staleFlag ?? cfg.revocationFailing } };
@@ -140,6 +144,10 @@ const createHarness = ({ staleFlag }: { staleFlag?: boolean } = {}) => {
     });
 
   const addLease = (id: string) => leases.set(id, lease(id));
+  const addLeaseNotOnReplica = (id: string) => {
+    addLease(id);
+    notOnReplica.add(id);
+  };
 
   return {
     queueService,
@@ -148,6 +156,7 @@ const createHarness = ({ staleFlag }: { staleFlag?: boolean } = {}) => {
     dynamicSecretDAL,
     dynamicSecretLeaseDAL,
     addLease,
+    addLeaseNotOnReplica,
     runScheduled,
     runRetry,
     runPruning
@@ -300,6 +309,16 @@ describe("dynamic secret lease revocation metrics", () => {
         expect.objectContaining({ message: "db pool timeout" }),
         expect.stringContaining("lease-1")
       );
+    });
+
+    test("revokes a lease the read replica hasn't caught up with yet", async () => {
+      const harness = createHarness();
+      harness.addLeaseNotOnReplica("lease-1");
+
+      await harness.runScheduled("lease-1");
+
+      expect(harness.revoke).toHaveBeenCalledTimes(1);
+      expect(harness.dynamicSecretLeaseDAL.deleteById).toHaveBeenCalledWith("lease-1");
     });
 
     test("records nothing when the lease no longer exists", async () => {

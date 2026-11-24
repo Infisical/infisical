@@ -39,8 +39,6 @@ import {
 
 const LEASE_LOCK_DURATION_MS = 90 * 1000;
 const LEASE_LOCK_SETTINGS = { retryCount: 12, retryDelay: 200, retryJitter: 50 };
-// The revocation worker reads the lease on a replica, which skips a lease it can't see yet.
-const LEASE_REVOCATION_DELAY_MS = 60 * 1000;
 // After a failed lease, the next one waits 30 s, doubling per failure up to 10 minutes, so an outage
 // doesn't turn every proxy poll into a provider call. The failure count resets after an hour without one.
 const LEASE_BACKOFF_BASE_MS = 30 * 1000;
@@ -156,7 +154,7 @@ export const agentVaultDynamicSecretServiceFactory = ({
     dynamicSecretQueueService.setLeaseRevocation(
       lease.id,
       lease.dynamicSecretId,
-      new Date(Date.now() + LEASE_REVOCATION_DELAY_MS),
+      new Date(),
       `${lease.id}-agent-vault-revoke`
     );
 
