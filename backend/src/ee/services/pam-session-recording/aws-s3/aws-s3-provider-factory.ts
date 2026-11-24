@@ -1,4 +1,5 @@
 import type { Agent } from "node:https";
+import { Readable } from "node:stream";
 
 import {
   DeleteObjectCommand,
@@ -9,6 +10,7 @@ import {
   S3ServiceException
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { DeserializeMiddleware } from "@smithy/types";
 
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { createS3Client } from "@app/lib/aws/s3";
@@ -22,7 +24,11 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { getS3CompatibleConnectionConfig } from "@app/services/app-connection/s3-compatible";
 
-import { PAM_RECORDING_MAX_CHUNK_BYTES, PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS } from "../pam-recording-constants";
+import {
+  PAM_RECORDING_MAX_CHUNK_BYTES,
+  PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS,
+  PAM_RECORDING_SERVER_READ_TIMEOUT_MS
+} from "../pam-recording-constants";
 import {
   buildExternalChunkObjectKey,
   normalizeKeyPrefix,
@@ -64,6 +70,41 @@ export const resolveS3RecordingAccess = async (
   );
   return { region, awsCredentials: awsConfig.credentials };
 };
+
+// Some S3-compatible endpoints ignore the requested range, so the body is cut off here as well.
+export const readUpTo = async (body: AsyncIterable<Uint8Array>, maxBytes: number) => {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of body) {
+    chunks.push(Buffer.from(chunk));
+    total += chunk.length;
+    if (total >= maxBytes) break;
+  }
+  return Buffer.concat(chunks).subarray(0, maxBytes);
+};
+
+async function* takeUpTo(body: AsyncIterable<Uint8Array>, maxBytes: number) {
+  let remaining = maxBytes;
+  for await (const chunk of body) {
+    if (chunk.length >= remaining) {
+      yield chunk.subarray(0, remaining);
+      return;
+    }
+    remaining -= chunk.length;
+    yield chunk;
+  }
+}
+
+// The SDK reads an error reply's whole body before it throws, so every reply is cut off before that.
+export const capResponseBody =
+  <Input extends object, Output extends object>(maxBytes: number): DeserializeMiddleware<Input, Output> =>
+  (next) =>
+  async (args) => {
+    const result = await next(args);
+    const response = result.response as { body?: unknown };
+    if (response.body instanceof Readable) response.body = Readable.from(takeUpTo(response.body, maxBytes));
+    return result;
+  };
 
 const buildClient = (config: TPamRecordingResolvedConfig, httpsAgent?: Agent) => {
   if (!config.region || !config.awsCredentials) {
@@ -162,6 +203,23 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
     const command = new GetObjectCommand({ Bucket: config.bucket, Key: objectKey });
     const url = await getSignedUrl(client, command, { expiresIn: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS });
     return { url, expiresInSeconds: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS };
+  },
+
+  // The bucket is customer-controlled, so both the bytes read and the time spent are bounded.
+  readObject: async ({ config, objectKey, maxBytes }) => {
+    if (!config.bucket) throw new BadRequestError({ message: "Bucket is required" });
+    const client = buildClient(config, await config.getHttpsAgent?.());
+    client.middlewareStack.addRelativeTo(capResponseBody(maxBytes), {
+      name: "capResponseBody",
+      relation: "after",
+      toMiddleware: "deserializerMiddleware"
+    });
+    const object = await client.send(
+      new GetObjectCommand({ Bucket: config.bucket, Key: objectKey, Range: `bytes=0-${maxBytes - 1}` }),
+      { abortSignal: AbortSignal.timeout(PAM_RECORDING_SERVER_READ_TIMEOUT_MS) }
+    );
+    if (!object.Body) throw new BadRequestError({ message: `Recording object '${objectKey}' has no content` });
+    return readUpTo(object.Body as AsyncIterable<Uint8Array>, maxBytes);
   },
 
   deleteSession: async ({ config, projectId, sessionId }) => {
