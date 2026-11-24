@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
@@ -31,6 +32,7 @@ import {
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { extractSubjectAltNames } from "@app/services/certificate-common/certificate-csr-utils";
 import {
   TProfileCustomExtension,
   TResolvedCustomExtension
@@ -660,6 +662,19 @@ export const certificateRenewalServiceFactory = ({
     if (originatingRequestCsr) return originatingRequestCsr;
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId });
     return certificateBody?.importedCsr ?? null;
+  };
+
+  const $readCertificateAltNames = async ({ id, projectId }: { id: string; projectId: string }) => {
+    const certificateBody = await certificateBodyDAL.findOne({ certId: id });
+    if (!certificateBody?.encryptedCertificate) return [];
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService })
+    });
+    const certificate = new x509.X509Certificate(
+      await kmsDecryptor({ cipherTextBlob: certificateBody.encryptedCertificate })
+    );
+    const sanExtension = certificate.getExtension("2.5.29.17");
+    return sanExtension ? extractSubjectAltNames(sanExtension.value) : [];
   };
 
   const $loadRenewalSubject = async (
@@ -1368,7 +1383,9 @@ export const certificateRenewalServiceFactory = ({
           commonName: originatingRequest.exists
             ? originatingRequest.commonName
             : certForLicenseChecks.commonName || null,
-          altNames: resolveRenewalAltNames(originatingRequest, certForLicenseChecks.altNames)
+          altNames: originatingRequest.exists
+            ? resolveRenewalAltNames(originatingRequest, certForLicenseChecks.altNames)
+            : await $readCertificateAltNames(certForLicenseChecks)
         };
         keySource = CertificateRenewalKeySource.Csr;
         csr = storedCsr;

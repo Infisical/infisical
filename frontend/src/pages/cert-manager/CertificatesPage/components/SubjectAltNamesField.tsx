@@ -180,14 +180,21 @@ export const SubjectAltNamesField = ({
                       allowedSanTypes.length > 0
                         ? allowedSanTypes[0]
                         : CertSubjectAlternativeNameType.DNS_NAME;
-                    if (isAtSanLimit) {
+                    const commonNameRows = currentValues.filter((row) => row.isFromCommonName);
+                    if (isAtSanLimit && !commonNameRows.length) {
                       openUpgradeGate({
                         intent: CertificateIssuanceLimitsUpgradeIntent,
                         paywallKey: "cert-manager.certificate-san-limit"
                       });
                       return;
                     }
-                    onChange([...currentValues, { type: defaultType, value: "" }]);
+                    if (isAtSanLimit) {
+                      commonNameRows.forEach((row) => onDismissCommonNameSan?.(row.type));
+                    }
+                    onChange([
+                      ...currentValues.filter((row) => !isAtSanLimit || !row.isFromCommonName),
+                      { type: defaultType, value: "" }
+                    ]);
                   }}
                 >
                   <Plus className="size-4" /> Add SAN
