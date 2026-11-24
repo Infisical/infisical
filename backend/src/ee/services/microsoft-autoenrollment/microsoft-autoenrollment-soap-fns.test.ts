@@ -149,7 +149,7 @@ describe("SOAP response builders", () => {
   });
 
   const buildTemplate = (privateKey: TTemplatePrivateKey) => ({
-    templateOid: "1.3.6.1.4.1.99999.1.1",
+    templateOid: "1.3.6.1.4.1.67766.1.1",
     templateName: "web-servers",
     validitySeconds: 2592000,
     renewalPeriodSeconds: 3628800,
@@ -177,7 +177,7 @@ describe("SOAP response builders", () => {
       "<oID><value>2.16.840.1.101.3.4.2.1</value><group>1</group><oIDReferenceID>1</oIDReferenceID>"
     );
     expect(xml).toContain(
-      "<oID><value>1.3.6.1.4.1.99999.1.1</value><group>9</group><oIDReferenceID>2</oIDReferenceID>"
+      "<oID><value>1.3.6.1.4.1.67766.1.1</value><group>9</group><oIDReferenceID>2</oIDReferenceID>"
     );
   });
 
@@ -218,7 +218,7 @@ describe("SOAP response builders", () => {
     expect(xml).toContain("<hashAlgorithmOIDReference>2</hashAlgorithmOIDReference>");
     expect(xml).toContain("<policyOIDReference>3</policyOIDReference>");
     expect(xml).toContain(
-      "<oID><value>1.3.6.1.4.1.99999.1.1</value><group>9</group><oIDReferenceID>3</oIDReferenceID>"
+      "<oID><value>1.3.6.1.4.1.67766.1.1</value><group>9</group><oIDReferenceID>3</oIDReferenceID>"
     );
   });
 

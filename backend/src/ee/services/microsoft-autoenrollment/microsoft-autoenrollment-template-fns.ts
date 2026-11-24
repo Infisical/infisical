@@ -24,7 +24,7 @@ import {
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
 
-const MICROSOFT_AUTOENROLLMENT_PEN = "99999";
+const MICROSOFT_AUTOENROLLMENT_PEN = "67766";
 
 const DEFAULT_MINIMAL_KEY_LENGTH = 2048;
 
