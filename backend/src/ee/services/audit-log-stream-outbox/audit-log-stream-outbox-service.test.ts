@@ -101,7 +101,8 @@ const createService = () => {
       dropped: []
     })),
     findStreamsWithOverdueRows: vi.fn(async () => []),
-    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
+    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
+    deleteOrphanedRows: vi.fn(async () => 0)
   };
 
   const auditLogStreamDAL = {
@@ -493,7 +494,8 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       commitDeliveryResult: vi.fn(async () => undefined),
       recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
       findStreamsWithOverdueRows: vi.fn(async () => []),
-      deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
+      deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
+      deleteOrphanedRows: vi.fn(async () => 0)
     };
 
     const auditLogStreamDAL = {
@@ -706,6 +708,7 @@ describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
     await service.pruneDeliveredRows();
 
     expect(auditLogStreamOutboxDAL.deleteDeliveredOlderThan).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.deleteOrphanedRows).toHaveBeenCalledTimes(1);
     const [retentionMs] = auditLogStreamOutboxDAL.deleteDeliveredOlderThan.mock.calls[0];
     // Retention must comfortably outlive the ~5s ingest-stream trim window so the
     // delivered rows still serve their dedup-guard purpose — guards against accidental

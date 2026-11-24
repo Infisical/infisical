@@ -28,7 +28,6 @@ const storedCredentials = vi.fn<() => TSplunkProviderCredentials>();
 vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/ee/services/audit-log-stream/audit-log-stream-fns")>()),
   decryptLogStreamCredentials: async () => storedCredentials(),
-  decryptLogStream: async (logStream: object) => ({ ...logStream, credentials: storedCredentials() }),
   encryptLogStreamCredentials: async () => Buffer.from("encrypted")
 }));
 
@@ -206,13 +205,6 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
       primaryNode: vi.fn(),
       lockById: vi.fn(async () => ({ id: STREAM_ID, filters: lockedFilters })),
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
-      deleteById: vi.fn(async () => ({
-        id: STREAM_ID,
-        orgId: ORG_ID,
-        provider: LogProvider.Splunk,
-        encryptedCredentials: Buffer.from("encrypted"),
-        filters: storedFilters
-      })),
       create: vi.fn(async () => ({ id: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Splunk })),
       find: vi.fn(async () => [])
     };
@@ -225,23 +217,15 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
       return { hasRole: (role: string) => pamRole === "admin" && role === PamProductRole.Admin };
     });
 
-    const auditLogStreamOutboxDAL = { deleteByStreamId: vi.fn(async () => undefined) };
-
     const deps = {
       auditLogStreamDAL,
-      auditLogStreamOutboxDAL,
       licenseService,
       permissionService: { getOrgPermission: vi.fn(async () => ({ permission: allowAll })), getProjectPermission },
       kmsDataKeyService: {},
       pamProjectResolver: { findDefaultProjectId: vi.fn(async () => "pam-project") }
     } as unknown as TAuditLogStreamServiceFactoryDep;
 
-    return {
-      service: auditLogStreamServiceFactory(deps),
-      auditLogStreamDAL,
-      auditLogStreamOutboxDAL,
-      getProjectPermission
-    };
+    return { service: auditLogStreamServiceFactory(deps), auditLogStreamDAL, getProjectPermission };
   };
 
   beforeEach(() => {
@@ -280,19 +264,6 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
       service.updateById({ logStreamId: STREAM_ID, provider: LogProvider.Splunk, credentials }, actor)
     ).rejects.toThrow(ConflictError);
     expect(auditLogStreamDAL.updateById).not.toHaveBeenCalled();
-  });
-
-  test("deletes a stream's queued events with it, without needing a PAM admin", async () => {
-    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL } = buildPamService({
-      pamRole: "member",
-      storedFilters: sessionActivity
-    });
-    storedCredentials.mockReturnValue(credentials);
-
-    await service.deleteById(STREAM_ID, LogProvider.Splunk, actor);
-
-    expect(auditLogStreamDAL.deleteById).toHaveBeenCalledWith(STREAM_ID);
-    expect(auditLogStreamOutboxDAL.deleteByStreamId).toHaveBeenCalledWith(STREAM_ID);
   });
 
   test("leaves streams without session activity to the org permission alone", async () => {

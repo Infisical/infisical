@@ -20,7 +20,7 @@ export type TInsertOutboxRow = {
 
 const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
 const STALE_SWEEP_STATEMENT_TIMEOUT_MS = 30_000;
-const STREAM_PURGE_STATEMENT_TIMEOUT_MS = 30_000;
+const ORPHAN_PRUNE_STATEMENT_TIMEOUT_MS = 30_000;
 
 export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const batchInsert = async (rows: TInsertOutboxRow[], tx?: Knex) => {
@@ -340,20 +340,31 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteByStreamId = async (streamId: string, batchSize = 10_000) => {
+  // A deleted stream's rows have no drain or delivered-row prune left to remove them.
+  const deleteOrphanedRows = async (batchSize = 10_000, maxBatches = 100): Promise<number> => {
     try {
-      let deleted: number;
-      do {
+      let total = 0;
+      for (let i = 0; i < maxBatches; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        deleted = await db.transaction(async (trx): Promise<number> => {
-          await trx.raw(`SET LOCAL statement_timeout = ${STREAM_PURGE_STATEMENT_TIMEOUT_MS}`);
+        const deleted = await db.transaction(async (trx): Promise<number> => {
+          await trx.raw(`SET LOCAL statement_timeout = ${ORPHAN_PRUNE_STATEMENT_TIMEOUT_MS}`);
           return trx(TableName.AuditLogStreamOutbox)
-            .whereIn("id", trx(TableName.AuditLogStreamOutbox).where({ streamId }).select("id").limit(batchSize))
+            .whereIn("id", function selectOrphanedIds() {
+              void this.from(`${TableName.AuditLogStreamOutbox} as o`)
+                .select("o.id")
+                .whereNotExists(function streamExists() {
+                  void this.from(TableName.AuditLogStream).whereRaw(`"${TableName.AuditLogStream}".id = o."streamId"`);
+                })
+                .limit(batchSize);
+            })
             .del();
         });
-      } while (deleted === batchSize);
+        total += deleted;
+        if (deleted < batchSize) break;
+      }
+      return total;
     } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: deleteByStreamId" });
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: deleteOrphanedRows" });
     }
   };
 
@@ -361,7 +372,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     batchInsert,
     markStreamFailing,
     clearStreamFailing,
-    deleteByStreamId,
+    deleteOrphanedRows,
     claimBatchForStream,
     commitDeliveryResult,
     recoverStaleClaims,

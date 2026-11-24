@@ -582,6 +582,10 @@ export const auditLogStreamOutboxServiceFactory = ({
         `audit-log-stream-outbox: pruned delivered rows [deleted=${deleted}] [retentionMs=${DELIVERED_RETENTION_MS}]`
       );
     }
+    const orphaned = await auditLogStreamOutboxDAL.deleteOrphanedRows();
+    if (orphaned > 0) {
+      logger.info(`audit-log-stream-outbox: pruned rows of deleted streams [deleted=${orphaned}]`);
+    }
   };
 
   return {

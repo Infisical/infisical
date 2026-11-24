@@ -2170,7 +2170,6 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    auditLogStreamOutboxDAL,
     kmsDataKeyService,
     pamProjectResolver
   });

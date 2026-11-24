@@ -10,10 +10,8 @@ import {
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
-import { TAuditLogStreamOutboxDALFactory } from "../audit-log-stream-outbox/audit-log-stream-outbox-dal";
 import { TPamProjectResolverFactory } from "../pam-project/pam-project-resolver";
 import { PamProductRole } from "../pam/pam-enums";
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -29,7 +27,6 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
-  auditLogStreamOutboxDAL: Pick<TAuditLogStreamOutboxDALFactory, "deleteByStreamId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
@@ -40,7 +37,6 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
-  auditLogStreamOutboxDAL,
   permissionService,
   licenseService,
   kmsDataKeyService,
@@ -307,15 +303,6 @@ export const auditLogStreamServiceFactory = ({
     }
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
-    // Its queued events go too, since no drain or prune ever reaches a deleted stream's rows.
-    await auditLogStreamOutboxDAL
-      .deleteByStreamId(logStreamId)
-      .catch((error) =>
-        logger.error(
-          error,
-          `audit-log-stream: failed to purge a deleted stream's queued events [streamId=${logStreamId}]`
-        )
-      );
 
     return decryptLogStream(deletedLogStream, kmsDataKeyService);
   };
