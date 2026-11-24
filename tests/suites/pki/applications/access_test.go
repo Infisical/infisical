@@ -1,6 +1,7 @@
 package applications_test
 
 import (
+	"math/big"
 	"net/http"
 	"testing"
 
@@ -48,7 +49,9 @@ func TestApplicationAccess_Operator(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "renewing: %s", apierr.Body(res.Body))
 		renewed := pki.ParseLeaf(t, res.JSON200.Certificate)
 		require.Equal(t, []string{name}, renewed.DNSNames)
-		require.Equal(t, res.JSON200.SerialNumber, renewed.SerialNumber.Text(16))
+		serial, ok := new(big.Int).SetString(res.JSON200.SerialNumber, 16)
+		require.Truef(t, ok, "serial %q is not hex", res.JSON200.SerialNumber)
+		require.Zero(t, serial.Cmp(renewed.SerialNumber))
 		require.NotEqual(t, cert.SerialNumber, res.JSON200.SerialNumber)
 	})
 
