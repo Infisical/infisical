@@ -13,6 +13,7 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -55,6 +56,7 @@ type TAwsKmsCaKeySourceDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: TLicenseService;
 };
@@ -72,6 +74,7 @@ export const awsKmsCaKeySourceFactory = ({
   appConnectionDAL,
   appConnectionService,
   kmsDataKeyService,
+  instanceConfigService,
   projectDAL,
   licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
@@ -89,6 +92,7 @@ export const awsKmsCaKeySourceFactory = ({
     const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
     const awsConfig = await getAwsConnectionConfig(
       { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+      instanceConfigService,
       region as AWSRegion
     );
 

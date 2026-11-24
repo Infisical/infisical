@@ -58,7 +58,7 @@ export type TPreparedCodeSigningCertificate =
 type TDigiCertCodeSigningFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOneLiveFirst">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -375,12 +375,12 @@ export const digiCertCodeSigningFns = ({
       message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
     });
 
-    const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
+    const existingCert = await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber, caId: ca.id });
     if (existingCert) {
-      if (existingCert.caId !== ca.id) throw differentCaError;
       assertCertificateNotDeleted(existingCert, "Request a new code signing certificate instead.");
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
+    if (await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber })) throw differentCaError;
 
     const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
@@ -431,10 +431,14 @@ export const digiCertCodeSigningFns = ({
       existingCertificateId: null,
       insert,
       findConcurrentInsert: async () => {
-        const concurrentCert = await certificateDAL.transaction((tx) =>
-          certificateDAL.findOne({ serialNumber: certObj.serialNumber }, tx)
-        );
-        if (concurrentCert && concurrentCert.caId !== ca.id) throw differentCaError;
+        const { concurrentCert, otherCaCert } = await certificateDAL.transaction(async (tx) => ({
+          concurrentCert: await certificateDAL.findOneLiveFirst(
+            { serialNumber: certObj.serialNumber, caId: ca.id },
+            tx
+          ),
+          otherCaCert: await certificateDAL.findOneLiveFirst({ serialNumber: certObj.serialNumber }, tx)
+        }));
+        if (!concurrentCert && otherCaCert) throw differentCaError;
         return concurrentCert?.id ?? null;
       }
     };

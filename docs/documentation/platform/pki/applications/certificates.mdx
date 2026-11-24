@@ -68,6 +68,12 @@ Select **Import** on the Certificates tab to bring in a certificate you already 
 
 A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
 
+### Importing a deleted certificate again
+
+You can import a deleted certificate again. It's added as a new certificate, and the deleted one stays in the inventory. A certificate with a revocation recorded in your organization can't be imported.
+
+If you import it into a profile on the same certificate authority as the deleted certificate, revoking either certificate revokes both. So when you import it into a different Application or profile than the one it was deleted from, the import needs permission to revoke the deleted certificate, and if a [revocation approval policy](/documentation/platform/pki/applications/approvals#revocation) covers the deleted certificate, the Application and profile you import into must be covered by the same policy.
+
 ### Managing an imported certificate
 
 An imported certificate is tracked for visibility and expiry alerts. Renewal, reissue and revocation stay wherever it was issued.
@@ -151,6 +157,8 @@ Both automatic types reissue the certificate exactly as it is. To change the sub
 
 Revoke a certificate when it's compromised or no longer needed. Specify a [reason code](https://datatracker.ietf.org/doc/html/rfc5280#section-5.3.1) (key compromise, superseded, etc.).
 
+If a [revocation policy](/documentation/platform/pki/applications/approvals#revocation) covers the certificate's profile, revoking the certificate creates an approval request, and Infisical doesn't revoke the certificate for that request until the request is approved.
+
 Revoked certificates are added to the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution). Verify revocation status:
 
 ```bash
@@ -170,7 +178,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
     Get notified before certificates expire.
   </Card>
   <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Require human review before issuance.
+    Require human review before issuance or revocation.
   </Card>
   <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Configure how certificates are requested.

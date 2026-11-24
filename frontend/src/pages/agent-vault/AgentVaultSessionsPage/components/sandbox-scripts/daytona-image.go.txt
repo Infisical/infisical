@@ -1,0 +1,32 @@
+// sandbox_image.go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/daytona/clients/sdk-go/pkg/daytona"
+	sdkerrors "github.com/daytona/clients/sdk-go/pkg/errors"
+	"github.com/daytona/clients/sdk-go/pkg/types"
+)
+
+const snapshot = "agent-vault-agent"
+
+func ensureSnapshot(ctx context.Context, client *daytona.Client) error {
+	_, err := client.Snapshot.Get(ctx, snapshot)
+	if !errors.Is(err, sdkerrors.ErrNotFound) {
+		return err
+	}
+	image := daytona.Base("node:24-bookworm-slim").
+		Run("apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*").
+		Run("npm install -g @infisical/cli @anthropic-ai/claude-code")
+	_, logs, err := client.Snapshot.Create(ctx, &types.CreateSnapshotParams{Name: snapshot, Image: image})
+	if err != nil {
+		return err
+	}
+	for line := range logs {
+		fmt.Println(line)
+	}
+	return nil
+}

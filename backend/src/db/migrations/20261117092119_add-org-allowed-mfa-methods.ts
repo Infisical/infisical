@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 // Expand step of the move from one enforced method (selectedMfaMethod) to an allowlist.
-// A later migration needs to drop selectedMfaMethod once nothing writes to it
+// 20261120120000_drop-org-selected-mfa-method drops selectedMfaMethod.
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.Organization, "allowedMfaMethods"))) {
     await knex.schema.alterTable(TableName.Organization, (t) => {

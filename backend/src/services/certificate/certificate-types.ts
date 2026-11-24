@@ -127,8 +127,26 @@ export type TDeleteCertDTO = {
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
+export enum CertificateRevocationStatus {
+  Revoked = "revoked",
+  PendingApproval = "pending_approval"
+}
+
+export enum ApprovedRevocationOutcomeKind {
+  Revoked = "revoked",
+  AlreadyRevoked = "already-revoked",
+  Failed = "failed"
+}
+
+export enum ApprovedRevocationFailureStage {
+  Infisical = "infisical",
+  Ca = "ca",
+  AfterCa = "after-ca"
+}
+
 export enum CertificateRevocationSource {
-  MicrosoftIntune = "microsoft-intune"
+  MicrosoftIntune = "microsoft-intune",
+  SameCertificate = "same-certificate"
 }
 
 export enum PlatformRevocationOutcome {
@@ -228,6 +246,10 @@ export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
 };
+
+export const toAltNameMappings = (
+  entries: { type: CertSubjectAlternativeNameType; value: string }[]
+): TAltNameMapping[] => entries.map(({ type, value }) => ({ type: mapSanTypeToX509Type(type), value }));
 
 export enum ACMESANType {
   DNS = "dns",

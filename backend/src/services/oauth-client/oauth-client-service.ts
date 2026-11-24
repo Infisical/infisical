@@ -930,8 +930,7 @@ export const oauthClientServiceFactory = ({
       decodedToken.organizationId
     );
 
-    let { refreshToken } = dto;
-    let { refreshVersion } = tokenVersion;
+    let refreshToken: string | undefined;
 
     // Carry the originally-granted scopes forward; a refresh must never broaden delegation.
     const grantedScopes = oauthDecodedToken.scopes ?? [];
@@ -947,15 +946,16 @@ export const oauthClientServiceFactory = ({
       scopes: grantedScopes
     };
 
-    if (!isGraceHit) {
-      const { updatedSession } = await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
-      refreshVersion = updatedSession.refreshVersion;
-
+    // A grace hit returns no refresh_token, so the client keeps the one it holds (RFC 6749 section 6). Echoing
+    // the presented token back would let a late grace response overwrite the newer token a concurrent
+    // request was just issued, and the next refresh with it would revoke the session as reuse.
+    const rotation = isGraceHit ? undefined : await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
+    if (rotation && !rotation.isGraceHit) {
       refreshToken = signOauthToken(
         {
           ...sharedClaims,
           tokenType: AuthTokenType.REFRESH_TOKEN,
-          version: refreshVersion,
+          version: rotation.updatedSession.refreshVersion,
           oauthClientId: client.clientId
         },
         refreshTokenExpiresIn
@@ -976,7 +976,7 @@ export const oauthClientServiceFactory = ({
       access_token: accessToken,
       token_type: "Bearer" as const,
       expires_in: expiresInToSeconds(accessTokenExpiresIn),
-      refresh_token: refreshToken,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
       scope: grantedScopes.join(" ")
     };
   };

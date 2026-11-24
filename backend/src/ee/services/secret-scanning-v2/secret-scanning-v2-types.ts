@@ -9,6 +9,7 @@ import {
   TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
@@ -326,6 +327,7 @@ export type TSecretScanningFactoryUpdateWebhook<
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TSecretScanningFactory<
@@ -373,6 +375,7 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   discoverResource: TSecretScanningDiscoverResource;
   queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
+  instanceConfigService: TInstanceConfigService;
 }) => Promise<void>;
 
 // `secretValue` is only used to compute the finding's blind index before it is saved; it is never stored.

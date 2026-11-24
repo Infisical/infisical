@@ -34,9 +34,18 @@ export type TResolveServiceRow = {
   allowedPathPrefixes: string[] | null;
   allowedTools: string[] | null;
   memberProvidedFields: string[] | null;
-  hookUrl: string | null;
-  encryptedHookSecret: Buffer | null;
+  hookId: string | null;
+  hookMethods: string[] | null;
+  hookPaths: string[] | null;
+  hookTools: string[] | null;
   position: number;
+};
+
+export type TResolveHookRow = {
+  id: string;
+  name: string;
+  url: string;
+  encryptedSecret: Buffer;
 };
 
 export type TResolveSkillRow = {
@@ -88,8 +97,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     "allowedPathPrefixes",
     "allowedTools",
     "memberProvidedFields",
-    "hookUrl",
-    "encryptedHookSecret"
+    "hookId",
+    "hookMethods",
+    "hookPaths",
+    "hookTools"
   ] as const;
 
   const wildcardsOf = ({ hostPattern }: { hostPattern: string | null }) =>
@@ -416,5 +427,49 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findResolvableServices, findServiceOverrides, findSessionSkills, findReachableBundles };
+  // The hooks the session's services use, as they are now, so an edit to a hook reaches the session on the next poll.
+  // Kept to the session's project.
+  const findHooks = async ({
+    hookIds,
+    projectId,
+    onPrimary
+  }: { hookIds: string[]; projectId: string } & TResolveReadOptions): Promise<TResolveHookRow[]> => {
+    if (!hookIds.length) return [];
+    try {
+      return (await (onPrimary ? db : db.replicaNode())(TableName.AgentVaultHook)
+        .where({ projectId })
+        .whereIn("id", [...new Set(hookIds)])
+        .select("id", "name", "url", "encryptedSecret")) as TResolveHookRow[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault hooks for resolve" });
+    }
+  };
+
+  // In the order they were written, which is the order they were sent in.
+  const findSessionMetadata = async ({
+    sessionId,
+    onPrimary
+  }: { sessionId: string } & TResolveReadOptions): Promise<Record<string, string>> => {
+    try {
+      const rows = (await (onPrimary ? db : db.replicaNode())(TableName.ResourceMetadata)
+        .where({ agentVaultSessionId: sessionId })
+        .orderBy([
+          { column: "createdAt", order: "asc" },
+          { column: "id", order: "asc" }
+        ])
+        .select("key", "value")) as { key: string; value: string | null }[];
+      return Object.fromEntries(rows.map((row) => [row.key, row.value ?? ""]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session metadata" });
+    }
+  };
+
+  return {
+    findResolvableServices,
+    findServiceOverrides,
+    findSessionSkills,
+    findReachableBundles,
+    findHooks,
+    findSessionMetadata
+  };
 };

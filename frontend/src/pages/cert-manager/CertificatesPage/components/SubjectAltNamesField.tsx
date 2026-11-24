@@ -39,6 +39,7 @@ type SubjectAltNamesFieldProps = {
   revealPolicyErrors?: boolean;
   shouldUnregister?: boolean;
   namePrefix?: string;
+  onDismissCommonNameSan?: (type: CertSubjectAlternativeNameType) => void;
 };
 
 export const SubjectAltNamesField = ({
@@ -50,7 +51,8 @@ export const SubjectAltNamesField = ({
   policyNotices,
   revealPolicyErrors,
   shouldUnregister,
-  namePrefix = "subjectAltNames"
+  namePrefix = "subjectAltNames",
+  onDismissCommonNameSan
 }: SubjectAltNamesFieldProps) => {
   const sanTypeLabels = getSanTypeLabels();
   const { subscription } = useSubscription();
@@ -99,7 +101,10 @@ export const SubjectAltNamesField = ({
                           onChange(newValue);
                         }}
                       >
-                        <SelectTrigger className="w-32" disabled={policy?.isLocked}>
+                        <SelectTrigger
+                          className="w-32"
+                          disabled={policy?.isLocked || san.isFromCommonName}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -132,19 +137,33 @@ export const SubjectAltNamesField = ({
                           }}
                           placeholder={getSanPlaceholder(san.type)}
                           isError={Boolean(rowError)}
+                          readOnly={san.isFromCommonName}
                           className="w-full"
                         />
                         {rowError && <PolicyRowMessage isError lines={[rowError]} />}
-                        {!rowError && policy?.hint && <PolicyRowMessage lines={policy.hint} />}
+                        {!rowError && san.isFromCommonName && (
+                          <PolicyRowMessage lines={["Same as common name, added by the profile"]} />
+                        )}
+                        {!rowError && !san.isFromCommonName && policy?.hint && (
+                          <PolicyRowMessage lines={policy.hint} />
+                        )}
                       </div>
-                      {policy?.isLocked ? (
+                      {policy?.isLocked ||
+                      (san.isFromCommonName &&
+                        currentValues.filter((row) => row.value.trim()).length === 1) ? (
                         <span className="w-9 shrink-0" />
                       ) : (
                         <IconButton
                           type="button"
                           variant="ghost"
                           aria-label="Remove entry"
-                          onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
+                          onClick={() => {
+                            if (san.isFromCommonName) {
+                              onDismissCommonNameSan?.(san.type);
+                              return;
+                            }
+                            onChange(currentValues.filter((_, i) => i !== index));
+                          }}
                         >
                           <Trash2 />
                         </IconButton>
@@ -161,14 +180,21 @@ export const SubjectAltNamesField = ({
                       allowedSanTypes.length > 0
                         ? allowedSanTypes[0]
                         : CertSubjectAlternativeNameType.DNS_NAME;
-                    if (isAtSanLimit) {
+                    const commonNameRows = currentValues.filter((row) => row.isFromCommonName);
+                    if (isAtSanLimit && !commonNameRows.length) {
                       openUpgradeGate({
                         intent: CertificateIssuanceLimitsUpgradeIntent,
                         paywallKey: "cert-manager.certificate-san-limit"
                       });
                       return;
                     }
-                    onChange([...currentValues, { type: defaultType, value: "" }]);
+                    if (isAtSanLimit) {
+                      commonNameRows.forEach((row) => onDismissCommonNameSan?.(row.type));
+                    }
+                    onChange([
+                      ...currentValues.filter((row) => !isAtSanLimit || !row.isFromCommonName),
+                      { type: defaultType, value: "" }
+                    ]);
                   }}
                 >
                   <Plus className="size-4" /> Add SAN

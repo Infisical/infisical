@@ -7,13 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { RequestReference } from "../certificate-policy/certificate-policy-fns";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
@@ -132,6 +134,10 @@ describe("CertificateProfileService", () => {
     id: "policy-123",
     projectId: "project-123",
     name: "Test Policy"
+  };
+
+  const commonNameDefaultSans = {
+    subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
   };
 
   const mockApiEnrollmentConfigDAL = {
@@ -414,6 +420,37 @@ describe("CertificateProfileService", () => {
       });
     });
 
+    it("refuses a default SAN copying the common name when the policy allows no common name or no SAN of that type", async () => {
+      const createUnderPolicy = (policy: object) => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ ...samplePolicy, ...policy });
+        return service.createProfile({
+          ...mockActor,
+          projectId: "project-123",
+          data: { ...validProfileData, defaults: commonNameDefaultSans } as never
+        });
+      };
+
+      await expect(
+        createUnderPolicy({ subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example"] }] })
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        createUnderPolicy({ sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*"] }] })
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        createUnderPolicy({
+          sans: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["*"], denied: [RequestReference.CommonName] }
+          ]
+        })
+      ).rejects.toThrow("denies a SAN equal to the common name");
+      await expect(
+        createUnderPolicy({
+          subject: [{ type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*"] }],
+          sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["*"] }]
+        })
+      ).resolves.toBeDefined();
+    });
+
     it("should create profile successfully", async () => {
       const result = await service.createProfile({
         ...mockActor,
@@ -578,6 +615,18 @@ describe("CertificateProfileService", () => {
           data: updateData
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("refuses moving a profile whose default SAN copies the common name to a policy that allows no DNS SANs", async () => {
+      (mockCertificateProfileDAL.findById as any).mockResolvedValue({
+        ...sampleProfile,
+        defaults: commonNameDefaultSans
+      });
+      (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ ...samplePolicy, id: "policy-456", sans: [] });
+
+      await expect(
+        service.updateProfile({ ...mockActor, profileId: "profile-123", data: { certificatePolicyId: "policy-456" } })
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should validate certificate policy when updating", async () => {

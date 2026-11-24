@@ -256,8 +256,20 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.
               accessBundleId: z.string().uuid().nullable(),
-              // Proxies from before hooks ignore it and send the request without asking.
-              hook: z.object({ url: z.string(), secret: z.string() }).nullable()
+              // Asked before the requests its narrowing picks, or every request without one: each HTTP or MCP request,
+              // or each database or SSH connection. Proxies from before narrowing read only url and secret and ask about
+              // every request of the service, which checks more, never less.
+              hook: z
+                .object({
+                  id: z.string().uuid(),
+                  name: z.string(),
+                  url: z.string(),
+                  secret: z.string(),
+                  methods: z.string().array().optional(),
+                  paths: z.string().array().optional(),
+                  tools: z.string().array().optional()
+                })
+                .nullable()
             })
             .array(),
           sessionLogs: z.object({
@@ -266,6 +278,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
           }),
           session: z.object({
             label: z.string().nullable(),
+            metadata: z.record(z.string(), z.string()),
             actor: z.object({
               type: z.enum([AgentVaultMemberType.User, AgentVaultMemberType.MachineIdentity]),
               id: z.string().uuid(),

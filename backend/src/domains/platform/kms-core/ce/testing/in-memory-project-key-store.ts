@@ -66,6 +66,10 @@ export class InMemoryProjectKeyStore implements TProjectKeyStore {
     );
   }
 
+  async findOrgIdIncludingPendingDeletion(projectId: string) {
+    return this.rows.projects.get(projectId)?.orgId ?? null;
+  }
+
   private claim<K extends TClaimColumn>(projectId: string, column: K, value: TInMemoryProjectRow[K]) {
     if (value === null) throw new Error(`The project key has no ${column} to claim`);
     const project = this.rows.projects.get(projectId);

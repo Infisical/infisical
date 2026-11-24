@@ -138,8 +138,9 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     schema: z.number().int().min(60).max(86400),
     typeOverrides: {
       [PamAccountType.AwsIam]: {
-        description: "Maximum session length in seconds (900 to 3600).",
-        schema: z.number().int().min(900).max(3600)
+        description:
+          "Maximum session length in seconds (900 to 86400). CLI sessions without a gateway, and all web sessions, end after 3600 seconds.",
+        schema: z.number().int().min(900).max(86400)
       }
     }
   },

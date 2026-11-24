@@ -7,6 +7,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 
 import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
@@ -14,7 +15,6 @@ import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TReminderDALFactory } from "./reminder-dal";

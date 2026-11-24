@@ -22,6 +22,9 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   directHeartbeat: true,
   heartbeatTTL: true,
   capabilities: true
+}).extend({
+  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.RESPONSE.cliVersion),
+  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.RESPONSE.cliVersionReportedAt)
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
@@ -72,7 +75,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         directAddress: req.body.directAddress,
         name: req.body.name,
-        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined
+        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined,
+        userAgent: req.headers["user-agent"]
       });
 
       await server.services.auditLog.createAuditLog({
@@ -159,7 +163,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.gatewayV2.heartbeat({
         orgPermission: req.permission,
-        capabilities: req.body?.capabilities
+        capabilities: req.body?.capabilities,
+        userAgent: req.headers["user-agent"]
       });
 
       return { message: "Successfully triggered heartbeat" };

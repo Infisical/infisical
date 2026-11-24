@@ -112,7 +112,11 @@ export class InMemoryKmsKeyStore implements TKmsKeyStore {
           : stored.internal,
       external:
         stored.external && next.external?.id === stored.external.id
-          ? { ...stored.external, encryptedProviderInputs: next.external.encryptedProviderInputs }
+          ? {
+              ...stored.external,
+              encryptedProviderInputs: next.external.encryptedProviderInputs,
+              providerInputsVersion: next.external.providerInputsVersion
+            }
           : stored.external
     });
   }
