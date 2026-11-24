@@ -28,7 +28,7 @@ anyone can edit into a paid one.
 
 Rules:
 
-- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. Last-known plan, fallback and
+- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. Fresh and
   pass-through markers are keyed by root too; the usage reconcile marker stays per org.
 - **A plan fetch sends the root org's name and slug.** That's mostly how the License Server learns them, so read
   them fresh each fetch (`findOrganization`), since orgs get renamed.
@@ -40,12 +40,11 @@ Rules:
   cached plan in place, so a License Server outage keeps serving the last plan it returned. `invalidatePlan` and a
   billing change (`refreshPlan` with `afterBillingChange`) only mark the plan stale; only `closeDeletedOrg` removes
   it. Do not add a second copy of the plan or a "last known plan" read beside it.
-- **The fallback is served only when nothing is cached.** On a miss, a License Server failure caches the fallback
-  for the soft TTL only (`fetchPlanOrFallback`); a DB or key store error serves it for that call only and writes
-  nothing. `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving
-  the root, so a root org's cached plan is served without the database. Every such fallback has `plan.isFallback`
-  set; code that would stop something an org pays for checks it (`getSessionLogEntitlement`). The flag is never
-  serialized, so mark a plan with `asFallback()`, never through its features.
+- **The free plan is served only when nothing is cached and nothing can be fetched** (unknown org, License Server,
+  database or key store failure), and it is never cached, so the next read fetches again. `refreshPlan` throws on
+  those failures instead. `getPlan` reads the cache under the given org id before resolving the root, so a root
+  org's cached plan is served without the database. A plan has no "fallback" flag: callers trust what `getPlan`
+  returns.
 - **The plan carries no usage counts.** The plan route (`ee/routes/v1/license-router.ts`) counts projects live
   for `workspacesUsed`; the project limit is enforced by `lockAndCountWorkspaces` under the create lock. Project
   changes do not touch the plan cache.

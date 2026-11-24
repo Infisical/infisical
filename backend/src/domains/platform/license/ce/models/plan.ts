@@ -272,11 +272,7 @@ export class Plan {
   // Cloned so freezing never reaches the caller's object (the instance features, a test's fixture).
   private readonly features: TPlanFeatures;
 
-  private constructor(
-    features: TPlanFeatures,
-    // Not part of the features, so it never reaches the cache or an API response.
-    private readonly fallback = false
-  ) {
+  private constructor(features: TPlanFeatures) {
     this.features = deepFreeze(structuredClone(features));
   }
 
@@ -288,19 +284,9 @@ export class Plan {
     return this.features.slug;
   }
 
-  // No slug means community edition, or the fallback served while the License Server is down.
+  // No slug means community edition, or the free plan served while no plan can be fetched.
   get isPaid(): boolean {
     return Boolean(this.features.slug);
-  }
-
-  // A stand-in served because the License Server, the database or the key store couldn't answer, not the org's
-  // real plan. Decisions that would stop something the org pays for should look at its last known plan instead.
-  get isFallback(): boolean {
-    return this.fallback;
-  }
-
-  asFallback(): Plan {
-    return new Plan(this.features, true);
   }
 
   get isOffline(): boolean {

@@ -142,7 +142,6 @@ type TOverrides = {
   feedAddHangs?: boolean;
   isAdmin?: boolean;
   plan?: TPlanFeatures;
-  planFallback?: boolean;
   statsFail?: boolean;
 };
 
@@ -165,7 +164,6 @@ const build = (overrides: TOverrides = {}) => {
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
   const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
-  if (overrides.planFallback) licenseService.fallbackOrgs.add("org-1");
   const addChunkCounts = vi.fn(async () => {
     if (overrides.statsFail) throw new Error("db is down");
   });
@@ -527,15 +525,6 @@ describe("createChunkUploadUrl: the plan for the storage in use", () => {
       message: AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
     });
   });
-
-  test("a chunk is held, not refused, when the plan can't be read", async () => {
-    const { service } = build({
-      plan: { hasExternal: false },
-      planFallback: true
-    });
-    await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
-    expect(presignPut).not.toHaveBeenCalled();
-  });
 });
 
 describe("reading logs when storage can't be used", () => {
@@ -645,13 +634,6 @@ describe("reading logs that are off or not on the plan", () => {
     expect(page.chunks).toEqual([]);
     expect(page.sessionLogs).toMatchObject({ enabled: false, disabledReason: "not-on-plan" });
     expect(forOrg).not.toHaveBeenCalled();
-  });
-
-  test("while the License Server is down with no recent answer, logs can still be read", async () => {
-    const { service } = build({ plan: { hasExternal: false }, planFallback: true });
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs).toMatchObject({ enabled: true, disabledReason: null });
-    expect(list).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1047,18 +1029,6 @@ describe("updateSessionLogSettings: the plan", () => {
     expect(settings?.enabled).toBe(false);
     expect(upsertConfig).toHaveBeenCalledTimes(1);
   });
-
-  test("a save that needs the plan says when it couldn't be confirmed", async () => {
-    const { service, upsertConfig } = build({
-      plan: { hasExternal: false },
-      planFallback: true,
-      config: { ...enabledConfig(), enabled: false }
-    });
-    await expect(save(service, { enabled: true, storage: externalStorage() })).rejects.toThrow(
-      "Infisical couldn't confirm your plan right now. Try again in a few minutes."
-    );
-    expect(upsertConfig).not.toHaveBeenCalled();
-  });
 });
 
 describe("updateSessionLogSettings: turning off", () => {
@@ -1166,12 +1136,6 @@ describe("getSessionLogHealth", () => {
     const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx });
     expect(health.connectionError).toBeNull();
     expect(listAccess).not.toHaveBeenCalled();
-  });
-
-  test("still checks while the plan can't be confirmed", async () => {
-    const { service } = build({ plan: { hasExternal: false }, planFallback: true });
-    await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx });
-    expect(listAccess).toHaveBeenCalledTimes(1);
   });
 
   test("a failure that isn't from storage still answers, so health never becomes a 500", async () => {

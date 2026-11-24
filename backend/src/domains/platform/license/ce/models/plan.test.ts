@@ -146,20 +146,6 @@ describe("Plan.isPaid", () => {
   });
 });
 
-describe("Plan.isFallback", () => {
-  test("should mark only the copy and leave the mark out of the JSON", () => {
-    // Setup
-    const plan = Plan.restore(testFeatures());
-
-    // Action
-    const fallback = plan.asFallback();
-
-    // Assert
-    expect([plan.isFallback, fallback.isFallback]).toEqual([false, true]);
-    expect(fallback.toJSON()).toEqual(plan.toJSON());
-  });
-});
-
 describe("Plan.allows", () => {
   test("should keep a product available unless the plan explicitly switches it off", () => {
     // Setup

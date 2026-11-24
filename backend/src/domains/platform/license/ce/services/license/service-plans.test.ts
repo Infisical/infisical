@@ -135,8 +135,7 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(licenseServer.fetches).toHaveLength(2);
-    expect([served.slug, served.isFallback]).toEqual(["enterprise", false]);
-    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
+    expect(served.slug).toBe("enterprise");
   });
 
   test("should keep serving the last plan through a License Server outage of hours", async () => {
@@ -151,7 +150,7 @@ describe("LicenseService.getPlan", () => {
     const plan = await licenseService.getPlan(ROOT.id);
 
     // Assert
-    expect([plan.slug, plan.isFallback]).toEqual(["enterprise", false]);
+    expect(plan.slug).toBe("enterprise");
   });
 
   test("should fetch on every concurrent cache miss, since none has a plan to serve", async () => {
@@ -230,53 +229,20 @@ describe("LicenseService.getPlan", () => {
     expect(plan.slug).toBe("pro");
   });
 
-  test("should serve the community defaults with no slug and mark the fallback when the License Server fails", async () => {
+  test("should serve the free plan uncached when the License Server fails with nothing cached, then fetch again", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.failNextFetches = 1;
     const { licenseService, keyStore } = await buildLicense({ licenseServer });
 
     // Action
-    const plan = await licenseService.getPlan(ROOT.id);
-
-    // Assert
-    expect(plan.slug).toBeNull();
-    expect(plan.isFallback).toBe(true);
-    expect((await licenseService.getPlan(SUB_ORG_ID)).isFallback).toBe(true);
-    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBe("1");
-  });
-
-  test("should keep serving the cached fallback until it expires, then fetch again", async () => {
-    // Setup
-    let now = 1_000_000;
-    const licenseServer = new FakeLicenseServer();
-    licenseServer.failNextFetches = 1;
-    const { licenseService } = await buildLicense({ licenseServer, now: () => now });
-    await licenseService.getPlan(ROOT.id);
-
-    // Action
     const during = await licenseService.getPlan(ROOT.id);
-    now += 2 * 60 * 60 * 1000;
-    const after = await licenseService.getPlan(ROOT.id);
+    const cachedDuring = await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`);
+    const after = await licenseService.getPlan(SUB_ORG_ID);
 
     // Assert
-    expect(during.slug).toBeNull();
-    expect(after.slug).toBe("enterprise");
+    expect([during.slug, cachedDuring, after.slug]).toEqual([null, null, "enterprise"]);
     expect(licenseServer.fetches).toHaveLength(2);
-  });
-
-  test("should clear the fallback after a successful fetch", async () => {
-    // Setup
-    const licenseServer = new FakeLicenseServer();
-    licenseServer.failNextFetches = 1;
-    const { licenseService } = await buildLicense({ licenseServer });
-    await licenseService.getPlan(ROOT.id);
-
-    // Action
-    await licenseService.refreshPlan(ROOT.id);
-
-    // Assert
-    expect((await licenseService.getPlan(SUB_ORG_ID)).isFallback).toBe(false);
   });
 
   test("should serve a root org's cached plan when the org lookup fails", async () => {
@@ -299,7 +265,7 @@ describe("LicenseService.getPlan", () => {
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
   });
 
-  test("should serve the fallback uncached and keep the cached plan when a sub-org's lookup fails", async () => {
+  test("should serve the free plan uncached and keep the cached plan when a sub-org's lookup fails", async () => {
     // Setup
     const { licenseService, keyStore } = await buildLicense({
       organizations: {
@@ -316,12 +282,10 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBeNull();
-    expect(plan.isFallback).toBe(true);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
-    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
   });
 
-  test("should serve the fallback uncached when reading the org's name fails on a cache miss", async () => {
+  test("should serve the free plan uncached when reading the org's name fails on a cache miss", async () => {
     // Setup
     const { licenseService, licenseServer, keyStore } = await buildLicense({
       organizations: {
@@ -336,13 +300,11 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBeNull();
-    expect(plan.isFallback).toBe(true);
     expect(licenseServer.fetchedOrgs).toEqual([]);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBeNull();
-    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
   });
 
-  test("should serve the fallback for an org that does not exist", async () => {
+  test("should serve the free plan for an org that does not exist", async () => {
     // Setup
     const { licenseService, licenseServer } = await buildLicense();
 
@@ -402,7 +364,6 @@ describe("LicenseService.refreshPlan", () => {
     await expect(result).rejects.toThrow("Your current plan stays in place");
     const plan = await licenseService.getPlan(ROOT.id);
     expect(plan.slug).toBe("enterprise");
-    expect(plan.isFallback).toBe(false);
   });
 
   test("should pass a database error through a refresh rather than blame the License Server", async () => {
