@@ -525,7 +525,7 @@ FILES
 
 To download the files, run [infisical agent-vault skills pull](/cli/reference#agent-vault-skills-pull).
 
-An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
+You see the skills your roles let you read or use, directly or through an access bundle. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
 
 The command reads the project the same way as [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
@@ -574,7 +574,7 @@ If the folder already exists, the command stops without downloading anything, un
 `--force` deletes everything in the folder that isn't part of the skill, including hidden files and folders such as `.git`.
 </Warning>
 
-An admin of the project can pull any version of any skill. A member can pull only the latest version of the skills on the access bundles they've been granted. To pull a skill, edit it, and push it again, you need the Admin role, because `skills push` needs it. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
+You can pull the latest version of any skill you can see, and any older version of a skill you can edit. To pull a skill, edit it, and push it again, you need edit access to the skill. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
 
 The command reads the project the same way as [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
