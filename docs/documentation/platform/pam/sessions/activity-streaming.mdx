@@ -50,7 +50,7 @@ Infisical sends a session's activity in batches while the session runs, usually 
 | Windows, Windows AD | Nothing, because the recording is a replay of the remote desktop | Nothing |
 | AWS IAM without a Gateway | Nothing, because connections don't go through a Gateway | Nothing |
 
-Infisical doesn't send input that isn't a command, such as a password typed at a prompt or data piped into a command.
+Infisical doesn't send input that isn't a command, such as a password typed at a prompt or data piped into a command. If a user connects without a terminal, Infisical can't tell the commands they type apart from that kind of input, so it doesn't send those commands either. This happens with `ssh -T` and with `ssh <host> bash`. The session recording still shows the commands.
 
 The account's [template](/documentation/platform/pam/templates/overview) also changes what reaches the stream:
 
