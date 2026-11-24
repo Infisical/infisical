@@ -46,7 +46,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/select-organization",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: authRateLimit,
+      skipCurrentOrgSsoCheck: true
     },
     schema: {
       operationId: "selectOrganizationV3",

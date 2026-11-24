@@ -175,6 +175,41 @@ describe("Auth SSO session binding", () => {
     expect(refusedUser.statusCode).toBe(401);
   });
 
+  test("A password session refused by its current org can still switch to an org that does not enforce SSO", async () => {
+    const db = getDb();
+    const [orgC] = await db(TableName.Organization)
+      .insert({ name: "Session Binding Org C", slug: `binding-org-c-${crypto.randomUUID().slice(0, 8)}` })
+      .returning("*");
+    const [membership] = await db(TableName.Membership)
+      .insert({
+        scope: AccessScope.Organization,
+        actorUserId: seedData1.id,
+        scopeOrgId: orgC.id,
+        status: OrgMembershipStatus.Accepted,
+        isActive: true
+      })
+      .returning("*");
+    await db(TableName.MembershipRole).insert({ membershipId: membership.id, role: OrgMembershipRole.Member });
+
+    try {
+      await setAuthEnforced(ORG_A_ID, true);
+      const refused = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/user",
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      const { statusCode, payload } = await selectOrg(jwtAuthToken, orgC.id);
+
+      expect(refused.statusCode).toBe(401);
+      expect(statusCode).toBe(200);
+      expect(decode(payload.token)).toMatchObject({ organizationId: orgC.id });
+    } finally {
+      await db(TableName.Membership).where({ id: membership.id }).del();
+      await db(TableName.Organization).where({ id: orgC.id }).del();
+    }
+  });
+
   test("A password session of an admin the org lets bypass SSO keeps working", async () => {
     await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: true });
     try {

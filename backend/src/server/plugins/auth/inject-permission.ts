@@ -97,7 +97,8 @@ export const injectPermission = fp(async (server) => {
       throw new UnauthorizedError({ name: "No auth method defined" });
     }
     // A session the org's sign-in policy no longer allows is turned away like an expired one.
-    if (ssoRefusal) throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
+    if (ssoRefusal && !req.routeOptions.config?.skipCurrentOrgSsoCheck)
+      throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
     const flat: OrgServiceActor = {
       type: principal.type,
       id: actorId,

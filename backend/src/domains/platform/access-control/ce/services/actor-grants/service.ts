@@ -1,5 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
-import { TReadOptions } from "@app/domains/lib/data-access";
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 
 import { ActorGrants } from "../../models/actor-grants";
@@ -78,12 +78,14 @@ export class ActorGrantsService implements TActorGrantsService {
     return this.grantStore.findProjectMemberGrants(scope);
   }
 
+  // From the primary: the folder grant cache stores these under the folder version read beside them, so a replica
+  // still holding a revoked grant would keep it live under the newer version for the cache's lifetime.
   listFolderGrants(input: { actor: TGrantActor; projectId: string }) {
-    return this.grantStore.findFolderGrants(input);
+    return this.grantStore.findFolderGrants(input, { readFrom: ReadFrom.Primary });
   }
 
   listProjectFolderGrants(input: { projectId: string }) {
-    return this.grantStore.findProjectFolderGrants(input);
+    return this.grantStore.findProjectFolderGrants(input, { readFrom: ReadFrom.Primary });
   }
 
   listResourceMemberships(input: { actor: TGrantActor; projectId: string; resourceType: string }) {

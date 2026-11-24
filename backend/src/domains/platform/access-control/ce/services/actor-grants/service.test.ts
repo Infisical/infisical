@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas";
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { ActorType } from "@app/lib/auth/actor-types";
 
@@ -26,6 +27,7 @@ const arrange = (markerTtlSeconds = 0) => {
   const actor = { type: ActorType.USER as const, id: userId };
   return {
     service,
+    store,
     seed,
     orgId,
     projectId,
@@ -147,5 +149,20 @@ describe("ActorGrantsService listings", () => {
     expect(folderGrants.map((grant) => grant.id)).toEqual([folderGrant.id]);
     expect(projectFolderGrants.map((grant) => grant.id)).toEqual([folderGrant.id]);
     expect(resources.map((resource) => resource.resourceId)).toEqual(["f1"]);
+  });
+
+  test("should read folder grants from the primary, so a revoked grant is never cached under a newer folder version", async () => {
+    // Setup
+    const { service, store, actor, projectId } = arrange();
+    const actorReads = vi.spyOn(store, "findFolderGrants");
+    const projectReads = vi.spyOn(store, "findProjectFolderGrants");
+
+    // Action
+    await service.listFolderGrants({ actor, projectId });
+    await service.listProjectFolderGrants({ projectId });
+
+    // Assert
+    expect(actorReads).toHaveBeenCalledWith({ actor, projectId }, { readFrom: ReadFrom.Primary });
+    expect(projectReads).toHaveBeenCalledWith({ projectId }, { readFrom: ReadFrom.Primary });
   });
 });
