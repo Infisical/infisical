@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 
 import { TableName } from "@app/db/schemas";
 import { EventsModule } from "@app/domains/platform/events/ce/module";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
 import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { AuditLogStreamOutboxStatus } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
@@ -133,7 +134,7 @@ describe("audit log stream outbox (postgres)", () => {
     // Spec files run in a separate module graph from the test server, so the logger and env config the
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
     await cleanupEvents();
   });

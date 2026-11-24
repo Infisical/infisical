@@ -1,5 +1,5 @@
 import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } from "@app/db/schemas";
-import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -101,7 +101,7 @@ export const authSignupServiceFactory = ({
       throw err;
     }
 
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    const isEmailInvalid = isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
     }
@@ -328,8 +328,11 @@ export const authSignupServiceFactory = ({
       });
       user = updatedUser;
       authMethod = AuthMethod.EMAIL;
-      // createOrganization ran inside the transaction above, so the seat sync waits for its commit.
-      if (organizationId) await usageMeteringService.syncSeats(organizationId);
+      // createOrganization ran inside the transaction above, so the seat sync and usage event wait for its commit.
+      if (organizationId) {
+        await usageMeteringService.syncSeats(organizationId);
+        usageMeteringService.emit(organizationId, Meter.PamIdentities);
+      }
     } else {
       // Alias verification
       const userAlias =

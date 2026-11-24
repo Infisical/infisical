@@ -11,6 +11,7 @@ import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { EventsModule } from "./platform/events/ce/module";
+import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
@@ -168,6 +169,14 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsDataKeyService: kmsCore.kmsDataKeyService
   });
 
+  const instanceConfigCore = await InstanceConfigCoreModule.create({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    kmsRootKeyService: kmsCore.kmsRootKeyService,
+    // A copy taken at boot: the values an admin can override are parsed from it, overrides on top.
+    processEnv: { ...process.env }
+  });
+
   return {
     events,
     license,
@@ -175,8 +184,11 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsCoreEe,
     kmsCore,
     externalKms,
+    instanceConfigCore,
     organizationsProjects,
     certManager,
     agentVault
   };
 };
+
+export type TDomains = Awaited<ReturnType<typeof createDomains>>;

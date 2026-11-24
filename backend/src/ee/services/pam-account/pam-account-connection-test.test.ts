@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+
 import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   buildGatewayConnectionTest,
@@ -356,7 +358,8 @@ describe("CLOUD_CONNECTION_VALIDATORS: GCP service account", () => {
       CLOUD_CONNECTION_VALIDATORS[PamAccountType.GcpServiceAccount]!({
         connectionDetails: { serviceAccountEmail: "deploy-bot@my-project.iam.gserviceaccount.com" },
         credentials: { authMethod: GcpServiceAccountAuthMethod.Impersonation },
-        orgId: ORG_ID
+        orgId: ORG_ID,
+        instanceConfigService: new FakeInstanceConfigService()
       })
     ).rejects.toThrow('end with "11111111-1111"');
   });

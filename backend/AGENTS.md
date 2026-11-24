@@ -250,7 +250,7 @@ New backend code goes in domain modules under `src/domains/` (one folder per cap
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as they start), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The domains and the cron job are built in `main()` (`src/server/app.ts`) before the routes plugin, with `domains.license.start()` and `domains.kmsCore.start(cronJob)` right after the awaited `createDomains` (legacy services depend on domains, never the reverse, and queue workers read the license as soon as a factory starts them), and passed to `registerRoutes`, so plugins registered beside it (serve-ui) can use them too. The rest of the dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 
@@ -979,6 +979,14 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
   caches the provider's access token in the credentials like the secret-based methods do.
+- **A project connection's token also carries `project_id`**, taken from the connection row like the subject, so
+  a provider can trust every connection in one project (GCP binds `principalSet://.../attribute.project_id/<id>`).
+  Org-level connections send no `project_id`. GCP `workload-identity-federation` is the second consumer; it signs
+  a new token for every exchange, because GCP rejects a token by when it was issued.
+- **Tokens last 5 minutes unless the consumer passes `ttlSeconds`** (capped at 1 hour). Raise it only for a
+  provider that gives its access token the signed token's expiry: GCP does, so it asks for 15 minutes, which is
+  how long one operation can run without a service account. Azure exchanges the token once for its own access
+  token, so it keeps the short default, as Microsoft recommends for assertions.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.

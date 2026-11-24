@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -107,6 +108,7 @@ type TSecretSyncQueueFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+  instanceConfigService: TInstanceConfigService;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretV2BridgeDAL: Pick<
@@ -184,6 +186,7 @@ export const secretSyncQueueFactory = ({
   kmsDataKeyService,
   appConnectionDAL,
   gitHubAppDAL,
+  instanceConfigService,
   keyStore,
   folderDAL,
   projectEnvDAL,
@@ -457,6 +460,7 @@ export const secretSyncQueueFactory = ({
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
       gitHubAppDAL,
+      instanceConfigService,
       kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService,
@@ -621,6 +625,7 @@ export const secretSyncQueueFactory = ({
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
         gitHubAppDAL,
+        instanceConfigService,
         kmsDataKeyService,
         gatewayV2Service,
         gatewayPoolService,
@@ -947,6 +952,7 @@ export const secretSyncQueueFactory = ({
         {
           appConnectionDAL,
           gitHubAppDAL,
+          instanceConfigService,
           kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,

@@ -804,7 +804,6 @@ tables:
       - kmsDefaultKeyId
       - defaultMembershipRole
       - enforceMfa
-      - selectedMfaMethod
       - allowedMfaMethods
       - allowSecretSharingOutsideOrganization
       - shouldUseNewPrivilegeSystem
