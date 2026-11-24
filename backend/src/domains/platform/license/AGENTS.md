@@ -46,7 +46,9 @@ Rules:
   database or key store failure), and it is never cached, so the next read fetches again. `refreshPlan` throws on
   those failures instead. `getPlan` reads the cache under the given org id before resolving the root, so a root
   org's cached plan is served without the database. A plan has no "fallback" flag: callers trust what `getPlan`
-  returns.
+  returns. So a plan outlives a License Server outage by at most its 30 minute TTL; after that a paid org gets the
+  free plan (limits, invite caps, session logs) until the server answers. The entitlements call times out after
+  5 seconds (`ENTITLEMENTS_TIMEOUT_MS`), since it runs on the request path whenever no plan is cached.
 - **The plan carries no usage counts.** The plan route (`ee/routes/v1/license-router.ts`) counts projects live
   for `workspacesUsed`; the project limit is enforced by `lockAndCountWorkspaces` under the create lock. Project
   changes do not touch the plan cache.

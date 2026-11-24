@@ -495,7 +495,8 @@ export const agentVaultSessionLogServiceFactory = ({
     );
   };
 
-  // Health and the CORS probe only run for external storage that's on and on the plan. Otherwise nothing is recorded or shown, so a storage problem isn't something an admin needs to fix.
+  // Health and the CORS probe only run for external storage that's on and on the plan. Otherwise nothing is recorded or
+  // shown, so a storage problem isn't something an admin needs to fix.
   // Default storage belongs to whoever runs the instance, so its problems are logged at boot and never shown to an org.
   const $isExternalStorageInUse = async (config: TEffectiveSessionLogConfig, orgId: string) =>
     config.storage.type === ObjectStorageType.External &&
