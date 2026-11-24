@@ -38,7 +38,10 @@ import {
   caSignsCsrAsSent
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CertificateIssuanceOperation,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -59,8 +62,10 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import {
   applyCommonNameDefaultSan,
   applyProfileDefaults,
-  getCommonNameDefaultSubjectAltNames,
-  resolveEffectiveTtl
+  getCommonNameCopySubjectAltNames,
+  getSubjectAltNameTypes,
+  resolveEffectiveTtl,
+  toCommonNameDefaults
 } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -727,8 +732,8 @@ export const pkiScepServiceFactory = ({
           csrSubjectName: csrObj.subjectName,
           signerCertSubjectName: signerCertObj.subjectName,
           csrSubjectAltNames: csrSanExt,
-          csrCommonNameDefaultSubjectAltNames: getCommonNameDefaultSubjectAltNames({
-            defaults: profile.defaults,
+          csrCommonNameCopySubjectAltNames: getCommonNameCopySubjectAltNames({
+            issuedSubjectAltNames: signerSanExt,
             enrollmentType: EnrollmentType.SCEP,
             csr: csrPem,
             isCsrSignedAsSent: caSignsCsrAsSent(caType)
@@ -803,7 +808,7 @@ export const pkiScepServiceFactory = ({
       csrPem,
       applicationId,
       isRenewal: true,
-      skipCommonNameDefaultSan: renewalAuth.isCsrSanMatch,
+      renewalCommonNameSanTypes: renewalAuth.isCsrSanMatch ? [] : getSubjectAltNameTypes(signerSanExt),
       clientIp
     });
 
@@ -926,7 +931,7 @@ export const pkiScepServiceFactory = ({
     csrPem,
     ttl,
     applicationId,
-    skipCommonNameDefaultSan
+    renewalCommonNameSanTypes
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -935,7 +940,7 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
-    skipCommonNameDefaultSan?: boolean;
+    renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
@@ -949,7 +954,7 @@ export const pkiScepServiceFactory = ({
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
         applicationId,
-        skipCommonNameDefaultSan
+        renewalCommonNameSanTypes
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -994,7 +999,7 @@ export const pkiScepServiceFactory = ({
     );
 
     const { subjectAlternativeNames } = applyCommonNameDefaultSan({
-      defaults: skipCommonNameDefaultSan ? null : profile.defaults,
+      defaults: renewalCommonNameSanTypes ? toCommonNameDefaults(renewalCommonNameSanTypes) : profile.defaults,
       enrollmentType: EnrollmentType.SCEP,
       commonName: approvalPolicy ? certRequestWithDefaults.commonName : certRequest.commonName,
       subjectAlternativeNames: certRequest.subjectAlternativeNames,

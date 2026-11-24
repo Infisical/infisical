@@ -674,19 +674,6 @@ export const certificateRenewalServiceFactory = ({
     return certificateBody?.importedCsr ?? null;
   };
 
-  const $readCertificateAltNames = async ({ id, projectId }: { id: string; projectId: string }) => {
-    const certificateBody = await certificateBodyDAL.findOne({ certId: id });
-    if (!certificateBody?.encryptedCertificate) return [];
-    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
-      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId)
-    });
-    const certificate = new x509.X509Certificate(
-      await kmsDecryptor({ cipherTextBlob: certificateBody.encryptedCertificate })
-    );
-    const sanExtension = certificate.getExtension("2.5.29.17");
-    return sanExtension ? extractSubjectAltNames(sanExtension.value) : [];
-  };
-
   const $loadRenewalSubject = async (
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
@@ -750,7 +737,7 @@ export const certificateRenewalServiceFactory = ({
       actorCtx: TRenewalActor;
       isEditingCertificate: boolean;
     },
-    tx: Knex
+    tx?: Knex
   ) => {
     const { certMetadata, projectPermission } = isEditingCertificate
       ? await assertCanEditCertificate({
@@ -778,6 +765,36 @@ export const certificateRenewalServiceFactory = ({
     );
 
     return { certMetadata, projectPermission };
+  };
+
+  const $readImportedCertificateAltNames = async ({
+    certificate,
+    encryptedCertificate,
+    actorCtx,
+    isEditingCertificate,
+    internal
+  }: {
+    certificate: TCertificates;
+    encryptedCertificate?: Buffer | null;
+    actorCtx: TRenewalActor;
+    isEditingCertificate: boolean;
+    internal: boolean;
+  }) => {
+    const profile = certificate.profileId
+      ? await certificateProfileDAL.findByIdWithConfigs(certificate.profileId)
+      : undefined;
+    if (!profile) return [];
+    if (!internal) {
+      await $authorizeRenewal({ originalCert: certificate, profile, actorCtx, isEditingCertificate });
+    }
+
+    if (!encryptedCertificate) return [];
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(certificate.projectId)
+    });
+    const x509Certificate = new x509.X509Certificate(await kmsDecryptor({ cipherTextBlob: encryptedCertificate }));
+    const sanExtension = x509Certificate.getExtension("2.5.29.17");
+    return sanExtension ? extractSubjectAltNames(sanExtension.value) : [];
   };
 
   const $resolveRenewalIssuer = async (
@@ -1520,6 +1537,9 @@ export const certificateRenewalServiceFactory = ({
     const callerKeySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
     let keySource = callerKeySource;
     let csr = requestedCsr;
+    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
+    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
+    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
 
     // Read once for both licence checks. They run before the transaction because getPlan can reach
     // Redis and the License Server, and the renewal transaction must hold no network call.
@@ -1540,7 +1560,8 @@ export const certificateRenewalServiceFactory = ({
       !(await certificateSecretDAL.findOne({ certId: certificateId }))
     ) {
       const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificateId);
-      const storedCsr = await $findStoredCsr(certificateId, originatingRequest.csr);
+      const importedBody = originatingRequest.csr ? null : await certificateBodyDAL.findOne({ certId: certificateId });
+      const storedCsr = originatingRequest.csr ?? importedBody?.importedCsr ?? null;
       if (storedCsr) {
         issuedNames = {
           commonName: originatingRequest.exists
@@ -1548,7 +1569,13 @@ export const certificateRenewalServiceFactory = ({
             : certForLicenseChecks.commonName || null,
           altNames: originatingRequest.exists
             ? resolveRenewalAltNames(originatingRequest, certForLicenseChecks.altNames)
-            : await $readCertificateAltNames(certForLicenseChecks)
+            : await $readImportedCertificateAltNames({
+                certificate: certForLicenseChecks,
+                encryptedCertificate: importedBody?.encryptedCertificate,
+                actorCtx,
+                isEditingCertificate,
+                internal
+              })
         };
         keySource = CertificateRenewalKeySource.Csr;
         csr = storedCsr;
@@ -1564,9 +1591,6 @@ export const certificateRenewalServiceFactory = ({
       csrRenewalRequest = isStoredCsr ? withIssuedRenewalNames(csrNamesRequest, issuedNames) : csrNamesRequest;
     }
 
-    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
-    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
-    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
 
     let checkedRenewalCaId: string | null = null;

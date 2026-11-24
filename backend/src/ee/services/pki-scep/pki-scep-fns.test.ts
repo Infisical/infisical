@@ -103,7 +103,7 @@ describe("evaluateScepRenewalAuthorization", () => {
     signerSanExt,
     csrForwardedToCa,
     priorCsrSanExt,
-    csrCommonNameDefaultSans
+    csrCommonNameCopySans
   }: {
     csrSubject: string;
     signerSubject: string;
@@ -113,7 +113,7 @@ describe("evaluateScepRenewalAuthorization", () => {
     signerSanExt?: x509.Extension | null;
     csrForwardedToCa?: boolean;
     priorCsrSanExt?: x509.Extension | null;
-    csrCommonNameDefaultSans?: x509.JsonGeneralName[];
+    csrCommonNameCopySans?: x509.JsonGeneralName[];
   }) =>
     evaluateScepRenewalAuthorization({
       isValidSigner: true,
@@ -124,8 +124,8 @@ describe("evaluateScepRenewalAuthorization", () => {
       csrSubjectName: new x509.Name(csrSubject),
       signerCertSubjectName: new x509.Name(signerSubject),
       csrSubjectAltNames: csrSanExt ?? (csrSans ? new x509.SubjectAlternativeNameExtension(csrSans) : null),
-      csrCommonNameDefaultSubjectAltNames: csrCommonNameDefaultSans
-        ? new x509.SubjectAlternativeNameExtension(csrCommonNameDefaultSans)
+      csrCommonNameCopySubjectAltNames: csrCommonNameCopySans
+        ? new x509.SubjectAlternativeNameExtension(csrCommonNameCopySans)
         : null,
       signerCertSubjectAltNames:
         signerSanExt ?? (signerSans ? new x509.SubjectAlternativeNameExtension(signerSans) : null)
@@ -191,7 +191,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         csrSubject: "CN=device-01.example.com",
         signerSubject: "CN=device-01.example.com",
         signerSans: [{ type: "dns", value: "device-01.example.com" }],
-        csrCommonNameDefaultSans: [{ type: "dns", value: "device-01.example.com" }]
+        csrCommonNameCopySans: [{ type: "dns", value: "device-01.example.com" }]
       })
     ).toEqual({ authorized: true, isCsrSanMatch: false });
   });
@@ -201,7 +201,7 @@ describe("evaluateScepRenewalAuthorization", () => {
       authorize({
         csrSubject: "CN=device-01.example.com",
         signerSubject: "CN=device-01.example.com",
-        csrCommonNameDefaultSans: [{ type: "dns", value: "device-01.example.com" }]
+        csrCommonNameCopySans: [{ type: "dns", value: "device-01.example.com" }]
       })
     ).toEqual({ authorized: true, isCsrSanMatch: true });
   });

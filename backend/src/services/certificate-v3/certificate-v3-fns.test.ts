@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import * as x509 from "@peculiar/x509";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   CertExtendedKeyUsageType,
@@ -8,7 +9,11 @@ import {
 import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
 import { RequestReference } from "../certificate-policy/certificate-policy-fns";
 import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { applyCommonNameDefaultSan, applyProfileDefaults } from "./certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  getCommonNameCopySubjectAltNames
+} from "./certificate-v3-fns";
 
 const BARE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
 MIICjjCCAXYCAQAwGzEZMBcGA1UEAwwQc2hvcC5leGFtcGxlLmNvbTCCASIwDQYJ
@@ -285,5 +290,51 @@ describe("applyCommonNameDefaultSan", () => {
         csrCommonName: "user@example.com"
       })
     ).toBeUndefined();
+  });
+});
+
+describe("getCommonNameCopySubjectAltNames", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(globalThis.crypto);
+  });
+
+  const csrPem = async (name: string, sans: x509.JsonGeneralName[] = []) => {
+    const keys = await globalThis.crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ]);
+    const csr = await x509.Pkcs10CertificateRequestGenerator.create({
+      name,
+      keys,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      extensions: sans.length ? [new x509.SubjectAlternativeNameExtension(sans)] : []
+    });
+    return csr.toString("pem");
+  };
+  const sanNames = (extension: x509.Extension | null) =>
+    extension ? new x509.SubjectAlternativeNameExtension(extension.rawData).names.toJSON() : null;
+
+  it("rebuilds the common name copies on the issued certificate, whatever the profile defaults are now", async () => {
+    const issued = new x509.SubjectAlternativeNameExtension([{ type: "dns", value: "device.example.com" }]);
+
+    const copies = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: issued,
+      enrollmentType: EnrollmentType.EST,
+      csr: await csrPem("CN=device.example.com")
+    });
+
+    expect(sanNames(copies)).toEqual([{ type: "dns", value: "device.example.com" }]);
+  });
+
+  it("returns nothing when the CSR lists its own SANs", async () => {
+    const issued = new x509.SubjectAlternativeNameExtension([{ type: "dns", value: "device.example.com" }]);
+
+    const copies = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: issued,
+      enrollmentType: EnrollmentType.EST,
+      csr: await csrPem("CN=device.example.com", [{ type: "dns", value: "other.example.com" }])
+    });
+
+    expect(copies).toBeNull();
   });
 });

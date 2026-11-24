@@ -417,7 +417,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName,
   signerCertSubjectName,
   csrSubjectAltNames,
-  csrCommonNameDefaultSubjectAltNames,
+  csrCommonNameCopySubjectAltNames,
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
@@ -429,7 +429,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
   csrSubjectAltNames?: x509.Extension | null;
-  csrCommonNameDefaultSubjectAltNames?: x509.Extension | null;
+  csrCommonNameCopySubjectAltNames?: x509.Extension | null;
   signerCertSubjectAltNames?: x509.Extension | null;
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
@@ -456,8 +456,8 @@ export const evaluateScepRenewalAuthorization = ({
   const isCsrSanMatch = normalizeIssuedSubjectAltNames(csrSubjectAltNames) === signerCertSans;
   if (
     !isCsrSanMatch &&
-    (!csrCommonNameDefaultSubjectAltNames ||
-      normalizeIssuedSubjectAltNames(csrCommonNameDefaultSubjectAltNames) !== signerCertSans)
+    (!csrCommonNameCopySubjectAltNames ||
+      normalizeIssuedSubjectAltNames(csrCommonNameCopySubjectAltNames) !== signerCertSans)
   ) {
     return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };
   }

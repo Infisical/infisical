@@ -2618,7 +2618,7 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 const sanRuleValues = (rule: string, reference: string) =>
-  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, IP addresses match by value, and in a URI with "://" only the scheme and authority ignore case. Any other value containing "{{" is refused.`;
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
 
 export const CERTIFICATE_POLICIES = {
   SAN_RULE: {

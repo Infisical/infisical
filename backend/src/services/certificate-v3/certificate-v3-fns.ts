@@ -2,7 +2,14 @@ import * as x509 from "@peculiar/x509";
 
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { CertExtendedKeyUsage, CertKeyUsage, toAltNameMappings } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType,
+  mapLegacyAltNameType,
+  TAltNameType,
+  toAltNameMappings
+} from "@app/services/certificate/certificate-types";
 
 import {
   ACME_SAN_TYPES,
@@ -97,15 +104,15 @@ export const resolveEffectiveTtl = ({
   });
 };
 
+export const getFixedDefaultSubjectAltNames = (defaults: TCertificateProfileDefaults | null | undefined) =>
+  defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value));
+
 /**
  * Applies profile defaults to certificate request
  * Request values always take precedence over defaults.
  * For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
  * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
  */
-export const getFixedDefaultSubjectAltNames = (defaults: TCertificateProfileDefaults | null | undefined) =>
-  defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value));
-
 export const applyProfileDefaults = <
   T extends {
     commonName?: string;
@@ -191,19 +198,41 @@ export const applyCommonNameDefaultSan = ({
   };
 };
 
-export const getCommonNameDefaultSubjectAltNames = ({
-  defaults,
+export const toCommonNameDefaults = (types: CertSubjectAlternativeNameType[]): TCertificateProfileDefaults => ({
+  subjectAltNames: [...new Set(types)].map((type) => ({ type, value: RequestReference.CommonName }))
+});
+
+export const getSubjectAltNameTypes = (
+  sanExtension: x509.Extension | null | undefined
+): CertSubjectAlternativeNameType[] => {
+  if (!sanExtension) return [];
+  try {
+    return new x509.GeneralNames(sanExtension.value).items.flatMap((name) => {
+      try {
+        return [mapLegacyAltNameType(name.type as TAltNameType)];
+      } catch {
+        return [];
+      }
+    });
+  } catch {
+    return [];
+  }
+};
+
+export const getCommonNameCopySubjectAltNames = ({
+  issuedSubjectAltNames,
   enrollmentType,
   csr,
   isCsrSignedAsSent
 }: {
-  defaults: TCertificateProfileDefaults | null | undefined;
+  issuedSubjectAltNames: x509.Extension | null | undefined;
   enrollmentType: EnrollmentType;
   csr: string;
   isCsrSignedAsSent?: boolean;
 }): x509.Extension | null => {
-  const hasCommonNameDefault = defaults?.subjectAltNames?.some((san) => san.value === RequestReference.CommonName);
-  if (!hasCommonNameDefault) return null;
+  const issuedTypes = getSubjectAltNameTypes(issuedSubjectAltNames);
+  if (!issuedTypes.length) return null;
+  const defaults = toCommonNameDefaults(issuedTypes);
 
   let csrRequest: ReturnType<typeof extractCertificateRequestFromCSR>;
   try {

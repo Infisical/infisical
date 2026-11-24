@@ -73,7 +73,7 @@ To copy each request's common name into its SANs, go to the **Certificate Defaul
 - If an ACME client such as Certbot sends a CSR without a common name, nothing is added
 - If the request includes a CSR and the profile issues from Microsoft AD CS or Venafi TPP, the certificate authority signs the CSR as sent, so nothing is added
 
-A [renewal](/documentation/platform/pki/applications/certificate-renewal) from Certificate Manager doesn't apply this default. While the profile keeps this default, an EST or SCEP client that renews with the same CSR keeps the SANs its current certificate has. If you remove the default, a client whose certificate got the SAN from it must renew with a CSR that lists that SAN, or the renewal is refused.
+A [renewal](/documentation/platform/pki/applications/certificate-renewal) from Certificate Manager doesn't apply this default. An EST or SCEP client that renews with the same CSR keeps the SANs its current certificate got from this default, even after you remove or change the default.
 
 To save this default, the profile's [certificate policy](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) must allow a common name and SANs of the type you picked. The added SAN must also match the policy's values for that SAN type, or requests that rely on it fail. To make every certificate carry its common name as a SAN, select **Same as common name** as a required SAN value in the policy.
 

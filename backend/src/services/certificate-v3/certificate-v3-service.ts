@@ -130,7 +130,8 @@ import {
   applyCommonNameDefaultSan,
   applyProfileDefaults,
   getFixedDefaultSubjectAltNames,
-  resolveEffectiveTtl
+  resolveEffectiveTtl,
+  toCommonNameDefaults
 } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
@@ -1370,7 +1371,7 @@ export const certificateV3ServiceFactory = ({
     basicConstraints,
     applicationId: explicitApplicationId,
     acmeOrderId,
-    skipCommonNameDefaultSan
+    renewalCommonNameSanTypes
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1428,7 +1429,7 @@ export const certificateV3ServiceFactory = ({
       subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
       altNameEntries: altNameEntriesWithCommonName
     } = applyCommonNameDefaultSan({
-      defaults: skipCommonNameDefaultSan ? null : profile.defaults,
+      defaults: renewalCommonNameSanTypes ? toCommonNameDefaults(renewalCommonNameSanTypes) : profile.defaults,
       enrollmentType,
       commonName: certificateRequest.commonName,
       csrCommonName: csrCertificateRequest.commonName,

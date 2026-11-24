@@ -182,6 +182,12 @@ describe("CertificateV3Service", () => {
     findById: vi.fn()
   };
 
+  const mockKmsKeyService = {
+    generateKmsKey: vi.fn(),
+    encryptWithKmsKey: vi.fn(),
+    decryptWithKmsKey: vi.fn()
+  };
+
   const mockInternalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa"> =
     {
       signCertFromCa: vi.fn(),
@@ -279,7 +285,7 @@ describe("CertificateV3Service", () => {
   beforeEach(() => {
     // Reset all mocks before each test
     vi.resetAllMocks();
-    // These three are shared across tests rather than rebuilt per test, so resetAllMocks strips their
+    // These are shared across tests rather than rebuilt per test, so resetAllMocks strips their
     // implementations and they have to be re-established here.
     mockCertManagerService.resolveRootOrgId.mockImplementation(async (id: string) => id);
     mockCertManagerService.countActiveCertificateQuota.mockResolvedValue({ total: 0, wildcard: 0 });
@@ -287,6 +293,9 @@ describe("CertificateV3Service", () => {
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
+    mockKmsKeyService.generateKmsKey.mockResolvedValue("kms-key-123");
+    mockKmsKeyService.encryptWithKmsKey.mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted")));
+    mockKmsKeyService.decryptWithKmsKey.mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted")));
     licenseService = new FakeLicenseService();
     licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
     licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true };
@@ -398,11 +407,7 @@ describe("CertificateV3Service", () => {
           plainTextKey: Buffer.from("plainkey")
         })
       } as never,
-      kmsKeyService: {
-        generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
-        encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
-        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted")))
-      } as never,
+      kmsKeyService: mockKmsKeyService as never,
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),
         findById: vi.fn().mockResolvedValue({ id: "project-123", orgId: "org-123" }),
@@ -1514,7 +1519,8 @@ describe("CertificateV3Service", () => {
   describe("quota key SAN source on the CSR path", () => {
     const signCsrAndReadQuotaKey = async (
       defaults: object,
-      csrRequest: { commonName: string; subjectAlternativeNames?: { type: string; value: string }[] }
+      csrRequest: { commonName: string; subjectAlternativeNames?: { type: string; value: string }[] },
+      renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[]
     ) => {
       const profileWithDefaultSans = {
         id: "profile-123",
@@ -1554,6 +1560,7 @@ describe("CertificateV3Service", () => {
           csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
           validity: { ttl: "30d" },
           enrollmentType: EnrollmentType.API,
+          renewalCommonNameSanTypes,
           ...mockActor
         })
         .catch(() => undefined);
@@ -1593,6 +1600,32 @@ describe("CertificateV3Service", () => {
       expect(mockInternalCaService.signCertFromCa).toHaveBeenCalledWith(
         expect.objectContaining({
           altNameEntries: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "app.example.com" }]
+        })
+      );
+    });
+
+    it("limits a protocol renewal to the SAN types its certificate has, even when the profile default adds more", async () => {
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.signCertFromCa).mockRejectedValue(new Error("stop after signing"));
+
+      await signCsrAndReadQuotaKey(
+        {
+          subjectAltNames: [
+            { type: CertSubjectAlternativeNameType.EMAIL, value: RequestReference.CommonName },
+            { type: CertSubjectAlternativeNameType.UPN, value: RequestReference.CommonName }
+          ]
+        },
+        { commonName: "user@example.com" },
+        [CertSubjectAlternativeNameType.EMAIL]
+      );
+
+      expect(mockInternalCaService.signCertFromCa).toHaveBeenCalledWith(
+        expect.objectContaining({
+          altNameEntries: [{ type: CertSubjectAlternativeNameType.EMAIL, value: "user@example.com" }]
         })
       );
     });
@@ -3299,6 +3332,22 @@ describe("CertificateV3Service", () => {
           ...(attributes && { attributes }),
           ...mockActor
         });
+
+      it("refuses a caller who may not renew before reading the imported certificate's body", async () => {
+        setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: STORED_CSR });
+        vi.mocked(mockCertificateBodyDAL.findOne).mockResolvedValue({
+          id: "body-123",
+          certId: "cert-123",
+          importedCsr: STORED_CSR,
+          encryptedCertificate: Buffer.from("encrypted")
+        } as any);
+        vi.mocked(mockPermissionService.getProjectPermission).mockRejectedValue(
+          new ForbiddenRequestError({ message: "denied" })
+        );
+
+        await expect(reuse()).rejects.toThrow(ForbiddenRequestError);
+        expect(mockKmsKeyService.decryptWithKmsKey).not.toHaveBeenCalled();
+      });
 
       it.each(Object.values(CaType).filter((type) => type !== CaType.AWS_ACM_PUBLIC_CA))(
         "renews a %s certificate as a CSR renewal from the CSR supplied at import",

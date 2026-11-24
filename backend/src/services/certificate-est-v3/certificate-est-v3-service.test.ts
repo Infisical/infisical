@@ -10,7 +10,10 @@ import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fak
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CertificateIssuanceOperation,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -431,11 +434,14 @@ describe("CertificateEstV3Service", () => {
 
       expect(result).toBe("mocked-pkcs7-response");
       expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ skipCommonNameDefaultSan: true })
+        expect.objectContaining({ renewalCommonNameSanTypes: [] })
       );
     });
 
-    const reenrollSanLessCsr = async (issuedSans: { type: string; value: string }[]) => {
+    const reenrollSanLessCsr = async (
+      issuedSans: { type: string; value: string }[],
+      defaults: object | null = { subjectAltNames: [{ type: "dns_name", value: "{{request.commonName}}" }] }
+    ) => {
       const { Pkcs10CertificateRequest, X509Certificate, GeneralNames } = await import("@peculiar/x509");
       (Pkcs10CertificateRequest as any).mockImplementation(() => ({
         subject: "CN=test.example.com",
@@ -453,7 +459,7 @@ describe("CertificateEstV3Service", () => {
       });
       mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
         ...mockProfile,
-        defaults: { subjectAltNames: [{ type: "dns_name", value: "{{request.commonName}}" }] }
+        defaults
       });
       mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
         status: CertificateRequestStatus.ISSUED,
@@ -472,7 +478,15 @@ describe("CertificateEstV3Service", () => {
       await reenrollSanLessCsr([{ type: "dns", value: "test.example.com" }]);
 
       expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ skipCommonNameDefaultSan: false })
+        expect.objectContaining({ renewalCommonNameSanTypes: [CertSubjectAlternativeNameType.DNS_NAME] })
+      );
+    });
+
+    it("still re-enrolls the certificate after the profile's common name default is removed", async () => {
+      await reenrollSanLessCsr([{ type: "dns", value: "test.example.com" }], null);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ renewalCommonNameSanTypes: [CertSubjectAlternativeNameType.DNS_NAME] })
       );
     });
 

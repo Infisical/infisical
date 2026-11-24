@@ -30,6 +30,10 @@ import {
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateRequest } from "@app/hooks/api/certificates/queries";
 import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
+import {
+  CertSubjectAlternativeNameType,
+  formatSANType
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type Props = {
   request: TApprovalRequest;
@@ -263,6 +267,9 @@ export const CertificateDetailsSection = ({ request }: Props) => {
                     key={`${san.type}-${san.value}`}
                     className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                   >
+                    <span className="text-muted">
+                      {formatSANType(san.type as CertSubjectAlternativeNameType)}:
+                    </span>{" "}
                     {san.value}
                   </span>
                 ))}
