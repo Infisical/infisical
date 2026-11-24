@@ -1,4 +1,4 @@
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
+import { eventOutbox } from "e2e-test/fakes/events-module";
 import { dailyReminderJob } from "e2e-test/fakes/reminder-queue";
 import { TTestSmtpService } from "e2e-test/mocks/smtp";
 

@@ -21,7 +21,10 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caSignsCsrAsSent,
+  caUsesExternalIssuanceQueue
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -139,7 +142,8 @@ const buildRevalidationRequest = ({
   basicConstraints,
   customExtensions,
   profileDefaults,
-  ttl
+  ttl,
+  isCsrSignedAsSent = false
 }: {
   csr?: string | null;
   commonName?: string | null;
@@ -159,9 +163,14 @@ const buildRevalidationRequest = ({
   customExtensions?: TRequestCustomExtension[];
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
   ttl?: string;
+  isCsrSignedAsSent?: boolean;
 }): TCertificateRequest => {
-  const reconstructedRequest: TCertificateRequest = csr
-    ? applyProfileDefaults(extractCertificateRequestFromCSR(csr), profileDefaults)
+  const csrRequest = csr ? extractCertificateRequestFromCSR(csr) : undefined;
+  const reconstructedRequest: TCertificateRequest = csrRequest
+    ? applyProfileDefaults(
+        csrRequest.commonName || !commonName ? csrRequest : { ...csrRequest, commonName },
+        profileDefaults
+      )
     : applyProfileDefaults(
         {
           commonName: commonName || undefined,
@@ -184,6 +193,9 @@ const buildRevalidationRequest = ({
     const { keyAlgorithm: csrKeyAlg, signatureAlgorithm: csrSigAlg } = extractAlgorithmsFromCSR(csr);
     mappedRequest.keyAlgorithm = csrKeyAlg;
     mappedRequest.signatureAlgorithm = csrSigAlg;
+    if (altNames?.length && !isCsrSignedAsSent) {
+      mappedRequest.subjectAlternativeNames = altNames;
+    }
   }
   // The stored value wins over anything reconstructed from the CSR or profile defaults.
   if (customExtensions?.length) {
@@ -461,11 +473,25 @@ export const certificateApprovalServiceFactory = (
       }
     }
 
-    const reconstructedRequest = applyProfileDefaults(extractCertificateRequestFromCSR(csr || ""), profile.defaults);
+    const csrRequest = extractCertificateRequestFromCSR(csr || "");
+    const reconstructedRequest = applyProfileDefaults(
+      csrRequest.commonName || !certRequest.commonName
+        ? csrRequest
+        : { ...csrRequest, commonName: certRequest.commonName },
+      profile.defaults
+    );
     const { keyAlgorithm: reconstructedKeyAlg, signatureAlgorithm: reconstructedSigAlg } = extractAlgorithmsFromCSR(
       csr || ""
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
+    const reviewedAltNames = certRequest.altNames as TAltNameEntry[] | null;
+    const altNameEntries =
+      (reviewedAltNames?.length ?? 0) > (csrRequest.subjectAlternativeNames?.length ?? 0)
+        ? (reviewedAltNames ?? undefined)
+        : undefined;
+    if (altNameEntries) {
+      mappedReconstructedRequest.subjectAlternativeNames = altNameEntries;
+    }
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
     mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
     if (certRequest.notAfter) {
@@ -535,6 +561,7 @@ export const certificateApprovalServiceFactory = (
       ttl,
       subjectOverride,
       altNames: undefined,
+      altNameEntries,
       keyUsages: reconstructedRequest.keyUsages
         ? convertKeyUsageArrayToLegacy(reconstructedRequest.keyUsages)
         : undefined,
@@ -644,16 +671,6 @@ export const certificateApprovalServiceFactory = (
       return null;
     }
 
-    // This branch returns before the shared re-check below, so it needs its own. Not recorded: the
-    // issuance queue creates the certificate later, once the external CA responds.
-    await assertCertificateQuotaForProject({
-      projectId: profile.projectId,
-      commonName: certRequest.commonName,
-      altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, licenseService, certManagerService, keyStore },
-      isApprovedRequest: true
-    });
-
     // Pre-flight validation for ACM — fail the approval synchronously rather than
     // letting the job produce a FAILED request row after the approver already accepted.
     if (caType === CaType.AWS_ACM_PUBLIC_CA) {
@@ -709,7 +726,18 @@ export const certificateApprovalServiceFactory = (
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       customExtensions: toRequestCustomExtensions(certRequest.customExtensions),
       profileDefaults: profile.defaults,
-      ttl: effectiveTtl
+      ttl: effectiveTtl,
+      isCsrSignedAsSent: caSignsCsrAsSent(caType)
+    });
+
+    // This branch returns before the shared re-check below, so it needs its own. Not recorded: the
+    // issuance queue creates the certificate later, once the external CA responds.
+    await assertCertificateQuotaForProject({
+      projectId: profile.projectId,
+      commonName: mappedReconstructedRequest.commonName,
+      altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      deps: { projectDAL, licenseService, certManagerService, keyStore },
+      isApprovedRequest: true
     });
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
@@ -943,7 +971,7 @@ export const certificateApprovalServiceFactory = (
 
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestInput, certPolicy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequestInput.altNames },
+      { commonName: certificateRequestInput.commonName, subjectAlternativeNames: certificateRequestInput.altNames },
       certPolicy?.sans
     );
 

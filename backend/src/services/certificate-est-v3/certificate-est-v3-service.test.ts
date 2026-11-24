@@ -10,7 +10,11 @@ import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fak
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CertificateIssuanceOperation,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
@@ -21,6 +25,9 @@ import { certificateEstV3ServiceFactory, TCertificateEstV3ServiceFactory } from 
 vi.mock("@peculiar/x509", () => ({
   Pkcs10CertificateRequest: vi.fn(),
   GeneralNames: vi.fn(),
+  SubjectAlternativeNameExtension: vi
+    .fn()
+    .mockImplementation((names: unknown) => ({ type: "2.5.29.17", value: names })),
   KeyUsagesExtension: vi.fn(),
   ExtendedKeyUsageExtension: vi.fn(),
   X509Certificate: vi.fn().mockImplementation(() => ({
@@ -426,6 +433,68 @@ describe("CertificateEstV3Service", () => {
       });
 
       expect(result).toBe("mocked-pkcs7-response");
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ renewalCommonNameSanTypes: [] })
+      );
+    });
+
+    const reenrollSanLessCsr = async (
+      issuedSans: { type: string; value: string }[],
+      defaults: object | null = { subjectAltNames: [{ type: "dns_name", value: "{{request.commonName}}" }] }
+    ) => {
+      const { Pkcs10CertificateRequest, X509Certificate, GeneralNames } = await import("@peculiar/x509");
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: []
+      }));
+      vi.mocked(extractCertificateRequestFromCSR).mockReturnValueOnce({ commonName: "test.example.com" } as any);
+      (X509Certificate as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: [{ type: "2.5.29.17", value: "issued-sans" }],
+        rawData: new ArrayBuffer(0)
+      }));
+      (GeneralNames as any).mockImplementation((value: unknown) => {
+        if (value === "issued-sans") return { items: issuedSans };
+        return { items: Array.isArray(value) ? value : [] };
+      });
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
+        ...mockProfile,
+        defaults
+      });
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
+      });
+
+      return service.simpleReenrollByProfile({
+        csr: "mock-csr",
+        profileId: "profile-123",
+        sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+      });
+    };
+
+    it("re-enrolls a SAN-less CSR whose certificate carries the common name SAN the profile added", async () => {
+      await reenrollSanLessCsr([{ type: "dns", value: "test.example.com" }]);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ renewalCommonNameSanTypes: [CertSubjectAlternativeNameType.DNS_NAME] })
+      );
+    });
+
+    it("still re-enrolls the certificate after the profile's common name default is removed", async () => {
+      await reenrollSanLessCsr([{ type: "dns", value: "test.example.com" }], null);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ renewalCommonNameSanTypes: [CertSubjectAlternativeNameType.DNS_NAME] })
+      );
+    });
+
+    it("refuses a SAN-less CSR whose certificate carries a SAN the profile would not add", async () => {
+      await expect(reenrollSanLessCsr([{ type: "dns", value: "other.example.com" }])).rejects.toThrow(
+        "Subject alternative names mismatch"
+      );
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
     });
 
     it("should throw error when subjects do not match", async () => {

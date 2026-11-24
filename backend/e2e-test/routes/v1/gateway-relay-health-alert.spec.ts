@@ -6,6 +6,7 @@
 import crypto from "node:crypto";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
+import { EventsModule } from "@app/domains/platform/events/ce/module";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
   GATEWAY_OFFLINE_BATCH_SIZE,
@@ -16,18 +17,16 @@ import {
 import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
+import { legacyEventEmitter } from "@app/lib/knex/event-emitter";
 import { initLogger } from "@app/lib/logger";
 import { ALERT_EVENT_CONSUMER } from "@app/services/alert/alert-event-consumer";
-import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
+import { eventOutbox } from "e2e-test/fakes/events-module";
 import { TTestSmtpService } from "e2e-test/mocks/smtp";
 import { createAlert } from "e2e-test/testUtils/alerts";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
@@ -38,17 +37,23 @@ type TSentMail = { recipients: string[]; subjectLine: string; substitutions: Rec
 
 const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
 
-const eventOutboxRegistry = eventOutboxRegistryFactory();
-eventOutboxRegistry.register({
+// Never started, so only emit runs (on the real table). The rows land under the alert consumer, which the
+// test server's own events module delivers.
+const eventsModule = new EventsModule({
+  db: testDb as never,
+  queueService: {} as never,
+  cronJob: {} as never,
+  isSecondaryInstance: false,
+  isGeneralWorkerRunModeEnabled: false,
+  isTelemetryEnabled: false
+});
+eventsModule.registerConsumer({
   name: ALERT_EVENT_CONSUMER,
   dataSchema: GatewayOfflinePayloadSchema as never,
   subscribesTo: (eventType) => eventType === GATEWAY_OFFLINE_EVENT,
   handle: async () => []
 });
-const eventEmitter = eventOutboxServiceFactory({
-  eventOutboxDAL: eventOutboxDALFactory(testDb),
-  eventOutboxRegistry
-});
+const eventEmitter = legacyEventEmitter(eventsModule.eventEmitterService);
 
 const buildServices = () => {
   const userNotificationDAL = userNotificationDALFactory(testDb);

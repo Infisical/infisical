@@ -6,9 +6,54 @@ import { PAM_RECORDING_AAD_VERSION } from "./pam-recording-constants";
 
 const SESSION_KEY_LENGTH = 32; // AES-256
 const UPLOAD_TOKEN_LENGTH = 32; // 256 random bits
+const GCM_TAG_LENGTH = 16;
 
 const buildWrapAad = (projectId: string, sessionId: string) =>
   crypto.nativeCrypto.createHash("sha256").update(`${projectId}|${sessionId}|${PAM_RECORDING_AAD_VERSION}`).digest();
+
+// Must match the AAD the gateway encrypts each chunk with.
+const buildChunkAad = ({
+  projectId,
+  sessionId,
+  chunkIndex,
+  storageBackend
+}: {
+  projectId: string;
+  sessionId: string;
+  chunkIndex: number;
+  storageBackend: string;
+}) =>
+  crypto.nativeCrypto
+    .createHash("sha256")
+    .update(`${projectId}|${sessionId}|${chunkIndex}|${storageBackend}|${PAM_RECORDING_AAD_VERSION}`)
+    .digest();
+
+export const decryptRecordingChunk = ({
+  sessionKey,
+  projectId,
+  sessionId,
+  chunkIndex,
+  storageBackend,
+  iv,
+  ciphertext
+}: {
+  sessionKey: Buffer;
+  projectId: string;
+  sessionId: string;
+  chunkIndex: number;
+  storageBackend: string;
+  iv: Buffer;
+  ciphertext: Buffer;
+}) => {
+  if (ciphertext.length < GCM_TAG_LENGTH) {
+    throw new InternalServerError({ message: `Recording chunk ${chunkIndex} is too short to decrypt` });
+  }
+
+  const decipher = crypto.nativeCrypto.createDecipheriv("aes-256-gcm", sessionKey, iv);
+  decipher.setAAD(buildChunkAad({ projectId, sessionId, chunkIndex, storageBackend }));
+  decipher.setAuthTag(ciphertext.subarray(ciphertext.length - GCM_TAG_LENGTH));
+  return Buffer.concat([decipher.update(ciphertext.subarray(0, ciphertext.length - GCM_TAG_LENGTH)), decipher.final()]);
+};
 
 export const generateSessionRecordingSecrets = async ({
   projectId,

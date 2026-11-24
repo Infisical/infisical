@@ -19,6 +19,7 @@ import { TDatadogProviderLogStream } from "@app/hooks/api/auditLogStreams/types/
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+import { PamSessionActivityField } from "./PamSessionActivityField";
 
 type Props = {
   auditLogStream?: TDatadogProviderLogStream;
@@ -129,6 +130,7 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
           )}
         />
         <ProductsField />
+        <PamSessionActivityField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

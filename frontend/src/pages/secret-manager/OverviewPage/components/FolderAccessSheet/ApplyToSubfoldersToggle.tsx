@@ -22,11 +22,11 @@ export const ApplyToSubfoldersToggle = ({ checked, onCheckedChange, isDisabled }
       <FieldContent>
         <FieldTitle>
           <FolderTreeIcon />
-          Apply to Subfolders
+          {isDisabled ? "Apply to Subfolders" : "Apply to Environment"}
         </FieldTitle>
         <FieldDescription>
           {isDisabled
-            ? "Only access on / can apply to subfolders."
+            ? "Only access on the root folder can be applied to subfolders."
             : "The selected permission also applies to every folder under /."}
         </FieldDescription>
       </FieldContent>

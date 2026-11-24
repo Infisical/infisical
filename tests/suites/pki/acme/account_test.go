@@ -2,6 +2,7 @@ package acme_test
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
 	"testing"
 
@@ -102,13 +103,16 @@ func TestAcmeAccount_Create(t *testing.T) {
 		tn := h.NewTenant(t)
 		p := newAcmeProfile(t, tn)
 		newAccount := p.client(t).NewAccountURL()
+		otherOrigin, err := url.Parse(newAccount)
+		require.NoError(t, err)
+		otherOrigin.Scheme, otherOrigin.Host = "https", "example.com"
 
 		rows := []struct{ name, url string }{
 			{"when the path has a suffix", newAccount + "-bad"},
 			{"when it carries a query", newAccount + "?foo=bar"},
 			{"when it carries a fragment", newAccount + "#foobar"},
 			{"when it is another path on the same origin", p.client(t).URL("/acme/new-account")},
-			{"when it is on another origin", "https://example.com/api/v1/cert-manager/acme/applications/" + p.app.ID.String() + "/profiles/" + p.profile.ID.String() + "/new-account-bad"},
+			{"when it is on another origin", otherOrigin.String()},
 			{"when it is not a URL", "bad"},
 		}
 		for _, row := range rows {

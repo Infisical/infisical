@@ -46,6 +46,10 @@ func Interval(d time.Duration) Option { return func(c *config) { c.interval = d 
 // fn returns (value, done, err). An error does not stop the polling, because the
 // usual case is a resource that does not exist yet; the last one is attached to the
 // timeout so a persistent failure is visible rather than silently retried away.
+//
+// fn's context ends at the wait's deadline, so a call still in flight then is cut off
+// instead of running past the timeout. The context error that cut-off produces is not
+// kept as the last error, so a timeout reports the failure that kept the wait going.
 func For[T any](ctx context.Context, fn func(context.Context) (T, bool, error), opts ...Option) (T, error) {
 	cfg := config{timeout: defaultTimeout, interval: defaultInterval}
 	for _, o := range opts {
@@ -54,11 +58,13 @@ func For[T any](ctx context.Context, fn func(context.Context) (T, bool, error), 
 
 	var zero T
 	deadline := time.Now().Add(cfg.timeout)
+	fnCtx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
 	var lastErr error
 
 	for {
-		value, done, err := fn(ctx)
-		if err != nil {
+		value, done, err := fn(fnCtx)
+		if err != nil && (fnCtx.Err() == nil || !errors.Is(err, fnCtx.Err())) {
 			lastErr = err
 		}
 		if done {

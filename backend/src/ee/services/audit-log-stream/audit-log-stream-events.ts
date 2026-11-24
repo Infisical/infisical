@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 
 export const AUDIT_LOG_STREAM_RESOURCE_TYPE = "audit-log.stream";
 export const AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT = "audit-log.stream.delivery-failed";

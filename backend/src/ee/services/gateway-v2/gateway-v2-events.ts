@@ -3,8 +3,8 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { PAGERDUTY_MAX_INCIDENTS_PER_RUN } from "@app/services/alert/channels/alert-channel-pagerduty-fns";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const GATEWAY_RESOURCE_TYPE = "gateway";
 export const GATEWAY_OFFLINE_EVENT = "gateway.offline";
