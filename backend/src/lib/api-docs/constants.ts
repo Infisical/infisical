@@ -4962,9 +4962,10 @@ export const AGENT_VAULT = {
     oauthGrantedScopes: "The scopes the authorization server granted.",
     oauthRequiredScopes: "Scopes the server asked for that the connection lacks. Reauthorize to request them.",
     oauthExpiresAt:
-      "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
-    oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
-    oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
+      "When the current access token expires, or null if the server didn't say. Returned only if you can edit the service.",
+    oauthAuthorizedAt: "When the connection was last authorized. Returned only if you can edit the service.",
+    oauthLastError:
+      "The last refresh failure, if any. Never contains a token. Returned only if you can edit the service.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     hostPatternRead:
@@ -5031,11 +5032,11 @@ export const AGENT_VAULT = {
     basicMemberProvidedFields:
       "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
     bearerMemberProvidedFieldsRead:
-      "The credential fields each member sets for themselves: credential-value (the token). Empty when the admin sets the whole credential.",
+      "The credential fields each member sets for themselves: credential-value (the token). Empty when the service sets the whole credential.",
     basicMemberProvidedFieldsRead:
-      "The credential fields each member sets for themselves: credential-username and credential-value (the password). Empty when the admin sets the whole credential.",
+      "The credential fields each member sets for themselves: credential-username and credential-value (the password). Empty when the service sets the whole credential.",
     oauthMemberProvidedFieldsRead:
-      "The credential fields each member sets for themselves: credential-value (the OAuth sign-in). Empty when the admin sets the whole credential.",
+      "The credential fields each member sets for themselves: credential-value (the OAuth sign-in). Empty when the service sets the whole credential.",
     oauthMemberProvidedFields:
       "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
     oauthClientId:
@@ -5561,7 +5562,7 @@ export const AGENT_VAULT = {
     updateMetadata:
       "The session's new metadata. It replaces every existing entry, so send the full set you want to keep, or an empty object to remove them all. Leave it out to keep the current metadata. Up to 20 entries, with the same rules as at creation, so a value can't be empty and a key can't contain `=`. You can't change the metadata once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:
-      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
+      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and anyone who can view everyone's sessions can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
     onBehalfOfUserEmail: "The email address of the user to start the session on behalf of.",
     token: "The session token. Returned once, at mint, and never again.",

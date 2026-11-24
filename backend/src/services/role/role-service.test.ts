@@ -1,4 +1,5 @@
 import { createMongoAbility } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
@@ -156,7 +157,12 @@ describe("Agent Vault role names", () => {
     ["Ad​min", "invisible characters"],
     ["Release‮Engineers", "invisible characters"],
     ["Release\nEngineers", "invisible characters"],
-    ["", "Enter a name"]
+    ["", "Enter a name"],
+    ["No\u00a0Access", "built-in role"],
+    ["No  Access", "built-in role"],
+    ["Admin\u2800", "invisible characters"],
+    ["\u3164", "invisible characters"],
+    ["\u00a0\u2003", "Enter a name"]
   ])("refuses %j", async (name, message) => {
     const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
     await expect(service.createRole(createWithName(name))).rejects.toThrow(message);
@@ -166,6 +172,12 @@ describe("Agent Vault role names", () => {
   test("saves a name trimmed", async () => {
     const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
     await service.createRole(createWithName("  Release Engineers  "));
+    expect(roleDAL.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Release Engineers" }));
+  });
+
+  test("collapses any run of spaces into one plain space", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await service.createRole(createWithName("Release\u00a0\u00a0Engineers"));
     expect(roleDAL.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Release Engineers" }));
   });
 });
@@ -189,6 +201,42 @@ describe("Agent Vault role size", () => {
     await service.createRole({
       ...createDto,
       data: { ...createDto.data, permissions: atLimit }
+    } as unknown as TCreateRoleDTO);
+    expect(roleDAL.create).toHaveBeenCalled();
+  });
+
+  const idOf = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const rulesNaming = (count: number) =>
+    JSON.stringify(
+      packRules(
+        Array.from({ length: Math.ceil(count / 1000) }, (_, index) => ({
+          action: "use",
+          subject: "agent-vault-services",
+          conditions: {
+            serviceId: {
+              $in: Array.from({ length: Math.min(1000, count - index * 1000) }, (__, n) => idOf(index * 1000 + n))
+            }
+          }
+        }))
+      )
+    );
+
+  test("refuses more ids across a role's rules than the role editor can show", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await expect(
+      service.createRole({
+        ...createDto,
+        data: { ...createDto.data, permissions: rulesNaming(2001) }
+      } as unknown as TCreateRoleDTO)
+    ).rejects.toThrow("at most 2000 IDs across its rules");
+    expect(roleDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("takes a role naming exactly as many ids as the limit", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await service.createRole({
+      ...createDto,
+      data: { ...createDto.data, permissions: rulesNaming(2000) }
     } as unknown as TCreateRoleDTO);
     expect(roleDAL.create).toHaveBeenCalled();
   });

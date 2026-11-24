@@ -322,6 +322,33 @@ const actionsOfSubject = (
 // group that names more is written as several rules.
 export const AGENT_VAULT_MAX_IDS_PER_CONDITION = 1000;
 
+// The API refuses a role that names more ids than this across all its rules (AGENT_VAULT_MAX_ROLE_IDS on the backend),
+// and the editor draws a row per id, so a role past it is shown as JSON only.
+export const AGENT_VAULT_MAX_ROLE_IDS = 2000;
+
+const idsInCondition = (condition: unknown): number => {
+  if (typeof condition === "string") return 1;
+  if (!condition || typeof condition !== "object" || Array.isArray(condition)) return 0;
+  const { $eq, $in } = condition as { $eq?: unknown; $in?: unknown };
+  return (typeof $eq === "string" ? 1 : 0) + (Array.isArray($in) ? $in.length : 0);
+};
+
+export const countAgentVaultRuleIds = (rules: TProjectPermission[]) =>
+  rules.reduce((total, rule) => {
+    const { conditions } = rule as { conditions?: unknown };
+    if (!conditions || typeof conditions !== "object" || Array.isArray(conditions)) return total;
+    return (
+      total +
+      Object.values(conditions as Record<string, unknown>).reduce<number>(
+        (sum, c) => sum + idsInCondition(c),
+        0
+      )
+    );
+  }, 0);
+
+export const tooManyRoleIdsMessage = (count: number) =>
+  `This role names ${count} IDs across its rules, and a role can name at most ${AGENT_VAULT_MAX_ROLE_IDS}. Give it every item of a kind instead of listing them, or split it in two.`;
+
 const groupedRules = (
   subject: ProjectPermissionSub,
   field: string,
@@ -526,6 +553,14 @@ const parseIdCondition = (
  * rest, so a caller can keep such rules in JSON rather than drop them on save.
  */
 export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPolicy => {
+  // Drawing a row for every id of a role this large would freeze the page.
+  const idCount = countAgentVaultRuleIds(rules);
+  if (idCount > AGENT_VAULT_MAX_ROLE_IDS) {
+    return {
+      policy: normalizeAgentVaultPolicy(createEmptyAgentVaultPolicy()),
+      unsupported: [{ rule: rules[0], reason: tooManyRoleIdsMessage(idCount) }]
+    };
+  }
   const reasons = new Map<number, string>();
   const report = (index: number, reason: string) => {
     if (!reasons.has(index)) reasons.set(index, reason);
@@ -633,6 +668,8 @@ export const parseRulesJson = (text: string): TParseRulesJsonResult => {
   if (!Array.isArray(value)) return { error: "Rules must be a JSON array." };
   const badIndex = value.findIndex((rule) => !isPlainObject(rule));
   if (badIndex !== -1) return { error: `Rule ${badIndex + 1} must be an object.` };
+  const idCount = countAgentVaultRuleIds(value as TProjectPermission[]);
+  if (idCount > AGENT_VAULT_MAX_ROLE_IDS) return { error: tooManyRoleIdsMessage(idCount) };
   return { rules: value as TProjectPermission[] };
 };
 

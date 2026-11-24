@@ -13,14 +13,18 @@ const RESERVED_ROLE_SLUGS: string[] = Object.values(ProjectMembershipRole);
 
 // Members pick a role by its name, so a name can't pass for a built-in role or for another role that only differs by a
 // character no one can see. Matches the API's checks and messages.
-const ROLE_NAME_DISALLOWED_RE = /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}]/u;
+// Also the characters that render blank without being spaces (braille blank, the Hangul fillers).
+const ROLE_NAME_DISALLOWED_RE =
+  /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}\u2800\u3164\u115F\u1160\uFFA0]/u;
+const ROLE_NAME_SPACES_RE = /\p{Zs}+/gu;
 const BUILT_IN_ROLE_NAMES = ["admin", "no access", "no-access"];
 
 export const roleDetailsSchema = z.object({
   name: z
     .string()
-    .trim()
-    .min(1, "Enter a name for the role.")
+    // Any run of spaces of any kind is one plain space, as the API saves it.
+    .transform((name) => name.replace(ROLE_NAME_SPACES_RE, " ").trim())
+    .pipe(z.string().min(1, "Enter a name for the role."))
     .refine(
       (name) => !ROLE_NAME_DISALLOWED_RE.test(name),
       "A role name can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."

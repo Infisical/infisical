@@ -177,11 +177,13 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   (`withAgentVaultMemberAlias` in `membership-fns.ts`), and keep bundle roles the same way: a raw `member` row grants
   nothing there. The deprecated `POST /api/v1/workspace/:workspaceId/memberships` can only give that raw row, so it
   refuses an Agent Vault project.
-- **An Agent Vault role holds at most `AGENT_VAULT_MAX_ROLE_RULES` rules, and one condition names at most
-  `AGENT_VAULT_MAX_IDS_PER_CONDITION` ids**: every request that reads a holder's reach applies the role. `allowedAmong`
+- **An Agent Vault role holds at most `AGENT_VAULT_MAX_ROLE_RULES` rules, one condition names at most
+  `AGENT_VAULT_MAX_IDS_PER_CONDITION` ids, and the role names at most `AGENT_VAULT_MAX_ROLE_IDS` ids across its rules
+  (`countAgentVaultRoleIds`; the role editor shows a role past it as JSON only)**: every request that reads a holder's reach applies the role. `allowedAmong`
   (`agent-vault-permission.ts`) applies plain id rules once in CASL's order instead of a check per id; keep any new
-  id-condition shape inside what it treats as plain, or it falls back to the slow path. A role's name is trimmed and
-  can't be a built-in role's or hold invisible characters (`normalizeAgentVaultRoleName`). The generic membership routes
+  id-condition shape inside what it treats as plain, or it falls back to the slow path. A role's name has every run of
+  spaces collapsed to one and is trimmed, and can't be a built-in role's or hold invisible or blank-rendering characters
+  (`normalizeAgentVaultRoleName`). The generic membership routes
   drop a role sent twice (`withAgentVaultMemberAlias`). Member responses list roles Admin and No Access first, then by
   name.
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
@@ -743,7 +745,8 @@ does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical store
 resolve.
 
 - **A hook is a project resource with no rules of its own** (`agent_vault_hooks`: name, description, URL, sealed
-  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the services that use it that the caller can see, the same set the services list shows. There are no
+  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the services that use it that the caller can see, the same set the services list shows. A
+  delete answers with the same set, and its audit event names every service it took the hook off. There are no
   session-level or inline hooks; if inline hooks come back, add them to saved and inline services together.
 - **A service has at most one hook, stored on its row**: `hookId` (FK, `ON DELETE SET NULL`) plus the narrowing
   `hookMethods`/`hookPaths` (HTTP) or `hookTools` (MCP), null meaning every request or connection. No link table, so the

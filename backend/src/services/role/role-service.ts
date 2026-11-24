@@ -11,7 +11,9 @@ import {
 } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
+  AGENT_VAULT_MAX_ROLE_IDS,
   AGENT_VAULT_MAX_ROLE_RULES,
+  countAgentVaultRoleIds,
   normalizeAgentVaultRoleName
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
@@ -117,7 +119,10 @@ export const roleServiceFactory = ({
   const assertAgentVaultRuleCount = async (scopeData: TCreateRoleDTO["scopeData"], permissions: unknown) => {
     // The role routes pass the packed rules as JSON text.
     const rules: unknown = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
-    if (!Array.isArray(rules) || rules.length <= AGENT_VAULT_MAX_ROLE_RULES) return;
+    if (!Array.isArray(rules)) return;
+    const tooManyRules = rules.length > AGENT_VAULT_MAX_ROLE_RULES;
+    const tooManyIds = countAgentVaultRoleIds(rules) > AGENT_VAULT_MAX_ROLE_IDS;
+    if (!tooManyRules && !tooManyIds) return;
     if (scopeData.scope !== AccessScope.Project) return;
     const { projectId } = scopeData;
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
@@ -125,7 +130,9 @@ export const roleServiceFactory = ({
     );
     if (project?.type !== ProjectType.AgentVault) return;
     throw new BadRequestError({
-      message: `An Agent Vault role can have at most ${AGENT_VAULT_MAX_ROLE_RULES} rules. Combine rules that name IDs into one rule per action, or split the role in two.`
+      message: tooManyRules
+        ? `An Agent Vault role can have at most ${AGENT_VAULT_MAX_ROLE_RULES} rules. Combine rules that name IDs into one rule per action, or split the role in two.`
+        : `An Agent Vault role can name at most ${AGENT_VAULT_MAX_ROLE_IDS} IDs across its rules. Give the role every item of a kind instead of listing them, or split the role in two.`
     });
   };
 

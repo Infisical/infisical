@@ -80,20 +80,28 @@ export const agentVaultHookServiceFactory = ({
 
   // A hook's Used By lists the services the caller can see, the same set the services list shows: those their roles
   // read or use, and those in a bundle they can use. Null when they can see every service.
+  const $visibleServiceIds = async (
+    scoped: TAgentVaultHookScoped,
+    reachability?: Awaited<ReturnType<typeof getAgentVaultReachability>>
+  ) => {
+    const reach = reachability ?? (await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped));
+    return unionWithin(
+      await visibleIdsWithin(reach.permission, {
+        subjectType: ProjectPermissionSub.AgentVaultServices,
+        field: "serviceId",
+        loadIds: () => agentVaultReachDAL.findServiceIds(scoped.projectId)
+      }),
+      await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reach, scoped.projectId)
+    );
+  };
+
   const $authorizeRead = async (scoped: TAgentVaultHookScoped) => {
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
     ForbiddenError.from(reachability.permission).throwUnlessCan(
       ProjectPermissionAgentVaultHookActions.Read,
       ProjectPermissionSub.AgentVaultHooks
     );
-    return unionWithin(
-      await visibleIdsWithin(reachability.permission, {
-        subjectType: ProjectPermissionSub.AgentVaultServices,
-        field: "serviceId",
-        loadIds: () => agentVaultReachDAL.findServiceIds(scoped.projectId)
-      }),
-      await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, scoped.projectId)
-    );
+    return $visibleServiceIds(scoped, reachability);
   };
 
   const $toHooks = async (rows: TAgentVaultHookRow[], visibleServiceIds: string[] | null, tx?: Knex) => {
@@ -239,7 +247,14 @@ export const agentVaultHookServiceFactory = ({
         [...services].sort((left, right) => left.name.localeCompare(right.name))
       );
     });
-    return { hook: view };
+    // The audit log names every service the hook was taken off; the answer names only those the caller can see, as
+    // the other hook reads do.
+    const visibleServiceIds = await $visibleServiceIds(scoped);
+    const visibleUsedBy =
+      visibleServiceIds === null
+        ? view.usedBy
+        : view.usedBy.filter((service) => visibleServiceIds.includes(service.id));
+    return { hook: { ...view, usedBy: visibleUsedBy }, auditUsedBy: view.usedBy };
   };
 
   return {

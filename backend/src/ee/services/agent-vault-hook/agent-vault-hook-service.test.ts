@@ -48,7 +48,8 @@ const buildService = ({
   existingByName,
   stored = storedHook,
   usedBy = [LINEAR, GITHUB],
-  reachesEveryBundle = true
+  reachesEveryBundle = true,
+  projectServiceIds = ["service-in-granted", "service-read", "service-other"]
 }: {
   hooksOnPlan?: boolean;
   rules?: RawRuleOf<MongoAbility>[];
@@ -57,6 +58,7 @@ const buildService = ({
   stored?: typeof storedHook | null;
   usedBy?: { id: string; name: string; type: string; hostPattern: string | null }[];
   reachesEveryBundle?: boolean;
+  projectServiceIds?: string[];
 } = {}) => {
   const tx = { raw: vi.fn() };
   const agentVaultHookDAL = {
@@ -95,7 +97,7 @@ const buildService = ({
     },
     agentVaultReachDAL: agentVaultTestReachDAL({
       accessBundleIds: ["bundle-granted", "bundle-other"],
-      serviceIds: ["service-in-granted", "service-read", "service-other"]
+      serviceIds: projectServiceIds
     }),
     agentVaultServiceDAL: {
       findIdsInBundles: async (bundleIds: string[]) =>
@@ -237,6 +239,22 @@ describe("deleteHook", () => {
     expect(agentVaultHookDAL.deleteById).toHaveBeenCalledWith(HOOK_ID, expect.anything());
     expect(result.hook.usedBy).toEqual([GITHUB, LINEAR]);
     expect(licenseService.getPlan).not.toHaveBeenCalled();
+  });
+
+  test("answers with only the services the caller can see, and keeps them all for the audit log", async () => {
+    const { service } = buildService({
+      rules: [
+        { action: "delete", subject: "agent-vault-hooks" },
+        { action: "read", subject: "agent-vault-services", conditions: { serviceId: { $eq: GITHUB.id } } }
+      ],
+      reachesEveryBundle: false,
+      projectServiceIds: [GITHUB.id, LINEAR.id]
+    });
+
+    const result = await service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });
+
+    expect(result.hook.usedBy).toEqual([GITHUB]);
+    expect(result.auditUsedBy).toEqual([GITHUB, LINEAR]);
   });
 
   test("takes the project's service-names lock, then locks the services using it before the hook, then reads them again under the hook's lock", async () => {

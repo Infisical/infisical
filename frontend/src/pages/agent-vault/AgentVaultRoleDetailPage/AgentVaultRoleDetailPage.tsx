@@ -13,8 +13,12 @@ import {
   TrashIcon
 } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import { deniedReason } from "@app/components/agent-vault/DisabledReasonTooltip";
 import {
+  AGENT_VAULT_MAX_ROLE_IDS,
   AgentVaultPolicyEditor,
+  countAgentVaultRuleIds,
   PermissionsSummaryCard,
   TPolicyEditorTab,
   useAgentVaultPolicyDraft
@@ -37,7 +41,6 @@ import {
   DiscardChangesAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -91,6 +94,12 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
     isCustom && permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
   const draft = useAgentVaultPolicyDraft(agentVaultRoleRules(role));
+  const roleIdCount = countAgentVaultRuleIds(draft.rules);
+  let saveLabel = "Unsaved changes";
+  if (draft.jsonError) saveLabel = "Fix the JSON to save";
+  else if (roleIdCount > AGENT_VAULT_MAX_ROLE_IDS) {
+    saveLabel = `Name at most ${AGENT_VAULT_MAX_ROLE_IDS} IDs to save (${roleIdCount} now)`;
+  }
   const [tab, setTab] = useState<TPolicyEditorTab>(() =>
     draft.unsupported.length ? "json" : "visual"
   );
@@ -204,7 +213,7 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
           </Link>
         }
       >
-        {(canEdit || canDuplicate || canDelete) && (
+        {(isCustom || role.slug !== ProjectMembershipRole.NoAccess) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -213,23 +222,39 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setDialog("edit")}>
+              {isCustom && (
+                <DisabledReasonMenuItem
+                  disabledReason={deniedReason(canEdit, "You don't have permission to edit roles")}
+                  onClick={() => setDialog("edit")}
+                >
                   <PencilIcon />
                   Edit Details
-                </DropdownMenuItem>
+                </DisabledReasonMenuItem>
               )}
-              {canDuplicate && (
-                <DropdownMenuItem onClick={() => setDialog("duplicate")}>
+              {role.slug !== ProjectMembershipRole.NoAccess && (
+                <DisabledReasonMenuItem
+                  disabledReason={deniedReason(
+                    canDuplicate,
+                    "You don't have permission to create roles"
+                  )}
+                  onClick={() => setDialog("duplicate")}
+                >
                   <CopyIcon />
                   Duplicate Role
-                </DropdownMenuItem>
+                </DisabledReasonMenuItem>
               )}
-              {canDelete && (
-                <DropdownMenuItem variant="danger" onClick={() => setDialog("delete")}>
+              {isCustom && (
+                <DisabledReasonMenuItem
+                  variant="danger"
+                  disabledReason={deniedReason(
+                    canDelete,
+                    "You don't have permission to delete roles"
+                  )}
+                  onClick={() => setDialog("delete")}
+                >
                   <TrashIcon />
                   Delete Role
-                </DropdownMenuItem>
+                </DisabledReasonMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -269,7 +294,7 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
         onClearSelection={() => {
           if (!updateRole.isPending) requestDiscard();
         }}
-        selectionLabel={draft.jsonError ? "Fix the JSON to save" : "Unsaved changes"}
+        selectionLabel={saveLabel}
         clearLabel="Discard"
         iconOnlyClear={false}
         aria-label="Unsaved role changes"
@@ -278,7 +303,11 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
           variant="av"
           size="xs"
           isPending={updateRole.isPending}
-          isDisabled={Boolean(draft.jsonError) || updateRole.isPending}
+          isDisabled={
+            Boolean(draft.jsonError) ||
+            roleIdCount > AGENT_VAULT_MAX_ROLE_IDS ||
+            updateRole.isPending
+          }
           onClick={handleSave}
         >
           <SaveIcon />

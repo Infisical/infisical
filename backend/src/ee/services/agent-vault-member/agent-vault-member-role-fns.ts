@@ -67,13 +67,41 @@ export const findAgentVaultMemberRole = (roleDAL: Pick<TRoleDALFactory, "findByI
 // The rules in one Agent Vault role, each applied on every request that reads its holders' reach.
 export const AGENT_VAULT_MAX_ROLE_RULES = 500;
 
+// The ids one Agent Vault role names across all its rules. The API applies them in one pass, but the role editor shows a
+// row per id, so a role past this can't be edited.
+export const AGENT_VAULT_MAX_ROLE_IDS = 2000;
+
+const idsInCondition = (condition: unknown): number => {
+  if (typeof condition === "string") return 1;
+  if (!condition || typeof condition !== "object") return 0;
+  const { $eq, $in } = condition as { $eq?: unknown; $in?: unknown };
+  return (typeof $eq === "string" ? 1 : 0) + (Array.isArray($in) ? $in.length : 0);
+};
+
+// Counts every id a role's rules name, whether the rules are packed (conditions third) or not.
+export const countAgentVaultRoleIds = (rules: unknown[]) =>
+  rules.reduce<number>((total, rule) => {
+    const conditions: unknown = Array.isArray(rule)
+      ? (rule as unknown[])[2]
+      : (rule as { conditions?: unknown } | null)?.conditions;
+    if (!conditions || typeof conditions !== "object") return total;
+    return (
+      total +
+      Object.values(conditions as Record<string, unknown>).reduce<number>((sum, c) => sum + idsInCondition(c), 0)
+    );
+  }, 0);
+
 // A role's name is what members pick it by, so it can't pass for a built-in role or for another role that only differs by
 // a character no one can see. RE2 sees a lone surrogate only as U+FFFD, so isWellFormed catches those.
-const AGENT_VAULT_ROLE_NAME_DISALLOWED_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]/u);
+// Also the characters that render blank without being spaces (braille blank, the Hangul fillers), which would let
+// "Admin" plus one of them pass for Admin.
+const AGENT_VAULT_ROLE_NAME_DISALLOWED_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}\u2800\u3164\u115F\u1160\uFFA0]/u);
+const AGENT_VAULT_ROLE_NAME_SPACES_RE = new RE2(/\p{Zs}+/gu);
 const AGENT_VAULT_BUILT_IN_ROLE_NAMES = ["admin", "no access", "no-access"];
 
 export const normalizeAgentVaultRoleName = (name: string) => {
-  const trimmed = name.trim();
+  // Any run of spaces of any kind is one plain space, so "No  Access" or a no-break space can't pass for No Access.
+  const trimmed = name.replace(AGENT_VAULT_ROLE_NAME_SPACES_RE, " ").trim();
   if (!trimmed) throw new BadRequestError({ message: "Enter a name for the role." });
   if (!trimmed.isWellFormed() || AGENT_VAULT_ROLE_NAME_DISALLOWED_RE.test(trimmed)) {
     throw new BadRequestError({

@@ -18,6 +18,8 @@ import {
   getActionState,
   getBuiltInAgentVaultPolicy,
   AGENT_VAULT_MAX_IDS_PER_CONDITION,
+  AGENT_VAULT_MAX_ROLE_IDS,
+  countAgentVaultRuleIds,
   getDefaultItemLevel,
   getItemLevel,
   getPolicyWarning,
@@ -1670,5 +1672,46 @@ describe("a group of more ids than one condition can name", () => {
       expect(lists.map((list) => list.length)).toEqual([AGENT_VAULT_MAX_IDS_PER_CONDITION, 200]);
       expect(lists.flat().sort()).toEqual([...ids].sort());
     }
+  });
+});
+
+describe("a role naming more ids than the API allows", () => {
+  const idOf = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const naming = (count: number): TProjectPermission[] =>
+    Array.from({ length: Math.ceil(count / 1000) }, (_, index) => ({
+      subject: SERVICES,
+      action: ["use"],
+      conditions: {
+        serviceId: {
+          $in: Array.from({ length: Math.min(1000, count - index * 1000) }, (__, n) =>
+            idOf(index * 1000 + n)
+          )
+        }
+      }
+    })) as TProjectPermission[];
+
+  it("counts every id across the rules", () => {
+    expect(countAgentVaultRuleIds(naming(2500))).toBe(2500);
+    expect(
+      countAgentVaultRuleIds([
+        {
+          subject: SERVICES,
+          action: ["use"],
+          conditions: { serviceId: idOf(1) }
+        } as TProjectPermission
+      ])
+    ).toBe(1);
+  });
+
+  it("opens as JSON only instead of drawing a row per id", () => {
+    const { unsupported } = rulesToPolicy(naming(AGENT_VAULT_MAX_ROLE_IDS + 1));
+    expect(unsupported).toHaveLength(1);
+    expect(unsupported[0].reason).toMatch(/at most 2000/);
+    expect(rulesToPolicy(naming(AGENT_VAULT_MAX_ROLE_IDS)).unsupported).toEqual([]);
+  });
+
+  it("is refused in the JSON tab", () => {
+    const result = parseRulesJson(JSON.stringify(naming(AGENT_VAULT_MAX_ROLE_IDS + 1)));
+    expect("error" in result && result.error).toMatch(/at most 2000/);
   });
 });

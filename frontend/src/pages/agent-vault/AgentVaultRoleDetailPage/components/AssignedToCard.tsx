@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 
+import { DisabledReasonTooltip } from "@app/components/agent-vault/DisabledReasonTooltip";
 import { MemberName, memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import {
@@ -107,6 +108,13 @@ export const AssignedToCard = ({ roleSlug, roleName }: { roleSlug: string; roleN
     canChangeAgentVaultMembers(permission) &&
     roleSlug !== ProjectMembershipRole.NoAccess &&
     (roleSlug !== ProjectMembershipRole.Admin || isViewerAdmin);
+  let assignDeniedReason: string | undefined;
+  if (!canAssign) {
+    assignDeniedReason =
+      roleSlug === ProjectMembershipRole.Admin && !isViewerAdmin
+        ? "Only an admin can give someone the Admin role"
+        : "You don't have permission to give members roles";
+  }
 
   const accessControlLink = (tab: AgentVaultAccessControlTab) => ({
     to: "/organizations/$orgId/projects/agent-vault/$projectId/access-management" as const,
@@ -187,12 +195,19 @@ export const AssignedToCard = ({ roleSlug, roleName }: { roleSlug: string; roleN
         </CardDescription>
       </CardHeader>
       <CardContent>{renderBody()}</CardContent>
-      {canAssign && (
+      {roleSlug !== ProjectMembershipRole.NoAccess && (
         <CardFooter>
-          <Button variant="outline" size="xs" onClick={() => setIsAssignOpen(true)}>
-            <PlusIcon />
-            Assign
-          </Button>
+          <DisabledReasonTooltip disabledReason={assignDeniedReason}>
+            <Button
+              variant="outline"
+              size="xs"
+              isDisabled={!canAssign}
+              onClick={() => setIsAssignOpen(true)}
+            >
+              <PlusIcon />
+              Assign
+            </Button>
+          </DisabledReasonTooltip>
         </CardFooter>
       )}
       {canAssign && (
