@@ -1,0 +1,368 @@
+name: Upgrade impact and Helm chart release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Stable release tag to add upgrade impact data for and point the chart at, for example v0.167.10"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: "Stable release tag to add upgrade impact data for and point the chart at, for example v0.167.10"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BRANCH_NAME: chore/helm-infisical-core-app-version
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    # No concurrency group: GitHub cancels a run queued behind a newer one, which would drop that
+    # release's data without an alert. Runs overlap instead, and "Commit to release branch"
+    # retries until its commit lands on the branch as it is at that moment.
+    steps:
+      - name: Resolve tag
+        id: release
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          if ! echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Skipping non-stable release tag: $TAG_NAME"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "stable=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.release.outputs.stable == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Data already on main or the open PR's branch was generated before, and may have been
+      # reviewed since, so it is never regenerated. Delete the file to generate it again.
+      - name: Look for upgrade impact data
+        id: impact
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          DATA_FILE="upgrade-impact/data/releases/${TAG_NAME}.yaml"
+          OPEN_PR="$(gh pr list --base main --head "$BRANCH_NAME" --state open --json number --jq '.[0].number // empty')"
+
+          if git cat-file -e "origin/main:${DATA_FILE}" 2>/dev/null \
+            || { [ -n "$OPEN_PR" ] && git cat-file -e "origin/${BRANCH_NAME}:${DATA_FILE}" 2>/dev/null; }; then
+            echo "Upgrade impact data for ${TAG_NAME} already exists."
+            echo "generate=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "generate=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.impact.outputs.generate == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Install upgrade impact dependencies
+        if: steps.impact.outputs.generate == 'true'
+        run: npm ci
+        working-directory: upgrade-impact
+
+      - name: Type check upgrade impact tooling
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run type:check
+        working-directory: upgrade-impact
+
+      - name: Test upgrade impact tooling
+        if: steps.impact.outputs.generate == 'true'
+        run: npm test
+        working-directory: upgrade-impact
+
+      # The chart's upgrade notes come from this data, so the chart is never bumped without it.
+      - name: Generate upgrade impact data
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
+        working-directory: upgrade-impact
+        env:
+          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Validate upgrade impact data
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run validate
+        working-directory: upgrade-impact
+
+      # The data was generated on main. It is set aside and written again on each attempt below,
+      # because index.yaml on the release branch may have gained other releases since.
+      - name: Set generated data aside
+        if: steps.impact.outputs.generate == 'true'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/impact"
+          mv "upgrade-impact/data/releases/${TAG_NAME}.yaml" "$RUNNER_TEMP/impact/"
+          git checkout -- upgrade-impact/data
+
+      # Builds on the open PR's branch, so edits a reviewer pushed to it are kept, or on main.
+      # A branch left by a closed or merged PR is replaced; one no PR has used yet belongs to a
+      # run that has not opened its PR, so this run builds on it. The push only lands if the
+      # branch is still where it was read, and otherwise the attempt starts over.
+      # A release tagged on an older line leaves the chart alone but still adds its data.
+      - name: Commit to release branch
+        id: push
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          DATA_FILE="$RUNNER_TEMP/impact/${TAG_NAME}.yaml"
+          BUMP_OUTPUT="$RUNNER_TEMP/bump-output"
+
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git fetch --quiet --prune origin
+            REMOTE_SHA="$(git rev-parse --verify --quiet "refs/remotes/origin/${BRANCH_NAME}" || true)"
+            PRS="$(gh pr list --base main --head "$BRANCH_NAME" --state all --json number,state,headRefOid)"
+            OPEN_PR="$(jq -r '[.[] | select(.state == "OPEN")][0].number // empty' <<< "$PRS")"
+
+            if [ -n "$REMOTE_SHA" ] && { [ -n "$OPEN_PR" ] \
+              || ! jq -e --arg sha "$REMOTE_SHA" 'any(.[]; .headRefOid == $sha)' <<< "$PRS" >/dev/null; }; then
+              BASE="origin/${BRANCH_NAME}"
+            else
+              BASE="origin/main"
+            fi
+
+            git checkout --quiet --force -B release-pr "$BASE"
+            git clean -fdq -- upgrade-impact/data helm-charts/infisical-standalone-postgres
+            if [ -f "$DATA_FILE" ] && [ ! -f "upgrade-impact/data/releases/${TAG_NAME}.yaml" ]; then
+              (cd upgrade-impact && npm run --silent generate -- --from-file "$DATA_FILE")
+            fi
+            : > "$BUMP_OUTPUT"
+            GITHUB_OUTPUT="$BUMP_OUTPUT" ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
+
+            git add helm-charts/infisical-standalone-postgres upgrade-impact/data
+            if git diff --cached --quiet; then
+              echo "Nothing to commit for ${TAG_NAME} on ${BASE}."
+              PUSHED=false
+              break
+            fi
+
+            git commit --quiet -m "chore(release): upgrade impact and Helm chart for ${TAG_NAME}"
+            if git push --force-with-lease="refs/heads/${BRANCH_NAME}:${REMOTE_SHA}" origin "HEAD:refs/heads/${BRANCH_NAME}"; then
+              PUSHED=true
+              break
+            fi
+
+            echo "The release branch moved while attempt ${attempt} was building on it. Trying again."
+            sleep $((RANDOM % 10 + 5))
+          done
+
+          if [ -z "${PUSHED:-}" ]; then
+            echo "::error::Could not commit ${TAG_NAME} to ${BRANCH_NAME}: the branch kept moving."
+            exit 1
+          fi
+
+          cat "$BUMP_OUTPUT" >> "$GITHUB_OUTPUT"
+          printf 'pushed=%s\npr=%s\n' "$PUSHED" "$OPEN_PR" >> "$GITHUB_OUTPUT"
+
+      # A rerun after the push finds nothing to commit, so the PR steps also run for an open PR,
+      # describing the version the branch is at rather than this tag.
+      - name: Write PR body
+        if: steps.push.outputs.pushed == 'true' || steps.push.outputs.pr != ''
+        env:
+          TAG_NAME: ${{ steps.push.outputs.app_version }}
+          CHART_VERSION: ${{ steps.push.outputs.chart_version }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          MAIN_CHART="$(git show origin/main:helm-charts/infisical-standalone-postgres/Chart.yaml)"
+          MAIN_APP_VERSION="$(echo "$MAIN_CHART" | yq '.appVersion')"
+          MAIN_CHART_VERSION="$(echo "$MAIN_CHART" | yq '.version')"
+          is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
+
+          # Releases the chart moves across, plus any whose data this branch adds, such as a
+          # release tagged on an older line.
+          IN_RANGE="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | while read -r v; do
+            if is_newer "${v#v}" "${MAIN_APP_VERSION#v}" && ! is_newer "${v#v}" "${TAG_NAME#v}"; then echo "$v"; fi
+          done)"
+          ADDED="$(git diff --name-only --diff-filter=AM origin/main...HEAD -- upgrade-impact/data/releases \
+            | sed -n 's#.*/\(v[0-9.]*\)\.yaml$#\1#p')"
+          BLOB_URL="${REPO_URL}/blob/$(git rev-parse HEAD)"
+
+          RELEASES="$(printf '%s\n%s\n' "$IN_RANGE" "$ADDED" | sed '/^$/d' | sort -uV | while read -r v; do
+            DATA_FILE="upgrade-impact/data/releases/${v}.yaml"
+            if [ -f "$DATA_FILE" ]; then
+              IMPACT="$(yq '.impactLevel' "$DATA_FILE")"
+              BREAKING="$(yq '.breakingChanges | length' "$DATA_FILE")"
+              SUMMARY="$(yq '.summary' "$DATA_FILE" | tr '\n' ' ')"
+              echo "- [\`${v}\`](${BLOB_URL}/${DATA_FILE}): impact \`${IMPACT}\`, breaking changes: ${BREAKING}. ${SUMMARY}"
+            else
+              echo "- \`${v}\`: no upgrade impact data. To add it, run this workflow for \`${v}\`."
+            fi
+          done)"
+
+          if [ "$CHART_VERSION" = "$MAIN_CHART_VERSION" ]; then
+            CHART_LINE="This adds upgrade impact data only. The chart already defaults to \`${TAG_NAME}\`, so it is unchanged."
+          else
+            CHART_LINE="Merging moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. The chart version follows Infisical's: a new Infisical minor bumps the chart's minor, and a patch release bumps its patch."
+          fi
+
+          cat > "$RUNNER_TEMP/pr-body.md" <<EOF
+          ## Context
+
+          Adds the generated upgrade impact data for each Infisical release below and points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. ${CHART_LINE} If a newer release ships before this merges, this PR is updated in place.
+
+          Before merging:
+          - Review each release's generated YAML for self-hosted upgrade accuracy.
+          - Review the upgrade notes generated from those breaking changes in the chart \`${CHART_VERSION}\` CHANGELOG section.
+
+          ### Releases in this PR
+
+          ${RELEASES}
+
+          ## Steps to verify the change
+
+          Checks don't run on pull requests opened by GitHub Actions. Close and reopen this PR to run the Helm chart tests, which install the chart's \`appVersion\`, and the upgrade impact data validation.
+
+          Merging publishes chart \`${CHART_VERSION}\` through the **Release Infisical Core Helm chart** workflow.
+
+          ## Type
+
+          - [ ] Fix
+          - [ ] Feature
+          - [ ] Improvement
+          - [ ] Breaking
+          - [ ] Docs
+          - [x] Chore
+          EOF
+
+      - name: Open or update PR
+        id: pr
+        if: steps.push.outputs.pushed == 'true' || steps.push.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.push.outputs.app_version }}
+          EXISTING_PR: ${{ steps.push.outputs.pr }}
+        run: |
+          set -euo pipefail
+          PR_TITLE="chore(release): upgrade impact and Helm chart for ${TAG_NAME}"
+          open_pr() { gh pr list --base main --head "$BRANCH_NAME" --state open --json number --jq '.[0].number // empty'; }
+
+          # A run that pushed after this one describes the newer branch, so this one leaves the PR
+          # text to it. The run that pushed last always finds its own commit here.
+          git fetch --quiet origin "$BRANCH_NAME"
+          if [ "$(git rev-parse FETCH_HEAD)" != "$(git rev-parse HEAD)" ]; then
+            echo "A newer run moved ${BRANCH_NAME}; it updates the PR."
+            PR_NUMBER="${EXISTING_PR:-$(open_pr)}"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_NUMBER="${EXISTING_PR:-$(open_pr)}"
+          if [ -z "$PR_NUMBER" ]; then
+            # Another run building on the same branch may open the PR first.
+            if PR_URL="$(gh pr create --base main --head "$BRANCH_NAME" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md")"; then
+              echo "Opened $PR_URL"
+              echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            PR_NUMBER="$(open_pr)"
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::Could not open a pull request for ${BRANCH_NAME}."
+              exit 1
+            fi
+          fi
+
+          gh pr edit "$PR_NUMBER" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Request review from the release author
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
+
+          if [ -z "$RELEASE_AUTHOR" ]; then
+            echo "::error::Could not resolve the author of release ${TAG_NAME}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            --method POST \
+            --raw-field "reviewers[]=${RELEASE_AUTHOR}" \
+            --silent; then
+            echo "::error::Could not request review from ${RELEASE_AUTHOR}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          echo "Requested review from release author: $RELEASE_AUTHOR"
+
+  notify:
+    name: Notify incident.io if the release PR is blocked
+    runs-on: ubuntu-latest
+    needs: [bump]
+    if: always() && needs.bump.result == 'failure'
+    steps:
+      - name: Send blocked alert to incident.io
+        env:
+          ALERT_URL: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_URL }}
+          ALERT_TOKEN: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          # Guard against a misconfigured/rotated secret redirecting the POST (and the
+          # bearer token) to an unintended host: only allow the incident.io API origin.
+          case "$ALERT_URL" in
+            https://api.incident.io/*) ;;
+            *)
+              echo "::error::ALERT_URL does not point at https://api.incident.io/ — refusing to send alert."
+              exit 1
+              ;;
+          esac
+
+          jq -n \
+            --arg title "[${REPO}] Upgrade impact and Helm chart PR blocked for ${RELEASE_TAG}" \
+            --arg description "Upgrade impact data for ${RELEASE_TAG} was not generated, the Helm chart was not pointed at it, or the pull request has no reviewer." \
+            --arg dedup "upgrade-impact-${RELEASE_TAG}" \
+            --arg url "$RUN_URL" \
+            --arg tag "${RELEASE_TAG:-unknown}" \
+            --arg actor "$ACTOR" \
+            '{
+              title: $title,
+              description: $description,
+              deduplication_key: $dedup,
+              status: "firing",
+              source_url: $url,
+              metadata: { release_tag: $tag, actor: $actor }
+            }' \
+          | curl -sS --fail-with-body --connect-timeout 10 --max-time 30 -X POST "$ALERT_URL" \
+              -H "Authorization: Bearer $ALERT_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @-

@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { crypto as appCrypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -23,6 +24,7 @@ import {
   buildIssuedCertificateChain,
   buildOcspResponderUrl,
   createDistinguishedName,
+  createSerialNumber,
   extractDnParts,
   getActiveCaCertificate,
   getCrlNumber,
@@ -590,17 +592,12 @@ describe("rebuildCaCrl", () => {
             : signer
         )
       },
-      projectDAL: {
-        transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb({})),
-        findOne: vi.fn(async () => ({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-1" })),
-        updateById: vi.fn()
-      },
-      kmsService: {
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
+      kmsKeyService: {
         encryptWithKmsKey: vi.fn(async () => async ({ plainText }: { plainText: Buffer }) => ({
           cipherTextBlob: plainText
         })),
-        decryptWithKmsKey: vi.fn(),
-        generateKmsKey: vi.fn()
+        decryptWithKmsKey: vi.fn()
       },
       certificateDAL: {
         find: vi.fn(async () => [
@@ -912,16 +909,8 @@ describe("buildIssuedCertificateChain", () => {
       caCertChain,
       projectId: PROJECT_ID,
       certificateAuthorityCrossSignedCertDAL: { findValidInCaHierarchy },
-      projectDAL: {
-        findOne: vi.fn().mockResolvedValue({
-          id: PROJECT_ID,
-          orgId: "org-1",
-          kmsCertificateKeyId: "kms-key-1"
-        }),
-        updateById: vi.fn(),
-        transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
-      } as never,
-      kmsService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key") } as never,
+      kmsKeyService: { decryptWithKmsKey } as never
     });
 
     return { chain, findValidInCaHierarchy, decryptWithKmsKey };
@@ -1038,7 +1027,7 @@ describe("getActiveCaCertificate", () => {
         internalCa: { dn: storedDn, activeCaCertId },
         kmsId: "kms-key",
         certificateAuthorityCertDAL: { findById: vi.fn().mockResolvedValue(caCertRow) },
-        kmsService: {
+        kmsKeyService: {
           decryptWithKmsKey: vi
             .fn()
             .mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
@@ -1065,4 +1054,34 @@ describe("getActiveCaCertificate", () => {
   it("falls back to the stored DN while the CA has no certificate", async () => {
     expect(await resolveIssuer(null)).toBe(storedDn);
   });
+});
+
+describe("createSerialNumber", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  it.each([0x00, 0x80])(
+    "should match the serial encoded in the certificate when the first random byte is %i",
+    async (firstByte) => {
+      const random = Buffer.alloc(20, 0x3a);
+      random[0] = firstByte;
+      const randomBytesSpy = vi.spyOn(appCrypto, "randomBytes").mockReturnValueOnce(random as never);
+
+      const serialNumber = createSerialNumber();
+      const keys = await generateCaKeys();
+      const cert = await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber,
+        name: "CN=serial",
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 60_000),
+        signingAlgorithm: EC_SIGNING_ALGORITHM,
+        keys
+      });
+
+      expect(serialNumber).toHaveLength(40);
+      expect(cert.serialNumber).toBe(serialNumber);
+      randomBytesSpy.mockRestore();
+    }
+  );
 });

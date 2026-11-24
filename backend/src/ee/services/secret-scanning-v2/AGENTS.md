@@ -1,6 +1,6 @@
-# Secret scanning scans and GitHub pull request checks
+# Secret scanning scans, findings and GitHub pull request checks
 
-Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub pull request check flow.
+Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or the GitHub pull request check flow.
 
 - A scan's `trigger` (`SecretScanningScanTrigger`) records what started it, separate from `type` (`historical` /
   `realtime`). `metadata` (jsonb) holds trigger-specific data, is parsed by trigger, and is never returned raw by
@@ -19,3 +19,32 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub
   else fails it, because re-running never changes those.
 - Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of
   our checks (checks belong to the commit, so it would replace a real result).
+
+## Findings
+
+- A finding is one secret value in one resource, and every place it was found is a row in
+  `secret_scanning_finding_locations` (unique `(resourceId, fingerprint)`). Triage lives on the finding only and never
+  cascades to other findings, including ones with the same value in other resources.
+- Nothing in the database makes a value's finding unique, because the release before locations existed saves a
+  finding per location and has to keep working after a rollback. Code that looks a value up must take the oldest
+  finding when there are several.
+- Scans write findings only through `findings.persistLocations` (`secret-scanning-v2-dal.ts`), in the transaction
+  that records the scan's progress. Only a location the resource didn't have can create a finding or reopen a
+  `resolved` one; a rescan of history must change nothing. False positives and ignored findings just gain the
+  location. It takes a per-resource advisory lock (`PgSqlLock.SecretScanningFindingLocations`) first, so a diff scan
+  and a full scan of one resource can't both create a finding for one value (no unique index keeps one finding per
+  value, so the previous release still works after a rollback) or both take a location as new.
+- A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
+  the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
+- Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way. So do
+  matches without a value (rules that match only a file's path), since grouping them by value would merge them all.
+- `findings.scanId`, `fingerprint` and `details` are deprecated but still written: `persistLocations` stores the
+  finding's first location there, so the release before locations existed keeps working if a deploy is rolled back.
+  The findings API still returns them (and sorts by `author` from `details`) for clients built before locations. Never
+  read them in new code; drop the columns and those fields together, in a release after this one has shipped.
+- Location ids of migrated findings are the old finding ids, so ids saved before the merge (a PR check's
+  `findingIds`) still resolve through `findings.findByIdsOrLocationIds`.
+- A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
+  never only the new ones. Its counts are distinct findings.
+- Notifications count distinct unresolved findings with a location this scan found first (`findings.countByScanId`),
+  read back from the database so a resumed full scan counts every batch.

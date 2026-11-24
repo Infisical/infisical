@@ -187,20 +187,28 @@ const ApplicationPoliciesTable = ({
   canEdit,
   canDelete
 }: ApplicationPoliciesTableProps) => {
-  const { data: policies = [], isPending } = useQuery(
+  const { data: issuancePolicies = [], isPending: isIssuancePending } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
       scope: ApprovalPolicyScope.PkiApplication,
       scopeId: applicationId
     })
   );
+  const { data: revocationPolicies = [], isPending: isRevocationPending } = useQuery(
+    approvalPolicyQuery.list({
+      policyType: ApprovalPolicyType.CertRevocation,
+      scope: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId
+    })
+  );
+  const isPending = isIssuancePending || isRevocationPending;
 
   const sortedPolicies = useMemo(
     () =>
-      [...policies].sort(
+      [...issuancePolicies, ...revocationPolicies].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ),
-    [policies]
+    [issuancePolicies, revocationPolicies]
   );
 
   if (!isPending && sortedPolicies.length === 0) {
@@ -209,7 +217,8 @@ const ApplicationPoliciesTable = ({
         <EmptyHeader>
           <EmptyTitle>No approval policies</EmptyTitle>
           <EmptyDescription>
-            Create one to require approval before certificates are issued for this application.
+            Create one to require approval before certificates are issued or revoked in this
+            application.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -221,6 +230,7 @@ const ApplicationPoliciesTable = ({
       <TableHeader>
         <TableRow>
           <TableHead>Policy Name</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Profile Name</TableHead>
           <TableHead>Approval Steps</TableHead>
           <TableHead>Created</TableHead>
@@ -231,7 +241,7 @@ const ApplicationPoliciesTable = ({
         {isPending &&
           Array.from({ length: 3 }, (_, idx) => (
             <TableRow key={`policy-skeleton-${idx + 1}`}>
-              {Array.from({ length: 5 }, (__, cellIdx) => (
+              {Array.from({ length: 6 }, (__, cellIdx) => (
                 <TableCell key={`policy-skeleton-cell-${cellIdx + 1}`}>
                   <Skeleton className="h-4 w-24" />
                 </TableCell>
@@ -252,6 +262,9 @@ const ApplicationPoliciesTable = ({
                       </Badge>
                     ) : null}
                   </div>
+                </TableCell>
+                <TableCell className="text-accent">
+                  {policy.type === ApprovalPolicyType.CertRevocation ? "Revocation" : "Issuance"}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">
@@ -401,12 +414,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const deletePolicy = useDeleteApprovalPolicy();
 
   const handleDeletePolicy = async () => {
-    const p = popUp.deletePolicy.data as { policyId: string } | undefined;
-    if (!p?.policyId) return;
+    const p = popUp.deletePolicy.data as TApprovalPolicy | undefined;
+    if (!p?.id) return;
     try {
       await deletePolicy.mutateAsync({
-        policyType: ApprovalPolicyType.CertRequest,
-        policyId: p.policyId
+        policyType: p.type,
+        policyId: p.id
       });
       createNotification({ type: "success", text: "Policy deleted" });
       handlePopUpClose("deletePolicy");
@@ -640,7 +653,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <DocumentationLinkBadge href={PkiDocsUrls.applications.approvals} />
           </CardTitle>
           <CardDescription>
-            Require approval before certificates are issued for this application.
+            Require approval before certificates are issued or revoked in this application.
           </CardDescription>
           <CardAction>
             <Tooltip>
@@ -669,7 +682,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           <ApplicationPoliciesTable
             applicationId={application.id}
             onEdit={(policy) => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-            onDelete={(policy) => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+            onDelete={(policy) => handlePopUpOpen("deletePolicy", policy)}
             canEdit={canEditPolicies}
             canDelete={canDeletePolicies}
           />

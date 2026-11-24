@@ -91,6 +91,7 @@ export type TProjectFolderScopedPrivilege = {
   role: string;
   environmentSlug: string;
   secretPath: string;
+  appliesToSubfolders: boolean;
 };
 
 export type TCachedFolderScopedPrivileges = {
@@ -147,6 +148,11 @@ export type TPermissionServiceFactory = {
     actorId: string;
     actorType: ActorType.USER | ActorType.IDENTITY;
   }) => Promise<string>;
+  getProjectPermissionCacheFingerprint: (
+    arg: Pick<TGetProjectPermissionArg, "actor" | "actorId" | "projectId" | "actionProjectType"> & {
+      actorOrgId: string;
+    }
+  ) => Promise<string>;
   getResourcePermission: (arg: TGetResourcePermissionArg) => Promise<{
     permission: MongoAbility<ResourcePermissionSet, MongoQuery>;
     memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;

@@ -3,6 +3,7 @@ import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
+  BookOpenTextIcon,
   CircleAlertIcon,
   FilterIcon,
   GlobeIcon,
@@ -11,6 +12,7 @@ import {
   MoreHorizontalIcon,
   PackageIcon,
   PencilIcon,
+  PlugIcon,
   PlusIcon,
   SearchIcon,
   TriangleAlertIcon
@@ -68,8 +70,8 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
-  ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
@@ -77,7 +79,10 @@ import {
   useProject,
   useUser
 } from "@app/context";
-import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
+import {
+  canActOnAgentVaultSession,
+  canManageAgentVaultServices
+} from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -92,7 +97,9 @@ import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
   useListAgentVaultAccessBundles,
-  useListAgentVaultSessions
+  useListAgentVaultServices,
+  useListAgentVaultSessions,
+  useListAgentVaultSkills
 } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
@@ -108,16 +115,17 @@ import {
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionDialog } from "./components/EditSessionDialog";
-import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
+import {
+  inlineServicesLabel,
+  inlineSkillsLabel,
+  toAccessItems,
+  TSessionAccessItem
+} from "./components/sessionAccess";
+import { InlineServicesList, SessionSkillsList } from "./components/SessionAccessHoverCard";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
-import {
-  inlineServicesLabel,
-  toAccessItems,
-  TSessionAccessItem
-} from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
 import {
   SESSION_METADATA_MAX_KEYS,
@@ -131,11 +139,41 @@ const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Expired
 ];
 
-const accessItemIcon = (item: TSessionAccessItem) =>
-  item.kind === "bundle" ? <PackageIcon /> : <GlobeIcon />;
+const accessItemIcon = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return <PackageIcon />;
+  if (item.kind === "service") return <PlugIcon />;
+  if (item.kind === "skill" || item.kind === "inline-skills") return <BookOpenTextIcon />;
+  return <GlobeIcon />;
+};
 
-const accessItemHoverCard = (item: TSessionAccessItem) =>
-  item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
+const accessItemKey = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return `bundle:${item.bundle.id ?? item.bundle.name}`;
+  if (item.kind === "service") return `service:${item.service.id}`;
+  if (item.kind === "skill") return `skill:${item.skill.id}`;
+  return item.kind;
+};
+
+const accessItemLabel = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return item.bundle.name;
+  if (item.kind === "service") return item.service.name;
+  if (item.kind === "skill") return item.skill.name;
+  if (item.kind === "inline-skills") return inlineSkillsLabel(item.skills.length);
+  return inlineServicesLabel(item.services.length);
+};
+
+const accessItemTooltip = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle" && !item.bundle.id) return `${item.bundle.name} (deleted)`;
+  if (item.kind === "service")
+    return item.service.description ?? "A project service picked when this session was created";
+  if (item.kind === "skill") return item.skill.description;
+  return undefined;
+};
+
+const accessItemHoverCard = (item: TSessionAccessItem) => {
+  if (item.kind === "inline") return <InlineServicesList services={item.services} />;
+  if (item.kind === "inline-skills") return <SessionSkillsList skills={item.skills} isInline />;
+  return undefined;
+};
 
 export const AgentVaultSessionsPage = () => {
   const { projectId } = useProject();
@@ -150,10 +188,7 @@ export const AgentVaultSessionsPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canCreateBundles = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Create,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
+  const canManageServices = canManageAgentVaultServices(permission);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -205,7 +240,20 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
+  // A session needs a bundle the caller reaches or a service or skill they can pick. A member can pick only the
+  // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
+  const { data: pickableServices } = useListAgentVaultServices(projectId, { limit: 1 });
+  // Without Read on skills the caller can pick none, and the list would only answer 403.
+  const canReadSkills = permission.can(
+    ProjectPermissionAgentVaultSkillActions.Read,
+    ProjectPermissionSub.AgentVaultSkills
+  );
+  const { data: pickableSkills } = useListAgentVaultSkills(
+    projectId,
+    { limit: 1 },
+    { enabled: canReadSkills }
+  );
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
     projectId,
     canReadSessionLogSettings
@@ -240,18 +288,21 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered =
     Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
-  const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
+  const canStartSession =
+    (accessBundles?.totalCount ?? 0) > 0 ||
+    (pickableServices?.totalCount ?? 0) > 0 ||
+    (pickableSkills?.totalCount ?? 0) > 0;
+  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), canStartSession);
 
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
     emptyTitle = "No sessions match these filters";
     emptyDescription = "Try a different search term, status or metadata.";
-  } else if (!hasReachableBundles) {
-    emptyTitle = canCreateBundles ? "No sessions yet" : "No access bundles granted to you";
-    emptyDescription = canCreateBundles
-      ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
+  } else if (!canStartSession) {
+    emptyTitle = canManageServices ? "No sessions yet" : "No access bundles granted to you";
+    emptyDescription = canManageServices
+      ? "Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   } else {
     emptyTitle = "No sessions yet";
@@ -265,13 +316,13 @@ export const AgentVaultSessionsPage = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !hasReachableBundles && canCreateBundles && (
+        {!isFiltered && !canStartSession && canManageServices && (
           <Button variant="av" asChild>
             <Link
-              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+              to="/organizations/$orgId/projects/agent-vault/$projectId/services"
               params={{ orgId: currentOrg.id, projectId }}
             >
-              Go to Access Bundles
+              Go to Services
             </Link>
           </Button>
         )}
@@ -364,13 +415,12 @@ export const AgentVaultSessionsPage = () => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
             </CardTitle>
             <CardDescription>
-              A session names the actor who holds it, the services it can reach, and when it
-              expires.
+              A session defines who holds it, the services it can reach, and when it expires.
             </CardDescription>
             <CardAction>
               <Button
                 variant="av"
-                isDisabled={!hasReachableBundles}
+                isDisabled={!canStartSession}
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <PlusIcon />
@@ -535,26 +585,14 @@ export const AgentVaultSessionsPage = () => {
                         <div className="max-w-72">
                           <OverflowBadgeList
                             items={toAccessItems(session)}
-                            getKey={(item) =>
-                              item.kind === "bundle"
-                                ? `bundle:${item.bundle.id ?? item.bundle.name}`
-                                : "inline"
-                            }
-                            getLabel={(item) =>
-                              item.kind === "bundle"
-                                ? item.bundle.name
-                                : inlineServicesLabel(item.services.length)
-                            }
+                            getKey={accessItemKey}
+                            getLabel={accessItemLabel}
                             getIcon={accessItemIcon}
                             getClassName={(item) =>
                               item.kind === "bundle" && !item.bundle.id ? "text-muted" : undefined
                             }
                             getHoverCard={accessItemHoverCard}
-                            getTooltip={(item) =>
-                              item.kind === "bundle" && !item.bundle.id
-                                ? `${item.bundle.name} (deleted)`
-                                : undefined
-                            }
+                            getTooltip={accessItemTooltip}
                             getLinkProps={(item) =>
                               item.kind === "bundle" && item.bundle.id
                                 ? linkOptions({

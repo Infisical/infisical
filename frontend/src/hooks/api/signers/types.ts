@@ -530,6 +530,17 @@ export type TListSigningOperationsDTO = {
   status?: SigningOperationStatus;
 };
 
+export type TGetSigningActivityTrendDTO = {
+  range: "7d" | "30d" | "6m";
+  signerId?: string;
+};
+
+export type TSigningActivityPeriod = {
+  period: string;
+  success: number;
+  failed: number;
+};
+
 export type TListSigningOperationsResponse = {
   operations: TSigningOperation[];
   totalCount: number;

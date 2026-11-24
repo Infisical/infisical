@@ -22,6 +22,7 @@ import {
   type UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAwsError } from "@app/lib/aws/error";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
@@ -41,10 +42,13 @@ type TAwsSecretDescriptionsRecord = Record<string, DescribeSecretResponse>;
 const MAX_RETRIES = 10;
 const BATCH_SIZE = 20;
 
-const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCredentials) => {
+const getSecretsManagerClient = async (
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { destinationConfig, connection } = secretSync;
 
-  const config = await getAwsConnectionConfig(connection, destinationConfig.region);
+  const config = await getAwsConnectionConfig(connection, instanceConfigService, destinationConfig.region);
 
   const secretsManagerClient = new SecretsManagerClient({
     region: config.region,
@@ -357,14 +361,18 @@ const getSingleSecretValue = async (
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
+  syncSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
     const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
-    const client = await getSecretsManagerClient(secretSync);
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
@@ -558,8 +566,11 @@ export const AwsSecretsManagerSyncFns = {
 
     return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
-  getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
-    const client = await getSecretsManagerClient(secretSync);
+  getSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    instanceConfigService: TInstanceConfigService
+  ): Promise<TSecretMap> => {
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     const { destinationConfig, environment, syncOptions } = secretSync;
 
@@ -601,14 +612,18 @@ export const AwsSecretsManagerSyncFns = {
       });
     }
   },
-  removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
+  removeSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
     const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
-    const client = await getSecretsManagerClient(secretSync);
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       const awsSecretsRecord = await getSecretsRecord(

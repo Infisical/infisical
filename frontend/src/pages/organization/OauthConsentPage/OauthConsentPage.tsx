@@ -76,7 +76,7 @@ export const OauthConsentPage = () => {
     return (
       <>
         <PageTitle title="Authorize Application" />
-        <div className="flex min-h-screen flex-col items-center justify-center bg-page">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-page">
           <Card className="w-full max-w-md items-center text-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-success/10">
               <CheckCircle2 className="size-8 text-success" />
@@ -93,7 +93,7 @@ export const OauthConsentPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-page">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-page">
       <PageTitle title="Authorize Application" />
       <link rel="icon" href="/infisical.ico" />
 

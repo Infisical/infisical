@@ -1,5 +1,8 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AWS_REQUEST_TIMEOUTS, createS3Bucket, TS3Bucket } from "@app/lib/aws/s3";
 import { getConfig } from "@app/lib/config/env";
@@ -12,7 +15,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { getDefaultStorage } from "@app/services/object-storage/object-storage-default-fns";
 
 import { awsErrorLabel, isTemporaryAwsError, ObjectStorageError, toObjectStorageError } from "./object-storage-errors";
@@ -35,7 +37,8 @@ const CORS_CHECK_TIMEOUT_MS = 15_000;
 
 type TObjectStorageServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry">;
 };
 
@@ -43,7 +46,8 @@ export type TObjectStorageServiceFactory = ReturnType<typeof objectStorageServic
 
 export const objectStorageServiceFactory = ({
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   keyStore
 }: TObjectStorageServiceFactoryDep) => {
   const registeredNamespaces = new Map<string, TStorageNamespace>();
@@ -104,9 +108,10 @@ export const objectStorageServiceFactory = ({
 
     let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
     try {
-      const connection = await decryptAppConnection(raw, kmsService);
+      const connection = await decryptAppConnection(raw, kmsDataKeyService);
       ({ credentials } = await getAwsConnectionConfig(
         { ...connection, projectType: config.projectType } as unknown as TAwsConnectionConfig,
+        instanceConfigService,
         region,
         { stsRequestHandler: AWS_REQUEST_TIMEOUTS }
       ));
@@ -116,7 +121,7 @@ export const objectStorageServiceFactory = ({
       throw fail(ObjectStorageErrorReason.ConnectionInvalid, {
         connectionName: raw.name,
         cause:
-          err instanceof STSServiceException || err instanceof BadRequestError
+          err instanceof STSServiceException || err instanceof BadRequestError || err instanceof RuleViolationError
             ? err.message
             : "Infisical could not load its credentials"
       });

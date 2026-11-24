@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -26,8 +28,6 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -104,10 +104,11 @@ export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 type TSecretSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+  instanceConfigService: TInstanceConfigService;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretV2BridgeDAL: Pick<
@@ -182,9 +183,10 @@ const getRequeueDelay = (failureCount?: number) => {
 export const secretSyncQueueFactory = ({
   queueService,
   cronJob,
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL,
   gitHubAppDAL,
+  instanceConfigService,
   keyStore,
   folderDAL,
   projectEnvDAL,
@@ -244,7 +246,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -262,7 +264,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -305,7 +307,7 @@ export const secretSyncQueueFactory = ({
         shouldRetry: false
       });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -324,7 +326,7 @@ export const secretSyncQueueFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService
     });
 
     return buildSyncPayload(
@@ -348,7 +350,7 @@ export const secretSyncQueueFactory = ({
           projectFolderGrantDAL,
           actorOrgId,
           orgDAL,
-          kmsService
+          kmsDataKeyService
         }
       }
     );
@@ -458,7 +460,8 @@ export const secretSyncQueueFactory = ({
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
       gitHubAppDAL,
-      kmsService,
+      instanceConfigService,
+      kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       oidcIssuerService
@@ -587,7 +590,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -622,7 +625,8 @@ export const secretSyncQueueFactory = ({
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
         gitHubAppDAL,
-        kmsService,
+        instanceConfigService,
+        kmsDataKeyService,
         gatewayV2Service,
         gatewayPoolService,
         oidcIssuerService,
@@ -788,7 +792,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -928,7 +932,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -948,7 +952,8 @@ export const secretSyncQueueFactory = ({
         {
           appConnectionDAL,
           gitHubAppDAL,
-          kmsService,
+          instanceConfigService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -1061,7 +1066,15 @@ export const secretSyncQueueFactory = ({
     const { projectId, destination, name, folder, lastSyncMessage, lastRemoveMessage, lastImportMessage, environment } =
       secretSync;
 
+    // findById hides projects pending deletion, whose syncs can still fail; skip rather than throw so the job
+    // doesn't retry until its attempts run out.
     const project = await projectDAL.findById(projectId);
+    if (!project) {
+      logger.info(
+        `SecretSync: project ${projectId} not found, skipping failed notifications [syncId=${secretSync.id}] [action=${action}]`
+      );
+      return;
+    }
 
     const adminUserIds = await findProjectAdminUserIds(
       { projectMembershipDAL, orgDAL, userDAL },
@@ -1124,7 +1137,7 @@ export const secretSyncQueueFactory = ({
         dependencies: {
           projectDAL,
           projectSlackConfigDAL,
-          kmsService,
+          kmsDataKeyService,
           microsoftTeamsService,
           projectMicrosoftTeamsConfigDAL
         }

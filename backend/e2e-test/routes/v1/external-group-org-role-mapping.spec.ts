@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
@@ -102,7 +103,7 @@ describe("SCIM group to org role mappings", () => {
 
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
 
     // `scim` edit alone: enough for the route's own check, not enough to hand out org roles.
     const [role] = await testDb(TableName.Role)

@@ -21,6 +21,7 @@ import {
 } from "@aws-sdk/client-ssm";
 import handlebars from "handlebars";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAwsError } from "@app/lib/aws/error";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -38,10 +39,13 @@ const MAX_RETRIES = 10;
 const BATCH_SIZE = 10;
 const MAX_HIERARCHY_LEVELS = 15;
 
-const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {
+const getSSM = async (
+  secretSync: TAwsParameterStoreSyncWithCredentials,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { destinationConfig, connection } = secretSync;
 
-  const config = await getAwsConnectionConfig(connection, destinationConfig.region);
+  const config = await getAwsConnectionConfig(connection, instanceConfigService, destinationConfig.region);
 
   return new SSMClient({
     region: destinationConfig.region,
@@ -373,7 +377,11 @@ const deleteParametersBatch = async (
 };
 
 export const AwsParameterStoreSyncFns = {
-  syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
+  syncSecrets: async (
+    secretSync: TAwsParameterStoreSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
@@ -381,7 +389,7 @@ export const AwsParameterStoreSyncFns = {
 
     if (preserveFolderStructure) assertWithinHierarchyLimit(destinationConfig.path, secretMap);
 
-    const ssm = await getSSM(secretSync);
+    const ssm = await getSSM(secretSync, instanceConfigService);
 
     // A sync that preserves folder structure writes to every level below its path, so it reads them
     // all. That can include parameters of folders it doesn't mirror, which deletion leaves alone.
@@ -509,10 +517,13 @@ export const AwsParameterStoreSyncFns = {
 
     return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
-  getSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (
+    secretSync: TAwsParameterStoreSyncWithCredentials,
+    instanceConfigService: TInstanceConfigService
+  ): Promise<TSecretMap> => {
     const { destinationConfig, syncOptions, environment } = secretSync;
 
-    const ssm = await getSSM(secretSync);
+    const ssm = await getSSM(secretSync, instanceConfigService);
 
     const awsParameterStoreSecretsRecord = await getParametersByPath(
       ssm,
@@ -525,12 +536,16 @@ export const AwsParameterStoreSyncFns = {
       Object.entries(awsParameterStoreSecretsRecord).map(([key, value]) => [key, { value: value.Value ?? "" }])
     );
   },
-  removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
+  removeSecrets: async (
+    secretSync: TAwsParameterStoreSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
-    const ssm = await getSSM(secretSync);
+    const ssm = await getSSM(secretSync, instanceConfigService);
 
     const awsParameterStoreSecretsRecord = await getParametersByPath(
       ssm,

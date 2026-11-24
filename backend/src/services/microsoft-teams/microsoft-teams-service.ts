@@ -9,15 +9,15 @@ import {
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
-import { TSuperAdminDALFactory } from "../super-admin/super-admin-dal";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import {
@@ -67,28 +67,37 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "update"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   workflowIntegrationDAL: Pick<
     TWorkflowIntegrationDALFactory,
     "transaction" | "create" | "updateById" | "deleteById" | "update" | "findOne"
   >;
-  serverCfgDAL: Pick<TSuperAdminDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TMicrosoftTeamsServiceFactory = ReturnType<typeof microsoftTeamsServiceFactory>;
 
-const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
-
 export const microsoftTeamsServiceFactory = ({
   permissionService,
-  serverCfgDAL,
-  kmsService,
+  instanceConfigService,
+  kmsDataKeyService,
   microsoftTeamsIntegrationDAL,
   workflowIntegrationDAL
 }: TMicrosoftTeamsServiceFactoryDep) => {
   let teamsBot: TeamsBot | null = null;
   let adapter: CloudAdapter | null = null;
   let lastKnownUpdatedAt = new Date();
+
+  // The instance's Teams app credentials, refused with a readable message when any of them is not set.
+  const $getConfiguredCredentials = async () => {
+    const { credentials } = await instanceConfigService.getMicrosoftTeamsCredentials();
+    if (!credentials.isComplete()) {
+      throw new BadRequestError({
+        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
+      });
+    }
+    return credentials;
+  };
 
   const initializeTeamsBot = async ({
     botAppId,
@@ -125,36 +134,23 @@ export const microsoftTeamsServiceFactory = ({
 
   // Throws, so the local refresh sees the failure; the startup sync in initializeBackgroundSync catches instead.
   const $syncMicrosoftTeamsIntegrationConfiguration = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
+    const { credentials, configUpdatedAt } = await instanceConfigService.getMicrosoftTeamsCredentials();
 
-    if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
+    if (lastKnownUpdatedAt.getTime() === configUpdatedAt.getTime()) {
       logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
       return;
     }
 
-    if (
-      serverCfg.encryptedMicrosoftTeamsAppId &&
-      serverCfg.encryptedMicrosoftTeamsClientSecret &&
-      serverCfg.encryptedMicrosoftTeamsBotId
-    ) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
-      const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-      const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
-
+    if (credentials.isComplete()) {
       await initializeTeamsBot({
-        botAppId: decryptedAppId.toString(),
-        botAppPassword: decryptedAppPassword.toString()
+        botAppId: credentials.appId,
+        botAppPassword: credentials.clientSecret
       });
     }
 
     // Recorded only once the bot is up: marking the config seen before a failed init would make every
     // later run skip it as unchanged, so a failure would never be retried.
-    lastKnownUpdatedAt = serverCfg.updatedAt;
+    lastKnownUpdatedAt = configUpdatedAt;
   };
 
   const initializeBackgroundSync = async () => {
@@ -175,20 +171,12 @@ export const microsoftTeamsServiceFactory = ({
 
   const start = async () => {
     try {
-      const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+      const { credentials } = await instanceConfigService.getMicrosoftTeamsCredentials();
 
-      if (
-        serverCfg?.encryptedMicrosoftTeamsAppId &&
-        serverCfg?.encryptedMicrosoftTeamsClientSecret &&
-        serverCfg?.encryptedMicrosoftTeamsBotId
-      ) {
-        const decryptWithRoot = kmsService.decryptWithRootKey();
-        const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-        const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
-
+      if (credentials.isComplete()) {
         await initializeTeamsBot({
-          botAppId: decryptedAppId.toString(),
-          botAppPassword: decryptedAppPassword.toString()
+          botAppId: credentials.appId,
+          botAppPassword: credentials.clientSecret
         });
       }
     } catch (err) {
@@ -223,34 +211,15 @@ export const microsoftTeamsServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
-
-    if (
-      !serverCfg.encryptedMicrosoftTeamsAppId ||
-      !serverCfg.encryptedMicrosoftTeamsClientSecret ||
-      !serverCfg.encryptedMicrosoftTeamsBotId
-    ) {
-      throw new BadRequestError({
-        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
-      });
-    }
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-    const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
-    const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
+    const credentials = await $getConfiguredCredentials();
 
     const teamsBotInfo = await isBotInstalledInTenant({
       tenantId: microsoftTeamsIntegration.tenantId,
-      botAppId: decryptedAppId.toString(),
-      botAppPassword: decryptedAppPassword.toString(),
-      botId: decryptedBotId.toString(),
+      botAppId: credentials.appId,
+      botAppPassword: credentials.clientSecret,
+      botId: credentials.botId,
       orgId: microsoftTeamsIntegration.orgId,
-      kmsService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -298,28 +267,9 @@ export const microsoftTeamsServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
+    const { appId: botAppId, clientSecret: botAppPassword, botId } = await $getConfiguredCredentials();
 
-    const { encryptedMicrosoftTeamsAppId, encryptedMicrosoftTeamsClientSecret, encryptedMicrosoftTeamsBotId } =
-      serverCfg;
-
-    if (!encryptedMicrosoftTeamsAppId || !encryptedMicrosoftTeamsClientSecret || !encryptedMicrosoftTeamsBotId) {
-      throw new BadRequestError({
-        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
-      });
-    }
-
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const botAppId = decryptWithRoot(encryptedMicrosoftTeamsAppId);
-    const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
-    const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
-
-    await verifyTenantFromCode(tenantId, code, redirectUri, botAppId.toString(), botAppPassword.toString());
+    await verifyTenantFromCode(tenantId, code, redirectUri, botAppId, botAppPassword);
 
     await workflowIntegrationDAL.transaction(async (tx) => {
       const workflowIntegration = await workflowIntegrationDAL.create(
@@ -355,11 +305,11 @@ export const microsoftTeamsServiceFactory = ({
       const teamsBotInfo = await isBotInstalledInTenant(
         {
           tenantId: microsoftTeamsIntegration.tenantId,
-          botAppId: botAppId.toString(),
-          botAppPassword: botAppPassword.toString(),
-          botId: botId.toString(),
+          botAppId,
+          botAppPassword,
+          botId,
           orgId: workflowIntegration.orgId,
-          kmsService,
+          kmsDataKeyService,
           microsoftTeamsIntegrationDAL,
           microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
         },
@@ -367,10 +317,12 @@ export const microsoftTeamsServiceFactory = ({
       );
 
       if (teamsBotInfo.installed) {
-        const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
-          orgId: workflowIntegration.orgId,
-          type: KmsDataKey.Organization
-        });
+        const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService
+          .within(sealKnexTransaction(tx))
+          .createCipherPairWithDataKey({
+            orgId: workflowIntegration.orgId,
+            type: KmsDataKey.Organization
+          });
         const { cipherTextBlob: encryptedAccessToken } = orgDataKeyEncryptor({
           plainText: Buffer.from(teamsBotInfo.accessToken, "utf8")
         });
@@ -410,23 +362,14 @@ export const microsoftTeamsServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
-
-    if (!serverCfg.encryptedMicrosoftTeamsAppId) {
+    const { credentials } = await instanceConfigService.getMicrosoftTeamsCredentials();
+    if (!credentials.appId) {
       throw new BadRequestError({
         message: "Microsoft Teams app ID is not set"
       });
     }
 
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const clientId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-
-    return clientId.toString();
+    return credentials.appId;
   };
   const getMicrosoftTeamsIntegrationsByOrg = async ({
     actorId,
@@ -605,35 +548,15 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
-
-    if (
-      !serverCfg.encryptedMicrosoftTeamsAppId ||
-      !serverCfg.encryptedMicrosoftTeamsClientSecret ||
-      !serverCfg.encryptedMicrosoftTeamsBotId
-    ) {
-      throw new BadRequestError({
-        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
-      });
-    }
-
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-    const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
-    const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
+    const credentials = await $getConfiguredCredentials();
 
     const { installed, internalId, accessToken } = await isBotInstalledInTenant({
       tenantId: microsoftTeamsIntegration.tenantId,
-      botAppId: decryptedAppId.toString(),
-      botAppPassword: decryptedAppPassword.toString(),
-      botId: decryptedBotId.toString(),
+      botAppId: credentials.appId,
+      botAppPassword: credentials.clientSecret,
+      botId: credentials.botId,
       orgId: microsoftTeamsIntegration.orgId,
-      kmsService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -729,34 +652,15 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (!serverCfg) {
-      throw new BadRequestError({
-        message: "Failed to get server configuration."
-      });
-    }
-
-    if (
-      !serverCfg.encryptedMicrosoftTeamsAppId ||
-      !serverCfg.encryptedMicrosoftTeamsClientSecret ||
-      !serverCfg.encryptedMicrosoftTeamsBotId
-    ) {
-      throw new BadRequestError({
-        message: "Microsoft Teams app ID, client secret, or bot ID is not set"
-      });
-    }
-
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const botAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-    const botAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
+    const credentials = await $getConfiguredCredentials();
 
     const botAccessToken = await getMicrosoftTeamsAccessToken({
       tenantId,
-      clientId: botAppId.toString(),
-      clientSecret: botAppPassword.toString(),
+      clientId: credentials.appId,
+      clientSecret: credentials.clientSecret,
       getBotFrameworkToken: true,
       orgId,
-      kmsService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId
     });

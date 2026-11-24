@@ -213,23 +213,44 @@ interface TResourceMembershipReturn extends TMemberships {
 }
 
 export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
+  const actorMembershipIds = ({
+    actorType,
+    actorId,
+    orgId,
+    projectId,
+    scopes
+  }: {
+    actorType: ActorType.IDENTITY | ActorType.USER;
+    actorId: string;
+    orgId: string;
+    projectId?: string;
+    scopes: (AccessScope | typeof RESOURCE_SCOPE)[];
+  }) => {
+    const directCol = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
+    const groupTable = actorType === ActorType.USER ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+    const groupActorCol = actorType === ActorType.USER ? "userId" : "identityId";
+    const actorGroupIds = () =>
+      db(TableName.Groups)
+        .join(groupTable, `${groupTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupTable}.${groupActorCol}`, actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+    const branches = scopes.flatMap((scope) => {
+      const inScope = () => {
+        const qb = db(TableName.Membership).select("id").where("scopeOrgId", orgId).where("scope", scope);
+        return scope === AccessScope.Organization ? qb : qb.where("scopeProjectId", projectId as string);
+      };
+      // IS NOT NULL is implied by the IN, but Postgres only uses the partial group index when it is stated.
+      return [
+        inScope().where(directCol, actorId),
+        inScope().whereNotNull("actorGroupId").whereIn("actorGroupId", actorGroupIds())
+      ];
+    });
+    return branches[0].unionAll(branches.slice(1));
+  };
+
   const getPermission: TPermissionDALFactory["getPermission"] = async ({ scopeData, tx, actorId, actorType }) => {
     try {
-      const conn = tx || db;
-      const userGroupSubquery = conn(TableName.Groups)
-        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.UserGroupMembership}.userId`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
-      const identityGroupSubquery = conn(TableName.Groups)
-        .join(
-          TableName.IdentityGroupMembership,
-          `${TableName.IdentityGroupMembership}.groupId`,
-          `${TableName.Groups}.id`
-        )
-        .where(`${TableName.IdentityGroupMembership}.identityId`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
       const docs = await (tx || db)
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -266,27 +287,16 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             void queryBuilder.on(`${TableName.IdentityMetadata}.identityId`, db.raw("?", [actorId]));
           }
         })
-        .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
-        .where((qb) => {
-          if (actorType === ActorType.USER) {
-            void qb
-              .where(`${TableName.Membership}.actorUserId`, actorId)
-              .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
-          } else if (actorType === ActorType.IDENTITY) {
-            void qb
-              .where(`${TableName.Membership}.actorIdentityId`, actorId)
-              .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
-          }
-        })
-        .where((qb) => {
-          if (scopeData.scope === AccessScope.Organization) {
-            void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
-          } else if (scopeData.scope === AccessScope.Project) {
-            void qb
-              .where(`${TableName.Membership}.scope`, AccessScope.Project)
-              .where(`${TableName.Membership}.scopeProjectId`, scopeData.projectId);
-          }
-        })
+        .whereIn(
+          `${TableName.Membership}.id`,
+          actorMembershipIds({
+            actorType,
+            actorId,
+            orgId: scopeData.orgId,
+            projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+            scopes: [scopeData.scope]
+          })
+        )
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -990,16 +1000,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     actorType
   }) => {
     try {
-      const groupTable =
-        actorType === ActorType.USER ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
-      const groupActorField = actorType === ActorType.USER ? "userId" : "identityId";
-
-      const groupSubquery = db
-        .replicaNode()(TableName.Groups)
-        .join(groupTable, `${groupTable}.groupId`, `${TableName.Groups}.id`)
-        .where(`${groupTable}.${groupActorField}`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
       const rows = await db
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -1028,28 +1028,16 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           }
         })
         .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where((scopeQb) => {
-          void scopeQb
-            .where((inner) => {
-              void inner
-                .where(`${TableName.Membership}.scope`, AccessScope.Project)
-                .where(`${TableName.Membership}.scopeProjectId`, projectId);
-            })
-            .orWhere((inner) => {
-              void inner
-                .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
-                .where(`${TableName.Membership}.scopeProjectId`, projectId);
-            })
-            .orWhere(`${TableName.Membership}.scope`, AccessScope.Organization);
-        })
-        .where((qb) => {
-          const directCol =
-            actorType === ActorType.USER
-              ? `${TableName.Membership}.actorUserId`
-              : `${TableName.Membership}.actorIdentityId`;
-          void qb.where(directCol, actorId).orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
-        })
+        .whereIn(
+          `${TableName.Membership}.id`,
+          actorMembershipIds({
+            actorType,
+            actorId,
+            orgId,
+            projectId,
+            scopes: [AccessScope.Project, RESOURCE_SCOPE, AccessScope.Organization]
+          })
+        )
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
           // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt

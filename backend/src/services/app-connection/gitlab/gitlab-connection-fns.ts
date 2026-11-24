@@ -2,6 +2,8 @@
 import { GitbeakerRequestError, GitbeakerRetryError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError, HttpStatusCode } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
@@ -11,7 +13,6 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
@@ -29,12 +30,15 @@ interface GitLabOAuthTokenResponse {
 type TNavigationParams = {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
-export const getGitLabConnectionListItem = () => {
-  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID } = getConfig();
-
+export const getGitLabConnectionListItem = ({
+  INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID?: string;
+}) => {
   return {
     name: "GitLab" as const,
     app: AppConnection.GitLab as const,
@@ -72,15 +76,13 @@ export const refreshGitLabToken = async (
   orgId: string,
   projectId: string | undefined | null,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
   instanceUrl?: string
 ): Promise<string> => {
-  const {
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
-    SITE_URL,
-    isCloud
-  } = getConfig();
+  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL, isCloud } = getConfig();
   if (
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID ||
@@ -122,7 +124,7 @@ export const refreshGitLabToken = async (
         expiresAt
       },
       orgId,
-      kmsService,
+      kmsDataKeyService,
       projectId
     });
 
@@ -140,7 +142,12 @@ export const refreshGitLabToken = async (
   }
 };
 
-const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+const getNavigationClient = async ({
+  appConnection,
+  appConnectionDAL,
+  kmsDataKeyService,
+  instanceConfigService
+}: TNavigationParams) => {
   let { accessToken } = appConnection.credentials;
 
   if (
@@ -161,7 +168,8 @@ const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsDataKeyService,
+      instanceConfigService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -175,14 +183,12 @@ const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService
 
 export const exchangeGitLabOAuthCode = async (
   code: string,
+  instanceConfigService: TInstanceConfigService,
   instanceUrl?: string
 ): Promise<GitLabOAuthTokenResponse> => {
-  const {
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
-    SITE_URL,
-    isCloud
-  } = getConfig();
+  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL, isCloud } = getConfig();
   if (
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||
     !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID ||
@@ -230,14 +236,21 @@ export const exchangeGitLabOAuthCode = async (
   }
 };
 
-export const validateGitLabConnectionCredentials = async (config: TGitLabConnectionConfig) => {
+export const validateGitLabConnectionCredentials = async (
+  config: TGitLabConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { credentials: inputCredentials, method } = config;
 
   let accessToken: string;
   let oauthData: GitLabOAuthTokenResponse | null = null;
 
   if (method === GitLabConnectionMethod.OAuth && "code" in inputCredentials) {
-    oauthData = await exchangeGitLabOAuthCode(inputCredentials.code, inputCredentials.instanceUrl);
+    oauthData = await exchangeGitLabOAuthCode(
+      inputCredentials.code,
+      instanceConfigService,
+      inputCredentials.instanceUrl
+    );
     accessToken = oauthData.access_token;
   } else if (method === GitLabConnectionMethod.AccessToken && "accessToken" in inputCredentials) {
     accessToken = inputCredentials.accessToken;
@@ -285,7 +298,8 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 export const getGitLabConnectionClient = async (
   appConnection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ) => {
   let { accessToken } = appConnection.credentials;
 
@@ -300,7 +314,8 @@ export const getGitLabConnectionClient = async (
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsDataKeyService,
+      instanceConfigService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -344,13 +359,15 @@ const throwGitLabListError = (error: unknown, resource: "groups" | "projects"): 
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabProject[]> => {
@@ -367,7 +384,8 @@ export const listGitLabProjects = async ({
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsDataKeyService,
+      instanceConfigService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -403,17 +421,24 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabGroup[]> => {
-  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
+  const client = await getNavigationClient({
+    appConnection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService
+  });
   if (!client) return [];
 
   try {

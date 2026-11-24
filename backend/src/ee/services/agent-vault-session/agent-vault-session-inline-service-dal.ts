@@ -5,6 +5,13 @@ import { TableName, TAgentVaultServices, TAgentVaultServicesInsert } from "@app/
 import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import {
+  addOauthRequiredScopes,
+  compareAndSwapOauthTokens,
+  TOauthTokenColumns
+} from "../agent-vault-oauth/agent-vault-oauth-token-dal-fns";
+import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+
 export type TAgentVaultSessionInlineServiceDALFactory = ReturnType<typeof agentVaultSessionInlineServiceDALFactory>;
 
 export const DELETE_SECRETS_BATCH_SIZE = 1000;
@@ -34,6 +41,35 @@ export type TAgentVaultInlineServiceInsert = Omit<TAgentVaultServicesInsert, "se
   substitutions: (TInlineSubstitutionRow & { encryptedValue: Buffer })[];
 };
 
+// OAuth tokens sent with a session, refreshed in place on the inline service's row.
+const OAUTH_TOKEN_COLUMNS: TOauthTokenColumns = {
+  table: TableName.AgentVaultService,
+  secretColumn: "encryptedCredential",
+  configColumn: "credentialConfig"
+};
+
+export type TAgentVaultInlineOauthTokenRow = Pick<
+  TAgentVaultServices,
+  | "id"
+  | "projectId"
+  | "sessionId"
+  | "hostPattern"
+  | "config"
+  | "credentialType"
+  | "credentialConfig"
+  | "encryptedCredential"
+>;
+
+const OAUTH_TOKEN_ROW_COLUMNS = [
+  "id",
+  "projectId",
+  "sessionId",
+  "hostPattern",
+  "config",
+  "credentialType",
+  "credentialConfig"
+];
+
 const SUMMARY_COLUMNS = [
   "id",
   "projectId",
@@ -52,6 +88,10 @@ const SUMMARY_COLUMNS = [
   "credentialConfig",
   "secretsDeletedAt",
   "hookUrl",
+  "hookId",
+  "hookMethods",
+  "hookPaths",
+  "hookTools",
   "createdAt",
   "updatedAt"
 ] as const;
@@ -237,9 +277,84 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Refresh reads the primary, so it never refreshes tokens a write has already replaced. Nothing once the session's
+  // secrets are deleted.
+  const findOauthTokensByIdPrimary = async (id: string): Promise<TAgentVaultInlineOauthTokenRow | undefined> => {
+    try {
+      return (await db(TableName.AgentVaultService)
+        .where({ id, credentialType: AgentVaultCredentialType.OAuth })
+        .whereNotNull("sessionId")
+        .whereNull("secretsDeletedAt")
+        .whereNotNull("encryptedCredential")
+        .first(...OAUTH_TOKEN_ROW_COLUMNS, "encryptedCredential")) as TAgentVaultInlineOauthTokenRow | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault inline service OAuth tokens" });
+    }
+  };
+
+  // See compareAndSwapOauthTokens. Deleting the session's secrets clears the tokens it compares against, so a refresh
+  // that finishes after the session ended writes nothing; the secretsDeletedAt guard says so outright.
+  const compareAndSwapOauthTokensOf = async ({
+    id,
+    expectedEncryptedCredential,
+    encryptedCredential,
+    credentialConfigPatch,
+    keepAdditionalScopesStatus
+  }: {
+    id: string;
+    expectedEncryptedCredential: Buffer;
+    encryptedCredential?: Buffer;
+    credentialConfigPatch: Record<string, unknown>;
+    keepAdditionalScopesStatus?: boolean;
+  }) => {
+    try {
+      return await compareAndSwapOauthTokens<Omit<TAgentVaultInlineOauthTokenRow, "encryptedCredential">>(
+        db,
+        OAUTH_TOKEN_COLUMNS,
+        {
+          where: { id, credentialType: AgentVaultCredentialType.OAuth, secretsDeletedAt: null },
+          expectedSecret: expectedEncryptedCredential,
+          secret: encryptedCredential,
+          configPatch: credentialConfigPatch,
+          keepAdditionalScopesStatus,
+          returning: OAUTH_TOKEN_ROW_COLUMNS
+        }
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault inline service OAuth tokens" });
+    }
+  };
+
+  const addOauthRequiredScopesOf = async ({
+    id,
+    expectedEncryptedCredential,
+    rejectedTokenHash,
+    requiredScopes
+  }: {
+    id: string;
+    expectedEncryptedCredential: Buffer;
+    rejectedTokenHash: string;
+    requiredScopes: string[];
+  }) => {
+    try {
+      return await addOauthRequiredScopes<Pick<TAgentVaultServices, "id">>(db, OAUTH_TOKEN_COLUMNS, {
+        where: { id, credentialType: AgentVaultCredentialType.OAuth, secretsDeletedAt: null },
+        expectedSecret: expectedEncryptedCredential,
+        rejectedTokenHash,
+        requiredScopes,
+        returning: ["id"]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Add agent vault inline service required scopes" });
+    }
+  };
+
   return {
     findSummariesBySessionIds,
     findBySessionId,
+    findOauthTokensByIdPrimary,
+    compareAndSwapOauthTokens: compareAndSwapOauthTokensOf,
+    addOauthRequiredScopes: addOauthRequiredScopesOf,
     insertForSession,
     deleteSecretsBySessionId,
     deleteSecretsOfEndedSessions
