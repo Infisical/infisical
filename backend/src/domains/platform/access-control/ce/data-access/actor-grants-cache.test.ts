@@ -133,6 +133,20 @@ describe("ActorGrantsCache.getOrLoad", () => {
     expect(counts.loads).toBe(1);
   });
 
+  test("should not keep a refusal, so a membership granted through a group counts on the next read", async () => {
+    // Setup
+    const { read, addGroupMembership } = arrange(10);
+    const before = await read();
+
+    // Action
+    await addGroupMembership(ProjectMembershipRole.Member);
+    const after = await read();
+
+    // Assert
+    expect(before.hasMembership).toBe(false);
+    expect(after.hasMembership).toBe(true);
+  });
+
   test("should keep the grants of different actors and projects apart", async () => {
     // Setup
     const { read, addMembership, actor } = arrange(0);

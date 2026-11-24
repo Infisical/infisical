@@ -88,6 +88,10 @@ export const injectPermission = fp(async (server) => {
     if (!req.auth) return;
 
     const { principal, actorId } = principalFromAuth(req.auth);
+    if (principal.type === ActorType.IDENTITY) {
+      principal.name =
+        (await server.services.identityAccessToken.getCurrentIdentityName(principal.id)) ?? principal.name;
+    }
     const { actor: actorContext, ssoRefusal } = await server.services.actorContextService.forRequest({
       principal,
       orgId: req.auth.orgId

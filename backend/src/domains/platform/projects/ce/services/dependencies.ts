@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { TReadOptions } from "@app/domains/lib/data-access";
 import { TStoreLocks } from "@app/domains/lib/transactions";
-import type { ActorGrants } from "@app/domains/platform/access-control/ce/module";
+import type { ActorGrants, TGrantActor } from "@app/domains/platform/access-control/ce/module";
 import { TIdentityOwnership } from "@app/domains/platform/organizations/ce/module";
 
 import { Project } from "../models/project";
@@ -19,9 +19,11 @@ export type TProjectStore = {
 };
 
 export type TProjectCache = {
-  // The project, from the cache while its version is unchanged, otherwise loaded.
+  // The project, from the cache while its version is unchanged, otherwise loaded. Kept per actor, as the legacy
+  // engine kept it inside each actor's permission, so an actor's first request always reads current settings.
   getOrLoad(input: {
     projectId: string;
+    actor: TGrantActor;
     fingerprint: () => Promise<string>;
     load: () => Promise<Project>;
   }): Promise<Project>;
@@ -29,12 +31,6 @@ export type TProjectCache = {
 
 // The users and identities in a product's projects, which that product's usage meter bills. Null orgId = whole
 // instance.
-// The current name of an identity, for `{{identity.username}}`: an access token carries the name it was issued
-// with, which a rename does not update.
-export type TActorNameStore = {
-  findIdentityName(identityId: string, options?: TReadOptions): Promise<string | null>;
-};
-
 export type TProjectIdentityStore = {
   countProjectIdentities(projectType: ProjectType, orgId: string | null, options?: TReadOptions): Promise<number>;
   countProjectIdentitiesByKind(

@@ -44,7 +44,16 @@ export class ActorGrantsCache implements TActorGrantsCache {
       fingerprintFetcher: fingerprint,
       dataFetcher: async () => (await load()).toJSON()
     });
-    return ActorGrants.restore(record);
+    const grants = ActorGrants.restore(record);
+    // A refusal is never kept, as the legacy engine never cached one: a member added moments later (a SCIM group
+    // push, an invite accepted) must count on their very next request, not after the marker expires.
+    if (!grants.hasMembership) {
+      await Promise.all([
+        this.keyStore.deleteItem(GrantKeys.data(projectId, actor)),
+        this.keyStore.deleteItem(GrantKeys.marker(projectId, actor))
+      ]);
+    }
+    return grants;
   }
 
   readFingerprint({

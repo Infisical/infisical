@@ -5,7 +5,7 @@ export const clearPermissionCaches = async (projectIds: string[]) => {
     await Promise.all(
       projectIds.flatMap((projectId) => [
         testRedis.keys(`*access-control:actor-grants:*:${projectId}:*`),
-        testRedis.keys(`*projects:project:*:${projectId}`),
+        testRedis.keys(`*projects:project:*:${projectId}:*`),
         testRedis.keys(`*secrets:folder-grants:*:${projectId}:*`)
       ])
     )

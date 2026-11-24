@@ -6,7 +6,6 @@ import { TProjectRoles } from "../models/standard-project-roles";
 import { TProjectAccessListener } from "../services/dependencies";
 import { ProjectPermissionService } from "../services/project-permission/service";
 import { ProjectResourcePermissionService } from "../services/project-resource-permission/service";
-import { InMemoryActorNameStore } from "./in-memory-actor-name-store";
 import { InMemoryProjectCache } from "./in-memory-project-cache";
 import { InMemoryProjectStore } from "./in-memory-project-store";
 
@@ -20,7 +19,6 @@ export const buildProjects = ({
   const accessControl = buildAccessControl();
   const projectStore = new InMemoryProjectStore();
   const projectCache = new InMemoryProjectCache();
-  const actorNameStore = new InMemoryActorNameStore();
   const { orgPermissionService } = buildOrganizations(accessControl);
   const projectPermissionService = new ProjectPermissionService(
     projectStore,
@@ -28,7 +26,6 @@ export const buildProjects = ({
     accessControl.actorGrantsService,
     accessControl.roleService,
     accessControl.groupService,
-    actorNameStore,
     projectRoles,
     new ActorContextMemo(),
     onProjectAccess
@@ -42,7 +39,6 @@ export const buildProjects = ({
     ...accessControl,
     projectStore,
     projectCache,
-    actorNameStore,
     orgPermissionService,
     projectPermissionService,
     projectResourcePermissionService

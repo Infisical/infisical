@@ -1,3 +1,5 @@
+import type { TGrantActor } from "@app/domains/platform/access-control/ce/module";
+
 import { Project, TProjectRecord } from "../models/project";
 import { TProjectCache } from "../services/dependencies";
 
@@ -10,19 +12,22 @@ export class InMemoryProjectCache implements TProjectCache {
 
   async getOrLoad({
     projectId,
+    actor,
     fingerprint,
     load
   }: {
     projectId: string;
+    actor: TGrantActor;
     fingerprint: () => Promise<string>;
     load: () => Promise<Project>;
   }): Promise<Project> {
     const current = await fingerprint();
-    const cached = this.entries.get(projectId);
+    const key = `${projectId}:${actor.type}:${actor.id}`;
+    const cached = this.entries.get(key);
     if (cached && cached.fingerprint === current) return Project.restore(cached.record);
     this.loads += 1;
     const record = (await load()).toJSON();
-    this.entries.set(projectId, { fingerprint: current, record });
+    this.entries.set(key, { fingerprint: current, record });
     return Project.restore(record);
   }
 }

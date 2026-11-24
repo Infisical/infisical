@@ -25,7 +25,6 @@ import {
 import { genericProjectRoles } from "../../models/permissions/project-roles";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
 import { buildProjects } from "../../testing/build-projects";
-import { InMemoryActorNameStore } from "../../testing/in-memory-actor-name-store";
 import { InMemoryProjectCache } from "../../testing/in-memory-project-cache";
 import { InMemoryProjectStore } from "../../testing/in-memory-project-store";
 import { ProjectPermissionService } from "./service";
@@ -199,26 +198,21 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     expect(permission.can(readValueAt("/payments/bob"))).toBe(false);
   });
 
-  test("should fill {{identity.username}} with an identity's current name, not the one its token was issued with", async () => {
+  test("should give an actor's first lookup the project's current settings, even when another actor has it cached", async () => {
     // Setup
-    const { service, as, addRole, addCustomRole, projectId, actorNameStore } = arrange();
-    const identity = identityPrincipal({ name: "billing" });
-    const role = await addCustomRole([
-      {
-        action: ProjectPermissionSecretActions.ReadValue,
-        subject: ProjectPermissionSub.Secrets,
-        conditions: { secretPath: "/{{identity.username}}" }
-      } as TProjectRule
-    ]);
-    await addRole(ProjectMembershipRole.Custom, { customRoleId: role.id, who: { identityId: identity.id } });
-    actorNameStore.identityNames.set(identity.id, "payments");
+    const { service, as, actor, addRole, projectId, projectStore, orgId } = arrange();
+    await addRole(ProjectMembershipRole.Member);
+    await service.getProjectPermission({ actor: actor(), projectId });
+    const identity = identityPrincipal();
+    await addRole(ProjectMembershipRole.Member, { who: { identityId: identity.id } });
+    // Rewritten in place, so its version is unchanged: only a cache kept per actor reads it again.
+    projectStore.add({ id: projectId, orgId, enforceEncryptedSecretManagerSecretMetadata: true });
 
     // Action
-    const permission = await service.getProjectPermission({ actor: as(identity), projectId });
+    const access = await service.getProjectAccess({ actor: as(identity), projectId });
 
     // Assert
-    expect(permission.can(readValueAt("/payments"))).toBe(true);
-    expect(permission.can(readValueAt("/billing"))).toBe(false);
+    expect(access.project.enforcesEncryptedSecretMetadata).toBe(true);
   });
 
   test("should fill {{identity.auth.*}} from the identity making the request", async () => {
@@ -440,7 +434,6 @@ describe("ProjectPermissionService constructor", () => {
         actorGrantsService,
         roleService,
         groupService,
-        new InMemoryActorNameStore(),
         [pamRoles(), pamRoles()],
         new ActorContextMemo()
       );
