@@ -2,7 +2,7 @@ import { KeyObject, webcrypto } from "node:crypto";
 
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import { beforeAll, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import { TDynamicSecretLeases } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
@@ -119,6 +119,16 @@ const setup = ({
     return { release };
   });
   const createLease = vi.fn(createSystemLease);
+  const store = new Map<string, string>();
+  const keyStore = {
+    acquireLock: acquireLock as never,
+    getItemPrimary: async (key: string) => store.get(key) ?? null,
+    setItemWithExpiry: async (key: string, _expiry: number | string, value: string | number | Buffer) => {
+      store.set(key, String(value));
+      return "OK" as const;
+    },
+    deleteItem: async (key: string) => Number(store.delete(key))
+  };
   const createAuditLog = vi.fn(async () => {});
   const setLeaseRevocation = vi.fn(async () => {});
   const getProjectPermission = vi.fn(async () => {
@@ -157,7 +167,7 @@ const setup = ({
       createCipherPairWithDataKey: async () =>
         ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
     },
-    keyStore: { acquireLock: acquireLock as never },
+    keyStore,
     licenseService: new FakeLicenseService().setPlan(orgId, { dynamicSecret: dynamicSecretOnPlan }),
     auditLogService: { createAuditLog }
   });
@@ -169,7 +179,8 @@ const setup = ({
     createLease,
     setLeaseRevocation,
     getProjectPermission,
-    createAuditLog
+    createAuditLog,
+    store
   };
 };
 
@@ -250,6 +261,70 @@ describe("resolving a dynamic secret's client certificate", () => {
       problem:
         "Couldn't lease a client certificate from the dynamic secret 'engine-client': Max lease limit reached. Limit: 100"
     });
+  });
+});
+
+describe("backing off after a failed lease", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("waits 30 s, doubles per failure, and starts over after a lease succeeds", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2030-01-01T00:00:00.000Z"));
+    const later = (ms: number) => vi.setSystemTime(Date.now() + ms);
+    let failing = true;
+    const succeed = setup().createLease.getMockImplementation()!;
+    const { service, createLease, store } = setup({
+      createSystemLease: async (...args: Parameters<typeof succeed>) => {
+        if (failing) throw new BadRequestError({ message: "Namespace is unavailable" });
+        return succeed(...args);
+      }
+    });
+
+    expect(await resolve(service)).toEqual({ problem: expect.stringContaining("Namespace is unavailable") as string });
+    expect(createLease).toHaveBeenCalledTimes(1);
+
+    later(29 * 1000);
+    expect(await resolve(service)).toEqual({
+      problem: expect.stringContaining("The next attempt is after 2030-01-01T00:00:30.000Z.") as string
+    });
+    expect(createLease).toHaveBeenCalledTimes(1);
+
+    later(2 * 1000);
+    await resolve(service);
+    expect(createLease).toHaveBeenCalledTimes(2);
+
+    // The second failure waits 60 s, not 30 s.
+    later(59 * 1000);
+    await resolve(service);
+    expect(createLease).toHaveBeenCalledTimes(2);
+    later(2 * 1000);
+    await resolve(service);
+    expect(createLease).toHaveBeenCalledTimes(3);
+
+    failing = false;
+    later(121 * 1000);
+    expect(await resolve(service)).toMatchObject({ credential: { certificate } });
+    expect(store.size).toBe(0);
+
+    failing = true;
+    await resolve(service);
+    later(31 * 1000);
+    await resolve(service);
+    expect(createLease).toHaveBeenCalledTimes(6);
+  });
+
+  test("still serves the older certificate while waiting", async () => {
+    const { service, createLease } = setup({
+      leases: [[lease({ id: "lease-old", ageMs: 57 * MINUTE, leftMs: 3 * MINUTE })]],
+      createSystemLease: async () => {
+        throw new BadRequestError({ message: "Namespace is unavailable" });
+      }
+    });
+    await resolve(service);
+    expect(await resolve(service)).toMatchObject({ credential: { certificate, privateKey } });
+    expect(createLease).toHaveBeenCalledTimes(1);
   });
 });
 

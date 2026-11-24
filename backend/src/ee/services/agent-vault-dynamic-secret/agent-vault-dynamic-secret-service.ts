@@ -41,6 +41,11 @@ const LEASE_LOCK_DURATION_MS = 90 * 1000;
 const LEASE_LOCK_SETTINGS = { retryCount: 12, retryDelay: 200, retryJitter: 50 };
 // The revocation worker reads the lease on a replica, which skips a lease it can't see yet.
 const LEASE_REVOCATION_DELAY_MS = 60 * 1000;
+// After a failed lease, the next one waits 30 s, doubling per failure up to 10 minutes, so an outage
+// doesn't turn every proxy poll into a provider call. The failure count resets after an hour without one.
+const LEASE_BACKOFF_BASE_MS = 30 * 1000;
+const LEASE_BACKOFF_MAX_MS = 10 * 60 * 1000;
+const LEASE_BACKOFF_RESET_MS = 60 * 60 * 1000;
 
 const AGENT_VAULT_LEASE_IDENTITY_NAME = "agent-vault";
 
@@ -54,7 +59,7 @@ type TAgentVaultDynamicSecretServiceFactoryDep = {
   dynamicSecretLeaseService: Pick<TDynamicSecretLeaseServiceFactory, "createSystemLease">;
   dynamicSecretQueueService: Pick<TDynamicSecretLeaseQueueServiceFactory, "setLeaseRevocation">;
   kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItemPrimary" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseService, "getPlan">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -193,6 +198,30 @@ export const agentVaultDynamicSecretServiceFactory = ({
     let fallback: { credential: TClientCertificateCredential } | null = null;
     const fallbackOr = (problem: string): TResolvedDynamicSecretCredential => fallback ?? { problem };
 
+    const backoffKey = KeyStorePrefixes.AgentVaultDynamicSecretLeaseBackoff(serviceId);
+    const readBackoff = async () => {
+      try {
+        const stored = await keyStore.getItemPrimary(backoffKey);
+        return stored ? (JSON.parse(stored) as { failures: number; retryAt: number; problem: string }) : null;
+      } catch (error) {
+        logger.warn(error, `agentVaultDynamicSecret: failed to read the lease backoff ${label}`);
+        return null;
+      }
+    };
+    // Called with the lease lock held, so resolves on other replicas can't count the same failure twice.
+    const failLease = async (problem: string): Promise<TResolvedDynamicSecretCredential> => {
+      const failures = ((await readBackoff())?.failures ?? 0) + 1;
+      const delayMs = Math.min(LEASE_BACKOFF_BASE_MS * 2 ** (failures - 1), LEASE_BACKOFF_MAX_MS);
+      await keyStore
+        .setItemWithExpiry(
+          backoffKey,
+          Math.ceil((delayMs + LEASE_BACKOFF_RESET_MS) / 1000),
+          JSON.stringify({ failures, retryAt: Date.now() + delayMs, problem })
+        )
+        .catch((error) => logger.warn(error, `agentVaultDynamicSecret: failed to store the lease backoff ${label}`));
+      return fallbackOr(problem);
+    };
+
     const findFresh = async (): Promise<TResolvedDynamicSecretCredential | null> => {
       const now = new Date();
       const leases = (
@@ -231,6 +260,11 @@ export const agentVaultDynamicSecretServiceFactory = ({
       const fresh = await findFresh();
       if (fresh) return fresh;
 
+      const backoff = await readBackoff();
+      if (backoff && backoff.retryAt > Date.now()) {
+        return fallbackOr(`${backoff.problem} The next attempt is after ${new Date(backoff.retryAt).toISOString()}.`);
+      }
+
       let lock;
       try {
         lock = await keyStore.acquireLock(
@@ -260,7 +294,7 @@ export const agentVaultDynamicSecretServiceFactory = ({
             persistedLeaseFields: CLIENT_CERTIFICATE_LEASE_FIELDS
           });
         } catch (error) {
-          return fallbackOr(
+          return failLease(
             `Couldn't lease a client certificate from the dynamic secret '${reference.name}': ${error instanceof Error ? error.message : String(error)}`
           );
         }
@@ -320,10 +354,13 @@ export const agentVaultDynamicSecretServiceFactory = ({
         const expiresAt = new Date(Math.min(lease.expireAt.getTime(), read.certificate.notAfter.getTime()));
         if (!isLeaseFresh({ issuedAt: lease.createdAt, expiresAt, pollIntervalSeconds })) {
           await giveBack();
-          return fallbackOr(
+          return failLease(
             `The dynamic secret '${reference.name}' issued a client certificate that expires before Agent Vault proxies poll for its replacement. Raise its default TTL to 10m or more.`
           );
         }
+        await keyStore
+          .deleteItem(backoffKey)
+          .catch((error) => logger.warn(error, `agentVaultDynamicSecret: failed to clear the lease backoff ${label}`));
         return toCredential(read.certificate);
       } finally {
         await lock
