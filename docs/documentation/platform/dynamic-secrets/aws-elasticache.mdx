@@ -153,12 +153,33 @@ When a lease expires, Infisical deletes its user from the cluster.
 
 ## Clusters set up by earlier versions of Infisical
 
-Earlier versions of Infisical attached one shared user group, `infisical-managed-group-elasticache`, to every cluster. If your cluster uses that group, Infisical moves the cluster to its own user group:
+Earlier versions of Infisical attached one shared user group, `infisical-managed-group-elasticache`, to every cluster. If your cluster still uses that group, Infisical keeps using it for new leases, so your existing leases keep working.
 
-1. The first lease after you upgrade asks you to try again in a minute, while Infisical creates the cluster's group
-2. The next lease moves the cluster to its own group: leases from the same dynamic secret keep working, and leases from other dynamic secrets that use the cluster stop working
+To give the cluster its own user group, with the access controls in [How Infisical controls access to the cluster](#how-infisical-controls-access-to-the-cluster):
 
-Each cluster moves on its own next lease. When no cluster uses `infisical-managed-group-elasticache` anymore, you can delete the group in the ElastiCache console.
+<Steps>
+  <Step>
+    Remove the shared user group from the cluster. Existing leases for the cluster stop working.
+
+    ```bash
+    aws elasticache modify-replication-group \
+      --replication-group-id <cluster-name> \
+      --user-group-ids-to-remove infisical-managed-group-elasticache \
+      --apply-immediately
+    ```
+  </Step>
+  <Step>
+    Create a lease. Infisical creates the cluster's own user group and asks you to try again in a minute.
+  </Step>
+  <Step>
+    Create the lease again. Infisical attaches the cluster's user group to the cluster.
+  </Step>
+  <Step>
+    Revoke the cluster's old leases, then create new leases for the applications that used them.
+  </Step>
+</Steps>
+
+When no cluster uses `infisical-managed-group-elasticache` anymore, you can delete the group in the ElastiCache console.
 
 ## Troubleshooting
 
