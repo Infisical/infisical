@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { EventsModule } from "@app/domains/platform/events/ce/module";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
 import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
@@ -17,10 +18,8 @@ import {
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
 import { encryptLogStreamCredentials } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { initEnvConfig } from "@app/lib/config/env";
+import { legacyEventEmitter } from "@app/lib/knex/event-emitter";
 import { initLogger, logger } from "@app/lib/logger";
-import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
 
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
@@ -61,17 +60,22 @@ const kmsDataKeyService = {
 const auditLogStreamDAL = auditLogStreamDALFactory(testDb as never);
 const outboxDAL = auditLogStreamOutboxDALFactory(testDb as never);
 
-const eventOutboxRegistry = eventOutboxRegistryFactory();
-eventOutboxRegistry.register({
+// Never started, so only emit runs (on the real table).
+const eventsModule = new EventsModule({
+  db: testDb as never,
+  queueService: {} as never,
+  cronJob: {} as never,
+  isSecondaryInstance: false,
+  isGeneralWorkerRunModeEnabled: false,
+  isTelemetryEnabled: false
+});
+eventsModule.registerConsumer({
   name: CONSUMER,
   dataSchema: AuditLogStreamDeliveryFailedPayloadSchema as never,
   subscribesTo: (eventType) => eventType === AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   handle: async () => []
 });
-const eventEmitter = eventOutboxServiceFactory({
-  eventOutboxDAL: eventOutboxDALFactory(testDb as never),
-  eventOutboxRegistry
-});
+const eventEmitter = legacyEventEmitter(eventsModule.eventEmitterService);
 
 const service = auditLogStreamOutboxServiceFactory({
   auditLogStreamOutboxDAL: outboxDAL,

@@ -11,6 +11,7 @@ import {
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -21,7 +22,6 @@ import {
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";

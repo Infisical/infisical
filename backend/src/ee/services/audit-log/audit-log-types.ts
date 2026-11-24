@@ -3418,6 +3418,8 @@ interface RevokeCert {
     requesterEmail?: string;
     crlWarning?: string;
     source?: CertificateRevocationSource;
+    revokedThroughCertId?: string;
+    revokedThroughCertName?: string;
   };
 }
 
@@ -6169,7 +6171,6 @@ interface OrgUpdateEvent {
     scimEnabled?: boolean;
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
-    selectedMfaMethod?: string;
     allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;

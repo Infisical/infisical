@@ -68,6 +68,7 @@ export type TSignCertificateFromProfileDTO = {
   auditLogInfo?: AuditLogInfo;
   issuanceOperation?: CertificateIssuanceOperation;
   originalCertificateId?: string;
+  renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

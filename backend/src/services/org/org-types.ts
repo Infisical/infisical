@@ -76,7 +76,6 @@ export type TUpdateOrgDTO = {
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
-    selectedMfaMethod: MfaMethod;
     allowedMfaMethods: MfaMethod[];
     allowSecretSharingOutsideOrganization: boolean;
     userTokenExpiration: string;

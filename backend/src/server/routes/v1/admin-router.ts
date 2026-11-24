@@ -30,7 +30,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
-import { CacheType } from "@app/services/super-admin/super-admin-types";
+import { CacheType, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -65,6 +65,7 @@ const SanitizedSuperAdminSchema = z.object({
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
   isClickhouseAuditLogEnabled: z.boolean().optional(),
+  isInitialSetupActivationTokenRequired: z.boolean().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
   defaultAuthOrgAuthMethod: z.string().nullish(),
@@ -120,6 +121,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
       );
 
+      const isInitialSetupActivationTokenRequired = !initialized && Boolean(serverEnvs.INITIAL_SETUP_ACTIVATION_TOKEN);
+
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
         return {
@@ -140,6 +143,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             allowedStorageHostnames,
             isPublicSecretSharingDisabled: DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
+            isInitialSetupActivationTokenRequired,
             latestAvailableVersion
           }
         };
@@ -174,6 +178,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isClickhouseAuditLogEnabled,
+          isInitialSetupActivationTokenRequired,
           latestAvailableVersion
         }
       };
@@ -874,7 +879,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         password: PasswordPolicySchema,
         firstName: z.string().trim().min(1),
         lastName: z.string().trim().optional(),
-        organizationName: GenericResourceNameSchema.optional()
+        organizationName: GenericResourceNameSchema.optional(),
+        activationToken: z.string().trim().max(256).optional()
       }),
       response: {
         200: z.object({
@@ -889,7 +895,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const appCfg = getConfig();
       const { initialized } = await server.services.instanceConfigService.getSettings();
-      if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+      if (initialized) {
+        throw new BadRequestError({
+          name: SuperAdminErrorCode.InstanceAlreadySetUp,
+          message: "Admin account has already been set up"
+        });
+      }
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,
@@ -1038,7 +1049,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
-        organization: z.string().trim().min(1)
+        organization: z.string().trim().min(1),
+        activationToken: z.string().trim().max(256).optional()
       }),
       response: {
         200: z.object({

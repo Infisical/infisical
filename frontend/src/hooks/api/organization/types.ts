@@ -26,7 +26,6 @@ export type Organization = {
   slug: string;
   defaultMembershipRole: string;
   enforceMfa: boolean;
-  selectedMfaMethod?: MfaMethod;
   allowedMfaMethods?: MfaMethod[] | null;
   ssoMfaTrust: SsoMfaTrust;
   shouldUseNewPrivilegeSystem: boolean;
@@ -72,7 +71,6 @@ export type UpdateOrgDTO = {
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
-  selectedMfaMethod?: MfaMethod;
   allowedMfaMethods?: MfaMethod[];
   allowSecretSharingOutsideOrganization?: boolean;
   userTokenExpiration?: string;
