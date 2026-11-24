@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -52,3 +54,8 @@ export const assertWithinResourceLimit = ({
     throw new BadRequestError({ name: "ResourceLimitExceeded", message: describe(max) });
   }
 };
+
+export const countOnPrimary = (
+  dal: { transaction: <T>(cb: (tx: Knex) => Promise<T>) => Promise<T> },
+  count: (tx: Knex) => Promise<number>
+) => dal.transaction(count);

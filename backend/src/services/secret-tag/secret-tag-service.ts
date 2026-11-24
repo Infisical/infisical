@@ -4,7 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretTagDALFactory } from "./secret-tag-dal";
@@ -45,10 +45,13 @@ export const secretTagServiceFactory = ({
     if (existingTag) throw new BadRequestError({ message: "Tag already exists" });
 
     if (getResourceLimit(ResourceLimit.TagsPerProject) !== null) {
-      const [{ count: tagCount }] = await secretTagDAL.find({ projectId }, { countDistinct: "id" });
+      const tagCount = await countOnPrimary(secretTagDAL, async (tx) => {
+        const [{ count }] = await secretTagDAL.find({ projectId }, { countDistinct: "id", tx });
+        return Number(count);
+      });
       assertWithinResourceLimit({
         limit: ResourceLimit.TagsPerProject,
-        used: Number(tagCount),
+        used: tagCount,
         describe: (max) =>
           `Project already has the maximum of ${max} tags. Delete tags you no longer use before creating another.`
       });

@@ -21,7 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
@@ -96,10 +96,13 @@ export const integrationAuthServiceFactory = ({
   const $assertCanAddIntegrationAuth = async (projectId: string, tx?: Knex) => {
     if (getResourceLimit(ResourceLimit.IntegrationAuthsPerProject) === null) return;
 
-    const [{ count }] = await integrationAuthDAL.find({ projectId }, { countDistinct: "id", tx });
+    const countAuths = async (trx: Knex) => {
+      const [{ count }] = await integrationAuthDAL.find({ projectId }, { countDistinct: "id", tx: trx });
+      return Number(count);
+    };
     assertWithinResourceLimit({
       limit: ResourceLimit.IntegrationAuthsPerProject,
-      used: Number(count),
+      used: tx ? await countAuths(tx) : await countOnPrimary(integrationAuthDAL, countAuths),
       describe: (max) =>
         `Project already has the maximum of ${max} integration authorizations. Delete integrations you no longer use before connecting another.`
     });

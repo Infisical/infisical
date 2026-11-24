@@ -206,8 +206,8 @@ export const secretFolderServiceFactory = ({
 
     const pathWithFolder = path.join(secretPath, name);
     assertFolderDepthWithinLimit(
-      countPathSegments(pathWithFolder),
-      (max) => `Folder path '${pathWithFolder}' is nested deeper than the maximum of ${max} levels.`
+      countPathSegments(secretPath) + 1,
+      (max) => `Folder '${name}' in path '${secretPath}' would be nested deeper than the maximum of ${max} levels.`
     );
 
     const lock = await keyStore.acquireLock([KeyStorePrefixes.CreateFolderLock(env.id)], 5000, {
@@ -1409,10 +1409,9 @@ export const secretFolderServiceFactory = ({
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
       );
-      const pathWithFolder = path.join(secretPath, name);
       assertFolderDepthWithinLimit(
-        countPathSegments(pathWithFolder),
-        (max) => `Folder path '${pathWithFolder}' is nested deeper than the maximum of ${max} levels.`
+        countPathSegments(secretPath) + 1,
+        (max) => `Folder '${name}' in path '${secretPath}' would be nested deeper than the maximum of ${max} levels.`
       );
     });
 
@@ -2066,7 +2065,7 @@ export const secretFolderServiceFactory = ({
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [sourceFolder.id] }, tx);
       const subtreeHeight = subtree.reduce((deepest, f) => Math.max(deepest, countPathSegments(f.path)), 0);
       assertFolderDepthWithinLimit(
-        countPathSegments(finalDestinationPath) + subtreeHeight,
+        countPathSegments(destinationPath) + 1 + subtreeHeight,
         (max) =>
           `Moving folder '${folderName}' to '${destinationPath}' would nest folders deeper than the maximum of ${max} levels.`
       );

@@ -82,7 +82,8 @@ const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
     deleteById: vi.fn(),
     find: vi.fn(),
     findExpiringTokens: vi.fn(),
-    update: vi.fn()
+    update: vi.fn(),
+    transaction: vi.fn(<T>(cb: (tx: unknown) => Promise<T>) => cb({}))
   };
 
   const orgDAL = { findById: vi.fn() };
@@ -505,7 +506,7 @@ describe("createServiceToken authorization", () => {
       await expect(
         callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
       ).rejects.toThrow("Project already has the maximum of 1000 service tokens");
-      expect(serviceTokenDAL.find).toHaveBeenCalledWith({ projectId: PROJECT_ID }, { countDistinct: "id" });
+      expect(serviceTokenDAL.find).toHaveBeenCalledWith({ projectId: PROJECT_ID }, { countDistinct: "id", tx: {} });
       expect(serviceTokenDAL.create).not.toHaveBeenCalled();
     });
 

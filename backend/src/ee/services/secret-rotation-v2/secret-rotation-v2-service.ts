@@ -76,7 +76,7 @@ import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } fr
 import { takeRowScanWindow } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -627,7 +627,7 @@ export const secretRotationV2ServiceFactory = ({
     if (getResourceLimit(ResourceLimit.SecretRotationsPerProject) !== null) {
       assertWithinResourceLimit({
         limit: ResourceLimit.SecretRotationsPerProject,
-        used: await secretRotationV2DAL.countByProject(projectId),
+        used: await countOnPrimary(secretRotationV2DAL, (tx) => secretRotationV2DAL.countByProject(projectId, tx)),
         describe: (max) =>
           `Project already has the maximum of ${max} secret rotations. Delete secret rotations you no longer use before creating another.`
       });

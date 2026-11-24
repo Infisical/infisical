@@ -8,7 +8,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -82,7 +82,7 @@ export const webhookServiceFactory = ({
     if (getResourceLimit(ResourceLimit.WebhooksPerProject) !== null) {
       assertWithinResourceLimit({
         limit: ResourceLimit.WebhooksPerProject,
-        used: await webhookDAL.countByProjectId(projectId),
+        used: await countOnPrimary(webhookDAL, (tx) => webhookDAL.countByProjectId(projectId, tx)),
         describe: (max) =>
           `Project already has the maximum of ${max} webhooks. Delete webhooks you no longer use before creating another.`
       });

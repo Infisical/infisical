@@ -509,7 +509,10 @@ describe("create rotation cap", () => {
       }))
     },
     projectBotService: { getBotKey: vi.fn(async () => ({ shouldUseSecretV2Bridge: true })) },
-    secretRotationV2DAL: { countByProject: vi.fn(async () => rotationCount) },
+    secretRotationV2DAL: {
+      countByProject: vi.fn(async () => rotationCount),
+      transaction: vi.fn(<T>(cb: (tx: unknown) => Promise<T>) => cb({}))
+    },
     folderDAL: { findBySecretPath: vi.fn(async () => undefined) }
   });
 
@@ -534,7 +537,7 @@ describe("create rotation cap", () => {
     await expect(service.createSecretRotation(createInput as never, actor as never)).rejects.toThrow(
       "Project already has the maximum of 500 secret rotations"
     );
-    expect(deps.secretRotationV2DAL.countByProject).toHaveBeenCalledWith("project-1");
+    expect(deps.secretRotationV2DAL.countByProject).toHaveBeenCalledWith("project-1", {});
     expect(deps.folderDAL.findBySecretPath).not.toHaveBeenCalled();
   });
 

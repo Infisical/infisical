@@ -1079,6 +1079,9 @@ export const projectServiceFactory = ({
         }
 
         const restored = await projectDAL.transaction(async (tx) => {
+          if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+            await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
+          }
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
             const currentProjectCount = await organizationsProjectsService
               .within(sealKnexTransaction(tx))
