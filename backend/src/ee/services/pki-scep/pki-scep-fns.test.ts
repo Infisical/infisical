@@ -102,7 +102,8 @@ describe("evaluateScepRenewalAuthorization", () => {
     csrSanExt,
     signerSanExt,
     csrForwardedToCa,
-    priorCsrSanExt
+    priorCsrSanExt,
+    csrCommonNameCopySans
   }: {
     csrSubject: string;
     signerSubject: string;
@@ -112,6 +113,7 @@ describe("evaluateScepRenewalAuthorization", () => {
     signerSanExt?: x509.Extension | null;
     csrForwardedToCa?: boolean;
     priorCsrSanExt?: x509.Extension | null;
+    csrCommonNameCopySans?: x509.JsonGeneralName[];
   }) =>
     evaluateScepRenewalAuthorization({
       isValidSigner: true,
@@ -122,18 +124,21 @@ describe("evaluateScepRenewalAuthorization", () => {
       csrSubjectName: new x509.Name(csrSubject),
       signerCertSubjectName: new x509.Name(signerSubject),
       csrSubjectAltNames: csrSanExt ?? (csrSans ? new x509.SubjectAlternativeNameExtension(csrSans) : null),
+      csrCommonNameCopySubjectAltNames: csrCommonNameCopySans
+        ? new x509.SubjectAlternativeNameExtension(csrCommonNameCopySans)
+        : null,
       signerCertSubjectAltNames:
         signerSanExt ?? (signerSans ? new x509.SubjectAlternativeNameExtension(signerSans) : null)
     });
 
   test("authorizes a renewal whose CSR identity matches the signer certificate", () => {
-    expect(authorize({ csrSubject: "CN=device-01,OU=eng", signerSubject: "CN=device-01,OU=eng" })).toEqual({
+    expect(authorize({ csrSubject: "CN=device-01,OU=eng", signerSubject: "CN=device-01,OU=eng" })).toMatchObject({
       authorized: true
     });
   });
 
   test("still authorizes when the two subjects differ only by case and whitespace", () => {
-    expect(authorize({ csrSubject: "CN=Device-01,  OU=Eng", signerSubject: "CN=device-01,OU=eng" })).toEqual({
+    expect(authorize({ csrSubject: "CN=Device-01,  OU=Eng", signerSubject: "CN=device-01,OU=eng" })).toMatchObject({
       authorized: true
     });
   });
@@ -180,6 +185,27 @@ describe("evaluateScepRenewalAuthorization", () => {
     ).toEqual({ authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch });
   });
 
+  test("authorizes a SAN-less CSR whose certificate carries the common name the profile default added", () => {
+    expect(
+      authorize({
+        csrSubject: "CN=device-01.example.com",
+        signerSubject: "CN=device-01.example.com",
+        signerSans: [{ type: "dns", value: "device-01.example.com" }],
+        csrCommonNameCopySans: [{ type: "dns", value: "device-01.example.com" }]
+      })
+    ).toEqual({ authorized: true, isCsrSanMatch: false });
+  });
+
+  test("still authorizes a SAN-less CSR whose certificate predates the common name default, and keeps it SAN-less", () => {
+    expect(
+      authorize({
+        csrSubject: "CN=device-01.example.com",
+        signerSubject: "CN=device-01.example.com",
+        csrCommonNameCopySans: [{ type: "dns", value: "device-01.example.com" }]
+      })
+    ).toEqual({ authorized: true, isCsrSanMatch: true });
+  });
+
   test("authorizes matching SAN sets regardless of entry order", () => {
     expect(
       authorize({
@@ -194,7 +220,7 @@ describe("evaluateScepRenewalAuthorization", () => {
           { type: "dns", value: "B.example.com" }
         ]
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   const sanExtensionFromGeneralNames = (names: asn1x509.GeneralName[]): x509.Extension => {
@@ -241,7 +267,7 @@ describe("evaluateScepRenewalAuthorization", () => {
           upnGeneralName(new asn1x509.DirectoryString({ utf8String: "user@corp.local" }))
         ])
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("authorizes an internal-CA renewal whose CSR keeps a SAN entry issuance strips", () => {
@@ -255,7 +281,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         ]),
         signerSanExt: sanExtensionFromGeneralNames([dnsGeneralName("d.example.com")])
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("denies the same CSR when the CA receives it verbatim", () => {
@@ -288,7 +314,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         signerSanExt: sanExtensionFromGeneralNames(names),
         csrForwardedToCa: true
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("denies a renewal that adds a supported SAN the certificate does not have", () => {
@@ -345,7 +371,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         ]),
         signerSanExt: sanExtensionFromGeneralNames([dnsGeneralName("w.example.com")])
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   // An external CA may add names of its own (ADCS stamps a GUID otherName); that must not
@@ -362,7 +388,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         ]),
         csrForwardedToCa: true
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("authorizes an unchanged forwarded renewal when the CA dropped the entry from the certificate", () => {
@@ -380,7 +406,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         priorCsrSanExt: deviceCsrSan,
         csrForwardedToCa: true
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("authorizes a forwarded renewal that repeats an entry the CA itself added to the certificate", () => {
@@ -394,7 +420,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         priorCsrSanExt: sanExtensionFromGeneralNames([dnsGeneralName("w.example.com")]),
         csrForwardedToCa: true
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("denies a forwarded renewal adding an entry that is in neither the original CSR nor the certificate", () => {
@@ -455,7 +481,7 @@ describe("evaluateScepRenewalAuthorization", () => {
         csrSubjectName: new x509.Name("CN=device-01"),
         signerCertSubjectName: new x509.Name("CN=device-01")
       })
-    ).toEqual({ authorized: true });
+    ).toMatchObject({ authorized: true });
   });
 
   test("denies when the signer certificate was deleted", () => {
