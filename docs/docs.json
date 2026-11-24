@@ -4939,7 +4939,8 @@
                   {
                     "group": "Instance",
                     "pages": [
-                      "api-reference/endpoints/instance/status"
+                      "api-reference/endpoints/instance/status",
+                      "api-reference/endpoints/instance/aws-deployment-metadata"
                     ]
                   }
                 ]

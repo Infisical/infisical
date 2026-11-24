@@ -4767,6 +4767,13 @@ export const SecretValidationRules = {
   }
 } as const;
 
+export const INSTANCE_DEPLOYMENT_AWS_METADATA = {
+  description:
+    "Get details about the AWS account the Infisical instance runs as, such as the account ID to trust in an IAM role's trust policy.",
+  accountId:
+    "The AWS account ID Infisical acts as when it assumes an IAM role in your AWS account, for example for an AWS App Connection. Name this account as the trusted principal in the role's trust policy. Null when the instance has no AWS identity."
+} as const;
+
 export const ENCRYPTION_KEY_ROTATION = {
   ROOT_KEY: {
     description:
