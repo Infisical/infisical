@@ -1,10 +1,15 @@
 import { useId, useImperativeHandle, useRef, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
+import { Code } from "@infisical/cipher/ui/code";
 import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   SheetBody,
@@ -27,6 +32,7 @@ import {
   UpdateExternalKmsSchema
 } from "@app/hooks/api/kms/types";
 
+import { useOrgId } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { AWS_REGIONS, GCP_REGIONS, KMS_PROVIDERS } from "./kms-providers";
@@ -53,6 +59,9 @@ const issuesOf = (error?: ZodError): Errors =>
   );
 
 const GCP_CREDENTIAL_MAX_BYTES = 8 * 1024;
+
+const AWS_KMS_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms";
 
 const titleOf = (provider: ExternalKmsProvider, mode: KmsFormMode) => {
   const name = KMS_PROVIDERS[provider].title;
@@ -96,7 +105,7 @@ const FormSheet = ({
     }
     footer={
       <SheetFooter>
-        <Inline gap={8} justify="between">
+        <Inline gap={8} justify="between" style={{ flex: 1 }}>
           {onBack ? (
             <Button variant="ghost" icon="chev-left" disabled={pending} onClick={onBack}>
               Back
@@ -176,7 +185,6 @@ type AwsDraft = {
   accessKey: string;
   secretKey: string;
   assumeRoleArn: string;
-  externalId: string;
   awsRegion: string;
   kmsKeyId: string;
 };
@@ -191,13 +199,12 @@ const awsDraftOf = (kms?: Kms): AwsDraft => {
     accessKey: data.accessKey ?? "",
     secretKey: data.secretKey ?? "",
     assumeRoleArn: data.assumeRoleArn ?? "",
-    externalId: data.externalId ?? "",
     awsRegion: configuration.awsRegion ?? "",
     kmsKeyId: configuration.kmsKeyId ?? ""
   };
 };
 
-const awsInputsOf = (draft: AwsDraft) => ({
+const awsInputsOf = (draft: AwsDraft, orgId: string) => ({
   credential:
     draft.type === KmsAwsCredentialType.AccessKey
       ? {
@@ -208,7 +215,7 @@ const awsInputsOf = (draft: AwsDraft) => ({
           type: KmsAwsCredentialType.AssumeRole as const,
           data: {
             assumeRoleArn: draft.assumeRoleArn,
-            externalId: draft.externalId.trim() || undefined
+            externalId: orgId
           }
         },
   awsRegion: draft.awsRegion,
@@ -227,6 +234,7 @@ export const AwsKmsForm = ({
   const adapter = useV4Adapter("orgSettings");
   const add = adapter.useAddExternalKms();
   const update = adapter.useUpdateExternalKms();
+  const orgId = useOrgId();
   const formId = useId();
   const [initial] = useState(() => awsDraftOf(kms));
   const [draft, setDraft] = useState(initial);
@@ -235,13 +243,16 @@ export const AwsKmsForm = ({
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const showDetails = mode !== "credentials";
   const showCredentials = mode !== "details";
+  const legacyExternalId = mode === "credentials" && Boolean(kms?.externalKms.hasLegacyExternalId);
+  const storedExternalId: string | undefined =
+    kms?.externalKms.configuration.credential?.data?.externalId;
 
   useImperativeHandle(ref, () => ({ dirty }), [dirty]);
 
   const edit = (patch: Partial<AwsDraft>) => setDraft((current) => ({ ...current, ...patch }));
 
   const submit = async () => {
-    const inputs = awsInputsOf(draft);
+    const inputs = awsInputsOf(draft, orgId);
     let parsed;
     if (mode === "create")
       parsed = AddExternalKmsSchema.safeParse({
@@ -308,7 +319,7 @@ export const AwsKmsForm = ({
       mode={mode}
       formId={formId}
       pending={pending}
-      dirty={dirty}
+      dirty={dirty || legacyExternalId}
       onBack={onBack}
       onCancel={onCancel}
       onSubmit={submit}
@@ -337,8 +348,7 @@ export const AwsKmsForm = ({
                   type: type as KmsAwsCredentialType,
                   accessKey: "",
                   secretKey: "",
-                  assumeRoleArn: "",
-                  externalId: ""
+                  assumeRoleArn: ""
                 })
               }
             />
@@ -364,7 +374,36 @@ export const AwsKmsForm = ({
             </>
           ) : (
             <>
-              <Field label="IAM role ARN" error={errors.assumeRoleArn}>
+              <Field
+                label="IAM role ARN"
+                error={errors.assumeRoleArn}
+                description={
+                  <>
+                    Infisical sends your{" "}
+                    <HoverCard openDelay={150} closeDelay={150}>
+                      <HoverCardTrigger asChild>
+                        <Button variant="link" underline="hover">
+                          organization ID
+                        </Button>
+                      </HoverCardTrigger>
+                      <HoverCardContent align="start" className="w-96">
+                        <Stack gap={12}>
+                          <Snippet
+                            label="External ID"
+                            copyLabel="Copy organization ID"
+                            value={orgId}
+                          />
+                          <SmallText>
+                            Require it in the role&apos;s trust policy with the{" "}
+                            <Code>sts:ExternalId</Code> condition.
+                          </SmallText>
+                        </Stack>
+                      </HoverCardContent>
+                    </HoverCard>{" "}
+                    as the External ID when it assumes this role.
+                  </>
+                }
+              >
                 <Input
                   mono
                   value={draft.assumeRoleArn}
@@ -373,13 +412,28 @@ export const AwsKmsForm = ({
                   onChange={(event) => edit({ assumeRoleArn: event.target.value })}
                 />
               </Field>
-              <Field label="External ID" optional>
-                <Input
-                  mono
-                  value={draft.externalId}
-                  onChange={(event) => edit({ externalId: event.target.value })}
-                />
-              </Field>
+              {legacyExternalId && (
+                <Alert tone="warn">
+                  <AlertTitle>
+                    {storedExternalId
+                      ? "External ID not tied to this organization"
+                      : "No External ID on this key"}
+                  </AlertTitle>
+                  <AlertDescription>
+                    <Stack gap={8}>
+                      <span>
+                        {storedExternalId
+                          ? "This key keeps working with its current External ID. Before updating its credentials, add your organization ID to the role's trust policy next to the current value. Remove the old value after the update."
+                          : "This key keeps working without an External ID. Update its credentials first so Infisical sends your organization ID, then require that value in the role's trust policy."}
+                      </span>
+                      <DocumentationLink
+                        href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
+                        subject="updating the External ID"
+                      />
+                    </Stack>
+                  </AlertDescription>
+                </Alert>
+              )}
             </>
           )}
           <Field label="AWS region" error={errors.awsRegion}>
