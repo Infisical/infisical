@@ -9,6 +9,12 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { projectServiceFactory } from "./project-service";
 
+const config = { INFISICAL_CLOUD: false };
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => config
+}));
+
 const setup = () => {
   const memberships = new Map<
     string,
@@ -177,6 +183,46 @@ describe("secret scanning project uniqueness", () => {
     expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith(
       { orgId: "root", type: ProjectType.SecretScanning },
       { limit: 1, tx }
+    );
+  });
+});
+
+describe("projects per organization cap", () => {
+  const createProject = (service: ReturnType<typeof setup>["service"]) =>
+    service.createProject({
+      actor: ActorType.USER,
+      actorId: "user",
+      actorOrgId: "root",
+      actorAuthMethod: null,
+      projectName: "Scanning",
+      type: ProjectType.SecretScanning
+    });
+
+  test("refuses a new project once the organization is at the cap on Infisical Cloud", async () => {
+    config.INFISICAL_CLOUD = true;
+    try {
+      const { service, projectDAL, tx } = setup();
+      projectDAL.find.mockResolvedValue([{ count: "1000" }]);
+
+      await expect(createProject(service)).rejects.toThrow(
+        "Organization already has the maximum of 1000 projects. Delete projects you no longer use before creating another."
+      );
+      expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith({ orgId: "root" }, { countDistinct: "id", tx });
+    } finally {
+      config.INFISICAL_CLOUD = false;
+    }
+  });
+
+  test("does not count projects on self-hosted instances", async () => {
+    const { service, projectDAL } = setup();
+    projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
+
+    await expect(createProject(service)).rejects.toThrow(
+      "Secret Scanning is limited to one project per organization at this time."
+    );
+    expect(projectDAL.find).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ countDistinct: "id" })
     );
   });
 });
