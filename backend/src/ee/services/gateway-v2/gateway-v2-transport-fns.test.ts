@@ -1,5 +1,6 @@
 import { GatewayTransport, HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
 import {
+  clearsGatewayHeartbeat,
   isTransportHealthy,
   parseDirectAddress,
   resolveClientTransports,
@@ -249,5 +250,34 @@ describe("parseDirectAddress", () => {
     }
     expect(message).not.toBe("");
     expect(message).not.toContain("hunter2");
+  });
+});
+
+describe("clearsGatewayHeartbeat", () => {
+  const probedAt = new Date("2026-11-24T09:30:00Z");
+
+  test("dropping the direct transport clears its heartbeat, so the offline alert re-arms", () => {
+    expect(clearsGatewayHeartbeat({ heartbeat: probedAt, directHeartbeat: probedAt }, { directHeartbeat: null })).toBe(
+      true
+    );
+  });
+
+  test("switching relays clears the relay heartbeat", () => {
+    expect(clearsGatewayHeartbeat({ heartbeat: probedAt }, { heartbeat: null, directHeartbeat: null })).toBe(true);
+  });
+
+  test("a restart with the same transports keeps both heartbeats, so a crash loop keeps the hourly floor", () => {
+    expect(
+      clearsGatewayHeartbeat(
+        { heartbeat: probedAt, directHeartbeat: probedAt },
+        { heartbeat: probedAt, directHeartbeat: probedAt }
+      )
+    ).toBe(false);
+  });
+
+  test("clearing a heartbeat that was never set changes nothing", () => {
+    expect(
+      clearsGatewayHeartbeat({ heartbeat: null, directHeartbeat: null }, { heartbeat: null, directHeartbeat: null })
+    ).toBe(false);
   });
 });

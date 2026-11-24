@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  TGatewaysV2,
   TGatewaysV2Update,
   TRelays
 } from "@app/db/schemas";
@@ -23,7 +24,6 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { MAX_TARGET_IDS_PER_EVENT } from "@app/services/alert/alert-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
@@ -63,9 +63,14 @@ import {
   GatewayTransport,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
-import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { emitGatewayOffline } from "./gateway-v2-events";
-import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
+import { TGatewayV2DALFactory, TOfflineGateway } from "./gateway-v2-dal";
+import { emitGatewayOffline, GATEWAY_OFFLINE_BATCH_SIZE } from "./gateway-v2-events";
+import {
+  clearsGatewayHeartbeat,
+  parseDirectAddress,
+  resolveClientTransports,
+  resolveTransports
+} from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
@@ -794,14 +799,17 @@ export const gatewayV2ServiceFactory = ({
   // before the revoke would otherwise write them back after it, so the write only lands while the
   // version the request authenticated with is still current.
   const $writeAgentTransports = async (
-    gatewayId: string,
+    gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat">,
     tokenVersion: number | undefined,
     transports: Pick<TGatewaysV2Update, "directAddress" | "directHeartbeat" | "heartbeat" | "relayId">
   ) => {
     if (tokenVersion === undefined) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
-    const [updated] = await gatewayV2DAL.update({ id: gatewayId, tokenVersion }, transports);
+    const [updated] = await gatewayV2DAL.update(
+      { id: gateway.id, tokenVersion },
+      clearsGatewayHeartbeat(gateway, transports) ? { ...transports, healthAlertedAt: null } : transports
+    );
     if (!updated) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
@@ -859,7 +867,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -1272,22 +1280,30 @@ export const gatewayV2ServiceFactory = ({
     const gatewaysByOrg = groupBy(dueGateways, (gw) => gw.orgId);
 
     for await (const [orgId, candidates] of Object.entries(gatewaysByOrg)) {
-      try {
-        const gateways = await gatewayV2DAL.transaction(async (tx) => {
-          const claimed = await gatewayV2DAL.markOfflineAlerted(
-            candidates.map((gw) => gw.id),
-            tx
-          );
-          for await (const batch of chunkArray(claimed, MAX_TARGET_IDS_PER_EVENT)) {
-            await emitGatewayOffline(eventEmitter, { orgId, gateways: batch }, tx);
-          }
-          return claimed;
-        });
-        if (gateways.length === 0) {
-          // eslint-disable-next-line no-continue
-          continue;
+      const gateways: TOfflineGateway[] = [];
+      for await (const batch of chunkArray(candidates, GATEWAY_OFFLINE_BATCH_SIZE)) {
+        try {
+          const claimed = await gatewayV2DAL.transaction(async (tx) => {
+            const batchClaimed = await gatewayV2DAL.markOfflineAlerted(
+              batch.map((gw) => gw.id),
+              tx
+            );
+            if (batchClaimed.length > 0) {
+              await emitGatewayOffline(eventEmitter, { orgId, gateways: batchClaimed }, tx);
+            }
+            return batchClaimed;
+          });
+          gateways.push(...claimed);
+        } catch (error) {
+          logger.error(error, `Failed to raise gateway offline alerts for organization [orgId=${orgId}]`);
         }
+      }
+      if (gateways.length === 0) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
 
+      try {
         const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
           (admin) => admin.status !== OrgMembershipStatus.Invited
         );
@@ -1573,7 +1589,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,

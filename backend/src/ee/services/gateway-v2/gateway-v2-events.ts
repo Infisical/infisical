@@ -3,10 +3,15 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { PAGERDUTY_MAX_INCIDENTS_PER_RUN } from "@app/services/alert/channels/alert-channel-pagerduty-fns";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const GATEWAY_RESOURCE_TYPE = "gateway";
 export const GATEWAY_OFFLINE_EVENT = "gateway.offline";
+
+// The engine drops event targets past a channel's per-run cap instead of deferring them, and a claimed
+// gateway is not alerted again this outage, so no event may name more gateways than PagerDuty takes.
+export const GATEWAY_OFFLINE_BATCH_SIZE = PAGERDUTY_MAX_INCIDENTS_PER_RUN;
 
 export const GatewayOfflinePayloadSchema = z.object({
   gateways: z

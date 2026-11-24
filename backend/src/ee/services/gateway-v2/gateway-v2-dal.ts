@@ -9,6 +9,8 @@ import { buildGatewayLastSeenSql, buildGatewayProbedSql, buildGatewayReachableSq
 
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 
+const OFFLINE_CLAIM_STATEMENT_TIMEOUT_MS = 30_000;
+
 export type TOfflineGateway = {
   id: string;
   orgId: string;
@@ -92,6 +94,9 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
   const markOfflineAlerted = async (ids: string[], tx: Knex): Promise<TOfflineGateway[]> => {
     if (ids.length === 0) return [];
     try {
+      // SET LOCAL lasts until the caller's transaction ends, so it also bounds the event insert after this.
+      await tx.raw(`SET LOCAL statement_timeout = ${OFFLINE_CLAIM_STATEMENT_TIMEOUT_MS}`);
+
       const rows = await tx(TableName.GatewayV2)
         .whereIn("id", ids)
         .whereRaw(buildOfflineAlertDueSql())

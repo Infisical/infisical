@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
+  GATEWAY_OFFLINE_BATCH_SIZE,
   GATEWAY_OFFLINE_EVENT,
   GATEWAY_RESOURCE_TYPE,
   GatewayOfflinePayloadSchema
@@ -195,6 +196,38 @@ describe("Gateway and relay health alerts", () => {
     await gatewayV2Service.healthcheckNotify();
 
     expect(await offlineEventsFor(gateway.id)).toHaveLength(0);
+  });
+
+  test("gateways that go offline together are split into events PagerDuty can take whole", async () => {
+    const { gatewayV2Service } = buildServices();
+    const { orgId: bulkOrgId, cleanup: cleanupBulk } = await createIsolatedOrgAndProject("health-alert-bulk");
+    try {
+      const rows = await testDb(TableName.GatewayV2)
+        .insert(
+          Array.from({ length: 12 }, (_, index) => ({
+            orgId: bulkOrgId,
+            name: `bulk-${index}`,
+            heartbeat: minutesAgo(10),
+            heartbeatTTL: 0
+          }))
+        )
+        .returning("id");
+      const ids = rows.map((row) => (row as { id: string }).id);
+
+      await gatewayV2Service.healthcheckNotify();
+
+      const events = await testDb(TableName.EventOutbox)
+        .where({ consumer: ALERT_EVENT_CONSUMER, eventType: GATEWAY_OFFLINE_EVENT })
+        .whereRaw(`payload->>'orgId' = ?`, [bulkOrgId])
+        .select("payload");
+      const sizes = events.map((event) => (event.payload as { targetIds: string[] }).targetIds.length);
+      expect(sizes.sort((a, b) => b - a)).toEqual([GATEWAY_OFFLINE_BATCH_SIZE, 12 - GATEWAY_OFFLINE_BATCH_SIZE]);
+      expect(events.flatMap((event) => (event.payload as { targetIds: string[] }).targetIds).sort()).toEqual(
+        [...ids].sort()
+      );
+    } finally {
+      await cleanupBulk();
+    }
   });
 
   test("an org-wide gateway alert emails its recipients when a gateway goes offline", async () => {
