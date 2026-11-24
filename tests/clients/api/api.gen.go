@@ -52782,6 +52782,240 @@ func (e GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode) Valid(
 	}
 }
 
+// Defines values for GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust.
+const (
+	GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone   GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "none"
+	GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust enum.
+func (e GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone:
+		return true
+	case GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings400JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings400JSONResponseBodyStatusCodeN400 GetOrganizationSsoSettings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings400JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings401JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings401JSONResponseBodyStatusCodeN401 GetOrganizationSsoSettings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings401JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings403JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings403JSONResponseBodyStatusCodeN403 GetOrganizationSsoSettings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings403JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings404JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings404JSONResponseBodyStatusCodeN404 GetOrganizationSsoSettings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings404JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings422JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings422JSONResponseBodyStatusCodeN422 GetOrganizationSsoSettings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings422JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings500JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings500JSONResponseBodyStatusCodeN500 GetOrganizationSsoSettings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings500JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust.
+const (
+	UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustNone   UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust = "none"
+	UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustSignal UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust enum.
+func (e UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustNone:
+		return true
+	case UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust.
+const (
+	UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone   UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "none"
+	UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust enum.
+func (e UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone:
+		return true
+	case UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings400JSONResponseBodyStatusCodeN400 UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings401JSONResponseBodyStatusCodeN401 UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings403JSONResponseBodyStatusCodeN403 UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings404JSONResponseBodyStatusCodeN404 UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings422JSONResponseBodyStatusCodeN422 UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings500JSONResponseBodyStatusCodeN500 UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAvailableOrganizationUsers400JSONResponseBodyStatusCode.
 const (
 	ListAvailableOrganizationUsers400JSONResponseBodyStatusCodeN400 ListAvailableOrganizationUsers400JSONResponseBodyStatusCode = 400
@@ -53007,45 +53241,6 @@ const (
 func (e UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1) Valid() bool {
 	switch e {
 	case UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1Empty:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateOrganizationJSONBodySelectedMfaMethod.
-const (
-	UpdateOrganizationJSONBodySelectedMfaMethodEmail    UpdateOrganizationJSONBodySelectedMfaMethod = "email"
-	UpdateOrganizationJSONBodySelectedMfaMethodTotp     UpdateOrganizationJSONBodySelectedMfaMethod = "totp"
-	UpdateOrganizationJSONBodySelectedMfaMethodWebauthn UpdateOrganizationJSONBodySelectedMfaMethod = "webauthn"
-)
-
-// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodySelectedMfaMethod enum.
-func (e UpdateOrganizationJSONBodySelectedMfaMethod) Valid() bool {
-	switch e {
-	case UpdateOrganizationJSONBodySelectedMfaMethodEmail:
-		return true
-	case UpdateOrganizationJSONBodySelectedMfaMethodTotp:
-		return true
-	case UpdateOrganizationJSONBodySelectedMfaMethodWebauthn:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateOrganizationJSONBodySsoMfaTrust.
-const (
-	None   UpdateOrganizationJSONBodySsoMfaTrust = "none"
-	Signal UpdateOrganizationJSONBodySsoMfaTrust = "signal"
-)
-
-// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodySsoMfaTrust enum.
-func (e UpdateOrganizationJSONBodySsoMfaTrust) Valid() bool {
-	switch e {
-	case None:
-		return true
-	case Signal:
 		return true
 	default:
 		return false
@@ -100767,9 +100962,10 @@ type GetIdentityProjectAdditionalPrivilegeBySlugV1500JSONResponseBodyStatusCode 
 
 // AdminBootstrapJSONBody defines parameters for AdminBootstrap.
 type AdminBootstrapJSONBody struct {
-	Email        openapi_types.Email `json:"email"`
-	Organization string              `json:"organization"`
-	Password     string              `json:"password"`
+	ActivationToken *string             `json:"activationToken,omitempty"`
+	Email           openapi_types.Email `json:"email"`
+	Organization    string              `json:"organization"`
+	Password        string              `json:"password"`
 }
 
 // AdminBootstrap400JSONResponseBodyStatusCode defines parameters for AdminBootstrap.
@@ -101129,6 +101325,7 @@ type ResendAdminOrganizationInvite500JSONResponseBodyStatusCode float32
 
 // AdminSignUpJSONBody defines parameters for AdminSignUp.
 type AdminSignUpJSONBody struct {
+	ActivationToken  *string             `json:"activationToken,omitempty"`
 	Email            openapi_types.Email `json:"email"`
 	FirstName        string              `json:"firstName"`
 	LastName         *string             `json:"lastName,omitempty"`
@@ -111567,8 +111764,13 @@ type CreateCertificatePolicyJSONBody struct {
 	Name      string  `json:"name"`
 	ProjectId *string `json:"projectId,omitempty"`
 	Sans      *[]struct {
-		Allowed  *[]string                               `json:"allowed,omitempty"`
-		Denied   *[]string                               `json:"denied,omitempty"`
+		// Allowed SAN values this type may take, with * as a wildcard. {{request.commonName}} as the whole value allows a SAN equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.
+		Allowed *[]string `json:"allowed,omitempty"`
+
+		// Denied SAN values that are rejected, with * as a wildcard. {{request.commonName}} as the whole value rejects a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused.
+		Denied *[]string `json:"denied,omitempty"`
+
+		// Required SAN values the request must include, with * as a wildcard. {{request.commonName}} as the whole value requires a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. If it lists {{request.commonName}}, a request without a common name is refused.
 		Required *[]string                               `json:"required,omitempty"`
 		Type     CreateCertificatePolicyJSONBodySansType `json:"type"`
 	} `json:"sans,omitempty"`
@@ -111748,7 +111950,9 @@ type CreateCertificateProfileJSONBody struct {
 		OrganizationalUnit *string                                                      `json:"organizationalUnit,omitempty"`
 		SignatureAlgorithm *CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
 		State              *string                                                      `json:"state,omitempty"`
-		SubjectAltNames    *[]struct {
+
+		// SubjectAltNames Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is {{request.commonName}} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.
+		SubjectAltNames *[]struct {
 			Type  CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType `json:"type"`
 			Value string                                                      `json:"value"`
 		} `json:"subjectAltNames,omitempty"`
@@ -126348,6 +126552,66 @@ type GetOrgWideSecretValueTrackingStatus422JSONResponseBodyStatusCode float32
 // GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode defines parameters for GetOrgWideSecretValueTrackingStatus.
 type GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode float32
 
+// GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust string
+
+// GetOrganizationSsoSettings400JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings400JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings401JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings401JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings403JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings403JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings404JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings404JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings422JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings422JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings500JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings500JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettingsJSONBody defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettingsJSONBody struct {
+	// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+	AuthEnforced *bool `json:"authEnforced,omitempty"`
+
+	// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+	BypassOrgAuthEnabled *bool `json:"bypassOrgAuthEnabled,omitempty"`
+
+	// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+	GoogleSsoAuthEnforced *bool `json:"googleSsoAuthEnforced,omitempty"`
+
+	// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+	SsoMfaTrust *UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust `json:"ssoMfaTrust,omitempty"`
+}
+
+// UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust string
+
+// UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust string
+
+// UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode float32
+
 // ListAvailableOrganizationUsers400JSONResponseBodyStatusCode defines parameters for ListAvailableOrganizationUsers.
 type ListAvailableOrganizationUsers400JSONResponseBodyStatusCode float32
 
@@ -126392,14 +126656,11 @@ type UpdateOrganizationJSONBody struct {
 
 	// AllowedMfaMethods Methods members may use to satisfy MFA while it is enforced
 	AllowedMfaMethods *[]UpdateOrganizationJSONBodyAllowedMfaMethods `json:"allowedMfaMethods,omitempty"`
-	AuthEnforced      *bool                                          `json:"authEnforced,omitempty"`
 
 	// BlockDuplicateSecretSyncDestinations Block duplicate secret sync destinations across the organization
 	BlockDuplicateSecretSyncDestinations *bool    `json:"blockDuplicateSecretSyncDestinations,omitempty"`
-	BypassOrgAuthEnabled                 *bool    `json:"bypassOrgAuthEnabled,omitempty"`
 	DefaultMembershipRoleSlug            *string  `json:"defaultMembershipRoleSlug,omitempty"`
 	EnforceMfa                           *bool    `json:"enforceMfa,omitempty"`
-	GoogleSsoAuthEnforced                *bool    `json:"googleSsoAuthEnforced,omitempty"`
 	KmsProductEnabled                    *bool    `json:"kmsProductEnabled,omitempty"`
 	MaxSharedSecretLifetime              *float32 `json:"maxSharedSecretLifetime,omitempty"`
 	MaxSharedSecretViewLimit             *float32 `json:"maxSharedSecretViewLimit,omitempty"`
@@ -126416,14 +126677,10 @@ type UpdateOrganizationJSONBody struct {
 		PrimaryColor   *UpdateOrganizationJSONBody_SecretShareBrandConfig_PrimaryColor   `json:"primaryColor,omitempty"`
 		SecondaryColor *UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor `json:"secondaryColor,omitempty"`
 	} `json:"secretShareBrandConfig,omitempty"`
-	SecretsProductEnabled *bool `json:"secretsProductEnabled,omitempty"`
-
-	// SelectedMfaMethod Deprecated: use allowedMfaMethods. Sets the allowed MFA methods to this one method.
-	SelectedMfaMethod          *UpdateOrganizationJSONBodySelectedMfaMethod `json:"selectedMfaMethod,omitempty"`
-	ShareSecretsProductEnabled *bool                                        `json:"shareSecretsProductEnabled,omitempty"`
-	Slug                       *string                                      `json:"slug,omitempty"`
-	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust       `json:"ssoMfaTrust,omitempty"`
-	UserTokenExpiration        *string                                      `json:"userTokenExpiration,omitempty"`
+	SecretsProductEnabled      *bool   `json:"secretsProductEnabled,omitempty"`
+	ShareSecretsProductEnabled *bool   `json:"shareSecretsProductEnabled,omitempty"`
+	Slug                       *string `json:"slug,omitempty"`
+	UserTokenExpiration        *string `json:"userTokenExpiration,omitempty"`
 }
 
 // UpdateOrganizationJSONBodyAllowedMfaMethods defines parameters for UpdateOrganization.
@@ -126466,12 +126723,6 @@ type UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1 string
 type UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor struct {
 	union json.RawMessage
 }
-
-// UpdateOrganizationJSONBodySelectedMfaMethod defines parameters for UpdateOrganization.
-type UpdateOrganizationJSONBodySelectedMfaMethod string
-
-// UpdateOrganizationJSONBodySsoMfaTrust defines parameters for UpdateOrganization.
-type UpdateOrganizationJSONBodySsoMfaTrust string
 
 // UpdateOrganization400JSONResponseBodyStatusCode defines parameters for UpdateOrganization.
 type UpdateOrganization400JSONResponseBodyStatusCode float32
@@ -142909,6 +143160,9 @@ type CreateOrganizationRoleJSONRequestBody CreateOrganizationRoleJSONBody
 
 // UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
 type UpdateOrganizationRoleJSONRequestBody UpdateOrganizationRoleJSONBody
+
+// UpdateOrganizationSsoSettingsJSONRequestBody defines body for UpdateOrganizationSsoSettings for application/json ContentType.
+type UpdateOrganizationSsoSettingsJSONRequestBody UpdateOrganizationSsoSettingsJSONBody
 
 // UpdateOrganizationJSONRequestBody defines body for UpdateOrganization for application/json ContentType.
 type UpdateOrganizationJSONRequestBody UpdateOrganizationJSONBody
@@ -175710,6 +175964,23 @@ type ClientInterface interface {
 	// Report progress of the org-wide secret value tracking backfill.
 	GetOrgWideSecretValueTrackingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrganizationSsoSettings performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+	//
+	// Get the organization's SSO enforcement settings.
+	GetOrganizationSsoSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAvailableOrganizationUsers performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
 	ListAvailableOrganizationUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -186660,6 +186931,53 @@ func (c *Client) EnableOrgWideSecretValueTracking(ctx context.Context, reqEditor
 // Report progress of the org-wide secret value tracking backfill.
 func (c *Client) GetOrgWideSecretValueTrackingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrgWideSecretValueTrackingStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationSsoSettings performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+//
+// Get the organization's SSO enforcement settings.
+func (c *Client) GetOrganizationSsoSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationSsoSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the organization's SSO enforcement settings. Fields left out are not changed.
+func (c *Client) UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationSsoSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the organization's SSO enforcement settings. Fields left out are not changed.
+func (c *Client) UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationSsoSettingsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -211756,6 +212074,73 @@ func NewGetOrgWideSecretValueTrackingStatusRequest(server string) (*http.Request
 	return req, nil
 }
 
+// NewGetOrganizationSsoSettingsRequest constructs an http.Request for the GetOrganizationSsoSettings method
+func NewGetOrganizationSsoSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organization/sso-settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrganizationSsoSettingsRequest calls the generic UpdateOrganizationSsoSettings builder with application/json body
+func NewUpdateOrganizationSsoSettingsRequest(server string, body UpdateOrganizationSsoSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrganizationSsoSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateOrganizationSsoSettingsRequestWithBody constructs an http.Request for the UpdateOrganizationSsoSettings method, with any body, and a specified content type
+func NewUpdateOrganizationSsoSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organization/sso-settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListAvailableOrganizationUsersRequest constructs an http.Request for the ListAvailableOrganizationUsers method
 func NewListAvailableOrganizationUsersRequest(server string) (*http.Request, error) {
 	var err error
@@ -234627,6 +235012,27 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetOrgWideSecretValueTrackingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrgWideSecretValueTrackingStatusResponse, error)
 
+	// GetOrganizationSsoSettingsWithResponse performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+	//
+	// Get the organization's SSO enforcement settings.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOrganizationSsoSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrganizationSsoSettingsResponse, error)
+
+	// UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
+
+	// UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
+
 	// ListAvailableOrganizationUsersWithResponse performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -242559,6 +242965,7 @@ type GetAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+			IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -242660,6 +243067,7 @@ func (r GetAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+		IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -242812,6 +243220,7 @@ type UpdateAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+			IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -242913,6 +243322,7 @@ func (r UpdateAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+		IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -243949,7 +244359,6 @@ type ListAdminOrganizationsResponse struct {
 			ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                        string              `json:"slug"`
@@ -244061,7 +244470,6 @@ func (r ListAdminOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                        string              `json:"slug"`
@@ -244205,7 +244613,6 @@ type CreateAdminOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -244297,7 +244704,6 @@ func (r CreateAdminOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -244440,7 +244846,6 @@ type DeleteAdminOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -244532,7 +244937,6 @@ func (r DeleteAdminOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -245220,7 +245624,6 @@ type AdminSignUpResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -245325,7 +245728,6 @@ func (r AdminSignUpResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -299372,7 +299774,6 @@ type ListOrganizationsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -299460,7 +299861,6 @@ func (r ListOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -299963,7 +300363,6 @@ type ListAccessibleOrganizationsWithSubOrgsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -300056,7 +300455,6 @@ func (r ListAccessibleOrganizationsWithSubOrgsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -304656,6 +305054,368 @@ func (r GetOrgWideSecretValueTrackingStatusResponse) ContentType() string {
 	return ""
 }
 
+type GetOrganizationSsoSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SsoSettings struct {
+			// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+			AuthEnforced bool `json:"authEnforced"`
+
+			// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+			BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+			// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+			GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+			// OrgId The ID of the organization the settings belong to.
+			OrgId openapi_types.UUID `json:"orgId"`
+
+			// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+			SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+		} `json:"ssoSettings"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON200() *struct {
+	SsoSettings struct {
+		// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+		AuthEnforced bool `json:"authEnforced"`
+
+		// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+		BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+		// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+		GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+		// OrgId The ID of the organization the settings belong to.
+		OrgId openapi_types.UUID `json:"orgId"`
+
+		// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+		SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+	} `json:"ssoSettings"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationSsoSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationSsoSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationSsoSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationSsoSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrganizationSsoSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SsoSettings struct {
+			// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+			AuthEnforced bool `json:"authEnforced"`
+
+			// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+			BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+			// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+			GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+			// OrgId The ID of the organization the settings belong to.
+			OrgId openapi_types.UUID `json:"orgId"`
+
+			// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+			SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+		} `json:"ssoSettings"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON200() *struct {
+	SsoSettings struct {
+		// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+		AuthEnforced bool `json:"authEnforced"`
+
+		// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+		BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+		// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+		GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+		// OrgId The ID of the organization the settings belong to.
+		OrgId openapi_types.UUID `json:"orgId"`
+
+		// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+		SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+	} `json:"ssoSettings"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrganizationSsoSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrganizationSsoSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrganizationSsoSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrganizationSsoSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListAvailableOrganizationUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -304853,7 +305613,6 @@ type GetOrganizationByIdResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -304939,7 +305698,6 @@ func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -305076,7 +305834,6 @@ type UpdateOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -305162,7 +305919,6 @@ func (r UpdateOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -359047,7 +359803,6 @@ type CreateOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -359132,7 +359887,6 @@ func (r CreateOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -359268,7 +360022,6 @@ type UpgradePrivilegeSystemResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -359353,7 +360106,6 @@ func (r UpgradePrivilegeSystemResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -359689,7 +360441,6 @@ type DeleteOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -359775,7 +360526,6 @@ func (r DeleteOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -373180,7 +373930,6 @@ type ListUserOrganizationsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -373265,7 +374014,6 @@ func (r ListUserOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -386092,6 +386840,45 @@ func (c *ClientWithResponses) GetOrgWideSecretValueTrackingStatusWithResponse(ct
 	return ParseGetOrgWideSecretValueTrackingStatusResponse(rsp)
 }
 
+// GetOrganizationSsoSettingsWithResponse performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+//
+// Get the organization's SSO enforcement settings.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOrganizationSsoSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.GetOrganizationSsoSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationSsoSettingsResponse(rsp)
+}
+
+// UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the organization's SSO enforcement settings. Fields left out are not changed.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.UpdateOrganizationSsoSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationSsoSettingsResponse(rsp)
+}
+
+// UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the organization's SSO enforcement settings. Fields left out are not changed.
+func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.UpdateOrganizationSsoSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationSsoSettingsResponse(rsp)
+}
+
 // ListAvailableOrganizationUsersWithResponse performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -395873,6 +396660,7 @@ func ParseGetAdminConfigResponse(rsp *http.Response) (*GetAdminConfigResponse, e
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+				IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -396026,6 +396814,7 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+				IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -396772,7 +397561,6 @@ func ParseListAdminOrganizationsResponse(rsp *http.Response) (*ListAdminOrganiza
 				ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                        string              `json:"slug"`
@@ -396917,7 +397705,6 @@ func ParseCreateAdminOrganizationResponse(rsp *http.Response) (*CreateAdminOrgan
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -397061,7 +397848,6 @@ func ParseDeleteAdminOrganizationResponse(rsp *http.Response) (*DeleteAdminOrgan
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -397558,7 +398344,6 @@ func ParseAdminSignUpResponse(rsp *http.Response) (*AdminSignUpResponse, error) 
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -432737,7 +433522,6 @@ func ParseListOrganizationsResponse(rsp *http.Response) (*ListOrganizationsRespo
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -433112,7 +433896,6 @@ func ParseListAccessibleOrganizationsWithSubOrgsResponse(rsp *http.Response) (*L
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -436146,6 +436929,240 @@ func ParseGetOrgWideSecretValueTrackingStatusResponse(rsp *http.Response) (*GetO
 	return response, nil
 }
 
+// ParseGetOrganizationSsoSettingsResponse parses an HTTP response from a GetOrganizationSsoSettingsWithResponse call
+func ParseGetOrganizationSsoSettingsResponse(rsp *http.Response) (*GetOrganizationSsoSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationSsoSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SsoSettings struct {
+				// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+				AuthEnforced bool `json:"authEnforced"`
+
+				// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+				BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+				// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+				GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+				// OrgId The ID of the organization the settings belong to.
+				OrgId openapi_types.UUID `json:"orgId"`
+
+				// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+				SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+			} `json:"ssoSettings"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrganizationSsoSettingsResponse parses an HTTP response from a UpdateOrganizationSsoSettingsWithResponse call
+func ParseUpdateOrganizationSsoSettingsResponse(rsp *http.Response) (*UpdateOrganizationSsoSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrganizationSsoSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SsoSettings struct {
+				// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+				AuthEnforced bool `json:"authEnforced"`
+
+				// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+				BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+				// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+				GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+				// OrgId The ID of the organization the settings belong to.
+				OrgId openapi_types.UUID `json:"orgId"`
+
+				// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+				SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+			} `json:"ssoSettings"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListAvailableOrganizationUsersResponse parses an HTTP response from a ListAvailableOrganizationUsersWithResponse call
 func ParseListAvailableOrganizationUsersResponse(rsp *http.Response) (*ListAvailableOrganizationUsersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -436299,7 +437316,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -436437,7 +437453,6 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -470681,7 +471696,6 @@ func ParseCreateOrganizationResponse(rsp *http.Response) (*CreateOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -470818,7 +471832,6 @@ func ParseUpgradePrivilegeSystemResponse(rsp *http.Response) (*UpgradePrivilegeS
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -471082,7 +472095,6 @@ func ParseDeleteOrganizationResponse(rsp *http.Response) (*DeleteOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -479574,7 +480586,6 @@ func ParseListUserOrganizationsResponse(rsp *http.Response) (*ListUserOrganizati
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`

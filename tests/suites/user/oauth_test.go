@@ -356,7 +356,9 @@ func TestOAuth_Google(t *testing.T) {
 		google := sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p))
 		first := selectOrg(t, tn, google, tn.OrgID.String())
 		require.Equalf(t, http.StatusOK, first.StatusCode(), "selecting with Google: %s", apierr.Body(first.Body))
-		enforced := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{GoogleSsoAuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		enforced, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{GoogleSsoAuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, enforced.StatusCode(), "enforcing Google SSO: %s", apierr.Body(enforced.Body))
 
 		// Action
@@ -368,6 +370,32 @@ func TestOAuth_Google(t *testing.T) {
 		require.Contains(t, apierr.Message(password.Body), "Login with Google SSO")
 		require.Nil(t, cookieNamed(password.HTTPResponse, "jid"))
 		require.Equalf(t, http.StatusOK, googleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(googleAgain.Body))
+	})
+
+	t.Run("should refuse SAML or OIDC enforcement while Google SSO is enforced", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		p := fixture.NewOAuthPerson(tn, true)
+		p.Email = alice.Email
+		first := selectOrg(t, tn, sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)), tn.OrgID.String())
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "selecting with Google: %s", apierr.Body(first.Body))
+		enforced, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{GoogleSsoAuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, enforced.StatusCode(), "enforcing Google SSO: %s", apierr.Body(enforced.Body))
+
+		// Action
+		res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true)})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, "SAML/OIDC auth enforcement and Google SSO auth enforcement cannot be enabled at the same time.",
+			apierr.Message(res.Body))
 	})
 
 	t.Run("should leave an invited membership pending after a Google login naming the org, and accept it once the org is selected", func(t *testing.T) {

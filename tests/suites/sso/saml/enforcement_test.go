@@ -22,8 +22,8 @@ func TestSAMLEnforcement(t *testing.T) {
 		s := setup(t, sso.Okta)
 
 		// Action
-		res, err := s.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.Tenant.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true)})
+		res, err := s.Tenant.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
@@ -40,8 +40,8 @@ func TestSAMLEnforcement(t *testing.T) {
 		s.SignedUp(t)
 
 		// Action
-		res, err := s.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.Tenant.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		res, err := s.Tenant.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
 
 		// Assert
 		require.NoError(t, err)

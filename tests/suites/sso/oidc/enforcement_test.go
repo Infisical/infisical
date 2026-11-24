@@ -21,8 +21,8 @@ func TestOIDCEnforcement(t *testing.T) {
 		o := setup(t)
 
 		// Action
-		res, err := o.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), o.Tenant.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true)})
+		res, err := o.Tenant.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
@@ -39,8 +39,8 @@ func TestOIDCEnforcement(t *testing.T) {
 		o.SignedUp(t)
 
 		// Action
-		res, err := o.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), o.Tenant.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		res, err := o.Tenant.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
 
 		// Assert
 		require.NoError(t, err)
