@@ -2,26 +2,28 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const renameConstraintKey = async (knex: Knex, from: string, to: string) => {
-  if (!(await knex.schema.hasTable(TableName.ApprovalPolicies))) return;
-
+export async function up(knex: Knex): Promise<void> {
   await knex.raw(
     `UPDATE ??
      SET constraints = jsonb_set(
-       constraints #- ARRAY['constraints', ?::text],
-       ARRAY['constraints', ?::text],
-       COALESCE(constraints -> 'constraints' -> ?::text, constraints -> 'constraints' -> ?::text)
+       constraints #- '{constraints,enforceImportReplication}',
+       '{constraints,enforceOnSecretImports}',
+       constraints -> 'constraints' -> 'enforceImportReplication'
      )
-     WHERE type = 'secret-change'
-       AND constraints -> 'constraints' -> ?::text IS NOT NULL`,
-    [TableName.ApprovalPolicies, from, to, to, from, from]
+     WHERE type = 'secret-change' AND constraints -> 'constraints' -> 'enforceImportReplication' IS NOT NULL`,
+    [TableName.ApprovalPolicies]
   );
-};
-
-export async function up(knex: Knex): Promise<void> {
-  await renameConstraintKey(knex, "enforceImportReplication", "enforceOnSecretImports");
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await renameConstraintKey(knex, "enforceOnSecretImports", "enforceImportReplication");
+  await knex.raw(
+    `UPDATE ??
+     SET constraints = jsonb_set(
+       constraints #- '{constraints,enforceOnSecretImports}',
+       '{constraints,enforceImportReplication}',
+       constraints -> 'constraints' -> 'enforceOnSecretImports'
+     )
+     WHERE type = 'secret-change' AND constraints -> 'constraints' -> 'enforceOnSecretImports' IS NOT NULL`,
+    [TableName.ApprovalPolicies]
+  );
 }
