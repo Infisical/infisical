@@ -60,7 +60,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
           ),
           notificationConfigs: z.array(NotificationConfigResponseSchema),
           breakGlassUsers: z.array(ApproverSchema),
-          autoApproval: AutoApprovalConfigResponseSchema
+          autoApproval: AutoApprovalConfigResponseSchema,
+          emailApproversOnRequest: z.boolean()
         })
       }
     },
@@ -96,7 +97,13 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
           .describe(
             "Users and groups allowed to grant themselves access without an approver. Omitted leaves the stored list unchanged; an empty array clears it."
           ),
-        autoApproval: AutoApprovalConfigSchema.optional()
+        autoApproval: AutoApprovalConfigSchema.optional(),
+        emailApproversOnRequest: z
+          .boolean()
+          .optional()
+          .describe(
+            "Whether approvers are emailed when access is requested. In-app notifications, alerts, and break-glass and auto-approval emails are unaffected. Omitted leaves the stored value unchanged."
+          )
       }),
       response: {
         200: z.object({
@@ -113,6 +120,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         notificationConfigs: req.body.notificationConfigs,
         breakGlassUsers: req.body.breakGlassUsers,
         autoApproval: req.body.autoApproval,
+        emailApproversOnRequest: req.body.emailApproversOnRequest,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -131,7 +139,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
             stepCount: result.stepCount,
             notificationConfigCount: result.notificationConfigCount,
             breakGlassUserCount: result.breakGlassUserCount,
-            autoApprovalRuleCount: result.autoApprovalRuleCount
+            autoApprovalRuleCount: result.autoApprovalRuleCount,
+            emailApproversOnRequest: result.emailApproversOnRequest
           }
         }
       });

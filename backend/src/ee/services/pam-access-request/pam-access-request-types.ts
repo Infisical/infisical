@@ -30,6 +30,7 @@ export type TSetApprovalConfigurationDTO = {
   breakGlassUsers?: { type: ApproverType; id: string }[];
   // undefined leaves the stored rules unchanged
   autoApproval?: TAutoApprovalConfig;
+  emailApproversOnRequest?: boolean;
 } & TActorContext;
 
 export type TBreakGlassAccessRequestDTO = {

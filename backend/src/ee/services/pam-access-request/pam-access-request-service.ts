@@ -57,7 +57,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "findByProjectId"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
-  pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
+  pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -190,7 +190,8 @@ export const pamAccessRequestServiceFactory = ({
       steps: steps.map((step) => ({ approvers: step.approvers })),
       notificationConfigs: await getNotificationConfigs(folderId),
       breakGlassUsers: bypassers,
-      autoApproval
+      autoApproval,
+      emailApproversOnRequest: folder.emailApproversOnRequest
     };
   };
 
@@ -201,6 +202,7 @@ export const pamAccessRequestServiceFactory = ({
     notificationConfigs,
     breakGlassUsers,
     autoApproval,
+    emailApproversOnRequest,
     ...ctx
   }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
@@ -307,13 +309,18 @@ export const pamAccessRequestServiceFactory = ({
       await pamFolderNotificationConfigDAL.delete({ $in: { id: removedNotificationConfigIds } });
     }
 
+    if (emailApproversOnRequest !== undefined) {
+      await pamFolderDAL.updateById(folderId, { emailApproversOnRequest });
+    }
+
     return {
       policyId,
       folderId,
       stepCount: steps.length,
       notificationConfigCount: notificationConfigs?.length,
       breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined,
-      autoApprovalRuleCount: autoApproval?.rules.length
+      autoApprovalRuleCount: autoApproval?.rules.length,
+      emailApproversOnRequest
     };
   };
 
