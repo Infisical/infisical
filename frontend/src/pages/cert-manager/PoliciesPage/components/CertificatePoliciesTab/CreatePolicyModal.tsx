@@ -60,7 +60,12 @@ import {
   useUpdateCertificatePolicy
 } from "@app/hooks/api/certificatePolicies";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+import {
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 
+import { RequestReferenceCombobox } from "../../../components/RequestReferenceCombobox";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import {
   CUSTOM_EXTENSION_CRITICALITY_LABELS,
@@ -84,13 +89,15 @@ import {
   formatExtendedKeyUsage,
   formatKeyUsage,
   groupCustomExtensionRows,
+  isRequestReference,
   KEY_USAGE_OPTIONS,
   POLICY_PRESET_IDS,
   type PolicyPresetId,
   SAN_INCLUDE_OPTIONS,
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
-  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS,
+  withIndefiniteArticle
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
 
@@ -179,6 +186,18 @@ const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
   upn: "UPN"
 };
 
+const describeCommonNameSanRule = (
+  sanType: (typeof SAN_TYPE_OPTIONS)[number],
+  include: (typeof SAN_INCLUDE_OPTIONS)[number]
+) => {
+  const sanLabel = withIndefiniteArticle(`${SAN_TYPE_LABELS[sanType]} SAN`);
+  if (include === CertSanInclude.MANDATORY)
+    return `Certificates must include their common name as ${sanLabel}.`;
+  if (include === CertSanInclude.PROHIBIT)
+    return `The certificate's common name is refused as ${sanLabel}.`;
+  return `The certificate's common name is allowed as ${sanLabel}.`;
+};
+
 const SUBJECT_ATTRIBUTE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number], string> =
   {
     required: "Require",
@@ -251,7 +270,7 @@ const STEPS = [
       "Control the subject attributes and alternative names allowed on issued certificates.",
     rightLabel: "SUBJECT",
     rightDescription:
-      "By default, issued certificates may carry any subject attributes and subject alternative names. Enable a restriction to define exactly which values are allowed, required, or denied. Requests that fall outside those rules are rejected at issuance."
+      'By default, issued certificates may carry any subject attributes and subject alternative names. Enable a restriction to define exactly which values are allowed, required, or denied. A SAN value of "Same as common name" is compared with the common name of each request. Requests that fall outside those rules are rejected at issuance.'
   },
   {
     name: "Algorithms",
@@ -1086,6 +1105,29 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         if (restrictSans && watchedSans.some((s) => !s.value?.[0]?.trim())) {
           stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
         }
+        if (
+          restrictSans &&
+          watchedSans.some((san) =>
+            (san.value ?? []).some((value) => !isSupportedSanRuleValue(value))
+          )
+        ) {
+          stepErrors.sans = UNSUPPORTED_REFERENCE_MESSAGE;
+        }
+        const allowsCommonName =
+          !restrictSubject ||
+          watchedAttributes.some(
+            (attribute) =>
+              attribute.type === CertSubjectAttributeType.COMMON_NAME &&
+              attribute.include !== CertSubjectAttributeInclude.PROHIBIT
+          );
+        if (
+          restrictSans &&
+          !allowsCommonName &&
+          watchedSans.some((san) => isRequestReference(san.value?.[0] ?? ""))
+        ) {
+          stepErrors.sans =
+            'To use "Same as common name", allow a common name (CN) in the subject attributes above.';
+        }
       }
 
       if (stepIndex === 4 && restrictCustomExtensions) {
@@ -1491,19 +1533,17 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
+                    <RequestReferenceCombobox
+                      aria-label="SAN value"
                       placeholder={SAN_TYPE_PLACEHOLDERS[san.type]}
+                      referenceHint={describeCommonNameSanRule(san.type, san.include)}
                       value={san.value?.[0] || ""}
-                      onChange={(e) => {
+                      onChange={(value) => {
                         const next = [...watchedSans];
-                        next[index] = {
-                          ...san,
-                          value: e.target.value.trim() ? [e.target.value.trim()] : []
-                        };
+                        next[index] = { ...san, value: value ? [value] : [] };
                         setValue("subjectAlternativeNames", next);
                         markCustomPreset();
                       }}
-                      className="flex-1"
                     />
                     <Button
                       type="button"

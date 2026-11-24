@@ -34,39 +34,25 @@ const REVIEW_STEP: StepMeta = {
   rightDescription: "Review your settings before saving."
 };
 
-type THookStepType = "http" | "mcp" | "database" | "ssh";
+type THookStepKind = "http" | "mcp" | "connection";
 
-const HOOK_STEP_COPY: Record<THookStepType, { short: string; right: string }> = {
-  http: {
-    short: "Your server checks each request",
-    right:
-      "With a hook on, the proxy sends each request to your server before it adds the credential, and sends it on only if your server allows it. If your server refuses, the agent gets its message. If it doesn't give a usable answer, the request is refused."
-  },
-  mcp: {
-    short: "Your server checks each request",
-    right:
-      "With a hook on, the proxy sends each request for the MCP server to your server first, and sends it on only if your server allows it. If your server refuses, the agent gets its message. If it doesn't give a usable answer, the request is refused."
-  },
-  database: {
-    short: "Your server checks each connection",
-    right:
-      "With a hook on, the proxy asks your server once when the agent connects, not before each query, and opens the connection only if your server allows it. If your server refuses, its message shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
-  },
-  ssh: {
-    short: "Your server checks each connection",
-    right:
-      "With a hook on, the proxy asks your server once when the agent connects, not before each command, and opens the connection only if your server allows it. If your server refuses, its message shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
-  }
+const HOOK_STEP_RIGHT: Record<THookStepKind, string> = {
+  http: "Every session that uses this service sends matching requests to the hook, before the proxy adds the credential. Your server allows or refuses each one. Leave methods and paths open to check every request.",
+  mcp: "Every session that uses this service sends matching tool calls to the hook, before the proxy adds the credential. Your server allows or refuses each one. Leave tools empty to check every call.",
+  connection:
+    "Every session that uses this service asks the hook once when the agent connects, not before each query or command. Your server allows or refuses the connection."
 };
 
-const hookStep = (type: THookStepType): StepMeta => ({
+const hookStep = (kind: THookStepKind): StepMeta => ({
   step: ServiceStep.Hook,
   name: "Hook",
-  shortDescription: HOOK_STEP_COPY[type].short,
+  shortDescription: "Your server checks requests",
   title: "Hook",
-  subtitle: "Let your own server allow or refuse what agents send through this service.",
+  subtitle: "The saved hook that checks this service's requests, and which requests it checks.",
   rightLabel: "HOOK",
-  rightDescription: HOOK_STEP_COPY[type].right,
+  rightDescription: HOOK_STEP_RIGHT[kind],
+  rightTip:
+    "A service has at most one hook, and one hook can check many services. Change a hook's URL or secret on the Hooks page.",
   docsUrl: AgentVaultDocsUrls.hooks
 });
 
@@ -188,7 +174,7 @@ export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): S
       rightLabel: "CREDENTIAL",
       rightDescription: copy.credentialRight
     },
-    hookStep(serviceType === AgentVaultServiceType.Ssh ? "ssh" : "database"),
+    hookStep("connection"),
     REVIEW_STEP
   ];
 };

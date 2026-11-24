@@ -7,10 +7,10 @@ import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";

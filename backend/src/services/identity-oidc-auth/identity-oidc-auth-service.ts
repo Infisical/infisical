@@ -11,6 +11,7 @@ import {
   TIdentityOidcAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
@@ -29,6 +30,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -41,7 +43,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -80,6 +81,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
   >;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -98,6 +100,7 @@ export const identityOidcAuthServiceFactory = ({
   keyStore,
   permissionService,
   licenseService,
+  instanceConfigService,
   identityAccessTokenDAL,
   kmsDataKeyService,
   orgDAL,
@@ -644,7 +647,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -833,7 +836,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -1092,7 +1095,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);

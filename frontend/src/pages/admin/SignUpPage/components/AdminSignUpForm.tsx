@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import { doesPasswordMeetPolicy } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -24,10 +24,17 @@ import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSche
 
 type AdminSignUpFormProps = {
   defaultValues?: AdminSignUpFormData;
+  activationTokenError?: string;
   onContinue: (values: AdminSignUpFormData) => void;
+  passwordError?: string;
 };
 
-export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormProps) => {
+export const AdminSignUpForm = ({
+  defaultValues,
+  activationTokenError,
+  onContinue,
+  passwordError
+}: AdminSignUpFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
   const {
@@ -37,7 +44,12 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
     setError,
     watch
   } = useForm<AdminSignUpFormData>({
-    resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
+    resolver: zodResolver(
+      createAdminSignUpSchema(
+        config.passwordPolicy,
+        Boolean(config.isInitialSetupActivationTokenRequired)
+      )
+    ),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: defaultValues ?? {
@@ -45,39 +57,38 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
       lastName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      activationToken: ""
     }
   });
+
+  useEffect(() => {
+    if (passwordError) setError("password", { type: "server", message: passwordError });
+  }, [passwordError, setError]);
 
   const password = watch("password");
-  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
   const confirmPassword = watch("confirmPassword");
 
-  const onSubmit = async (values: AdminSignUpFormData) => {
-    const latestBreachStatus = await validatePassword(values.password);
-
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
+  useEffect(() => {
+    if (activationTokenError) {
+      setError(
+        "activationToken",
+        { type: "server", message: activationTokenError },
+        { shouldFocus: true }
+      );
     }
-
-    onContinue(values);
-  };
+  }, [activationTokenError, setError]);
 
   const showDangerState = submitCount > 0;
-  const isPasswordValidated =
-    passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const showActivationTokenError =
+    Boolean(errors.activationToken) &&
+    (showDangerState || errors.activationToken?.type === "server");
+  const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canSubmit = isPasswordValidated && !isSubmitting;
 
   return (
-    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onContinue)}>
       <FieldGroup>
         <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
@@ -133,10 +144,11 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}
-          breachStatus={passwordBreachStatus}
           placeholder="••••••••"
           registration={register("password")}
-          error={showDangerState ? errors.password : undefined}
+          error={
+            showDangerState || errors.password?.type === "server" ? errors.password : undefined
+          }
           submitCount={submitCount}
         />
         <AnimatedCollapse
@@ -184,6 +196,25 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
             ) : null}
           </Field>
         </AnimatedCollapse>
+        {config.isInitialSetupActivationTokenRequired && (
+          <Field data-invalid={showActivationTokenError}>
+            <FieldLabel className="sr-only" htmlFor="admin-signup-activation-token">
+              Activation token
+            </FieldLabel>
+            <Input
+              variant="outlined"
+              {...register("activationToken")}
+              id="admin-signup-activation-token"
+              type="password"
+              placeholder="Activation token"
+              autoComplete="off"
+              isError={showActivationTokenError}
+            />
+            <FieldError>
+              {showActivationTokenError ? errors.activationToken?.message : undefined}
+            </FieldError>
+          </Field>
+        )}
       </FieldGroup>
       <Button
         type="submit"

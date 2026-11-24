@@ -7,6 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -20,7 +21,6 @@ import {
   SecretSortField
 } from "@app/services/secret/secret-types";
 
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";

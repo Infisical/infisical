@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
@@ -9,10 +10,9 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -379,15 +379,16 @@ export const secretReplicationServiceFactory = ({
               destinationSecretImportId: destinationSecretImport.id,
               destinationFolder,
               onCreate: (createdFolder, tx) =>
-                FolderModifiedEventV1.emit(
-                  eventEmitter,
-                  {
-                    folderId: createdFolder.id,
-                    projectId,
-                    environment: destinationFolder.environmentSlug,
-                    secretPath: destinationReplicationFolderPath,
-                    modificationType: EventModificationType.Created
-                  },
+                eventEmitter.emit(
+                  [
+                    FolderModifiedEventV1.build({
+                      folderId: createdFolder.id,
+                      projectId,
+                      environment: destinationFolder.environmentSlug,
+                      secretPath: destinationReplicationFolderPath,
+                      modificationType: EventModificationType.Created
+                    })
+                  ],
                   tx
                 )
             });

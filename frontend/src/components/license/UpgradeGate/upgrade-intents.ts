@@ -44,7 +44,8 @@ export const UpgradeFeature = {
   PamAccountLimit: "pam-account-limit",
   PamEnterpriseAlerting: "pam-enterprise-alerting",
   EnterprisePamAccounts: "enterprise-pam-accounts",
-  AgentVault: "agent-vault"
+  AgentVault: "agent-vault",
+  AgentVaultHooks: "agent-vault-hooks"
 } as const;
 
 export type UpgradeIntent = {
@@ -343,6 +344,16 @@ export const AgentVaultUpgradeIntent = {
   title: "Add Agent Vault to Your Plan",
   description:
     "Agent Vault is on the Pro plan. Add a payment method to keep brokering past the free requests."
+} satisfies UpgradeIntent;
+
+export const AgentVaultHooksUpgradeIntent = {
+  featureKey: UpgradeFeature.AgentVaultHooks,
+  productKey: BillingProduct.AgentVault,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Hooks",
+  title: "Add Hooks to Your Plan",
+  description:
+    "Hooks are on the Pro plan. Upgrade to have your own server allow or refuse agent requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {

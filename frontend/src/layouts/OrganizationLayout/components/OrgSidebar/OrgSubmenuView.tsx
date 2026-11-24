@@ -1,13 +1,4 @@
-import {
-  AppWindow,
-  ChevronLeft,
-  Cog,
-  KeyRound,
-  Lock,
-  Network,
-  ShieldUser,
-  SlidersHorizontal
-} from "lucide-react";
+import { AppWindow, ChevronLeft, Cog, KeyRound, Lock, Network, ShieldUser } from "lucide-react";
 
 import { SubOrganizationsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SubOrgIcon } from "@app/components/v3";
@@ -63,12 +54,6 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       icon: KeyRound,
       pathSuffix: "settings",
       search: { selectedTab: "tab-org-encryption" }
-    },
-    {
-      label: "Product Settings",
-      icon: SlidersHorizontal,
-      pathSuffix: "settings",
-      search: { selectedTab: "product-settings" }
     },
     {
       label: "Sub Organizations",

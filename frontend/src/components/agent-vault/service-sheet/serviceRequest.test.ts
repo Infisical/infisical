@@ -17,7 +17,13 @@ import {
   buildUpdateServiceRequest,
   membersClearedNotice
 } from "./serviceRequest";
-import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  HTTP_METHODS,
+  McpToolScope,
+  serviceHookDraftOf,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
@@ -56,9 +62,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hookEnabled: false,
-  hookUrl: "",
-  hookSigningSecret: "",
+  hook: serviceHookDraftOf(null),
   ...overrides
 });
 
@@ -846,118 +850,6 @@ describe("native service requests", () => {
   });
 });
 
-const HOOK_URL = "https://hooks.example.com/agent-vault";
-const HOOK_SECRET = "s".repeat(32);
-
-const storedHooked = { ...storedHttp, hook: { url: HOOK_URL } } satisfies TAgentVaultService;
-
-const hookOf = (request: object) => ("hook" in request ? request.hook : "absent");
-
-describe("hook requests", () => {
-  it("sends the hook on create only while it is on, with the URL trimmed", () => {
-    expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({ hookEnabled: true, hookUrl: ` ${HOOK_URL} `, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
-    expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({ hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toBe("absent");
-  });
-
-  it("sends the hook on create for MCP and database services too", () => {
-    const hook = { hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET };
-    expect(hookOf(buildCreateServiceRequest(undefined, mcpForm(hook)))).toEqual({
-      url: HOOK_URL,
-      signingSecret: HOOK_SECRET
-    });
-    expect(
-      hookOf(
-        buildCreateServiceRequest(
-          undefined,
-          form({
-            ...hook,
-            serviceType: AgentVaultServiceType.Postgres,
-            host: "db.internal",
-            port: "5432",
-            database: "billing",
-            credentialType: AgentVaultCredentialType.Basic,
-            username: "agent"
-          })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
-  });
-
-  it("leaves an untouched hook out of an update", () => {
-    expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
-        )
-      )
-    ).toBe("absent");
-    expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: "" })
-        )
-      )
-    ).toBe("absent");
-  });
-
-  it("sends a new URL alone, keeping the stored secret", () => {
-    expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({
-            hookEnabled: true,
-            hookUrl: "https://hooks.example.com/v2",
-            hookSigningSecret: UNCHANGED_SECRET
-          })
-        )
-      )
-    ).toEqual({ url: "https://hooks.example.com/v2" });
-  });
-
-  it("sends a new secret with the URL", () => {
-    expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
-        )
-      )
-    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
-  });
-
-  it("removes a stored hook with null once it is turned off", () => {
-    expect(
-      hookOf(
-        buildUpdateServiceRequest(
-          storedHooked,
-          form({ hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
-        )
-      )
-    ).toBeNull();
-  });
-
-  it("sends nothing for a service with no hook and the toggle off", () => {
-    expect(hookOf(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form()))).toBe("absent");
-  });
-});
-
 describe("OAuth variable credentials", () => {
   const variableMcp = storedMcp({
     type: AgentVaultCredentialType.OAuth,
@@ -1070,5 +962,80 @@ describe("OAuth variable credentials", () => {
 
   it("asks nothing when a variable service is left to each member", () => {
     expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), variableMcp)).toBe(null);
+  });
+});
+
+describe("service hooks", () => {
+  const HOOK = { id: "hook-1", name: "approvals" };
+  const picked = (overrides: Partial<TServiceForm["hook"]> = {}) => ({
+    ...serviceHookDraftOf(HOOK),
+    ...overrides
+  });
+
+  it("creates a service with its hook by name and only the narrowing its type uses", () => {
+    expect(
+      buildCreateServiceRequest(
+        undefined,
+        form({
+          hook: picked({ methods: [AgentVaultHttpMethod.Put], paths: ["/v1"], tools: ["x"] })
+        })
+      ).hook
+    ).toEqual({ name: "approvals", methods: [AgentVaultHttpMethod.Put], paths: ["/v1"] });
+    expect(
+      buildCreateServiceRequest(undefined, mcpForm({ hook: picked({ tools: ["delete_issue"] }) }))
+        .hook
+    ).toEqual({ name: "approvals", tools: ["delete_issue"] });
+    expect(
+      buildCreateServiceRequest(undefined, postgresForm({ hook: picked({ paths: ["/x"] }) })).hook
+    ).toEqual({ name: "approvals" });
+  });
+
+  it("creates a service without a hook by leaving it out", () => {
+    expect(buildCreateServiceRequest(undefined, form())).not.toHaveProperty("hook");
+  });
+
+  it("leaves an unchanged hook out of an update, even with its lists reordered", () => {
+    const saved = {
+      ...storedHttp,
+      hook: {
+        ...HOOK,
+        methods: [AgentVaultHttpMethod.Put, AgentVaultHttpMethod.Get],
+        paths: ["/v1"]
+      }
+    };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
+  it("leaves an untouched hook saved with every method listed out of an update", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK, methods: [...HTTP_METHODS] } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
+  it("sends a changed narrowing or another hook", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: picked({ paths: ["/v1"] }) })).hook
+    ).toEqual({ name: "approvals", paths: ["/v1"] });
+    expect(
+      buildUpdateServiceRequest(
+        saved,
+        form({ hook: picked({ hookId: "hook-2", hookName: "release-guard" }) })
+      ).hook
+    ).toEqual({ name: "release-guard" });
+  });
+
+  it("sends null to remove the hook", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: { ...HOOK } }, form()).hook).toBeNull();
+  });
+
+  it("sends nothing when there was no hook and none is picked, or the read left the hook out", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form())).not.toHaveProperty(
+      "hook"
+    );
+    expect(buildUpdateServiceRequest(storedHttp, form())).not.toHaveProperty("hook");
   });
 });

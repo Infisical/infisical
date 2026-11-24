@@ -233,8 +233,8 @@ describe("buildPamPolicyRules", () => {
 });
 
 describe("accountTypeSupportsSessionLogMasking", () => {
-  // RDP recordings are base64 frames, and AWS IAM is gateway-less so it has no session log.
-  const unmaskable = [PamAccountType.Windows, PamAccountType.WindowsAd, PamAccountType.AwsIam];
+  // RDP recordings are base64 frames.
+  const unmaskable = [PamAccountType.Windows, PamAccountType.WindowsAd];
 
   test("is false for types with no maskable session log", () => {
     expect(unmaskable.every((type) => !accountTypeSupportsSessionLogMasking(type))).toBe(true);

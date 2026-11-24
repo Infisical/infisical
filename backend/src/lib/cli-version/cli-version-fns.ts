@@ -8,13 +8,19 @@ const DEVELOPMENT_VERSION = "devel";
 
 const VERSION_REGEX = new RE2(/^(\d+)\.(\d+)\.(\d+)/);
 const STRICT_VERSION_REGEX = new RE2(/^(\d+)\.(\d+)\.(\d+)$/);
+// Only the suffixes the CLI's own builds report: goreleaser snapshots add -devel, or -SNAPSHOT-<commit>
+// where a config sets no snapshot template. A free-form suffix would let anyone holding a gateway's
+// credential put words on its detail page.
+const REPORTED_VERSION_REGEX = new RE2(/^\d{1,9}\.\d{1,9}\.\d{1,9}(?:-devel|-SNAPSHOT-[0-9a-f]{7,40})?$/);
 
 export enum CliCapability {
-  DirectGatewayTransport = "direct-gateway-transport"
+  DirectGatewayTransport = "direct-gateway-transport",
+  AwsIamGateway = "aws-iam-gateway"
 }
 
 export const CLI_CAPABILITY_MIN_VERSION: Record<CliCapability, string> = {
-  [CliCapability.DirectGatewayTransport]: "0.43.131"
+  [CliCapability.DirectGatewayTransport]: "0.43.131",
+  [CliCapability.AwsIamGateway]: "0.45.14"
 };
 
 const getCliVersionSegment = (userAgent?: string) => {
@@ -34,6 +40,21 @@ export const parseCliVersion = (userAgent?: string): [number, number, number] | 
 
   const match = VERSION_REGEX.exec(segment);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+};
+
+/**
+ * `fromCli` is true when the caller is certainly the Infisical CLI: an accepted version, or the bare
+ * token that releases before 0.43.131 send, which is how a gateway too old to report is told apart
+ * from one we know nothing about.
+ */
+export const getReportedCliVersion = (userAgent?: string): { cliVersion: string | null; fromCli: boolean } => {
+  if (userAgent === CLI_USER_AGENT_NAME) return { cliVersion: null, fromCli: true };
+
+  const segment = getCliVersionSegment(userAgent);
+  if (segment && (segment === DEVELOPMENT_VERSION || REPORTED_VERSION_REGEX.test(segment))) {
+    return { cliVersion: segment, fromCli: true };
+  }
+  return { cliVersion: null, fromCli: false };
 };
 
 const parseMinimum = (minimum: string): [number, number, number] => {

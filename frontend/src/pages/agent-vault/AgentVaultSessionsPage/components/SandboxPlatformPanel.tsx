@@ -1,5 +1,6 @@
 import { ReactNode, useMemo, useState } from "react";
-import { SiPython, SiTypescript } from "react-icons/si";
+import { IconType } from "react-icons";
+import { SiGo, SiPython, SiTypescript } from "react-icons/si";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { Button, CodeBlock, Tabs, TabsList, TabsTrigger } from "@app/components/v3";
@@ -11,6 +12,7 @@ import {
   hasScriptLanguages,
   sandboxScripts,
   ScriptLanguage,
+  scriptLanguagesFor,
   ScriptProvider as SandboxPlatform,
   TSandboxScript
 } from "./sandboxSnippets";
@@ -69,7 +71,14 @@ export const PLATFORMS: Record<SandboxPlatform, TPlatformDetails> = {
 
 const LANGUAGE_NAMES: Record<ScriptLanguage, string> = {
   [ScriptLanguage.TypeScript]: "TypeScript",
-  [ScriptLanguage.Python]: "Python"
+  [ScriptLanguage.Python]: "Python",
+  [ScriptLanguage.Go]: "Go"
+};
+
+const LANGUAGE_ICONS: Record<ScriptLanguage, IconType> = {
+  [ScriptLanguage.TypeScript]: SiTypescript,
+  [ScriptLanguage.Python]: SiPython,
+  [ScriptLanguage.Go]: SiGo
 };
 
 type TPromptValues = {
@@ -160,14 +169,15 @@ export const SandboxPlatformPanel = ({
       {hasLanguages && (
         <Tabs value={language} onValueChange={(value) => onLanguageChange(value as ScriptLanguage)}>
           <TabsList aria-label="Language">
-            <TabsTrigger value={ScriptLanguage.TypeScript}>
-              <SiTypescript />
-              TypeScript
-            </TabsTrigger>
-            <TabsTrigger value={ScriptLanguage.Python}>
-              <SiPython />
-              Python
-            </TabsTrigger>
+            {scriptLanguagesFor(platform).map((scriptLanguage) => {
+              const Icon = LANGUAGE_ICONS[scriptLanguage];
+              return (
+                <TabsTrigger key={scriptLanguage} value={scriptLanguage}>
+                  <Icon />
+                  {LANGUAGE_NAMES[scriptLanguage]}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </Tabs>
       )}

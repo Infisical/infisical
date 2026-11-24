@@ -108,6 +108,24 @@ export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x
   }
 };
 
+export const extractSubjectAltNames = (
+  sanExtensionValue: BufferSource
+): NonNullable<TCertificateRequest["subjectAlternativeNames"]> =>
+  new x509.GeneralNames(sanExtensionValue).items
+    .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
+    .map((name): TAltNameMapping => {
+      if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+        return { type: name.type as TAltNameType, value: name.value };
+      }
+
+      const altNameType = validateAndMapAltNameType(name.value);
+      if (!altNameType) {
+        throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
+      }
+      return altNameType;
+    })
+    .map((altName) => ({ type: mapLegacyAltNameType(altName.type), value: altName.value }));
+
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
   const csrObj = parseCsr(csr);
   const subject = extractDnParts(csrObj.subjectName);
@@ -151,25 +169,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
   if (sanExtension) {
-    const sanNames = new x509.GeneralNames(sanExtension.value);
-    const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
-      .map((name): TAltNameMapping => {
-        if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
-          return { type: name.type as TAltNameType, value: name.value };
-        }
-
-        const altNameType = validateAndMapAltNameType(name.value);
-        if (!altNameType) {
-          throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
-        }
-        return altNameType;
-      });
-
-    certificateRequest.subjectAlternativeNames = altNamesArray.map((altName) => ({
-      type: mapLegacyAltNameType(altName.type),
-      value: altName.value
-    }));
+    certificateRequest.subjectAlternativeNames = extractSubjectAltNames(sanExtension.value);
   }
 
   const basicConstraintsExtension = csrObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension;

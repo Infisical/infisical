@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionIdentityActions,
@@ -14,7 +15,8 @@ import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-ku
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
 import { identityAuthTemplateServiceFactory } from "./identity-auth-template-service";
 
-vi.mock("@app/lib/config/env", () => ({
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   getConfig: () => ({ isDevelopmentMode: false, ALLOW_INTERNAL_IP_CONNECTIONS: false })
 }));
 
@@ -28,13 +30,12 @@ vi.mock("node:dns/promises", () => ({
   }
 }));
 
-const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+// Reassigned per test: the instance admin identities the service under test reads.
+let instanceConfigService = new FakeInstanceConfigService();
 
-vi.mock("@app/services/super-admin/super-admin-service", () => ({
-  getServerCfg: getServerCfgMock
-}));
-
-beforeEach(() => getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] }));
+beforeEach(() => {
+  instanceConfigService = new FakeInstanceConfigService({ settings: { adminIdentityIds: [] } });
+});
 
 const ORG_ID = "org-id";
 const TEMPLATE_ID = "template-id";
@@ -113,6 +114,7 @@ const createService = ({
   const getProjectPermission = vi.fn().mockResolvedValue({ permission: createMongoAbility(projectRules) });
 
   const service = identityAuthTemplateServiceFactory({
+    instanceConfigService,
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
@@ -566,7 +568,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
   });
 
   it("refuses a field patch when a linked identity is a server admin and the editor is not", async () => {
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    instanceConfigService = new FakeInstanceConfigService({ settings: { adminIdentityIds: ["identity-id"] } });
     const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
 
     await expect(patchTemplate(service, { searchBase: "dc=other" })).rejects.toThrow(
@@ -577,7 +579,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
   });
 
   it("propagates to a linked server admin identity when the editor is a server admin", async () => {
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    instanceConfigService = new FakeInstanceConfigService({ settings: { adminIdentityIds: ["identity-id"] } });
     const { service, identityLdapAuthDAL } = createLdapService();
 
     await service.updateTemplate({

@@ -108,7 +108,7 @@ copy drifts on its own.
   orphaned by a cascade), and say why in a comment.
 - **Wait with `pollUntil`** (`poll.ts`) for anything asynchronous, never a fixed sleep.
 - **Run background jobs on demand** through a pass-through wrapper in `e2e-test/fakes/` (eg
-  `reminder-queue.ts` and `event-outbox-queue.ts`, driven by `runDailyReminders` in `reminders.ts`).
+  `reminder-queue.ts` and `events-module.ts`, driven by `runDailyReminders` in `reminders.ts`).
 
 #### Faking a third-party provider
 
@@ -250,7 +250,7 @@ New backend code goes in domain modules under `src/domains/` (one folder per cap
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as they start), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The domains and the cron job are built in `main()` (`src/server/app.ts`) before the routes plugin, with `domains.license.start()` and `domains.kmsCore.start(cronJob)` right after the awaited `createDomains` (legacy services depend on domains, never the reverse, and queue workers read the license as soon as a factory starts them), and passed to `registerRoutes`, so plugins registered beside it (serve-ui) can use them too. The rest of the dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 
@@ -493,11 +493,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 - **Membership and role changes need no explicit invalidation call.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed. Folder grants are the one exception: they are covered by a version counter that writers must bump (see Folder RBAC below).
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
 
-**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` in `folder-roles.ts`) ride in the same cached permission blob, covered by a per-project folder-permission version counter appended to the fingerprint (`getProjectPermissionFingerprint`). A grant's path comes from the folder tree, so a rename changes what it allows without touching its row. Therefore:
-
-- **Call `permissionService.invalidateProjectFolderPermissionCache`** from folder-access grant create/update/delete and from every folder rename, move or delete path.
-- **Membership teardowns must not call it**: the membership row they delete is already in the fingerprint. This holds only while a teardown reaps grants in exactly the projects the actor is losing.
-- `buildFolderScopedPrivilegeRules` emits a deny of every secretPath-capable subject at the granted path followed by the folder role's allows. Adding a secretPath-scoped subject or action fails `folder-scoped-privilege-rules.test.ts` until you extend `FOLDER_SCOPED_DENY_RULES`.
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles) for a non-recursive grant, or on `{ environment, secretPath: { $glob: "/**" } }` for a recursive one, followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. `getProjectPermission` and the project-wide `getProjectPermissions` evaluate folder grants (the latter loads every grant in the project in one query and skips admins the same way); audits do not yet. A grant row also carries `appliesToSubfolders` (nullable; a CHECK allows it only alongside `folderId`), exposed on the folder access API as `isPermissionRecursive`. Only a grant on the root folder `/` may be recursive (`assertRecursiveFolderIsRoot`), and creating a recursive grant, updating one that is or becomes recursive, or deleting one requires `ManageAccess` over the folder's whole subtree (`assertManageFolderSubtree` in `folder-permission-fns.ts`). `buildFolderScopedPrivilegeRules` emits the recursive grants' rules before the non-recursive ones, so an exact grant on a subfolder overrides the recursive root grant at that folder only (the exact grant's own subfolders fall back to the recursive grant), and the recursive Edit, Manage and FullAccess tiers (`RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS` in `folder-roles.ts`) additionally allow `SecretFolders` Create and Edit across the subtree. The folder access sheet lists an active recursive root grant on every nested folder sheet of its environment as `inheritedFolderRBACAccess` (the grant on the queried folder stays `folderRBACAccess`, and an actor whose only access is the inherited grant counts as having access; `$listFolderAccessActors` loads the root's grants beside the folder's own, live, so the roster cache is untouched), and unused-access dating lets a recursive grant reach, restart and floor every secret of its environment (`reach` on `TAccessSource`, `environmentReopenedAt` from `findAccessSourceDates`). The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request. The marker cannot see a membership that was created or deleted inside its window, so the marker key carries a per-project roster version (`ProjectFolderAccessRosterVersion`, a seeded Redis counter read from the primary), and every project-scope membership write bumps it after it commits (`invalidateFolderAccessCache` in `folder-permission-fns.ts`). The bump moves readers to a marker that does not exist yet, so they fall through to the fingerprint check, which sees the new membership; the data key is not versioned because the fingerprint already guards it. Do not go back to deleting keys by pattern: that SCANs the whole keyspace inside the request and does not work on Redis Cluster. The writes that bump it: `createMembership` and `deleteMembership` in both `membershipUserService` and `membershipIdentityService`, plus `projectMembershipService.deleteProjectMemberships` (the endpoint the UI removes users through) and `leaveProject`. That is what lets the folder access sheet show a member right after they are added to the project and drop them right after they are removed. Group removals and org-level removals do not clear it yet and still wait for the marker.
 
 ### Request-Scoped Memoization
 
@@ -665,20 +661,24 @@ Invariants worth knowing before extending it:
 
 ### Event Outbox (transactional and generic; alerting is its first consumer)
 
-`src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
-an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
+The Events domain (`src/domains/platform/events/`) writes "this happened" as a row inside the caller's own
+transaction, so an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
 at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
 (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
 approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
-**Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
-CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
-in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
-mechanism and stay inside the module and its wiring. A dependency field for the emitter is
-`eventEmitter`, not `eventOutboxService`.
+**Naming:** the outbox is an implementation detail to both sides of it. Emitters pass a `TEventInput`;
+consumers implement `TEventConsumer`, receive `TEvent[]` (the CloudEvents envelope) and return
+`TEventConsumerResult` with an `EventResultStatus`. Everything comes from
+`@app/domains/platform/events/ce/module`. Names with "outbox" in them (the store, queue, cron jobs, metrics,
+`EventOutboxStatus`) describe the mechanism and stay inside the domain.
+
+**Who takes what:** code under `src/services/` and `src/ee/services/` takes `eventEmitter: TEventEmitter`
+(`@app/lib/knex/event-emitter`) and calls `eventEmitter.emit(events, tx)` with its Knex transaction. A domain
+takes `eventEmitterService: TEventEmitterService` and calls `eventEmitterService.within(tx).emit(events)` inside its
+`run`, or `eventEmitterService.emit(events)` outside one.
 
 #### How to implement an event
 
@@ -688,11 +688,11 @@ an event about something being created, updated or deleted, the
 [CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
 summarise them.
 
-1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+1. **Define it with `EventDefinition.define`, in the domain that emits it.** It goes in that domain's `*-events.ts`
    (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
    the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
    segments, a singular entity, a past-tense action, and words a customer recognises rather than
-   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   implementation detail. `EventDefinition.define` throws on boot for a name that breaks this. Start at `v1` and
    bump only for a breaking change to `data`; adding an optional field is not one.
 2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
    thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
@@ -707,9 +707,9 @@ summarise them.
    (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
    `secret-import/secret-import-events.ts`) are the reference.
 4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
-   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
-   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
-   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   write: `eventEmitter.emit([SomeEventV1.build(data)], tx)`, with as many built events as the write
+   produced in the one call. Omit `tx` only when there is no such write left to be atomic with (eg after it
+   already committed); the insert then runs on its own. Nothing around the emit
    is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
    statement). When several services emit the same event, give it one helper in the domain's events
    file rather than repeating the call.
@@ -717,15 +717,22 @@ summarise them.
    ```ts
    await folderDAL.transaction(async (tx) => {
      const folder = await folderDAL.create({ ... }, tx);
-     await FolderModifiedEventV1.emit(
-       eventEmitter,
-       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+     await eventEmitter.emit(
+       [
+         FolderModifiedEventV1.build({
+           folderId: folder.id,
+           projectId,
+           environment,
+           secretPath,
+           modificationType: EventModificationType.Created
+         })
+       ],
        tx
      );
    });
    ```
 
-5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+5. **Consume it with a `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
    whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
    subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
    anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
@@ -736,8 +743,9 @@ Events named before the ADR (eg `identity.authentication.auth-method-changed`) k
 they move to it.
 
 **Before writing a consumer or changing the outbox itself, read
-[`src/services/event-outbox/AGENTS.md`](src/services/event-outbox/AGENTS.md)** (retry ownership,
-`isFinalAttempt`, fenced claims, ordering). In short: delivery is at-least-once with best-effort ordering,
+[`src/domains/platform/events/AGENTS.md`](src/domains/platform/events/AGENTS.md)** (retry ownership,
+`isFinalAttempt`, fenced claims, ordering). Register a consumer with `domains.events.registerConsumer(...)` in
+`server/routes/index.ts`, before `domains.events.start()`: a registration after it throws. In short: delivery is at-least-once with best-effort ordering,
 and one event's failure must never escape `handle` (use `runEventsSerially` / `runEventsConcurrentlyByKey`).
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
@@ -971,6 +979,14 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
   caches the provider's access token in the credentials like the secret-based methods do.
+- **A project connection's token also carries `project_id`**, taken from the connection row like the subject, so
+  a provider can trust every connection in one project (GCP binds `principalSet://.../attribute.project_id/<id>`).
+  Org-level connections send no `project_id`. GCP `workload-identity-federation` is the second consumer; it signs
+  a new token for every exchange, because GCP rejects a token by when it was issued.
+- **Tokens last 5 minutes unless the consumer passes `ttlSeconds`** (capped at 1 hour). Raise it only for a
+  provider that gives its access token the signed token's expiry: GCP does, so it asks for 15 minutes, which is
+  how long one operation can run without a service account. Azure exchanges the token once for its own access
+  token, so it keeps the short default, as Microsoft recommends for assertions.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
@@ -1049,6 +1065,9 @@ because clients re-send unchanged values on every save and resources created bef
 on must stay editable. The check reads the setting, not the plan, so it keeps applying after a downgrade.
 Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
 (`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
+
+**Gate gateway features on `capabilities`, never on `cliVersion`.** The version comes from the gateway's
+`User-Agent`, which anyone holding its credential sets, and source builds report `devel`; it is for display.
 
 ### Audit Log Storage
 

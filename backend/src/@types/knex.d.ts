@@ -77,6 +77,9 @@ import {
   TAgentVaultSessionStats,
   TAgentVaultSessionStatsInsert,
   TAgentVaultSessionStatsUpdate,
+  TAgentVaultHooks,
+  TAgentVaultHooksInsert,
+  TAgentVaultHooksUpdate,
   TAgentVaultSkills,
   TAgentVaultSkillsInsert,
   TAgentVaultSkillsUpdate,
@@ -1980,6 +1983,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionStats,
       TAgentVaultSessionStatsInsert,
       TAgentVaultSessionStatsUpdate
+    >;
+    [TableName.AgentVaultHook]: KnexOriginal.CompositeTableType<
+      TAgentVaultHooks,
+      TAgentVaultHooksInsert,
+      TAgentVaultHooksUpdate
     >;
     [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultSkills,
