@@ -44,6 +44,7 @@ import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
+import { PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE } from "./aws-secrets-manager/aws-secrets-manager-sync-schemas";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import {
@@ -275,19 +276,28 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
-// Destinations that can write each secret under its folder, given their destination config.
-// Secrets Manager's many-to-one mapping writes every secret into one AWS secret, so it can't.
+// Destinations that can write each secret under its folder. Each entry returns why its destination
+// config can't, or undefined when it can: Secrets Manager's many-to-one mapping writes every secret
+// into one AWS secret.
 const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
-  Record<SecretSync, (destinationConfig: Record<string, unknown>) => boolean>
+  Record<SecretSync, (destinationConfig: Record<string, unknown>) => string | undefined>
 > = {
-  [SecretSync.AWSParameterStore]: () => true,
+  [SecretSync.AWSParameterStore]: () => undefined,
   [SecretSync.AWSSecretsManager]: (destinationConfig) =>
     destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne
+      ? undefined
+      : PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE
 };
 
-// The save-time duplicate check and the sync jobs both ask this, so a stored option the
-// destination config no longer allows (a Secrets Manager sync switched to many-to-one) is treated
-// as flattening everywhere, and a duplicate name is refused at save rather than failing every run.
+export const getFolderStructureUnsupportedReason = (destination: SecretSync, destinationConfig: unknown) => {
+  const getReason = FOLDER_STRUCTURE_DESTINATION_MAP[destination];
+  if (!getReason) return `Preserving folder structure is not supported for ${SECRET_SYNC_NAME_MAP[destination]} syncs.`;
+
+  return getReason(destinationConfig as Record<string, unknown>);
+};
+
+// The save-time duplicate check and the sync jobs both ask this, so they agree on whether a sync
+// flattens its folders.
 export const preservesFolderStructure = ({
   destination,
   destinationConfig,
@@ -301,7 +311,7 @@ export const preservesFolderStructure = ({
 }) =>
   includeAllSubFolders &&
   Boolean(syncOptions?.preserveFolderStructure) &&
-  Boolean(FOLDER_STRUCTURE_DESTINATION_MAP[destination]?.(destinationConfig as Record<string, unknown>));
+  !getFolderStructureUnsupportedReason(destination, destinationConfig);
 
 // Checks if a key matches a schema
 export const matchesSchema = (

@@ -34,6 +34,7 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   assertKeySchemaProducesValidNames,
   enterpriseSyncCheck,
+  getFolderStructureUnsupportedReason,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions,
@@ -312,19 +313,29 @@ export const secretSyncServiceFactory = ({
   };
 
   // Checked here rather than in the destination's schema because an update can leave
-  // includeAllSubFolders out, and only the service knows the stored value it falls back to.
-  const $assertPreserveFolderStructureHasSubFolders = ({
+  // includeAllSubFolders, the destination config or the option itself out, and only the service
+  // knows the stored values it falls back to.
+  const $assertCanPreserveFolderStructure = ({
+    destination,
+    destinationConfig,
     includeAllSubFolders,
     syncOptions
   }: {
+    destination: SecretSync;
+    destinationConfig: unknown;
     includeAllSubFolders: boolean;
     syncOptions?: Record<string, unknown>;
   }) => {
-    if (!includeAllSubFolders && syncOptions?.preserveFolderStructure)
+    if (!syncOptions?.preserveFolderStructure) return;
+
+    if (!includeAllSubFolders)
       throw new BadRequestError({
         message:
           "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
       });
+
+    const unsupportedReason = getFolderStructureUnsupportedReason(destination, destinationConfig);
+    if (unsupportedReason) throw new BadRequestError({ message: unsupportedReason });
   };
 
   // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
@@ -714,7 +725,12 @@ export const secretSyncServiceFactory = ({
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
 
-    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: requestedSyncOptions });
+    $assertCanPreserveFolderStructure({
+      destination: params.destination,
+      destinationConfig: params.destinationConfig,
+      includeAllSubFolders,
+      syncOptions: requestedSyncOptions
+    });
 
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
@@ -999,7 +1015,12 @@ export const secretSyncServiceFactory = ({
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
 
-    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: resolvedOptions });
+    $assertCanPreserveFolderStructure({
+      destination,
+      destinationConfig: params.destinationConfig ?? secretSync.destinationConfig,
+      includeAllSubFolders,
+      syncOptions: resolvedOptions
+    });
 
     // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
     // actor holding Edit on the source folder can otherwise repoint it at a destination they control

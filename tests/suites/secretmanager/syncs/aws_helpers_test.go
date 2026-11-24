@@ -191,6 +191,7 @@ func awsSyncCount(tt *testing.T, p *fixture.Project, dest awsDestination) int {
 
 type awsSyncView struct {
 	DestinationConfig map[string]any `json:"destinationConfig"`
+	SyncOptions       map[string]any `json:"syncOptions"`
 	SyncStatus        *string        `json:"syncStatus"`
 	LastSyncMessage   *string        `json:"lastSyncMessage"`
 	ImportStatus      *string        `json:"importStatus"`

@@ -122,7 +122,7 @@ export const AwsSecretsManagerSyncOptionsSchema = z.object({
 
 const AwsSecretsManagerSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-const PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE =
+export const PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE =
   'Preserving folder structure is not supported with "Many-to-One" mapping behavior, because every secret is written into a single AWS secret. Switch to "One-to-One" mapping behavior, or turn off preserving folder structure.';
 
 export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(

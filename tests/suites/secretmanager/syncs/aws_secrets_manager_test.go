@@ -163,26 +163,48 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 		require.Equal(t, map[string]string{"api/INF_KEEP": "v", "team-a/INF_DB_PASS": "a"}, secretValues(t, cp))
 	})
 
-	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one over a duplicate key", func(t *testing.T) {
+	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The update carries no syncOptions, so the stored option stays on. Many-to-one
-			writes every secret into one AWS secret, so the sync would flatten the folders, and
-			two secrets with the same name would fail every run.`)
+			writes every secret into one AWS secret, so it can't keep the folders, and a saved sync
+			would claim to preserve folder structure while flattening.`)
 
 		// Setup
 		proj, conn, _ := setupAWS(t)
-		duplicateUnder(t, proj, "/backend", "DB_URL")
-		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/"), includeSubFolders(), preserveFolders())
 
 		// Action
 		status, body := s.update(t, map[string]any{"destinationConfig": manyToOne("bundle").config})
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, message(body), `"DB_URL" in /backend and /backend/child`)
+		require.Contains(t, message(body), "Preserving folder structure is not supported with")
 		got, err := s.view(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, "one-to-one", got.DestinationConfig["mappingBehavior"])
+	})
+
+	t.Run("should refuse when an update turns on preserving folder structure for a stored many-to-one sync", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The update carries no destinationConfig, so the stored many-to-one mapping
+			stays, and the request alone can't show the two settings conflict.`)
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		s := newAWSSync(t, proj, conn, manyToOne("bundle"), fromPath("/"), includeSubFolders())
+
+		// Action
+		status, body := s.update(t, map[string]any{"syncOptions": map[string]any{
+			"initialSyncBehavior":     "overwrite-destination",
+			"preserveFolderStructure": true,
+		}})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, message(body), "Preserving folder structure is not supported with")
+		got, err := s.view(t.Context())
+		require.NoError(t, err)
+		require.Nil(t, got.SyncOptions["preserveFolderStructure"])
 	})
 
 	t.Run("should refuse and create nothing when preserving folder structure with many-to-one mapping", func(t *testing.T) {
