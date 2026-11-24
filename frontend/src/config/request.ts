@@ -79,12 +79,15 @@ const SSO_SESSION_REFUSED_ERRORS = ["OrgSsoRequired", "ForeignSsoSession"];
 // the server and the client state cleared before the login page loads. Plain axios: the refused token must not be
 // sent, and this request must not re-enter the interceptors.
 const endRefusedSession = async () => {
+  // Bounded, so an unreachable server can't hold the user on the page; local cleanup runs either way.
+  await axios
+    .post("/api/v1/auth/logout", undefined, { withCredentials: true, timeout: 5000 })
+    .catch((err) => console.warn("Error ending the refused session:", err));
   try {
-    await axios.post("/api/v1/auth/logout", undefined, { withCredentials: true });
     const { clearSession } = await import("@app/hooks/api/users/queries");
     clearSession();
   } catch (err) {
-    console.warn("Error ending the refused session:", err);
+    console.warn("Error clearing the refused session:", err);
   }
 };
 
