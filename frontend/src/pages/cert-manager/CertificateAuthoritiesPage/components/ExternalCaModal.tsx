@@ -252,7 +252,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
     reset,
     formState: { isSubmitting, isDirty },
     watch,
-    setValue
+    setValue,
+    clearErrors
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -1132,11 +1133,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
                     zones={zones}
                     isZonesPending={isZonesPending}
                     setValue={setValue}
-                    onDnsSelectionChange={() =>
+                    onDnsSelectionChange={() => {
                       setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
                         shouldDirty: true
-                      })
-                    }
+                      });
+                      // a "required" error from the previous provider is wrong for one whose zone is optional
+                      clearErrors("configuration.dnsProviderConfig.hostedZoneId");
+                    }}
                   />
                 )}
                 {caType === CaType.AZURE_AD_CS && (
