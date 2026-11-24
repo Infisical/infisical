@@ -24,6 +24,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useGo } from "../../links";
 import {
@@ -116,7 +117,7 @@ export const NativeIntegrationsTab = ({
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "integration", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("integrationsTable", 20);
   const [deleting, setDeleting] = useState<TIntegration>();
   const [blocked, setBlocked] = useState(false);
   const nameOf = (integration: TIntegration) => integrationName(integration.integration, options);

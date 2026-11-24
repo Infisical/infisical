@@ -28,11 +28,6 @@ import { format } from "date-fns";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
-import {
   PamResourcePermissionActions,
   PamSessionStatus,
   type TPamSession
@@ -42,6 +37,7 @@ import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { formatDuration, isMachineSession } from "./session-format";
@@ -199,9 +195,7 @@ export const PamSessionsPage = () => {
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [terminating, setTerminating] = useState<TPamSession>();
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | PamSessionStatus
     | undefined;
@@ -378,7 +372,6 @@ export const PamSessionsPage = () => {
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

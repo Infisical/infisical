@@ -25,6 +25,7 @@ import { formatDate } from "../../access/roles";
 import { saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
@@ -38,7 +39,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("pkiCertificatePoliciesTable", 20);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TCertificatePolicy>();
   const [deleting, setDeleting] = useState<TCertificatePolicy>();

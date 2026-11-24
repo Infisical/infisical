@@ -41,6 +41,7 @@ import {
 import { failed } from "../../access/toast";
 import { Muted, RESTRICTED } from "../../access/ui";
 import { NoExpiry } from "../../components/no-expiry";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { dateOnly, memberLabel, SIGNERS_PAGE_SIZE } from "../CodeSigningPage/signer-shared";
@@ -284,7 +285,7 @@ const RequestsCard = ({
   const adapter = useV4Adapter("codeSigning");
   const [filters, setFilters] = useState<TSignerRequestStatusFilter[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize] = usePageSize("pkiSignerApprovalsTable", SIGNERS_PAGE_SIZE);
   const [sheet, setSheet] = useState<"request" | "pre-approve">();
   const [revoking, setRevoking] = useState<TSignerRequest>();
   const { data, isPending, error } = adapter.useSignerRequests({

@@ -83,6 +83,7 @@ export const ProjectTemplatesSection = ({
   );
   const ofType = templates.filter((template) => template.type === projectType);
   const list = usePagedList<TProjectTemplate>({
+    table: "projectTemplatesTable",
     rows: ofType,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (template, needle) => template.name.toLowerCase().includes(needle),

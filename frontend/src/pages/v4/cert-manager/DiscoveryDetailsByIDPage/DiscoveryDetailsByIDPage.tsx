@@ -35,6 +35,7 @@ import {
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
@@ -135,7 +136,7 @@ const ScanRuns = ({
   const access = useDiscoveryAccess(projectId);
   const triggerScan = adapter.useTriggerScan();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryScansTable", 10);
   const { data, isPending } = adapter.useScanHistory(
     { discoveryId: discovery.id, offset: (page - 1) * pageSize, limit: pageSize },
     { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
@@ -277,7 +278,7 @@ const FoundInstallations = ({
 }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryDetailInstallationsTable", 10);
   const { data, isPending } = useV4Adapter("pkiDiscovery").useInstallations(
     { projectId, discoveryId, offset: (page - 1) * pageSize, limit: pageSize },
     { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }

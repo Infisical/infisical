@@ -46,6 +46,7 @@ import { useOrgPermission } from "../../access/permissions";
 import { formatDate } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
 import { Gate, ListToolbar } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 
@@ -327,7 +328,7 @@ export const SubOrgsTab = () => {
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search.trim());
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("subOrgsTable", 20);
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
   const { data, isPending } = adapter.useSubOrganizations({
     search: debounced || undefined,

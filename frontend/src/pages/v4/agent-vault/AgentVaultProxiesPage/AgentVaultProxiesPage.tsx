@@ -52,11 +52,6 @@ import {
 import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import { downloadTxtFile } from "@app/helpers/download";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { AgentVaultTrafficPolicy, isServiceHostsPolicy } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
@@ -66,6 +61,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { CopyButton } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -531,9 +527,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
     direction: "desc"
   });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [dialog, setDialog] = useState<{ proxy?: TAgentVaultProxy }>();
   const [confirm, setConfirm] = useState<TConfirm>();
   const [proxyToken, setProxyToken] = useState<TAgentVaultProxyToken>();
@@ -749,7 +743,6 @@ const Proxies = ({ projectId }: { projectId: string }) => {
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

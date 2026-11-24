@@ -124,6 +124,7 @@ export const GatewaysPanel = ({
   const [deleting, setDeleting] = useState<TGatewayV2>();
   const [poolId, setPoolId] = useState<string>();
   const list = usePagedList({
+    table: "gatewaysTable",
     rows: gateways,
     matches,
     compare,

@@ -427,6 +427,7 @@ export const ProjectMembershipsSection = ({
   const { rows: memberships, isPending, error } = useMembershipRows(subject, subjectId);
   const { add, remove: removeMembership } = useMembershipMutations(subject, subjectId, username);
   const list = usePagedList({
+    table: `${subject}ProjectsTable`,
     rows: memberships,
     perPage: subject === "user" ? 10 : 20,
     initialSort: { columnId: "project", direction: "asc" },

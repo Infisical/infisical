@@ -13,14 +13,10 @@ import { StatusText } from "@infisical/cipher/ui/text";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { PamAccessType, type TPamAccessRequest } from "@app/hooks/api/pam";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { ApprovalRequestSheet } from "./ApprovalRequestSheet";
@@ -39,9 +35,7 @@ export const PamApprovalRequestsPage = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE_PREFERENCE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE_PREFERENCE, 20);
 
   const typeMap = useMemo(
     () => new Map(accountTypes.map((meta) => [meta.type as string, meta])),
@@ -236,7 +230,6 @@ export const PamApprovalRequestsPage = () => {
                 onPageSizeChange={(size) => {
                   setPerPage(size);
                   setPage(1);
-                  setUserTablePreference(TABLE_PREFERENCE, PreferenceKey.PerPage, size);
                 }}
               />
             ) : undefined

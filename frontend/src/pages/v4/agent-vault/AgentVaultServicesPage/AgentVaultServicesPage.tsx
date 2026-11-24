@@ -13,17 +13,13 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import type { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -59,9 +55,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const [debouncedSearch] = useDebounce(search);
   const [sort, setSort] = useState(DEFAULT_SORT);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [sheet, setSheet] = useState<{ service?: TAgentVaultService }>();
   const [settingUp, setSettingUp] = useState<TAgentVaultService>();
   useAgentVaultCreateIntent(() => setSheet({}), canManageServices);
@@ -221,7 +215,6 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

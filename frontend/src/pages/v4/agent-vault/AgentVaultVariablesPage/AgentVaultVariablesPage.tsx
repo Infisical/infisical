@@ -37,11 +37,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
 import { copyToClipboard } from "@app/helpers/clipboard";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
@@ -50,6 +45,7 @@ import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -168,9 +164,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     direction: "asc"
   });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [dialog, setDialog] = useState<{ variable?: TAgentVaultVariable }>();
   const [deleting, setDeleting] = useState<TAgentVaultVariable>();
   const [revealed, setRevealed] = useState<Record<string, string>>({});
@@ -400,7 +394,6 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
               onPageSizeChange={(next) => {
                 setPerPage(next);
                 setPage(1);
-                setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
               }}
             />
           ) : undefined
