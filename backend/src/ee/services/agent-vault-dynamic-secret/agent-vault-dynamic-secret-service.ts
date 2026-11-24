@@ -208,6 +208,11 @@ export const agentVaultDynamicSecretServiceFactory = ({
         return null;
       }
     };
+    const backingOff = async (): Promise<TResolvedDynamicSecretCredential | null> => {
+      const backoff = await readBackoff();
+      if (!backoff || backoff.retryAt <= Date.now()) return null;
+      return fallbackOr(`${backoff.problem} The next attempt is after ${new Date(backoff.retryAt).toISOString()}.`);
+    };
     // Called with the lease lock held, so resolves on other replicas can't count the same failure twice.
     const failLease = async (problem: string): Promise<TResolvedDynamicSecretCredential> => {
       const failures = ((await readBackoff())?.failures ?? 0) + 1;
@@ -260,10 +265,8 @@ export const agentVaultDynamicSecretServiceFactory = ({
       const fresh = await findFresh();
       if (fresh) return fresh;
 
-      const backoff = await readBackoff();
-      if (backoff && backoff.retryAt > Date.now()) {
-        return fallbackOr(`${backoff.problem} The next attempt is after ${new Date(backoff.retryAt).toISOString()}.`);
-      }
+      const backedOff = await backingOff();
+      if (backedOff) return backedOff;
 
       let lock;
       try {
@@ -284,6 +287,8 @@ export const agentVaultDynamicSecretServiceFactory = ({
       try {
         const leasedMeanwhile = await findFresh();
         if (leasedMeanwhile) return leasedMeanwhile;
+        const backedOffMeanwhile = await backingOff();
+        if (backedOffMeanwhile) return backedOffMeanwhile;
 
         let created;
         try {

@@ -315,6 +315,34 @@ describe("backing off after a failed lease", () => {
     expect(createLease).toHaveBeenCalledTimes(6);
   });
 
+  test("applies to a resolve that was waiting for the lock when the lease failed", async () => {
+    const { service, createLease, acquireLock } = setup({
+      createSystemLease: async () => {
+        throw new BadRequestError({ message: "Namespace is unavailable" });
+      }
+    });
+    // The first resolve fails while holding the lock; the second only gets the lock afterwards.
+    let releaseFirst!: () => void;
+    const firstHolds = new Promise<void>((resolveHold) => {
+      releaseFirst = resolveHold;
+    });
+    const release = vi.fn(async () => ({}));
+    acquireLock
+      .mockImplementationOnce(async () => ({ release }))
+      .mockImplementationOnce(async () => {
+        await firstHolds;
+        return { release };
+      });
+
+    const first = resolve(service);
+    const second = resolve(service);
+    await first;
+    releaseFirst();
+
+    expect(await second).toEqual({ problem: expect.stringContaining("The next attempt is after") as string });
+    expect(createLease).toHaveBeenCalledTimes(1);
+  });
+
   test("still serves the older certificate while waiting", async () => {
     const { service, createLease } = setup({
       leases: [[lease({ id: "lease-old", ageMs: 57 * MINUTE, leftMs: 3 * MINUTE })]],
