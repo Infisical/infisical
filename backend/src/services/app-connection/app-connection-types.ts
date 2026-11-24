@@ -461,6 +461,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TRfc2136Connection,
+  TRfc2136ConnectionConfig,
+  TRfc2136ConnectionInput,
+  TValidateRfc2136ConnectionCredentialsSchema
+} from "./rfc2136";
+import {
   TRundeckConnection,
   TRundeckConnectionConfig,
   TRundeckConnectionInput,
@@ -689,6 +695,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
+  | TRfc2136Connection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -799,6 +806,7 @@ export type TAppConnectionInput = { id: string } & (
   | TJiraConnectionInput
   | TClickHouseConnectionInput
   | TIncidentIoConnectionInput
+  | TRfc2136ConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -942,7 +950,8 @@ export type TAppConnectionConfig =
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig
   | TClickHouseConnectionConfig
-  | TIncidentIoConnectionConfig;
+  | TIncidentIoConnectionConfig
+  | TRfc2136ConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -1043,7 +1052,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema
   | TValidateClickHouseConnectionCredentialsSchema
-  | TValidateIncidentIoConnectionCredentialsSchema;
+  | TValidateIncidentIoConnectionCredentialsSchema
+  | TValidateRfc2136ConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
