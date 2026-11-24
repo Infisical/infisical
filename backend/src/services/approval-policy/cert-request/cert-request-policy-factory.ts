@@ -89,9 +89,12 @@ export const certRequestApprovalResourceFactory = ({
           p.constraints.constraints.operation === (inputs.operation ?? CertRequestPolicyOperation.Issuance))
     );
 
-    return (
-      candidates.find((p) => p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))) ?? null
+    const covering = candidates.filter((p) =>
+      p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))
     );
+
+    // A policy created for this operation wins over one created before the split, which covers both.
+    return covering.find((p) => p.constraints?.constraints?.operation) ?? covering[0] ?? null;
   },
 
   // Certificate approvals issue a certificate rather than leaving a standing grant behind.
@@ -103,8 +106,11 @@ export const certRequestApprovalResourceFactory = ({
   // when it's created, and the edit form sends it back unchanged.
   updateConstraints: (stored, update) => {
     const { operation } = update as TCertRequestPolicyConstraints;
-    if (operation && operation !== (stored as TCertRequestPolicyConstraints | undefined)?.operation) {
-      throw new BadRequestError({ message: "A policy's type can't be changed after it's created." });
+    const storedOperation = (stored as TCertRequestPolicyConstraints | undefined)?.operation;
+    if (operation && operation !== storedOperation) {
+      throw new BadRequestError({
+        message: `This policy covers ${storedOperation ?? "issuance and renewal"}, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new ${operation} policy.`
+      });
     }
     return { ...stored, ...update };
   },

@@ -87,7 +87,9 @@ describe("approvalPolicyService.updateById constraints", () => {
         actor,
         ApprovalPolicyType.CertRequest
       )
-    ).rejects.toThrow("A policy's type can't be changed after it's created.");
+    ).rejects.toThrow(
+      "This policy covers renewal, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new issuance policy."
+    );
     expect(written()).toBeUndefined();
   });
 

@@ -95,6 +95,13 @@ describe("certRequestApprovalResourceFactory.matchPolicy", () => {
   });
 
   it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
+    "prefers the %s policy over one created before the split on the same profile",
+    async (operation) => {
+      expect((await match([policy("legacy"), policy("specific", operation)], operation))?.id).toBe("specific");
+    }
+  );
+
+  it.each([CertRequestPolicyOperation.Issuance, CertRequestPolicyOperation.Renewal])(
     "matches a policy created before the split on a %s",
     async (operation) => {
       expect((await match([policy("legacy")], operation))?.id).toBe("legacy");

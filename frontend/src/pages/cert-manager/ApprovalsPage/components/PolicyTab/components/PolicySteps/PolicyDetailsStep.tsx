@@ -48,6 +48,12 @@ type Props = {
 const REVOCATION_PICKER_VALUE = "revocation";
 const LEGACY_PICKER_VALUE = "issuance-and-renewal";
 
+const BYPASS_ACTION = {
+  [CertRequestPolicyOperation.Issuance]: "issue",
+  [CertRequestPolicyOperation.Renewal]: "renew",
+  [LEGACY_PICKER_VALUE]: "issue and renew"
+};
+
 export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
   const { control, getValues, setValue, watch } = useFormContext<TPolicyForm>();
   const isRevocationPolicy = watch("policyType") === ApprovalPolicyType.CertRevocation;
@@ -352,8 +358,9 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     Bypass approval for machine identities
                   </FieldLabel>
                   <FieldDescription>
-                    When enabled, machine identities can issue and renew certificates without
-                    requiring approval
+                    When enabled, machine identities can{" "}
+                    {BYPASS_ACTION[operation ?? LEGACY_PICKER_VALUE]} certificates without requiring
+                    approval
                   </FieldDescription>
                 </FieldContent>
               </Field>
