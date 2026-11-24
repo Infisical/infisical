@@ -27,12 +27,12 @@ type storedCert struct {
 // stored finds the leaf among the profile's certificate requests by serial number and reads its renewal links.
 func (p estProfile) stored(t *testing.T, tn *harness.Tenant, leaf *x509.Certificate) storedCert {
 	t.Helper()
-	res, err := tn.Admin.API.ListCertificateRequestsWithResponse(t.Context(), &api.ListCertificateRequestsParams{
-		ProfileIds: new(p.Profile.ID.String()),
+	res, err := tn.Admin.API.SearchCertificateRequestsWithResponse(t.Context(), api.SearchCertificateRequestsJSONRequestBody{
+		ProfileIds: &[]uuid.UUID{p.Profile.ID},
 		Limit:      new(float32(100)),
 	})
 	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing the profile's certificate requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	require.NotNilf(t, res.JSON200, "searching the profile's certificate requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	for _, r := range res.JSON200.CertificateRequests {
 		if r.Certificate == nil {
 			continue
