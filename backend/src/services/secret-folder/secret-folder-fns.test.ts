@@ -577,14 +577,15 @@ describe("findPolicyProtectedFolder", () => {
 
 describe("findDirectImportEnteringEnforcedPath", () => {
   const tx = {} as Knex;
-  const enforcing = { name: "import-guard", enforceImportReplication: true };
-  const notEnforcing = { name: "prod-guard", enforceImportReplication: false };
+  const enforcing = { id: "import-guard-id", name: "import-guard", enforceImportReplication: true };
+  const otherEnforcing = { id: "other-guard-id", name: "other-guard", enforceImportReplication: true };
+  const notEnforcing = { id: "prod-guard-id", name: "prod-guard", enforceImportReplication: false };
   const folders = [
     { id: "app-id", path: "/prod", contentPath: "/staging" },
     { id: "api-id", path: "/prod/api", contentPath: "/staging/api" }
   ];
 
-  const makeService = (policies: [string, { name: string; enforceImportReplication: boolean }][]) => {
+  const makeService = (policies: [string, { id: string; name: string; enforceImportReplication: boolean }][]) => {
     const getSecretApprovalPolicyByPaths = vi.fn().mockResolvedValue(new Map(policies));
     return {
       deps: {
@@ -654,15 +655,24 @@ describe("findDirectImportEnteringEnforcedPath", () => {
     await expect(find(["app-id"], deps)).resolves.toBeNull();
   });
 
-  test("allows a direct import that is already under enforcement to move within or out of it", async () => {
+  test("allows a direct import that is already under enforcement to move within that policy or out of it", async () => {
     const within = makeService([
       ["/staging", enforcing],
-      ["/prod", { name: "other-guard", enforceImportReplication: true }]
+      ["/prod", enforcing]
     ]);
     const out = makeService([["/staging", enforcing]]);
 
     await expect(find(["app-id"], within.deps)).resolves.toBeNull();
     await expect(find(["app-id"], out.deps)).resolves.toBeNull();
+  });
+
+  test("reports a direct import moving from one enforcing policy into another", async () => {
+    const { deps } = makeService([
+      ["/staging", enforcing],
+      ["/prod", otherEnforcing]
+    ]);
+
+    await expect(find(["app-id"], deps)).resolves.toMatchObject({ path: "/prod", policyName: "other-guard" });
   });
 
   test("ignores folders that only hold other content", async () => {

@@ -171,6 +171,27 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 		require.Equal(t, "/renamed", res.JSON200.Folder.Path)
 	})
 
+	t.Run("should refuse an identity the policy bypasses moving a direct import that predates one policy into another policy's folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		identity := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
+		secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.IntoPath("/legacy"))
+		createBypassPolicy(t, proj, "prod", "/legacy", true)
+		createBypassPolicy(t, proj, "prod", "/gov", true)
+
+		// Action
+		res := renameFolder(t, identity, proj, "prod", "/", legacyID, "gov")
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "renaming returned %s", apierr.Body(res.Body))
+		require.Len(t, listImports(t, proj, "prod", "/legacy"), 1)
+	})
+
 	t.Run("should follow the more specific policy that does not require approval for imports over a glob that does", func(t *testing.T) {
 		t.Parallel()
 
