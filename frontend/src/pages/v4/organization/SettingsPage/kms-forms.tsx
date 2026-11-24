@@ -9,7 +9,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
-import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   SheetBody,
@@ -18,6 +17,7 @@ import {
   SheetSections,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Snippet } from "@infisical/cipher/ui/snippet";
 import { SmallText } from "@infisical/cipher/ui/text";
 import type { ZodError } from "zod";
 
@@ -340,7 +340,10 @@ export const AwsKmsForm = ({
               label="Authentication mode"
               value={draft.type}
               options={[
-                { value: KmsAwsCredentialType.AssumeRole, label: "AWS assume role" },
+                {
+                  value: KmsAwsCredentialType.AssumeRole,
+                  label: "AWS assume role"
+                },
                 { value: KmsAwsCredentialType.AccessKey, label: "Access key" }
               ]}
               onChange={(type) =>
@@ -388,11 +391,13 @@ export const AwsKmsForm = ({
                       </HoverCardTrigger>
                       <HoverCardContent align="start" className="w-96">
                         <Stack gap={12}>
-                          <Snippet
-                            label="External ID"
-                            copyLabel="Copy organization ID"
-                            value={orgId}
-                          />
+                          <Field label="External ID">
+                            <Snippet
+                              label="External ID"
+                              copyLabel="Copy organization ID"
+                              value={orgId}
+                            />
+                          </Field>
                           <SmallText>
                             Require it in the role&apos;s trust policy with the{" "}
                             <Code>sts:ExternalId</Code> condition.
@@ -474,7 +479,10 @@ const keyLabel = (key: string) => {
 
 const readCredential = async (
   file: File
-): Promise<{ credential?: ExternalKmsGcpCredentialSchemaType; error?: string }> => {
+): Promise<{
+  credential?: ExternalKmsGcpCredentialSchemaType;
+  error?: string;
+}> => {
   if (file.size > GCP_CREDENTIAL_MAX_BYTES) return { error: "Max file size is 8 KB." };
   if (file.type && file.type !== "application/json")
     return { error: "Only .json files are accepted." };
@@ -717,7 +725,11 @@ export const GcpKmsForm = ({
           provider: ExternalKmsProvider.Gcp,
           configuration: {
             type: ExternalKmsProvider.Gcp,
-            inputs: { gcpRegion: region, keyName, ...(credential ? { credential } : {}) }
+            inputs: {
+              gcpRegion: region,
+              keyName,
+              ...(credential ? { credential } : {})
+            }
           }
         });
     } catch (error) {
@@ -819,7 +831,10 @@ export const GcpKmsForm = ({
               loading={keyLookup.loading}
               disabled={!keyLookup.loaded || !keys.length}
               invalid={Boolean(errors.keyName)}
-              options={keys.map((key) => ({ value: key, label: keyLabel(key) }))}
+              options={keys.map((key) => ({
+                value: key,
+                label: keyLabel(key)
+              }))}
               onChange={setKeyName}
             />
           </Field>

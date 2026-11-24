@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogSubheader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -40,7 +41,9 @@ import {
 
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
-import { algorithmLabel, base64ByteLength, isBase64 } from "./shared";
+import { algorithmLabel, base64ByteLength, isBase64, usageLabel } from "./shared";
+
+import styles from "./import-dialog.module.css";
 
 type ParsedKey = {
   name: string;
@@ -142,6 +145,79 @@ const countLabel: Record<KmsKeyUsage, string> = {
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
+const ERRORS_SHOWN = 3;
+
+const InvalidKeysAlert = ({
+  invalid
+}: {
+  invalid: { index: number; name: string; error: string }[];
+}) => (
+  <Alert tone="bad">
+    <AlertTitle>{`${plural(invalid.length, "key")} can't be imported`}</AlertTitle>
+    <AlertDescription>
+      <Stack gap={4}>
+        {invalid.slice(0, ERRORS_SHOWN).map(({ name, error, index }) => (
+          <span key={index}>{`${name}: ${error}`}</span>
+        ))}
+        {invalid.length > ERRORS_SHOWN && (
+          <span>{`${invalid.length - ERRORS_SHOWN} more flagged in the list.`}</span>
+        )}
+        <span>Fix the file and upload it again.</span>
+      </Stack>
+    </AlertDescription>
+  </Alert>
+);
+
+const ReviewTable = ({ keys, errors }: { keys: ParsedKey[]; errors: (string | undefined)[] }) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Name</TableHead>
+        <TableHead>Key usage</TableHead>
+        <TableHead>Algorithm</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {keys.map((raw, index) => {
+        const entry: Partial<ParsedKey> = raw && typeof raw === "object" ? raw : {};
+        const error = errors[index];
+        return (
+          // oxlint-disable-next-line react/no-array-index-key
+          <TableRow key={index}>
+            <TableCell>
+              <Inline gap={8} align="center" wrap={false}>
+                {error && (
+                  <Tooltip content={error} side="top">
+                    <span aria-label={error} role="img" className={styles.invalid}>
+                      <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
+                    </span>
+                  </Tooltip>
+                )}
+                {typeof entry.name === "string" && entry.name ? entry.name : "Unnamed"}
+                {entry.isExportable === false && (
+                  <Tooltip content="Not exportable" side="top">
+                    <span aria-label="Not exportable" role="img">
+                      <Icon name="lock" size="var(--cipher-size-icon-small)" />
+                    </span>
+                  </Tooltip>
+                )}
+              </Inline>
+            </TableCell>
+            <TableCell>
+              {typeof entry.keyType === "string"
+                ? (usageLabel[entry.keyType] ?? entry.keyType)
+                : ""}
+            </TableCell>
+            <TableCell>
+              {typeof entry.algorithm === "string" ? algorithmLabel(entry.algorithm) : ""}
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </TableBody>
+  </Table>
+);
+
 export const ImportKeysDialog = ({
   projectId,
   onClose
@@ -151,7 +227,10 @@ export const ImportKeysDialog = ({
 }) => {
   const fileInput = useRef<HTMLInputElement>(null);
   const bulkImport = useV4Adapter("kms").useBulkImport();
-  const [parsed, setParsed] = useState<{ keys: ParsedKey[]; errors: (string | undefined)[] }>();
+  const [parsed, setParsed] = useState<{
+    keys: ParsedKey[];
+    errors: (string | undefined)[];
+  }>();
   const [parseError, setParseError] = useState<string>();
   const [failures, setFailures] = useState<{ name: string; message: string }[]>();
   const [dragging, setDragging] = useState(false);
@@ -182,7 +261,10 @@ export const ImportKeysDialog = ({
           return setParseError(
             `The file contains ${raw.length} keys. Import at most ${MAX_KEYS} at once.`
           );
-        return setParsed({ keys: raw as ParsedKey[], errors: raw.map(validateEntry) });
+        return setParsed({
+          keys: raw as ParsedKey[],
+          errors: raw.map(validateEntry)
+        });
       } catch {
         return setParseError("Couldn't parse the file. Make sure it's valid JSON.");
       }
@@ -190,7 +272,18 @@ export const ImportKeysDialog = ({
     reader.readAsText(file);
   };
 
-  const errorCount = parsed?.errors.filter(Boolean).length ?? 0;
+  const invalid = (parsed?.errors ?? []).flatMap((error, index) =>
+    error
+      ? [
+          {
+            index,
+            error,
+            name: parsed?.keys[index]?.name || `Entry ${index + 1}`
+          }
+        ]
+      : []
+  );
+  const errorCount = invalid.length;
 
   const runImport = async () => {
     if (!parsed) return;
@@ -245,7 +338,7 @@ export const ImportKeysDialog = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent pending={pending}>
+      <DialogContent pending={pending} className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {!failures && (
@@ -256,6 +349,11 @@ export const ImportKeysDialog = ({
             </DialogDescription>
           )}
         </DialogHeader>
+        {!failures && errorCount > 0 && (
+          <DialogSubheader>
+            <InvalidKeysAlert invalid={invalid} />
+          </DialogSubheader>
+        )}
         <input
           ref={fileInput}
           type="file"
@@ -332,71 +430,7 @@ export const ImportKeysDialog = ({
             </Accordion>
           </Stack>
         )}
-        {!failures && parsed && (
-          <Stack gap={16}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Algorithm</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parsed.keys.map((raw, index) => {
-                  const entry: Partial<ParsedKey> = raw && typeof raw === "object" ? raw : {};
-                  const error = parsed.errors[index];
-                  return (
-                    // oxlint-disable-next-line react/no-array-index-key
-                    <TableRow key={index}>
-                      <TableCell>
-                        <Inline gap={8} align="center" wrap={false}>
-                          {error && (
-                            <Tooltip content={error} side="top">
-                              <span aria-label={error} role="img">
-                                <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
-                              </span>
-                            </Tooltip>
-                          )}
-                          {typeof entry.name === "string" && entry.name ? entry.name : "Unnamed"}
-                          {entry.isExportable === false && (
-                            <Tooltip content="Not exportable" side="top">
-                              <span aria-label="Not exportable" role="img">
-                                <Icon name="lock" size="var(--cipher-size-icon-small)" />
-                              </span>
-                            </Tooltip>
-                          )}
-                        </Inline>
-                      </TableCell>
-                      <TableCell>
-                        {typeof entry.algorithm === "string" ? algorithmLabel(entry.algorithm) : ""}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            {errorCount > 0 && (
-              <Alert tone="bad">
-                <AlertTitle>{`${plural(errorCount, "key")} can't be imported`}</AlertTitle>
-                <AlertDescription>
-                  <Stack gap={4}>
-                    {parsed.errors.flatMap((error, index) =>
-                      error
-                        ? [
-                            // oxlint-disable-next-line react/no-array-index-key
-                            <span key={index}>
-                              {`${parsed.keys[index]?.name || `Entry ${index + 1}`}: ${error}`}
-                            </span>
-                          ]
-                        : []
-                    )}
-                    <span>Fix the file and upload it again.</span>
-                  </Stack>
-                </AlertDescription>
-              </Alert>
-            )}
-          </Stack>
-        )}
+        {!failures && parsed && <ReviewTable keys={parsed.keys} errors={parsed.errors} />}
         <DialogFooter>
           <Inline gap={8} justify="end">
             {failures && (
