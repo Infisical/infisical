@@ -56,7 +56,7 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
-import { assertInitialSetupActivationToken } from "./super-admin-fns";
+import { assertInstanceSetupToken } from "./super-admin-fns";
 import {
   CacheType,
   SuperAdminErrorCode,
@@ -210,10 +210,10 @@ export const superAdminServiceFactory = ({
     organizationName,
     ip,
     userAgent,
-    activationToken
+    setupToken
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-    assertInitialSetupActivationToken(activationToken);
+    assertInstanceSetupToken(setupToken);
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
@@ -273,12 +273,7 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const bootstrapInstance = async ({
-    email,
-    password,
-    organizationName,
-    activationToken
-  }: TAdminBootstrapInstanceDTO) => {
+  const bootstrapInstance = async ({ email, password, organizationName, setupToken }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const sanitizedEmail = email.trim().toLowerCase();
     const { initialized } = await instanceConfigService.getSettings();
@@ -289,7 +284,7 @@ export const superAdminServiceFactory = ({
       });
     }
 
-    assertInitialSetupActivationToken(activationToken);
+    assertInstanceSetupToken(setupToken);
 
     const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
