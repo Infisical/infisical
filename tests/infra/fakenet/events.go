@@ -34,6 +34,10 @@ type Emitter struct {
 	key  string
 }
 
+// Scope is the scope key the emitter publishes for, for a provider whose hosts share
+// one account's state, which the fake can then find by it.
+func (e Emitter) Scope() string { return e.key }
+
 // SetTXT answers DNS TXT queries for name with values, for a fake that is a DNS
 // provider: a record created through its API is then served the way the provider's
 // nameservers would serve it. No values removes the name.
@@ -46,6 +50,16 @@ func (e Emitter) SetTXT(name string, values ...string) {
 		return
 	}
 	e.txt.set(name, values)
+}
+
+// ReplaceTXT answers name with values only while fakenet's DNS still answers with
+// previous, for a fake removing some or all of what it published: another publisher
+// may have written the name since, and its answer stays. No values removes the name.
+func (e Emitter) ReplaceTXT(name string, previous []string, values ...string) {
+	if e.txt == nil {
+		return
+	}
+	e.txt.replaceIf(name, previous, values)
 }
 
 // LookupTXT returns the TXT values fakenet's DNS answers for name, for a fake that

@@ -144,7 +144,7 @@ func groupIDs(t *testing.T, client *api.ClientWithResponses) []uuid.UUID {
 
 func groupRoleIn(t *testing.T, client *api.ClientWithResponses, groupID uuid.UUID) string {
 	t.Helper()
-	res, err := client.GetGroupByIdWithResponse(t.Context(), groupID.String())
+	res, err := client.GetGroupByIdWithResponse(t.Context(), groupID)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "reading group %s returned %d: %s", groupID, res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Role

@@ -490,3 +490,50 @@ func TestAuditLogStream_Delivery(t *testing.T) {
 		})
 	})
 }
+
+func TestAuditLogStream_SessionActivity(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	streamEditor := []fixture.Permission{{Subject: "audit-log-streams", Action: []string{"read", "edit"}}}
+
+	t.Run("should let a stream editor create a stream without session activity", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.NewOrgRole(t, tn, "stream-editor", streamEditor...)
+		editor := tn.NewMachineIdentity(t, harness.OrgRole("stream-editor"))
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+
+		// Action
+		status, body := createCustomStream(t, editor, sink.URL, withProducts("pam"))
+
+		// Assert
+		require.Equalf(t, http.StatusOK, status, "%s", apierr.Body(body))
+		require.Len(t, streams(t, tn), 1)
+	})
+
+	t.Run("should refuse session activity from a stream editor who isn't a PAM product admin and store nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.NewOrgRole(t, tn, "stream-editor", streamEditor...)
+		editor := tn.NewMachineIdentity(t, harness.OrgRole("stream-editor"))
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+
+		body := customStreamBody(sink.URL)
+		body["filters"] = map[string]any{"pamSessionActivity": map[string]any{"includeOutput": false}}
+
+		// Action
+		res, err := editor.API.CreateCustomAuditLogStreamWithBodyWithResponse(t.Context(), "application/json", jsonBody(t, body))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "Only PAM product admins")
+		require.Empty(t, streams(t, tn))
+		sink.ExpectNoEvent[webhook.DeliveryReceived](t, nil)
+	})
+}

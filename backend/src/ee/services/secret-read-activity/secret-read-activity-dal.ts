@@ -158,15 +158,15 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     isTemporary: boolean;
     temporaryAccessEndTime: Date | null;
     appliesToSubfolders: boolean | null;
-    environmentSlug: string | null;
   };
 
   // When each source of project access last changed, so a secret's access can be dated from the oldest source that
   // grants it: every role assignment (of users, identities and groups, with the last edit to a custom role's rules,
   // since which secrets an edit opened is not recorded), and every privilege and folder grant. Membership updatedAt
   // is left out because logins bump it. Expired access is not a source, but a restriction ending can give access
-  // back, so its end is kept as the earliest that access can date from: an expired folder grant's in its folder, and
-  // an expired temporary role's or privilege's for the whole of its holder's access.
+  // back, so its end is kept as the earliest that access can date from: an expired folder grant's in its folder (and
+  // every folder below it when it applied to subfolders), and an expired temporary role's or privilege's for the whole
+  // of its holder's access.
   const findAccessSourceDates = async (projectId: string, tx?: Knex) => {
     try {
       const [roleRows, privilegeRows] = (await Promise.all([
@@ -188,8 +188,6 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
           ),
         (tx || db.replicaNode())(TableName.AdditionalPrivilege)
-          .leftJoin(TableName.SecretFolder, `${TableName.AdditionalPrivilege}.folderId`, `${TableName.SecretFolder}.id`)
-          .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .where(`${TableName.AdditionalPrivilege}.projectId`, projectId)
           .select(
             db.ref("id").withSchema(TableName.AdditionalPrivilege),
@@ -200,8 +198,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("updatedAt").withSchema(TableName.AdditionalPrivilege),
             db.ref("isTemporary").withSchema(TableName.AdditionalPrivilege),
             db.ref("temporaryAccessEndTime").withSchema(TableName.AdditionalPrivilege),
-            db.ref("appliesToSubfolders").withSchema(TableName.AdditionalPrivilege),
-            db.ref("slug").withSchema(TableName.Environment).as("environmentSlug")
+            db.ref("appliesToSubfolders").withSchema(TableName.AdditionalPrivilege)
           )
       ])) as [TRoleSourceRow[], TPrivilegeSourceRow[]];
 
@@ -235,10 +232,10 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
 
       const privilegeDates = new Map<string, Date>();
       const editedPrivilegeIds = new Set<string>();
-      // Keyed "<actorId>:<folderId>": when an expired folder grant last gave access back in that folder. A recursive
-      // grant held back its whole environment, so its end is keyed "<actorId>:<environment slug>" instead.
+      // Keyed "<actorId>:<folderId>": when an expired folder grant last gave access back in that folder. A grant that
+      // applied to subfolders also held back every folder below its own, so it is listed with its folder instead.
       const folderReopenedAt = new Map<string, Date>();
-      const environmentReopenedAt = new Map<string, Date>();
+      const subtreesReopened: { actorId: string; folderId: string; date: Date }[] = [];
       privilegeRows.forEach((row) => {
         const actorId = row.actorUserId ?? row.actorIdentityId;
         if (!isExpired(row)) {
@@ -249,8 +246,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
         if (!row.folderId) recordExpiry(actorId, row.temporaryAccessEndTime);
         else if (actorId && row.temporaryAccessEndTime) {
           const endedAt = new Date(row.temporaryAccessEndTime);
-          if (row.appliesToSubfolders && row.environmentSlug) {
-            raise(environmentReopenedAt, `${actorId}:${row.environmentSlug}`, endedAt);
+          if (row.appliesToSubfolders) {
+            subtreesReopened.push({ actorId, folderId: row.folderId, date: endedAt });
           } else {
             raise(folderReopenedAt, `${actorId}:${row.folderId}`, endedAt);
           }
@@ -263,7 +260,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
         privilegeDates,
         editedPrivilegeIds,
         folderReopenedAt,
-        environmentReopenedAt,
+        subtreesReopened,
         accessReopenedAt
       };
     } catch (error) {

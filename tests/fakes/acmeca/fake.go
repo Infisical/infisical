@@ -1,21 +1,18 @@
 package acmeca
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"math/big"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -39,30 +36,8 @@ func DirectoryURL(scope string) string {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "Fake ACME Root CA"},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	if err != nil {
-		panic(err)
-	}
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		panic(err)
-	}
-
 	c := &CA{
-		Issued: []Issued{}, events: events, key: key, cert: cert,
+		Orders: []Order{}, Issued: []Issued{}, events: events, root: issuer.New("Fake ACME Root CA"),
 		nonces: map[string]bool{}, accounts: map[string]*account{}, orders: map[string]*order{},
 		authzs: map[string]*authorization{}, challenges: map[string]*challenge{},
 	}
@@ -78,6 +53,7 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 	c.mux.HandleFunc("POST /{scope}/authz/{id}", c.getAuthz)
 	c.mux.HandleFunc("POST /{scope}/challenges/{id}", c.respondChallenge)
 	c.mux.HandleFunc("POST /{scope}/certs/{id}", c.getCertificate)
+	c.mux.HandleFunc("POST /{scope}/revoke-cert", c.revokeCert)
 	return c
 }
 
@@ -95,6 +71,7 @@ func (c *CA) directory(w http.ResponseWriter, r *http.Request) {
 		"newNonce":   b + "/new-nonce",
 		"newAccount": b + "/new-account",
 		"newOrder":   b + "/new-order",
+		"revokeCert": b + "/revoke-cert",
 		"meta":       map[string]any{"termsOfService": b + "/terms"},
 	})
 }
@@ -192,6 +169,11 @@ func (c *CA) newOrder(w http.ResponseWriter, r *http.Request) {
 		o.authzIDs = append(o.authzIDs, az.id)
 	}
 	c.orders[o.id] = o
+	names := make([]string, len(in.Identifiers))
+	for i, id := range in.Identifiers {
+		names[i] = id.Value
+	}
+	c.Orders = append(c.Orders, Order{ID: o.id, Names: names})
 	body := c.orderJSON(base(r), o)
 	c.mu.Unlock()
 
@@ -392,12 +374,11 @@ func (c *CA) sign(orderID string, names []string, csr *x509.CertificateRequest) 
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, c.cert, csr.PublicKey, c.key)
+	der, err := c.root.Create(tmpl, csr.PublicKey)
 	if err != nil {
 		return Issued{}, err
 	}
-	chain := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})) +
-		string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw}))
+	chain := issuer.PEM(der) + c.root.RootPEM()
 	return Issued{OrderID: orderID, Names: names, Serial: hex.EncodeToString(serial.Bytes()), PEM: chain, IssuedAt: time.Now().UTC()}, nil
 }
 
@@ -508,4 +489,56 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+// revokeCert revokes a certificate an order of the requesting account received
+// (RFC 8555 section 7.6). Requests signed with the certificate's own key are not served.
+func (c *CA) revokeCert(w http.ResponseWriter, r *http.Request) {
+	acct, req, p := c.owner(r)
+	if p != nil {
+		p.write(w)
+		return
+	}
+	var in struct {
+		Certificate string `json:"certificate"`
+		Reason      int    `json:"reason"`
+	}
+	if err := json.Unmarshal(req.payload, &in); err != nil {
+		malformed("revocation payload is not JSON").write(w)
+		return
+	}
+	der, err := b64.DecodeString(in.Certificate)
+	if err != nil {
+		malformed("certificate is not base64url").write(w)
+		return
+	}
+	if in.Reason < 0 || in.Reason > 10 || in.Reason == 7 {
+		(&problem{Type: "badRevocationReason", Detail: "unsupported revocation reason", Status: http.StatusBadRequest}).write(w)
+		return
+	}
+	pemCert := issuer.PEM(der)
+	c.mu.Lock()
+	for i := range c.Issued {
+		issued := &c.Issued[i]
+		if !strings.HasPrefix(issued.PEM, pemCert) {
+			continue
+		}
+		if o := c.orders[issued.OrderID]; o == nil || o.accountID != acct.id {
+			break
+		}
+		if issued.RevokedAt != nil {
+			c.mu.Unlock()
+			(&problem{Type: "alreadyRevoked", Detail: "certificate is already revoked", Status: http.StatusBadRequest}).write(w)
+			return
+		}
+		now := time.Now().UTC()
+		issued.RevokedAt, issued.Reason = &now, in.Reason
+		ev := CertificateRevoked{*issued}
+		c.mu.Unlock()
+		c.events.Publish(ev)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	c.mu.Unlock()
+	(&problem{Type: "unauthorized", Detail: "the certificate was not issued to this account", Status: http.StatusForbidden}).write(w)
 }

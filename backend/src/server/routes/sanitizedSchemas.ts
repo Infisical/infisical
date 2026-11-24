@@ -116,7 +116,7 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
 );
 
 export const secretChangePolicyPubSchema = sapPubSchema.extend({
-  enforceImportReplication: z.boolean().describe(SECRET_CHANGE_POLICIES.enforceImportReplication)
+  enforceOnSecretImports: z.boolean().describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports)
 });
 
 export const SanitizedUserSchema = UsersSchema.pick({

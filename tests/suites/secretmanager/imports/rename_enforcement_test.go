@@ -249,7 +249,7 @@ func createBypassPolicy(t *testing.T, proj *fixture.Project, env, secretPath str
 		SecretPath:                 secretPath,
 		Approvals:                  new(float32(1)),
 		Approvers:                  []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{item},
-		EnforceImportReplication:   &enforce,
+		EnforceOnSecretImports:     &enforce,
 		BypassForMachineIdentities: new(true),
 	})
 	require.NoError(t, err)

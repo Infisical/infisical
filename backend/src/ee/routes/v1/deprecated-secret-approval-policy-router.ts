@@ -29,7 +29,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .max(1000)
+            .max(1024)
             .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
             .transform(canonicalizeSecretPathPattern),
           approvers: z
@@ -59,10 +59,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          enforceImportReplication: z
-            .boolean()
-            .default(false)
-            .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
@@ -121,13 +118,13 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
-          .max(1000)
+          .max(1024)
           .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
-        enforceImportReplication: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
+        enforceOnSecretImports: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),

@@ -106,9 +106,7 @@ export const CreateSecretImportForm = ({
     secretPath,
     options: { enabled: Boolean(isOpen) }
   });
-  const enforcingPolicy = destinationPolicy?.enforceImportReplication
-    ? destinationPolicy
-    : undefined;
+  const enforcingPolicy = destinationPolicy?.enforceOnSecretImports ? destinationPolicy : undefined;
   // the choice only matters where a change policy covers the destination. when the lookup fails, offer it anyway
   // and let the server refuse an import the policy does not allow.
   const isReplicationChoiceShown = Boolean(destinationPolicy) || isPolicyError;

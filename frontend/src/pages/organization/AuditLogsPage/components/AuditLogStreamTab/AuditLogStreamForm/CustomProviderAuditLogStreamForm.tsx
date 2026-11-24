@@ -26,6 +26,7 @@ import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/p
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+import { PamSessionActivityField } from "./PamSessionActivityField";
 
 type Props = {
   auditLogStream?: TCustomProviderLogStream;
@@ -226,6 +227,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           />
         )}
         <ProductsField />
+        <PamSessionActivityField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>
