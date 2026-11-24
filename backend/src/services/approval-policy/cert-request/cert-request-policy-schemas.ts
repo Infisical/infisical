@@ -116,13 +116,20 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default. A
-  // policy's operation is fixed when it's created, so an update can't name one.
+  // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default.
   constraints: z
-    .object({ renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional() })
+    .object({
+      operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
+      renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional()
+    })
     .optional()
     .transform((constraints) =>
-      constraints?.renewalApproval ? { renewalApproval: constraints.renewalApproval } : undefined
+      constraints?.operation || constraints?.renewalApproval
+        ? {
+            ...(constraints.operation && { operation: constraints.operation }),
+            ...(constraints.renewalApproval && { renewalApproval: constraints.renewalApproval })
+          }
+        : undefined
     )
 });
 

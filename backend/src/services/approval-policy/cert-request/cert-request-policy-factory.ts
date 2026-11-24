@@ -1,6 +1,7 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
@@ -33,7 +34,12 @@ import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
 import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { findLiveApproverEntries, PKI_APPROVER_RULES } from "../pki-approvers/application-approver-checks";
-import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
+import {
+  TCertRequestPolicy,
+  TCertRequestPolicyConstraints,
+  TCertRequestPolicyInputs,
+  TCertRequestRequestData
+} from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById" | "primaryNode">;
@@ -93,8 +99,15 @@ export const certRequestApprovalResourceFactory = ({
 
   validateConstraints: () => ({ valid: true }),
 
-  // An update names only the setting it changes, so the stored operation survives it.
-  updateConstraints: (stored, update) => ({ ...stored, ...update }),
+  // An update names only the settings it changes, so the stored ones survive it. A policy's operation is fixed
+  // when it's created, and the edit form sends it back unchanged.
+  updateConstraints: (stored, update) => {
+    const { operation } = update as TCertRequestPolicyConstraints;
+    if (operation && operation !== (stored as TCertRequestPolicyConstraints | undefined)?.operation) {
+      throw new BadRequestError({ message: "A policy's type can't be changed after it's created." });
+    }
+    return { ...stored, ...update };
+  },
 
   // A request saves its approvers when it is raised, so someone removed from the Application since then (or, for a
   // policy without one, from Certificate Management) would still get its notices, including a failure's reason.

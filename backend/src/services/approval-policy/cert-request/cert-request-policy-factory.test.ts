@@ -66,6 +66,24 @@ describe("certRequestApprovalResourceFactory.matchPolicy", () => {
     }
   );
 
+  it.each([
+    [CertRequestPolicyOperation.Renewal, CertRequestPolicyOperation.Issuance],
+    [undefined, CertRequestPolicyOperation.Issuance]
+  ])("refuses an update that changes a %s policy's operation to %s", (stored, operation) => {
+    const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
+    expect(() => updateConstraints!(stored ? { operation: stored } : {}, { operation })).toThrow(BadRequestError);
+  });
+
+  it("accepts an update that sends the policy's operation back unchanged", () => {
+    const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
+    expect(
+      updateConstraints!(
+        { operation: CertRequestPolicyOperation.Renewal },
+        { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always }
+      )
+    ).toEqual({ operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always });
+  });
+
   it("keeps a policy's operation when an update changes only its renewal setting", () => {
     const { updateConstraints } = certRequestApprovalResourceFactory({} as never);
     expect(

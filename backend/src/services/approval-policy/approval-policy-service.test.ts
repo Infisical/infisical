@@ -5,8 +5,16 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { ApprovalPolicyScope, ApprovalPolicyType, ApprovalRequestStatus, ApproverType } from "./approval-policy-enums";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  ApproverType,
+  CertRequestPolicyOperation,
+  CertRequestRenewalApproval
+} from "./approval-policy-enums";
 import { approvalPolicyServiceFactory } from "./approval-policy-service";
+import { certRequestApprovalResourceFactory } from "./cert-request/cert-request-policy-factory";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -16,6 +24,81 @@ vi.mock("@app/lib/request-context/oauth-delegation", async (importOriginal) => (
 }));
 
 type TDeps = Parameters<typeof approvalPolicyServiceFactory>[0];
+
+describe("approvalPolicyService.updateById constraints", () => {
+  const actor = { type: ActorType.USER, id: "user-1", orgId: "org-1", authMethod: null } as never;
+
+  const setup = (type: ApprovalPolicyType, storedConstraints: Record<string, unknown>) => {
+    const stored = {
+      id: "policy-1",
+      type,
+      projectId: "project-1",
+      constraints: { version: 1, constraints: storedConstraints }
+    };
+    const approvalPolicyDAL = {
+      findById: vi.fn().mockResolvedValue(stored),
+      findByIdForUpdate: vi.fn().mockResolvedValue(stored),
+      transaction: vi.fn((fn: (tx: unknown) => unknown) => fn("tx")),
+      updateById: vi.fn((id: string, doc: object) => Promise.resolve({ ...stored, ...doc })),
+      findStepsByPolicyId: vi.fn().mockResolvedValue([]),
+      findBypassersByPolicyId: vi.fn().mockResolvedValue([])
+    };
+    const domainChecks = { assertCanManagePolicy: vi.fn(), verifyPolicyActors: vi.fn() };
+    const service = approvalPolicyServiceFactory({
+      approvalPolicyDAL,
+      autoApprovalService: { findByPolicyIds: vi.fn().mockResolvedValue(new Map()), toPolicyResponse: vi.fn() },
+      resources: {
+        [ApprovalPolicyType.CertRequest]: { ...certRequestApprovalResourceFactory({} as never), ...domainChecks },
+        [ApprovalPolicyType.CertRevocation]: { ...certRevocationApprovalResourceFactory({} as never), ...domainChecks }
+      }
+    } as unknown as TDeps);
+    const written = () => approvalPolicyDAL.updateById.mock.calls[0]?.[1] as { constraints?: unknown } | undefined;
+    return { service, written };
+  };
+
+  it("keeps a cert-request policy's operation when an update names only its renewal setting", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRequest, {
+      operation: CertRequestPolicyOperation.Renewal,
+      renewalApproval: CertRequestRenewalApproval.OnChange
+    });
+
+    await service.updateById(
+      "policy-1",
+      { constraints: { renewalApproval: CertRequestRenewalApproval.Always } } as never,
+      actor,
+      ApprovalPolicyType.CertRequest
+    );
+
+    expect(written()?.constraints).toEqual({
+      version: 1,
+      constraints: { operation: CertRequestPolicyOperation.Renewal, renewalApproval: CertRequestRenewalApproval.Always }
+    });
+  });
+
+  it("refuses an update that changes a cert-request policy's operation", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRequest, {
+      operation: CertRequestPolicyOperation.Renewal
+    });
+
+    await expect(
+      service.updateById(
+        "policy-1",
+        { constraints: { operation: CertRequestPolicyOperation.Issuance } } as never,
+        actor,
+        ApprovalPolicyType.CertRequest
+      )
+    ).rejects.toThrow("A policy's type can't be changed after it's created.");
+    expect(written()).toBeUndefined();
+  });
+
+  it("replaces the constraints of a policy type without its own update rule", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRevocation, { stale: true });
+
+    await service.updateById("policy-1", { constraints: {} } as never, actor, ApprovalPolicyType.CertRevocation);
+
+    expect(written()?.constraints).toEqual({ version: 1, constraints: {} });
+  });
+});
 
 describe("approvalPolicyService.notifyApprovedActionFailed", () => {
   const request = {
