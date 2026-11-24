@@ -152,11 +152,11 @@ export const splitMssqlStatements = (sql: string): string[] => {
   return stmts;
 };
 
-export const extractCommand = (sql: string): string => {
+const leadingWords = (sql: string, count: number): string[] => {
+  const words: string[] = [];
   let pos = 0;
   const len = sql.length;
-
-  while (pos < len) {
+  while (pos < len && words.length < count) {
     if (isWhitespace(sql[pos])) {
       pos += 1;
     } else if (isLineComment(sql, pos)) {
@@ -164,15 +164,23 @@ export const extractCommand = (sql: string): string => {
     } else if (isBlockComment(sql, pos)) {
       pos = skipBlockComment(sql, pos);
     } else {
-      break;
+      const start = pos;
+      while (pos < len && !isWhitespace(sql[pos]) && sql[pos] !== "(" && sql[pos] !== ";") pos += 1;
+      if (pos === start) break;
+      words.push(sql.slice(start, pos).toUpperCase());
     }
   }
+  return words;
+};
 
-  const start = pos;
-  while (pos < len && !isWhitespace(sql[pos]) && sql[pos] !== "(" && sql[pos] !== ";") {
-    pos += 1;
-  }
-  return sql.slice(start, pos).toUpperCase();
+const TRANSACTION_KEYWORDS = new Set(["TRAN", "TRANSACTION", "DISTRIBUTED"]);
+const ROW_COUNT_VERBS = new Set(["INSERT", "UPDATE", "DELETE"]);
+
+// BEGIN also opens TRY, CATCH and statement blocks, which must not read as "Transaction started"
+export const extractCommand = (sql: string): string => {
+  const [first = "", second = ""] = leadingWords(sql, 2);
+  if (first === "BEGIN" && !TRANSACTION_KEYWORDS.has(second)) return "";
+  return first;
 };
 
 export const extractLastCommand = (sql: string): string => {
@@ -181,10 +189,12 @@ export const extractLastCommand = (sql: string): string => {
   return last ? extractCommand(last) : "";
 };
 
-// Statements are not reliably separable in T-SQL without semicolons, so a verb is only reported for a single one
+// T-SQL statements need no semicolons and IF/EXEC/WITH can wrap any verb, so only a lone plain verb is named
 export const extractSingleStatementCommand = (sql: string): string => {
   const stmts = splitMssqlBatches(sql).flatMap(splitMssqlStatements);
-  return stmts.length === 1 ? extractCommand(stmts[0]) : "";
+  if (stmts.length !== 1) return "";
+  const command = extractCommand(stmts[0]);
+  return ROW_COUNT_VERBS.has(command) ? command : "";
 };
 
 const pad = (n: number, width = 2) => String(n).padStart(width, "0");
@@ -201,6 +211,10 @@ const formatFraction = (d: Date, scale: number) => {
 
 const formatTime = (d: Date, scale: number) =>
   `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}${formatFraction(d, scale)}`;
+
+// tedious names nullable datetime and smalldatetime both DateTimeN; only the 4-byte length tells them apart
+export const resolveMssqlTypeName = (typeName: string, dataLength?: number): string =>
+  typeName === "DateTimeN" && dataLength === 4 ? "SmallDateTime" : typeName;
 
 const DECIMAL_TYPES = new Set(["Decimal", "Numeric", "DecimalN", "NumericN"]);
 const MONEY_TYPES = new Set(["Money", "MoneyN", "SmallMoney"]);

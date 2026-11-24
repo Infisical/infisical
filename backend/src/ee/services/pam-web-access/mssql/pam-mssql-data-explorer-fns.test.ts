@@ -6,6 +6,7 @@ import {
   extractLastCommand,
   extractSingleStatementCommand,
   formatMssqlValue,
+  resolveMssqlTypeName,
   splitMssqlBatches,
   splitMssqlStatements,
   uniqueColumnNames
@@ -83,6 +84,24 @@ describe("extractSingleStatementCommand", () => {
     expect(extractSingleStatementCommand("UPDATE t SET a = 1;")).toBe("UPDATE");
     expect(extractSingleStatementCommand("BEGIN TRAN; DELETE FROM t")).toBe("");
   });
+
+  test("leaves wrapped verbs unnamed", () => {
+    expect(extractSingleStatementCommand("IF 1 = 1 UPDATE t SET a = 1")).toBe("");
+    expect(extractSingleStatementCommand("EXEC sp_executesql N'UPDATE t SET a = 1'")).toBe("");
+    expect(extractSingleStatementCommand("WITH x AS (SELECT 1 AS v) DELETE FROM t")).toBe("");
+    expect(extractSingleStatementCommand("BEGIN TRY INSERT t VALUES (1) END TRY BEGIN CATCH END CATCH")).toBe("");
+  });
+});
+
+describe("extractCommand with BEGIN", () => {
+  test("BEGIN only counts as a transaction with TRAN, TRANSACTION or DISTRIBUTED", () => {
+    expect(extractCommand("begin tran")).toBe("BEGIN");
+    expect(extractCommand("BEGIN TRANSACTION t1")).toBe("BEGIN");
+    expect(extractCommand("BEGIN DISTRIBUTED TRANSACTION")).toBe("BEGIN");
+    expect(extractCommand("BEGIN TRY SELECT 1 END TRY BEGIN CATCH END CATCH")).toBe("");
+    expect(extractCommand("BEGIN SELECT 1 END")).toBe("");
+    expect(extractCommand("COMMIT")).toBe("COMMIT");
+  });
 });
 
 describe("extractLastCommand", () => {
@@ -107,6 +126,8 @@ describe("formatMssqlValue", () => {
     expect(formatMssqlValue(d, "Date")).toBe("2026-01-02");
     expect(formatMssqlValue(d, "DateTime")).toBe("2026-01-02 03:04:05.006");
     expect(formatMssqlValue(d, "SmallDateTime")).toBe("2026-01-02 03:04:05");
+    expect(formatMssqlValue(d, resolveMssqlTypeName("DateTimeN", 4))).toBe("2026-01-02 03:04:05");
+    expect(formatMssqlValue(d, resolveMssqlTypeName("DateTimeN", 8))).toBe("2026-01-02 03:04:05.006");
   });
 
   test("keeps sub-millisecond precision up to the column scale", () => {

@@ -2,7 +2,13 @@ import { type Connection, Request } from "tedious";
 
 import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
 import { MSSQL_REQUEST_TIMEOUT_MS } from "./pam-mssql-client";
-import { formatMssqlValue, isLossyDecimal, splitMssqlBatches, uniqueColumnNames } from "./pam-mssql-data-explorer-fns";
+import {
+  formatMssqlValue,
+  isLossyDecimal,
+  resolveMssqlTypeName,
+  splitMssqlBatches,
+  uniqueColumnNames
+} from "./pam-mssql-data-explorer-fns";
 
 export const MAX_ROWS = 1000;
 const MAX_INFO_MESSAGES = 50;
@@ -10,7 +16,7 @@ const MAX_INFO_MESSAGE_LENGTH = 1000;
 
 export const QUERY_TIMEOUT_MESSAGE = `Query exceeded the ${MSSQL_REQUEST_TIMEOUT_MS / 1000} second limit and was cancelled`;
 
-type TColumnMetadata = { colName: string; type: { name: string }; scale?: number };
+type TColumnMetadata = { colName: string; type: { name: string }; scale?: number; dataLength?: number };
 
 type TResultSet = {
   names: string[];
@@ -102,7 +108,7 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
       const list = (Array.isArray(cols) ? cols : Object.values(cols)) as TColumnMetadata[];
       current = {
         names: uniqueColumnNames(list.map((c) => c.colName)),
-        typeNames: list.map((c) => c.type.name),
+        typeNames: list.map((c) => resolveMssqlTypeName(c.type.name, c.dataLength)),
         scales: list.map((c) => c.scale),
         rows: [],
         bytes: 0,
