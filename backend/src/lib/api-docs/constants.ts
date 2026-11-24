@@ -1306,6 +1306,16 @@ export const PROJECTS = {
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
+  },
+  LIST_ACCESS_REQUESTS: {
+    projectId:
+      "The ID of the Secrets Management project. Access requests can only be listed for Secrets Management projects.",
+    requesterUserId: "Only return the pending request made by this user.",
+    requests: "The pending requests to access the project, made by users who are not yet members.",
+    id: "The ID of the access request.",
+    requestRequesterUserId: "The ID of the user who requested access.",
+    comment: "The note the requester left with the request, or null if they left none.",
+    createdAt: "When the access request was made."
   }
 } as const;
 

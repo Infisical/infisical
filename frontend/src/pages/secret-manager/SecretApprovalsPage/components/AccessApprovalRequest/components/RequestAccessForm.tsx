@@ -929,7 +929,8 @@ export const RequestAccessForm = ({
               />
               {matchedPolicy?.requireJustification && (
                 <FieldDescription>
-                  This path&apos;s access policy requires a justification explaining why you need access.
+                  This path&apos;s access policy requires a justification explaining why you need
+                  access.
                 </FieldDescription>
               )}
               <FieldError errors={[error]} />
