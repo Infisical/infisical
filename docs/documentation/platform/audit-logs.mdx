@@ -673,6 +673,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     - A user or machine identity: that actor revoked the certificate right away
     - `platform`, with the approval request's ID in `event.metadata.approvalRequestId`: Infisical revoked the certificate once the request was approved
     - `platform`, with `event.metadata.source` set to `microsoft-intune`: Microsoft Intune asked Infisical to revoke the certificate
+    - `platform`, with `event.metadata.source` set to `same-certificate`: Infisical revoked the certificate because another copy of it was revoked, such as the certificate you imported again after deleting this one, with that copy's ID and name in `event.metadata.revokedThroughCertId` and `event.metadata.revokedThroughCertName`
     - `platform`, with neither field: the certificate's DigiCert CA revoked it, and Infisical recorded the revocation
 
     If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.

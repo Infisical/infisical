@@ -4,7 +4,11 @@ import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import {
   ApprovalPolicyType,
   ApprovalRequestStatus,
@@ -16,7 +20,7 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { certificateServiceFactory } from "./certificate-service";
-import { CertificateRevocationStatus, CertStatus, CrlReason } from "./certificate-types";
+import { CertificateRevocationSource, CertificateRevocationStatus, CertStatus, CrlReason } from "./certificate-types";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
@@ -54,7 +58,8 @@ const buildService = () => {
     update: vi
       .fn()
       .mockImplementation(async (_filter: unknown, data: Record<string, unknown>) => [{ ...liveCertificate, ...data }]),
-    transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx))
+    transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
+    lockSerialNumber: vi.fn().mockResolvedValue(undefined)
   };
   const certificateBodyDAL = { delete: vi.fn().mockResolvedValue([]) };
   const certificateSecretDAL = { delete: vi.fn().mockResolvedValue([]) };
@@ -179,7 +184,12 @@ describe("certificateService.importCert with a CSR", () => {
   };
 
   const buildImportService = () => {
-    const certificateDAL = { transaction: vi.fn(), findOne: vi.fn().mockResolvedValue(undefined) };
+    const certificateDAL = {
+      transaction: vi.fn(),
+      find: vi.fn().mockResolvedValue([]),
+      findSameCertificateRecords: vi.fn().mockResolvedValue([]),
+      primaryNode: vi.fn().mockReturnValue(undefined)
+    };
     const certificatePolicyService = { validateCertificateRequest: vi.fn() };
     const deps = {
       certificateDAL,
@@ -296,6 +306,499 @@ describe("certificateService.importCert with a CSR", () => {
   });
 });
 
+describe("certificateService.importCert of a certificate deleted before", () => {
+  const ALG = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const importTx = { node: "import-tx" } as unknown as Knex;
+  const importPrimaryDb = { node: "import-primary" } as unknown as Knex;
+
+  const buildPlainImportService = () => {
+    const projectDAL = {
+      findById: vi.fn().mockImplementation(async (id: string) => ({ id, orgId: "org-1" })),
+      find: vi
+        .fn()
+        .mockImplementation(async ({ $in: { id: ids } }: { $in: { id: string[] } }) =>
+          ids.map((id) => ({ id, orgId: id === "other-org-project" ? "org-2" : "org-1" }))
+        )
+    };
+    const certificateDAL = {
+      transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(importTx)),
+      lockSerialNumber: vi.fn().mockResolvedValue(undefined),
+      find: vi.fn().mockResolvedValue([]),
+      primaryNode: vi.fn().mockReturnValue(importPrimaryDb),
+      create: vi.fn().mockImplementation(async (data: Record<string, unknown>) => ({ ...data, id: "cert-2" }))
+    };
+    const deps = {
+      certificateDAL,
+      certificateBodyDAL: { create: vi.fn().mockResolvedValue({}) },
+      certificateSecretDAL: { create: vi.fn().mockResolvedValue({}) },
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+      kmsKeyService: {
+        encryptWithKmsKey: vi.fn().mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({
+          cipherTextBlob: plainText
+        }))
+      },
+      projectDAL,
+      licenseService: { getPlan: vi.fn().mockResolvedValue({ isLimited: () => false }) },
+      usageMeteringService: { emit: vi.fn() },
+      permissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+      }
+    } as unknown as TDeps;
+    return { service: certificateServiceFactory(deps), certificateDAL, projectDAL };
+  };
+
+  const buildCertificatePem = async () => {
+    const keys = await crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
+    const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "0a1b2c",
+      name: "CN=web.example.com",
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2026-04-01"),
+      keys,
+      signingAlgorithm: ALG
+    });
+    return certificate.toString("pem");
+  };
+
+  it("stores a new certificate when its earlier record was deleted without being revoked", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+
+    const result = await service.importCert({
+      ...actor,
+      projectId: "project-1",
+      certificatePem: await buildCertificatePem()
+    });
+
+    expect(result.cert.id).toBe("cert-2");
+    const revokedSerialFilter = {
+      $in: { serialNumber: ["0a1b2c", "a1b2c", "a1b2c".padStart(40, "0")] },
+      status: CertStatus.REVOKED
+    };
+    expect(certificateDAL.find.mock.calls).toEqual([
+      [revokedSerialFilter, { tx: importPrimaryDb }],
+      [revokedSerialFilter, { tx: importTx }],
+      [
+        { $in: revokedSerialFilter.$in, deletedAt: null },
+        { limit: 1, tx: importTx }
+      ]
+    ]);
+    expect(certificateDAL.lockSerialNumber).toHaveBeenCalledWith("0a1b2c", importTx);
+    expect(certificateDAL.lockSerialNumber.mock.invocationCallOrder[0]).toBeLessThan(
+      certificateDAL.find.mock.invocationCallOrder[1]
+    );
+  });
+
+  it("refuses a revoked certificate before validating the chain it was sent with", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+    certificateDAL.find.mockResolvedValue([
+      {
+        id: "cert-0",
+        projectId: "project-1",
+        status: CertStatus.REVOKED,
+        deletedAt: new Date("2026-10-01T00:00:00.000Z")
+      }
+    ]);
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        certificatePem: await buildCertificatePem(),
+        chainPem: "not a certificate chain"
+      })
+    ).rejects.toThrow(
+      new BadRequestError({
+        message: "Certificate with serial number '0a1b2c' is revoked and can't be imported."
+      })
+    );
+    expect(certificateDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses under the serial lock when the certificate is revoked while it is being imported", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+    certificateDAL.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { id: "cert-0", projectId: "project-1", status: CertStatus.REVOKED, deletedAt: new Date() }
+      ]);
+
+    await expect(
+      service.importCert({ ...actor, projectId: "project-1", certificatePem: await buildCertificatePem() })
+    ).rejects.toThrow("is revoked and can't be imported.");
+    expect(certificateDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses under the serial lock when a live record stores the serial with a leading zero byte", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+    certificateDAL.find.mockImplementation(async (filter: { deletedAt?: null }) =>
+      "deletedAt" in filter ? [{ id: "cert-0", serialNumber: "000a1b2c", deletedAt: null }] : []
+    );
+
+    await expect(
+      service.importCert({ ...actor, projectId: "project-1", certificatePem: await buildCertificatePem() })
+    ).rejects.toThrow(new BadRequestError({ message: "A certificate with this serial number already exists" }));
+    expect(certificateDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("imports a different certificate that shares a revoked certificate's serial number", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+    certificateDAL.find.mockImplementation(async (filter: { deletedAt?: null }) =>
+      "deletedAt" in filter
+        ? []
+        : [
+            {
+              id: "cert-0",
+              projectId: "project-1",
+              status: CertStatus.REVOKED,
+              fingerprintSha256: "AA:BB",
+              deletedAt: new Date("2026-10-01T00:00:00.000Z")
+            }
+          ]
+    );
+
+    const result = await service.importCert({
+      ...actor,
+      projectId: "project-1",
+      certificatePem: await buildCertificatePem()
+    });
+
+    expect(result.cert.id).toBe("cert-2");
+  });
+
+  it("imports a certificate whose serial was revoked only in another organization", async () => {
+    const { service, certificateDAL, projectDAL } = buildPlainImportService();
+    certificateDAL.find.mockImplementation(async (filter: { deletedAt?: null }) =>
+      "deletedAt" in filter
+        ? []
+        : [
+            {
+              id: "cert-0",
+              projectId: "other-org-project",
+              status: CertStatus.REVOKED,
+              deletedAt: new Date("2026-10-01T00:00:00.000Z")
+            }
+          ]
+    );
+
+    const result = await service.importCert({
+      ...actor,
+      projectId: "project-1",
+      certificatePem: await buildCertificatePem()
+    });
+
+    expect(result.cert.id).toBe("cert-2");
+    expect(projectDAL.find).toHaveBeenCalledWith({ $in: { id: ["other-org-project"] } }, { tx: importPrimaryDb });
+  });
+
+  it("refuses a revoked certificate that was never deleted, as revoked", async () => {
+    const { service, certificateDAL } = buildPlainImportService();
+    certificateDAL.find.mockResolvedValue([
+      { id: "cert-0", projectId: "project-1", status: CertStatus.REVOKED, deletedAt: null }
+    ]);
+
+    await expect(
+      service.importCert({ ...actor, projectId: "project-1", certificatePem: await buildCertificatePem() })
+    ).rejects.toThrow(
+      new BadRequestError({
+        message: "Certificate with serial number '0a1b2c' is revoked and can't be imported."
+      })
+    );
+    expect(certificateDAL.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("certificateService.importCert of a deleted certificate into a profile on its CA", () => {
+  const ALG = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const deletedOriginal = {
+    id: "cert-0",
+    projectId: "project-1",
+    applicationId: "app-a",
+    profileId: "profile-1",
+    caId: "ca-1",
+    commonName: "web.example.com",
+    friendlyName: "web",
+    serialNumber: "0a1b2c",
+    status: CertStatus.ACTIVE,
+    deletedAt: new Date("2026-10-01T00:00:00.000Z")
+  };
+  const originalPolicy = { id: "revocation-policy-1", name: "prod-revocations" };
+
+  const buildReimportService = ({
+    originalPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[],
+    isMemberOfOriginalApplication = true,
+    policyByScope = {} as Record<string, typeof originalPolicy>,
+    deletedRecords = [deletedOriginal] as Record<string, unknown>[],
+    deletedRecordsUnderLock = undefined as Record<string, unknown>[] | undefined
+  } = {}) => {
+    const importTx = { node: "reimport-tx" } as unknown as Knex;
+    const certificateDAL = {
+      transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(importTx)),
+      primaryNode: vi.fn().mockReturnValue(undefined),
+      lockSerialNumber: vi.fn().mockResolvedValue(undefined),
+      find: vi.fn().mockResolvedValue([]),
+      findSameCertificateRecords: vi
+        .fn()
+        .mockImplementation(async (_filter: unknown, trx: unknown) =>
+          trx === importTx ? (deletedRecordsUnderLock ?? deletedRecords) : deletedRecords
+        ),
+      create: vi.fn().mockImplementation(async (data: Record<string, unknown>) => ({ ...data, id: "cert-2" }))
+    };
+    const certificatePolicyService = {
+      validateCertificateRequest: vi.fn().mockResolvedValue({ isValid: false, errors: ["stop here"], warnings: [] })
+    };
+    const approvalPolicyService = {
+      matchPolicy: vi
+        .fn()
+        .mockImplementation(
+          async (
+            _type: unknown,
+            _projectId: string,
+            { applicationId, profileName }: { applicationId: string; profileName: string }
+          ) => policyByScope[`${applicationId}/${profileName}`] ?? null
+        )
+    };
+    const deps = {
+      certificateDAL,
+      certificatePolicyService,
+      approvalPolicyService,
+      certificateProfileDAL: {
+        findById: vi
+          .fn()
+          .mockImplementation(async (id: string) => ({ id, slug: id === "profile-1" ? "web-servers" : "old-servers" })),
+        findByIdWithConfigs: vi.fn().mockResolvedValue({
+          id: "profile-1",
+          projectId: "project-1",
+          slug: "web-servers",
+          caId: "ca-1",
+          issuerType: IssuerType.CA,
+          certificatePolicyId: "policy-1",
+          apiConfig: null,
+          certificateAuthority: { externalType: null, name: "my-root-ca" }
+        })
+      },
+      pkiApplicationDAL: {
+        findById: vi.fn().mockImplementation(async (id: string) => ({ id, name: id, projectId: "project-1" }))
+      },
+      pkiApplicationProfileDAL: { findOneByApplicationAndProfile: vi.fn().mockResolvedValue({ id: "attachment-1" }) },
+      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
+      certificateBodyDAL: { create: vi.fn().mockResolvedValue({}) },
+      certificateSecretDAL: { create: vi.fn().mockResolvedValue({}) },
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+      kmsKeyService: {
+        encryptWithKmsKey: vi.fn().mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({
+          cipherTextBlob: plainText
+        }))
+      },
+      projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) },
+      licenseService: { getPlan: vi.fn().mockResolvedValue({ isLimited: () => false }) },
+      usageMeteringService: { emit: vi.fn() },
+      permissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+        getResourcePermission: vi.fn().mockImplementation(async ({ resourceId }: { resourceId: string }) => {
+          if (resourceId === "app-a" && !isMemberOfOriginalApplication) {
+            throw new ForbiddenRequestError({ message: "You are not a member of this certificate-application." });
+          }
+          return {
+            permission: createMongoAbility(
+              resourceId === "app-a" ? originalPermissions : [{ action: "manage", subject: "all" }]
+            )
+          };
+        })
+      }
+    } as unknown as TDeps;
+    return {
+      service: certificateServiceFactory(deps),
+      approvalPolicyService,
+      certificateDAL,
+      certificatePolicyService
+    };
+  };
+
+  const buildCertificatePem = async () => {
+    const keys = await crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
+    const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "0a1b2c",
+      name: "CN=web.example.com",
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2026-04-01"),
+      keys,
+      signingAlgorithm: ALG
+    });
+    return certificate.toString("pem");
+  };
+
+  it("refuses an importer who can't revoke the deleted original directly when no approval policy covers it", async () => {
+    const { service } = buildReimportService({
+      originalPermissions: [
+        { action: ResourcePermissionCertificateActions.RequestRevocation, subject: ResourcePermissionSub.Certificates }
+      ]
+    });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow(
+      new PermissionBoundaryError({
+        message:
+          "Certificate 'web' was deleted from Application 'app-a'. Importing it again needs permission to revoke it in 'app-a'.",
+        details: { missingPermissions: [{ action: "delete", subject: "certificates" }] }
+      })
+    );
+  });
+
+  it("explains the refusal when the importer has no permission on the deleted original's Application", async () => {
+    const { service } = buildReimportService({ originalPermissions: [] });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow(
+      new PermissionBoundaryError({
+        message:
+          "Certificate 'web' was deleted from Application 'app-a'. Importing it again needs permission to revoke it in 'app-a'.",
+        details: { missingPermissions: [{ action: "request-revocation", subject: "certificates" }] }
+      })
+    );
+  });
+
+  it("names neither the certificate nor its Application to an importer who isn't a member of that Application", async () => {
+    const { service } = buildReimportService({ isMemberOfOriginalApplication: false });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow(
+      "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
+    );
+  });
+
+  it("skips the check for a deleted record in the same Application and profile as the import", async () => {
+    const { service, approvalPolicyService } = buildReimportService({
+      policyByScope: { "app-a/web-servers": originalPolicy }
+    });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        applicationId: "app-a",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow("stop here");
+    expect(approvalPolicyService.matchPolicy).not.toHaveBeenCalled();
+  });
+
+  it("refuses an import where the deleted original's revocation approval policy would not apply", async () => {
+    const { service } = buildReimportService({ policyByScope: { "app-a/web-servers": originalPolicy } });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        applicationId: "app-b",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow(
+      new BadRequestError({
+        message:
+          "Certificate 'web' is covered by revocation approval policy 'prod-revocations'. Import it into an Application and profile covered by the same policy."
+      })
+    );
+  });
+
+  it("checks every deleted record of the certificate, not only the most recent one", async () => {
+    const { service } = buildReimportService({
+      policyByScope: { "app-a/web-servers": originalPolicy },
+      deletedRecords: [
+        { ...deletedOriginal, id: "cert-1", applicationId: "app-b", deletedAt: new Date("2026-11-01T00:00:00.000Z") },
+        deletedOriginal
+      ]
+    });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        applicationId: "app-b",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow("is covered by revocation approval policy 'prod-revocations'");
+  });
+
+  it("refuses an import into another profile of the same Application that the policy does not cover", async () => {
+    const { service } = buildReimportService({
+      policyByScope: { "app-a/old-servers": originalPolicy },
+      deletedRecords: [{ ...deletedOriginal, profileId: "profile-0" }]
+    });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        applicationId: "app-a",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow("is covered by revocation approval policy 'prod-revocations'");
+  });
+
+  it("refuses under the serial lock when the certificate was deleted again after the checks ran", async () => {
+    const { service, certificateDAL, certificatePolicyService } = buildReimportService({
+      deletedRecords: [],
+      deletedRecordsUnderLock: [{ ...deletedOriginal, id: "cert-3" }]
+    });
+    certificatePolicyService.validateCertificateRequest.mockResolvedValue({ isValid: true, errors: [], warnings: [] });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow("was deleted while it was being imported. Import it again.");
+    expect(certificateDAL.lockSerialNumber).toHaveBeenCalled();
+    expect(certificateDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("allows the import where the same approval policy covers the new certificate", async () => {
+    const { service, approvalPolicyService } = buildReimportService({
+      policyByScope: { "app-a/old-servers": originalPolicy, "app-a/web-servers": originalPolicy },
+      deletedRecords: [{ ...deletedOriginal, profileId: "profile-0" }]
+    });
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        applicationId: "app-a",
+        profileId: "profile-1",
+        certificatePem: await buildCertificatePem()
+      })
+    ).rejects.toThrow("stop here");
+    expect(approvalPolicyService.matchPolicy).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("certificate revocation behind an approval policy", () => {
   const applicationCertificate = {
     ...liveCertificate,
@@ -363,17 +866,21 @@ describe("certificate revocation behind an approval policy", () => {
     applicationPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
   } = {}) => {
     let stored: Record<string, unknown> = { ...applicationCertificate };
+    const otherRecordsUpdate = vi.fn().mockResolvedValue([]);
     const certificateDAL = {
       findById: vi.fn().mockImplementation(async () => stored),
       findByIdForUpdate: vi.fn().mockImplementation(async () => stored),
-      update: vi.fn().mockImplementation(async (_filter: unknown, data: Record<string, unknown>) => {
+      update: vi.fn().mockImplementation(async (filter: object, data: Record<string, unknown>, trx?: Knex) => {
+        if ("$in" in filter) return otherRecordsUpdate(filter, data, trx) as Promise<unknown[]>;
         stored = { ...stored, ...data };
         return [stored];
       }),
       transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
       findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined),
       primaryNode: vi.fn().mockReturnValue(primaryDb),
-      findByThumbprintInOrg: vi.fn().mockResolvedValue([])
+      findByThumbprintInOrg: vi.fn().mockResolvedValue([]),
+      lockSerialNumber: vi.fn().mockResolvedValue(undefined),
+      findSameCertificateRecords: vi.fn().mockResolvedValue([])
     };
     const certificateAuthorityDAL = { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) };
     const certificateProfileDAL = {
@@ -435,6 +942,7 @@ describe("certificate revocation behind an approval policy", () => {
     return {
       service: certificateServiceFactory(deps),
       certificateDAL,
+      otherRecordsUpdate,
       certificateAuthorityDAL,
       certificateProfileDAL,
       certificateAuthorityService,
@@ -654,6 +1162,177 @@ describe("certificate revocation behind an approval policy", () => {
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+    });
+
+    it("revokes the active certificate when a thumbprint matches it and the deleted record it was re-imported from", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findByThumbprintInOrg.mockResolvedValue([
+        { ...applicationCertificate, id: "cert-1" },
+        { ...applicationCertificate, id: "cert-0", deletedAt: new Date("2026-10-01T00:00:00.000Z") }
+      ]);
+
+      const result = await ctx.service.revokeCert({
+        thumbprint: "ab".repeat(32),
+        revocationReason: CrlReason.KEY_COMPROMISE,
+        ...actor
+      });
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.certificateDAL.update).toHaveBeenCalledWith(
+        { id: "cert-1" },
+        expect.objectContaining({ status: CertStatus.REVOKED }),
+        expect.anything()
+      );
+    });
+
+    const deletedCertificate = { ...applicationCertificate, deletedAt: new Date("2026-10-01T00:00:00.000Z") };
+    const reimportedCertificate = { ...applicationCertificate, id: "cert-2" };
+
+    it("revokes the active copy when the deleted record of the same certificate is revoked", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findById.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findSameCertificateRecords.mockResolvedValue([reimportedCertificate, deletedCertificate]);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue(reimportedCertificate);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.certificateDAL.findSameCertificateRecords).toHaveBeenCalledWith(
+        {
+          serialNumbers: expect.arrayContaining([applicationCertificate.serialNumber]) as string[],
+          caId: "ca-1",
+          fingerprintSha256: deletedCertificate.fingerprintSha256
+        },
+        primaryDb
+      );
+      expect(ctx.certificateDAL.update).toHaveBeenCalledWith(
+        { id: "cert-2" },
+        expect.objectContaining({ status: CertStatus.REVOKED }),
+        tx
+      );
+      expect(ctx.otherRecordsUpdate).toHaveBeenCalledWith(
+        { $in: { id: [deletedCertificate.id] } },
+        expect.objectContaining({ status: CertStatus.REVOKED, revocationReason: expect.any(Number) as number }),
+        tx
+      );
+    });
+
+    it("asks for approval under the active copy's policy when the deleted record is revoked", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findById.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findSameCertificateRecords.mockResolvedValue([reimportedCertificate]);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestData: expect.objectContaining({ certificateId: "cert-2" }) as unknown
+        })
+      );
+      expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+    });
+
+    it("records every other record of the certificate it revokes in the audit log, under the serial lock", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findSameCertificateRecords.mockResolvedValue([{ ...deletedCertificate, id: "cert-0" }]);
+      ctx.otherRecordsUpdate.mockResolvedValue([{ ...deletedCertificate, id: "cert-0" }]);
+
+      await ctx.service.revokeCert(revokeRequest);
+
+      expect(ctx.certificateDAL.lockSerialNumber).toHaveBeenCalledWith(applicationCertificate.serialNumber, tx);
+      expect(ctx.certificateDAL.lockSerialNumber.mock.invocationCallOrder[0]).toBeLessThan(
+        ctx.otherRecordsUpdate.mock.invocationCallOrder[0]
+      );
+      expect(ctx.auditLogService.createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: expect.objectContaining({
+            type: EventType.REVOKE_CERT,
+            metadata: expect.objectContaining({
+              certId: "cert-0",
+              source: CertificateRevocationSource.SameCertificate,
+              revokedThroughCertId: applicationCertificate.id,
+              revokedThroughCertName: applicationCertificate.friendlyName
+            }) as object
+          }) as object
+        })
+      );
+    });
+
+    it("sends revocation alerts for another live record of the certificate it revokes", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findSameCertificateRecords.mockResolvedValue([{ ...applicationCertificate, id: "cert-3" }]);
+      ctx.otherRecordsUpdate.mockResolvedValue([{ ...applicationCertificate, id: "cert-3" }]);
+
+      await ctx.service.revokeCert(revokeRequest);
+
+      expect(ctx.certificateAlertEventEmitter.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ certificateId: "cert-3" })
+      );
+    });
+
+    it("refuses under the serial lock on an internal CA when the certificate is imported again while it is being revoked", async () => {
+      const ctx = buildRevocationService({ ca: internalCa });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findById.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findSameCertificateRecords.mockImplementation(async (_filter: unknown, trx: unknown) =>
+        trx === tx ? [reimportedCertificate] : []
+      );
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+        "was imported again while it was being revoked. Revoke it again so the imported certificate's permissions and approval policy apply."
+      );
+      expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+    });
+
+    it("revokes the copy imported mid-revocation once an external CA has already revoked the certificate", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findById.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findSameCertificateRecords.mockImplementation(async (_filter: unknown, trx: unknown) =>
+        trx === tx ? [reimportedCertificate] : []
+      );
+      ctx.otherRecordsUpdate.mockResolvedValue([reimportedCertificate]);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.certificateAuthorityService.revokeCertificate).toHaveBeenCalled();
+      expect(ctx.otherRecordsUpdate).toHaveBeenCalled();
+      expect(ctx.certificateAlertEventEmitter.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ certificateId: "cert-2" })
+      );
+    });
+
+    it("revokes a deleted certificate that has no copy still on record", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findById.mockResolvedValue(deletedCertificate);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue(deletedCertificate);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.certificateDAL.update).toHaveBeenCalledWith({ id: "cert-1" }, expect.anything(), tx);
+    });
+
+    it("refuses a thumbprint that matches only deleted certificates, more than one of them", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findByThumbprintInOrg.mockResolvedValue([
+        { ...applicationCertificate, id: "cert-1", deletedAt: new Date("2026-10-02T00:00:00.000Z") },
+        { ...applicationCertificate, id: "cert-0", deletedAt: new Date("2026-10-01T00:00:00.000Z") }
+      ]);
+
+      await expect(
+        ctx.service.revokeCert({ thumbprint: "ab".repeat(32), revocationReason: CrlReason.KEY_COMPROMISE, ...actor })
+      ).rejects.toThrow("Several deleted certificates match this thumbprint. Revoke by certificate ID instead.");
     });
 
     it.each([
@@ -938,6 +1617,24 @@ describe("certificate revocation behind an approval policy", () => {
       ]);
       const [failure] = ctx.auditEvents();
       expect(failure.metadata.error).not.toContain("still active");
+    });
+
+    it("refuses an approved request on a deleted record that was imported again, so the copy's policy applies", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findById.mockResolvedValue({
+        ...applicationCertificate,
+        deletedAt: new Date("2026-10-01T00:00:00.000Z")
+      });
+      ctx.certificateDAL.findSameCertificateRecords.mockResolvedValue([{ ...applicationCertificate, id: "cert-2" }]);
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        `Certificate '${applicationCertificate.friendlyName}' was deleted and imported again after this request was made. Request revocation of the imported certificate instead, so its approval policy applies.`
+      );
     });
 
     it("passes on the CA's own message as a complete sentence", async () => {
@@ -1278,5 +1975,25 @@ describe("certificate revocation behind an approval policy", () => {
         })
       );
     });
+  });
+});
+
+describe("certificate lookups by serial number", () => {
+  const buildLookupService = () => {
+    const certificateDAL = {
+      findWithFullDetails: vi.fn().mockResolvedValue(undefined),
+      findBySerialNumberInOrg: vi.fn().mockResolvedValue(undefined)
+    };
+    return { service: certificateServiceFactory({ certificateDAL } as unknown as TDeps), certificateDAL };
+  };
+
+  it("looks the certificate up only in the caller's organization", async () => {
+    const { service, certificateDAL } = buildLookupService();
+
+    await expect(service.getCert({ ...actor, serialNumber: "0a1b2c" })).rejects.toThrow(NotFoundError);
+    await expect(service.getCertBody({ ...actor, serialNumber: "0a1b2c" })).rejects.toThrow(NotFoundError);
+
+    expect(certificateDAL.findWithFullDetails).toHaveBeenCalledWith({ serialNumber: "0a1b2c", orgId: "org-1" });
+    expect(certificateDAL.findBySerialNumberInOrg).toHaveBeenCalledWith({ orgId: "org-1", serialNumber: "0a1b2c" });
   });
 });

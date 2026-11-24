@@ -28,12 +28,17 @@ export const withMigrationConnection = async (knex: Knex, run: (raw: TMigrationR
   }
 };
 
-export const createIndexConcurrently = async (raw: TMigrationRaw, name: string, definition: string) => {
+export const createIndexConcurrently = async (
+  raw: TMigrationRaw,
+  name: string,
+  definition: string,
+  { unique = false }: { unique?: boolean } = {}
+) => {
   const invalid = await raw(
     `SELECT 1 FROM pg_class c JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = '${name}' AND NOT i.indisvalid`
   );
   if (invalid.rows.length > 0) {
     await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
   }
-  await raw(`CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ${definition}`);
+  await raw(`CREATE ${unique ? "UNIQUE " : ""}INDEX CONCURRENTLY IF NOT EXISTS "${name}" ${definition}`);
 };

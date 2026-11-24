@@ -162,7 +162,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "create" | "findById" | "findOne" | "primaryNode" | "transaction" | "updateById"
+    "create" | "findById" | "findOne" | "findOneLiveFirst" | "primaryNode" | "transaction" | "updateById"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;

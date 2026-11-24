@@ -32,7 +32,7 @@ import {
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { keySizeToAlgorithms } from "./certificate-fns";
+import { keySizeToAlgorithms, toMinimalSerialNumber } from "./certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
 
 // Scoped to UI-surfaced algorithms; intentionally narrower than pqc-utils.PQC_ALGORITHMS.
@@ -596,6 +596,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
         .select(selectAllTableCols(TableName.Certificate));
 
       if (limit) void query.limit(limit);
@@ -603,6 +604,65 @@ export const certificateDALFactory = (db: TDbClient) => {
       return await query;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate by thumbprint in org" });
+    }
+  };
+
+  const findBySerialNumberInOrg = async (
+    { orgId, serialNumber }: { orgId: string; serialNumber?: string },
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    if (!serialNumber) return undefined;
+    try {
+      const certificate = await (tx || db.replicaNode())(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Certificate}.serialNumber`, serialNumber)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate))
+        .first();
+      return certificate as TCertificates | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by serial number in org" });
+    }
+  };
+
+  const findSameCertificateRecords = async (
+    {
+      serialNumbers,
+      caId,
+      fingerprintSha256,
+      orgId
+    }: { serialNumbers: string[]; caId: string; fingerprintSha256?: string | null; orgId?: string },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
+    try {
+      const records = await (tx || db.replicaNode())(TableName.Certificate)
+        .whereIn("serialNumber", serialNumbers)
+        .where((sameCertificate) => {
+          void sameCertificate.where((onCa) => {
+            void onCa.where("caId", caId);
+            if (fingerprintSha256) {
+              void onCa.where((fingerprint) => {
+                void fingerprint.whereNull("fingerprintSha256").orWhere("fingerprintSha256", fingerprintSha256);
+              });
+            }
+          });
+          if (fingerprintSha256 && orgId) {
+            void sameCertificate.orWhere((withoutCa) => {
+              void withoutCa
+                .whereNull("caId")
+                .where("fingerprintSha256", fingerprintSha256)
+                .whereIn("projectId", (projectQuery) => {
+                  void projectQuery.select("id").from(TableName.Project).where("orgId", orgId);
+                });
+            });
+          }
+        })
+        .orderBy("deletedAt", "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate));
+      return records as TCertificates[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find records of the same certificate" });
     }
   };
 
@@ -1229,7 +1289,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     canRenewFromCsr: boolean;
   };
 
-  type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
+  type TCertificateLookupFilter =
+    | { id: string; serialNumber?: never; orgId?: never }
+    | { id?: never; serialNumber: string; orgId: string };
 
   const findByIdForUpdate = async (id: string, tx: Knex) => {
     try {
@@ -1261,6 +1323,26 @@ export const certificateDALFactory = (db: TDbClient) => {
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest renewal of certificate" });
     }
+  };
+
+  const findOneLiveFirst = async (
+    filter: Parameters<typeof certificateOrm.find>[0],
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    const [certificate] = await certificateOrm.find(filter, { limit: 1, sort: [["deletedAt", "desc", "first"]], tx });
+    return certificate;
+  };
+
+  const toSerialNumberLockKey = (serialNumber: string) => `certificate-serial:${toMinimalSerialNumber(serialNumber)}`;
+
+  const lockSerialNumber = async (serialNumber: string, tx: Knex) => {
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [toSerialNumberLockKey(serialNumber)]);
+  };
+
+  const lockSerialNumbers = async (serialNumbers: string[], tx: Knex) => {
+    const keys = [...new Set(serialNumbers.map(toSerialNumberLockKey))];
+    if (!keys.length) return;
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
   };
 
   const findWithFullDetails = async (
@@ -1297,7 +1379,12 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
-        query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
+        query = query
+          .whereIn(`${TableName.Certificate}.projectId`, (projectQuery) => {
+            void projectQuery.select("id").from(TableName.Project).where("orgId", filter.orgId);
+          })
+          .where(`${TableName.Certificate}.serialNumber`, filter.serialNumber)
+          .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first");
       }
 
       const result = (await query.first()) as
@@ -1689,6 +1776,9 @@ export const certificateDALFactory = (db: TDbClient) => {
   return {
     primaryNode,
     ...certificateOrm,
+    findOneLiveFirst,
+    lockSerialNumber,
+    lockSerialNumbers,
     findByIdForUpdate,
     findByIdForShare,
     create,
@@ -1702,6 +1792,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
+    findBySerialNumberInOrg,
+    findSameCertificateRecords,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesMatchingSyncFilters,

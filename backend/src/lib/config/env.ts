@@ -345,6 +345,7 @@ const envSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
+    INITIAL_SETUP_ACTIVATION_TOKEN: zpStr(z.string().min(32).max(256).optional()),
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
