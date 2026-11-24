@@ -1,5 +1,7 @@
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 
+import { Plan } from "../models/plan";
+import { testFeatures } from "../testing/test-features";
 import { PlanCache } from "./plan-cache";
 
 const ROOT_ID = "11111111-1111-4111-8111-111111111111";
@@ -17,5 +19,70 @@ describe("PlanCache revalidate lock", () => {
 
     // Assert
     expect([first, second].filter(Boolean)).toHaveLength(1);
+  });
+});
+
+describe("PlanCache read and write", () => {
+  const plan = Plan.restore({ ...testFeatures(), slug: "pro" });
+  const build = () => {
+    const clock = { now: 1_000_000 };
+    const keyStore = new InMemoryKeyStore(() => clock.now);
+    return { clock, keyStore, cache: new PlanCache(keyStore, () => clock.now) };
+  };
+
+  test("should serve a written plan as fresh, then stale before it expires, then not at all", async () => {
+    // Setup
+    const { clock, cache } = build();
+    await cache.write(ROOT_ID, plan);
+
+    // Action
+    clock.now += 23 * 60_000;
+    const fresh = await cache.read(ROOT_ID);
+    clock.now += 4 * 60_000;
+    const stale = await cache.read(ROOT_ID);
+    clock.now += 4 * 60_000;
+    const expired = await cache.read(ROOT_ID);
+
+    // Assert
+    expect([fresh.plan?.slug, fresh.stale]).toEqual(["pro", false]);
+    expect([stale.plan?.slug, stale.stale]).toEqual(["pro", true]);
+    expect(expired.plan).toBeNull();
+  });
+
+  test("should keep the plan but mark it stale on invalidate, and leave the refresh time out of the plan", async () => {
+    // Setup
+    const { cache } = build();
+    await cache.write(ROOT_ID, plan);
+
+    // Action
+    await cache.invalidate(ROOT_ID);
+    const { plan: read, stale } = await cache.read(ROOT_ID);
+
+    // Assert
+    expect([read?.slug, stale]).toEqual(["pro", true]);
+    expect(read?.toJSON()).toEqual(plan.toJSON());
+  });
+
+  test("should read a plan an old pod wrote, with no refresh time, as stale", async () => {
+    // Setup
+    const { keyStore, cache } = build();
+    await keyStore.setItemWithExpiry(`infisical-cloud-plan-${ROOT_ID}`, 900, JSON.stringify(plan.toJSON()));
+
+    // Action
+    const { plan: read, stale } = await cache.read(ROOT_ID);
+
+    // Assert
+    expect([read?.slug, stale]).toEqual(["pro", true]);
+  });
+
+  test("should do nothing when invalidating a plan that isn't cached", async () => {
+    // Setup
+    const { cache } = build();
+
+    // Action
+    await cache.invalidate(ROOT_ID);
+
+    // Assert
+    expect((await cache.read(ROOT_ID)).plan).toBeNull();
   });
 });

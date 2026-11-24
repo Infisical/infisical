@@ -55,6 +55,7 @@ export const buildLicense = async ({
     licensePolicyService: licenseServer,
     licenseServer,
     organizationsProjectsService: buildOrganizations(organizations),
+    now,
     usageCounters: counters
   });
   module.start();

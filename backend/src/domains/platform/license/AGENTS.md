@@ -28,16 +28,18 @@ anyone can edit into a paid one.
 
 Rules:
 
-- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. Fresh and
-  pass-through markers are keyed by root too; the usage reconcile marker stays per org.
+- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. The
+  pass-through marker are keyed by root too; the usage reconcile marker stays per org.
 - **A plan fetch sends the root org's name and slug.** That's mostly how the License Server learns them, so read
   them fresh each fetch (`findOrganization`), since orgs get renamed.
-- **Key names, TTLs and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`, `UsageQueues`): old
-  pods share them during a rolling deploy.
-- **`getPlan` is the only plan read; it serves the cached plan while it refreshes it.** The plan key lives a day;
-  past its `fresh` marker (about 15 minutes) `getPlan` still returns it and refreshes it in the background
+- **Key names, value formats and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`,
+  `UsageQueues`): old pods share them during a rolling deploy. The cached plan's `refreshAt` is a top-level field
+  beside the features, not a wrapper, so old pods still read it as a plan.
+- **`getPlan` is the only plan read; it serves the cached plan while it refreshes it.** The plan key lives 30
+  minutes; past the `refreshAt` stored in it (about 5 minutes before expiry, jittered) `getPlan` still returns it
+  and refreshes it in the background
   (`revalidateInBackground`, one caller per root org under the revalidate lock). A failed refresh leaves the
-  cached plan in place, so a License Server outage keeps serving the last plan it returned. `invalidatePlan` and a
+  cached plan in place until it expires. `invalidatePlan` and a
   billing change (`refreshPlan` with `afterBillingChange`) only mark the plan stale; only `closeDeletedOrg` removes
   it. Do not add a second copy of the plan or a "last known plan" read beside it.
 - **The free plan is served only when nothing is cached and nothing can be fetched** (unknown org, License Server,

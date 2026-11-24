@@ -53,9 +53,9 @@ export class LicenseService implements TLicenseService {
     return this.licensePolicyService.isOffline();
   }
 
-  // Self-hosted orgs get the instance license. On cloud, a cached plan is always served, refreshed in the background
-  // once stale, so a License Server outage keeps the last plan it returned. Only with nothing cached and no way to
-  // fetch (unknown org, License Server, database or key store failure) is the free plan served, uncached.
+  // Self-hosted orgs get the instance license. On cloud, a cached plan is served until it expires, refreshed in the
+  // background once stale. Only with nothing cached and no way to fetch (unknown org, License Server, database or key
+  // store failure) is the free plan served, uncached.
   async getPlan(orgId: string): Promise<Plan> {
     const instance = this.getInstanceEntitlements();
     if (!instance.isCloud()) return instance.plan();

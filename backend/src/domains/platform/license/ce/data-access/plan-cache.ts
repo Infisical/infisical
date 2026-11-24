@@ -6,52 +6,52 @@ import { applyJitter } from "@app/lib/dates";
 import { Plan, TPlanFeatures } from "../models/plan";
 import { TPlanCache } from "../services/dependencies";
 
-// Key names and TTLs are frozen: old pods share the cache during a rolling deploy. Keyed by root org, since the
-// License Server answers for the root.
+// Key names are frozen: old pods share the cache during a rolling deploy. Keyed by root org, since the License
+// Server answers for the root.
 const PlanKeys = {
   plan: (rootOrgId: string) => `infisical-cloud-plan-${rootOrgId}`,
   passThrough: (rootOrgId: string) => `license-cache-passthrough-${rootOrgId}`,
-  revalidateLock: (rootOrgId: string) => `license-cache-revalidate-lock-${rootOrgId}`,
-  // The soft TTL: past it the plan is still served, and refreshed in the background.
-  fresh: (rootOrgId: string) => `infisical-cloud-plan-fresh-${rootOrgId}`
+  revalidateLock: (rootOrgId: string) => `license-cache-revalidate-lock-${rootOrgId}`
 };
 
 const PlanKeyTtls = {
-  // The hard TTL: how long a plan outlives a License Server outage.
-  planInSeconds: 86400,
-  freshInSeconds: 900,
+  planInSeconds: 1800,
+  // The background refresh starts this long before the plan expires, jittered so orgs don't refresh together.
+  refreshAheadInSeconds: 300,
   // Covers Stripe reconciling a billing change.
   passThroughInSeconds: 180,
   // Hosted checkout only applies once the customer finishes it, which can take minutes.
   passThroughCheckoutInSeconds: 900,
-  revalidateLockInSeconds: 10,
-  refreshAheadInSeconds: 120
+  revalidateLockInSeconds: 10
 };
 
+// A top-level field beside the features, not a wrapper, so old pods still read the value as a plan. A value without
+// it (written by an old pod, or invalidated) is stale.
+type TCachedPlan = TPlanFeatures & { refreshAt?: number };
+
 export class PlanCache implements TPlanCache {
-  constructor(private readonly keyStore: TDomainKeyStore) {}
+  constructor(
+    private readonly keyStore: TDomainKeyStore,
+    private readonly now: () => number = Date.now
+  ) {}
 
   async read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean; stale: boolean }> {
-    const [raw, passThrough, fresh] = await this.keyStore.getItems([
+    const [raw, passThrough] = await this.keyStore.getItems([
       PlanKeys.plan(rootOrgId),
-      PlanKeys.passThrough(rootOrgId),
-      PlanKeys.fresh(rootOrgId)
+      PlanKeys.passThrough(rootOrgId)
     ]);
     if (!raw) return { plan: null, passThrough: Boolean(passThrough), stale: false };
-    return { plan: Plan.restore(JSON.parse(raw) as TPlanFeatures), passThrough: Boolean(passThrough), stale: !fresh };
+    const { refreshAt, ...features } = JSON.parse(raw) as TCachedPlan;
+    return {
+      plan: Plan.restore(features),
+      passThrough: Boolean(passThrough),
+      stale: !(refreshAt && refreshAt > this.now())
+    };
   }
 
   async write(rootOrgId: string, plan: Plan) {
-    await this.keyStore.setItemWithExpiry(
-      PlanKeys.plan(rootOrgId),
-      PlanKeyTtls.planInSeconds,
-      JSON.stringify(plan.toJSON())
-    );
-    await this.keyStore.setItemWithExpiry(
-      PlanKeys.fresh(rootOrgId),
-      Math.max(applyJitter(PlanKeyTtls.freshInSeconds, 90) - PlanKeyTtls.refreshAheadInSeconds, 1),
-      "1"
-    );
+    const refreshInSeconds = PlanKeyTtls.planInSeconds - applyJitter(PlanKeyTtls.refreshAheadInSeconds, 60);
+    await this.writeValue(rootOrgId, { ...plan.toJSON(), refreshAt: this.now() + refreshInSeconds * 1000 });
   }
 
   // The License Server settles billing changes async (Stripe webhook), so reads keep serving the cached plan
@@ -64,14 +64,16 @@ export class PlanCache implements TPlanCache {
     );
   }
 
-  // Marks the plan stale without removing it: the next read serves it and refreshes it in the background.
+  // Keeps the plan but marks it stale: the next read serves it and refreshes it in the background.
   async invalidate(rootOrgId: string) {
-    await this.keyStore.deleteItem(PlanKeys.fresh(rootOrgId));
+    const raw = await this.keyStore.getItem(PlanKeys.plan(rootOrgId));
+    if (!raw) return;
+    const { refreshAt: _, ...features } = JSON.parse(raw) as TCachedPlan;
+    await this.writeValue(rootOrgId, features);
   }
 
   async delete(rootOrgId: string) {
     await this.keyStore.deleteItem(PlanKeys.plan(rootOrgId));
-    await this.keyStore.deleteItem(PlanKeys.fresh(rootOrgId));
   }
 
   // Single-flight for a background refresh: only the caller that sets the lock refreshes. Expires on its own.
@@ -83,5 +85,9 @@ export class PlanCache implements TPlanCache {
       token
     );
     return acquired === "OK" ? token : null;
+  }
+
+  private async writeValue(rootOrgId: string, value: TCachedPlan) {
+    await this.keyStore.setItemWithExpiry(PlanKeys.plan(rootOrgId), PlanKeyTtls.planInSeconds, JSON.stringify(value));
   }
 }

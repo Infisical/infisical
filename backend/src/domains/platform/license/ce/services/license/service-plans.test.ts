@@ -121,10 +121,11 @@ describe("LicenseService.getPlan", () => {
 
   test("should keep serving the cached plan when a background refresh fails", async () => {
     // Setup
-    const { licenseService, licenseServer, keyStore } = await buildLicense();
+    let now = 1_000_000;
+    const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
     licenseServer.failNextFetches = 1;
-    await keyStore.deleteItem(`infisical-cloud-plan-fresh-${ROOT.id}`);
+    now += 27 * 60 * 1000;
 
     // Action
     await licenseService.getPlan(ROOT.id);
@@ -138,19 +139,21 @@ describe("LicenseService.getPlan", () => {
     expect(served.slug).toBe("enterprise");
   });
 
-  test("should keep serving the last plan through a License Server outage of hours", async () => {
+  test("should serve the cached plan through a License Server outage until it expires, then the free plan", async () => {
     // Setup
     let now = 1_000_000;
     const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
     licenseServer.failNextFetches = Number.MAX_SAFE_INTEGER;
-    now += 6 * 60 * 60 * 1000;
 
     // Action
-    const plan = await licenseService.getPlan(ROOT.id);
+    now += 29 * 60 * 1000;
+    const before = await licenseService.getPlan(ROOT.id);
+    now += 2 * 60 * 1000;
+    const after = await licenseService.getPlan(ROOT.id);
 
     // Assert
-    expect(plan.slug).toBe("enterprise");
+    expect([before.slug, after.slug]).toEqual(["enterprise", null]);
   });
 
   test("should fetch on every concurrent cache miss, since none has a plan to serve", async () => {
@@ -166,11 +169,12 @@ describe("LicenseService.getPlan", () => {
   });
 
   test("should serve the cached plan near expiry and refresh it once in the background", async () => {
-    // Setup: the plan's own TTL is jittered, so drop only the refresh marker rather than advancing the clock.
-    const { licenseService, licenseServer, keyStore } = await buildLicense();
+    // Setup
+    let now = 1_000_000;
+    const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
-    await keyStore.deleteItem(`infisical-cloud-plan-fresh-${ROOT.id}`);
+    now += 27 * 60 * 1000;
 
     // Action
     const served = await licenseService.getPlan(ROOT.id);
@@ -190,7 +194,7 @@ describe("LicenseService.getPlan", () => {
     let now = 1_000_000;
     const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
-    now += 600 * 1000;
+    now += 23 * 60 * 1000;
 
     // Action
     await licenseService.getPlan(ROOT.id);
