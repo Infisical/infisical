@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
@@ -68,6 +69,66 @@ func TestEmailDomain_Verify(t *testing.T) {
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, string(res.Body), "DNS TXT record not found or value does not match")
 		require.Equal(t, "pending", domainStatus(t, tn, d.Domain))
+	})
+
+	t.Run("should return a conflict and keep the domain verified when it is verified again", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
+		d := onlyDomain(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.VerifyEmailDomainWithResponse(t.Context(), d.Id)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusConflict, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "is already verified")
+		require.Equal(t, "verified", domainStatus(t, tn, d.Domain))
+	})
+}
+
+func TestEmailDomain_Delete(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should delete the only verified domain when SSO is not enforced", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
+		d := onlyDomain(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.DeleteEmailDomainWithResponse(t.Context(), d.Id)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Empty(t, domainNames(t, tn))
+	})
+
+	t.Run("should refuse to delete the only verified domain while SSO is enforced", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		o := sso.NewOIDC(t, tn)
+		o.SignedUp(t)
+		sso.Enforce(t, tn)
+		d := onlyDomain(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.DeleteEmailDomainWithResponse(t.Context(), d.Id)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "only verified domain and SSO enforcement is on")
+		require.Equal(t, "verified", domainStatus(t, tn, d.Domain))
 	})
 }
 
@@ -140,6 +201,13 @@ func pendingDomain(t *testing.T, tn *harness.Tenant) emailDomain {
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	d := res.JSON200.EmailDomain
 	return emailDomain{Id: d.Id, Domain: d.Domain, VerificationCode: d.VerificationCode, VerificationRecordName: d.VerificationRecordName}
+}
+
+func onlyDomain(t *testing.T, tn *harness.Tenant) emailDomain {
+	t.Helper()
+	domains := listDomains(t, tn).JSON200.EmailDomains
+	require.Len(t, domains, 1)
+	return emailDomain{Id: domains[0].Id, Domain: domains[0].Domain}
 }
 
 func listDomains(t *testing.T, tn *harness.Tenant) *api.ListEmailDomainsResponse {

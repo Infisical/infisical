@@ -93,6 +93,7 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
+  EmailDomains = "Email Domains",
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
@@ -4477,6 +4478,20 @@ export const OidcSSo = {
   DELETE_CONFIG: {
     organizationId:
       "The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request."
+  }
+};
+
+export const EMAIL_DOMAINS = {
+  CREATE: {
+    domain:
+      "The email domain to claim for the organization (e.g. company.com). The response includes the DNS TXT record to publish before verifying it."
+  },
+  VERIFY: {
+    emailDomainId:
+      "The ID of the email domain to verify. Infisical looks up the DNS TXT record named in verificationRecordName and expects the value infisical-domain-verification=<verificationCode>."
+  },
+  DELETE: {
+    emailDomainId: "The ID of the email domain to delete."
   }
 };
 

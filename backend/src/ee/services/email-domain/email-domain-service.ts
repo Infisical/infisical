@@ -7,9 +7,10 @@ import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isValidEmailDomain } from "@app/lib/validator";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
 import {
@@ -25,6 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     TEmailDomainDALFactory,
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
 };
@@ -37,6 +39,7 @@ const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
+  orgDAL,
   permissionService,
   licenseService
 }: TEmailDomainServiceFactoryDep) => {
@@ -152,14 +155,22 @@ export const emailDomainServiceFactory = ({
       });
     }
 
-    const emailDomainRecord = await emailDomainDAL.findOne({
-      id: emailDomainId,
-      orgId,
-      status: EmailDomainStatus.Pending
-    });
+    const emailDomainRecord = await emailDomainDAL.findOne({ id: emailDomainId, orgId });
     if (!emailDomainRecord) {
       throw new NotFoundError({
         message: "Email domain not found."
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      throw new ConflictError({
+        message: `Email domain '${emailDomainRecord.domain}' is already verified.`
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Expired) {
+      throw new BadRequestError({
+        message: "Verification code has expired. Please create a new domain verification request."
       });
     }
 
@@ -267,6 +278,19 @@ export const emailDomainServiceFactory = ({
       throw new NotFoundError({
         message: "Email domain not found."
       });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      const org = await orgDAL.findById(orgId);
+      if (org?.authEnforced) {
+        const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+        // With SSO enforced, members can only sign in with an email on a verified domain
+        if (verifiedDomains.length <= 1) {
+          throw new BadRequestError({
+            message: `Email domain '${emailDomainRecord.domain}' is the organization's only verified domain and SSO enforcement is on. Turn off SSO enforcement before deleting it.`
+          });
+        }
+      }
     }
 
     await emailDomainDAL.deleteById(emailDomainId);

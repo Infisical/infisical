@@ -58,17 +58,16 @@ func TestOIDCConfig_Create(t *testing.T) {
 		require.Equal(t, before, readConfig(t, o.Tenant, o.Tenant.Admin))
 	})
 
-	t.Run("should create the config in the token's organization when a machine identity sends no organization ID", func(t *testing.T) {
+	t.Run("should create the config in the token's organization when no organization ID is sent", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
-		identity := tn.NewMachineIdentity(t, harness.OrgRole("admin"))
 		body := configBody(t, tn)
 		body.OrganizationId = nil
 
 		// Action
-		res, err := identity.API.CreateOidcConfigWithResponse(t.Context(), body)
+		res, err := tn.Admin.API.CreateOidcConfigWithResponse(t.Context(), body)
 
 		// Assert
 		require.NoError(t, err)
@@ -333,7 +332,7 @@ func TestOIDCConfig_Delete(t *testing.T) {
 		enforce(t, o)
 
 		// Action
-		res, err := o.Tenant.Admin.API.DeleteOidcConfigWithResponse(t.Context())
+		res, err := o.Tenant.Admin.API.DeleteOidcConfigWithResponse(t.Context(), nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -349,7 +348,7 @@ func TestOIDCConfig_Delete(t *testing.T) {
 		tn := harness.From(t).NewTenant(t)
 
 		// Action
-		res, err := tn.Admin.API.DeleteOidcConfigWithResponse(t.Context())
+		res, err := tn.Admin.API.DeleteOidcConfigWithResponse(t.Context(), nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -364,28 +363,12 @@ func TestOIDCConfig_Delete(t *testing.T) {
 		member := o.Tenant.NewUser(t)
 
 		// Action
-		res, err := member.API.DeleteOidcConfigWithResponse(t.Context())
+		res, err := member.API.DeleteOidcConfigWithResponse(t.Context(), nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.True(t, readConfig(t, o.Tenant, o.Tenant.Admin).IsActive)
-	})
-
-	t.Run("should delete the config when a machine identity has SSO delete", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		o := setup(t)
-		identity := o.Tenant.NewMachineIdentity(t, harness.OrgRole("admin"))
-
-		// Action
-		res, err := identity.API.DeleteOidcConfigWithResponse(t.Context())
-
-		// Assert
-		require.NoError(t, err)
-		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		requireNoConfig(t, o.Tenant)
 	})
 }
 

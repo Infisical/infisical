@@ -1556,6 +1556,15 @@
                     ]
                   },
                   {
+                    "group": "Email Domains",
+                    "pages": [
+                      "api-reference/endpoints/organizations/email-domains/list",
+                      "api-reference/endpoints/organizations/email-domains/create",
+                      "api-reference/endpoints/organizations/email-domains/verify",
+                      "api-reference/endpoints/organizations/email-domains/delete"
+                    ]
+                  },
+                  {
                     "group": "SCIM",
                     "pages": [
                       {

@@ -120615,7 +120615,7 @@ type ListEmailDomains500JSONResponseBodyStatusCode float32
 
 // CreateEmailDomainJSONBody defines parameters for CreateEmailDomain.
 type CreateEmailDomainJSONBody struct {
-	// Domain The domain to verify (e.g., company.com)
+	// Domain The email domain to claim for the organization (e.g. company.com). The response includes the DNS TXT record to publish before verifying it.
 	Domain string `json:"domain"`
 }
 
@@ -174658,20 +174658,30 @@ type ClientInterface interface {
 	ListDynamicSecretLeases(ctx context.Context, name string, params *ListDynamicSecretLeasesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+	//
+	// List email domains.
 	ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 	// with any type of body and a specified content type.
+	//
+	// Create email domain.
 	CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 	// Takes a body of the `application/json` content type.
+	//
+	// Create email domain.
 	CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteEmailDomain performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+	//
+	// Delete email domain.
 	DeleteEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	//
+	// Verify email domain.
 	VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SubscribeToProjectEventsWithBody performs a POST /api/v1/events/subscribe/project-events (the `SubscribeToProjectEvents` operationId) request,
@@ -183318,6 +183328,8 @@ func (c *Client) ListDynamicSecretLeases(ctx context.Context, name string, param
 }
 
 // ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+//
+// List email domains.
 func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListEmailDomainsRequest(c.Server)
 	if err != nil {
@@ -183332,6 +183344,8 @@ func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEdit
 
 // CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 // with any type of body and a specified content type.
+//
+// Create email domain.
 func (c *Client) CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateEmailDomainRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -183346,6 +183360,8 @@ func (c *Client) CreateEmailDomainWithBody(ctx context.Context, contentType stri
 
 // CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 // Takes a body of the `application/json` content type.
+//
+// Create email domain.
 func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateEmailDomainRequest(c.Server, body)
 	if err != nil {
@@ -183359,6 +183375,8 @@ func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJS
 }
 
 // DeleteEmailDomain performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+//
+// Delete email domain.
 func (c *Client) DeleteEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteEmailDomainRequest(c.Server, emailDomainId)
 	if err != nil {
@@ -183372,6 +183390,8 @@ func (c *Client) DeleteEmailDomain(ctx context.Context, emailDomainId openapi_ty
 }
 
 // VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+//
+// Verify email domain.
 func (c *Client) VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyEmailDomainRequest(c.Server, emailDomainId)
 	if err != nil {
@@ -233224,25 +233244,35 @@ type ClientWithResponsesInterface interface {
 
 	// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	//
+	// List email domains.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error)
 
 	// CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 	// with any type of body and a specified content type.
 	//
+	// Create email domain.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
 
 	// CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create email domain.
 	CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
 
 	// DeleteEmailDomainWithResponse performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+	//
+	// Delete email domain.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	DeleteEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteEmailDomainResponse, error)
 
 	// VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	//
+	// Verify email domain.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error)
@@ -383305,6 +383335,8 @@ func (c *ClientWithResponses) ListDynamicSecretLeasesWithResponse(ctx context.Co
 
 // ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 //
+// List email domains.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error) {
 	rsp, err := c.ListEmailDomains(ctx, reqEditors...)
@@ -383317,6 +383349,8 @@ func (c *ClientWithResponses) ListEmailDomainsWithResponse(ctx context.Context, 
 // CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 // with any type of body and a specified content type.
 //
+// Create email domain.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
 	rsp, err := c.CreateEmailDomainWithBody(ctx, contentType, body, reqEditors...)
@@ -383328,6 +383362,8 @@ func (c *ClientWithResponses) CreateEmailDomainWithBodyWithResponse(ctx context.
 
 // CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create email domain.
 func (c *ClientWithResponses) CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
 	rsp, err := c.CreateEmailDomain(ctx, body, reqEditors...)
 	if err != nil {
@@ -383337,6 +383373,8 @@ func (c *ClientWithResponses) CreateEmailDomainWithResponse(ctx context.Context,
 }
 
 // DeleteEmailDomainWithResponse performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+//
+// Delete email domain.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) DeleteEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteEmailDomainResponse, error) {
@@ -383348,6 +383386,8 @@ func (c *ClientWithResponses) DeleteEmailDomainWithResponse(ctx context.Context,
 }
 
 // VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+//
+// Verify email domain.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error) {
