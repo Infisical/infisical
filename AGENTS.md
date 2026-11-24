@@ -9,7 +9,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
 - `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
-- `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
 
@@ -20,7 +19,6 @@ Infisical is an open-source secret management platform. Monorepo layout:
 ```
 infisical/
 ├── backend/               # Fastify 4 API server (see backend/AGENTS.md)
-├── backend-go/            # Go API server — partial rewrite (see backend-go/AGENTS.md)
 ├── frontend/              # React 19 SPA (see frontend/AGENTS.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/AGENTS.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
@@ -37,13 +35,12 @@ infisical/
 ```
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/AGENTS.md`](backend/AGENTS.md) for architecture, patterns, and commands.
-- **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/AGENTS.md`](backend-go/AGENTS.md) for architecture, patterns, and commands.
 - **`frontend/`** — React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/AGENTS.md`](frontend/AGENTS.md) for architecture, patterns, and commands.
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `AGENTS.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/AGENTS.md`](wasm/ironrdp-decoder/AGENTS.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/AGENTS.md`](e2e/AGENTS.md) for the harness and the one-time gamma bootstrap.
 
-- **`tests/`** — Go blackbox suite. Boots a real Infisical in Docker and talks to it over HTTP only, so the same tests run against the Node and Go servers unchanged. Distinct from `backend/e2e-test/` (in-process Vitest, compiled against the Node source) and from `e2e/` (Playwright against a deployed gamma). `make test-suites` from `tests/` runs everything; see [`tests/AGENTS.md`](tests/AGENTS.md) before writing one.
+- **`tests/`** — Go blackbox suite. Boots a real Infisical in Docker and talks to it over HTTP only, so the tests depend on the API contract rather than the server's source. Distinct from `backend/e2e-test/` (in-process Vitest, compiled against the Node source) and from `e2e/` (Playwright against a deployed gamma). `make test-suites` from `tests/` runs everything; see [`tests/AGENTS.md`](tests/AGENTS.md) before writing one.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
 
@@ -131,13 +128,7 @@ and destructure only the keys you need, because that object holds plaintext secr
 
 ### Service Factory + Manual DI (Backend)
 
-No IoC container in either backend. Every service is a factory function with explicit dependencies.
-- **Node.js**: Wired in `backend/src/server/routes/index.ts` — see `backend/AGENTS.md`.
-- **Go**: Wired in `backend-go/internal/server/api/api.go` via `NewRegistry()` — see `backend-go/AGENTS.md`.
-
-### Interface Pattern (Go)
-
-Both handlers and services define narrow interfaces for their dependencies (consumer-defined interfaces). Only expose methods or fields that are needed — keep everything else private. This enables testability and loose coupling.
+No IoC container. Every service is a factory function with explicit dependencies, wired in `backend/src/server/routes/index.ts`; see `backend/AGENTS.md`.
 
 ### Alerting
 
@@ -313,7 +304,7 @@ When a change adds a service, a pattern, or a rule other code must follow, updat
 | Content | Home |
 |---|---|
 | Rules that span packages | this file |
-| Rules that code anywhere in a package must follow | `backend/AGENTS.md`, `backend-go/AGENTS.md`, `frontend/AGENTS.md` |
+| Rules that code anywhere in a package must follow | `backend/AGENTS.md`, `frontend/AGENTS.md` |
 | How a module works inside, for someone editing it | an `AGENTS.md` next to the code (e.g. `backend/src/services/<module>/AGENTS.md`), plus a one-line "read X before touching Y" pointer in the package file |
 | Why one piece of code is written the way it is | a code comment |
 | What must not regress | a test |

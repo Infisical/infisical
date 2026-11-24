@@ -679,13 +679,6 @@ const envSchema = z
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
 
-    /* Go Sidecar ----------------------------------------------------------------------------- */
-    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
-    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
-    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
-    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
-    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
-
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
