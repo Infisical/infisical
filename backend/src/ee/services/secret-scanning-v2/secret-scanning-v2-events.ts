@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 
 export const SECRET_SCANNING_RESOURCE_TYPE = "secret-scanning.data-source";
 

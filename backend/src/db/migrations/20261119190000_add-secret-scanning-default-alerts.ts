@@ -7,7 +7,6 @@ import {
   SECRET_SCANNING_RESOURCE_TYPE
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-events";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -38,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
     createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);

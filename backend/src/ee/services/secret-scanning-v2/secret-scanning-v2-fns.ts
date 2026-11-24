@@ -26,8 +26,8 @@ import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";

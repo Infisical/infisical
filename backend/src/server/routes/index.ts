@@ -4862,7 +4862,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     notificationService,
     telemetryService,
-    eventEmitter: eventOutboxService
+    eventEmitter
   });
 
   const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({

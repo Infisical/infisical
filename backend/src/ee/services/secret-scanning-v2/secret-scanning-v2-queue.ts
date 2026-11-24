@@ -29,6 +29,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, getSecretScanningScanBudgetMs } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -36,7 +37,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
