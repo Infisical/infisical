@@ -544,6 +544,10 @@ const handlebarsClient = (() => {
   return hbs;
 })();
 
+// False for no-access and deny-only role sets.
+export const hasAnyGrant = (permission: { rules: { inverted?: boolean }[] }) =>
+  permission.rules.some((rule) => !rule.inverted);
+
 export const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
   role: U
 ): boolean =>

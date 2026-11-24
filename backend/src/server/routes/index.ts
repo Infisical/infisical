@@ -1788,7 +1788,8 @@ export const registerRoutes = async (
   const orgProductStatsService = orgProductStatsServiceFactory({
     orgProductStatsDAL,
     keyStore,
-    kmsKeyService
+    kmsKeyService,
+    permissionService
   });
 
   const orgAdminService = orgAdminServiceFactory({

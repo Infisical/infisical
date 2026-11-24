@@ -5,12 +5,14 @@ import { conditionsMatcher } from "@app/lib/casl";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
+import { projectNoAccessPermissions, projectViewerPermission } from "./default-roles";
 import {
   checkForInvalidPermissionCombination,
   expandLegacyForbidActions,
   FOREIGN_SSO_SESSION_ERROR_NAME,
   getProjectPermissionFingerprint,
   handlebarsClient,
+  hasAnyGrant,
   interpolatePermissionRules,
   recursiveFolderPathGlob,
   throwIfMissingSecretReadValueOrDescribePermission,
@@ -193,6 +195,16 @@ describe("expandLegacyForbidActions", () => {
     // In prod: allow rules still apply
     expect(ability.can(ProjectPermissionSecretActions.ReadValue, prodSecret)).toBe(true);
     expect(ability.can(ProjectPermissionSecretActions.DescribeAndReadValue, prodSecret)).toBe(true);
+  });
+});
+
+describe("hasAnyGrant", () => {
+  test.each([
+    ["no-access", false, projectNoAccessPermissions],
+    ["deny rules only", false, [forbid({ action: [ProjectPermissionSecretActions.ReadValue] })]],
+    ["viewer", true, projectViewerPermission]
+  ])("%s grants access: %s", (_label, expected, rules) => {
+    expect(hasAnyGrant(createMongoAbility(rules as Rule[]))).toBe(expected);
   });
 });
 

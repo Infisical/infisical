@@ -32,7 +32,7 @@ import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertRoleSetBoundary, hasAnyGrant } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
@@ -205,7 +205,7 @@ export const orgServiceFactory = ({
     rootOrgId: string;
     actorOrgId: string;
   }) => {
-    await permissionService.getOrgPermission({
+    const { permission } = await permissionService.getOrgPermission({
       actor: ActorType.USER,
       actorId: userId,
       orgId,
@@ -233,10 +233,28 @@ export const orgServiceFactory = ({
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
-    return {
+    const organization = {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
       pamProjectId: pamProjects[0]?.id ?? null
+    };
+    if (hasAnyGrant(permission)) return organization;
+
+    // Roles that grant nothing still load this, so they get it without org configuration, and
+    // with pamProjectId only if they belong to that project.
+    const isPamMember = organization.pamProjectId
+      ? await membershipDAL.isUserProjectMember({ projectId: organization.pamProjectId, userId })
+      : false;
+
+    return {
+      ...organization,
+      customerId: null,
+      scimEnabled: null,
+      kmsDefaultKeyId: null,
+      privilegeUpgradeInitiatedByUsername: null,
+      privilegeUpgradeInitiatedAt: null,
+      secretShareBrandConfig: null,
+      pamProjectId: isPamMember ? organization.pamProjectId : null
     };
   };
 

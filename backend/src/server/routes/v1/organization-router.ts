@@ -877,6 +877,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const stats = await server.services.orgProductStats.getOrgProductStats({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
       return stats;

@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { verifyPamProjectAccess } from "@app/ee/services/pam/pam-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -24,6 +25,15 @@ export const registerPamProjectRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     // injectPamProjectId (preValidation) has already resolved/bootstrapped the project by now.
-    handler: async (req) => ({ projectId: req.internalPamProjectId })
+    handler: async (req) => {
+      await verifyPamProjectAccess(server.services.permission, req.internalPamProjectId, {
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { projectId: req.internalPamProjectId };
+    }
   });
 };

@@ -42,7 +42,10 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import {
+  hasAnyGrant,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -1236,7 +1239,7 @@ export const projectServiceFactory = ({
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -1244,6 +1247,19 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
+
+    // No-grant members still load the project to request access, so return it without settings.
+    if (!hasAnyGrant(permission)) {
+      return {
+        ...project,
+        kmsCertificateKeyId: null,
+        kmsSecretManagerKeyId: null,
+        auditLogsRetentionDays: null,
+        secretDetectionIgnoreValues: null,
+        enforceEncryptedSecretManagerSecretMetadata: null,
+        deletedEnvironments: []
+      };
+    }
 
     const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
 
