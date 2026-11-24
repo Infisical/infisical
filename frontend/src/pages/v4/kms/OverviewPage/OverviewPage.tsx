@@ -1,14 +1,19 @@
 import { useState } from "react";
-import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "@infisical/cipher/ui/data-table";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
@@ -18,8 +23,14 @@ import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import FileSaver from "file-saver";
 import { FileSignatureIcon, LockOpenIcon } from "lucide-react";
 
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference,
+} from "@app/helpers/userTablePreferences";
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
@@ -27,7 +38,11 @@ import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectName } from "../../shell/resource-name";
 import { ImportKeysDialog } from "../keys/import-dialog";
-import { DeleteKeyDialog, ExportKeyDialog, RotateKeyDialog } from "../keys/key-dialogs";
+import {
+  DeleteKeyDialog,
+  ExportKeyDialog,
+  RotateKeyDialog,
+} from "../keys/key-dialogs";
 import { KeySheet } from "../keys/key-sheet";
 import {
   DecryptDialog,
@@ -35,7 +50,7 @@ import {
   GenerateMacDialog,
   SignDialog,
   VerifyDialog,
-  VerifyMacDialog
+  VerifyMacDialog,
 } from "../keys/operation-dialogs";
 import {
   algorithmLabel,
@@ -45,54 +60,66 @@ import {
   RESTRICTED,
   usageLabel,
   useKeyPermissions,
-  useKmsProjectId
+  useKmsProjectId,
 } from "../keys/shared";
 
 const MAX_SELECTED = 100;
+const PAGE_SIZE_PREFERENCE = "cmekClientTable";
 
-type Operation = "encrypt" | "decrypt" | "sign" | "verify" | "generateMac" | "verifyMac";
+type Operation =
+  | "encrypt"
+  | "decrypt"
+  | "sign"
+  | "verify"
+  | "generateMac"
+  | "verifyMac";
 type Open =
   | { kind: "create" | "import" }
   | { kind: Operation | "edit" | "export" | "rotate" | "delete"; key: TCmek };
 
-const usageOptions = Object.values(KmsKeyUsage).map((value) => ({
-  value,
-  label: usageLabel[value]
-}));
-
 const operationsByUsage = {
   [KmsKeyUsage.ENCRYPT_DECRYPT]: [
-    { kind: "encrypt", label: "Encrypt data", icon: <Icon name="lock" />, permission: "encrypt" },
+    {
+      kind: "encrypt",
+      label: "Encrypt data",
+      icon: <Icon name="lock" />,
+      permission: "encrypt",
+    },
     {
       kind: "decrypt",
       label: "Decrypt data",
       icon: <Icon icon={LockOpenIcon} />,
-      permission: "decrypt"
-    }
+      permission: "decrypt",
+    },
   ],
   [KmsKeyUsage.SIGN_VERIFY]: [
     {
       kind: "sign",
       label: "Sign data",
       icon: <Icon icon={FileSignatureIcon} />,
-      permission: "sign"
+      permission: "sign",
     },
-    { kind: "verify", label: "Verify data", icon: <Icon name="check-c" />, permission: "verify" }
+    {
+      kind: "verify",
+      label: "Verify data",
+      icon: <Icon name="check-c" />,
+      permission: "verify",
+    },
   ],
   [KmsKeyUsage.GENERATE_VERIFY_MAC]: [
     {
       kind: "generateMac",
       label: "Generate MAC",
       icon: <Icon icon={FileSignatureIcon} />,
-      permission: "generateMac"
+      permission: "generateMac",
     },
     {
       kind: "verifyMac",
       label: "Verify MAC",
       icon: <Icon name="check-c" />,
-      permission: "verifyMac"
-    }
-  ]
+      permission: "verifyMac",
+    },
+  ],
 } as const satisfies Record<
   KmsKeyUsage,
   readonly {
@@ -103,27 +130,32 @@ const operationsByUsage = {
   }[]
 >;
 
-const disabledReason = (item: TCmek) => (item.isDisabled ? "Enable the key first" : undefined);
+const disabledReason = (item: TCmek) =>
+  item.isDisabled ? "Enable the key first" : undefined;
 
 const exportReason = (item: TCmek, permissions: KeyPermissions) => {
   const asymmetric = isAsymmetricKey(item);
   const blocked = !permissions.exportPrivateKey || !item.isExportable;
   if (blocked && (!asymmetric || !permissions.read)) {
-    return !permissions.exportPrivateKey ? RESTRICTED : "Created as non-exportable";
+    return !permissions.exportPrivateKey
+      ? RESTRICTED
+      : "Created as non-exportable";
   }
   return disabledReason(item);
 };
 
 const rotateReason = (item: TCmek, permissions: KeyPermissions) => {
   if (!permissions.rotate) return RESTRICTED;
-  if (item.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) return "Only encryption keys rotate";
+  if (item.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT)
+    return "Only encryption keys rotate";
   return disabledReason(item);
 };
 
 const isServed = (item: TCmek) => item.isPublicKeyPublished && !item.isDisabled;
 
 const copy = async (value: string, label: string) => {
-  if (await copyText(value, `Couldn't copy the ${label}`)) saved(`${label} copied`);
+  if (await copyText(value, `Couldn't copy the ${label}`))
+    saved(`${label} copied`);
 };
 
 const KeyMenu = ({
@@ -131,7 +163,7 @@ const KeyMenu = ({
   permissions,
   onOpen,
   onToggle,
-  onTogglePublish
+  onTogglePublish,
 }: {
   item: TCmek;
   permissions: KeyPermissions;
@@ -142,13 +174,18 @@ const KeyMenu = ({
   const editReason = permissions.edit ? undefined : RESTRICTED;
   let deleteReason: string | undefined;
   if (!permissions.remove) deleteReason = RESTRICTED;
-  else if (item.hasDeleteProtection) deleteReason = "Turn off delete protection first";
+  else if (item.hasDeleteProtection)
+    deleteReason = "Turn off delete protection first";
   return (
     <>
       {operationsByUsage[item.keyUsage].map((operation) => (
         <DropdownMenuItem
           key={operation.kind}
-          disabledReason={permissions[operation.permission] ? disabledReason(item) : RESTRICTED}
+          disabledReason={
+            permissions[operation.permission]
+              ? disabledReason(item)
+              : RESTRICTED
+          }
           onSelect={() => onOpen(operation.kind)}
         >
           {operation.icon}
@@ -160,21 +197,29 @@ const KeyMenu = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabledReason={
-              permissions.edit && permissions.publishPublicKey ? undefined : RESTRICTED
+              permissions.edit && permissions.publishPublicKey
+                ? undefined
+                : RESTRICTED
             }
             onSelect={onTogglePublish}
           >
             <Icon name="globe" />
-            {item.isPublicKeyPublished ? "Unpublish public key" : "Publish public key"}
+            {item.isPublicKeyPublished
+              ? "Unpublish public key"
+              : "Publish public key"}
           </DropdownMenuItem>
           {isServed(item) && item.jwksUrl && (
-            <DropdownMenuItem onSelect={() => item.jwksUrl && copy(item.jwksUrl, "JWKS URL")}>
+            <DropdownMenuItem
+              onSelect={() => item.jwksUrl && copy(item.jwksUrl, "JWKS URL")}
+            >
               <Icon name="link" />
               Copy JWKS URL
             </DropdownMenuItem>
           )}
           {isServed(item) && (
-            <DropdownMenuItem onSelect={() => item.kid && copy(item.kid, "kid")}>
+            <DropdownMenuItem
+              onSelect={() => item.kid && copy(item.kid, "kid")}
+            >
               <Icon name="copy" />
               Copy kid
             </DropdownMenuItem>
@@ -189,7 +234,10 @@ const KeyMenu = ({
         <Icon name="download" />
         Export key
       </DropdownMenuItem>
-      <DropdownMenuItem disabledReason={editReason} onSelect={() => onOpen("edit")}>
+      <DropdownMenuItem
+        disabledReason={editReason}
+        onSelect={() => onOpen("edit")}
+      >
         <Icon name="pencil" />
         Edit key
       </DropdownMenuItem>
@@ -216,7 +264,13 @@ const KeyId = ({ id }: { id: string }) => {
     <Inline gap={4} align="center" wrap={false}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <Tooltip content={<code>{id}</code>} side="top">
-          <MiddleTruncate mono keepEnd={4} text={id} title={false} tabIndex={0} />
+          <MiddleTruncate
+            mono
+            keepEnd={4}
+            text={id}
+            title={false}
+            tabIndex={0}
+          />
         </Tooltip>
       </div>
       <Tooltip content={copied ? "Copied" : "Copy key ID"} side="top">
@@ -245,7 +299,7 @@ const OpenDialog = ({
   projectId,
   permissions,
   onClose,
-  onDeleted
+  onDeleted,
 }: {
   open: Open;
   orgId: string;
@@ -255,7 +309,8 @@ const OpenDialog = ({
   onDeleted: (keyId: string) => void;
 }) => {
   if (!("key" in open)) {
-    if (open.kind === "import") return <ImportKeysDialog projectId={projectId} onClose={onClose} />;
+    if (open.kind === "import")
+      return <ImportKeysDialog projectId={projectId} onClose={onClose} />;
     return <KeySheet orgId={orgId} projectId={projectId} onClose={onClose} />;
   }
   const props = { cmek: open.key, onClose };
@@ -283,6 +338,14 @@ const OpenDialog = ({
   }
 };
 
+const nameStyle = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+} as const;
+const iconStyle = { display: "inline-flex", flexShrink: 0 } as const;
+
 const columns: DataTableColumn<TCmek>[] = [
   {
     id: "name",
@@ -290,26 +353,27 @@ const columns: DataTableColumn<TCmek>[] = [
     primary: true,
     sortable: true,
     grow: true,
+    minWidth: 200,
     text: (r) => `${r.name}: ${r.description ?? ""}`,
     render: (r) => (
-      <Inline gap={8} align="center" wrap={false}>
-        {r.name}
+      <Inline gap={8} align="center" wrap={false} style={{ minWidth: 0 }}>
+        <span style={nameStyle}>{r.name}</span>
         {r.description && (
           <Tooltip content={r.description} side="top">
-            <span aria-label={r.description} role="img">
+            <span aria-label={r.description} role="img" style={iconStyle}>
               <Icon name="info" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
         )}
         {!r.isExportable && (
           <Tooltip content="Created as non-exportable" side="top">
-            <span aria-label="Not exportable" role="img">
+            <span aria-label="Not exportable" role="img" style={iconStyle}>
               <Icon name="lock" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
         )}
       </Inline>
-    )
+    ),
   },
   {
     id: "id",
@@ -317,14 +381,19 @@ const columns: DataTableColumn<TCmek>[] = [
     width: 196,
     maxWidth: 196,
     text: (r) => r.id,
-    render: (r) => <KeyId id={r.id} />
+    render: (r) => <KeyId id={r.id} />,
   },
-  { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.keyUsage] },
+  {
+    id: "usage",
+    header: "Key usage",
+    width: 172,
+    render: (r) => usageLabel[r.keyUsage],
+  },
   {
     id: "algorithm",
     header: "Algorithm",
     width: 128,
-    render: (r) => algorithmLabel(r.algorithm)
+    render: (r) => algorithmLabel(r.algorithm),
   },
   {
     id: "status",
@@ -347,11 +416,38 @@ const columns: DataTableColumn<TCmek>[] = [
           </Tooltip>
         )}
       </Inline>
-    )
+    ),
   },
-  { id: "version", header: "Version", width: 72, render: (r) => `v${r.version}` },
-  { id: "created", header: "Created", width: 104, render: (r) => r.createdAt.slice(0, 10) }
+  {
+    id: "version",
+    header: "Version",
+    width: 88,
+    render: (r) => `v${r.version}`,
+  },
+  {
+    id: "created",
+    header: "Created",
+    width: 104,
+    render: (r) => r.createdAt.slice(0, 10),
+  },
 ];
+
+const lastPageWithRows = ({
+  page,
+  pageSize,
+  totalCount,
+  isPending,
+  rows,
+}: {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  isPending: boolean;
+  rows: number;
+}) => {
+  if (isPending || page === 1 || rows > 0) return page;
+  return Math.max(1, Math.ceil(totalCount / pageSize));
+};
 
 export const OverviewPage = () => {
   const { orgId, projectId } = useKmsProjectId();
@@ -359,34 +455,48 @@ export const OverviewPage = () => {
   const permissions = useKeyPermissions(projectId);
   const projectName = useProjectName(projectId).name;
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
-  const usage = filters.find((filter) => filter.field === "usage")?.values[0] ?? "all";
+  const [debouncedSearch] = useDebounce(search.trim());
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(() =>
+    getUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, 20),
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState<Open>();
-  const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
+  const [sort, setSort] = useState<{
+    columnId: string;
+    direction: "asc" | "desc";
+  }>({
     columnId: "name",
-    direction: "asc"
+    direction: "asc",
   });
   const { data, isPending } = kms.useKeys({
     projectId,
     offset: (page - 1) * pageSize,
     limit: pageSize,
-    search,
-    orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC
+    search: debouncedSearch,
+    orderDirection:
+      sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
   });
   const updateKey = kms.useUpdateKey();
   const bulkExport = kms.useBulkExport();
   const keys = data?.keys ?? [];
   const totalCount = data?.totalCount ?? 0;
-  const rows = keys.filter((item) => usage === "all" || item.keyUsage === usage);
   const eligible = (item: TCmek) => !item.isDisabled && item.isExportable;
-  const filtered = Boolean(search) || usage !== "all";
+  const filtered = Boolean(debouncedSearch);
   const createReason = permissions.create ? undefined : RESTRICTED;
 
+  const lastFilledPage = lastPageWithRows({
+    page,
+    pageSize,
+    totalCount,
+    isPending,
+    rows: keys.length,
+  });
+  if (lastFilledPage !== page) setPage(lastFilledPage);
+
   if (permissions.isPending) return <Loader size="page" label="Loading keys" />;
-  if (!permissions.read) return <AccessRestricted requirement="read KMS keys" />;
+  if (!permissions.read)
+    return <AccessRestricted requirement="read KMS keys" />;
 
   const changePage = (next: number) => {
     setPage(next);
@@ -395,8 +505,13 @@ export const OverviewPage = () => {
 
   const toggleKey = async (item: TCmek) => {
     try {
-      await updateKey.mutateAsync({ keyId: item.id, projectId, isDisabled: !item.isDisabled });
-      if (!item.isDisabled) setSelected((current) => current.filter((id) => id !== item.id));
+      await updateKey.mutateAsync({
+        keyId: item.id,
+        projectId,
+        isDisabled: !item.isDisabled,
+      });
+      if (!item.isDisabled)
+        setSelected((current) => current.filter((id) => id !== item.id));
       saved(item.isDisabled ? "Key enabled" : "Key disabled");
     } catch (error) {
       failed(`Failed to ${item.isDisabled ? "enable" : "disable"} key`, error);
@@ -408,32 +523,36 @@ export const OverviewPage = () => {
       await updateKey.mutateAsync({
         keyId: item.id,
         projectId,
-        isPublicKeyPublished: !item.isPublicKeyPublished
+        isPublicKeyPublished: !item.isPublicKeyPublished,
       });
       saved(
         item.isPublicKeyPublished
           ? `Public key of ${item.name} unpublished`
-          : `Public key of ${item.name} published`
+          : `Public key of ${item.name} published`,
       );
     } catch (error) {
       failed(
         `Failed to ${item.isPublicKeyPublished ? "unpublish" : "publish"} the public key`,
-        error
+        error,
       );
     }
   };
 
   const exportSelected = async () => {
     try {
-      const { keys: exported } = await bulkExport.mutateAsync({ keyIds: selected });
+      const { keys: exported } = await bulkExport.mutateAsync({
+        keyIds: selected,
+      });
       FileSaver.saveAs(
         new Blob([JSON.stringify(keysToExportJson(exported), null, 2)], {
-          type: "application/json;charset=utf-8;"
+          type: "application/json;charset=utf-8;",
         }),
-        `kms-keys-export-${new Date().toISOString().slice(0, 10)}.json`
+        `kms-keys-export-${new Date().toISOString().slice(0, 10)}.json`,
       );
       setSelected([]);
-      saved(`Exported ${exported.length} ${exported.length === 1 ? "key" : "keys"}`);
+      saved(
+        `Exported ${exported.length} ${exported.length === 1 ? "key" : "keys"}`,
+      );
     } catch (error) {
       failed("Failed to export keys", error);
     }
@@ -474,27 +593,18 @@ export const OverviewPage = () => {
         />
         <FilterBar
           label="Key filters"
-          fields={[{ key: "usage", label: "Key usage", type: "select", options: usageOptions }]}
-          value={filters}
-          onChange={setFilters}
-          search={
-            <Input
-              icon="search"
-              aria-label="Search keys"
-              placeholder="Search keys by name or ID"
-              slashShortcut
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                changePage(1);
-              }}
-            />
-          }
+          searchLabel="Search keys"
+          searchPlaceholder="Search keys by name or ID"
+          searchValue={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            changePage(1);
+          }}
         />
         <DataTable
           filtered={filtered}
           label={projectName ? `Keys in ${projectName}` : "Keys"}
-          rows={rows}
+          rows={keys}
           columns={columns}
           loading={isPending}
           getRowId={(r) => r.id}
@@ -505,8 +615,8 @@ export const OverviewPage = () => {
                 label: "Rotate key",
                 icon: "sync",
                 disabledReason: (r) => rotateReason(r, permissions),
-                onSelect: (r) => setOpen({ kind: "rotate", key: r })
-              }
+                onSelect: (r) => setOpen({ kind: "rotate", key: r }),
+              },
             ],
             renderMenu: (r) => (
               <KeyMenu
@@ -516,7 +626,7 @@ export const OverviewPage = () => {
                 onToggle={() => toggleKey(r)}
                 onTogglePublish={() => togglePublish(r)}
               />
-            )
+            ),
           }}
           selectable
           selectionDisabledReason={(r) => {
@@ -527,7 +637,10 @@ export const OverviewPage = () => {
           selectedIds={selected}
           onSelectionChange={(ids) => {
             if (ids.length > MAX_SELECTED) {
-              toast({ tone: "bad", title: `Select at most ${MAX_SELECTED} keys to export` });
+              toast({
+                tone: "bad",
+                title: `Select at most ${MAX_SELECTED} keys to export`,
+              });
               setSelected(ids.slice(0, MAX_SELECTED));
               return;
             }
@@ -546,10 +659,10 @@ export const OverviewPage = () => {
                     variant="link"
                     onClick={() => {
                       setSearch("");
-                      setFilters([]);
+                      changePage(1);
                     }}
                   >
-                    Clear filters
+                    Clear search
                   </Button>
                 }
               />
@@ -582,6 +695,11 @@ export const OverviewPage = () => {
                 pageSizeOptions={[10, 20, 50, 100]}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
+                  setUserTablePreference(
+                    PAGE_SIZE_PREFERENCE,
+                    PreferenceKey.PerPage,
+                    size,
+                  );
                   changePage(1);
                 }}
               />
@@ -591,7 +709,9 @@ export const OverviewPage = () => {
             <FloatingActionBar
               count={selected.length}
               total={keys.filter(eligible).length}
-              onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}
+              onSelectAll={() =>
+                setSelected(keys.filter(eligible).map((item) => item.id))
+              }
               onClear={() => setSelected([])}
               noun="keys"
               actions={[
@@ -599,9 +719,11 @@ export const OverviewPage = () => {
                   label: "Export",
                   icon: "download",
                   loading: bulkExport.isPending,
-                  disabledReason: permissions.exportPrivateKey ? undefined : RESTRICTED,
-                  onClick: exportSelected
-                }
+                  disabledReason: permissions.exportPrivateKey
+                    ? undefined
+                    : RESTRICTED,
+                  onClick: exportSelected,
+                },
               ]}
             />
           }
@@ -614,7 +736,9 @@ export const OverviewPage = () => {
           projectId={projectId}
           permissions={permissions}
           onClose={() => setOpen(undefined)}
-          onDeleted={(keyId) => setSelected((current) => current.filter((id) => id !== keyId))}
+          onDeleted={(keyId) =>
+            setSelected((current) => current.filter((id) => id !== keyId))
+          }
         />
       )}
     </TooltipProvider>
