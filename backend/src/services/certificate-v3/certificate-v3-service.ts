@@ -104,6 +104,7 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
+  assertNoRenewalAwaitingApproval,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy
 } from "../certificate-request/certificate-request-approval-fns";
@@ -150,6 +151,7 @@ type TCertificateV3ServiceFactoryDep = {
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
     | "canRenewFromCsr"
+    | "primaryNode"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -1498,25 +1500,21 @@ export const certificateV3ServiceFactory = ({
     );
 
     if (approvalPolicy) {
-      if (
-        isRenewal &&
-        originalCertificateId &&
-        (await certificateDAL.hasRenewalAwaitingApproval({
-          certificateId: originalCertificateId,
-          projectId: profile.projectId
-        }))
-      ) {
-        throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
-      }
-
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
       const {
         certificateRequestId: certRequestId,
         approvalRequestId,
         notifyApprovers
-      } = await certificateRequestDAL.transaction((tx) =>
-        holdCertificateRequestForApproval(
+      } = await certificateRequestDAL.transaction(async (tx) => {
+        if (isRenewal && originalCertificateId) {
+          await assertNoRenewalAwaitingApproval(
+            certificateDAL,
+            { certificateId: originalCertificateId, projectId: profile.projectId },
+            tx
+          );
+        }
+        return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
             approvalPolicy,
@@ -1601,8 +1599,8 @@ export const certificateV3ServiceFactory = ({
             requester: { actor, actorId, name: requesterName, email: requesterEmail },
             tx
           }
-        )
-      );
+        );
+      });
 
       await notifyApprovers();
 

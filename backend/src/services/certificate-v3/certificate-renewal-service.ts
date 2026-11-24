@@ -50,7 +50,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted, findLatestRenewalOf } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, findEndOfRenewalChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -93,6 +93,7 @@ import {
 import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
+  assertNoRenewalAwaitingApproval,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy,
   TCertificateRequestApprovalPolicy
@@ -166,6 +167,7 @@ type TCertificateRenewalServiceFactoryDep = {
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
     | "canRenewFromCsr"
+    | "primaryNode"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -1382,15 +1384,11 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
-    await certificateDAL.findByIdForUpdate(originalCert.id, tx);
-    if (
-      await certificateDAL.hasRenewalAwaitingApproval(
-        { certificateId: originalCert.id, projectId: originalCert.projectId },
-        tx
-      )
-    ) {
-      throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
-    }
+    await assertNoRenewalAwaitingApproval(
+      certificateDAL,
+      { certificateId: originalCert.id, projectId: originalCert.projectId },
+      tx
+    );
 
     return holdCertificateRequestForApproval(
       { certificateRequestDAL, approvalPolicyService },
@@ -2227,7 +2225,10 @@ export const certificateRenewalServiceFactory = ({
     renewal: NonNullable<TCertRequestRequestData["renewal"]>;
     reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
   }) => {
-    const renewedCertificateId = await findLatestRenewalOf(certificateDAL, renewal.certificateId);
+    // A renewal that completed just before this approval is on the primary only, and the replica would stop short of it.
+    const renewedCertificateId = await findEndOfRenewalChain(certificateDAL, renewal.certificateId, {
+      tx: certificateDAL.primaryNode()
+    });
     const renewed = await renewCertificate({
       actor: ActorType.PLATFORM,
       actorId: "",

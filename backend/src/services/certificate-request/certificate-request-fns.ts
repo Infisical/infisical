@@ -12,6 +12,7 @@ import { ApprovalRequestStatus } from "../approval-policy/approval-policy-enums"
 import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { getApprovalRequestAuditLabel } from "../approval-policy/approval-request-fns";
+import { getRenewedCertificateId } from "../approval-policy/cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "../approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -116,7 +117,7 @@ const $findApprovalRequest = async (deps: TApprovalLookupDeps, approvalRequestId
     approvalRequest,
     policy,
     renewal: requestData?.renewal,
-    isRenewal: Boolean(requestData?.renewal || requestData?.renewalOfCertificateId)
+    isRenewal: Boolean(requestData && getRenewedCertificateId(requestData))
   };
 };
 

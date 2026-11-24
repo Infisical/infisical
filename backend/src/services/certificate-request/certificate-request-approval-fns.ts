@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
@@ -7,10 +8,23 @@ import { ApprovalPolicyType, CertRequestPolicyOperation } from "../approval-poli
 import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
 import { TCertRequestPolicy, TCertRequestRequestData } from "../approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "../auth/auth-type";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 
 export type TCertificateRequestApprovalPolicy = TCertRequestPolicy & {
   steps: Awaited<ReturnType<TApprovalPolicyDALFactory["findStepsByPolicyId"]>>;
+};
+
+// Locks the certificate first, so two renewals of it submitted at once can't both pass and each raise a request.
+export const assertNoRenewalAwaitingApproval = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findByIdForUpdate" | "hasRenewalAwaitingApproval">,
+  certificate: { certificateId: string; projectId: string },
+  tx: Knex
+) => {
+  await certificateDAL.findByIdForUpdate(certificate.certificateId, tx);
+  if (await certificateDAL.hasRenewalAwaitingApproval(certificate, tx)) {
+    throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
+  }
 };
 
 export const matchCertificateRequestApprovalPolicy = async (

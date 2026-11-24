@@ -96,6 +96,11 @@ export const CertRequestPolicyRequestDataSchema = z.object({
   renewalOfCertificateId: z.string().uuid().optional()
 });
 
+// The certificate a request renews: a renewal's, or the one an EST or SCEP re-enrollment replaces.
+export const getRenewedCertificateId = (
+  requestData: Pick<z.infer<typeof CertRequestPolicyRequestDataSchema>, "renewal" | "renewalOfCertificateId">
+) => requestData.renewal?.certificateId ?? requestData.renewalOfCertificateId;
+
 export const CertRequestPolicySchema = BaseApprovalPolicySchema.extend({
   conditions: z.object({
     version: z.literal(1),

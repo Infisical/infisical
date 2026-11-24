@@ -515,6 +515,20 @@ describe("linkRenewedCertificate", () => {
     );
   });
 
+  it("leaves the new certificate unlinked when the chain runs past the hop limit", async () => {
+    const chain = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, renewedByCertificateId: `c${i + 1}` }));
+    const certificateDAL = dal(...chain);
+
+    await linkRenewedCertificate(certificateDAL, "c0", "new");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("new", { renewedFromCertificateId: null }, undefined);
+    expect(certificateDAL.updateById, "no certificate in the chain loses its replacement").not.toHaveBeenCalledWith(
+      expect.stringMatching(/^c/),
+      expect.objectContaining({ renewedByCertificateId: "new" }),
+      undefined
+    );
+  });
+
   it("relinks a certificate that already replaced the original without walking onto itself", async () => {
     const certificateDAL = dal({ id: "a", renewedByCertificateId: "c" }, { id: "c" });
 

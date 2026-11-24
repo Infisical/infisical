@@ -20,6 +20,7 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
+import { getRenewedCertificateId } from "./cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
@@ -255,10 +256,12 @@ export const getApprovalRequestSubjectMetadata = (
   if (!requestData) return {};
 
   if (request.type === ApprovalPolicyType.CertRequest) {
-    const { certificateRequestId, certificateRequest, profileName, renewal } = requestData as TCertRequestRequestData;
+    const certRequestData = requestData as TCertRequestRequestData;
+    const { certificateRequestId, certificateRequest, profileName, renewal } = certRequestData;
+    const renewedCertificateId = getRenewedCertificateId(certRequestData);
     return {
       certificateRequestId,
-      ...(renewal && { certificateId: renewal.certificateId }),
+      ...(renewedCertificateId && { certificateId: renewedCertificateId }),
       ...(renewal?.certificateName && { certificateName: renewal.certificateName }),
       commonName: certificateRequest?.commonName,
       profileName

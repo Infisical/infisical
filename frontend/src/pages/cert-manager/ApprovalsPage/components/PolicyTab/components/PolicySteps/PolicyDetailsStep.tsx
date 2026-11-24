@@ -45,7 +45,7 @@ type Props = {
 const REVOCATION_PICKER_VALUE = "revocation";
 
 const BYPASS_ACTION = {
-  [CertRequestPolicyOperation.Issuance]: "issue",
+  [CertRequestPolicyOperation.Issuance]: "issue and renew",
   [CertRequestPolicyOperation.Renewal]: "renew"
 };
 

@@ -34,7 +34,7 @@ import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
 import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { findLiveApproverEntries, PKI_APPROVER_RULES } from "../pki-approvers/application-approver-checks";
-import { parseCertRequestPolicyOperation } from "./cert-request-policy-schemas";
+import { getRenewedCertificateId, parseCertRequestPolicyOperation } from "./cert-request-policy-schemas";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConstraints,
@@ -137,10 +137,9 @@ export const certRequestApprovalResourceFactory = ({
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
   buildNotification: async ({ event, request, failureReason }) => {
-    const { renewal, renewalOfCertificateId, certificateRequest } = (
-      request.requestData as { requestData: TCertRequestRequestData }
-    ).requestData;
-    const isRenewal = Boolean(renewal || renewalOfCertificateId);
+    const { requestData } = request.requestData as { requestData: TCertRequestRequestData };
+    const { renewal, certificateRequest } = requestData;
+    const isRenewal = Boolean(getRenewedCertificateId(requestData));
     const certificateName =
       renewal?.certificateName || certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
 
@@ -204,12 +203,14 @@ export const certRequestApprovalResourceFactory = ({
       : null,
 
   postApprovalRoutine: async (request) => {
+    const requestData = request.requestData.requestData as TCertRequestRequestData;
     const {
       certificateRequestId: certReqId,
       renewal,
       renewalOfCertificateId,
       certificateRequest: reviewedCertificateRequest
-    } = request.requestData.requestData as TCertRequestRequestData;
+    } = requestData;
+    const renewedCertificateId = getRenewedCertificateId(requestData);
 
     await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.PENDING,
@@ -249,9 +250,9 @@ export const certRequestApprovalResourceFactory = ({
       }
       await certificateRequestService.recordIssuanceFailure(failedRequest, {
         error,
-        ...((renewal || renewalOfCertificateId) && {
+        ...(renewedCertificateId && {
           operation: CertificateIssuanceOperation.RENEW,
-          originalCertificateId: renewal?.certificateId ?? renewalOfCertificateId
+          originalCertificateId: renewedCertificateId
         })
       });
       // External CAs are only reached from a background job, and internal-CA signing is Infisical's own, so a
@@ -259,10 +260,10 @@ export const certRequestApprovalResourceFactory = ({
       await approvalPolicyService.notifyApprovedActionFailed(
         request,
         describeCaOperationFailure({
-          action: renewal || renewalOfCertificateId ? "Renewing the certificate" : "Issuing the certificate",
+          action: renewedCertificateId ? "Renewing the certificate" : "Issuing the certificate",
           stage: CaOperationFailureStage.Infisical,
           error,
-          fallback: `An unexpected error stopped the certificate from being ${renewal || renewalOfCertificateId ? "renewed" : "issued"}.`
+          fallback: `An unexpected error stopped the certificate from being ${renewedCertificateId ? "renewed" : "issued"}.`
         })
       );
       logger.error(

@@ -48,6 +48,7 @@ import { TCertificatePolicyServiceFactory } from "@app/services/certificate-poli
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
+  assertNoRenewalAwaitingApproval,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy
 } from "@app/services/certificate-request/certificate-request-approval-fns";
@@ -98,7 +99,7 @@ type TPkiScepServiceFactoryDep = {
   scepTransactionDAL: TScepTransactionDALFactory;
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode" | "hasRenewalAwaitingApproval"
+    "findOne" | "findOneLiveFirst" | "findByIdForUpdate" | "transaction" | "primaryNode" | "hasRenewalAwaitingApproval"
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
@@ -930,6 +931,12 @@ export const pkiScepServiceFactory = ({
     isRenewal: boolean;
     originalCertificateId?: string;
   }): Promise<TIssuanceResult> => {
+    // A client that resends a renewal it already sent gets the pending reply again, not a second request.
+    if (isRenewal) {
+      const sentBefore = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
+      if (sentBefore && new Date(sentBefore.expiresAt) > new Date()) return { status: ScepIssuanceStatus.Pending };
+    }
+
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
       const result = await certificateV3Service.signCertificateFromProfile({
@@ -1049,19 +1056,15 @@ export const pkiScepServiceFactory = ({
       });
 
     if (approvalPolicy) {
-      if (
-        isRenewal &&
-        originalCertificateId &&
-        (await certificateDAL.hasRenewalAwaitingApproval({
-          certificateId: originalCertificateId,
-          projectId: profile.projectId
-        }))
-      ) {
-        throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
-      }
-
-      const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction((tx) =>
-        holdCertificateRequestForApproval(
+      const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction(async (tx) => {
+        if (isRenewal && originalCertificateId) {
+          await assertNoRenewalAwaitingApproval(
+            certificateDAL,
+            { certificateId: originalCertificateId, projectId: profile.projectId },
+            tx
+          );
+        }
+        return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
             approvalPolicy,
@@ -1095,8 +1098,8 @@ export const pkiScepServiceFactory = ({
             requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },
             tx
           }
-        )
-      );
+        );
+      });
 
       await notifyApprovers();
       await $recordScepTransaction(profile.id, parsed, certificateRequestId, applicationId, { awaitingApproval: true });

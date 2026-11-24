@@ -639,7 +639,7 @@ export const softDeleteCertificates = async (
 const MAX_RENEWAL_CHAIN_HOPS = 10;
 
 // Stops before `excludeId`, so relinking a certificate that already replaced this one doesn't walk onto itself.
-export const findLatestRenewalOf = async (
+export const findEndOfRenewalChain = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById">,
   certificateId: string,
   { tx, excludeId }: { tx?: Knex; excludeId?: string } = {}
@@ -664,11 +664,17 @@ export const linkRenewedCertificate = async (
 ) => {
   // A certificate has one replacement, so renewing one that's already renewed (an EST or SCEP client that
   // re-enrolls again with its old certificate) links the new certificate to the latest one in that chain.
-  const latestCertificateId = await findLatestRenewalOf(certificateDAL, originalCertificateId, {
+  const latestCertificateId = await findEndOfRenewalChain(certificateDAL, originalCertificateId, {
     tx,
     excludeId: renewedCertificateId
   });
   const latestCertificate = await certificateDAL.findById(latestCertificateId, tx);
+
+  // A chain longer than the hop limit stops at a certificate that still has a replacement, which keeps its link.
+  if (latestCertificate?.renewedByCertificateId && latestCertificate.renewedByCertificateId !== renewedCertificateId) {
+    await certificateDAL.updateById(renewedCertificateId, { renewedFromCertificateId: null }, tx);
+    return;
+  }
 
   await certificateDAL.updateById(
     renewedCertificateId,

@@ -112,6 +112,7 @@ describe("CertificateV3Service", () => {
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
     | "canRenewFromCsr"
+    | "primaryNode"
     | "findCertificatesMatchingSyncFilters"
     | "findActiveCertificatesByIds"
   > = {
@@ -126,6 +127,7 @@ describe("CertificateV3Service", () => {
     getOriginatingRequestByCertId: vi.fn().mockResolvedValue({ enrollmentType: null, csr: null }),
     hasRenewalAwaitingApproval: vi.fn().mockResolvedValue(false),
     canRenewFromCsr: vi.fn().mockResolvedValue(false),
+    primaryNode: vi.fn(),
     create: vi.fn().mockResolvedValue({
       id: "new-cert-id",
       serialNumber: "123456789",

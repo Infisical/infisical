@@ -429,10 +429,10 @@ export const certificateEstV3ServiceFactory = ({
       throw error;
     });
 
-    // A client certificate from another profile or Application on the same CA still re-enrolls, but isn't this
-    // Application's certificate to mark renewed.
+    // A client certificate from another profile or Application on the same CA, or one Infisical doesn't hold, still
+    // re-enrolls, but as a new certificate: there's no certificate of this Application's for it to renew.
     const isSameEnrollment =
-      storedCert?.profileId === profileId && (!applicationId || storedCert.applicationId === applicationId);
+      storedCert?.profileId === profileId && (storedCert.applicationId ?? null) === (applicationId ?? null);
 
     const result = await certificateV3Service.signCertificateFromProfile({
       actor: ActorType.EST_ACCOUNT,
@@ -444,8 +444,10 @@ export const certificateEstV3ServiceFactory = ({
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
       applicationId,
-      issuanceOperation: CertificateIssuanceOperation.RENEW,
-      originalCertificateId: isSameEnrollment ? storedCert.id : undefined,
+      ...(isSameEnrollment && {
+        issuanceOperation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert.id
+      }),
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
