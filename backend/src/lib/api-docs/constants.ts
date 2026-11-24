@@ -94,6 +94,7 @@ export enum ApiDocsTags {
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
   EmailDomains = "Email Domains",
+  SsoSettings = "SSO Settings",
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
@@ -4479,6 +4480,18 @@ export const OidcSSo = {
     organizationId:
       "The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request."
   }
+};
+
+export const ORG_SSO_SETTINGS = {
+  orgId: "The ID of the organization the settings belong to.",
+  authEnforced:
+    "Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.",
+  googleSsoAuthEnforced:
+    "Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.",
+  bypassOrgAuthEnabled:
+    "Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.",
+  ssoMfaTrust:
+    "Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced."
 };
 
 export const EMAIL_DOMAINS = {

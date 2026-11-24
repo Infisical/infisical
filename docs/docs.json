@@ -1565,6 +1565,13 @@
                     ]
                   },
                   {
+                    "group": "SSO Settings",
+                    "pages": [
+                      "api-reference/endpoints/organizations/sso-settings/get",
+                      "api-reference/endpoints/organizations/sso-settings/update"
+                    ]
+                  },
+                  {
                     "group": "SCIM",
                     "pages": [
                       {

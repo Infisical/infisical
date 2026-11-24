@@ -471,6 +471,8 @@ output-options:
     - updateOidcConfig
     - getOidcConfig
     - deleteOidcConfig
+    - getOrganizationSsoSettings
+    - updateOrganizationSsoSettings
     - redirectOidcLogin
     - oidcCallback
     - listExternalGroupOrgRoleMappings

@@ -138,10 +138,10 @@ describe("Auth MFA V3", () => {
     const setSsoMfaTrust = (ssoMfaTrust: SsoMfaTrust) =>
       db()(TableName.Organization).where({ id: rootOrgId }).update({ ssoMfaTrust });
 
-    const updateOrg = (body: Record<string, unknown>) =>
+    const updateSsoSettings = (body: Record<string, unknown>) =>
       testServer.inject({
         method: "PATCH",
-        url: `/api/v1/organization/${rootOrgId}`,
+        url: "/api/v1/organization/sso-settings",
         headers: { authorization: `Bearer ${jwtAuthToken}` },
         body
       });
@@ -295,16 +295,20 @@ describe("Auth MFA V3", () => {
         await db()(TableName.MembershipRole).where({ membershipId }).delete();
         await db()(TableName.MembershipRole).insert({ membershipId, role: "custom", customRoleId: role.id });
         const token = await createUserAccessToken({ userId, orgId: rootOrgId });
-        const patch = (body: Record<string, unknown>) =>
+        const patch = (url: string, body: Record<string, unknown>) =>
           testServer.inject({
             method: "PATCH",
-            url: `/api/v1/organization/${rootOrgId}`,
+            url,
             headers: { authorization: `Bearer ${token}` },
             body
           });
 
-        expect((await patch({ name: seedData1.organization.name })).statusCode).toBe(200);
-        expect((await patch({ ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(403);
+        expect(
+          (await patch(`/api/v1/organization/${rootOrgId}`, { name: seedData1.organization.name })).statusCode
+        ).toBe(200);
+        expect((await patch("/api/v1/organization/sso-settings", { ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(
+          403
+        );
       } finally {
         await deleteUsers([userId]);
         await db()(TableName.Role).where({ id: role.id }).del();
@@ -312,10 +316,10 @@ describe("Auth MFA V3", () => {
     });
 
     test("the setting can be turned on before any SSO configuration exists, like the bypass toggle", async () => {
-      const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.Signal });
+      const res = await updateSsoSettings({ ssoMfaTrust: SsoMfaTrust.Signal });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
+      expect(res.json().ssoSettings.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
     });
 
     test("the signal also covers personal MFA when the org enforces it", async () => {
@@ -345,7 +349,7 @@ describe("Auth MFA V3", () => {
     });
 
     test("an unknown mode is rejected", async () => {
-      const res = await updateOrg({ ssoMfaTrust: "delegate" });
+      const res = await updateSsoSettings({ ssoMfaTrust: "delegate" });
 
       expect(res.statusCode).toBe(422);
     });
@@ -354,10 +358,10 @@ describe("Auth MFA V3", () => {
       await setSsoMfaTrust(SsoMfaTrust.Signal);
       restoreLicense();
       try {
-        const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.None });
+        const res = await updateSsoSettings({ ssoMfaTrust: SsoMfaTrust.None });
 
         expect(res.statusCode).toBe(200);
-        expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.None);
+        expect(res.json().ssoSettings.ssoMfaTrust).toBe(SsoMfaTrust.None);
       } finally {
         restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
       }

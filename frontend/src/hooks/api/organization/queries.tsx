@@ -13,7 +13,9 @@ import {
   TListOrgIdentitiesDTO,
   TOrgIdentitiesList,
   TOrgProductStats,
-  UpdateOrgDTO
+  TOrgSsoSettings,
+  UpdateOrgDTO,
+  UpdateOrgSsoSettingsDTO
 } from "./types";
 
 export type TOrgWithSubOrgs = Organization & {
@@ -129,13 +131,27 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
   });
 };
 
+export const useUpdateOrgSsoSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: UpdateOrgSsoSettingsDTO) => {
+      const { data } = await apiRequest.patch<{ ssoSettings: TOrgSsoSettings }>(
+        "/api/v1/organization/sso-settings",
+        dto
+      );
+      return data.ssoSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+    }
+  });
+};
+
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
   return useMutation<object, object, UpdateOrgDTO>({
     mutationFn: ({
       name,
-      authEnforced,
-      googleSsoAuthEnforced,
       scimEnabled,
       slug,
       orgId,
@@ -143,9 +159,7 @@ export const useUpdateOrg = () => {
       enforceMfa,
       selectedMfaMethod,
       allowedMfaMethods,
-      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled,
       userTokenExpiration,
       secretsProductEnabled,
       pkiProductEnabled,
@@ -161,17 +175,13 @@ export const useUpdateOrg = () => {
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
-        authEnforced,
-        googleSsoAuthEnforced,
         scimEnabled,
         slug,
         defaultMembershipRoleSlug,
         enforceMfa,
         selectedMfaMethod,
         allowedMfaMethods,
-        ssoMfaTrust,
         allowSecretSharingOutsideOrganization,
-        bypassOrgAuthEnabled,
         userTokenExpiration,
         secretsProductEnabled,
         pkiProductEnabled,

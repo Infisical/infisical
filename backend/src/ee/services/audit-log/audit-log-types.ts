@@ -737,6 +737,7 @@ export enum EventType {
 
   UPDATE_ORG = "update-org",
   UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
+  UPDATE_ORG_SSO_SETTINGS = "update-org-sso-settings",
   CREATE_OIDC_CONFIG = "create-oidc-config",
   UPDATE_OIDC_CONFIG = "update-oidc-config",
   DELETE_OIDC_CONFIG = "delete-oidc-config",
@@ -6098,6 +6099,16 @@ interface SecretScanningConfigReadEvent {
   metadata?: Record<string, never>; // not needed, based off projectId
 }
 
+interface OrgSsoSettingsUpdateEvent {
+  type: EventType.UPDATE_ORG_SSO_SETTINGS;
+  metadata: {
+    authEnforced?: boolean;
+    googleSsoAuthEnforced?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    ssoMfaTrust?: string;
+  };
+}
+
 interface CreateOidcConfigEvent {
   type: EventType.CREATE_OIDC_CONFIG;
   metadata: {
@@ -9399,6 +9410,7 @@ export type Event =
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
   | OrgAiConfigUpdateEvent
+  | OrgSsoSettingsUpdateEvent
   | CreateOidcConfigEvent
   | UpdateOidcConfigEvent
   | DeleteOidcConfigEvent
