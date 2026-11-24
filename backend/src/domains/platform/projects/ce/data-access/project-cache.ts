@@ -13,8 +13,7 @@ const DATA_TTL_SECONDS = 600;
 // Bump the version when the cached shape changes, so a deploy never reads an older one.
 const ProjectKeys = {
   data: (projectId: string, actor: TGrantActor) => `projects:project:v2:data:${projectId}:${actor.type}:${actor.id}`,
-  marker: (projectId: string, actor: TGrantActor) =>
-    `projects:project:v2:marker:${projectId}:${actor.type}:${actor.id}`
+  marker: (projectId: string, actor: TGrantActor) => `projects:project:v2:marker:${projectId}:${actor.type}:${actor.id}`
 };
 
 export class ProjectCache implements TProjectCache {
