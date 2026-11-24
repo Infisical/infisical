@@ -691,7 +691,7 @@ export const certificateRenewalServiceFactory = ({
     }
 
     if (!originalCert.profileId) {
-      throw new ForbiddenRequestError({
+      throw new BadRequestError({
         message:
           "This certificate is not linked to a certificate profile, so it cannot be renewed. The profile it was issued from may have been deleted."
       });
@@ -708,7 +708,7 @@ export const certificateRenewalServiceFactory = ({
 
     const { enrollmentType } = originatingRequest;
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
+      throw new BadRequestError({
         message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
       });
     }

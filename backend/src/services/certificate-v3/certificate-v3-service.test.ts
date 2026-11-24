@@ -3956,7 +3956,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow(ForbiddenRequestError);
+      ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
@@ -3964,6 +3964,39 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("This certificate is not linked to a certificate profile, so it cannot be renewed");
+    });
+
+    it("records a renewal refused for a certificate with no profile as a failed renewal", async () => {
+      const certWithoutProfile = { ...mockOriginalCert, profileId: null };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(certWithoutProfile);
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+      const auditLogInfo = {
+        ipAddress: "127.0.0.1",
+        userAgent: "test-agent",
+        userAgentType: UserAgentType.OTHER,
+        actor: {
+          type: ActorType.USER as const,
+          metadata: { userId: "user-123", email: "a@b.com", username: "a@b.com" }
+        }
+      };
+
+      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor, auditLogInfo })).rejects.toThrow(
+        "This certificate is not linked to a certificate profile"
+      );
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              originalCertificateId: certWithoutProfile.id
+            })
+          })
+        })
+      );
     });
 
     it("refuses to renew a certificate into a name the caller may not edit", async () => {
@@ -4081,7 +4114,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow(ForbiddenRequestError);
+      ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
