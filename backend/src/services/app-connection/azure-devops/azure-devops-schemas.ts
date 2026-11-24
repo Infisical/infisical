@@ -98,10 +98,17 @@ export const AzureDevOpsConnectionManagedIdentityInputCredentialsSchema = z.obje
     .trim()
     .min(1, "Client ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.clientId),
+  // Azure DevOps' own naming rules. The older methods don't enforce them because tightening their input would
+  // reject requests callers already send.
   orgName: z
     .string()
     .trim()
     .min(1, "Organization name required")
+    .max(50, "Organization name must be at most 50 characters long")
+    .regex(
+      /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/,
+      "Organization name must start and end with a letter or number, and contain only letters, numbers and hyphens"
+    )
     .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName)
 });
 
