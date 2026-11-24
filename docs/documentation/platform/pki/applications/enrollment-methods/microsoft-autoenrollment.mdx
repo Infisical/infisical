@@ -21,7 +21,7 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 - A CA key that matches the profile's default key algorithm: an RSA CA for RSA keys or no default, an EC CA for ECDSA keys
 - A certificate policy that allows the profile's default key algorithm (RSA 2048 if the profile has none) and its default signature algorithm (SHA-256 for the key type if the profile has none)
 - If the profile's certificate policy restricts custom extensions, rules that allow the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and **Certificate template information** (`1.3.6.1.4.1.311.21.7`, with `*` as its allowed value)
-- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for your computers' domain (use an LDAPS URL on port 636 if your domain controllers require LDAP signing)
+- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for your computers' domain. Use an LDAPS URL (`ldaps://`, usually port 636) with certificate verification on. Each certificate is named after the DNS host name Active Directory returns, so over plain LDAP, or LDAPS without verification, anyone on the network path to your domain controllers could change that name. LDAPS is also required if your domain controllers require LDAP signing.
 - The `Connect` action on `App Connections` for that LDAP connection
 
 ### In Active Directory
