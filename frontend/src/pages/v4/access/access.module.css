@@ -15,12 +15,14 @@
 }
 .roles {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--cipher-space-4);
   min-width: 0;
 }
-.roles[data-wrap] {
-  flex-wrap: wrap;
+.roleGroup {
+  flex: 1 1 auto;
+  max-width: 320px;
 }
 .groupRow {
   display: flex;
