@@ -78,19 +78,11 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
 
-    let allowedMfaMethods = decodedToken.allowedMfaMethods ?? [];
-    if (!allowedMfaMethods.length && decodedToken.requiredMfaMethod) {
-      allowedMfaMethods = [decodedToken.requiredMfaMethod];
-    }
-
-    if (!allowedMfaMethods.length)
-      throw new UnauthorizedError({ message: "Your sign-in session expired. Sign in again." });
-
     req.mfa = {
       userId: user.id,
       user,
       orgId: decodedToken.organizationId,
-      allowedMfaMethods
+      allowedMfaMethods: decodedToken.allowedMfaMethods
     };
   });
 

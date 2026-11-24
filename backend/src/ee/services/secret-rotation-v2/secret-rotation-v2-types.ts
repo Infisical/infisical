@@ -561,8 +561,8 @@ export type TRotationFactory<
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   keyStore: Pick<TKeyStoreFactory, "acquireLock">,
   instanceConfigService: TInstanceConfigService,
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
-  passwordValidationContext?: TRotationPasswordValidationContext
+  passwordValidationContext?: TRotationPasswordValidationContext,
+  oidcIssuerService?: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

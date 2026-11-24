@@ -68,12 +68,7 @@ const instanceConfigService = new FakeInstanceConfigService({
 });
 
 const makeFactory = ({ activeIndex = 0, keyName }: { activeIndex?: number; keyName?: string } = {}) =>
-  stripeApiKeyRotationFactory(
-    rotation(activeIndex, keyName),
-    ...UNUSED_DEPENDENCIES,
-    instanceConfigService,
-    {} as never
-  );
+  stripeApiKeyRotationFactory(rotation(activeIndex, keyName), ...UNUSED_DEPENDENCIES, instanceConfigService);
 
 const isCreate = (url: string) => url.endsWith("/v2/iam/api_keys");
 const isExpire = (url: string) => url.endsWith("/expire");

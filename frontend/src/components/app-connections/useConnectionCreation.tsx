@@ -3,13 +3,11 @@ import { ComponentProps, useRef, useState } from "react";
 import { ComboboxDialogCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
-
-import { AppConnectionCreationForm } from "./AppConnectionCreationForm";
 
 // Shared by the project and organization pickers; each supplies its permission check and form scope
 export const useConnectionCreationDialog = <TOption,>(
@@ -20,6 +18,10 @@ export const useConnectionCreationDialog = <TOption,>(
 ): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  // A federated connection stays in the dialog after create and is selected only once it verifies: the provider
+  // can only trust it once it exists, and selecting it earlier runs lookups (such as GCP project discovery) that
+  // fail until then and are not refetched
+  const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
   const attemptRef = useRef(0);
@@ -30,6 +32,7 @@ export const useConnectionCreationDialog = <TOption,>(
       onDiscard: () => {
         attemptRef.current += 1;
         setIsDirty(false);
+        setCreatedConnection(null);
         cancelRef.current();
       }
     });
@@ -54,23 +57,42 @@ export const useConnectionCreationDialog = <TOption,>(
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
-        <AppConnectionCreationForm
-          app={app}
-          {...formProps}
-          onDirtyChange={setIsDirty}
-          onPendingChange={setIsPending}
-          onCreated={(connection) => {
-            if (attempt !== attemptRef.current) return;
-            setIsDirty(false);
-            setIsDiscardDialogOpen(false);
-            onCreated(connection);
-          }}
-          onComplete={() => {
-            if (attempt !== attemptRef.current) return;
-            complete();
-          }}
-          onCancel={() => requestCancel(cancel)}
-        />
+        {createdConnection ? (
+          <AppConnectionForm
+            appConnection={createdConnection}
+            isNewConnection
+            layout="dialog"
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setCreatedConnection(null);
+              onCreated(connection);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        ) : (
+          <AppConnectionForm
+            app={app}
+            layout="dialog"
+            {...formProps}
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setIsDirty(false);
+              setIsDiscardDialogOpen(false);
+              if (isFederatedAppConnection(connection)) {
+                setCreatedConnection(connection);
+                return;
+              }
+              onCreated(connection);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        )}
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}
           onOpenChange={setIsDiscardDialogOpen}

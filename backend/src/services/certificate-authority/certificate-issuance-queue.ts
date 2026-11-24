@@ -202,8 +202,8 @@ type TCertificateIssuanceQueueFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -236,8 +236,8 @@ export const certificateIssuanceQueueFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  oidcIssuerService,
-  telemetryService
+  telemetryService,
+  oidcIssuerService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,

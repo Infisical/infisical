@@ -148,7 +148,7 @@ const calculateFinalRenewBeforeDays = (
 };
 
 type TAcmeCertificateAuthorityFnsDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -167,12 +167,12 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  instanceConfigService: TInstanceConfigService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type TOrderCertificateDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
@@ -184,8 +184,8 @@ type TOrderCertificateDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  instanceConfigService: TInstanceConfigService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type DBConfigurationColumn = {
@@ -387,8 +387,8 @@ export const executeAcmeOrder = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
-    instanceConfigService,
-    oidcIssuerService
+    oidcIssuerService,
+    instanceConfigService
   } = deps;
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
@@ -555,11 +555,11 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsInsertTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
             keyStore,
-            instanceConfigService,
             abortSignal
           );
           break;
@@ -653,11 +653,11 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsDeleteTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
-            keyStore,
-            instanceConfigService
+            keyStore
           );
           break;
         }
@@ -791,8 +791,8 @@ export const AcmeCertificateAuthorityFns = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  instanceConfigService,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1050,8 +1050,8 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        instanceConfigService,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       }
     );
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
@@ -1125,8 +1125,8 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        instanceConfigService,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       }
     );
   };

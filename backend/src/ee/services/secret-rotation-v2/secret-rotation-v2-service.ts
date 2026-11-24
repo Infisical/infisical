@@ -657,8 +657,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayPoolService,
       keyStore,
       instanceConfigService,
-      oidcIssuerService,
-      passwordValidationContext
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -1059,8 +1059,8 @@ export const secretRotationV2ServiceFactory = ({
         gatewayPoolService,
         keyStore,
         instanceConfigService,
-        oidcIssuerService,
-        passwordValidationContext
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1429,8 +1429,8 @@ export const secretRotationV2ServiceFactory = ({
         gatewayPoolService,
         keyStore,
         instanceConfigService,
-        oidcIssuerService,
-        passwordValidationContext
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1798,6 +1798,7 @@ export const secretRotationV2ServiceFactory = ({
       gatewayPoolService,
       keyStore,
       instanceConfigService,
+      undefined,
       oidcIssuerService
     );
 
@@ -2200,8 +2201,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayPoolService,
       keyStore,
       instanceConfigService,
-      oidcIssuerService,
-      passwordValidationContext
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

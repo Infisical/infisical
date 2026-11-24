@@ -72,7 +72,6 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   gatewayPoolService,
   _keyStore,
   _instanceConfigService,
-  _oidcIssuerService,
   passwordValidationContext
 ) => {
   const {

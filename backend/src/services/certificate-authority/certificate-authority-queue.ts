@@ -12,13 +12,13 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -40,7 +40,6 @@ type TCertificateAuthorityQueueFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
@@ -58,6 +57,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -76,7 +76,6 @@ export const certificateAuthorityQueueFactory = ({
   queueService,
   cronJob,
   keyStore,
-  oidcIssuerService,
   appConnectionDAL,
   appConnectionService,
   externalCertificateAuthorityDAL,
@@ -88,7 +87,8 @@ export const certificateAuthorityQueueFactory = ({
   caKeySourceService,
   gatewayV2Service,
   gatewayPoolService,
-  auditLogService
+  auditLogService,
+  oidcIssuerService
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,

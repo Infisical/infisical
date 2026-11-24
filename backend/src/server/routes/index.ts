@@ -3661,6 +3661,7 @@ export const registerRoutes = async (
   });
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
+    oidcIssuerService,
     eventEmitter: eventOutboxService,
     instanceConfigService,
     alertService,
@@ -3685,8 +3686,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,
-    secretValidationRuleService,
-    oidcIssuerService
+    secretValidationRuleService
   });
 
   const secretReadActivityQueue = secretReadActivityQueueServiceFactory({
@@ -3856,6 +3856,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    oidcIssuerService,
     instanceConfigService,
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
@@ -3878,8 +3879,7 @@ export const registerRoutes = async (
     caKeySourceService,
     gatewayV2Service,
     gatewayPoolService,
-    auditLogService,
-    oidcIssuerService
+    auditLogService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3970,6 +3970,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
+    oidcIssuerService,
     instanceConfigService,
     pkiApplicationDAL,
     certificateAuthorityDAL,
@@ -4000,8 +4001,7 @@ export const registerRoutes = async (
     keyStore,
     pkiAlertV2Queue,
     certificateAlertEventEmitter,
-    auditLogService,
-    oidcIssuerService
+    auditLogService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -4202,6 +4202,7 @@ export const registerRoutes = async (
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
+    oidcIssuerService,
     instanceConfigService,
     certificateAuthorityDAL,
     appConnectionDAL,
@@ -4229,8 +4230,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,
-    keyStore,
-    oidcIssuerService
+    keyStore
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({

@@ -1,7 +1,6 @@
 import { isAxiosError } from "axios";
 import RE2 from "re2";
 
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
@@ -9,7 +8,7 @@ import { logger } from "@app/lib/logger";
 import { GCP_CLOUD_DNS_ZONE_RESOURCE_PATTERN } from "@app/services/app-connection/gcp/gcp-connection-constants";
 import { isGcpServiceDisabledError, TGoogleApiError } from "@app/services/app-connection/gcp/gcp-connection-errors";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp/gcp-connection-fns";
-import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
+import { TGcpConnection, TGcpConnectionAuthDeps } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { TDnsRecordLockKeyStore, withDnsRecordLock } from "./dns-record-lock";
@@ -101,13 +100,13 @@ const submitChange = async (zoneUrl: string, accessToken: string, change: TRecor
 
 const submitWithRetry = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   zoneUrl: string,
   fqdn: string,
-  buildChange: TBuildChange,
-  instanceConfigService: TInstanceConfigService
+  buildChange: TBuildChange
 ) => {
-  const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
+  const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
   for (let attempt = 1; attempt <= MAX_CHANGE_ATTEMPTS; attempt += 1) {
     let changeHadDeletions = false;
@@ -133,11 +132,11 @@ const submitWithRetry = async (
 
 const applyTxtRecordChange = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   buildChange: TBuildChange,
   keyStore: TDnsRecordLockKeyStore,
-  instanceConfigService: TInstanceConfigService,
   abortSignal?: AbortSignal
 ) => {
   const zoneUrl = getZoneUrl(hostedZoneId);
@@ -153,21 +152,22 @@ const applyTxtRecordChange = async (
       abortSignal
     },
     keyStore,
-    () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange, instanceConfigService)
+    () => submitWithRetry(connection, authDeps, hostedZoneId, zoneUrl, fqdn, buildChange)
   );
 };
 
 export const gcpCloudDnsInsertTxtRecord = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   value: string,
   keyStore: TDnsRecordLockKeyStore,
-  instanceConfigService: TInstanceConfigService,
   abortSignal?: AbortSignal
 ) => {
   await applyTxtRecordChange(
     connection,
+    authDeps,
     hostedZoneId,
     recordName,
     (fqdn, existing) => {
@@ -185,21 +185,21 @@ export const gcpCloudDnsInsertTxtRecord = async (
       };
     },
     keyStore,
-    instanceConfigService,
     abortSignal
   );
 };
 
 export const gcpCloudDnsDeleteTxtRecord = async (
   connection: TGcpConnection,
+  authDeps: TGcpConnectionAuthDeps,
   hostedZoneId: string,
   recordName: string,
   value: string,
-  keyStore: TDnsRecordLockKeyStore,
-  instanceConfigService: TInstanceConfigService
+  keyStore: TDnsRecordLockKeyStore
 ) => {
   await applyTxtRecordChange(
     connection,
+    authDeps,
     hostedZoneId,
     recordName,
     (fqdn, existing) => {
@@ -218,7 +218,6 @@ export const gcpCloudDnsDeleteTxtRecord = async (
         ...(remaining.length ? { additions: [{ ...existing, rrdatas: remaining }] } : {})
       };
     },
-    keyStore,
-    instanceConfigService
+    keyStore
   );
 };

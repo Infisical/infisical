@@ -10,6 +10,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
+import { LegacyProjectsSection } from "./components/LegacyProjectsSection";
 import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab";
 
 export const SettingsPage = () => {
@@ -47,7 +48,12 @@ export const SettingsPage = () => {
               <PageLoader lottieClassName="w-16" />
             </div>
           )}
-          {!isTabPending && activeTab === "general" && <ProjectGeneralTab />}
+          {!isTabPending && activeTab === "general" && (
+            <div className="flex flex-col gap-4">
+              <LegacyProjectsSection />
+              <ProjectGeneralTab />
+            </div>
+          )}
           {!isTabPending && activeTab === "scanning-settings" && (
             <ProjectPermissionCan
               I={ProjectPermissionSecretScanningConfigActions.Read}
