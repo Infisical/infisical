@@ -318,7 +318,7 @@ func TestSecret_Batch(t *testing.T) {
 
 	t.Run("should answer a batch key over the 500-character column with 422 and create nothing", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, "the batch route has no length check, so the key column rejects it and the error handler maps that to 422")
+		spec.Why(t, "the batch route's schema caps a key at the 500-character column width, so the request is refused before any write with a 422 naming the field")
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -334,7 +334,7 @@ func TestSecret_Batch(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "batch create returned %s", apierr.Body(res.Body))
-		require.Contains(t, string(res.Body), "One or more field values exceed the maximum length allowed for this resource")
+		require.Contains(t, string(res.Body), "Secret name must be 500 or fewer characters")
 		require.Empty(t, valuesOf(t, proj))
 	})
 }
