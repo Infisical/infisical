@@ -310,7 +310,7 @@ Infisical's SCEP server supports the following algorithms for the CMS message ex
 
     Infisical links the new certificate to the existing certificate that signed the request. The existing certificate then shows as renewed, and Infisical stops sending expiry alerts for it. If the existing certificate was already renewed, Infisical links the new certificate to its most recent renewal instead.
 
-    If a renewal request carries a challenge password, as Microsoft Intune's renewal requests do, Infisical issues a new certificate without linking it to the existing one.
+    If a device re-enrolls with a regular enrollment request and a valid challenge password, as Microsoft Intune does, Infisical issues a new certificate without linking it to the existing one, and an **Issuance** policy covers the request.
   </Accordion>
   <Accordion title="What happens if my SCEP client uses an unsupported encryption algorithm?">
     The server will reject the request with a `400 Bad Request` error indicating the unsupported cipher OID. Configure your client to use AES-256-CBC (`-E aes256` in sscep) for compatibility.

@@ -31,9 +31,11 @@ Approval workflows add a human review step before certificates are issued or rev
 
 An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of three actions:
 
-- **Issuance:** new certificates, and renewals that change a certificate
+- **Issuance:** new certificates, and the [renewals](#renewals) that change a certificate, use a CSR, or renew an imported or discovered certificate
 - **Renewal:** every renewal, including automatic renewals, EST re-enrollment, and SCEP renewal requests that a device signs with its existing certificate instead of a challenge password
 - **Revocation:** revoking certificates
+
+ACME clients, and SCEP clients that renew with a challenge password such as Microsoft Intune, request a new certificate instead of renewing one, so an **Issuance** policy covers them.
 
 When a certificate request is made through an enrollment method:
 
@@ -47,7 +49,7 @@ When a certificate request is made through an enrollment method:
 If an **Issuance** policy covers the certificate's profile, a [renewal](/documentation/platform/pki/applications/certificate-renewal) waits for approval in these cases:
 
 - The certificate was imported or discovered, including when it renews automatically
-- The renewal changes the certificate, such as its common name, SANs, validity, or custom extensions, or uses a CSR
+- The renewal changes the certificate, such as its common name, SANs, validity, or custom extensions, or comes with a new CSR, as EST re-enrollment and SCEP renewals do
 
 If a **Renewal** policy covers the profile, every renewal waits for approval, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued. If both kinds of policy cover the profile, the Renewal policy's approvers review the renewals.
 
