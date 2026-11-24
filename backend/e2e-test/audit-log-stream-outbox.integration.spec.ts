@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
-import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { Knex } from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { EventsModule } from "@app/domains/platform/events/ce/module";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
+import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
+import { AuditLogStreamOutboxStatus } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import {
@@ -14,14 +17,12 @@ import {
   emitAuditLogStreamDeliveryFailed
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
 import { encryptLogStreamCredentials } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
-import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
-import { AuditLogStreamOutboxStatus } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { initEnvConfig } from "@app/lib/config/env";
+import { legacyEventEmitter } from "@app/lib/knex/event-emitter";
 import { initLogger, logger } from "@app/lib/logger";
-import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
+
+import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
+import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 
 declare const testDb: Knex;
 
@@ -46,7 +47,7 @@ const LAST_ATTEMPT = 4;
 // Stands in for the org KMS key: these tests are about the outbox, not about encryption, and the
 // server does not expose its KMS service. Flip decryptShouldFail to simulate a broken key.
 let decryptShouldFail = false;
-const kmsService = {
+const kmsDataKeyService = {
   createCipherPairWithDataKey: async () => ({
     encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
     decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => {
@@ -59,23 +60,28 @@ const kmsService = {
 const auditLogStreamDAL = auditLogStreamDALFactory(testDb as never);
 const outboxDAL = auditLogStreamOutboxDALFactory(testDb as never);
 
-const eventOutboxRegistry = eventOutboxRegistryFactory();
-eventOutboxRegistry.register({
+// Never started, so only emit runs (on the real table).
+const eventsModule = new EventsModule({
+  db: testDb as never,
+  queueService: {} as never,
+  cronJob: {} as never,
+  isSecondaryInstance: false,
+  isGeneralWorkerRunModeEnabled: false,
+  isTelemetryEnabled: false
+});
+eventsModule.registerConsumer({
   name: CONSUMER,
   dataSchema: AuditLogStreamDeliveryFailedPayloadSchema as never,
   subscribesTo: (eventType) => eventType === AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   handle: async () => []
 });
-const eventEmitter = eventOutboxServiceFactory({
-  eventOutboxDAL: eventOutboxDALFactory(testDb as never),
-  eventOutboxRegistry
-});
+const eventEmitter = legacyEventEmitter(eventsModule.eventEmitterService);
 
 const service = auditLogStreamOutboxServiceFactory({
   auditLogStreamOutboxDAL: outboxDAL,
   auditLogStreamDAL,
   projectDAL: { findProjectTypesByIds: async () => [] },
-  kmsService: kmsService as never,
+  kmsDataKeyService: kmsDataKeyService as never,
   // Required by the factory; drainStream never touches it.
   keyStore: { setItemWithExpiryNX: async () => null },
   queueService: {} as never,
@@ -86,7 +92,7 @@ const createStream = async (url: string) => {
   const encryptedCredentials = await encryptLogStreamCredentials({
     orgId,
     credentials: { url, headers: [] },
-    kmsService: kmsService as never
+    kmsDataKeyService: kmsDataKeyService as never
   });
   const [stream] = await testDb(TableName.AuditLogStream)
     .insert({ orgId, provider: LogProvider.Custom, encryptedCredentials, streamMode: StreamMode.Batch })
@@ -128,7 +134,7 @@ describe("audit log stream outbox (postgres)", () => {
     // Spec files run in a separate module graph from the test server, so the logger and env config the
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
     await cleanupEvents();
   });

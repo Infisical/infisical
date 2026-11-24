@@ -8,13 +8,14 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -62,7 +63,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "incrementSeededWithExpiry">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -251,7 +252,7 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { membership };
   };
@@ -553,7 +554,9 @@ export const membershipIdentityServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
+    if (scopeData.scope === AccessScope.Project) {
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
+    }
 
     if (needsRevocationBump && externalTx) {
       return {
@@ -611,7 +614,13 @@ export const membershipIdentityServiceFactory = ({
     });
     if (!membership) throw new NotFoundError({ message: `Identity membership not found` });
 
-    return membership;
+    return {
+      ...membership,
+      identity: {
+        ...membership.identity,
+        activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(membership.identity.id, keyStore)
+      }
+    };
   };
 
   // It's a list of org identities, so at project scope only org identity read gates it, plus a check that

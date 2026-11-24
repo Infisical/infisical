@@ -1,12 +1,12 @@
 import { AxiosError, AxiosResponse } from "axios";
 
-import { getConfig } from "@app/lib/config/env";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { HerokuConnectionMethod } from "./heroku-connection-enums";
@@ -21,9 +21,11 @@ interface HerokuOAuthTokenResponse {
   session_nonce: string;
 }
 
-export const getHerokuConnectionListItem = () => {
-  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID } = getConfig();
-
+export const getHerokuConnectionListItem = ({
+  INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID?: string;
+}) => {
   return {
     name: "Heroku" as const,
     app: AppConnection.Heroku as const,
@@ -38,9 +40,10 @@ export const refreshHerokuToken = async (
   orgId: string,
   projectId: string | null | undefined,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ): Promise<string> => {
-  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getOverridableEnv();
 
   const payload = {
     grant_type: "refresh_token",
@@ -65,7 +68,7 @@ export const refreshHerokuToken = async (
       expiresAt: new Date(Date.now() + data.expires_in * 1000 - 60000)
     },
     orgId,
-    kmsService,
+    kmsDataKeyService,
     projectId
   });
 
@@ -74,8 +77,11 @@ export const refreshHerokuToken = async (
   return data.access_token;
 };
 
-export const exchangeHerokuOAuthCode = async (code: string): Promise<HerokuOAuthTokenResponse> => {
-  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
+export const exchangeHerokuOAuthCode = async (
+  code: string,
+  instanceConfigService: TInstanceConfigService
+): Promise<HerokuOAuthTokenResponse> => {
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = await instanceConfigService.getOverridableEnv();
 
   try {
     const response = await request.post<HerokuOAuthTokenResponse>(
@@ -112,14 +118,17 @@ export const exchangeHerokuOAuthCode = async (code: string): Promise<HerokuOAuth
   }
 };
 
-export const validateHerokuConnectionCredentials = async (config: THerokuConnectionConfig) => {
+export const validateHerokuConnectionCredentials = async (
+  config: THerokuConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { credentials: inputCredentials, method } = config;
 
   let authToken: string;
   let oauthData: HerokuOAuthTokenResponse | null = null;
 
   if (method === HerokuConnectionMethod.OAuth && "code" in inputCredentials) {
-    oauthData = await exchangeHerokuOAuthCode(inputCredentials.code);
+    oauthData = await exchangeHerokuOAuthCode(inputCredentials.code, instanceConfigService);
     authToken = oauthData.access_token;
   } else if (method === HerokuConnectionMethod.AuthToken && "authToken" in inputCredentials) {
     authToken = inputCredentials.authToken;
@@ -172,11 +181,13 @@ export const validateHerokuConnectionCredentials = async (config: THerokuConnect
 export const listHerokuApps = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   appConnection: THerokuConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<THerokuApp[]> => {
   let authCredential = appConnection.credentials.authToken;
   if (
@@ -190,7 +201,8 @@ export const listHerokuApps = async ({
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     );
   }
 

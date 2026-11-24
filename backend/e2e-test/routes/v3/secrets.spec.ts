@@ -1,5 +1,6 @@
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
@@ -200,7 +201,7 @@ describe("Secret V3 Router", async () => {
   let folderId = "";
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
 
     const projectKeyRes = await testServer.inject({
       method: "GET",

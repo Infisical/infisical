@@ -3,7 +3,7 @@ import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useScopeVariant } from "@app/hooks";
 import {
   TAppConnection,
@@ -11,7 +11,6 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { DiscriminativePick } from "@app/types";
 
@@ -37,6 +36,7 @@ import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DaytonaConnectionForm } from "./DaytonaConnectionForm";
@@ -61,6 +61,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
+import { IncidentIoConnectionForm } from "./IncidentIoConnectionForm";
 import { JenkinsConnectionForm } from "./JenkinsConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
@@ -176,13 +177,6 @@ type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
 } & ({ appConnection: TAppConnection } | { app: AppConnection });
 
-// Created before it can be verified, so creating it is a step of the form rather than the end of it
-const isAzureManagedIdentityConnection = ({
-  app,
-  method
-}: Pick<TAppConnection, "app" | "method">) =>
-  app === AppConnection.AzureKeyVault && method === AzureKeyVaultConnectionMethod.ManagedIdentity;
-
 type CreateFormProps = FormProps & {
   app: AppConnection;
   projectId?: string;
@@ -206,7 +200,7 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         ...formData,
         projectId
       });
-      if (!isAzureManagedIdentityConnection(connection)) {
+      if (!isFederatedAppConnection(connection)) {
         createNotification({
           text: `Successfully added ${appName} Connection`,
           type: "success"
@@ -412,6 +406,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <HpeIloConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -420,6 +416,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -467,7 +465,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
-  const isManagedIdentity = isAzureManagedIdentityConnection(appConnection);
+  const isFederated = isFederatedAppConnection(appConnection);
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
@@ -479,7 +477,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         ...formData
       });
       createNotification({
-        text: isManagedIdentity
+        text: isFederated
           ? `Connection ${connection.name} verified`
           : `Successfully updated ${appName} Connection`,
         type: "success"
@@ -734,6 +732,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
@@ -742,6 +742,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

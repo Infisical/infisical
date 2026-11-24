@@ -68,6 +68,14 @@ const toCanonicalSpki = (publicKey: x509.PublicKey) =>
     .createPublicKey({ key: Buffer.from(publicKey.rawData), format: "der", type: "spki" })
     .export({ format: "der", type: "spki" });
 
+export const isCsrKeyOfCertificate = (csr: x509.Pkcs10CertificateRequest, certificate: x509.X509Certificate) => {
+  try {
+    return toCanonicalSpki(csr.publicKey).equals(toCanonicalSpki(certificate.publicKey));
+  } catch {
+    return false;
+  }
+};
+
 // Renewal resubmits a stored CSR as "reuse the existing key pair", so it must be signed by, and carry
 // the public key of, the certificate it is stored against.
 export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x509.X509Certificate) => {
@@ -81,14 +89,7 @@ export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x
     });
   }
 
-  let isSameKey: boolean;
-  try {
-    isSameKey = toCanonicalSpki(csr.publicKey).equals(toCanonicalSpki(certificate.publicKey));
-  } catch {
-    isSameKey = false;
-  }
-
-  if (!isSameKey) {
+  if (!isCsrKeyOfCertificate(csr, certificate)) {
     throw new BadRequestError({
       message:
         "The certificate signing request was generated from a different key than the certificate. Supply the CSR the certificate was issued from, or one generated from the same private key."
@@ -106,6 +107,24 @@ export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x
     });
   }
 };
+
+export const extractSubjectAltNames = (
+  sanExtensionValue: BufferSource
+): NonNullable<TCertificateRequest["subjectAlternativeNames"]> =>
+  new x509.GeneralNames(sanExtensionValue).items
+    .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
+    .map((name): TAltNameMapping => {
+      if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+        return { type: name.type as TAltNameType, value: name.value };
+      }
+
+      const altNameType = validateAndMapAltNameType(name.value);
+      if (!altNameType) {
+        throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
+      }
+      return altNameType;
+    })
+    .map((altName) => ({ type: mapLegacyAltNameType(altName.type), value: altName.value }));
 
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
   const csrObj = parseCsr(csr);
@@ -150,25 +169,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
   if (sanExtension) {
-    const sanNames = new x509.GeneralNames(sanExtension.value);
-    const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
-      .map((name): TAltNameMapping => {
-        if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
-          return { type: name.type as TAltNameType, value: name.value };
-        }
-
-        const altNameType = validateAndMapAltNameType(name.value);
-        if (!altNameType) {
-          throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
-        }
-        return altNameType;
-      });
-
-    certificateRequest.subjectAlternativeNames = altNamesArray.map((altName) => ({
-      type: mapLegacyAltNameType(altName.type),
-      value: altName.value
-    }));
+    certificateRequest.subjectAlternativeNames = extractSubjectAltNames(sanExtension.value);
   }
 
   const basicConstraintsExtension = csrObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension;

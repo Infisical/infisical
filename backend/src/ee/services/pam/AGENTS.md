@@ -131,11 +131,14 @@ Gateway-routed types run through one RPC — `testConnectionWithGateway` → the
 Windows RDP, SSH cert auth, MsSQL NTLM/Kerberos, and K8s gateway-auth). A null test result (gateway offline / missing
 the connection-test protocol) skips rather than blocks.
 
-Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
-`requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
-metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the
-gateway and injects a backend-minted short-lived token so no credential reaches the client. See
-`access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
+Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** mints
+short-lived credentials in `access()` and returns them in session metadata; **gateway-injection**
+(`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the gateway and injects a backend-minted
+short-lived token so no credential reaches the client. `AwsIam` (`requiresGateway: false`) is both: the console,
+and any account without a gateway, is gateway-less and capped at one hour, because Infisical Cloud's `AssumeRole`
+is role chaining. CLI sessions on an account with a gateway go through it instead, and the gateway re-signs each
+request (SigV4) with STS credentials it re-fetches from `getSessionCredentials` before they expire, so the session
+can outlive them. See `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
 **Snowflake is gateway-injection with no wire protocol**: the gateway answers the part of Snowflake's REST
 API that drivers speak and runs each statement through its own client (CLI `packages/pam/handlers/snowflake/`),

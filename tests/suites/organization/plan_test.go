@@ -125,26 +125,28 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		require.Equal(t, "enterprise", fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)["slug"])
 	})
 
-	t.Run("should serve the OSS fallback and refuse a paid feature when the License Server fails on a cache miss, then recover", func(t *testing.T) {
+	t.Run("should keep the cached plan when a project is created, so a License Server outage right after changes nothing", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		root := fixture.LicenseServer(t, tn, tn.OrgID)
-		// The plan carries the project count, so creating a project drops the cached plan.
-		fixture.NewProject(t, tn)
-		root.Fail(t, http.MethodGet, "/v1/organizations/"+tn.OrgID.String()+"/entitlements", http.StatusServiceUnavailable, fakenet.Times(1))
+		entitlements := "/v1/organizations/" + tn.OrgID.String() + "/entitlements"
+		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
+		before := root.Received(t, http.MethodGet, entitlements)
+		root.Fail(t, http.MethodGet, entitlements, http.StatusServiceUnavailable, fakenet.Times(1))
 
 		// Action
-		fallback := fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
+		fixture.NewProject(t, tn)
+		plan := fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
 
 		// Assert
-		require.Nil(t, fallback["slug"])
-		require.Equal(t, false, fallback["groups"])
-		res, err := tn.Admin.API.CreateGroupWithResponse(t.Context(), api.CreateGroupJSONRequestBody{Name: "during-outage"})
+		spec.Why(t, "a project change that dropped the plan sent every in-flight request for the org to the License Server at once")
+		require.Equal(t, "enterprise", plan["slug"])
+		require.Equal(t, before, root.Received(t, http.MethodGet, entitlements))
+		res, err := tn.Admin.API.CreateGroupWithResponse(t.Context(), api.CreateGroupJSONRequestBody{Name: "after-project-create"})
 		require.NoError(t, err)
-		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Equal(t, "enterprise", fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)["slug"])
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	})
 
 	t.Run("should serve a sub-org's second request from the cache", func(t *testing.T) {

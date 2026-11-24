@@ -19,6 +19,7 @@ type ControlPlane struct {
 	SecretsManager *fakenet.Scope[SecretsStore]
 	IAM            *fakenet.Scope[IAMAccount]
 	CloudFormation *fakenet.Scope[CloudFormationAccount]
+	KMS            *fakenet.Scope[KMSAccount]
 }
 
 // Open returns the account an access key id addresses, and starts collecting its
@@ -27,7 +28,7 @@ type ControlPlane struct {
 // writes to AWS.
 func Open(tt *testing.T, adminURL, accessKeyID string) *ControlPlane {
 	tt.Helper()
-	for _, svc := range []service{SSM, SecretsManager, IAM, CloudFormation} {
+	for _, svc := range []service{SSM, SecretsManager, IAM, CloudFormation, KMS} {
 		fakenet.Track(tt, adminURL, svc.Host(), accessKeyID)
 	}
 	return &ControlPlane{
@@ -36,6 +37,7 @@ func Open(tt *testing.T, adminURL, accessKeyID string) *ControlPlane {
 		SecretsManager: fakenet.Open[SecretsStore](tt, adminURL, SecretsManager.Host(), accessKeyID),
 		IAM:            fakenet.Open[IAMAccount](tt, adminURL, IAM.Host(), accessKeyID),
 		CloudFormation: fakenet.Open[CloudFormationAccount](tt, adminURL, CloudFormation.Host(), accessKeyID),
+		KMS:            fakenet.Open[KMSAccount](tt, adminURL, KMS.Host(), accessKeyID),
 	}
 }
 
@@ -63,6 +65,8 @@ func (cp *ControlPlane) seeder(svc service) interface{ Seed(*testing.T, ...any) 
 		return cp.IAM
 	case CloudFormation.name:
 		return cp.CloudFormation
+	case KMS.name:
+		return cp.KMS
 	}
 	return cp.STS
 }
@@ -113,6 +117,17 @@ func RemoveAccessKey(accessKeyID string) Fragment {
 // SeedStack seeds a stack in a status such as CREATE_COMPLETE.
 func SeedStack(name, status string) Fragment {
 	return Fragment{CloudFormation, map[string]any{"stacks": map[string]any{name: map[string]any{"stackStatus": status}}}}
+}
+
+// SeedRole seeds a role in the account accountKey addresses, assumable as its trust
+// policy allows (see TrustPolicy). Seed it on that same account's control plane.
+func SeedRole(accountKey, name, trustPolicy string) Fragment {
+	return Fragment{IAM, map[string]any{"roles": map[string]any{name: map[string]any{"owner": accountKey, "assumeRolePolicyDocument": trustPolicy}}}}
+}
+
+// SeedKey seeds a symmetric KMS key under a UUID key id.
+func SeedKey(keyID string) Fragment {
+	return Fragment{KMS, map[string]any{"keys": map[string]any{keyID: map[string]any{}}}}
 }
 
 // Deny makes the account's policy refuse one action, such as Deny(SSM, "PutParameter").

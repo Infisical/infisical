@@ -189,7 +189,7 @@ export const EnvironmentPageForm = () => {
 
       createNotification({
         type: "success",
-        text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
+        text: "Environment overrides updated successfully. It can take up to a minute to take effect."
       });
 
       reset(formData);
@@ -216,8 +216,8 @@ export const EnvironmentPageForm = () => {
           <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
         </CardTitle>
         <CardDescription>
-          Override specific environment variables. Saved values may take up to five minutes to
-          propagate to every container.
+          Override specific environment variables. Saved values may take up to a minute to propagate
+          to every container.
         </CardDescription>
       </CardHeader>
       <CardContent>

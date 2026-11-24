@@ -5,14 +5,17 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { RequestReference } from "../certificate-policy/certificate-policy-fns";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
@@ -20,8 +23,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrol
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import type { TKmsServiceFactory } from "../kms/kms-service";
-import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import {
@@ -135,6 +136,10 @@ describe("CertificateProfileService", () => {
     name: "Test Policy"
   };
 
+  const commonNameDefaultSans = {
+    subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
+  };
+
   const mockApiEnrollmentConfigDAL = {
     create: vi.fn().mockResolvedValue({ id: "api-config-123" }),
     findById: vi.fn(),
@@ -198,20 +203,13 @@ describe("CertificateProfileService", () => {
   } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 
   const mockKmsService = {
+    getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
     encryptWithKmsKey: vi
       .fn()
       .mockResolvedValue(() => Promise.resolve({ cipherTextBlob: Buffer.from("encrypted-data") })),
     decryptWithKmsKey: vi.fn().mockResolvedValue(() => Promise.resolve(Buffer.from("decrypted-ca-chain"))),
     generateKmsKey: vi.fn()
-  } as unknown as Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-
-  const mockProjectDAL = {
-    findById: vi.fn(),
-    findOne: vi.fn(),
-    updateById: vi.fn(),
-    findProjectBySlug: vi.fn(),
-    transaction: vi.fn()
-  } as unknown as Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  } as unknown as TKmsDataKeyService & TKmsKeyService;
 
   const mockCertificateBodyDAL = {
     create: vi.fn(),
@@ -296,8 +294,8 @@ describe("CertificateProfileService", () => {
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
-      kmsService: mockKmsService,
-      projectDAL: mockProjectDAL,
+      kmsDataKeyService: mockKmsService,
+      kmsKeyService: mockKmsService,
       resourceMetadataDAL: mockResourceMetadataDAL
     });
   });
@@ -321,10 +319,6 @@ describe("CertificateProfileService", () => {
     };
 
     beforeEach(() => {
-      (mockProjectDAL.findById as any).mockResolvedValue({
-        id: "project-123",
-        orgId: "org-123"
-      });
       (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
       (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
@@ -424,6 +418,37 @@ describe("CertificateProfileService", () => {
           createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103", critical: true }])
         ).rejects.toThrow("always emitted as non-critical");
       });
+    });
+
+    it("refuses a default SAN copying the common name when the policy allows no common name or no SAN of that type", async () => {
+      const createUnderPolicy = (policy: object) => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ ...samplePolicy, ...policy });
+        return service.createProfile({
+          ...mockActor,
+          projectId: "project-123",
+          data: { ...validProfileData, defaults: commonNameDefaultSans } as never
+        });
+      };
+
+      await expect(
+        createUnderPolicy({ subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example"] }] })
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        createUnderPolicy({ sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*"] }] })
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        createUnderPolicy({
+          sans: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["*"], denied: [RequestReference.CommonName] }
+          ]
+        })
+      ).rejects.toThrow("denies a SAN equal to the common name");
+      await expect(
+        createUnderPolicy({
+          subject: [{ type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*"] }],
+          sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, allowed: ["*"] }]
+        })
+      ).resolves.toBeDefined();
     });
 
     it("should create profile successfully", async () => {
@@ -590,6 +615,18 @@ describe("CertificateProfileService", () => {
           data: updateData
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("refuses moving a profile whose default SAN copies the common name to a policy that allows no DNS SANs", async () => {
+      (mockCertificateProfileDAL.findById as any).mockResolvedValue({
+        ...sampleProfile,
+        defaults: commonNameDefaultSans
+      });
+      (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ ...samplePolicy, id: "policy-456", sans: [] });
+
+      await expect(
+        service.updateProfile({ ...mockActor, profileId: "profile-123", data: { certificatePolicyId: "policy-456" } })
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should validate certificate policy when updating", async () => {
@@ -856,10 +893,6 @@ describe("CertificateProfileService", () => {
           }
         };
 
-        (mockProjectDAL.findById as any).mockResolvedValue({
-          id: "project-123",
-          orgId: "org-123"
-        });
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);

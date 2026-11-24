@@ -1,1 +1,0 @@
-export { OrgSecretScanningTab } from "./OrgSecretScanningTab";

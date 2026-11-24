@@ -1,3 +1,4 @@
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
 import { awsSecretsManagerPkiSyncFactory } from "./aws-secrets-manager-pki-sync-fns";
@@ -53,7 +54,8 @@ const makeFactory = (
       removeCertificates: async () => 0,
       addCertificates: async () => [],
       updateSyncStatus: async () => {}
-    } as never
+    } as never,
+    instanceConfigService: new FakeInstanceConfigService()
   });
 
 const pkiSync = {

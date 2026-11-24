@@ -10,6 +10,8 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
@@ -21,8 +23,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
@@ -44,9 +44,10 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
@@ -71,13 +72,15 @@ export const verifyAwsStackDeployment = async ({
   stackName,
   awsRegion,
   appConnectionDAL,
-  kmsService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   connectionId: string;
   stackName: string;
   awsRegion: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<{ deployed: boolean; status: string | null }> => {
   try {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -85,9 +88,9 @@ export const verifyAwsStackDeployment = async ({
       return { deployed: false, status: null };
     }
 
-    const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
+    const decryptedConnection = await decryptAppConnection(appConnection, kmsDataKeyService);
     const awsConfig = parseAwsConnectionConfig(decryptedConnection);
-    const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
+    const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig, instanceConfigService);
 
     const cfn = new CloudFormationClient({ credentials: awsCredentials, region: awsRegion });
     const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
@@ -211,18 +214,21 @@ const getManagedIamClient = async () => {
   }
 };
 
-const getIamClient = async (target: THoneyTokenCredentialTarget) => {
+const getIamClient = async (target: THoneyTokenCredentialTarget, instanceConfigService: TInstanceConfigService) => {
   if (target.managedBy === HoneyTokenManagedBy.Instance) {
     return getManagedIamClient();
   }
 
   const awsConfig = parseAwsConnectionConfig(target.appConnection);
-  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
+  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig, instanceConfigService);
   return { iam: new IAMClient({ credentials: awsCredentials, region }), path: undefined };
 };
 
-export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCredentialTarget) => {
-  const { iam, path } = await getIamClient(target);
+export const createAwsIamHoneyTokenCredentials = async (
+  target: THoneyTokenCredentialTarget,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { iam, path } = await getIamClient(target, instanceConfigService);
 
   const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
   try {
@@ -264,13 +270,15 @@ export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCrede
 export const revokeAwsIamHoneyTokenCredentials = async ({
   target,
   iamUserName,
-  accessKeyId
+  accessKeyId,
+  instanceConfigService
 }: {
   target: THoneyTokenCredentialTarget;
   iamUserName: string;
   accessKeyId: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const { iam } = await getIamClient(target);
+  const { iam } = await getIamClient(target, instanceConfigService);
 
   // NoSuchEntity means a previous attempt or a manual cleanup already removed it. Anything else
   // (throttling, a role that lost iam:DeleteUser) has to surface so the caller can retry, or the IAM user is
@@ -303,9 +311,10 @@ export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHone
 
 export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
-  kmsService,
+  kmsDataKeyService,
   licenseService,
-  appConnectionDAL
+  appConnectionDAL,
+  instanceConfigService
 }: TConfigProviderDep) => {
   const upsertConfig = async ({
     orgId,
@@ -320,7 +329,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     }
 
     const validatedConfig = AwsHoneyTokenConfigSchema.parse(config);
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -333,7 +342,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: validatedConfig.stackName,
       awsRegion: validatedConfig.awsRegion,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
     const derivedStatus = stackDeployment.deployed
       ? HoneyTokenConfigStatus.Complete
@@ -346,7 +356,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     if (existing) {
       // Keep webhook signing key immutable after first save.
       if (existing.encryptedConfig) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId
         });
@@ -383,7 +393,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       throw new BadRequestError({ message: "Honey token configuration not found. Save the configuration first." });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -395,7 +405,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: storedConfig.stackName,
       awsRegion: storedConfig.awsRegion,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     await honeyTokenConfigDAL.updateById(config.id, {
@@ -420,7 +431,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       return undefined;
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

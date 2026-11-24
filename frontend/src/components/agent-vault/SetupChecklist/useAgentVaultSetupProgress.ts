@@ -1,6 +1,7 @@
 import { linkOptions } from "@tanstack/react-router";
 
 import { useProject, useProjectPermission } from "@app/context";
+import { canSetUpAgentVault } from "@app/helpers/agentVaultPermissions";
 import { useLocalStorageState } from "@app/hooks";
 import {
   AgentVaultSessionScope,
@@ -8,7 +9,6 @@ import {
   useListAgentVaultProxies,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const DISMISSED_STORAGE_KEY = "agentVaultSetupChecklistDismissed";
 
@@ -27,12 +27,12 @@ export enum AgentVaultSetupStep {
   Session = "session"
 }
 
-// Only admins can set Agent Vault up, and listing every session is admin-only on the server, so none
-// of these queries runs for a member.
+// None of these queries runs for someone who can't set Agent Vault up: listing everyone's sessions takes Read Any on the
+// server, and the rest only feed the checklist.
 export const useAgentVaultSetupProgress = () => {
   const { projectId } = useProject();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canSetUp = canSetUpAgentVault(permission);
 
   // These two poll so a proxy coming online or a session created elsewhere ticks its step off, and stop
   // once that has happened: the sidebar mounts this hook on every Agent Vault page.
@@ -40,7 +40,7 @@ export const useAgentVaultSetupProgress = () => {
     projectId,
     { limit: PROXY_PAGE_SIZE },
     {
-      enabled: isAdmin,
+      enabled: canSetUp,
       refetchInterval: (query) =>
         query.state.data?.proxies.some((proxy) => proxy.heartbeat) ? false : POLL_INTERVAL_MS
     }
@@ -48,18 +48,18 @@ export const useAgentVaultSetupProgress = () => {
   const newestBundles = useListAgentVaultAccessBundles(
     projectId,
     { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const fullestBundles = useListAgentVaultAccessBundles(
     projectId,
     { orderBy: "serviceCount", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const sessions = useListAgentVaultSessions(
     projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
     {
-      enabled: isAdmin,
+      enabled: canSetUp,
       refetchInterval: (query) =>
         (query.state.data?.totalCount ?? 0) > 0 ? false : POLL_INTERVAL_MS
     }
@@ -87,10 +87,10 @@ export const useAgentVaultSetupProgress = () => {
   else if (!hasService) nextStep = AgentVaultSetupStep.Service;
   else if (!hasSession) nextStep = AgentVaultSetupStep.Session;
 
-  const isIncomplete = isAdmin && isLoaded && completedCount < 4;
+  const isIncomplete = canSetUp && isLoaded && completedCount < 4;
 
   return {
-    isAdmin,
+    canSetUp,
     isLoaded,
     isFailed,
     isVisible: isIncomplete && !isDismissed,

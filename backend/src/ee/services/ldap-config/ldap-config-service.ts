@@ -9,6 +9,8 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
   PlanLimit,
@@ -29,6 +31,8 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
@@ -48,9 +52,6 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -60,8 +61,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -88,6 +87,7 @@ import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
@@ -132,7 +132,7 @@ type TLdapConfigServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -146,6 +146,7 @@ type TLdapConfigServiceFactoryDep = {
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
 
 export const ldapConfigServiceFactory = ({
+  instanceConfigService,
   ldapConfigDAL,
   auditLogService,
   ldapGroupMapDAL,
@@ -168,7 +169,7 @@ export const ldapConfigServiceFactory = ({
   usageMeteringService,
   tokenService,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
@@ -235,7 +236,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -288,7 +289,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -399,7 +400,7 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -520,9 +521,9 @@ export const ldapConfigServiceFactory = ({
     userAgent,
     callbackPort
   }: TLdapLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
+    if (!loginPolicy.allows(LoginMethod.LDAP)) {
       throw new ForbiddenRequestError({
         message: "Login with LDAP is disabled by administrator."
       });
@@ -545,7 +546,7 @@ export const ldapConfigServiceFactory = ({
     // instance-level trustLdapEmails flag is a server admin's own decision to skip verification and
     // is kept apart from it.
     const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
-    const skipEmailVerification = isIdpAuthoritative || Boolean(serverCfg.trustLdapEmails);
+    const skipEmailVerification = isIdpAuthoritative || loginPolicy.trustsLdapEmails();
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the

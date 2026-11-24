@@ -8,10 +8,10 @@ import {
   PushEvent
 } from "@octokit/webhooks-types";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
-import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
@@ -19,7 +19,8 @@ import { TQueueGitHubPullRequestEvent } from "./github-secret-scanning-types";
 
 export const githubSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent" | "queueDataSourceEvent">
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent" | "queueDataSourceEvent">,
+  instanceConfigService: TInstanceConfigService
 ) => {
   const queuePullRequestEvent = (event: TQueueGitHubPullRequestEvent, deliveryId: string) =>
     secretScanningV2Queue.queueDataSourceEvent({ dataSourceType: SecretScanningDataSource.GitHub, event }, deliveryId);
@@ -117,7 +118,8 @@ export const githubSecretScanningService = (
       return;
     }
 
-    if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
+    if (String(checkRun.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(
       {
@@ -141,7 +143,8 @@ export const githubSecretScanningService = (
       return;
     }
 
-    if (String(checkSuite.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
+    if (String(checkSuite.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(
       {
@@ -164,7 +167,8 @@ export const githubSecretScanningService = (
       return;
     }
 
-    if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
+    if (String(checkRun.app.id) !== INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
     await queuePullRequestEvent(
       {

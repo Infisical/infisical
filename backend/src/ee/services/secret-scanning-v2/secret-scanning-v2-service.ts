@@ -2,6 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -36,6 +38,7 @@ import {
   TFindSecretScanningDataSourceByIdDTO,
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
+  TListSecretScanningFindingLocationsDTO,
   TRemoveSecretScanningResourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
@@ -43,6 +46,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
@@ -66,8 +70,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
@@ -88,7 +90,8 @@ export type TSecretScanningV2ServiceFactoryDep = {
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -103,7 +106,8 @@ export const secretScanningV2ServiceFactory = ({
   licenseService,
   secretScanningV2Queue,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   keyStore
 }: TSecretScanningV2ServiceFactoryDep) => {
   // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
@@ -284,10 +288,14 @@ export const secretScanningV2ServiceFactory = ({
     encryptedCredentials: Buffer | null | undefined,
     resourceNames: string[]
   ) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     if (!factory.updateWebhook || !isDataSourceWebhookRequired(dataSource)) return undefined;
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
     });
@@ -381,7 +389,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     try {
@@ -392,40 +401,59 @@ export const secretScanningV2ServiceFactory = ({
           secretScanningV2DAL
         },
         async ({ credentials, externalId }) => {
-          let encryptedCredentials: Buffer | null = null;
+          try {
+            let encryptedCredentials: Buffer | null = null;
 
-          if (credentials) {
-            const { encryptor } = await kmsService.createCipherPairWithDataKey({
-              type: KmsDataKey.SecretManager,
-              projectId: payload.projectId
+            if (credentials) {
+              const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+                type: KmsDataKey.SecretManager,
+                projectId: payload.projectId
+              });
+
+              const { cipherTextBlob } = encryptor({
+                plainText: Buffer.from(JSON.stringify(credentials))
+              });
+
+              encryptedCredentials = cipherTextBlob;
+            }
+
+            return await secretScanningV2DAL.dataSources.transaction(async (tx) => {
+              const dataSource = await secretScanningV2DAL.dataSources.create(
+                {
+                  encryptedCredentials,
+                  externalId,
+                  ...payload
+                },
+                tx
+              );
+
+              await factory.postInitialization({
+                payload: payload as TSecretScanningDataSourceInput,
+                connection: connection as TSecretScanningDataSourceWithConnection["connection"],
+                dataSourceId: dataSource.id,
+                credentials
+              });
+
+              return dataSource;
             });
+          } catch (error) {
+            // The provider-side webhook survives the rollback, so tear it down here.
+            if (credentials) {
+              try {
+                await factory.teardown({
+                  dataSource: { ...payload, connection } as unknown as TSecretScanningDataSourceWithConnection,
+                  credentials
+                });
+              } catch (teardownError) {
+                logger.error(
+                  teardownError,
+                  `Failed to remove the webhook of a Secret Scanning Data Source that was not created [projectId=${payload.projectId}]`
+                );
+              }
+            }
 
-            const { cipherTextBlob } = encryptor({
-              plainText: Buffer.from(JSON.stringify(credentials))
-            });
-
-            encryptedCredentials = cipherTextBlob;
+            throw error;
           }
-
-          return secretScanningV2DAL.dataSources.transaction(async (tx) => {
-            const dataSource = await secretScanningV2DAL.dataSources.create(
-              {
-                encryptedCredentials,
-                externalId,
-                ...payload
-              },
-              tx
-            );
-
-            await factory.postInitialization({
-              payload: payload as TSecretScanningDataSourceInput,
-              connection: connection as TSecretScanningDataSourceWithConnection["connection"],
-              dataSourceId: dataSource.id,
-              credentials
-            });
-
-            return dataSource;
-          });
         }
       );
 
@@ -500,7 +528,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     if (payload.isDiscoveryEnabled && !doesDataSourceSupportDiscovery(dataSource))
@@ -523,7 +552,7 @@ export const secretScanningV2ServiceFactory = ({
     const nextDataSourceWithConnection = (
       payload.config ? { ...dataSourceWithConnection, config: payload.config } : dataSourceWithConnection
     ) as TSecretScanningDataSourceWithConnection;
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
     });
@@ -635,18 +664,19 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[type]({
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let connection: TAppConnection | null = null;
     if (dataSource.connection) {
-      connection = await decryptAppConnection(dataSource.connection, kmsService);
+      connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
     }
 
     let credentials: TSecretScanningDataSourceCredentials | undefined;
 
     if (dataSource.encryptedCredentials) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: dataSource.projectId
       });
@@ -711,7 +741,7 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     let connection: TAppConnection | null = null;
-    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
 
     let resourceExternalId: string | undefined;
 
@@ -814,7 +844,11 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     const { noun } = AUTO_SYNC_DESCRIPTION_HELPER[dataSource.type];
 
     let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -950,7 +984,7 @@ export const secretScanningV2ServiceFactory = ({
     // A disconnected data source can't reach the provider, so its hook is left behind rather than blocking removal.
     let webhook: Awaited<ReturnType<typeof prepareResourceWebhooks>>;
     if (dataSource.connection && !dataSource.isDisconnected) {
-      const connection = await decryptAppConnection(dataSource.connection, kmsService);
+      const connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
       const remainingResources = await secretScanningV2DAL.resources.find({ dataSourceId });
 
       webhook = await prepareResourceWebhooks(
@@ -1079,7 +1113,8 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1250,14 +1285,6 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1282,14 +1309,6 @@ export const secretScanningV2ServiceFactory = ({
     filter: TListSecretScanningFindingsFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1309,18 +1328,12 @@ export const secretScanningV2ServiceFactory = ({
     return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
-  const updateSecretScanningFindingById = async (
-    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+  // Reading findings doesn't check the plan, so an org that downgrades can still see what was found.
+  const findSecretScanningFindingWithPermission = async (
+    findingId: string,
+    action: ProjectPermissionSecretScanningFindingActions,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
@@ -1337,9 +1350,45 @@ export const secretScanningV2ServiceFactory = ({
       projectId: finding.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretScanningFindings);
+
+    return finding;
+  };
+
+  const listSecretScanningFindingLocations = async (
+    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
+      ProjectPermissionSecretScanningFindingActions.Read,
+      actor
+    );
+
+    const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      offset,
+      limit
+    });
+
+    return { locations: locations as TSecretScanningFindingLocation[], totalCount, finding };
+  };
+
+  const updateSecretScanningFindingById = async (
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.has(PlanFeature.SecretScanning))
+      throw new BadRequestError({
+        message:
+          "Failed to update Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
       ProjectPermissionSecretScanningFindingActions.Update,
-      ProjectPermissionSub.SecretScanningFindings
+      actor
     );
 
     const isStatusChange = status !== undefined && status !== finding.status;
@@ -1487,11 +1536,12 @@ export const secretScanningV2ServiceFactory = ({
     listSecretScanningScansWithDetailsByDataSourceId,
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
+    listSecretScanningFindingLocations,
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
-    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
-    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
-    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
+    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, instanceConfigService),
+    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService),
+    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsDataKeyService)
   };
 };

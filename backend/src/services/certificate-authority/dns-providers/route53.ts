@@ -1,5 +1,7 @@
 import { ChangeResourceRecordSetsCommand, GetHostedZoneCommand, Route53Client } from "@aws-sdk/client-route-53";
 
+import { ProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -14,10 +16,14 @@ export type TRoute53Record = {
   comment?: string;
 };
 
-const buildClient = async (connection: TAwsConnectionConfig) => {
+const buildClient = async (connection: TAwsConnectionConfig, instanceConfigService: TInstanceConfigService) => {
   // Route 53 is a global service — the region passed here only affects the signer, not the data plane.
   // us-east-1 is AWS's canonical region for global services.
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_EAST_1);
+  const config = await getAwsConnectionConfig(
+    { ...connection, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
+    AWSRegion.US_EAST_1
+  );
   return new Route53Client({
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
@@ -30,9 +36,10 @@ const changeRecord = async (
   connection: TAwsConnectionConfig,
   hostedZoneId: string,
   action: "UPSERT" | "DELETE",
-  record: TRoute53Record
+  record: TRoute53Record,
+  instanceConfigService: TInstanceConfigService
 ) => {
-  const route53Client = await buildClient(connection);
+  const route53Client = await buildClient(connection, instanceConfigService);
   const defaultComment = `${action === "UPSERT" ? "Upsert" : "Delete"} ${record.type} record for ${record.name}`;
   const command = new ChangeResourceRecordSetsCommand({
     HostedZoneId: hostedZoneId,
@@ -54,13 +61,25 @@ const changeRecord = async (
   await route53Client.send(command);
 };
 
-export const route53UpsertRecord = (connection: TAwsConnectionConfig, hostedZoneId: string, record: TRoute53Record) =>
-  changeRecord(connection, hostedZoneId, "UPSERT", record);
+export const route53UpsertRecord = (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  record: TRoute53Record,
+  instanceConfigService: TInstanceConfigService
+) => changeRecord(connection, hostedZoneId, "UPSERT", record, instanceConfigService);
 
-export const route53DeleteRecord = (connection: TAwsConnectionConfig, hostedZoneId: string, record: TRoute53Record) =>
-  changeRecord(connection, hostedZoneId, "DELETE", record);
+export const route53DeleteRecord = (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  record: TRoute53Record,
+  instanceConfigService: TInstanceConfigService
+) => changeRecord(connection, hostedZoneId, "DELETE", record, instanceConfigService);
 
-export const route53GetHostedZone = async (connection: TAwsConnectionConfig, hostedZoneId: string) => {
-  const route53Client = await buildClient(connection);
+export const route53GetHostedZone = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const route53Client = await buildClient(connection, instanceConfigService);
   await route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
 };

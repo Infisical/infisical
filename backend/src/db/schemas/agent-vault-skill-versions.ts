@@ -13,7 +13,7 @@ export const AgentVaultSkillVersionsSchema = z.object({
   id: z.string().uuid(),
   skillId: z.string().uuid(),
   version: z.number(),
-  encryptedFiles: zodBuffer,
+  encryptedFiles: zodBuffer.nullable().optional(),
   sha256: z.string(),
   sizeBytes: z.number(),
   fileCount: z.number(),

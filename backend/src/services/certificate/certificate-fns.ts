@@ -18,7 +18,6 @@ import { extractDnParts } from "../certificate-authority/certificate-authority-f
 import type { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import type { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import type { TPkiCollectionItemDALFactory } from "../pki-collection/pki-collection-item-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import type { TCertificateBodyDALFactory } from "./certificate-body-dal";
 import type { TCertificateDALFactory } from "./certificate-dal";
 import type { TCertificateSecretDALFactory } from "./certificate-secret-dal";
@@ -35,6 +34,25 @@ import {
   TGetCertificateCredentialsDTO,
   TParsedCertificateBody
 } from "./certificate-types";
+
+const STORED_SERIAL_NUMBER_HEX_LENGTH = 40;
+
+export const toMinimalSerialNumber = (serialNumber: string) => serialNumber.toLowerCase().replace(/^0+(?=.)/, "");
+
+export const getSerialNumberSpellings = (serialNumber: string) => {
+  const minimal = toMinimalSerialNumber(serialNumber);
+  const byteAligned = minimal.length % 2 === 0 ? minimal : `0${minimal}`;
+  const withSignByte = /^[89a-f]/.test(byteAligned) ? [`00${byteAligned}`] : [];
+  return [
+    ...new Set([
+      serialNumber,
+      minimal,
+      byteAligned,
+      ...withSignByte,
+      minimal.padStart(STORED_SERIAL_NUMBER_HEX_LENGTH, "0")
+    ])
+  ];
+};
 
 export const keySizeToAlgorithms = (keySize: number): string[] => {
   const map: Record<number, string[]> = {
@@ -157,19 +175,15 @@ export const getCertificateCredentials = async ({
   certId,
   projectId,
   certificateSecretDAL,
-  projectDAL,
-  kmsService
+  kmsDataKeyService,
+  kmsKeyService
 }: TGetCertificateCredentialsDTO) => {
   const certificateSecret = await certificateSecretDAL.findOne({ certId });
   if (!certificateSecret)
     throw new NotFoundError({ message: `Certificate secret for certificate with ID '${certId}' not found` });
 
-  const keyId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL,
-    kmsService
-  });
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
   });
   const decryptedPrivateKey = await kmsDecryptor({
@@ -533,16 +547,29 @@ export const extractExternallyIssuedCertificateFields = (
   };
 };
 
-export const resolveCertificateStatus = (certificate: {
-  status: string;
-  notAfter: Date;
-  renewedByCertificateId?: string | null;
-}): CertStatus => {
+export const resolveCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+  },
+  at: Date = new Date()
+): CertStatus => {
   if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
-  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertStatus.EXPIRED;
+  if (new Date(certificate.notAfter).getTime() <= at.getTime()) return CertStatus.EXPIRED;
   if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
   return CertStatus.ACTIVE;
 };
+
+export const resolveCurrentCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+    deletedAt?: Date | null;
+  },
+  at?: Date
+): CertStatus => (certificate.deletedAt ? CertStatus.DELETED : resolveCertificateStatus(certificate, at));
 
 type TDeletableCertificate = {
   friendlyName?: string | null;

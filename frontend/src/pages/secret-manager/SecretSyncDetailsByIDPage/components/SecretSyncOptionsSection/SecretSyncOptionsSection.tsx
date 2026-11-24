@@ -88,6 +88,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Heroku:
     case SecretSync.GitLab:
     case SecretSync.CloudflareSecretsStore:
+    case SecretSync.Convex:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Supabase:
@@ -114,6 +115,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Daytona:
     case SecretSync.Keeper:
     case SecretSync.Jenkins:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     case SecretSync.Spacelift:

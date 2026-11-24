@@ -1,7 +1,11 @@
 import {
+  ApproverType,
+  AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   TAutoApprovalCatalogConnection,
+  TAutoApprovalCatalogConstraint,
   TAutoApprovalCatalogSubject,
   TAutoApprovalConfig,
   TAutoApprovalConfigResponse
@@ -10,10 +14,13 @@ import {
 // Client keys keep React rows stable while rules and conditions are edited
 export type TDraftCondition = {
   key: string;
+  // Empty for an AI condition or a requester check, which read no connection
   connectionId: string;
   subject: string;
   constraint: string;
   values: string[];
+  prompt?: string;
+  contextConnectionIds?: string[];
 };
 
 export type TDraftRule = { key: string; name: string; conditions: TDraftCondition[] };
@@ -29,7 +36,9 @@ export const AUTO_APPROVAL_LIMITS = {
   rules: 20,
   conditions: 20,
   values: 50,
-  valueLength: 255
+  valueLength: 255,
+  aiPromptLength: 4000,
+  aiContextConnections: 5
 };
 
 // Mirrors the Jira provider's constraint; other providers name theirs the same way
@@ -37,6 +46,28 @@ export const ASSIGNED_TO_REQUESTER_CONSTRAINT = "assigned-to-requester";
 
 // Mirrors the reuse check the engine adds to every record a requester links
 export const UNUSED_CONSTRAINT = "not-used-before";
+
+// Mirrors the engine's check on the requester's own Infisical user and groups
+export const REQUESTER_CHECKS: TAutoApprovalCatalogConstraint[] = [
+  {
+    id: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+    label: "is",
+    value: AutoApprovalConstraintValue.Many,
+    hasOptions: false
+  }
+];
+
+// The engine reads the check's values as `user:<id>` and `group:<id>`
+export const toRequesterCheckValue = (kind: ApproverType, id: string) => `${kind}:${id}`;
+
+export type TRequesterCheckOption = {
+  value: string;
+  label: string;
+  subtitle?: string;
+  kind: ApproverType;
+};
+
+export type TRequesterCheckOptions = TRequesterCheckOption[];
 
 export const newKey = () => crypto.randomUUID();
 
@@ -49,10 +80,14 @@ export const toAutoApprovalDraft = (config?: TAutoApprovalConfigResponse): TAuto
     name: rule.name,
     conditions: rule.conditions.map((condition) => ({
       key: condition.id,
-      connectionId: condition.connectionId,
+      connectionId: condition.connectionId ?? "",
       subject: condition.subject,
       constraint: condition.constraint,
-      values: condition.values
+      values: condition.values,
+      ...(condition.subject === AUTO_APPROVAL_AI_SUBJECT && {
+        prompt: condition.prompt ?? "",
+        contextConnectionIds: condition.contextConnectionIds
+      })
     }))
   }))
 });
@@ -61,12 +96,19 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
   inputs: draft.inputs,
   rules: draft.rules.map((rule) => ({
     name: rule.name.trim(),
-    conditions: rule.conditions.map(({ connectionId, subject, constraint, values }) => ({
-      connectionId,
-      subject,
-      constraint,
-      values
-    }))
+    conditions: rule.conditions.map(
+      ({ connectionId, subject, constraint, values, prompt, contextConnectionIds }) =>
+        subject === AUTO_APPROVAL_AI_SUBJECT
+          ? {
+              connectionId: null,
+              subject,
+              constraint,
+              values: [],
+              prompt: prompt?.trim() ?? "",
+              contextConnectionIds: contextConnectionIds ?? []
+            }
+          : { connectionId: connectionId || null, subject, constraint, values }
+    )
   }))
 });
 
@@ -106,11 +148,29 @@ export const getSubjectDisplayLabel = (
 export const isRequesterSubject = (subjectId: string) =>
   subjectId === AUTO_APPROVAL_REQUESTER_SUBJECT;
 
+export const isRequesterCheck = (condition: Pick<TDraftCondition, "subject" | "connectionId">) =>
+  isRequesterSubject(condition.subject) && !condition.connectionId;
+
+export const isAiCondition = (condition: Pick<TDraftCondition, "subject">) =>
+  condition.subject === AUTO_APPROVAL_AI_SUBJECT;
+
 export const getConditionError = (
   condition: TDraftCondition,
   catalog: TAutoApprovalCatalogConnection[] | undefined
 ): string | null => {
-  if (!condition.connectionId || !condition.subject) return "Choose what to check";
+  if (isAiCondition(condition)) {
+    if (!condition.prompt?.trim()) return "Describe when the AI should approve";
+    if (condition.prompt.length > AUTO_APPROVAL_LIMITS.aiPromptLength) {
+      return `Instructions can be at most ${AUTO_APPROVAL_LIMITS.aiPromptLength} characters`;
+    }
+    if ((condition.contextConnectionIds?.length ?? 0) > AUTO_APPROVAL_LIMITS.aiContextConnections) {
+      return `Choose at most ${AUTO_APPROVAL_LIMITS.aiContextConnections} connections`;
+    }
+    return null;
+  }
+  if (!condition.subject || (!condition.connectionId && !isRequesterCheck(condition))) {
+    return "Choose what to check";
+  }
   if (!condition.constraint) return "Choose a check";
   if (condition.values.length > AUTO_APPROVAL_LIMITS.values) {
     return `Choose at most ${AUTO_APPROVAL_LIMITS.values} values`;
@@ -119,11 +179,10 @@ export const getConditionError = (
     return `Values can be at most ${AUTO_APPROVAL_LIMITS.valueLength} characters`;
   }
 
-  const constraint = findSubject(
-    catalog,
-    condition.connectionId,
-    condition.subject
-  ).subject?.constraints.find((candidate) => candidate.id === condition.constraint);
+  const constraints = isRequesterCheck(condition)
+    ? REQUESTER_CHECKS
+    : findSubject(catalog, condition.connectionId, condition.subject).subject?.constraints;
+  const constraint = constraints?.find((candidate) => candidate.id === condition.constraint);
   if (!constraint) return null;
   if (constraint.value === AutoApprovalConstraintValue.One && condition.values.length !== 1) {
     return "Choose a value";

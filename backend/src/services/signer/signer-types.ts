@@ -9,7 +9,7 @@ import {
   TCodeSigningScope
 } from "../approval-policy/code-signing/code-signing-policy-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
@@ -113,6 +113,17 @@ export type TGetPublicKeyDTO = {
   signerId: string;
 } & TActorPermission;
 
+export enum SigningActivityRange {
+  SevenDays = "7d",
+  ThirtyDays = "30d",
+  SixMonths = "6m"
+}
+
+export type TGetSigningActivityTrendDTO = {
+  range: SigningActivityRange;
+  signerId?: string;
+} & TProjectPermission;
+
 export type TListSigningOperationsDTO = {
   signerId: string;
   offset?: number;
@@ -141,6 +152,15 @@ export type TReissueCertificateDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TRenewCertificateDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TRevokeSignerCertificateDTO = {
+  signerId: string;
+  revocationReason: CrlReason;
 } & TActorPermission;
 
 export type TImportCertificateDTO = {

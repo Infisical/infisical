@@ -56,7 +56,7 @@ To give an AI agent access to accounts, use [`infisical pam agentic access`](/do
         What happens next depends on the account type:
 
         - **SSH**: The CLI opens a shell on the server (add `--proxy` to use your own SSH client instead)
-        - **AWS IAM**: The CLI writes temporary credentials to your AWS credentials file
+        - **AWS IAM**: The CLI writes temporary credentials to your AWS credentials file, or [opens a shell that sends AWS CLI requests through the Gateway](/documentation/platform/pam/accounts/aws-iam#connect) if the account has one
         - **Every other account type**: The CLI starts a local proxy on `127.0.0.1` and prints its port
 
         If the CLI starts a proxy, connect your own client, such as `psql` or `kubectl`, to the printed port. The proxy signs in for you, so the client doesn't need a password.

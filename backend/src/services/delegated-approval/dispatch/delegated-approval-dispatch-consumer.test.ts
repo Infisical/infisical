@@ -1,16 +1,14 @@
 import { UnrecoverableError } from "bullmq";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TEventOutbox } from "@app/db/schemas";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
 import {
   EventOutboxStatus,
   EventResultStatus,
   MAX_OUTBOX_ATTEMPTS,
   TEvent
-} from "@app/services/event-outbox/event-outbox-types";
+} from "@app/domains/platform/events/ce/module";
+import { buildEvents } from "@app/domains/platform/events/ce/testing/build-events";
+import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "../delegated-approval-events";
@@ -21,17 +19,6 @@ import { delegatedApprovalDispatchConsumerFactory } from "./delegated-approval-d
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
-}));
-
-vi.mock("@app/lib/telemetry/metrics", () => ({
-  EventOutboxRejectReason: {
-    InvalidEvent: "invalid_event",
-    DataTooLarge: "data_too_large",
-    DataRejected: "data_rejected"
-  },
-  recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {},
-  recordEventOutboxRejectedMetric: () => {}
 }));
 
 const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
@@ -131,7 +118,7 @@ const buildConsumer = ({
     appConnectionDAL: {
       findById: vi.fn().mockResolvedValue({ id: "connection-1", orgId: ORG_ID, app: "servicenow" })
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn() }
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() }
   } as never);
 
   return { consumer, row: () => row, updateWithDetails, approvalUpdate };
@@ -442,70 +429,15 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
   const outboxDelegatedRequest = { ...pendingDelegatedRequest, dispatchEventId: EVENT_ID };
 
   const buildOutbox = (consumer: ReturnType<typeof buildConsumer>["consumer"]) => {
-    const registry = eventOutboxRegistryFactory();
-    registry.register(consumer);
-
-    const rows: TEventOutbox[] = [];
-    const isDue = (row: TEventOutbox) =>
-      (row.status === EventOutboxStatus.Pending || row.status === EventOutboxStatus.Retry) &&
-      row.nextRetryAt <= new Date();
-
-    const service = eventOutboxServiceFactory({
-      eventOutboxDAL: {
-        insertEvents: async (inserted: Pick<TEventOutbox, "consumer" | "eventType" | "payload">[]) => {
-          inserted.forEach((row) =>
-            rows.push({
-              id: rows.length + 1,
-              status: EventOutboxStatus.Pending,
-              attempts: 0,
-              nextRetryAt: new Date(0),
-              occurredAt: new Date(),
-              ...row
-            } as TEventOutbox)
-          );
-        },
-        claimBatch: async () => {
-          const claimable = rows.filter(isDue);
-          claimable.forEach((row) => Object.assign(row, { status: EventOutboxStatus.Processing }));
-          return { lockToken: "token", rows: claimable.map((row) => ({ ...row })) };
-        },
-        extendClaims: async () => {},
-        commitResults: async (input: {
-          delivered: { ids: string[] }[];
-          retriable: { ids: string[]; nextRetryDelayMs: number; error?: string }[];
-          failed: { ids: string[]; error?: string }[];
-        }) => {
-          const apply = (
-            groups: { ids: string[]; nextRetryDelayMs?: number; error?: string }[],
-            status: EventOutboxStatus
-          ) =>
-            groups.forEach((group) =>
-              group.ids.forEach((id) => {
-                const row = rows.find((candidate) => String(candidate.id) === id);
-                if (!row) return;
-                row.status = status;
-                row.attempts += 1;
-                row.lastError = group.error ?? null;
-                row.nextRetryAt = new Date(Date.now() + (group.nextRetryDelayMs ?? 0));
-              })
-            );
-          apply(input.delivered, EventOutboxStatus.Delivered);
-          apply(input.retriable, EventOutboxStatus.Retry);
-          apply(input.failed, EventOutboxStatus.Failed);
-          return [...input.delivered, ...input.retriable, ...input.failed].reduce(
-            (n, group) => n + group.ids.length,
-            0
-          );
-        }
-      } as never,
-      eventOutboxRegistry: registry
-    });
-
-    const elapseBackoff = () => {
-      rows.forEach((row) => Object.assign(row, { nextRetryAt: new Date(0) }));
+    const { eventEmitterService, eventDeliveryService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
+    return {
+      service: {
+        emit: eventEmitterService.emit.bind(eventEmitterService),
+        drain: eventDeliveryService.drain.bind(eventDeliveryService)
+      },
+      rows: () => outboxEntryStore.all(),
+      elapseBackoff: () => outboxEntryStore.elapseBackoff()
     };
-
-    return { service, rows, elapseBackoff };
   };
 
   test("retries a dispatch the provider refused and delivers it on a later flush", async () => {
@@ -515,21 +447,18 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     const { consumer, row } = buildConsumer({ delegatedRequest: outboxDelegatedRequest });
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
-    await service.emit(
-      [
-        {
-          id: EVENT_ID,
-          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
-        }
-      ],
-      PRIMARY
-    );
-    expect(rows).toHaveLength(1);
+    await service.emit([
+      {
+        id: EVENT_ID,
+        type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+        data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+      }
+    ]);
+    expect(rows()).toHaveLength(1);
 
-    await service.drain({ consumer: consumer.name });
+    await service.drain(consumer.name);
 
-    expect(rows[0]).toMatchObject({
+    expect(rows()[0]).toMatchObject({
       status: EventOutboxStatus.Retry,
       attempts: 1,
       lastError: "ServiceNow did not respond."
@@ -539,14 +468,14 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
       details: { statusReason: RETRY_REASON }
     });
 
-    await service.drain({ consumer: consumer.name });
-    expect(rows[0].status).toBe(EventOutboxStatus.Retry);
+    await service.drain(consumer.name);
+    expect(rows()[0].status).toBe(EventOutboxStatus.Retry);
     expect(dispatch).toHaveBeenCalledTimes(1);
 
     elapseBackoff();
-    await service.drain({ consumer: consumer.name });
+    await service.drain(consumer.name);
 
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 2 });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 1 });
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
       providerRequestId: "snow-1",
@@ -560,30 +489,27 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     const { consumer, row, approvalUpdate } = buildConsumer({ delegatedRequest: outboxDelegatedRequest });
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
-    await service.emit(
-      [
-        {
-          id: EVENT_ID,
-          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
-        }
-      ],
-      PRIMARY
-    );
+    await service.emit([
+      {
+        id: EVENT_ID,
+        type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+        data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+      }
+    ]);
 
     for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
       // eslint-disable-next-line no-await-in-loop -- one drain per attempt
-      await service.drain({ consumer: consumer.name });
-      expect(rows[0].status).toBe(EventOutboxStatus.Retry);
+      await service.drain(consumer.name);
+      expect(rows()[0].status).toBe(EventOutboxStatus.Retry);
       expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
       expect(approvalUpdate).not.toHaveBeenCalled();
       elapseBackoff();
     }
 
-    await service.drain({ consumer: consumer.name });
+    await service.drain(consumer.name);
 
     expect(dispatch).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
     expect(approvalUpdate).toHaveBeenCalledTimes(1);
   });
@@ -595,18 +521,17 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     });
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
     const emitDispatch = (id: string) =>
-      service.emit(
-        [{ id, type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, data: { delegatedRequestId: DELEGATED_REQUEST_ID } }],
-        PRIMARY
-      );
+      service.emit([
+        { id, type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, data: { delegatedRequestId: DELEGATED_REQUEST_ID } }
+      ]);
 
     await emitDispatch(EVENT_ID);
     for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
       // eslint-disable-next-line no-await-in-loop -- one drain per attempt
-      await service.drain({ consumer: consumer.name });
+      await service.drain(consumer.name);
       elapseBackoff();
     }
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
 
     await updateWithDetails(
@@ -616,11 +541,11 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     await emitDispatch(RESENT_EVENT_ID);
     dispatch.mockResolvedValueOnce({ providerRequestId: "snow-1" });
 
-    await service.drain({ consumer: consumer.name });
+    await service.drain(consumer.name);
 
     expect(dispatch).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: MAX_OUTBOX_ATTEMPTS });
-    expect(rows[1]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 1 });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
+    expect(rows()[1]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 0 });
     expect(approvalUpdate).not.toHaveBeenCalled();
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,

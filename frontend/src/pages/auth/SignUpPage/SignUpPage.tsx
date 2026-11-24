@@ -323,7 +323,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     return (
       <>
         <PageTitle title={t("signup.title")} />
-        <div className="flex min-h-screen items-center justify-center bg-page" role="status">
+        <div className="flex min-h-dvh items-center justify-center bg-page" role="status">
           <div className="flex flex-col items-center gap-3 text-sm text-label">
             <LoaderCircle className="size-5 animate-spin text-project motion-reduce:animate-none" />
             <span>Preparing sign up</span>
