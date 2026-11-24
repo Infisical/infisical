@@ -97,6 +97,10 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
       expect.anything()
     );
     expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.findById).toHaveBeenCalledWith("config-id", "primary");
+    expect(deps.resourceMetadataDAL.find).toHaveBeenCalledWith(
+      { certificateRequestId: "request-id" },
+      { tx: "primary" }
+    );
     expect(readDirectoryComputerGroupSids).not.toHaveBeenCalled();
   });
 

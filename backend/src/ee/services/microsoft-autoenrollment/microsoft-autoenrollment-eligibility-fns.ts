@@ -85,7 +85,10 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
     return refuse("Microsoft Autoenrollment was turned off for this profile after the request was submitted.");
   }
 
-  const metadata = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+  const metadata = await resourceMetadataDAL.find(
+    { certificateRequestId: certificateRequest.id },
+    { tx: certificateDAL.primaryNode() }
+  );
   const computerSid = metadata.find((entry) => entry.key === MicrosoftAutoenrollmentMetadataKey.ComputerSid)?.value;
   if (!computerSid) {
     return refuse(

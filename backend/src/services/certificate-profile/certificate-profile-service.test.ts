@@ -652,6 +652,7 @@ describe("CertificateProfileService", () => {
         );
         (mockCertificatePolicyDAL.findById as any)
           .mockResolvedValueOnce({ id: "policy-123", allowsRsa2048: true })
+          .mockResolvedValueOnce({ id: "policy-123", allowsRsa2048: true })
           .mockResolvedValue({ id: "policy-123", allowsRsa2048: false });
         const allowsKeyOnPolicy = (policy: { allowsRsa2048?: boolean }, request: { keyAlgorithm?: string }) => ({
           isValid: request.keyAlgorithm !== CertKeyAlgorithm.RSA_2048 || policy.allowsRsa2048 !== false,
