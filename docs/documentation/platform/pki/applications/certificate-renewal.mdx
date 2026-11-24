@@ -166,7 +166,7 @@ Automatic renewal always places a new order. To reissue on the existing order, r
   </Tab>
 </Tabs>
 
-If an [approval policy](/documentation/platform/pki/applications/approvals#renewals) covers the certificate's profile, the policy decides which renewals wait for approval before the certificate is issued.
+If a **Renewal** or **Issuance and Renewal** [approval policy](/documentation/platform/pki/applications/approvals#renewals) covers the certificate's profile, the policy decides which renewals wait for approval before the certificate is issued.
 
 ## After a renewal
 
@@ -205,7 +205,7 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
   <Accordion title="Where can I see why a renewal failed?">
     If a manual renewal fails when you submit it, Infisical shows the error right away. A renewal that goes to an external CA, or one held for approval, can also fail after you submit it. Infisical then marks its certificate request as failed. To see why, find the request in the Application's **Certificate Requests** tab, where its **Failed** status shows the reason in a tooltip. Through the API, call the [Get certificate request](/api-reference/endpoints/certificates/certificate-request) endpoint with the `certificateRequestId` from the renewal's response. The reason is in `errorMessage`.
 
-    Infisical also records a manual renewal's failure as a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA or held for approval. In those cases, Infisical records the failure as `certificate-issuance-failed`. Infisical doesn't record `certificate-issuance-failed` for a renewal it refuses, for example because your role doesn't allow it.
+    Infisical also records a manual renewal's failure as a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA or held for approval. In those cases, Infisical records the failure as `certificate-issuance-failed`. Infisical doesn't record `certificate-issuance-failed` when it refuses a renewal because your role doesn't allow it.
   </Accordion>
   <Accordion title="Can I renew several certificates at once?">
     Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so they renew before they expire.
