@@ -62,6 +62,12 @@ import {
   TAgentVaultSessionInlineServices,
   TAgentVaultSessionInlineServicesInsert,
   TAgentVaultSessionInlineServicesUpdate,
+  TAgentVaultSessionServices,
+  TAgentVaultSessionServicesInsert,
+  TAgentVaultSessionServicesUpdate,
+  TAgentVaultSessionSkills,
+  TAgentVaultSessionSkillsInsert,
+  TAgentVaultSessionSkillsUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -71,6 +77,9 @@ import {
   TAgentVaultSessionStats,
   TAgentVaultSessionStatsInsert,
   TAgentVaultSessionStatsUpdate,
+  TAgentVaultHooks,
+  TAgentVaultHooksInsert,
+  TAgentVaultHooksUpdate,
   TAgentVaultSkills,
   TAgentVaultSkillsInsert,
   TAgentVaultSkillsUpdate,
@@ -681,6 +690,9 @@ import {
   TSecretScanningDataSources,
   TSecretScanningDataSourcesInsert,
   TSecretScanningDataSourcesUpdate,
+  TSecretScanningFindingLocations,
+  TSecretScanningFindingLocationsInsert,
+  TSecretScanningFindingLocationsUpdate,
   TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningFindingsUpdate,
@@ -1800,6 +1812,11 @@ declare module "knex/types/tables" {
       TSecretScanningFindingsInsert,
       TSecretScanningFindingsUpdate
     >;
+    [TableName.SecretScanningFindingLocation]: KnexOriginal.CompositeTableType<
+      TSecretScanningFindingLocations,
+      TSecretScanningFindingLocationsInsert,
+      TSecretScanningFindingLocationsUpdate
+    >;
     [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
       TSecretScanningConfigs,
       TSecretScanningConfigsInsert,
@@ -1932,6 +1949,16 @@ declare module "knex/types/tables" {
       TAgentVaultSessionInlineServicesInsert,
       TAgentVaultSessionInlineServicesUpdate
     >;
+    [TableName.AgentVaultSessionService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionServices,
+      TAgentVaultSessionServicesInsert,
+      TAgentVaultSessionServicesUpdate
+    >;
+    [TableName.AgentVaultSessionSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionSkills,
+      TAgentVaultSessionSkillsInsert,
+      TAgentVaultSessionSkillsUpdate
+    >;
     [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
       TAgentVaultDelegations,
       TAgentVaultDelegationsInsert,
@@ -1956,6 +1983,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionStats,
       TAgentVaultSessionStatsInsert,
       TAgentVaultSessionStatsUpdate
+    >;
+    [TableName.AgentVaultHook]: KnexOriginal.CompositeTableType<
+      TAgentVaultHooks,
+      TAgentVaultHooksInsert,
+      TAgentVaultHooksUpdate
     >;
     [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultSkills,

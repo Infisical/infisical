@@ -9,6 +9,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -74,6 +75,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
+  instanceConfigService: TInstanceConfigService;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -96,6 +98,7 @@ export const identityV2ServiceFactory = ({
   permissionService,
   licenseService,
   usageMeteringService,
+  instanceConfigService,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -345,7 +348,11 @@ export const identityV2ServiceFactory = ({
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigService,
+      dto.selector.identityId,
+      dto.isActorSuperAdmin
+    );
 
     if (data.name !== undefined && data.name !== existingIdentity.name && containsLogUnsafeCharacters(data.name)) {
       throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
@@ -407,7 +414,11 @@ export const identityV2ServiceFactory = ({
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigService,
+      dto.selector.identityId,
+      dto.isActorSuperAdmin
+    );
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }

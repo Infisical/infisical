@@ -145,6 +145,40 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:id/alert-count",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getSlackIntegrationAlertCount",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ alertCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const alertCount = await server.services.slack.getSlackIntegrationAlertCount({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.id
+      });
+
+      return { alertCount };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:id",
     config: {
@@ -254,7 +288,8 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: z
           .object({
             name: z.string(),
-            id: z.string()
+            id: z.string(),
+            isArchived: z.boolean()
           })
           .array()
       }

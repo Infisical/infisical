@@ -39,7 +39,8 @@ import {
   isRequesterSubject,
   newKey,
   TAutoApprovalDraft,
-  TDraftRule
+  TDraftRule,
+  TRequesterCheckOptions
 } from "./autoApprovalDraft";
 import { ConnectionIcon, DisabledReason, LogicConnector } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
@@ -54,6 +55,7 @@ type Props = {
   onChange: Dispatch<SetStateAction<TAutoApprovalDraft>>;
   showErrors: boolean;
   hasApprovers: boolean;
+  requesterOptions: TRequesterCheckOptions;
 };
 
 export const AutoApprovalCard = ({
@@ -63,7 +65,8 @@ export const AutoApprovalCard = ({
   draft,
   onChange,
   showErrors,
-  hasApprovers
+  hasApprovers,
+  requesterOptions
 }: Props) => {
   const {
     data: catalogData,
@@ -94,9 +97,6 @@ export const AutoApprovalCard = ({
             catalog.find((connection) => connection.id === condition.connectionId)?.app === app
         )
     );
-  const hasRequesterChecks = catalog.some((connection) =>
-    connection.subjects.some((subject) => isRequesterSubject(subject.id))
-  );
 
   const availableInputs = catalog.flatMap((connection) =>
     connection.subjects
@@ -253,10 +253,6 @@ export const AutoApprovalCard = ({
                 {draft.inputs.length === 0 ? (
                   <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
                     No request form fields added.
-                    {!hasRequesterChecks &&
-                      (ai.model
-                        ? " Rules can only use AI until you add one."
-                        : " Rules have nothing to check until you add one.")}
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-border rounded-md border border-border">
@@ -345,6 +341,7 @@ export const AutoApprovalCard = ({
                             inputs={draft.inputs}
                             catalog={catalog}
                             ai={ai}
+                            requesterOptions={requesterOptions}
                             policyType={policyType}
                             scope={scope}
                             scopeId={scopeId}

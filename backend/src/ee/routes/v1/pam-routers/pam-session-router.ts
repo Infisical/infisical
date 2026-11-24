@@ -208,14 +208,21 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ message: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN, AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId, accountId, accountName, alreadyEnded } =
-        await server.services.pamSession.endSessionFromGateway(
-          req.params.sessionId,
-          req.permission.id,
-          req.permission.orgId
-        );
+        req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN
+          ? await server.services.pamSession.endSessionFromGateway(
+              req.params.sessionId,
+              req.permission.id,
+              req.permission.orgId
+            )
+          : await server.services.pamSession.endOwnSession(req.params.sessionId, {
+              actor: req.permission.type,
+              actorId: req.permission.id,
+              actorOrgId: req.permission.orgId,
+              actorAuthMethod: req.permission.authMethod
+            });
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({

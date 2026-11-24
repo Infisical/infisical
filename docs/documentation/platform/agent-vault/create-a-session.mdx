@@ -1,0 +1,448 @@
+---
+title: "Create an Agent Vault session"
+sidebarTitle: "Create a session"
+description: "Create a session and start an agent with its token."
+---
+
+import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
+
+A [session](/documentation/platform/agent-vault/sessions) gives an agent access to services in an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session).
+
+You can create a session in the [Infisical dashboard](#create-a-session-in-the-dashboard), with the [Infisical CLI](#create-a-session-with-the-cli), through the [API](#create-a-session-with-the-api), or with the [Python](#create-a-session-with-the-python-sdk), [Node.js](#create-a-session-with-the-node-js-sdk), or [Go](#create-a-session-with-the-go-sdk) SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
+
+<Tip>
+The way you create sessions depends on [where you start your agents](/documentation/platform/agent-vault/how-it-works#orchestrators).
+</Tip>
+
+## Prerequisites
+
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls, and a [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) on the bundle for whoever creates the session (admins of the project can use any of its bundles)
+- A running [proxy](/documentation/platform/agent-vault/proxies) in the same project as the access bundle, which the agent's machine can reach
+- The ID of your Agent Vault project, if you create the session with the CLI, the API, or an SDK (see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id))
+- The [Infisical CLI](/cli/install) on the agent's machine, if you start the agent with the CLI
+- To create sessions as a machine identity, the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) to set up the machine identity, or an admin of the project who can set it up for you
+
+## Create the session
+
+If a scheduled job, CI, or your own code creates sessions, it creates them as a [machine identity](/documentation/platform/identities/machine-identities), so the sessions don't depend on a person's account. Every tab except **Dashboard** includes the steps to set up the machine identity.
+
+<Tabs>
+  <Tab title="Dashboard" id="create-a-session-in-the-dashboard">
+    <Steps>
+      <Step>
+        In your Agent Vault project, go to **Sessions** and select **Create Session**.
+      </Step>
+      <Step>
+        Select **Your Own Sandbox**, then select the **Create Now** tab.
+      </Step>
+      <Step>
+        In **Access Bundle**, select the bundle the agent should use. In **Services**, select any other services the agent should reach. In **Skills**, select any skills from the project that the agent should get. You can pick a bundle, services, skills, or any mix of them. Optionally, enter a **Label** that says what the session is for. Set a duration under **Expires**, then select **Create Session**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Now tab of the Your Own Sandbox dialog, with the on-call access bundle, the vercel service and the triage-notes skill picked, Incident bot as the label, and a seven day expiry" />
+        </Frame>
+      </Step>
+      <Step>
+        Copy the command in the dialog. The dialog shows the session token only once.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token, which is shown once" />
+        </Frame>
+      </Step>
+    </Steps>
+
+    Run the copied command on the agent's machine, or give it to the person who starts the agent. The agent's machine needs the [Infisical CLI](/cli/install), but not an Infisical login. To start the agent another way, see [Start the agent](#start-the-agent).
+  </Tab>
+  <Tab title="CLI" id="create-a-session-with-the-cli">
+    The CLI can create a session in two ways:
+
+    - [`infisical agent-vault run --access-bundle`](/cli/reference#agent-vault-run) creates a session, starts the agent through the proxy, and revokes the session when the agent exits (pass `--keep-session` to keep the session active)
+    - [`infisical agent-vault sessions create`](/cli/reference#agent-vault-sessions-create) creates a session and prints only its token, so you [pass the token to the agent](#start-the-agent) yourself and revoke the session with [`infisical agent-vault sessions revoke`](/cli/reference#agent-vault-sessions-revoke)
+
+    Both commands read the project ID from `--project-id`, `INFISICAL_AGENT_VAULT_PROJECT_ID`, or `INFISICAL_PROJECT_ID`, in that order.
+
+    ### As your user
+
+    If you start the agent yourself, the CLI creates the session as the user you're logged in as:
+
+    ```bash
+    export INFISICAL_AGENT_VAULT_PROJECT_ID=<project-id>
+    infisical agent-vault run --access-bundle <access-bundle-name> --ttl 2h --proxy <proxy-host>:17323 -- <agent-command>
+    ```
+
+    ### As a machine identity
+
+    If a scheduled job or CI starts the agent, create the session as a machine identity. First, set up the machine identity:
+
+    <MachineIdentitySetup />
+
+    <Note>
+      The agent can read the machine identity's credentials from its environment, and use them to create a session with any access bundle that the machine identity has a grant on. Create a machine identity for each agent, and grant it only the access bundle that agent uses.
+    </Note>
+
+    On the agent's machine, set the machine identity's credentials, the ID of your Agent Vault project, and the proxy's address in the environment:
+
+    ```bash
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+    export INFISICAL_AGENT_VAULT_PROJECT_ID=<project-id>
+    export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323
+    # If you self-host Infisical, also set the address of your instance
+    export INFISICAL_DOMAIN=<your-instance-url>
+    ```
+
+    Then save this script as `run-agent.sh` and make it executable with `chmod +x run-agent.sh`:
+
+    ```bash run-agent.sh
+    #!/bin/sh
+    INFISICAL_AGENT_VAULT_SESSION_TOKEN=$(infisical agent-vault sessions create --access-bundle <access-bundle-name> --ttl 2h) || exit 1
+    export INFISICAL_AGENT_VAULT_SESSION_TOKEN
+
+    infisical agent-vault run -- <agent-command>
+    status=$?
+
+    infisical agent-vault sessions revoke
+    exit $status
+    ```
+
+    The script creates a session, starts the agent with the session's token, and revokes the session after the agent exits. The script then exits with the agent's exit code, so a cron job or CI step fails if the agent fails. Run `./run-agent.sh` to start the agent.
+
+    ### Set a placeholder API key
+
+    If the agent won't start without an API key, such as `ANTHROPIC_API_KEY` for Claude Code, set the key to a placeholder, such as `agent-vault`. The proxy replaces the placeholder with the real key from the service. If the service uses a [substitution](/documentation/platform/agent-vault/http-apis#substitutions), set the key to the service's placeholder instead.
+
+    ### Pin the proxy's certificate
+
+    The CLI downloads the proxy's certificate at the start of each run. If the agent's machine reaches the proxy over a network you don't fully control, add `--ca-fingerprint <fingerprint>` to the `run` command, so the CLI starts the agent only if the certificate matches. Copy the fingerprint from the **Certificate Authority** column on the **Proxies** page of your Agent Vault project.
+  </Tab>
+  <Tab title="API" id="create-a-session-with-the-api">
+    Set up a machine identity for your code:
+
+    <MachineIdentitySetup />
+
+    Log in as the machine identity by calling the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint with the client ID and client secret:
+
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+    ```
+
+    If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance, here and in every later request. The response includes the access token in `accessToken`, and the number of seconds until the access token expires in `expiresIn`. Log in again when the access token expires.
+
+    <Tip>
+      If your code runs on a cloud provider or in Kubernetes, you can use another [authentication method](/documentation/platform/identities/overview), such as AWS Auth or Kubernetes Auth, so that your code doesn't need a client secret.
+    </Tip>
+
+    Then call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the access token, and the ID of your Agent Vault project in `projectId`:
+
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
+    ```
+
+    To give the session other services from the project, list their names in `services`, such as `"services": ["github", "linear"]`. To give it skills from the project, list their names in `skills`, such as `"skills": ["code-review"]`. You can also [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session).
+
+    The response includes the session's ID, project ID, label, token, and expiry time:
+
+    ```json
+    {
+      "session": {
+        "id": "6f1c2a9e-3b7d-4e8a-9c41-2d5f7b8e0a13",
+        "projectId": "<project-id>",
+        "label": "nightly deploy",
+        "token": "<session-token>",
+        "expiresAt": "2026-10-07T19:00:00.000Z"
+      }
+    }
+    ```
+
+    Save the ID, which you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again after this response.
+  </Tab>
+  <Tab title="Python SDK" id="create-a-session-with-the-python-sdk">
+    Set up a machine identity for your code:
+
+    <MachineIdentitySetup />
+
+    Log in as the machine identity, then call `agent_vault.sessions.create`:
+
+    ```python
+    from infisical_sdk import InfisicalSDKClient
+
+    client = InfisicalSDKClient(host="https://app.infisical.com")
+    client.auth.universal_auth.login(
+        client_id="<client-id>",
+        client_secret="<client-secret>"
+    )
+
+    session = client.agent_vault.sessions.create(
+        project_id="<project-id>",
+        access_bundle="<access-bundle-name>",
+        ttl="1h",
+        label="nightly deploy"
+    )
+    ```
+
+    If you self-host Infisical, set `host` to the address of your instance. `session.token` holds the session token, and `session.id` holds the ID you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again.
+
+    The SDK requires `infisicalsdk` version 1.4.0 or newer. For every method and parameter, see the [Python SDK reference](/sdks/languages/python#agent_vault-sessions).
+  </Tab>
+  <Tab title="Node.js SDK" id="create-a-session-with-the-node-js-sdk">
+    Set up a machine identity for your code:
+
+    <MachineIdentitySetup />
+
+    Log in as the machine identity, then call `agentVault().sessions.create`:
+
+    ```typescript
+    import { InfisicalSDK } from "@infisical/sdk";
+
+    const client = new InfisicalSDK();
+    await client.auth().universalAuth.login({
+      clientId: "<client-id>",
+      clientSecret: "<client-secret>"
+    });
+
+    const session = await client.agentVault().sessions.create({
+      projectId: "<project-id>",
+      accessBundle: "<access-bundle-name>",
+      ttl: "1h",
+      label: "nightly deploy"
+    });
+    ```
+
+    If you self-host Infisical, pass `siteUrl` with the address of your instance to `new InfisicalSDK()`. `session.token` holds the session token, and `session.id` holds the ID you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again.
+
+    The SDK requires `@infisical/sdk` version 5.3.0 or newer. For every method and parameter, see the [Node.js SDK reference](/sdks/languages/node#agentvault-sessions).
+  </Tab>
+  <Tab title="Go SDK" id="create-a-session-with-the-go-sdk">
+    Set up a machine identity for your code:
+
+    <MachineIdentitySetup />
+
+    Log in as the machine identity, then call `AgentVault().Sessions().Create`:
+
+    ```go
+    import infisical "github.com/infisical/go-sdk"
+
+    client := infisical.NewInfisicalClient(context.Background(), infisical.Config{})
+    _, err := client.Auth().UniversalAuthLogin("<client-id>", "<client-secret>")
+    if err != nil {
+      return err
+    }
+
+    session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+      ProjectID:    "<project-id>",
+      AccessBundle: "<access-bundle-name>",
+      TTL:          "1h",
+      Label:        "nightly deploy",
+    })
+    ```
+
+    If you self-host Infisical, set `SiteUrl` in `infisical.Config` to the address of your instance. `session.Token` holds the session token, and `session.ID` holds the ID you need to [revoke the session](/documentation/platform/agent-vault/revoke-a-session). You can't retrieve the session token again.
+
+    The SDK requires `github.com/infisical/go-sdk` version 0.10.0 or newer. For every method and parameter, see the [Go SDK reference](/sdks/languages/go#agent-vault-sessions).
+  </Tab>
+</Tabs>
+
+## Duration
+
+The duration sets when the session expires. Set a duration of at least one minute, such as `30m`, `8h`, or `7d`, or set `never` for a session that lasts until someone revokes it. If you leave out the duration, the session lasts:
+
+- `7d` if you create it through the API or an SDK
+- `1h` if you create it [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+- `never` if you create it with the CLI, so set a duration with `--ttl` unless you always revoke the session
+
+Pick the duration based on how long the agent runs:
+
+| How the agent runs | What to do |
+| --- | --- |
+| A job that finishes, such as a task from a queue or a scheduled run | Create a session for each job, with a duration a little longer than the longest job, and revoke the session when the job ends |
+| A process that keeps running, such as a service or a chat bot | Create a session with a duration such as `24h`. Before the session expires, create a new session, switch the agent to the new token, then revoke the old session |
+
+## Start the agent
+
+If you created the session with `infisical agent-vault run --access-bundle`, the agent is already running. Otherwise, pass the session token to the agent:
+
+<Tabs>
+  <Tab title="With the CLI">
+    Start the agent with `infisical agent-vault run`, and pass the session token and the proxy's address:
+
+    ```bash
+    export INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>
+    infisical agent-vault run --proxy <proxy-host>:17323 -- <agent-command>
+    ```
+
+    The CLI doesn't revoke a session if you pass it the session's token, so [revoke the session](/documentation/platform/agent-vault/revoke-a-session) yourself when the agent finishes, for example with `infisical agent-vault sessions revoke`.
+  </Tab>
+  <Tab title="Without the CLI">
+    Set these environment variables for the agent's process, and point its certificate variables at the proxy's certificate, as [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) describes:
+
+    ```bash
+    export HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export INFISICAL_AGENT_VAULT_URL=https://app.infisical.com
+    ```
+
+    `INFISICAL_AGENT_VAULT_URL` lets the agent [list the services its session can use](/documentation/platform/agent-vault/service-discovery#get-the-list). Set it to the URL of the Infisical instance that the proxy connects to.
+
+    If you built the agent yourself, you can set the proxy in the agent's HTTP client instead. The same guide has examples for Python, Node.js, and Go.
+  </Tab>
+</Tabs>
+
+## Create a session for each run automatically
+
+To give an agent a new session every time it runs, start the agent as a machine identity with the `run-agent.sh` script from the [CLI tab](#create-a-session-with-the-cli). The systemd and container examples run `infisical agent-vault run --access-bundle` instead, so the CLI revokes the session when the service or container stops. Pick the tab for the place that starts your agents:
+
+<Tabs>
+  <Tab title="Schedule (cron)">
+    Store the environment variables in a file that only the job's user can read, such as `/etc/agent-vault/agent.env` with mode `0600`:
+
+    ```bash
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+    export INFISICAL_AGENT_VAULT_PROJECT_ID=<project-id>
+    export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323
+    ```
+
+    Then load the file in the crontab entry. This entry runs the agent every 30 minutes:
+
+    ```bash
+    */30 * * * * . /etc/agent-vault/agent.env && /usr/local/bin/run-agent.sh
+    ```
+  </Tab>
+  <Tab title="Service (systemd)">
+    For an agent that keeps running, such as a bot, a session has to last as long as the process. Instead of a session that never expires, restart the service on a schedule, so each restart gets a new session and revokes the old one.
+
+    Store the variables in `/etc/agent-vault/agent.env` with mode `0600`, without the `export` keyword, then create `/etc/systemd/system/agent.service`:
+
+    ```ini
+    [Unit]
+    Description=Agent through Infisical Agent Vault
+    After=network-online.target
+
+    [Service]
+    EnvironmentFile=/etc/agent-vault/agent.env
+    ExecStart=/usr/bin/infisical agent-vault run --access-bundle <access-bundle-name> --ttl 25h -- <agent-command>
+    Restart=always
+    RuntimeMaxSec=1d
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    `RuntimeMaxSec=1d` restarts the service every day, and `--ttl 25h` gives each session an hour more than that. Start the service with `sudo systemctl enable --now agent`.
+  </Tab>
+  <Tab title="Container">
+    Install the CLI in the agent's image and start the agent through `infisical agent-vault run`. For an image based on Debian or Ubuntu:
+
+    ```dockerfile
+    RUN apt-get update && apt-get install -y curl \
+      && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+      && apt-get install -y infisical
+
+    ENTRYPOINT ["infisical", "agent-vault", "run", "--access-bundle", "<access-bundle-name>", "--ttl", "2h", "--"]
+    CMD ["<agent-command>"]
+    ```
+
+    Pass the environment variables when you start the container, such as from a file that lists each variable as `NAME=value`, without the `export` keyword:
+
+    ```bash
+    docker run --env-file agent.env <agent-image>
+    ```
+
+    When Docker stops the container, the CLI passes the stop signal to the agent and revokes the session after the agent exits.
+  </Tab>
+  <Tab title="CI (GitHub Actions)">
+    Store the client ID and client secret as [repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions), commit the script to the repository, then run it in a job step:
+
+    ```yaml
+    - name: Install the Infisical CLI
+      run: |
+        curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+        sudo apt-get install -y infisical
+
+    - name: Run the agent
+      env:
+        INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.AGENT_VAULT_CLIENT_ID }}
+        INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.AGENT_VAULT_CLIENT_SECRET }}
+        INFISICAL_AGENT_VAULT_PROJECT_ID: <project-id>
+        INFISICAL_AGENT_VAULT_PROXY_ADDRESS: <proxy-host>:17323
+      run: ./run-agent.sh
+    ```
+
+    The script exits with the agent's exit code, so the step fails if the agent fails. If the proxy is on a private network, run the job on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) in that network.
+  </Tab>
+</Tabs>
+
+To run agents on many machines, give every machine the same script or command and point them all at the same proxy. Each run gets its own session, so you can see and revoke each run separately on the **Sessions** page. You don't need a proxy for each machine, but the proxy has to be in the same Agent Vault project as the sessions.
+
+To run agents in a sandbox, follow the guide for [Modal](/documentation/platform/agent-vault/guides/modal), [Daytona](/documentation/platform/agent-vault/guides/daytona), or [E2B](/documentation/platform/agent-vault/guides/e2b).
+
+## Verify the session works
+
+In your Agent Vault project, go to **Sessions**. If you're an admin of the project, select **All Sessions** to see sessions that other users and machine identities created. Find the session by its label. Its **Status** is **Active** until it expires or someone revokes it.
+
+[View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. If the proxy attached a credential to a request, the request's outcome is **Brokered**.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
+    The user or machine identity doesn't have a grant on the access bundle, the name you sent is wrong, or the access bundle is in a different project from the one you sent. Check the name on the project's **Access Bundles** page, and [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to whoever creates the session.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;You can't use a service called ...&quot;">
+    No access bundle granted to whoever creates the session holds the service, or no service in the project has that name. Check the name on the project's **Services** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service to whoever creates the session.
+  </Accordion>
+  <Accordion title="Creating the session fails with 422 and &quot;More than one service in this session is named ...&quot;">
+    Two of the session's services have the same name. This happens if you list a service twice, or if you list a service from the project and an [inline service](/documentation/platform/agent-vault/inline-services) with the same name. Remove one of the two, or give the inline service a different name.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;You can't use a skill called ...&quot;">
+    No access bundle granted to whoever creates the session holds the skill, or no skill in the project has that name. Check the name on the project's **Skills** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the skill to whoever creates the session.
+  </Accordion>
+  <Accordion title="Creating the session fails with 422 and &quot;More than one skill in this session is named ...&quot;">
+    Two of the session's skills have the same name. This happens if you list a skill twice, or if you list a skill from the project and [send a skill](/documentation/platform/agent-vault/skills#send-skills-with-a-session) whose `SKILL.md` has the same `name`. Remove one of the two, or rename the skill you send.
+  </Accordion>
+  <Accordion title="The CLI hangs or fails before the agent starts">
+    If the output mentions logging in, the CLI didn't find the machine identity's credentials. Check that `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` are set in the job's environment. Cron starts jobs with an almost empty environment, so load the variables in the cron job, as the [cron example](#create-a-session-for-each-run-automatically) shows.
+  </Accordion>
+  <Accordion title="The CLI stops because no Agent Vault project is set">
+    The CLI needs to know which Agent Vault project to create the session in. Set `INFISICAL_AGENT_VAULT_PROJECT_ID` to the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id) in the job's environment, or pass `--project-id <project-id>`. If neither is set, the CLI reads the project from `INFISICAL_PROJECT_ID`.
+  </Accordion>
+  <Accordion title="Creating the session fails after the CLI reads the project from INFISICAL_PROJECT_ID">
+    `INFISICAL_PROJECT_ID` might hold the ID of a Secrets Management project. Set `INFISICAL_AGENT_VAULT_PROJECT_ID` to the ID of your Agent Vault project, which the CLI reads first.
+  </Accordion>
+  <Accordion title="The CLI fails with &quot;the proxy address is required&quot;">
+    Set `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`, or pass `--proxy <proxy-host>:17323`.
+  </Accordion>
+  <Accordion title="Requests fail with &quot;the session is no longer valid, or it belongs to a different Agent Vault project&quot; as soon as the agent starts">
+    The proxy and the session are in different Agent Vault projects. A proxy only accepts sessions from its own project, so it refuses every request with a 403. Point the agent at a proxy in the session's project, or [create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) in that project.
+  </Accordion>
+  <Accordion title="Creating a session fails with 401 after your code has run for a while">
+    The machine identity's access token expired. Log in again to get a new access token. Sessions you already created keep working, because a session doesn't depend on the access token that created it.
+  </Accordion>
+  <Accordion title="The agent loses access to APIs partway through a run">
+    If the agent's requests start failing with a 403 from the proxy, such as `CONNECT tunnel failed, response 403`, the session expired before the agent finished. Set a longer [duration](#duration).
+  </Accordion>
+  <Accordion title="Requests to a service fail with &quot;needs your own credential or sign-in&quot; or &quot;needs your personal values&quot;">
+    The service needs each member's own credential or sign-in, and the session's owner hasn't set theirs up yet. If a machine identity created the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), the owner is that user.
+
+    - A user sets up their values on the **Services** page of the Agent Vault project, as described in [set up your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values)
+    - A machine identity sets its values with the [Set personal values](/api-reference/endpoints/agent-vault-services/set-personal-values) endpoint, but it can't sign in to an OAuth service, so create the session on behalf of a user who has signed in
+
+    The proxy picks up the new values within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Revoke a session" icon="ban" href="/documentation/platform/agent-vault/revoke-a-session">
+    End a session before it expires so its agent stops getting credentials.
+  </Card>
+  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+    Keep an encrypted record of every request, statement, and command an AI agent makes, stored by Infisical or in your own Amazon S3 bucket.
+  </Card>
+</CardGroup>

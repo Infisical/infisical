@@ -59,7 +59,7 @@ import {
   ServiceVariablesContext
 } from "./service-sheet/ServiceVariablesContext";
 import { VariableKeyChips } from "./service-sheet/VariableChips";
-import { VariableFormDialog } from "./VariableFormDialog";
+import { VariableFormSheet } from "./VariableFormSheet";
 
 // The fields reuse the service sheet's secret input, which names them as the sheet does: a token or a basic
 // password is `secret`.
@@ -478,7 +478,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <VariableFormDialog
+        <VariableFormSheet
           scope={AgentVaultVariableScope.Personal}
           isOpen={newVariableKey !== null}
           onOpenChange={(open) => {

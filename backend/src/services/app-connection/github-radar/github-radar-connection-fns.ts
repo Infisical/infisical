@@ -2,6 +2,7 @@ import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
@@ -17,9 +18,11 @@ import {
   TGitHubRadarRepository
 } from "./github-radar-connection-types";
 
-export const getGitHubRadarConnectionListItem = () => {
-  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG } = getConfig();
-
+export const getGitHubRadarConnectionListItem = ({
+  INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG
+}: {
+  INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG?: string;
+}) => {
   return {
     name: "GitHub Radar" as const,
     app: AppConnection.GitHubRadar as const,
@@ -28,8 +31,12 @@ export const getGitHubRadarConnectionListItem = () => {
   };
 };
 
-export const getGitHubRadarClient = (appConnection: TGitHubRadarConnection) => {
-  const appCfg = getConfig();
+export const getGitHubRadarClient = async (
+  appConnection: TGitHubRadarConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
+    await instanceConfigService.getOverridableEnv();
 
   const { method, credentials } = appConnection;
 
@@ -37,7 +44,7 @@ export const getGitHubRadarClient = (appConnection: TGitHubRadarConnection) => {
 
   switch (method) {
     case GitHubRadarConnectionMethod.App:
-      if (!appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID || !appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) {
+      if (!INF_APP_CONNECTION_GITHUB_RADAR_APP_ID || !INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) {
         throw new InternalServerError({
           message: `GitHub ${getAppConnectionMethodName(method).replace(
             "GitHub",
@@ -49,8 +56,8 @@ export const getGitHubRadarClient = (appConnection: TGitHubRadarConnection) => {
       client = new Octokit({
         authStrategy: createAppAuth,
         auth: {
-          appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
-          privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
+          appId: INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
+          privateKey: INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
           installationId: credentials.installationId
         }
       });
@@ -64,19 +71,26 @@ export const getGitHubRadarClient = (appConnection: TGitHubRadarConnection) => {
   return client;
 };
 
-export const listGitHubRadarRepositories = async (appConnection: TGitHubRadarConnection) => {
-  const client = getGitHubRadarClient(appConnection);
+export const listGitHubRadarRepositories = async (
+  appConnection: TGitHubRadarConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const client = await getGitHubRadarClient(appConnection, instanceConfigService);
 
   const repositories: TGitHubRadarRepository[] = await client.paginate("GET /installation/repositories");
 
   return repositories;
 };
 
-export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRadarConnectionConfig) => {
+export const validateGitHubRadarConnectionCredentials = async (
+  config: TGitHubRadarConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { credentials, method } = config;
 
-  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET, SITE_URL } =
-    getConfig();
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   if (!INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID || !INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) {
     throw new InternalServerError({

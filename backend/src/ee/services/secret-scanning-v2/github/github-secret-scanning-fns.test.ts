@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus
@@ -32,11 +33,13 @@ vi.mock("probot", () => ({
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
   getConfig: () => ({
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1",
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key",
     SECRET_SCANNING_SCAN_TIMEOUT: 60_000
   })
 }));
+
+const instanceConfigService = new FakeInstanceConfigService({
+  env: { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1", INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key" }
+});
 
 const scanContents =
   vi.fn<(contents: string[], configPath?: string) => Promise<{ index: number; finding: Record<string, unknown> }[]>>();
@@ -140,6 +143,21 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.title).toBe("2 secret(s) found");
     expect(result.summary).toContain("1 more secret(s) were marked as false positives or ignored");
     expect(result.offerSkipActions).toBe(true);
+  });
+
+  test("counts a secret found in several places once, and lists each place", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [
+        { ...makeFinding(0), id: "0a1b2c3d-0000", status: SecretScanningFindingStatus.Unresolved },
+        { ...makeFinding(1), id: "0a1b2c3d-0000", status: SecretScanningFindingStatus.Unresolved }
+      ],
+      scannedCommitCount: 1,
+      totalCommitCount: 1
+    });
+
+    expect(result.title).toBe("1 secret(s) found");
+    expect(result.summary).toContain("config\\|0.ts:1");
+    expect(result.summary).toContain("config\\|1.ts:2");
   });
 
   test("passes as neutral and lists the files it couldn't scan", () => {
@@ -252,6 +270,7 @@ describe("completePullRequestCheckRun", () => {
       installationId: "1",
       repositoryFullName: "acme/api",
       checkRunId: 99,
+      instanceConfigService,
       result: getPullRequestScanCheckRunResult({ findings, scannedCommitCount: 1, totalCommitCount: 1 })
     });
 
@@ -274,6 +293,7 @@ describe("completePullRequestCheckRun", () => {
       installationId: "1",
       repositoryFullName: "acme/api",
       checkRunId: 99,
+      instanceConfigService,
       result: getPullRequestScanCheckRunResult({
         findings: [makeFinding(0)],
         scannedCommitCount: 1,
@@ -370,7 +390,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(scanContents.mock.calls.map(([contents]) => contents.length)).toEqual([50, 10]);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:2`);
   });
 
   test("scans the files GitHub lists for a commit with more, and returns the commit", async () => {
@@ -419,7 +439,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     expect(scanContents).toHaveBeenCalledTimes(1);
     expect(scannedContents()).toHaveLength(4);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:2`);
     expect(findings[0].details).toEqual(
       expect.objectContaining({ file: "d-two.txt", commit: secondCommit.sha, author: "b", startLine: 2 })
     );
@@ -570,7 +590,8 @@ describe("createSkippedPullRequestCheckRun", () => {
     repositoryFullName: "acme/api",
     headSha: "b".repeat(40),
     title: "Fork not scanned",
-    summary: "summary"
+    summary: "summary",
+    instanceConfigService
   };
 
   beforeEach(() => {

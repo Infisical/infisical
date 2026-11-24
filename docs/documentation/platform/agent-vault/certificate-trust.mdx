@@ -1,0 +1,93 @@
+---
+title: "Trust an Agent Vault proxy's certificate"
+sidebarTitle: "Certificate trust"
+description: "Make your agents trust the certificate authority that the proxy decrypts HTTPS requests with."
+---
+
+The proxy decrypts HTTPS traffic to attach the credential, so each agent has to trust the proxy's certificate authority (CA). Infisical generates a self-signed CA for each proxy when you create the proxy, and a new one each time you rotate the proxy's token.
+
+<Tabs>
+  <Tab title="With the CLI">
+    If you start the agent with `infisical agent-vault run`, the CLI sets up trust for you. On every run, it fetches the certificate from the proxy and sets these variables for the agent: `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+
+    On macOS, if you run the CLI in a terminal, it also adds the certificate to your login keychain for tools such as `gh` and `docker` that read the system trust store. macOS asks you to approve the change. To skip this step on a machine that already trusts the proxy, pass `--no-ca-trust`.
+  </Tab>
+  <Tab title="Without the CLI">
+    If you start the agent another way, such as in a container that sets `HTTPS_PROXY` itself, set up trust yourself:
+
+    <Steps>
+      <Step>
+        Download the certificate from the proxy:
+
+        ```bash
+        curl -s http://<proxy-address>/_agent-vault/ca | jq -r .certificate > ca.pem
+        ```
+      </Step>
+      <Step>
+        Mount `ca.pem` where the agent can read it, and point the agent's CA variables at it, such as `SSL_CERT_FILE` and `NODE_EXTRA_CA_CERTS`.
+      </Step>
+      <Step>
+        Route the agent through the proxy, with the session token as the password:
+
+        ```bash
+        export HTTPS_PROXY="http://x-agent-vault:<session-token>@<proxy-address>"
+        export HTTP_PROXY="$HTTPS_PROXY"
+        ```
+      </Step>
+    </Steps>
+
+    To set the proxy and the certificate in your own agent's code instead, see [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent).
+  </Tab>
+</Tabs>
+
+<Warning>
+Agents send their session token to the proxy unencrypted with every request. If someone can read that traffic and reach the proxy, they can use the token to call every API in the session's access bundle with its real credentials. The token keeps working until the session expires or you [revoke it](/documentation/platform/agent-vault/revoke-a-session).
+
+For this reason, we recommend running the proxy where only your agents can reach it, such as on a private network or a container network. The [SOCKS5 port](/documentation/platform/agent-vault/socks5) always uses TLS, so the session token is encrypted on the way to it.
+</Warning>
+
+## Download the certificate authority
+
+To give the proxy's CA to a sandbox provider, or to get the CA without connecting to the proxy, download it from Infisical:
+
+- **In Infisical:** on the **Proxies** page of your Agent Vault project, select the download icon next to the fingerprint in the **Certificate Authority** column
+- **With the API:** call the [Get proxy certificate authority](/api-reference/endpoints/agent-vault-proxies/get-ca) endpoint as a member or admin of the proxy's Agent Vault project
+
+## Pin the proxy's certificate
+
+If the agent runs on a network you don't fully control, pin the proxy's certificate so the agent only talks to your proxy. Copy the fingerprint from the **Certificate Authority** column on the **Proxies** page:
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing three proxies with their status, traffic policy, and certificate authority fingerprint: staging-proxy and prod-proxy are Healthy, and laptop-dev shows Not connected" />
+</Frame>
+
+Then pass it with `--ca-fingerprint`:
+
+```bash
+infisical agent-vault run --session-token <session-token> --proxy <proxy-address> --ca-fingerprint SHA256:9F:2C:... -- claude
+```
+
+If the proxy's certificate doesn't match, the CLI stops before starting the agent.
+
+## Use your own certificate authority
+
+If your agents' machines already trust a CA that your organization runs, the proxy can serve that CA, so you don't have to set up trust for the one Infisical generates.
+
+To serve your own CA instead of the one Infisical generates, pass it to the proxy with `--ca-cert` and `--ca-key`, or with the `INFISICAL_AGENT_VAULT_CA_CERT` and `INFISICAL_AGENT_VAULT_CA_KEY` environment variables. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file. The key has to be an ECDSA P-256 key.
+
+```bash
+INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
+infisical agent-vault proxy --ca-cert ./ca.crt --ca-key ./ca.key
+```
+
+The **Proxies** page shows the fingerprint of the CA that the proxy reported the last time it started. Infisical keeps only that fingerprint, not the certificate, so you can't [download](#download-the-certificate-authority) your own CA from Infisical.
+
+Pass the same CA to every machine that runs this proxy, for example in a [high availability](/documentation/platform/agent-vault/proxies#high-availability) setup.
+
+Your own CA stays the same when you rotate the proxy's token. To use the CA Infisical generates again, leave out these flags.
+
+## APIs with a private certificate authority
+
+If an API uses a private certificate authority, the machine running the proxy has to trust that authority. The agent's machine doesn't need to trust it.
+
+The same applies to a [hook](/documentation/platform/agent-vault/hooks): every machine that runs the proxy has to reach the hook URL, and has to trust the hook server's certificate authority if that authority is private.

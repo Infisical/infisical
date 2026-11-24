@@ -314,6 +314,13 @@ export enum ProjectPermissionAgentVaultSkillActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionAgentVaultHookActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 // Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
@@ -323,7 +330,8 @@ export enum ProjectPermissionAgentVaultSessionActions {
   ReadAny = "read-any",
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
-  CreateWithInlineServices = "create-with-inline-services"
+  CreateWithInlineServices = "create-with-inline-services",
+  CreateWithInlineSkills = "create-with-inline-skills"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.
@@ -502,6 +510,7 @@ export enum ProjectPermissionSub {
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
   AgentVaultVariables = "agent-vault-variables",
+  AgentVaultHooks = "agent-vault-hooks",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -788,6 +797,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
+  | [ProjectPermissionAgentVaultHookActions, ProjectPermissionSub.AgentVaultHooks]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

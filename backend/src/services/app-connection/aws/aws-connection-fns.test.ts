@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
@@ -10,10 +11,20 @@ const sts = vi.hoisted(() => ({
   rejectionsLeft: 0
 }));
 
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
-vi.mock("@app/lib/crypto/cryptography", () => ({
-  crypto: { isFipsModeEnabled: () => false, nativeCrypto: { randomUUID: () => "session" } }
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getConfig: () => ({})
 }));
+vi.mock("@app/lib/crypto/cryptography", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/crypto/cryptography")>();
+  return {
+    ...actual,
+    crypto: Object.assign(Object.create(actual.crypto) as object, {
+      isFipsModeEnabled: () => false,
+      nativeCrypto: { ...actual.crypto.nativeCrypto, randomUUID: () => "session" }
+    })
+  };
+});
 vi.mock("@app/lib/aws/hashing", () => ({ CustomAWSHasher: function CustomAWSHasher() {} }));
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
@@ -35,6 +46,8 @@ vi.mock("@aws-sdk/client-sts", async (importOriginal) => {
     }
   };
 });
+
+const instanceConfigService = new FakeInstanceConfigService();
 
 const assumeRoleConnection = (overrides: Partial<TAwsConnectionConfig>) =>
   ({
@@ -60,7 +73,7 @@ describe("getAwsConnectionConfig External ID", () => {
     ["organization", { projectId: null }, ["org-1"]],
     ["legacy project", { version: 1, projectType: ProjectType.SecretManager }, ["org-1"]]
   ])("%s connections assume the role with the expected External ID", async (_, overrides, expected) => {
-    await getAwsConnectionConfig(assumeRoleConnection(overrides));
+    await getAwsConnectionConfig(assumeRoleConnection(overrides), instanceConfigService);
 
     expect(sts.externalIds).toEqual(expected);
   });
@@ -68,16 +81,19 @@ describe("getAwsConnectionConfig External ID", () => {
   test("Agent Vault connections do not retry with the organization ID", async () => {
     sts.rejectionsLeft = 1;
 
-    await expect(getAwsConnectionConfig(assumeRoleConnection({ projectType: ProjectType.AgentVault }))).rejects.toThrow(
-      "sts:AssumeRole"
-    );
+    await expect(
+      getAwsConnectionConfig(assumeRoleConnection({ projectType: ProjectType.AgentVault }), instanceConfigService)
+    ).rejects.toThrow("sts:AssumeRole");
     expect(sts.externalIds).toEqual(["proj-1"]);
   });
 
   test("Certificate Manager connections retry with the project ID", async () => {
     sts.rejectionsLeft = 1;
 
-    await getAwsConnectionConfig(assumeRoleConnection({ projectType: ProjectType.CertificateManager }));
+    await getAwsConnectionConfig(
+      assumeRoleConnection({ projectType: ProjectType.CertificateManager }),
+      instanceConfigService
+    );
 
     expect(sts.externalIds).toEqual(["org-1", "proj-1"]);
   });

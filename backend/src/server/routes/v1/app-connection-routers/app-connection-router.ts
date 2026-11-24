@@ -83,6 +83,10 @@ import {
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import { ConvexConnectionListItemSchema, SanitizedConvexConnectionSchema } from "@app/services/app-connection/convex";
 import {
+  CoolifyConnectionListItemSchema,
+  SanitizedCoolifyConnectionSchema
+} from "@app/services/app-connection/coolify";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -394,6 +398,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedPortainerConnectionSchema.options,
   ...SanitizedJenkinsConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -495,6 +500,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RundeckConnectionListItemSchema,
   PortainerConnectionListItemSchema,
   JenkinsConnectionListItemSchema,
+  CoolifyConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
@@ -534,8 +540,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: (req) => {
-      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(req.query.projectType);
+    handler: async (req) => {
+      const appConnectionOptions = await server.services.appConnection.listAppConnectionOptions(req.query.projectType);
       return { appConnectionOptions };
     }
   });

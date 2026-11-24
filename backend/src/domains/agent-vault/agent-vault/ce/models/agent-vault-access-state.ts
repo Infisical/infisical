@@ -10,6 +10,12 @@ export enum AgentVaultAccessState {
   LimitReached = "limit-reached"
 }
 
+// The free tier's notice points: a warning before the limit, and the limit itself.
+export enum AgentVaultFreeUsageThreshold {
+  Warning = "warning",
+  Limit = "limit"
+}
+
 export type TAgentVaultFreeUsageJSON = {
   used: number;
   limit: number;

@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { listGitHubRadarRepositories } from "@app/services/app-connection/github-radar/github-radar-connection-fns";
@@ -9,11 +10,14 @@ type TGetAppConnectionFunc = (
   actor: OrgServiceActor
 ) => Promise<TGitHubRadarConnection>;
 
-export const githubRadarConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
+export const githubRadarConnectionService = (
+  getAppConnection: TGetAppConnectionFunc,
+  instanceConfigService: TInstanceConfigService
+) => {
   const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.GitHubRadar, connectionId, actor);
 
-    const repositories = await listGitHubRadarRepositories(appConnection);
+    const repositories = await listGitHubRadarRepositories(appConnection, instanceConfigService);
 
     return repositories.map((repo) => ({ id: repo.id, name: repo.full_name }));
   };

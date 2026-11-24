@@ -39,6 +39,9 @@ export const getPasswordRequirements = (password: string, policy: TPasswordPolic
     isMet: doesPasswordMeetRequirement(password, requirement)
   }));
 
+export const doesPasswordMeetPolicy = (password: string, policy: TPasswordPolicy) =>
+  policy.requirements.every((requirement) => doesPasswordMeetRequirement(password, requirement));
+
 export const createPasswordSchema = (policy: TPasswordPolicy) =>
   z
     .string()

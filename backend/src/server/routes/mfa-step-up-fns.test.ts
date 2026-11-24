@@ -140,7 +140,7 @@ describe("ensureStepUpMfa binds prior proof to the factors the action would chal
 });
 
 describe("ensureFactorEnrollmentStepUpMfa", () => {
-  const enrollmentArgs = { userId: USER_ID, tokenVersionId: TOKEN_VERSION, enrollingMethod: MfaMethod.WEBAUTHN };
+  const enrollmentArgs = { userId: USER_ID, tokenVersionId: TOKEN_VERSION };
 
   const withEnrollmentMethods = (enrollmentMethods: TResolved | null, patch: ServerPatch = {}) => {
     const built = makeServer(patch);
@@ -159,28 +159,37 @@ describe("ensureFactorEnrollmentStepUpMfa", () => {
   test("challenges an existing factor without needing an org", async () => {
     const { server, mfaSession, user, getFactorEnrollmentStepUpMfaMethods } = withEnrollmentMethods({
       challenge: MfaMethod.WEBAUTHN,
-      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+      accepted: [MfaMethod.WEBAUTHN]
     });
 
     await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).rejects.toMatchObject({
       name: "SESSION_MFA_REQUIRED",
       details: { mfaMethod: MfaMethod.WEBAUTHN }
     });
-    expect(getFactorEnrollmentStepUpMfaMethods).toHaveBeenCalledWith(USER_ID, MfaMethod.WEBAUTHN);
+    expect(getFactorEnrollmentStepUpMfaMethods).toHaveBeenCalledWith(USER_ID);
     expect(user.getStepUpMfaMethod).not.toHaveBeenCalled();
-    expect(mfaSession.hasRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, [
-      MfaMethod.WEBAUTHN,
-      MfaMethod.TOTP
-    ]);
+    expect(mfaSession.hasRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, [MfaMethod.WEBAUTHN]);
   });
 
-  test("a recent proof of any enrolled factor satisfies it", async () => {
+  test("a recent proof of the strongest factor satisfies it", async () => {
     const { server, mfaSession } = withEnrollmentMethods(
-      { challenge: MfaMethod.WEBAUTHN, accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] },
-      { recentAuthMethod: MfaMethod.TOTP }
+      { challenge: MfaMethod.WEBAUTHN, accepted: [MfaMethod.WEBAUTHN] },
+      { recentAuthMethod: MfaMethod.WEBAUTHN }
     );
 
     await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).resolves.toBeUndefined();
     expect(mfaSession.createMfaSession).not.toHaveBeenCalled();
+  });
+
+  test("a recent proof of a weaker factor does not satisfy it", async () => {
+    const { server } = withEnrollmentMethods(
+      { challenge: MfaMethod.WEBAUTHN, accepted: [MfaMethod.WEBAUTHN] },
+      { recentAuthMethod: MfaMethod.EMAIL }
+    );
+
+    await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).rejects.toMatchObject({
+      name: "SESSION_MFA_REQUIRED",
+      details: { mfaMethod: MfaMethod.WEBAUTHN }
+    });
   });
 });

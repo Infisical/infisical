@@ -6,10 +6,12 @@ import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { fillActivityPeriods, getActivityPeriodWindow, selectActivityPeriod } from "@app/lib/knex/activity-periods";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { OrderByDirection } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -26,7 +28,7 @@ import {
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { keySizeToAlgorithms } from "./certificate-fns";
+import { keySizeToAlgorithms, toMinimalSerialNumber } from "./certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
 
 // Scoped to UI-surfaced algorithms; intentionally narrower than pqc-utils.PQC_ALGORITHMS.
@@ -180,6 +182,52 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findScepCertsByValidationConnectionsAndSerials = async (
+    validationConnectionIds: string[],
+    serialNumbers: string[]
+  ) => {
+    if (serialNumbers.length === 0 || validationConnectionIds.length === 0) return [];
+    try {
+      const certs = await db
+        .primaryNode()(TableName.Certificate)
+        .join(
+          TableName.CertificateRequests,
+          `${TableName.CertificateRequests}.certificateId`,
+          `${TableName.Certificate}.id`
+        )
+        .leftJoin(TableName.PkiApplicationProfile, (join) => {
+          join
+            .on(`${TableName.PkiApplicationProfile}.applicationId`, `${TableName.Certificate}.applicationId`)
+            .andOn(`${TableName.PkiApplicationProfile}.profileId`, `${TableName.Certificate}.profileId`);
+        })
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.PkiCertificateProfile}.id`,
+          `${TableName.Certificate}.profileId`
+        )
+        .join(TableName.PkiScepEnrollmentConfig, (join) => {
+          join
+            .on(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiApplicationProfile}.scepConfigId`)
+            .orOn(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiCertificateProfile}.scepConfigId`);
+        })
+        .where(`${TableName.CertificateRequests}.enrollmentType`, EnrollmentType.SCEP)
+        .whereIn(`${TableName.PkiScepEnrollmentConfig}.validationConnectionId`, validationConnectionIds)
+        .whereIn(`${TableName.Certificate}.serialNumber`, serialNumbers)
+        .distinct(
+          `${TableName.Certificate}.id`,
+          `${TableName.Certificate}.serialNumber`,
+          `${TableName.Certificate}.status`,
+          `${TableName.Certificate}.projectId`,
+          `${TableName.Certificate}.caId`,
+          `${TableName.Certificate}.caCertId`
+        );
+
+      return certs as Pick<TCertificates, "id" | "serialNumber" | "status" | "projectId" | "caId" | "caCertId">[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find SCEP certs by validation connections and serial numbers" });
+    }
+  };
+
   const findActiveDigiCertCertsByCaId = async (caId: string) => {
     try {
       const certs = await db
@@ -199,6 +247,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     friendlyName?: string;
     commonName?: string;
     search?: string;
+    excludeFriendlyNameFromSearch?: boolean;
     status?: string | string[];
     includeDeleted?: boolean;
     profileIds?: string[];
@@ -238,10 +287,20 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileName?: string | null;
   };
 
+  // Must give each row the same status the filter branches in applyInventoryFilters match it under.
+  const CURRENT_STATUS_SQL = `CASE
+    WHEN "${TableName.Certificate}"."deletedAt" IS NOT NULL THEN '${CertStatus.DELETED}'
+    WHEN "${TableName.Certificate}"."status" = '${CertStatus.REVOKED}' THEN '${CertStatus.REVOKED}'
+    WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '${CertStatus.EXPIRED}'
+    WHEN "${TableName.Certificate}"."renewedByCertificateId" IS NOT NULL THEN '${CertStatus.RENEWED}'
+    ELSE '${CertStatus.ACTIVE}'
+  END`;
+
   const applyInventoryFilters = (
     query: Knex.QueryBuilder,
     filters: TInventoryFilterParams,
-    hasProfileJoin: boolean
+    hasProfileJoin: boolean,
+    statusAt: Date = new Date()
   ): Knex.QueryBuilder => {
     let q = query;
 
@@ -261,8 +320,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         void qb
           .where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
           .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
-          .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
-          .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+          .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`);
+
+        if (!filters.excludeFriendlyNameFromSearch) {
+          void qb.orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+        }
 
         if (isUuidV4(sanitizedValue)) {
           void qb.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
@@ -275,7 +337,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
 
     if (filters.status) {
-      const now = new Date();
+      const now = statusAt;
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
 
       q = q.andWhere((qb: Knex.QueryBuilder) => {
@@ -438,7 +500,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     }: {
       projectId: string;
     } & TInventoryFilterParams,
-    permissionFilters?: ProcessedPermissionRules
+    permissionFilters?: ProcessedPermissionRules,
+    statusAt?: Date
   ) => {
     try {
       interface CountResult {
@@ -456,7 +519,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         );
       }
 
-      query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter) as typeof query;
+      query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter, statusAt) as typeof query;
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
@@ -510,23 +573,26 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByThumbprintInOrg = async ({
-    orgId,
-    column,
-    fingerprint,
-    limit
-  }: {
-    orgId: string;
-    column: "fingerprintSha1" | "fingerprintSha256";
-    fingerprint: string;
-    limit?: number;
-  }): Promise<TCertificates[]> => {
+  const findByThumbprintInOrg = async (
+    {
+      orgId,
+      column,
+      fingerprint,
+      limit
+    }: {
+      orgId: string;
+      column: "fingerprintSha1" | "fingerprintSha256";
+      fingerprint: string;
+      limit?: number;
+    },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
     try {
-      const query = db
-        .replicaNode()(TableName.Certificate)
+      const query = (tx || db.replicaNode())(TableName.Certificate)
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
         .select(selectAllTableCols(TableName.Certificate));
 
       if (limit) void query.limit(limit);
@@ -534,6 +600,65 @@ export const certificateDALFactory = (db: TDbClient) => {
       return await query;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate by thumbprint in org" });
+    }
+  };
+
+  const findBySerialNumberInOrg = async (
+    { orgId, serialNumber }: { orgId: string; serialNumber?: string },
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    if (!serialNumber) return undefined;
+    try {
+      const certificate = await (tx || db.replicaNode())(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Certificate}.serialNumber`, serialNumber)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate))
+        .first();
+      return certificate as TCertificates | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by serial number in org" });
+    }
+  };
+
+  const findSameCertificateRecords = async (
+    {
+      serialNumbers,
+      caId,
+      fingerprintSha256,
+      orgId
+    }: { serialNumbers: string[]; caId: string; fingerprintSha256?: string | null; orgId?: string },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
+    try {
+      const records = await (tx || db.replicaNode())(TableName.Certificate)
+        .whereIn("serialNumber", serialNumbers)
+        .where((sameCertificate) => {
+          void sameCertificate.where((onCa) => {
+            void onCa.where("caId", caId);
+            if (fingerprintSha256) {
+              void onCa.where((fingerprint) => {
+                void fingerprint.whereNull("fingerprintSha256").orWhere("fingerprintSha256", fingerprintSha256);
+              });
+            }
+          });
+          if (fingerprintSha256 && orgId) {
+            void sameCertificate.orWhere((withoutCa) => {
+              void withoutCa
+                .whereNull("caId")
+                .where("fingerprintSha256", fingerprintSha256)
+                .whereIn("projectId", (projectQuery) => {
+                  void projectQuery.select("id").from(TableName.Project).where("orgId", orgId);
+                });
+            });
+          }
+        })
+        .orderBy("deletedAt", "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate));
+      return records as TCertificates[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find records of the same certificate" });
     }
   };
 
@@ -888,6 +1013,21 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingRevocationApprovalRequest = async (
+    { certificateId, projectId }: { certificateId: string; projectId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const row = await (tx || db)(TableName.ApprovalRequests)
+        .where({ projectId, type: ApprovalPolicyType.CertRevocation, status: ApprovalRequestStatus.Pending })
+        .whereRaw(`"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'certificateId' = ?`, [certificateId])
+        .first("id", "expiresAt");
+      return row as { id: string; expiresAt: Date | null } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find pending revocation approval request" });
+    }
+  };
+
   const getOriginatingRequestByCertId = async (certId: string, tx?: Knex): Promise<TOriginatingCertificateRequest> => {
     try {
       // Primary, not replica: eligibility checks must not miss a recently-issued request row.
@@ -963,10 +1103,17 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const findWithPrivateKeyInfo = async (
     filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
-    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
+    options?: {
+      offset?: number;
+      limit?: number;
+      sort?: [string, "asc" | "desc"][];
+      sortByCurrentStatus?: boolean;
+      statusAt?: Date;
+    },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<TCertificateWithInventoryFields[]> => {
     try {
+      const statusAt = options?.statusAt ?? new Date();
       let query = db
         .replicaNode()(TableName.Certificate)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
@@ -1010,6 +1157,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         friendlyName,
         commonName,
         search,
+        excludeFriendlyNameFromSearch,
         status,
         includeDeleted,
         profileIds,
@@ -1043,6 +1191,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           friendlyName,
           commonName,
           search,
+          excludeFriendlyNameFromSearch,
           status,
           includeDeleted,
           profileIds,
@@ -1062,7 +1211,8 @@ export const certificateDALFactory = (db: TDbClient) => {
           notBeforeTo,
           applicationIds
         },
-        true
+        true,
+        statusAt
       ) as typeof query;
 
       if (permissionFilters) {
@@ -1075,10 +1225,18 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (options?.limit) {
         query = query.limit(options.limit);
       }
-      if (options?.sort) {
+      if (options?.sort?.length) {
         options.sort.forEach(([column, direction]) => {
+          if (column === "status" && options.sortByCurrentStatus) {
+            query = query.orderByRaw(`${CURRENT_STATUS_SQL} ${direction === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+              statusAt
+            ]);
+            return;
+          }
           query = query.orderBy(`${TableName.Certificate}.${column}`, direction);
         });
+        // sort columns are not unique, so without a tiebreaker offset paging can repeat or skip rows
+        query = query.orderBy(`${TableName.Certificate}.id`, options.sort[options.sort.length - 1][1]);
       }
 
       const results = await query;
@@ -1101,7 +1259,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     canRenewFromCsr: boolean;
   };
 
-  type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
+  type TCertificateLookupFilter =
+    | { id: string; serialNumber?: never; orgId?: never }
+    | { id?: never; serialNumber: string; orgId: string };
 
   const findByIdForUpdate = async (id: string, tx: Knex) => {
     try {
@@ -1133,6 +1293,26 @@ export const certificateDALFactory = (db: TDbClient) => {
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest renewal of certificate" });
     }
+  };
+
+  const findOneLiveFirst = async (
+    filter: Parameters<typeof certificateOrm.find>[0],
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    const [certificate] = await certificateOrm.find(filter, { limit: 1, sort: [["deletedAt", "desc", "first"]], tx });
+    return certificate;
+  };
+
+  const toSerialNumberLockKey = (serialNumber: string) => `certificate-serial:${toMinimalSerialNumber(serialNumber)}`;
+
+  const lockSerialNumber = async (serialNumber: string, tx: Knex) => {
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [toSerialNumberLockKey(serialNumber)]);
+  };
+
+  const lockSerialNumbers = async (serialNumbers: string[], tx: Knex) => {
+    const keys = [...new Set(serialNumbers.map(toSerialNumberLockKey))];
+    if (!keys.length) return;
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
   };
 
   const findWithFullDetails = async (
@@ -1169,7 +1349,12 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
-        query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
+        query = query
+          .whereIn(`${TableName.Certificate}.projectId`, (projectQuery) => {
+            void projectQuery.select("id").from(TableName.Project).where("orgId", filter.orgId);
+          })
+          .where(`${TableName.Certificate}.serialNumber`, filter.serialNumber)
+          .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first");
       }
 
       const result = (await query.first()) as
@@ -1432,29 +1617,16 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const getActivityTrend = async (projectId: string, daysBack: number) => {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
-      const now = new Date();
-
-      const useDaily = daysBack <= 30;
-
-      if (!useDaily) {
-        startDate.setDate(1);
-      }
-      const truncUnit = useDaily ? "day" : "month";
-      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
-
-      const periodExpr = (col: string) =>
-        db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."${col}"), ?) as period`, [truncUnit, dateFormat]);
+      const window = getActivityPeriodWindow(daysBack);
+      const { startDate, endDate } = window;
 
       const issued = await db
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(periodExpr("notBefore"))
+        .where(`${TableName.Certificate}.notBefore`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1464,9 +1636,9 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
-        .where(`${TableName.Certificate}.notAfter`, "<=", now)
+        .where(`${TableName.Certificate}.notAfter`, "<=", endDate)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
-        .select(periodExpr("notAfter"))
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notAfter"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1477,8 +1649,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
-        .where(`${TableName.Certificate}.revokedAt`, "<=", now)
-        .select(periodExpr("revokedAt"))
+        .where(`${TableName.Certificate}.revokedAt`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "revokedAt"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1489,59 +1661,26 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(periodExpr("notBefore"))
+        .where(`${TableName.Certificate}.notBefore`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
 
-      const periods: Array<{
-        period: string;
-        issued: number;
-        expired: number;
-        revoked: number;
-        renewed: number;
-      }> = [];
-      interface PeriodCount {
-        period: string;
-        count: string;
-      }
+      type PeriodCount = { period: string; count: string };
+      const toCountMap = (rows: unknown) => new Map((rows as PeriodCount[]).map((r) => [r.period, Number(r.count)]));
 
-      const typedIssued = issued as unknown as PeriodCount[];
-      const typedExpired = expired as unknown as PeriodCount[];
-      const typedRevoked = revoked as unknown as PeriodCount[];
-      const typedRenewed = renewed as unknown as PeriodCount[];
+      const issuedMap = toCountMap(issued);
+      const expiredMap = toCountMap(expired);
+      const revokedMap = toCountMap(revoked);
+      const renewedMap = toCountMap(renewed);
 
-      const issuedMap = new Map(typedIssued.map((r) => [r.period, r.count]));
-      const expiredMap = new Map(typedExpired.map((r) => [r.period, r.count]));
-      const revokedMap = new Map(typedRevoked.map((r) => [r.period, r.count]));
-      const renewedMap = new Map(typedRenewed.map((r) => [r.period, r.count]));
-
-      const cursor = new Date(startDate);
-      while (cursor <= now) {
-        let periodKey: string;
-        if (useDaily) {
-          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-        } else {
-          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        }
-        const issuedCount = issuedMap.get(periodKey);
-        const expiredCount = expiredMap.get(periodKey);
-        const revokedCount = revokedMap.get(periodKey);
-        const renewedCount = renewedMap.get(periodKey);
-        periods.push({
-          period: periodKey,
-          issued: issuedCount ? Number(issuedCount) : 0,
-          expired: expiredCount ? Number(expiredCount) : 0,
-          revoked: revokedCount ? Number(revokedCount) : 0,
-          renewed: renewedCount ? Number(renewedCount) : 0
-        });
-        if (useDaily) {
-          cursor.setDate(cursor.getDate() + 1);
-        } else {
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
+      const periods = fillActivityPeriods(window, (period) => ({
+        issued: issuedMap.get(period) ?? 0,
+        expired: expiredMap.get(period) ?? 0,
+        revoked: revokedMap.get(period) ?? 0,
+        renewed: renewedMap.get(period) ?? 0
+      }));
 
       return { periods };
     } catch (error) {
@@ -1551,27 +1690,15 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const getPqcTrend = async (projectId: string, daysBack: number) => {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
-      const now = new Date();
-
-      const useDaily = daysBack <= 30;
-      if (!useDaily) {
-        startDate.setDate(1);
-      }
-      const truncUnit = useDaily ? "day" : "month";
-      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
+      const window = getActivityPeriodWindow(daysBack);
 
       const rows = await db
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
-        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(
-          db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."notBefore"), ?) as period`, [truncUnit, dateFormat])
-        )
+        .where(`${TableName.Certificate}.notBefore`, ">=", window.startDate)
+        .where(`${TableName.Certificate}.notBefore`, "<=", window.endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(
           db.raw(
             `CASE WHEN "${TableName.Certificate}"."keyAlgorithm" IN (${PQC_KEY_ALGORITHMS.map(() => "?").join(",")}) THEN 'pqc' ELSE 'nonPqc' END as bucket`,
@@ -1595,23 +1722,10 @@ export const certificateDALFactory = (db: TDbClient) => {
         else nonPqcMap.set(r.period, Number(r.count));
       });
 
-      const periods: Array<{ period: string; pqc: number; nonPqc: number }> = [];
-      const cursor = new Date(startDate);
-      while (cursor <= now) {
-        const periodKey = useDaily
-          ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
-          : `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        periods.push({
-          period: periodKey,
-          pqc: pqcMap.get(periodKey) ?? 0,
-          nonPqc: nonPqcMap.get(periodKey) ?? 0
-        });
-        if (useDaily) {
-          cursor.setDate(cursor.getDate() + 1);
-        } else {
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
+      const periods = fillActivityPeriods(window, (period) => ({
+        pqc: pqcMap.get(period) ?? 0,
+        nonPqc: nonPqcMap.get(period) ?? 0
+      }));
 
       return { periods };
     } catch (error) {
@@ -1632,6 +1746,9 @@ export const certificateDALFactory = (db: TDbClient) => {
   return {
     primaryNode,
     ...certificateOrm,
+    findOneLiveFirst,
+    lockSerialNumber,
+    lockSerialNumbers,
     findByIdForUpdate,
     findByIdForShare,
     create,
@@ -1642,8 +1759,11 @@ export const certificateDALFactory = (db: TDbClient) => {
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
     findActiveDigiCertCertsByCaId,
+    findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
+    findBySerialNumberInOrg,
+    findSameCertificateRecords,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesMatchingSyncFilters,
@@ -1652,6 +1772,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
+    findPendingRevocationApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     canRenewFromCsr,

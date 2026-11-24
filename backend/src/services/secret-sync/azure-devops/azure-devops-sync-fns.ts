@@ -1,10 +1,11 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AzureDevOpsConnectionMethod } from "@app/services/app-connection/azure-devops/azure-devops-enums";
 import { getAzureDevopsConnection } from "@app/services/app-connection/azure-devops/azure-devops-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -12,7 +13,8 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 interface AzureDevOpsVariableGroup {
@@ -33,7 +35,11 @@ interface AzureDevOpsVariableGroupList {
   value: AzureDevOpsVariableGroup[];
 }
 
-export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
+export const azureDevOpsSyncFactory = ({
+  kmsDataKeyService,
+  appConnectionDAL,
+  instanceConfigService
+}: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
     const { credentials } = secretSync.connection;
     const isOAuth = secretSync.connection.method === AzureDevOpsConnectionMethod.OAuth;
@@ -45,7 +51,12 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsService);
+    const accessToken = await getAzureDevopsConnection(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     return { accessToken, orgName, isOAuth };
   };

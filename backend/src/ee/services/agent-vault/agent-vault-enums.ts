@@ -16,7 +16,9 @@ export enum AgentVaultCredentialType {
 export enum AgentVaultOauthStatus {
   Connected = "connected",
   NeedsReauthorization = "needs-reauthorization",
-  NeedsAdditionalScopes = "needs-additional-scopes"
+  NeedsAdditionalScopes = "needs-additional-scopes",
+  // Never stored: an OAuth variable with no sign-in or import yet, or one an edit disconnected.
+  NotConnected = "not-connected"
 }
 
 export enum AgentVaultOauthAuthorizationStatus {
@@ -118,6 +120,19 @@ export enum AgentVaultVariableReferenceField {
 export enum AgentVaultVariableScope {
   Global = "global",
   Personal = "personal"
+}
+
+export enum AgentVaultVariableType {
+  Text = "text",
+  OAuth = "oauth"
+}
+
+// How an OAuth variable got its tokens: a first sign-in, a sign-in that replaced its tokens, or tokens an API caller
+// imported.
+export enum AgentVaultOauthVariableConnectMethod {
+  SignIn = "sign-in",
+  Reconnect = "reconnect",
+  Import = "import"
 }
 
 /**

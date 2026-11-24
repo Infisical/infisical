@@ -2,14 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import { InstallProvider } from "@slack/oauth";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
-import { getServerCfg } from "../super-admin/super-admin-service";
+import { TAlertChannelDALFactory } from "../alert/alert-channel-dal";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 import { fetchSlackChannels } from "./slack-fns";
@@ -36,8 +36,10 @@ type TSlackServiceFactoryDep = {
     | "findWithWorkflowIntegrationDetails"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
+  alertChannelDAL: Pick<TAlertChannelDALFactory, "countAlertsByWorkflowIntegrationId">;
 };
 
 export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
@@ -45,8 +47,10 @@ export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
 export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
-  kmsService,
-  workflowIntegrationDAL
+  kmsDataKeyService,
+  instanceConfigService,
+  workflowIntegrationDAL,
+  alertChannelDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
     orgId,
@@ -60,7 +64,7 @@ export const slackServiceFactory = ({
     slackBotId,
     slackBotUserId
   }: TCompleteSlackIntegrationDTO) => {
-    const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId,
       type: KmsDataKey.Organization
     });
@@ -115,7 +119,7 @@ export const slackServiceFactory = ({
       });
     }
 
-    const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId: slackIntegration.orgId,
       type: KmsDataKey.Organization
     });
@@ -137,20 +141,8 @@ export const slackServiceFactory = ({
 
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
-    const serverCfg = await getServerCfg();
-
-    let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
-    let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
-
-    const decrypt = kmsService.decryptWithRootKey();
-
-    if (serverCfg.encryptedSlackClientId) {
-      slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
-    }
-
-    if (serverCfg.encryptedSlackClientSecret) {
-      slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
-    }
+    const { clientId: slackClientId, clientSecret: slackClientSecret } =
+      await instanceConfigService.getSlackCredentials();
 
     if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({
@@ -367,7 +359,7 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId: slackIntegration.orgId,
       type: KmsDataKey.Organization
     });
@@ -425,6 +417,34 @@ export const slackServiceFactory = ({
     });
   };
 
+  const getSlackIntegrationAlertCount = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TGetSlackIntegrationChannelsDTO) => {
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: `Slack integration with ID ${id} not found`
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId: slackIntegration.orgId,
+      actorAuthMethod,
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    return alertChannelDAL.countAlertsByWorkflowIntegrationId(id);
+  };
+
   const deleteSlackIntegration = async ({
     actorId,
     actor,
@@ -464,6 +484,7 @@ export const slackServiceFactory = ({
     getSlackInstaller,
     updateSlackIntegration,
     deleteSlackIntegration,
-    getSlackIntegrationChannels
+    getSlackIntegrationChannels,
+    getSlackIntegrationAlertCount
   };
 };

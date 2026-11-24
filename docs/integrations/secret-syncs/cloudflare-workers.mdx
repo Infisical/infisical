@@ -32,6 +32,7 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
 
       - **Cloudflare Connection**: The Cloudflare Connection to authenticate with.
       - **Cloudflare Workers Script**: Choose the Cloudflare Workers script you want to sync secrets to.
+      - **Sync to a Preview**: Turn this on to sync to one of the Worker's Previews instead of production, then select the **Preview** (see [Syncing to a preview](#syncing-to-a-preview))
 
     5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
     ![Configure Options](/images/secret-syncs/cloudflare-workers/cloudflare-workers-sync-options.png)
@@ -133,6 +134,15 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
 
   </Tab>
 </Tabs>
+
+## Syncing to a preview
+
+A [Preview](https://developers.cloudflare.com/workers/previews/) is a separate environment of a Worker, with its own secrets. To sync to a Preview, turn on **Sync to a Preview** and select the **Preview**, or set `previewName` in `destinationConfig` through the API. To sync both production and a Preview of one Worker, such as a `staging` Preview, create a sync for each.
+
+- Before the first sync, deploy the Preview with `wrangler preview`, because Infisical can't sync to a Preview that has no deployment
+- Each sync creates a new deployment of the Preview, and the new secrets take effect right away
+- When you deploy new code with `wrangler preview`, the Preview keeps its secrets, but the deploy replaces its text and JSON variables with the ones in the `previews` block of your Wrangler configuration file
+- Infisical doesn't sync the Previews [base configuration](https://developers.cloudflare.com/workers/previews/configuration/), so a Preview you create later gets no secrets from Infisical until you create a sync for it
 
 ## Syncing while a version is pending
 

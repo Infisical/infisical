@@ -90,6 +90,8 @@ output-options:
     - getSecretApprovalRequestCount
     - getSecretApprovalRequest
     - reviewSecretApprovalRequest
+    - batchReviewSecretApprovalRequests
+    - batchMergeSecretApprovalRequests
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
     - createAccessApprovalPolicy
@@ -740,6 +742,9 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createGcpAppConnection
+    - updateGcpAppConnection
+    - getGcpAppConnection
     - createKmsKey
     - updateKmsKey
     - rotateKmsKey

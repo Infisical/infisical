@@ -1,11 +1,13 @@
 import { createHmac } from "node:crypto";
 
+import knex from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseError, ForbiddenRequestError, GatewayTimeoutError, UnauthorizedError } from "@app/lib/errors";
 
+import { AuthTokenType } from "../auth/auth-type";
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
 
@@ -14,7 +16,7 @@ const NOW_MS = 1_700_000_000_000;
 const TEST_EMAIL = "otp-test@example.com";
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ AUTH_SECRET })
+  getConfig: () => ({ AUTH_SECRET, JWT_REFRESH_LIFETIME: "90d" })
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -28,7 +30,14 @@ const otpKey = KeyStorePrefixes.EmailSignupOtpHash(emailHash);
 
 type KeyStoreSlice = Pick<
   TKeyStoreFactory,
-  "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+  | "setItemWithExpiry"
+  | "setItemWithExpiryNX"
+  | "getItem"
+  | "getItemPrimary"
+  | "deleteItem"
+  | "acquireLock"
+  | "deleteItemsByKeyIn"
+  | "ttl"
 >;
 
 type MockedKeyStore = Mocked<KeyStoreSlice>;
@@ -38,6 +47,7 @@ const makeKeyStore = (patch: Partial<MockedKeyStore> = {}): MockedKeyStore =>
     setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     getItem: vi.fn().mockResolvedValue(null),
+    getItemPrimary: vi.fn().mockResolvedValue(null),
     deleteItem: vi.fn().mockResolvedValue(1),
     acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
     deleteItemsByKeyIn: vi.fn().mockResolvedValue(2),
@@ -111,7 +121,7 @@ const expectRejected = async <T, E extends Error>(
 describe("tokenServiceFactory — email signup OTP", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {
@@ -485,5 +495,307 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
         UnauthorizedError
       );
     });
+  });
+});
+
+describe("tokenServiceFactory — refresh token rotation", () => {
+  const USER_ID = "user-1";
+  const SESSION_ID = "session-1";
+
+  beforeAll(async () => {
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize(async () => null);
+  });
+
+  afterAll(() => {
+    delete process.env.FIPS_ENABLED;
+  });
+
+  const build = () => {
+    let row: { id: string; userId: string; accessVersion: number; refreshVersion: number } | undefined = {
+      id: SESSION_ID,
+      userId: USER_ID,
+      accessVersion: 1,
+      refreshVersion: 1
+    };
+    const tokenDAL = {
+      findOneTokenSession: vi.fn(async () => (row ? { ...row } : undefined)),
+      incrementRefreshVersion: vi.fn(async (_id: string, _userId: string, expected: number) => {
+        if (!row || row.refreshVersion !== expected) return undefined;
+        row.refreshVersion += 1;
+        return { id: row.id, refreshVersion: row.refreshVersion };
+      }),
+      deleteTokenSession: vi.fn(async () => {
+        row = undefined;
+        return [];
+      }),
+      incrementTokenSessionVersion: vi.fn(async () => {
+        if (!row) return undefined;
+        row.accessVersion += 1;
+        row.refreshVersion += 1;
+        return { ...row };
+      })
+    };
+    // Redis with expiry against a clock the test moves, in seconds.
+    let clock = 0;
+    const store = new Map<string, { value: string; expiresAt: number }>();
+    const live = (key: string) => {
+      const entry = store.get(key);
+      if (entry && entry.expiresAt <= clock) store.delete(key);
+      return store.get(key);
+    };
+    // getItem stands for a read replica that has not received anything yet; the data is on the primary.
+    const keyStore = makeKeyStore({
+      getItemPrimary: vi.fn(async (key: string) => live(key)?.value ?? null),
+      setItemWithExpiry: vi.fn(async (key: string, ttl: string | number, value: string | number | Buffer) => {
+        store.set(key, { value: String(value), expiresAt: clock + Number(ttl) });
+        return "OK";
+      }),
+      deleteItem: vi.fn(async (key: string) => Number(store.delete(key)))
+    });
+    const service = tokenServiceFactory({
+      tokenDAL: tokenDAL as never,
+      userDAL: {} as never,
+      orgDAL: {} as never,
+      membershipUserDAL: {} as never,
+      keyStore: keyStore as never
+    });
+
+    const tokenAt = (refreshVersion: number) =>
+      crypto
+        .jwt()
+        .sign(
+          { authTokenType: AuthTokenType.REFRESH_TOKEN, userId: USER_ID, tokenVersionId: SESSION_ID, refreshVersion },
+          AUTH_SECRET
+        );
+
+    // Mirrors the refresh route: returns the rotated token, or undefined on a grace hit.
+    const refresh = async (token: string) => {
+      const { decodedToken, tokenVersion, isGraceHit } = await service.validateRefreshToken(token);
+      if (isGraceHit) return undefined;
+      const rotation = await service.rotateRefreshToken(decodedToken, tokenVersion);
+      return rotation.isGraceHit ? undefined : rotation.newRefreshToken;
+    };
+
+    return {
+      service,
+      tokenDAL,
+      keyStore,
+      store,
+      tokenAt,
+      refresh,
+      advance: (seconds: number) => {
+        clock += seconds;
+      },
+      secondsLeft: (key: string) => {
+        const entry = live(key);
+        return entry ? entry.expiresAt - clock : null;
+      },
+      row: () => row,
+      signOut: () => {
+        if (row) {
+          row.accessVersion += 1;
+          row.refreshVersion += 1;
+        }
+      }
+    };
+  };
+
+  test("reads the session from the primary, not the replica", async () => {
+    const { service, tokenDAL, tokenAt } = build();
+
+    await service.validateRefreshToken(tokenAt(1));
+
+    expect(tokenDAL.findOneTokenSession).toHaveBeenCalledWith({ id: SESSION_ID, userId: USER_ID }, undefined, {
+      readFromPrimary: true
+    });
+  });
+
+  test("grace entries are read from the Redis primary, not a read replica that may lag", async () => {
+    const { refresh, tokenAt, keyStore, row } = build();
+    const original = tokenAt(1);
+    await refresh(original);
+
+    expect(await refresh(original)).toBeUndefined();
+    expect(keyStore.getItem).not.toHaveBeenCalled();
+    expect(row()).toBeDefined();
+  });
+
+  test("two requests holding the same token rotate it once; the loser is a grace hit", async () => {
+    const { service, tokenAt, row } = build();
+    const token = tokenAt(1);
+
+    const first = await service.validateRefreshToken(token);
+    const second = await service.validateRefreshToken(token);
+    expect(first.isGraceHit).toBe(false);
+    expect(second.isGraceHit).toBe(false);
+
+    const won = await service.rotateRefreshToken(first.decodedToken, first.tokenVersion);
+    const lost = await service.rotateRefreshToken(second.decodedToken, second.tokenVersion);
+
+    expect(won.isGraceHit).toBe(false);
+    expect(lost.isGraceHit).toBe(true);
+    expect(row()?.refreshVersion).toBe(2);
+  });
+
+  test("a request two rotations behind is still accepted within the grace window", async () => {
+    const { refresh, tokenAt, row } = build();
+    const original = tokenAt(1);
+
+    const v2 = await refresh(original);
+    expect(v2).toBeDefined();
+    expect(await refresh(v2!)).toBeDefined();
+    expect(row()?.refreshVersion).toBe(3);
+
+    expect(await refresh(original)).toBeUndefined();
+    expect(row()).toBeDefined();
+  });
+
+  test("a token with no grace entry revokes the session as reuse", async () => {
+    const { refresh, tokenAt, row, store } = build();
+    const original = tokenAt(1);
+
+    expect(await refresh(original)).toBeDefined();
+    store.clear();
+
+    const err = await expectRejected(refresh(original), UnauthorizedError);
+    expect(err.name).toBe("TokenReuse");
+    expect(row()).toBeUndefined();
+  });
+
+  test("a losing request whose session read fails still leaves the grace entry at the grace period", async () => {
+    const { service, tokenDAL, tokenAt, secondsLeft } = build();
+    const token = tokenAt(1);
+    const first = await service.validateRefreshToken(token);
+    const second = await service.validateRefreshToken(token);
+    await service.rotateRefreshToken(first.decodedToken, first.tokenVersion);
+    tokenDAL.findOneTokenSession.mockRejectedValueOnce(new Error("database unavailable"));
+
+    await expectRejected(service.rotateRefreshToken(second.decodedToken, second.tokenVersion), Error);
+
+    expect(secondsLeft(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(
+      KeyStoreTtls.RefreshTokenGraceInSeconds
+    );
+  });
+
+  test("losing the rotation race to a sign-out is refused, and its grace entry cannot revive the session", async () => {
+    const { service, tokenAt, signOut, row } = build();
+
+    const validated = await service.validateRefreshToken(tokenAt(1));
+    signOut();
+
+    const lost = await expectRejected(
+      service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion),
+      UnauthorizedError
+    );
+    expect(lost.name).toBe("InvalidToken");
+
+    const replay = await expectRejected(service.validateRefreshToken(tokenAt(1)), UnauthorizedError);
+    expect(replay.name).toBe("InvalidToken");
+    expect(row()).toBeDefined();
+  });
+
+  test("grace entries written before a sign-out are refused", async () => {
+    const { service, refresh, tokenAt, signOut, store, row } = build();
+    const original = tokenAt(1);
+
+    const v2 = await refresh(original);
+    await refresh(v2!);
+    signOut();
+
+    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(true);
+    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 2))).toBe(true);
+    const errors = await Promise.all(
+      [original, v2!].map((stale) => expectRejected(service.validateRefreshToken(stale), UnauthorizedError))
+    );
+    expect(errors.map((e) => e.name)).toEqual(["InvalidToken", "InvalidToken"]);
+    expect(row()).toBeDefined();
+  });
+
+  test("an update that waits longer than the grace period still leaves a grace entry for concurrent requests", async () => {
+    const { service, tokenDAL, tokenAt, advance, secondsLeft, row } = build();
+    const original = tokenAt(1);
+    const graceKey = KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1);
+
+    // The update waits on a row lock past the grace period, then another request holding the old token reads
+    // the new version before the entry is settled.
+    let concurrent: Awaited<ReturnType<typeof service.validateRefreshToken>> | undefined;
+    const increment = tokenDAL.incrementRefreshVersion.getMockImplementation()!;
+    tokenDAL.incrementRefreshVersion.mockImplementationOnce(async (...args) => {
+      advance(KeyStoreTtls.RefreshTokenGraceInSeconds + 2);
+      const updated = await increment(...args);
+      concurrent = await service.validateRefreshToken(original);
+      return updated;
+    });
+
+    const validated = await service.validateRefreshToken(original);
+    const rotation = await service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion);
+
+    expect(rotation.isGraceHit).toBe(false);
+    expect(concurrent?.isGraceHit).toBe(true);
+    expect(row()?.refreshVersion).toBe(2);
+    expect(secondsLeft(graceKey)).toBe(KeyStoreTtls.RefreshTokenGraceInSeconds);
+  });
+
+  test("a failure to settle the grace entry after the commit still returns the rotated token", async () => {
+    const { service, keyStore, tokenAt, refresh, secondsLeft } = build();
+    const original = tokenAt(1);
+    const setItem = keyStore.setItemWithExpiry.getMockImplementation()!;
+    keyStore.setItemWithExpiry.mockImplementation(async (...args) => {
+      if (Number(args[1]) === KeyStoreTtls.RefreshTokenGraceInSeconds) throw new Error("redis unavailable");
+      return setItem(...args);
+    });
+    const warn = vi.mocked((await import("@app/lib/logger")).logger.warn);
+    warn.mockClear();
+
+    const validated = await service.validateRefreshToken(original);
+    const rotation = await service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion);
+
+    expect(rotation.isGraceHit).toBe(false);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(secondsLeft(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(
+      KeyStoreTtls.RefreshTokenGracePendingInSeconds
+    );
+    expect(await refresh(original)).toBeUndefined();
+  });
+
+  test("no pool connection within knex's acquire timeout is the same readable 504", async () => {
+    const { service, tokenDAL, tokenAt, row } = build();
+    tokenDAL.incrementRefreshVersion.mockRejectedValueOnce(
+      new DatabaseError({
+        error: new knex.KnexTimeoutError("Knex: Timeout acquiring a connection."),
+        name: "IncrementRefreshVersion"
+      })
+    );
+
+    const validated = await service.validateRefreshToken(tokenAt(1));
+    const err = await expectRejected(
+      service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion),
+      GatewayTimeoutError
+    );
+
+    expect(err.message).toBe("Refreshing your session took too long. Try again.");
+    expect(row()?.refreshVersion).toBe(1);
+  });
+
+  test.each([
+    ["lock wait", "55P03"],
+    ["statement", "57014"]
+  ])("a %s timeout on the update is a readable 504 and leaves the token current", async (_label, code) => {
+    const { service, tokenDAL, tokenAt, refresh, row } = build();
+    const original = tokenAt(1);
+    tokenDAL.incrementRefreshVersion.mockRejectedValueOnce(
+      new DatabaseError({ error: Object.assign(new Error("canceled"), { code }), name: "IncrementRefreshVersion" })
+    );
+
+    const validated = await service.validateRefreshToken(original);
+    const err = await expectRejected(
+      service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion),
+      GatewayTimeoutError
+    );
+
+    expect(err.message).toBe("Refreshing your session took too long. Try again.");
+    expect(row()?.refreshVersion).toBe(1);
+    expect(await refresh(original)).toBeDefined();
   });
 });
