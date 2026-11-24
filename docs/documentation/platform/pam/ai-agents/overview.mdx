@@ -34,7 +34,7 @@ Windows accounts open a remote desktop, so they don't run a command after `--`. 
 
 ### Several accounts at once
 
-A command after `--` reaches one account. When a task needs two accounts at the same time, such as copying rows from one database to another, the agent starts a proxy for each account in the background, each on its own port:
+A command after `--` reaches one account. When a task needs two database, Redis, or SSH accounts at the same time, such as copying rows from one database to another, the agent starts a proxy for each account in the background, each on its own port:
 
 ```bash
 infisical pam access prod/orders-db --port 15432 < /dev/null > orders-db.log 2>&1 &
@@ -43,9 +43,11 @@ infisical pam access staging/orders-db --port 15433 < /dev/null > staging-db.log
 
 Each log shows the address and username to connect with. The agent points its clients at `127.0.0.1` and those ports, then stops each proxy with `kill`, which ends its session. Each proxy is its own session, so approval and MFA apply to each account the same way.
 
+Don't run Kubernetes or GCP proxies this way. They edit your shared kubeconfig and gcloud configuration and undo the edit when they stop, so stopping one breaks the others. For those accounts, run one command per account with `--`, which gets its own configuration.
+
 ### Accounts that need approval
 
-Without a terminal, the CLI never prompts. An agent whose harness runs commands in a terminal still gets the prompts a person would. If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting. If an auto-approval rule approves the request, the CLI connects right away. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again.
+If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again. If an auto-approval rule approves the request when it's filed, the CLI connects right away instead. All of this applies without a terminal, where the CLI never prompts. An agent whose harness runs commands in a terminal gets the prompts a person would.
 
 If a request is already waiting, the CLI doesn't file another one. To stop the CLI from filing requests at all, pass `--no-approval-request`.
 
@@ -115,8 +117,9 @@ look for credentials.
   the command after --. Some clients need the sh -c wrapper it shows to reach the account.
 - For a Windows account, the Connect command starts an RDP proxy in the background. Open
   the .rdp file named in its log with an RDP client, and kill the CLI when you're done.
-- To use two accounts at once, start infisical pam access <folder/account> --port <port>
-  in the background for each, connect to 127.0.0.1 on those ports, and kill each when done.
+- To use two database, Redis, or SSH accounts at once, run
+  infisical pam access <folder/account> --port <port> < /dev/null > <name>.log 2>&1 &
+  for each, connect to 127.0.0.1 on those ports, and kill each when done.
 - If a command says an account is waiting for approval or needs MFA, tell me and wait.
 ```
 
