@@ -48,7 +48,7 @@ type TUpdatePolicyInput = Pick<
   | "secretPath"
   | "enforcementLevel"
   | "allowedSelfApprovals"
-  | "enforceImportReplication"
+  | "enforceOnSecretImports"
   | "bypassForMachineIdentities"
 > & {
   policy: Pick<TApprovalPolicies, "id">;
@@ -60,7 +60,7 @@ type TUpdatePolicyInput = Pick<
   groupBypassers: string[];
 };
 
-type TSecretChangePolicyConstraints = { allowedSelfApprovals?: boolean; enforceImportReplication?: boolean };
+type TSecretChangePolicyConstraints = { allowedSelfApprovals?: boolean; enforceOnSecretImports?: boolean };
 
 const SecretChangePolicyConstraintsSchema = z
   .object({ constraints: z.record(z.string(), z.unknown()).optional() })
@@ -76,8 +76,8 @@ export const readSecretChangePolicyConstraints = (constraints: unknown): TSecret
   const raw = readStoredConstraints(constraints);
   const result: TSecretChangePolicyConstraints = {};
   if (typeof raw.allowedSelfApprovals === "boolean") result.allowedSelfApprovals = raw.allowedSelfApprovals;
-  if (typeof raw.enforceImportReplication === "boolean") {
-    result.enforceImportReplication = raw.enforceImportReplication;
+  if (typeof raw.enforceOnSecretImports === "boolean") {
+    result.enforceOnSecretImports = raw.enforceOnSecretImports;
   }
   return result;
 };
@@ -100,7 +100,7 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
     secretPath: row.secretPath,
     approvals: firstStep?.requiredApprovals ?? 1,
     allowedSelfApprovals: constraints.allowedSelfApprovals ?? true,
-    enforceImportReplication: constraints.enforceImportReplication ?? false,
+    enforceOnSecretImports: constraints.enforceOnSecretImports ?? false,
     envId: environment.id,
     environment,
     environments: row.environments,
@@ -372,7 +372,7 @@ export const secretChangePolicyFnsFactory = ({
     secretPath,
     enforcementLevel,
     allowedSelfApprovals,
-    enforceImportReplication,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     requestedEnvs,
     approverCount,
@@ -402,10 +402,10 @@ export const secretChangePolicyFnsFactory = ({
       if (name !== undefined) updateDoc.name = name;
       if (enforcementLevel !== undefined) updateDoc.enforcementLevel = enforcementLevel;
       if (bypassForMachineIdentities !== undefined) updateDoc.bypassForMachineIdentities = bypassForMachineIdentities;
-      if (allowedSelfApprovals !== undefined || enforceImportReplication !== undefined) {
+      if (allowedSelfApprovals !== undefined || enforceOnSecretImports !== undefined) {
         const constraints = readStoredConstraints(lockedPolicy.constraints);
         if (allowedSelfApprovals !== undefined) constraints.allowedSelfApprovals = allowedSelfApprovals;
-        if (enforceImportReplication !== undefined) constraints.enforceImportReplication = enforceImportReplication;
+        if (enforceOnSecretImports !== undefined) constraints.enforceOnSecretImports = enforceOnSecretImports;
         updateDoc.constraints = { version: 1, constraints };
       }
       if (Object.keys(updateDoc).length) await approvalPolicyDAL.updateById(policy.id, updateDoc, tx);

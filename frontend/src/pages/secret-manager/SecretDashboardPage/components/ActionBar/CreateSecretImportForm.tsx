@@ -102,7 +102,7 @@ export const CreateSecretImportForm = ({
     secretPath,
     options: { enabled: Boolean(isOpen) }
   });
-  const enforcingPolicy = destinationPolicy?.enforceImportReplication
+  const enforcingPolicy = destinationPolicy?.enforceOnSecretImports
     ? destinationPolicy
     : undefined;
 

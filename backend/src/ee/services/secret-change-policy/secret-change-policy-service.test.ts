@@ -198,7 +198,7 @@ const create = (service: TService, overrides: Partial<TCreateInput> = {}) =>
     environment: "dev",
     enforcementLevel: EnforcementLevel.Hard,
     allowedSelfApprovals: true,
-    enforceImportReplication: false,
+    enforceOnSecretImports: false,
     bypassForMachineIdentities: false,
     ...overrides
   });
@@ -373,7 +373,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
         enforcementLevel: EnforcementLevel.Hard,
         bypassForMachineIdentities: false,
         conditions: { version: 1, conditions: [] },
-        constraints: { version: 1, constraints: { allowedSelfApprovals: true, enforceImportReplication: false } },
+        constraints: { version: 1, constraints: { allowedSelfApprovals: true, enforceOnSecretImports: false } },
         scopeType: null,
         scopeId: null
       },
@@ -434,7 +434,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
       enforcementLevel: EnforcementLevel.Hard,
       deletedAt: null,
       allowedSelfApprovals: true,
-      enforceImportReplication: false,
+      enforceOnSecretImports: false,
       bypassForMachineIdentities: false,
       projectId: PROJECT_ID,
       environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
@@ -600,11 +600,11 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
       rows: [buildRow({ constraints: { version: 1, constraints: { allowedSelfApprovals: false } } })]
     });
 
-    await update(service, { enforceImportReplication: true });
+    await update(service, { enforceOnSecretImports: true });
 
     expect(deps.approvalPolicyDAL.updateById).toHaveBeenCalledWith(
       "policy-1",
-      { constraints: { version: 1, constraints: { allowedSelfApprovals: false, enforceImportReplication: true } } },
+      { constraints: { version: 1, constraints: { allowedSelfApprovals: false, enforceOnSecretImports: true } } },
       TX
     );
   });

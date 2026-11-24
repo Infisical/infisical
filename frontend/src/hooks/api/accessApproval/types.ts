@@ -25,7 +25,7 @@ export type TAccessApprovalPolicy = {
   bypassers?: Bypasser[];
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities?: boolean;
-  enforceImportReplication?: boolean;
+  enforceOnSecretImports?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;

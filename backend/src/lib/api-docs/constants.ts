@@ -5807,7 +5807,7 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
 };
 
 export const SECRET_CHANGE_POLICIES = {
-  enforceImportReplication:
+  enforceOnSecretImports:
     "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",
   LIST_IMPORTS: {
     description:

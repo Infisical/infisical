@@ -223,7 +223,7 @@ const Form = ({
             approvals: editValues.approvals,
             allowedSelfApprovals: editValues.allowedSelfApprovals,
             bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
-            enforceImportReplication: editValues.enforceImportReplication ?? false,
+            enforceOnSecretImports: editValues.enforceOnSecretImports ?? false,
             maxTimePeriod: editValues.maxTimePeriod,
             requestExpirationTime: editValues.requestExpirationTime,
             sequenceApprovers: withFallbackApprovalStep(
@@ -329,7 +329,7 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
-    enforceImportReplication,
+    enforceOnSecretImports,
     ...data
   }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
     if (!projectId) return undefined;
@@ -340,7 +340,7 @@ const Form = ({
     if (data.policyType === PolicyType.ChangePolicy) {
       ({ approval: changePolicy } = await createSecretApprovalPolicy({
         ...data,
-        enforceImportReplication,
+        enforceOnSecretImports,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
@@ -388,7 +388,7 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
-    enforceImportReplication,
+    enforceOnSecretImports,
     ...data
   }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
     if (!projectId || !projectSlug) return undefined;
@@ -401,7 +401,7 @@ const Form = ({
       ({ approval: changePolicy } = await updateSecretApprovalPolicy({
         id: editValues?.id,
         ...data,
-        enforceImportReplication,
+        enforceOnSecretImports,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         projectId: currentProject?.id || "",
@@ -487,7 +487,7 @@ const Form = ({
     if (!saved) return;
 
     if (
-      saved.changePolicy?.enforceImportReplication &&
+      saved.changePolicy?.enforceOnSecretImports &&
       (await showDirectImports(saved.changePolicy))
     )
       return;
@@ -1202,7 +1202,7 @@ const Form = ({
             {!isAccessPolicyType && (
               <Controller
                 control={control}
-                name="enforceImportReplication"
+                name="enforceOnSecretImports"
                 render={({ field: { value, onChange } }) => (
                   <Field orientation="horizontal">
                     <FieldContent>
