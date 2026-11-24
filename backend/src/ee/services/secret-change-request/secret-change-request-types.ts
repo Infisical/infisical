@@ -13,6 +13,7 @@ import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TActorInput, TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -22,7 +23,6 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";

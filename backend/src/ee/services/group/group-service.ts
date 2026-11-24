@@ -19,12 +19,12 @@ import { terminatePamSessionsLosingGroupAccess } from "@app/ee/services/pam-sess
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TActorInput } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";

@@ -1,9 +1,9 @@
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
-import { dailyReminderJob } from "e2e-test/fakes/reminder-queue";
-import { TTestSmtpService } from "e2e-test/mocks/smtp";
-
 import { ALERT_EVENT_CONSUMER } from "@app/services/alert/alert-event-consumer";
 import { SECRET_REMINDER_RESOURCE_TYPE } from "@app/services/reminder/reminder-events";
+
+import { eventOutbox } from "e2e-test/fakes/events-module";
+import { dailyReminderJob } from "e2e-test/fakes/reminder-queue";
+import { TTestSmtpService } from "e2e-test/mocks/smtp";
 
 import { listAlerts } from "./alerts";
 import { pollUntil } from "./poll";

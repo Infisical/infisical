@@ -5,13 +5,13 @@ import { TableName } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 
 import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
 import { AlertPrincipalType } from "../alert/alert-types";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TReminderDALFactory } from "./reminder-dal";

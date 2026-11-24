@@ -3,6 +3,7 @@ import path from "node:path";
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -14,11 +15,10 @@ import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secret
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { EventModificationType } from "../event-outbox/event-definition";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -129,7 +129,7 @@ export const secretImportServiceFactory = ({
     scope: { projectId: string; environment: string; secretPath: string },
     modificationType: EventModificationType,
     tx: Knex
-  ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
+  ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
 
   const createImport = async ({
     environment,
@@ -489,15 +489,16 @@ export const secretImportServiceFactory = ({
             tx
           );
           await folderDAL.deleteById(replicatedFolder.id, tx);
-          await FolderModifiedEventV1.emit(
-            eventEmitter,
-            {
-              folderId: replicatedFolder.id,
-              projectId,
-              environment,
-              secretPath: replicatedFolder.path,
-              modificationType: EventModificationType.Deleted
-            },
+          await eventEmitter.emit(
+            [
+              FolderModifiedEventV1.build({
+                folderId: replicatedFolder.id,
+                projectId,
+                environment,
+                secretPath: replicatedFolder.path,
+                modificationType: EventModificationType.Deleted
+              })
+            ],
             tx
           );
         }

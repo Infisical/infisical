@@ -14,6 +14,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import {
   highCardinalityMeter,
@@ -27,7 +28,6 @@ import { SecretNameSchema } from "@app/server/lib/schemas";
 import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";

@@ -1,5 +1,12 @@
+import { OrgMembershipRole } from "@app/db/schemas";
+import {
+  AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
+  AUDIT_LOG_STREAM_RESOURCE_TYPE
+} from "@app/ee/services/audit-log-stream/audit-log-stream-events";
+import { ALERT_EVENT_CONSUMER } from "@app/services/alert/alert-event-consumer";
+
 import { auditLogStreamOutboxTuning } from "e2e-test/fakes/audit-log-stream-outbox-constants";
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
+import { eventOutbox } from "e2e-test/fakes/events-module";
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
 import { TTestSmtpService } from "e2e-test/mocks/smtp";
 import { createAlert } from "e2e-test/testUtils/alerts";
@@ -8,13 +15,6 @@ import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { createSecretV2 } from "e2e-test/testUtils/secrets";
 import { addUserMembership, createUser, deleteUsers } from "e2e-test/testUtils/users";
-
-import { OrgMembershipRole } from "@app/db/schemas";
-import {
-  AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
-  AUDIT_LOG_STREAM_RESOURCE_TYPE
-} from "@app/ee/services/audit-log-stream/audit-log-stream-events";
-import { ALERT_EVENT_CONSUMER } from "@app/services/alert/alert-event-consumer";
 
 const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
 

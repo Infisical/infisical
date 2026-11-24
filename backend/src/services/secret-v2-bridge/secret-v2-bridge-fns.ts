@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TableName, TSecretFolders, TSecretImports, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
@@ -14,10 +15,9 @@ import {
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 
-import { EventModificationType } from "../event-outbox/event-definition";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";

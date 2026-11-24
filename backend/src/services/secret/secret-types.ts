@@ -12,8 +12,8 @@ import {
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TActorInput } from "@app/lib/types";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";

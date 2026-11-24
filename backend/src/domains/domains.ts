@@ -13,6 +13,7 @@ import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
+import { EventsModule } from "./platform/events/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
@@ -50,6 +51,9 @@ export type TDomainDeps = {
     | "isCloud"
     | "isProductionMode"
     | "isTestMode"
+    | "isSecondaryInstance"
+    | "isGeneralWorkerRunModeEnabled"
+    | "OTEL_TELEMETRY_COLLECTION_ENABLED"
   > &
     TKmsCoreEnvConfig;
   // Told about each actor's project access as it is resolved, for the request's audit context.
@@ -115,6 +119,16 @@ export const startStandaloneKmsCore = async ({
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
+  // Built first: any domain may emit through it.
+  const events = new EventsModule({
+    db: deps.db,
+    queueService: deps.queueService,
+    cronJob: deps.cronJob,
+    isSecondaryInstance: deps.envConfig.isSecondaryInstance,
+    isGeneralWorkerRunModeEnabled: deps.envConfig.isGeneralWorkerRunModeEnabled,
+    isTelemetryEnabled: deps.envConfig.OTEL_TELEMETRY_COLLECTION_ENABLED
+  });
+
   const accessControl = new AccessControlModule({
     db: deps.db,
     keyStore: deps.keyStore,
@@ -212,6 +226,7 @@ export const createDomains = async (deps: TDomainDeps) => {
 
   return {
     accessControl,
+    events,
     license,
     licenseBilling,
     kmsCoreEe,

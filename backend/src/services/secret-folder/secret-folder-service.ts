@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -7,6 +6,8 @@ import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
+/* eslint-disable no-await-in-loop */
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionActions,
@@ -23,10 +24,9 @@ import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
@@ -601,16 +601,17 @@ export const secretFolderServiceFactory = ({
           }
 
           if (doc.name !== folder.name) {
-            await FolderModifiedEventV1.emit(
-              eventEmitter,
-              {
-                folderId: doc.id,
-                projectId: projectId as string,
-                environment,
-                secretPath: path.posix.join(parentFolder.path, doc.name),
-                modificationType: EventModificationType.Updated,
-                previous: { secretPath: path.posix.join(parentFolder.path, folder.name) }
-              },
+            await eventEmitter.emit(
+              [
+                FolderModifiedEventV1.build({
+                  folderId: doc.id,
+                  projectId: projectId as string,
+                  environment,
+                  secretPath: path.posix.join(parentFolder.path, doc.name),
+                  modificationType: EventModificationType.Updated,
+                  previous: { secretPath: path.posix.join(parentFolder.path, folder.name) }
+                })
+              ],
               tx
             );
           }
@@ -759,16 +760,17 @@ export const secretFolderServiceFactory = ({
       }
 
       if (newFolderWithPath.path !== oldFolderWithPath.path) {
-        await FolderModifiedEventV1.emit(
-          eventEmitter,
-          {
-            folderId: doc.id,
-            projectId,
-            environment: env.slug,
-            secretPath: newFolderWithPath.path,
-            modificationType: EventModificationType.Updated,
-            previous: { secretPath: oldFolderWithPath.path }
-          },
+        await eventEmitter.emit(
+          [
+            FolderModifiedEventV1.build({
+              folderId: doc.id,
+              projectId,
+              environment: env.slug,
+              secretPath: newFolderWithPath.path,
+              modificationType: EventModificationType.Updated,
+              previous: { secretPath: oldFolderWithPath.path }
+            })
+          ],
           tx
         );
       }
@@ -999,15 +1001,16 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
-      await FolderModifiedEventV1.emit(
-        eventEmitter,
-        {
-          folderId: doc.id,
-          projectId,
-          environment,
-          secretPath: path.posix.join(parentFolder.path, doc.name),
-          modificationType: EventModificationType.Deleted
-        },
+      await eventEmitter.emit(
+        [
+          FolderModifiedEventV1.build({
+            folderId: doc.id,
+            projectId,
+            environment,
+            secretPath: path.posix.join(parentFolder.path, doc.name),
+            modificationType: EventModificationType.Deleted
+          })
+        ],
         tx
       );
       return doc;
@@ -1660,15 +1663,16 @@ export const secretFolderServiceFactory = ({
           );
         }
 
-        await FolderModifiedEventV1.emit(
-          eventEmitter,
-          {
-            folderId: doc.id,
-            projectId,
-            environment,
-            secretPath: path.posix.join(parentFolder.path, doc.name),
-            modificationType: EventModificationType.Deleted
-          },
+        await eventEmitter.emit(
+          [
+            FolderModifiedEventV1.build({
+              folderId: doc.id,
+              projectId,
+              environment,
+              secretPath: path.posix.join(parentFolder.path, doc.name),
+              modificationType: EventModificationType.Deleted
+            })
+          ],
           tx
         );
 
@@ -2167,15 +2171,16 @@ export const secretFolderServiceFactory = ({
       // removing only the source root removes the entire subtree. the source is always fully emptied here: a
       // subtree governed by a source approval policy was rejected up front, so no secret is left pending.
       const [deletedRoot] = await folderDAL.delete({ id: sourceFolder.id }, tx);
-      await FolderModifiedEventV1.emit(
-        eventEmitter,
-        {
-          folderId: deletedRoot.id,
-          projectId,
-          environment: sourceEnvironment,
-          secretPath: sourceFolderPath,
-          modificationType: EventModificationType.Deleted
-        },
+      await eventEmitter.emit(
+        [
+          FolderModifiedEventV1.build({
+            folderId: deletedRoot.id,
+            projectId,
+            environment: sourceEnvironment,
+            secretPath: sourceFolderPath,
+            modificationType: EventModificationType.Deleted
+          })
+        ],
         tx
       );
       const latestVersions = await folderVersionDAL.findLatestFolderVersions([deletedRoot.id], tx);
