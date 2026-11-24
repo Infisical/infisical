@@ -29,7 +29,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .max(1000)
+            .max(1024)
             .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
             .transform(canonicalizeSecretPathPattern),
           approvers: z
@@ -121,7 +121,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
-          .max(1000)
+          .max(1024)
           .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
