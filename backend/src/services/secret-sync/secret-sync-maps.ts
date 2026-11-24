@@ -315,7 +315,12 @@ const jenkinsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync
   );
 };
 
-const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({
+  existingSync,
+  newSync,
+  decryptConnection,
+  instanceConfigService
+}) => {
   if (!newSync.connectionId) return true;
 
   if (existingSync.connectionId === newSync.connectionId) {
@@ -333,8 +338,8 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   const newAwsConn = newConn as TAwsConnection;
 
   const [existingAccountId, newAccountId] = await Promise.all([
-    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
-    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials), instanceConfigService),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials), instanceConfigService)
   ]);
 
   if (!existingAccountId || !newAccountId) return false;

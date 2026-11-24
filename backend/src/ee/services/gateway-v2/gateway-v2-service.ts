@@ -14,6 +14,7 @@ import {
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { getReportedCliVersion } from "@app/lib/cli-version/cli-version-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -103,6 +104,21 @@ type TGatewayV2ServiceFactoryDep = {
     | "preflightKubernetesConfig"
     | "findKubernetesProxyDependents"
   >;
+};
+
+// Written on every connect, register and heartbeat, nulls included, so a downgrade or a non-CLI caller clears
+// a stale version instead of leaving it on display.
+//
+// cliVersionReportedAt is its own column because the Last Seen timestamps (heartbeat, directHeartbeat) can't
+// stand in: $checkGatewayHealth writes them only when Infisical's health check reaches the gateway, so using
+// them on the gateway detail page would
+// - date the version tooltip from a stale health check, or not at all after Revoke Access clears them,
+// - show a dash, not "Older than v0.43.131", for an old CLI whose health check fails,
+// - show "Older than v0.43.131" for a current gateway behind a proxy that rewrites its User-Agent,
+// - show "Older than v0.43.131" for every healthy gateway until its next heartbeat (up to 3 minutes).
+const getCliVersionFields = (userAgent?: string) => {
+  const { cliVersion, fromCli } = getReportedCliVersion(userAgent);
+  return { cliVersion, cliVersionReportedAt: fromCli ? new Date() : null };
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -801,7 +817,10 @@ export const gatewayV2ServiceFactory = ({
   const $writeAgentTransports = async (
     gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat">,
     tokenVersion: number | undefined,
-    transports: Pick<TGatewaysV2Update, "directAddress" | "directHeartbeat" | "heartbeat" | "relayId">
+    transports: Pick<
+      TGatewaysV2Update,
+      "cliVersion" | "cliVersionReportedAt" | "directAddress" | "directHeartbeat" | "heartbeat" | "relayId"
+    >
   ) => {
     if (tokenVersion === undefined) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
@@ -824,7 +843,8 @@ export const gatewayV2ServiceFactory = ({
     relayName,
     directAddress,
     name,
-    tokenVersion
+    tokenVersion,
+    userAgent
   }: {
     orgId: string;
     actorId: string;
@@ -835,6 +855,7 @@ export const gatewayV2ServiceFactory = ({
     name?: string;
     /** The gateway access token's version, when a gateway agent is the actor. */
     tokenVersion?: number;
+    userAgent?: string;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -868,6 +889,7 @@ export const gatewayV2ServiceFactory = ({
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
       const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
+        ...getCliVersionFields(userAgent),
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -903,6 +925,7 @@ export const gatewayV2ServiceFactory = ({
               orgId,
               name,
               identityId: actorId,
+              ...getCliVersionFields(userAgent),
               relayId: relay?.id ?? null,
               directAddress: directAddress ?? null,
               directHeartbeat: null,
@@ -1091,9 +1114,11 @@ export const gatewayV2ServiceFactory = ({
 
   const heartbeat = async ({
     orgPermission,
-    capabilities
+    capabilities,
+    userAgent
   }: {
     orgPermission: OrgServiceActor;
+    userAgent?: string;
     capabilities?: {
       pkcs11?: boolean;
       pkcs11MlDsa?: boolean;
@@ -1106,13 +1131,14 @@ export const gatewayV2ServiceFactory = ({
     };
   }) => {
     const nextCapabilities = capabilities ?? {};
+    const cliVersionFields = getCliVersionFields(userAgent);
 
     if (orgPermission.type === ActorType.GATEWAY) {
       const gateway = await gatewayV2DAL.findById(orgPermission.id);
       if (!gateway || gateway.orgId !== orgPermission.orgId) {
         throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
       }
-      await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
+      await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
       await $checkAllGatewayTransports(gateway.id);
       return;
     }
@@ -1128,7 +1154,7 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
     }
 
-    await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
+    await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
     await $checkAllGatewayTransports(gateway.id);
   };
 
@@ -1550,7 +1576,8 @@ export const gatewayV2ServiceFactory = ({
     actorType,
     relayName,
     directAddress,
-    tokenVersion
+    tokenVersion,
+    userAgent
   }: {
     orgId: string;
     actorId: string;
@@ -1559,6 +1586,7 @@ export const gatewayV2ServiceFactory = ({
     directAddress?: string;
     /** The gateway access token's version the request authenticated with. */
     tokenVersion?: number;
+    userAgent?: string;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -1590,6 +1618,9 @@ export const gatewayV2ServiceFactory = ({
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
       const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
+        // In relay mode the CLI only starts heartbeating once it reaches the relay, so a gateway that
+        // connects but cannot reach its relay reports its version here and nowhere else.
+        ...getCliVersionFields(userAgent),
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,

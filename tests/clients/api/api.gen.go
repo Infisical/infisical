@@ -2097,6 +2097,7 @@ const (
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies           UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-proxies"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions          UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-sessions"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-skills"
+	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultVariables         UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-variables"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAppConnections              UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "app-connections"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectApprovalRequestGrants       UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "approval-request-grants"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectApprovalRequests            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "approval-requests"
@@ -2162,6 +2163,8 @@ func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermis
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills:
+		return true
+	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultVariables:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAppConnections:
 		return true
@@ -2448,6 +2451,7 @@ const (
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
+	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultVariables         CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-variables"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAppConnections              CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "app-connections"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectApprovalRequestGrants       CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "approval-request-grants"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectApprovalRequests            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "approval-requests"
@@ -2513,6 +2517,8 @@ func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject) Val
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills:
+		return true
+	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultVariables:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAppConnections:
 		return true
@@ -2784,6 +2790,7 @@ const (
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
+	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultVariables         CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-variables"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAppConnections              CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "app-connections"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectApprovalRequestGrants       CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "approval-request-grants"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectApprovalRequests            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "approval-requests"
@@ -2849,6 +2856,8 @@ func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject) Val
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills:
+		return true
+	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultVariables:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAppConnections:
 		return true
@@ -8235,6 +8244,654 @@ const (
 func (e CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnectionJSONBody0Method.
+const (
+	CreateGcpAppConnectionJSONBody0MethodServiceAccountImpersonation CreateGcpAppConnectionJSONBody0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnectionJSONBody0Method enum.
+func (e CreateGcpAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnectionJSONBody0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnectionJSONBody1Method.
+const (
+	CreateGcpAppConnectionJSONBody1MethodWorkloadIdentityFederation CreateGcpAppConnectionJSONBody1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnectionJSONBody1Method enum.
+func (e CreateGcpAppConnectionJSONBody1Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnectionJSONBody1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp CreateGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation CreateGcpAppConnection200JSONResponseBodyAppConnection0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp CreateGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation CreateGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection400JSONResponseBodyStatusCodeN400 CreateGcpAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection401JSONResponseBodyStatusCodeN401 CreateGcpAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection403JSONResponseBodyStatusCodeN403 CreateGcpAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection404JSONResponseBodyStatusCodeN404 CreateGcpAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection422JSONResponseBodyStatusCodeN422 CreateGcpAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGcpAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateGcpAppConnection500JSONResponseBodyStatusCodeN500 CreateGcpAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateGcpAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGcpAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0AppGcp GetGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation GetGcpAppConnection200JSONResponseBodyAppConnection0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1AppGcp GetGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation GetGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection400JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection400JSONResponseBodyStatusCodeN400 GetGcpAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection400JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection401JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection401JSONResponseBodyStatusCodeN401 GetGcpAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection401JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection403JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection403JSONResponseBodyStatusCodeN403 GetGcpAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection403JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection404JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection404JSONResponseBodyStatusCodeN404 GetGcpAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection404JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection422JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection422JSONResponseBodyStatusCodeN422 GetGcpAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection422JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGcpAppConnection500JSONResponseBodyStatusCode.
+const (
+	GetGcpAppConnection500JSONResponseBodyStatusCodeN500 GetGcpAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetGcpAppConnection500JSONResponseBodyStatusCode enum.
+func (e GetGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGcpAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp UpdateGcpAppConnection200JSONResponseBodyAppConnection0App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method = "service-account-impersonation"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0MethodServiceAccountImpersonation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp UpdateGcpAppConnection200JSONResponseBodyAppConnection1App = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1AppGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method = "workload-identity-federation"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1MethodWorkloadIdentityFederation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection400JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection400JSONResponseBodyStatusCodeN400 UpdateGcpAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection400JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection401JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection401JSONResponseBodyStatusCodeN401 UpdateGcpAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection401JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection403JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection403JSONResponseBodyStatusCodeN403 UpdateGcpAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection403JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection404JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection404JSONResponseBodyStatusCodeN404 UpdateGcpAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection404JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection422JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection422JSONResponseBodyStatusCodeN422 UpdateGcpAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection422JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGcpAppConnection500JSONResponseBodyStatusCode.
+const (
+	UpdateGcpAppConnection500JSONResponseBodyStatusCodeN500 UpdateGcpAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateGcpAppConnection500JSONResponseBodyStatusCode enum.
+func (e UpdateGcpAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGcpAppConnection500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -67200,6 +67857,204 @@ func (e ListSecretApprovalRequests500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCodeN400 BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCodeN401 BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCodeN403 BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCodeN404 BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCodeN422 BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode.
+const (
+	BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCodeN500 BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode enum.
+func (e BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequestsJSONBodyStatus.
+const (
+	BatchReviewSecretApprovalRequestsJSONBodyStatusApproved BatchReviewSecretApprovalRequestsJSONBodyStatus = "approved"
+	BatchReviewSecretApprovalRequestsJSONBodyStatusRejected BatchReviewSecretApprovalRequestsJSONBodyStatus = "rejected"
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequestsJSONBodyStatus enum.
+func (e BatchReviewSecretApprovalRequestsJSONBodyStatus) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequestsJSONBodyStatusApproved:
+		return true
+	case BatchReviewSecretApprovalRequestsJSONBodyStatusRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCodeN400 BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCodeN401 BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCodeN403 BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCodeN404 BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCodeN422 BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode.
+const (
+	BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCodeN500 BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode enum.
+func (e BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSecretApprovalRequestCount400JSONResponseBodyStatusCode.
 const (
 	GetSecretApprovalRequestCount400JSONResponseBodyStatusCodeN400 GetSecretApprovalRequestCount400JSONResponseBodyStatusCode = 400
@@ -102786,6 +103641,654 @@ type CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode float32
 // CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
 type CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode float32
 
+// CreateGcpAppConnectionJSONBody defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody struct {
+	// Description An optional description for the GCP Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for GCP Connections.
+	GatewayId *CreateGcpAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for GCP Connections.
+	GatewayPoolId *CreateGcpAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for GCP Connections.
+	IsAutoRotationEnabled *CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for GCP Connections.
+	IsPlatformManagedCredentials *CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the GCP Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the GCP Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for GCP Connections.
+	Rotation *CreateGcpAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateGcpAppConnectionJSONBodyGatewayId0 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateGcpAppConnectionJSONBodyGatewayId1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateGcpAppConnectionJSONBody_GatewayId defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateGcpAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateGcpAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateGcpAppConnectionJSONBody_GatewayPoolId defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateGcpAppConnectionJSONBodyRotation0 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateGcpAppConnectionJSONBodyRotation1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateGcpAppConnectionJSONBody_Rotation defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateGcpAppConnectionJSONBody0 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with GCP.
+	Credentials struct {
+		ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+		WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with GCP.
+	Method CreateGcpAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateGcpAppConnectionJSONBody0Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody0Method string
+
+// CreateGcpAppConnectionJSONBody1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody1 struct {
+	// Credentials The credentials used to connect with GCP.
+	Credentials struct {
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with GCP.
+	Method CreateGcpAppConnectionJSONBody1Method `json:"method"`
+}
+
+// CreateGcpAppConnectionJSONBody1Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnectionJSONBody1Method string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          CreateGcpAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                     `json:"createdAt"`
+	Credentials                  map[string]interface{}                                        `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGcpAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         CreateGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                  `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// CreateGcpAppConnection200JSONResponseBody_AppConnection defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateGcpAppConnection400JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateGcpAppConnection401JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateGcpAppConnection403JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateGcpAppConnection404JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateGcpAppConnection422JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateGcpAppConnection500JSONResponseBodyStatusCode defines parameters for CreateGcpAppConnection.
+type CreateGcpAppConnection500JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          GetGcpAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                  `json:"createdAt"`
+	Credentials                  map[string]interface{}                                     `json:"credentials"`
+	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
+	Description                  *string                                                    `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                        `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                        `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                         `json:"id"`
+	IsAutoRotationEnabled        *bool                                                      `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                      `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       GetGcpAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                     `json:"name"`
+	OrgId                        openapi_types.UUID                                         `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0App defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0App string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0Method defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0Method string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         GetGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                               `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                    `json:"credentialsHash,omitempty"`
+	Description                  *string                                                    `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                        `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                        `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                         `json:"id"`
+	IsAutoRotationEnabled        *bool                                                      `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                      `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       GetGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                     `json:"name"`
+	OrgId                        openapi_types.UUID                                         `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// GetGcpAppConnection200JSONResponseBody_AppConnection defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// GetGcpAppConnection400JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection400JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection401JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection401JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection403JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection403JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection404JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection404JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection422JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection422JSONResponseBodyStatusCode float32
+
+// GetGcpAppConnection500JSONResponseBodyStatusCode defines parameters for GetGcpAppConnection.
+type GetGcpAppConnection500JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnectionJSONBody defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody struct {
+	// Credentials The credentials used to connect with GCP.
+	Credentials *UpdateGcpAppConnectionJSONBody_Credentials `json:"credentials,omitempty"`
+
+	// Description The updated description of the GCP Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for GCP Connections.
+	GatewayId *UpdateGcpAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for GCP Connections.
+	GatewayPoolId *UpdateGcpAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for GCP Connections.
+	IsAutoRotationEnabled *UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for GCP Connections.
+	IsPlatformManagedCredentials *UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The updated name of the GCP Connection. Must be slug-friendly.
+	Name *string `json:"name,omitempty"`
+
+	// Rotation Not supported for GCP Connections.
+	Rotation *UpdateGcpAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+}
+
+// UpdateGcpAppConnectionJSONBodyCredentials0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyCredentials0 struct {
+	// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+	ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+	// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+	WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+}
+
+// UpdateGcpAppConnectionJSONBodyCredentials1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyCredentials1 struct {
+	ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+	WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
+}
+
+// UpdateGcpAppConnectionJSONBody_Credentials defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_Credentials struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyGatewayId0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayId0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyGatewayId1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayId1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_GatewayId defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyGatewayPoolId0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyGatewayPoolId1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_GatewayPoolId defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// UpdateGcpAppConnectionJSONBodyRotation0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyRotation0 = interface{}
+
+// UpdateGcpAppConnectionJSONBodyRotation1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBodyRotation1 = interface{}
+
+// UpdateGcpAppConnectionJSONBody_Rotation defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          UpdateGcpAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                     `json:"createdAt"`
+	Credentials                  map[string]interface{}                                        `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0App defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0App string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0Method string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1 defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         UpdateGcpAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                  `json:"createdAt"`
+	Credentials struct {
+		// FederatedCredential The values to configure on the GCP workload identity pool provider and IAM binding. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+
+		// ServiceAccountEmail The GCP service account to impersonate with the federated token. Omit it to use the federated token directly, with GCP roles granted to the connection's principal.
+		ServiceAccountEmail *openapi_types.Email `json:"serviceAccountEmail,omitempty"`
+
+		// WorkloadIdentityProvider The full resource name of the GCP workload identity pool provider that trusts this organization's Infisical OIDC issuer, e.g. projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical.
+		WorkloadIdentityProvider string `json:"workloadIdentityProvider"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                       `json:"credentialsHash,omitempty"`
+	Description                  *string                                                       `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                           `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                           `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                            `json:"id"`
+	IsAutoRotationEnabled        *bool                                                         `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                         `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                        `json:"name"`
+	OrgId                        openapi_types.UUID                                            `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1App defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1App string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1Method string
+
+// UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// UpdateGcpAppConnection200JSONResponseBody_AppConnection defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// UpdateGcpAppConnection400JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection400JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection401JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection401JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection403JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection403JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection404JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection404JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection422JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection422JSONResponseBodyStatusCode float32
+
+// UpdateGcpAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateGcpAppConnection.
+type UpdateGcpAppConnection500JSONResponseBodyStatusCode float32
+
 // ListGitHubAppConnectionsParams defines parameters for ListGitHubAppConnections.
 type ListGitHubAppConnectionsParams struct {
 	// ProjectId The ID of the project to list GitHub Connections from.
@@ -129582,6 +131085,57 @@ type ListSecretApprovalRequests422JSONResponseBodyStatusCode float32
 // ListSecretApprovalRequests500JSONResponseBodyStatusCode defines parameters for ListSecretApprovalRequests.
 type ListSecretApprovalRequests500JSONResponseBodyStatusCode float32
 
+// BatchMergeSecretApprovalRequestsJSONBody defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequestsJSONBody struct {
+	ApprovalRequestIds []openapi_types.UUID `json:"approvalRequestIds"`
+}
+
+// BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode float32
+
+// BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode float32
+
+// BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode float32
+
+// BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode float32
+
+// BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode float32
+
+// BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode defines parameters for BatchMergeSecretApprovalRequests.
+type BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequestsJSONBody defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequestsJSONBody struct {
+	ApprovalRequestIds []openapi_types.UUID                            `json:"approvalRequestIds"`
+	Comment            *string                                         `json:"comment,omitempty"`
+	Status             BatchReviewSecretApprovalRequestsJSONBodyStatus `json:"status"`
+}
+
+// BatchReviewSecretApprovalRequestsJSONBodyStatus defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequestsJSONBodyStatus string
+
+// BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode float32
+
+// BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode defines parameters for BatchReviewSecretApprovalRequests.
+type BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode float32
+
 // GetSecretApprovalRequestCountParams defines parameters for GetSecretApprovalRequestCount.
 type GetSecretApprovalRequestCountParams struct {
 	ProjectId string  `form:"projectId" json:"projectId"`
@@ -140526,6 +142080,12 @@ type CreateCloudflareAppConnectionJSONRequestBody CreateCloudflareAppConnectionJ
 // CreateDnsMadeEasyAppConnectionJSONRequestBody defines body for CreateDnsMadeEasyAppConnection for application/json ContentType.
 type CreateDnsMadeEasyAppConnectionJSONRequestBody CreateDnsMadeEasyAppConnectionJSONBody
 
+// CreateGcpAppConnectionJSONRequestBody defines body for CreateGcpAppConnection for application/json ContentType.
+type CreateGcpAppConnectionJSONRequestBody CreateGcpAppConnectionJSONBody
+
+// UpdateGcpAppConnectionJSONRequestBody defines body for UpdateGcpAppConnection for application/json ContentType.
+type UpdateGcpAppConnectionJSONRequestBody UpdateGcpAppConnectionJSONBody
+
 // CreateGitHubAppConnectionJSONRequestBody defines body for CreateGitHubAppConnection for application/json ContentType.
 type CreateGitHubAppConnectionJSONRequestBody CreateGitHubAppConnectionJSONBody
 
@@ -141144,6 +142704,12 @@ type UpdateExternalGroupOrgRoleMappingsJSONRequestBody UpdateExternalGroupOrgRol
 
 // CreateScimTokenJSONRequestBody defines body for CreateScimToken for application/json ContentType.
 type CreateScimTokenJSONRequestBody CreateScimTokenJSONBody
+
+// BatchMergeSecretApprovalRequestsJSONRequestBody defines body for BatchMergeSecretApprovalRequests for application/json ContentType.
+type BatchMergeSecretApprovalRequestsJSONRequestBody BatchMergeSecretApprovalRequestsJSONBody
+
+// BatchReviewSecretApprovalRequestsJSONRequestBody defines body for BatchReviewSecretApprovalRequests for application/json ContentType.
+type BatchReviewSecretApprovalRequestsJSONRequestBody BatchReviewSecretApprovalRequestsJSONBody
 
 // MergeSecretApprovalRequestJSONRequestBody defines body for MergeSecretApprovalRequest for application/json ContentType.
 type MergeSecretApprovalRequestJSONRequestBody MergeSecretApprovalRequestJSONBody
@@ -145157,6 +146723,818 @@ func (t CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) Marshal
 }
 
 func (t *CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBody0 returns the union data inside the CreateGcpAppConnectionJSONBody as a CreateGcpAppConnectionJSONBody0
+func (t CreateGcpAppConnectionJSONBody) AsCreateGcpAppConnectionJSONBody0() (CreateGcpAppConnectionJSONBody0, error) {
+	var body CreateGcpAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBody0 overwrites any union data inside the CreateGcpAppConnectionJSONBody as the provided CreateGcpAppConnectionJSONBody0
+func (t *CreateGcpAppConnectionJSONBody) FromCreateGcpAppConnectionJSONBody0(v CreateGcpAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBody0 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody, using the provided CreateGcpAppConnectionJSONBody0
+func (t *CreateGcpAppConnectionJSONBody) MergeCreateGcpAppConnectionJSONBody0(v CreateGcpAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBody1 returns the union data inside the CreateGcpAppConnectionJSONBody as a CreateGcpAppConnectionJSONBody1
+func (t CreateGcpAppConnectionJSONBody) AsCreateGcpAppConnectionJSONBody1() (CreateGcpAppConnectionJSONBody1, error) {
+	var body CreateGcpAppConnectionJSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBody1 overwrites any union data inside the CreateGcpAppConnectionJSONBody as the provided CreateGcpAppConnectionJSONBody1
+func (t *CreateGcpAppConnectionJSONBody) FromCreateGcpAppConnectionJSONBody1(v CreateGcpAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBody1 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody, using the provided CreateGcpAppConnectionJSONBody1
+func (t *CreateGcpAppConnectionJSONBody) MergeCreateGcpAppConnectionJSONBody1(v CreateGcpAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGcpAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateGcpAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateGcpAppConnectionJSONBody_GatewayId as a CreateGcpAppConnectionJSONBodyGatewayId0
+func (t CreateGcpAppConnectionJSONBody_GatewayId) AsCreateGcpAppConnectionJSONBodyGatewayId0() (CreateGcpAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateGcpAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateGcpAppConnectionJSONBody_GatewayId as the provided CreateGcpAppConnectionJSONBodyGatewayId0
+func (t *CreateGcpAppConnectionJSONBody_GatewayId) FromCreateGcpAppConnectionJSONBodyGatewayId0(v CreateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_GatewayId, using the provided CreateGcpAppConnectionJSONBodyGatewayId0
+func (t *CreateGcpAppConnectionJSONBody_GatewayId) MergeCreateGcpAppConnectionJSONBodyGatewayId0(v CreateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateGcpAppConnectionJSONBody_GatewayId as a CreateGcpAppConnectionJSONBodyGatewayId1
+func (t CreateGcpAppConnectionJSONBody_GatewayId) AsCreateGcpAppConnectionJSONBodyGatewayId1() (CreateGcpAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateGcpAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateGcpAppConnectionJSONBody_GatewayId as the provided CreateGcpAppConnectionJSONBodyGatewayId1
+func (t *CreateGcpAppConnectionJSONBody_GatewayId) FromCreateGcpAppConnectionJSONBodyGatewayId1(v CreateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_GatewayId, using the provided CreateGcpAppConnectionJSONBodyGatewayId1
+func (t *CreateGcpAppConnectionJSONBody_GatewayId) MergeCreateGcpAppConnectionJSONBodyGatewayId1(v CreateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGcpAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGcpAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId as a CreateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t CreateGcpAppConnectionJSONBody_GatewayPoolId) AsCreateGcpAppConnectionJSONBodyGatewayPoolId0() (CreateGcpAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateGcpAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId as the provided CreateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateGcpAppConnectionJSONBody_GatewayPoolId) FromCreateGcpAppConnectionJSONBodyGatewayPoolId0(v CreateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId, using the provided CreateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateGcpAppConnectionJSONBody_GatewayPoolId) MergeCreateGcpAppConnectionJSONBodyGatewayPoolId0(v CreateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId as a CreateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t CreateGcpAppConnectionJSONBody_GatewayPoolId) AsCreateGcpAppConnectionJSONBodyGatewayPoolId1() (CreateGcpAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateGcpAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId as the provided CreateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateGcpAppConnectionJSONBody_GatewayPoolId) FromCreateGcpAppConnectionJSONBodyGatewayPoolId1(v CreateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_GatewayPoolId, using the provided CreateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateGcpAppConnectionJSONBody_GatewayPoolId) MergeCreateGcpAppConnectionJSONBodyGatewayPoolId1(v CreateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGcpAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGcpAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyRotation0 returns the union data inside the CreateGcpAppConnectionJSONBody_Rotation as a CreateGcpAppConnectionJSONBodyRotation0
+func (t CreateGcpAppConnectionJSONBody_Rotation) AsCreateGcpAppConnectionJSONBodyRotation0() (CreateGcpAppConnectionJSONBodyRotation0, error) {
+	var body CreateGcpAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateGcpAppConnectionJSONBody_Rotation as the provided CreateGcpAppConnectionJSONBodyRotation0
+func (t *CreateGcpAppConnectionJSONBody_Rotation) FromCreateGcpAppConnectionJSONBodyRotation0(v CreateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_Rotation, using the provided CreateGcpAppConnectionJSONBodyRotation0
+func (t *CreateGcpAppConnectionJSONBody_Rotation) MergeCreateGcpAppConnectionJSONBodyRotation0(v CreateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGcpAppConnectionJSONBodyRotation1 returns the union data inside the CreateGcpAppConnectionJSONBody_Rotation as a CreateGcpAppConnectionJSONBodyRotation1
+func (t CreateGcpAppConnectionJSONBody_Rotation) AsCreateGcpAppConnectionJSONBodyRotation1() (CreateGcpAppConnectionJSONBodyRotation1, error) {
+	var body CreateGcpAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateGcpAppConnectionJSONBody_Rotation as the provided CreateGcpAppConnectionJSONBodyRotation1
+func (t *CreateGcpAppConnectionJSONBody_Rotation) FromCreateGcpAppConnectionJSONBodyRotation1(v CreateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateGcpAppConnectionJSONBody_Rotation, using the provided CreateGcpAppConnectionJSONBodyRotation1
+func (t *CreateGcpAppConnectionJSONBody_Rotation) MergeCreateGcpAppConnectionJSONBodyRotation1(v CreateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGcpAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGcpAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGcpAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as a CreateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t CreateGcpAppConnection200JSONResponseBody_AppConnection) AsCreateGcpAppConnection200JSONResponseBodyAppConnection0() (CreateGcpAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateGcpAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as the provided CreateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) FromCreateGcpAppConnection200JSONResponseBodyAppConnection0(v CreateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection, using the provided CreateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) MergeCreateGcpAppConnection200JSONResponseBodyAppConnection0(v CreateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as a CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t CreateGcpAppConnection200JSONResponseBody_AppConnection) AsCreateGcpAppConnection200JSONResponseBodyAppConnection1() (CreateGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body CreateGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection as the provided CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) FromCreateGcpAppConnection200JSONResponseBodyAppConnection1(v CreateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the CreateGcpAppConnection200JSONResponseBody_AppConnection, using the provided CreateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) MergeCreateGcpAppConnection200JSONResponseBodyAppConnection1(v CreateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetGcpAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as a GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) AsGetGcpAppConnection200JSONResponseBodyAppConnection0() (GetGcpAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body GetGcpAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGcpAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as the provided GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) FromGetGcpAppConnection200JSONResponseBodyAppConnection0(v GetGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGcpAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection, using the provided GetGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) MergeGetGcpAppConnection200JSONResponseBodyAppConnection0(v GetGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as a GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) AsGetGcpAppConnection200JSONResponseBodyAppConnection1() (GetGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body GetGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection as the provided GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) FromGetGcpAppConnection200JSONResponseBodyAppConnection1(v GetGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the GetGcpAppConnection200JSONResponseBody_AppConnection, using the provided GetGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) MergeGetGcpAppConnection200JSONResponseBodyAppConnection1(v GetGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyCredentials0 returns the union data inside the UpdateGcpAppConnectionJSONBody_Credentials as a UpdateGcpAppConnectionJSONBodyCredentials0
+func (t UpdateGcpAppConnectionJSONBody_Credentials) AsUpdateGcpAppConnectionJSONBodyCredentials0() (UpdateGcpAppConnectionJSONBodyCredentials0, error) {
+	var body UpdateGcpAppConnectionJSONBodyCredentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyCredentials0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Credentials as the provided UpdateGcpAppConnectionJSONBodyCredentials0
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) FromUpdateGcpAppConnectionJSONBodyCredentials0(v UpdateGcpAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyCredentials0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Credentials, using the provided UpdateGcpAppConnectionJSONBodyCredentials0
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) MergeUpdateGcpAppConnectionJSONBodyCredentials0(v UpdateGcpAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyCredentials1 returns the union data inside the UpdateGcpAppConnectionJSONBody_Credentials as a UpdateGcpAppConnectionJSONBodyCredentials1
+func (t UpdateGcpAppConnectionJSONBody_Credentials) AsUpdateGcpAppConnectionJSONBodyCredentials1() (UpdateGcpAppConnectionJSONBodyCredentials1, error) {
+	var body UpdateGcpAppConnectionJSONBodyCredentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyCredentials1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Credentials as the provided UpdateGcpAppConnectionJSONBodyCredentials1
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) FromUpdateGcpAppConnectionJSONBodyCredentials1(v UpdateGcpAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyCredentials1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Credentials, using the provided UpdateGcpAppConnectionJSONBodyCredentials1
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) MergeUpdateGcpAppConnectionJSONBodyCredentials1(v UpdateGcpAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayId0 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as a UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) AsUpdateGcpAppConnectionJSONBodyGatewayId0() (UpdateGcpAppConnectionJSONBodyGatewayId0, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayId0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as the provided UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) FromUpdateGcpAppConnectionJSONBodyGatewayId0(v UpdateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId, using the provided UpdateGcpAppConnectionJSONBodyGatewayId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) MergeUpdateGcpAppConnectionJSONBodyGatewayId0(v UpdateGcpAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayId1 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as a UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) AsUpdateGcpAppConnectionJSONBodyGatewayId1() (UpdateGcpAppConnectionJSONBodyGatewayId1, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayId1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId as the provided UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) FromUpdateGcpAppConnectionJSONBodyGatewayId1(v UpdateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayId, using the provided UpdateGcpAppConnectionJSONBodyGatewayId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) MergeUpdateGcpAppConnectionJSONBodyGatewayId1(v UpdateGcpAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as a UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) AsUpdateGcpAppConnectionJSONBodyGatewayPoolId0() (UpdateGcpAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) FromUpdateGcpAppConnectionJSONBodyGatewayPoolId0(v UpdateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId, using the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId0
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId0(v UpdateGcpAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as a UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) AsUpdateGcpAppConnectionJSONBodyGatewayPoolId1() (UpdateGcpAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId as the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) FromUpdateGcpAppConnectionJSONBodyGatewayPoolId1(v UpdateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_GatewayPoolId, using the provided UpdateGcpAppConnectionJSONBodyGatewayPoolId1
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) MergeUpdateGcpAppConnectionJSONBodyGatewayPoolId1(v UpdateGcpAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyRotation0 returns the union data inside the UpdateGcpAppConnectionJSONBody_Rotation as a UpdateGcpAppConnectionJSONBodyRotation0
+func (t UpdateGcpAppConnectionJSONBody_Rotation) AsUpdateGcpAppConnectionJSONBodyRotation0() (UpdateGcpAppConnectionJSONBodyRotation0, error) {
+	var body UpdateGcpAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyRotation0 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Rotation as the provided UpdateGcpAppConnectionJSONBodyRotation0
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) FromUpdateGcpAppConnectionJSONBodyRotation0(v UpdateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyRotation0 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Rotation, using the provided UpdateGcpAppConnectionJSONBodyRotation0
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) MergeUpdateGcpAppConnectionJSONBodyRotation0(v UpdateGcpAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnectionJSONBodyRotation1 returns the union data inside the UpdateGcpAppConnectionJSONBody_Rotation as a UpdateGcpAppConnectionJSONBodyRotation1
+func (t UpdateGcpAppConnectionJSONBody_Rotation) AsUpdateGcpAppConnectionJSONBodyRotation1() (UpdateGcpAppConnectionJSONBodyRotation1, error) {
+	var body UpdateGcpAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnectionJSONBodyRotation1 overwrites any union data inside the UpdateGcpAppConnectionJSONBody_Rotation as the provided UpdateGcpAppConnectionJSONBodyRotation1
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) FromUpdateGcpAppConnectionJSONBodyRotation1(v UpdateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnectionJSONBodyRotation1 performs a merge with any union data inside the UpdateGcpAppConnectionJSONBody_Rotation, using the provided UpdateGcpAppConnectionJSONBodyRotation1
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) MergeUpdateGcpAppConnectionJSONBodyRotation1(v UpdateGcpAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateGcpAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as a UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) AsUpdateGcpAppConnection200JSONResponseBodyAppConnection0() (UpdateGcpAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) FromUpdateGcpAppConnection200JSONResponseBodyAppConnection0(v UpdateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection, using the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection0(v UpdateGcpAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateGcpAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as a UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) AsUpdateGcpAppConnection200JSONResponseBodyAppConnection1() (UpdateGcpAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateGcpAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection as the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) FromUpdateGcpAppConnection200JSONResponseBodyAppConnection1(v UpdateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the UpdateGcpAppConnection200JSONResponseBody_AppConnection, using the provided UpdateGcpAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) MergeUpdateGcpAppConnection200JSONResponseBodyAppConnection1(v UpdateGcpAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateGcpAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateGcpAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -170525,6 +172903,35 @@ type ClientInterface interface {
 	// Create a DNS Made Easy Connection.
 	CreateDnsMadeEasyAppConnection(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateGcpAppConnectionWithBody performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GCP Connection.
+	CreateGcpAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGcpAppConnection performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a GCP Connection.
+	CreateGcpAppConnection(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGcpAppConnection performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+	//
+	// Get the specified GCP Connection by ID.
+	GetGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGcpAppConnectionWithBody performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGcpAppConnection performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGitHubAppConnections performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -173811,6 +176218,22 @@ type ClientInterface interface {
 	// ListSecretApprovalRequests performs a GET /api/v1/secret-approval-requests (the `ListSecretApprovalRequests` operationId) request.
 	ListSecretApprovalRequests(ctx context.Context, params *ListSecretApprovalRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BatchMergeSecretApprovalRequestsWithBody performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request,
+	// with any type of body and a specified content type.
+	BatchMergeSecretApprovalRequestsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BatchMergeSecretApprovalRequests performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request.
+	// Takes a body of the `application/json` content type.
+	BatchMergeSecretApprovalRequests(ctx context.Context, body BatchMergeSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BatchReviewSecretApprovalRequestsWithBody performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request,
+	// with any type of body and a specified content type.
+	BatchReviewSecretApprovalRequestsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BatchReviewSecretApprovalRequests performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request.
+	// Takes a body of the `application/json` content type.
+	BatchReviewSecretApprovalRequests(ctx context.Context, body BatchReviewSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetSecretApprovalRequestCount performs a GET /api/v1/secret-approval-requests/count (the `GetSecretApprovalRequestCount` operationId) request.
 	GetSecretApprovalRequestCount(ctx context.Context, params *GetSecretApprovalRequestCountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -176675,6 +179098,85 @@ func (c *Client) CreateDnsMadeEasyAppConnectionWithBody(ctx context.Context, con
 // Create a DNS Made Easy Connection.
 func (c *Client) CreateDnsMadeEasyAppConnection(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateDnsMadeEasyAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGcpAppConnectionWithBody performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GCP Connection.
+func (c *Client) CreateGcpAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGcpAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGcpAppConnection performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a GCP Connection.
+func (c *Client) CreateGcpAppConnection(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGcpAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGcpAppConnection performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+//
+// Get the specified GCP Connection by ID.
+func (c *Client) GetGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGcpAppConnectionRequest(c.Server, connectionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGcpAppConnectionWithBody performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified GCP Connection.
+func (c *Client) UpdateGcpAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGcpAppConnectionRequestWithBody(c.Server, connectionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGcpAppConnection performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the specified GCP Connection.
+func (c *Client) UpdateGcpAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGcpAppConnectionRequest(c.Server, connectionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -186782,6 +189284,62 @@ func (c *Client) ListSecretApprovalRequests(ctx context.Context, params *ListSec
 	return c.Client.Do(req)
 }
 
+// BatchMergeSecretApprovalRequestsWithBody performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) BatchMergeSecretApprovalRequestsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchMergeSecretApprovalRequestsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BatchMergeSecretApprovalRequests performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) BatchMergeSecretApprovalRequests(ctx context.Context, body BatchMergeSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchMergeSecretApprovalRequestsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BatchReviewSecretApprovalRequestsWithBody performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) BatchReviewSecretApprovalRequestsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchReviewSecretApprovalRequestsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BatchReviewSecretApprovalRequests performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) BatchReviewSecretApprovalRequests(ctx context.Context, body BatchReviewSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchReviewSecretApprovalRequestsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetSecretApprovalRequestCount performs a GET /api/v1/secret-approval-requests/count (the `GetSecretApprovalRequestCount` operationId) request.
 func (c *Client) GetSecretApprovalRequestCount(ctx context.Context, params *GetSecretApprovalRequestCountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetSecretApprovalRequestCountRequest(c.Server, params)
@@ -194668,6 +197226,127 @@ func NewCreateDnsMadeEasyAppConnectionRequestWithBody(server string, contentType
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateGcpAppConnectionRequest calls the generic CreateGcpAppConnection builder with application/json body
+func NewCreateGcpAppConnectionRequest(server string, body CreateGcpAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGcpAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGcpAppConnectionRequestWithBody constructs an http.Request for the CreateGcpAppConnection method, with any body, and a specified content type
+func NewCreateGcpAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/gcp")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetGcpAppConnectionRequest constructs an http.Request for the GetGcpAppConnection method
+func NewGetGcpAppConnectionRequest(server string, connectionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/gcp/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateGcpAppConnectionRequest calls the generic UpdateGcpAppConnection builder with application/json body
+func NewUpdateGcpAppConnectionRequest(server string, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGcpAppConnectionRequestWithBody(server, connectionId, "application/json", bodyReader)
+}
+
+// NewUpdateGcpAppConnectionRequestWithBody constructs an http.Request for the UpdateGcpAppConnection method, with any body, and a specified content type
+func NewUpdateGcpAppConnectionRequestWithBody(server string, connectionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/gcp/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -216194,6 +218873,86 @@ func NewListSecretApprovalRequestsRequest(server string, params *ListSecretAppro
 	return req, nil
 }
 
+// NewBatchMergeSecretApprovalRequestsRequest calls the generic BatchMergeSecretApprovalRequests builder with application/json body
+func NewBatchMergeSecretApprovalRequestsRequest(server string, body BatchMergeSecretApprovalRequestsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBatchMergeSecretApprovalRequestsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewBatchMergeSecretApprovalRequestsRequestWithBody constructs an http.Request for the BatchMergeSecretApprovalRequests method, with any body, and a specified content type
+func NewBatchMergeSecretApprovalRequestsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-approval-requests/batch/merge")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewBatchReviewSecretApprovalRequestsRequest calls the generic BatchReviewSecretApprovalRequests builder with application/json body
+func NewBatchReviewSecretApprovalRequestsRequest(server string, body BatchReviewSecretApprovalRequestsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBatchReviewSecretApprovalRequestsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewBatchReviewSecretApprovalRequestsRequestWithBody constructs an http.Request for the BatchReviewSecretApprovalRequests method, with any body, and a specified content type
+func NewBatchReviewSecretApprovalRequestsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-approval-requests/batch/review")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetSecretApprovalRequestCountRequest constructs an http.Request for the GetSecretApprovalRequestCount method
 func NewGetSecretApprovalRequestCountRequest(server string, params *GetSecretApprovalRequestCountParams) (*http.Request, error) {
 	var err error
@@ -228313,6 +231072,41 @@ type ClientWithResponsesInterface interface {
 	// Create a DNS Made Easy Connection.
 	CreateDnsMadeEasyAppConnectionWithResponse(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDnsMadeEasyAppConnectionResponse, error)
 
+	// CreateGcpAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GCP Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateGcpAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGcpAppConnectionResponse, error)
+
+	// CreateGcpAppConnectionWithResponse performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a GCP Connection.
+	CreateGcpAppConnectionWithResponse(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGcpAppConnectionResponse, error)
+
+	// GetGcpAppConnectionWithResponse performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+	//
+	// Get the specified GCP Connection by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGcpAppConnectionResponse, error)
+
+	// UpdateGcpAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified GCP Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateGcpAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error)
+
+	// UpdateGcpAppConnectionWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the specified GCP Connection.
+	UpdateGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error)
+
 	// ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -232552,6 +235346,26 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListSecretApprovalRequestsWithResponse(ctx context.Context, params *ListSecretApprovalRequestsParams, reqEditors ...RequestEditorFn) (*ListSecretApprovalRequestsResponse, error)
+
+	// BatchMergeSecretApprovalRequestsWithBodyWithResponse performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	BatchMergeSecretApprovalRequestsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchMergeSecretApprovalRequestsResponse, error)
+
+	// BatchMergeSecretApprovalRequestsWithResponse performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	BatchMergeSecretApprovalRequestsWithResponse(ctx context.Context, body BatchMergeSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchMergeSecretApprovalRequestsResponse, error)
+
+	// BatchReviewSecretApprovalRequestsWithBodyWithResponse performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	BatchReviewSecretApprovalRequestsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchReviewSecretApprovalRequestsResponse, error)
+
+	// BatchReviewSecretApprovalRequestsWithResponse performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	BatchReviewSecretApprovalRequestsWithResponse(ctx context.Context, body BatchReviewSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchReviewSecretApprovalRequestsResponse, error)
 
 	// GetSecretApprovalRequestCountWithResponse performs a GET /api/v1/secret-approval-requests/count (the `GetSecretApprovalRequestCount` operationId) request.
 	//
@@ -240496,6 +243310,8 @@ type ListAdminOrganizationsResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organizations []struct {
+			AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+			AiModel                               *string             `json:"aiModel,omitempty"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -240606,6 +243422,8 @@ type ListAdminOrganizationsResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListAdminOrganizationsResponse) GetJSON200() *struct {
 	Organizations []struct {
+		AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+		AiModel                               *string             `json:"aiModel,omitempty"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -240767,6 +243585,8 @@ type CreateAdminOrganizationResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
+			AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+			AiModel                               *string             `json:"aiModel,omitempty"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -240857,6 +243677,8 @@ type CreateAdminOrganizationResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateAdminOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
+		AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+		AiModel                               *string             `json:"aiModel,omitempty"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -240998,6 +243820,8 @@ type DeleteAdminOrganizationResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
+			AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+			AiModel                               *string             `json:"aiModel,omitempty"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -241088,6 +243912,8 @@ type DeleteAdminOrganizationResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteAdminOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
+		AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+		AiModel                               *string             `json:"aiModel,omitempty"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -241774,6 +244600,8 @@ type AdminSignUpResponse struct {
 		Message      string `json:"message"`
 		New          string `json:"new"`
 		Organization struct {
+			AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+			AiModel                               *string             `json:"aiModel,omitempty"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -241877,6 +244705,8 @@ func (r AdminSignUpResponse) GetJSON200() *struct {
 	Message      string `json:"message"`
 	New          string `json:"new"`
 	Organization struct {
+		AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+		AiModel                               *string             `json:"aiModel,omitempty"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -245598,6 +248428,459 @@ func (r CreateDnsMadeEasyAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateDnsMadeEasyAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateGcpAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateGcpAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateGcpAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGcpAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGcpAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGcpAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetGcpAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON200() *struct {
+	AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetGcpAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGcpAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGcpAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGcpAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGcpAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateGcpAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON200() *struct {
+	AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateGcpAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateGcpAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGcpAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGcpAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGcpAppConnectionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -327774,6 +331057,372 @@ func (r ListSecretApprovalRequestsResponse) ContentType() string {
 	return ""
 }
 
+type BatchMergeSecretApprovalRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Approvals []struct {
+			BypassReason          *string             `json:"bypassReason,omitempty"`
+			CommitMessage         *string             `json:"commitMessage,omitempty"`
+			CommitterIdentityId   *openapi_types.UUID `json:"committerIdentityId,omitempty"`
+			CommitterUserId       *openapi_types.UUID `json:"committerUserId,omitempty"`
+			Conflicts             interface{}         `json:"conflicts,omitempty"`
+			CreatedAt             time.Time           `json:"createdAt"`
+			FolderId              openapi_types.UUID  `json:"folderId"`
+			HasMerged             *bool               `json:"hasMerged,omitempty"`
+			Id                    openapi_types.UUID  `json:"id"`
+			IsReplicated          *bool               `json:"isReplicated,omitempty"`
+			PolicyId              openapi_types.UUID  `json:"policyId"`
+			Slug                  string              `json:"slug"`
+			Status                *string             `json:"status,omitempty"`
+			StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
+			UpdatedAt             time.Time           `json:"updatedAt"`
+		} `json:"approvals"`
+		Failures []struct {
+			ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+			Message           string             `json:"message"`
+		} `json:"failures"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON200() *struct {
+	Approvals []struct {
+		BypassReason          *string             `json:"bypassReason,omitempty"`
+		CommitMessage         *string             `json:"commitMessage,omitempty"`
+		CommitterIdentityId   *openapi_types.UUID `json:"committerIdentityId,omitempty"`
+		CommitterUserId       *openapi_types.UUID `json:"committerUserId,omitempty"`
+		Conflicts             interface{}         `json:"conflicts,omitempty"`
+		CreatedAt             time.Time           `json:"createdAt"`
+		FolderId              openapi_types.UUID  `json:"folderId"`
+		HasMerged             *bool               `json:"hasMerged,omitempty"`
+		Id                    openapi_types.UUID  `json:"id"`
+		IsReplicated          *bool               `json:"isReplicated,omitempty"`
+		PolicyId              openapi_types.UUID  `json:"policyId"`
+		Slug                  string              `json:"slug"`
+		Status                *string             `json:"status,omitempty"`
+		StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
+		UpdatedAt             time.Time           `json:"updatedAt"`
+	} `json:"approvals"`
+	Failures []struct {
+		ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+		Message           string             `json:"message"`
+	} `json:"failures"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r BatchMergeSecretApprovalRequestsResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r BatchMergeSecretApprovalRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BatchMergeSecretApprovalRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BatchMergeSecretApprovalRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BatchMergeSecretApprovalRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type BatchReviewSecretApprovalRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Failures []struct {
+			ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+			Message           string             `json:"message"`
+		} `json:"failures"`
+		Reviews []struct {
+			Comment        *string            `json:"comment,omitempty"`
+			CreatedAt      time.Time          `json:"createdAt"`
+			Id             openapi_types.UUID `json:"id"`
+			RequestId      openapi_types.UUID `json:"requestId"`
+			ReviewerUserId openapi_types.UUID `json:"reviewerUserId"`
+			Status         string             `json:"status"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"reviews"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON200() *struct {
+	Failures []struct {
+		ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+		Message           string             `json:"message"`
+	} `json:"failures"`
+	Reviews []struct {
+		Comment        *string            `json:"comment,omitempty"`
+		CreatedAt      time.Time          `json:"createdAt"`
+		Id             openapi_types.UUID `json:"id"`
+		RequestId      openapi_types.UUID `json:"requestId"`
+		ReviewerUserId openapi_types.UUID `json:"reviewerUserId"`
+		Status         string             `json:"status"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"reviews"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r BatchReviewSecretApprovalRequestsResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r BatchReviewSecretApprovalRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BatchReviewSecretApprovalRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BatchReviewSecretApprovalRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BatchReviewSecretApprovalRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetSecretApprovalRequestCountResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -375602,6 +379251,71 @@ func (c *ClientWithResponses) CreateDnsMadeEasyAppConnectionWithResponse(ctx con
 	return ParseCreateDnsMadeEasyAppConnectionResponse(rsp)
 }
 
+// CreateGcpAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GCP Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGcpAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGcpAppConnectionResponse, error) {
+	rsp, err := c.CreateGcpAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGcpAppConnectionResponse(rsp)
+}
+
+// CreateGcpAppConnectionWithResponse performs a POST /api/v1/app-connections/gcp (the `CreateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a GCP Connection.
+func (c *ClientWithResponses) CreateGcpAppConnectionWithResponse(ctx context.Context, body CreateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGcpAppConnectionResponse, error) {
+	rsp, err := c.CreateGcpAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGcpAppConnectionResponse(rsp)
+}
+
+// GetGcpAppConnectionWithResponse performs a GET /api/v1/app-connections/gcp/{connectionId} (the `GetGcpAppConnection` operationId) request.
+//
+// Get the specified GCP Connection by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGcpAppConnectionResponse, error) {
+	rsp, err := c.GetGcpAppConnection(ctx, connectionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGcpAppConnectionResponse(rsp)
+}
+
+// UpdateGcpAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified GCP Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateGcpAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error) {
+	rsp, err := c.UpdateGcpAppConnectionWithBody(ctx, connectionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGcpAppConnectionResponse(rsp)
+}
+
+// UpdateGcpAppConnectionWithResponse performs a PATCH /api/v1/app-connections/gcp/{connectionId} (the `UpdateGcpAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the specified GCP Connection.
+func (c *ClientWithResponses) UpdateGcpAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateGcpAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGcpAppConnectionResponse, error) {
+	rsp, err := c.UpdateGcpAppConnection(ctx, connectionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGcpAppConnectionResponse(rsp)
+}
+
 // ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 //
 // List the GitHub Connections for the current organization or project.
@@ -383932,6 +387646,50 @@ func (c *ClientWithResponses) ListSecretApprovalRequestsWithResponse(ctx context
 	return ParseListSecretApprovalRequestsResponse(rsp)
 }
 
+// BatchMergeSecretApprovalRequestsWithBodyWithResponse performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BatchMergeSecretApprovalRequestsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchMergeSecretApprovalRequestsResponse, error) {
+	rsp, err := c.BatchMergeSecretApprovalRequestsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchMergeSecretApprovalRequestsResponse(rsp)
+}
+
+// BatchMergeSecretApprovalRequestsWithResponse performs a POST /api/v1/secret-approval-requests/batch/merge (the `BatchMergeSecretApprovalRequests` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BatchMergeSecretApprovalRequestsWithResponse(ctx context.Context, body BatchMergeSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchMergeSecretApprovalRequestsResponse, error) {
+	rsp, err := c.BatchMergeSecretApprovalRequests(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchMergeSecretApprovalRequestsResponse(rsp)
+}
+
+// BatchReviewSecretApprovalRequestsWithBodyWithResponse performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BatchReviewSecretApprovalRequestsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchReviewSecretApprovalRequestsResponse, error) {
+	rsp, err := c.BatchReviewSecretApprovalRequestsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchReviewSecretApprovalRequestsResponse(rsp)
+}
+
+// BatchReviewSecretApprovalRequestsWithResponse performs a POST /api/v1/secret-approval-requests/batch/review (the `BatchReviewSecretApprovalRequests` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BatchReviewSecretApprovalRequestsWithResponse(ctx context.Context, body BatchReviewSecretApprovalRequestsJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchReviewSecretApprovalRequestsResponse, error) {
+	rsp, err := c.BatchReviewSecretApprovalRequests(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchReviewSecretApprovalRequestsResponse(rsp)
+}
+
 // GetSecretApprovalRequestCountWithResponse performs a GET /api/v1/secret-approval-requests/count (the `GetSecretApprovalRequestCount` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -391927,6 +395685,8 @@ func ParseListAdminOrganizationsResponse(rsp *http.Response) (*ListAdminOrganiza
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organizations []struct {
+				AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+				AiModel                               *string             `json:"aiModel,omitempty"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -392089,6 +395849,8 @@ func ParseCreateAdminOrganizationResponse(rsp *http.Response) (*CreateAdminOrgan
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
+				AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+				AiModel                               *string             `json:"aiModel,omitempty"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -392231,6 +395993,8 @@ func ParseDeleteAdminOrganizationResponse(rsp *http.Response) (*DeleteAdminOrgan
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
+				AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+				AiModel                               *string             `json:"aiModel,omitempty"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -392726,6 +396490,8 @@ func ParseAdminSignUpResponse(rsp *http.Response) (*AdminSignUpResponse, error) 
 			Message      string `json:"message"`
 			New          string `json:"new"`
 			Organization struct {
+				AiConnectionId                        *openapi_types.UUID `json:"aiConnectionId,omitempty"`
+				AiModel                               *string             `json:"aiModel,omitempty"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
@@ -395197,6 +398963,312 @@ func ParseCreateDnsMadeEasyAppConnectionResponse(rsp *http.Response) (*CreateDns
 			Message    string                                                      `json:"message"`
 			ReqId      string                                                      `json:"reqId"`
 			StatusCode CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateGcpAppConnectionResponse parses an HTTP response from a CreateGcpAppConnectionWithResponse call
+func ParseCreateGcpAppConnectionResponse(rsp *http.Response) (*CreateGcpAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGcpAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGcpAppConnectionResponse parses an HTTP response from a GetGcpAppConnectionWithResponse call
+func ParseGetGcpAppConnectionResponse(rsp *http.Response) (*GetGcpAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGcpAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection GetGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGcpAppConnectionResponse parses an HTTP response from a UpdateGcpAppConnectionWithResponse call
+func ParseUpdateGcpAppConnectionResponse(rsp *http.Response) (*UpdateGcpAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGcpAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection UpdateGcpAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode UpdateGcpAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -448378,6 +452450,242 @@ func ParseListSecretApprovalRequestsResponse(rsp *http.Response) (*ListSecretApp
 			Message    string                                                  `json:"message"`
 			ReqId      string                                                  `json:"reqId"`
 			StatusCode ListSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBatchMergeSecretApprovalRequestsResponse parses an HTTP response from a BatchMergeSecretApprovalRequestsWithResponse call
+func ParseBatchMergeSecretApprovalRequestsResponse(rsp *http.Response) (*BatchMergeSecretApprovalRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BatchMergeSecretApprovalRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Approvals []struct {
+				BypassReason          *string             `json:"bypassReason,omitempty"`
+				CommitMessage         *string             `json:"commitMessage,omitempty"`
+				CommitterIdentityId   *openapi_types.UUID `json:"committerIdentityId,omitempty"`
+				CommitterUserId       *openapi_types.UUID `json:"committerUserId,omitempty"`
+				Conflicts             interface{}         `json:"conflicts,omitempty"`
+				CreatedAt             time.Time           `json:"createdAt"`
+				FolderId              openapi_types.UUID  `json:"folderId"`
+				HasMerged             *bool               `json:"hasMerged,omitempty"`
+				Id                    openapi_types.UUID  `json:"id"`
+				IsReplicated          *bool               `json:"isReplicated,omitempty"`
+				PolicyId              openapi_types.UUID  `json:"policyId"`
+				Slug                  string              `json:"slug"`
+				Status                *string             `json:"status,omitempty"`
+				StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
+				UpdatedAt             time.Time           `json:"updatedAt"`
+			} `json:"approvals"`
+			Failures []struct {
+				ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+				Message           string             `json:"message"`
+			} `json:"failures"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode BatchMergeSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBatchReviewSecretApprovalRequestsResponse parses an HTTP response from a BatchReviewSecretApprovalRequestsWithResponse call
+func ParseBatchReviewSecretApprovalRequestsResponse(rsp *http.Response) (*BatchReviewSecretApprovalRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BatchReviewSecretApprovalRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Failures []struct {
+				ApprovalRequestId openapi_types.UUID `json:"approvalRequestId"`
+				Message           string             `json:"message"`
+			} `json:"failures"`
+			Reviews []struct {
+				Comment        *string            `json:"comment,omitempty"`
+				CreatedAt      time.Time          `json:"createdAt"`
+				Id             openapi_types.UUID `json:"id"`
+				RequestId      openapi_types.UUID `json:"requestId"`
+				ReviewerUserId openapi_types.UUID `json:"reviewerUserId"`
+				Status         string             `json:"status"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"reviews"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode BatchReviewSecretApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

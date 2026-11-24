@@ -47,6 +47,12 @@ const resolveRecipients = async (
     return request.requesterId ? new Set([request.requesterId]) : new Set<string>();
   }
 
+  if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
+    const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
+    if (request.requesterId) userIds.add(request.requesterId);
+    return userIds;
+  }
+
   const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
   if (actorId) userIds.delete(actorId);
   if (
@@ -113,7 +119,8 @@ export const dispatchApprovalNotification = async (
     approvers,
     actorId,
     comment,
-    bypassReason
+    bypassReason,
+    failureReason
   }: {
     event: ApprovalNotificationEvent;
     request: TApprovalRequests;
@@ -122,6 +129,7 @@ export const dispatchApprovalNotification = async (
     actorId?: string;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   },
   deps: TApprovalNotificationDeps
 ) => {
@@ -132,7 +140,7 @@ export const dispatchApprovalNotification = async (
       ? await resource.filterActiveApprovers(request, approvers)
       : approvers;
 
-    const content = await resource.buildNotification({ event, request, comment, bypassReason });
+    const content = await resource.buildNotification({ event, request, comment, bypassReason, failureReason });
     if (!content) return;
 
     const recipientIds = await resolveRecipients(event, request, eligibleApprovers, actorId, deps);

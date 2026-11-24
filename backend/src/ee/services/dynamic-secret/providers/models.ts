@@ -833,7 +833,8 @@ export enum DynamicSecretProviders {
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
   Kafka = "kafka",
-  OpenRouter = "openrouter"
+  OpenRouter = "openrouter",
+  Neon = "neon"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -1218,6 +1219,66 @@ export const DynamicSecretKafkaSchema = z.object({
   sslRejectUnauthorized: z.boolean().default(true)
 });
 
+export enum NeonLeaseType {
+  Role = "role",
+  Branch = "branch"
+}
+
+// Neon project, branch and endpoint IDs, e.g. "shiny-wind-028834" or "br-aged-salad-637688"
+const NEON_RESOURCE_ID_REGEX = /^[a-z0-9-]{1,60}$/;
+
+const NeonBranchIdSchema = z.string().trim().regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon branch ID");
+
+const NeonSharedInputsSchema = z.object({
+  apiKey: z.string().trim().min(1).max(1024).describe("Neon API key used to manage roles and branches."),
+  projectId: z
+    .string()
+    .trim()
+    .regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon project ID")
+    .describe("ID of the Neon project, e.g. shiny-wind-028834."),
+  databaseName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(63)
+    .default("neondb")
+    .describe("Database used in the returned connection string."),
+  pooled: z.boolean().default(false).describe("Return the pooled (PgBouncer) connection string.")
+});
+
+export const DynamicSecretNeonSchema = z.discriminatedUnion("leaseType", [
+  NeonSharedInputsSchema.extend({
+    leaseType: z.literal(NeonLeaseType.Role).describe("Each lease creates a Postgres role on an existing branch."),
+    branchId: NeonBranchIdSchema.describe("The branch each lease's role is created on.")
+  }),
+  NeonSharedInputsSchema.extend({
+    leaseType: z
+      .literal(NeonLeaseType.Branch)
+      .describe("Each lease creates a copy-on-write branch with its own compute endpoint."),
+    parentBranchId: NeonBranchIdSchema.nullable()
+      .optional()
+      .describe("The branch each lease branches from. Defaults to the project's default branch."),
+    roleName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(63)
+      .describe("The existing role whose credentials are returned for the new branch."),
+    resetRolePassword: z
+      .boolean()
+      .default(true)
+      .describe(
+        "Reset the role's password on the new branch so the lease does not share the parent branch's password."
+      ),
+    setBranchExpiration: z
+      .boolean()
+      .default(false)
+      .describe(
+        "Also set the branch's Neon expiration time to the lease expiry, so Neon deletes it even if revocation never runs."
+      )
+  })
+]);
+
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
@@ -1265,7 +1326,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

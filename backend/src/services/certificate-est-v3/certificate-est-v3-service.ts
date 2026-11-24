@@ -22,7 +22,7 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { getSerialNumberSpellings, isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -36,7 +36,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -361,11 +361,15 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const storedCert = await certificateDAL.transaction(async (tx) =>
-      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
+    const storedRecords = await certificateDAL.transaction((tx) =>
+      certificateDAL.find(
+        { $in: { serialNumber: getSerialNumberSpellings(cert.serialNumber) }, caId: profile.caId },
+        { tx, sort: [["deletedAt", "desc", "first"]] }
+      )
     );
+    const [storedCert] = storedRecords;
 
-    if (storedCert?.status === CertStatus.REVOKED) {
+    if (storedRecords.some((record) => record.status === CertStatus.REVOKED)) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 

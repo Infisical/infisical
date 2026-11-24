@@ -5,6 +5,7 @@ export type TExternalKeyConfigRecord = {
   provider: string;
   // Encrypted with the org data key of the key's org.
   encryptedProviderInputs: Buffer;
+  providerInputsVersion: number;
   status: string | null;
   statusDetails: string | null;
 };
@@ -15,6 +16,7 @@ export type TExternalKeyRef = {
   orgId: string;
   provider: string;
   encryptedProviderInputs: Buffer;
+  providerInputsVersion: number;
 };
 
 export type TExternalKeyStatus = {
@@ -29,12 +31,24 @@ export class ExternalKeyConfig {
     readonly id: string,
     readonly provider: string,
     private readonly encryptedProviderInputs: Buffer,
+    private readonly providerInputsVersion: number,
     private readonly status: string | null,
     private readonly statusDetails: string | null
   ) {}
 
-  static create(input: { provider: string; encryptedProviderInputs: Buffer }): ExternalKeyConfig {
-    return new ExternalKeyConfig(randomUUID(), input.provider, input.encryptedProviderInputs, null, null);
+  static create(input: {
+    provider: string;
+    encryptedProviderInputs: Buffer;
+    providerInputsVersion: number;
+  }): ExternalKeyConfig {
+    return new ExternalKeyConfig(
+      randomUUID(),
+      input.provider,
+      input.encryptedProviderInputs,
+      input.providerInputsVersion,
+      null,
+      null
+    );
   }
 
   static restore(record: TExternalKeyConfigRecord): ExternalKeyConfig {
@@ -42,13 +56,29 @@ export class ExternalKeyConfig {
       record.id,
       record.provider,
       record.encryptedProviderInputs,
+      record.providerInputsVersion,
       record.status ?? null,
       record.statusDetails ?? null
     );
   }
 
-  withInputs(encryptedProviderInputs: Buffer): ExternalKeyConfig {
-    return new ExternalKeyConfig(this.id, this.provider, encryptedProviderInputs, this.status, this.statusDetails);
+  withInputs(encryptedProviderInputs: Buffer, providerInputsVersion: number): ExternalKeyConfig {
+    return new ExternalKeyConfig(
+      this.id,
+      this.provider,
+      encryptedProviderInputs,
+      providerInputsVersion,
+      this.status,
+      this.statusDetails
+    );
+  }
+
+  hasSameInputsAs(other: ExternalKeyConfig): boolean {
+    return (
+      this.id === other.id &&
+      this.providerInputsVersion === other.providerInputsVersion &&
+      this.encryptedProviderInputs.equals(other.encryptedProviderInputs)
+    );
   }
 
   summary(): TExternalKeyStatus {
@@ -56,7 +86,13 @@ export class ExternalKeyConfig {
   }
 
   refFor(kmsKeyId: string, orgId: string): TExternalKeyRef {
-    return { kmsKeyId, orgId, provider: this.provider, encryptedProviderInputs: this.encryptedProviderInputs };
+    return {
+      kmsKeyId,
+      orgId,
+      provider: this.provider,
+      encryptedProviderInputs: this.encryptedProviderInputs,
+      providerInputsVersion: this.providerInputsVersion
+    };
   }
 
   toJSON(): TExternalKeyConfigRecord {
@@ -64,6 +100,7 @@ export class ExternalKeyConfig {
       id: this.id,
       provider: this.provider,
       encryptedProviderInputs: this.encryptedProviderInputs,
+      providerInputsVersion: this.providerInputsVersion,
       status: this.status,
       statusDetails: this.statusDetails
     };

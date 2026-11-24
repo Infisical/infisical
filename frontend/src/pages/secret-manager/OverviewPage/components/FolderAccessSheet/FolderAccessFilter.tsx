@@ -1,8 +1,10 @@
 import {
   BotIcon,
   ClockIcon,
+  CornerLeftUpIcon,
   FilterIcon,
   FolderIcon,
+  FolderTreeIcon,
   ShieldIcon,
   UserIcon,
   UsersIcon
@@ -31,7 +33,9 @@ export enum FolderAccessKind {
   ProjectRole = "project-role",
   FolderGrant = "folder-grant",
   Override = "override",
-  Temporary = "temporary"
+  Temporary = "temporary",
+  Recursive = "recursive",
+  Inherited = "inherited"
 }
 
 export type TFolderAccessFilter = {
@@ -51,16 +55,20 @@ const KIND_OPTIONS: { value: FolderAccessKind; label: string; icon: React.ReactN
   { value: FolderAccessKind.ProjectRole, label: "Project Role", icon: <UsersIcon /> },
   { value: FolderAccessKind.FolderGrant, label: "Folder Grant", icon: <FolderIcon /> },
   { value: FolderAccessKind.Override, label: "Overrides Project Role", icon: <ShieldIcon /> },
-  { value: FolderAccessKind.Temporary, label: "Temporary", icon: <ClockIcon /> }
+  { value: FolderAccessKind.Temporary, label: "Temporary", icon: <ClockIcon /> },
+  { value: FolderAccessKind.Recursive, label: "Applies to Subfolders", icon: <FolderTreeIcon /> },
+  { value: FolderAccessKind.Inherited, label: "Inherited From Root", icon: <CornerLeftUpIcon /> }
 ];
 
 const kindsOf = (actor: TFolderAccessActor) => {
   const kinds: FolderAccessKind[] = [];
   if (actor.isProjectAdmin) kinds.push(FolderAccessKind.Admin);
-  else if (actor.access) kinds.push(FolderAccessKind.FolderGrant);
+  else if (actor.access || actor.inheritedAccess) kinds.push(FolderAccessKind.FolderGrant);
   else kinds.push(FolderAccessKind.ProjectRole);
   if (actor.access && actor.roles.length > 0) kinds.push(FolderAccessKind.Override);
-  if (actor.access?.isTemporary) kinds.push(FolderAccessKind.Temporary);
+  if ((actor.access ?? actor.inheritedAccess)?.isTemporary) kinds.push(FolderAccessKind.Temporary);
+  if (actor.access?.isPermissionRecursive) kinds.push(FolderAccessKind.Recursive);
+  if (!actor.access && actor.inheritedAccess) kinds.push(FolderAccessKind.Inherited);
   return kinds;
 };
 

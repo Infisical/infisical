@@ -97,6 +97,12 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoApprovalEvidence: true }).extend({
   steps: ApprovalRequestStepSchema.array(),
   canBreakGlass: z.boolean().default(false),
+  canReview: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step."
+    ),
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional(),
   autoApproval: AutoApprovalOutcomeSchema.optional()

@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
@@ -14,9 +14,7 @@ export async function seed(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-
-  await initEnvConfig(superAdminDAL, logger);
+  await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(knex), logger);
 
   // Inserts seed entries
   await knex(TableName.Identity).insert([

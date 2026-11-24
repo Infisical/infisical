@@ -149,13 +149,6 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
-export type TAgentVaultServiceHook = { url: string };
-
-export type TAgentVaultServiceHookInput = { url: string; signingSecret: string };
-
-// signingSecret left out keeps the saved one.
-export type TAgentVaultServiceHookUpdate = { url: string; signingSecret?: string };
-
 export type TAgentVaultVariableReference = {
   variableId: string;
   key: string;
@@ -245,7 +238,7 @@ export type TAgentVaultService = (
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
-  // Left out for a member. null when the service has no hook.
+  // Left out for a caller who can't read hooks.
   hook?: TAgentVaultServiceHook | null;
   createdAt: string;
   updatedAt: string;
@@ -427,6 +420,7 @@ export type TAgentVaultSessionInlineService = (
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  // Left out for a caller who can't read hooks.
   hook?: TAgentVaultServiceHook | null;
 };
 
@@ -669,8 +663,8 @@ export type TUpdateAgentVaultServiceDTO = {
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
-  // null removes the hook and its signing secret.
-  hook?: TAgentVaultServiceHookUpdate | null;
+  /** Left out keeps the service's hook; null removes it. */
+  hook?: TAgentVaultServiceHookInput | null;
 };
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
@@ -1179,4 +1173,63 @@ export type TAgentVaultAccess = {
   freeUsage: TAgentVaultFreeUsage | null;
   /** True from 80% of the free requests. */
   warn: boolean;
+};
+
+/** What a hook checks of its service: methods and paths of an HTTP service, tools of an MCP service. A list left out
+ * matches everything. */
+export type TAgentVaultHookNarrowing = {
+  methods?: AgentVaultHttpMethod[];
+  paths?: string[];
+  tools?: string[];
+};
+
+/** A service's hook, with what it checks of that service. */
+export type TAgentVaultServiceHook = TAgentVaultHookNarrowing & {
+  id: string;
+  name: string;
+};
+
+/** A service's hook as sent: a saved hook by name. */
+export type TAgentVaultServiceHookInput = TAgentVaultHookNarrowing & {
+  name: string;
+};
+
+/** A saved hook. Its secret is write-only and never returned. */
+export type TAgentVaultHook = {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  url: string;
+  /** The saved services that use it. */
+  usedBy: { id: string; name: string; type: AgentVaultServiceType; hostPattern: string | null }[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListAgentVaultHooksDTO = {
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultHookPage = {
+  hooks: TAgentVaultHook[];
+  totalCount: number;
+};
+
+export type TCreateAgentVaultHookDTO = {
+  name: string;
+  description?: string;
+  url: string;
+  secret: string;
+};
+
+/** Fields left out keep their values; `secret` left out keeps the saved one and `description: null` removes it. */
+export type TUpdateAgentVaultHookDTO = {
+  hookId: string;
+  name?: string;
+  description?: string | null;
+  url?: string;
+  secret?: string;
 };

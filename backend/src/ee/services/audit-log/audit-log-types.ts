@@ -456,6 +456,8 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
+  REQUEST_CERT_REVOCATION = "request-cert-revocation",
+  CERT_REVOCATION_FAILED = "cert-revocation-failed",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
@@ -849,6 +851,9 @@ export enum EventType {
   AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
   AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
+  AGENT_VAULT_HOOK_CREATE = "agent-vault-hook-create",
+  AGENT_VAULT_HOOK_UPDATE = "agent-vault-hook-update",
+  AGENT_VAULT_HOOK_DELETE = "agent-vault-hook-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
   AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
@@ -3404,7 +3409,46 @@ interface RevokeCert {
     applicationId?: string | null;
     applicationName?: string | null;
     revocationReason?: CrlReason;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    crlWarning?: string;
     source?: CertificateRevocationSource;
+    revokedThroughCertId?: string;
+    revokedThroughCertName?: string;
+  };
+}
+
+interface RequestCertRevocation {
+  type: EventType.REQUEST_CERT_REVOCATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    approvalPolicyId: string;
+    approvalPolicyName: string;
+  };
+}
+
+interface CertRevocationFailed {
+  type: EventType.CERT_REVOCATION_FAILED;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    error: string;
   };
 }
 
@@ -6758,6 +6802,16 @@ interface AgentVaultAccessBundleDeleteEvent {
   };
 }
 
+// A service's hook: the saved hook by ID and name, and what it checks of the service. No narrowing means every request,
+// or every connection for a database or SSH service.
+type TAgentVaultServiceHookAudit = {
+  id: string;
+  name: string;
+  methods?: string[];
+  paths?: string[];
+  tools?: string[];
+};
+
 interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
@@ -6800,7 +6854,9 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
-    // The hook's URL when the service was created with one. Its signing secret is never recorded.
+    // The saved hook the service was created with and what it checks of the service; no narrowing means every request.
+    hook?: TAgentVaultServiceHookAudit;
+    // Present only on events recorded before hooks became their own resource.
     hookUrl?: string;
   };
 }
@@ -6830,9 +6886,12 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
-    // Present only when the update changed the hook. hookUrl is set when it set the hook, changed its URL or
-    // removed it, and hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    // Present only when the update set, changed or removed the service's hook. `hook` is the hook afterwards, null when
+    // removed, and `previousHook` the one before, null when there was none.
     hookChanged?: "set" | "removed" | "updated";
+    hook?: TAgentVaultServiceHookAudit | null;
+    previousHook?: TAgentVaultServiceHookAudit | null;
+    // Present only on events recorded before hooks became their own resource.
     hookUrl?: string;
     hookSecretReplaced?: boolean;
     hostPattern?: string;
@@ -7053,6 +7112,41 @@ interface AgentVaultSkillDeleteEvent {
   };
 }
 
+interface AgentVaultHookCreateEvent {
+  type: EventType.AGENT_VAULT_HOOK_CREATE;
+  metadata: {
+    hookId: string;
+    hookName: string;
+    url: string;
+  };
+}
+
+interface AgentVaultHookUpdateEvent {
+  type: EventType.AGENT_VAULT_HOOK_UPDATE;
+  metadata: {
+    hookId: string;
+    // The hook's name after the update; `name` is set only by a rename.
+    hookName: string;
+    name?: string;
+    // Null when the update removed it.
+    description?: string | null;
+    url?: string;
+    // Whether a new secret was saved. The secret itself is never recorded.
+    secretReplaced: boolean;
+  };
+}
+
+interface AgentVaultHookDeleteEvent {
+  type: EventType.AGENT_VAULT_HOOK_DELETE;
+  metadata: {
+    hookId: string;
+    hookName: string;
+    url: string;
+    // The project's services that used the hook and are no longer checked by it.
+    services: { id: string; name: string }[];
+  };
+}
+
 interface AgentVaultAccessBundleSkillAddEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
   metadata: {
@@ -7248,6 +7342,9 @@ interface AgentVaultSessionMintEvent {
           allowedTools?: string[] | null;
           customHeaderNames: string[];
           substitutionPlaceholders: string[];
+          // The saved hook the service was sent with and what it checks of the service.
+          hook?: TAgentVaultServiceHookAudit;
+          // Present only on events recorded before hooks became their own resource.
           hookUrl?: string;
         }
     )[];
@@ -7740,6 +7837,8 @@ interface ApprovalRequestCancelEvent {
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
+    // Set when Infisical cancelled the request rather than its requester.
+    reason?: string;
   } & TApprovalRequestSubjectMetadata;
 }
 
@@ -8710,6 +8809,7 @@ export interface SecretFolderAccessEventMetadata {
   environment: string;
   secretPath: string;
   permission: string;
+  isPermissionRecursive: boolean;
   userId?: string;
   identityId?: string;
   isTemporary: boolean;
@@ -8983,6 +9083,8 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
+  | RequestCertRevocation
+  | CertRevocationFailed
   | AssignCertToApplication
   | GetCertBody
   | GetCertPrivateKey
@@ -9331,6 +9433,9 @@ export type Event =
   | AgentVaultOauthVariableConnectEvent
   | AgentVaultPersonalValuesSetEvent
   | AgentVaultPersonalValuesDeleteEvent
+  | AgentVaultHookCreateEvent
+  | AgentVaultHookUpdateEvent
+  | AgentVaultHookDeleteEvent
   | AgentVaultSkillCreateEvent
   | AgentVaultSkillVersionCreateEvent
   | AgentVaultSkillVersionRestoreEvent

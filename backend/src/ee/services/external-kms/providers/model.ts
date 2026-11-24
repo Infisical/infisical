@@ -26,7 +26,9 @@ const AwsConnectionAssumeRoleCredentialsSchema = z.object({
     .trim()
     .min(1)
     .optional()
-    .describe("AWS assume role external id for further security in authentication")
+    .describe(
+      "External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs."
+    )
 });
 
 const AwsConnectionAccessTokenCredentialsSchema = z.object({

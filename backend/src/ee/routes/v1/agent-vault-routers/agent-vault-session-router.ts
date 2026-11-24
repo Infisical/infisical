@@ -423,8 +423,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   // Present on every service, null outside HTTP, as this event has always sent them.
                   allowedMethods: allowedMethods ?? null,
                   allowedPathPrefixes: allowedPathPrefixes ?? null,
-                  hookUrl: service.hook?.url,
-                  ...serviceTransformationNamesOf(service)
+                  ...serviceTransformationNamesOf(service),
+                  ...(service.hook && { hook: service.hook })
                 };
               })
             }),
