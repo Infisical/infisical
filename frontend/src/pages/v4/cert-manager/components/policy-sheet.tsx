@@ -799,8 +799,8 @@ const ExtensionsStep = ({
       header: "Criticality",
       width: 200,
       wrap: true,
-      text: (rule) => CRITICALITY_LABELS[rule.critical],
-      render: (rule) => CRITICALITY_LABELS[rule.critical]
+      text: (rule) => CRITICALITY_LABELS[presetCriticality(rule.oid) ?? rule.critical],
+      render: (rule) => CRITICALITY_LABELS[presetCriticality(rule.oid) ?? rule.critical]
     },
     {
       id: "value",
