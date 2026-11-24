@@ -458,8 +458,7 @@ Where each legacy piece lands:
    every API change.
 7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
 8. Fix every path that named the old files: `vitest.e2e.config.mts` aliases, `.github/workflows/*` that `sed`
-   a source file, `backend-go/tests/infra/builder.go` (it patches the compiled file inside the published
-   image), docs, and test failure messages. `git grep` the old file names before calling it done.
+   a source file, docs, and test failure messages. `git grep` the old file names before calling it done.
 9. Run `make reviewable-api`, `npm run test:unit -- src/domains`, `npm run test:integration`, and the e2e specs
    for the routes you touched (`make test-api-e2e SPEC=<pattern>`).
 
