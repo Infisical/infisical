@@ -8,6 +8,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -77,6 +78,16 @@ export const webhookServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
+
+    if (getResourceLimit(ResourceLimit.WebhooksPerProject) !== null) {
+      assertWithinResourceLimit({
+        limit: ResourceLimit.WebhooksPerProject,
+        used: await webhookDAL.countByProjectId(projectId),
+        describe: (max) =>
+          `Project already has the maximum of ${max} webhooks. Delete webhooks you no longer use before creating another.`
+      });
+    }
+
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new NotFoundError({

@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
@@ -298,6 +299,16 @@ export const secretValidationRuleServiceFactory = ({
 
     const { encryptor } = await $getCipher(projectId);
     const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
+
+    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerProject) !== null) {
+      const [{ count: projectRuleCount }] = await secretValidationRuleDAL.find({ projectId }, { countDistinct: "id" });
+      assertWithinResourceLimit({
+        limit: ResourceLimit.SecretValidationRulesPerProject,
+        used: Number(projectRuleCount),
+        describe: (max) =>
+          `Project already has the maximum of ${max} secret validation rules. Delete rules you no longer use before creating another.`
+      });
+    }
 
     const rule = await secretValidationRuleDAL.createWithEnv({
       name,

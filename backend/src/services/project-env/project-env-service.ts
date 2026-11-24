@@ -7,6 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { assertWithinResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
@@ -101,6 +102,12 @@ export const projectEnvServiceFactory = ({
             "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
         });
       }
+      assertWithinResourceLimit({
+        limit: ResourceLimit.EnvironmentsPerProject,
+        used: envs.length,
+        describe: (max) =>
+          `Project already has the maximum of ${max} environments. Delete environments you no longer use before creating another.`
+      });
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         if (position !== undefined) {
@@ -402,6 +409,12 @@ export const projectEnvServiceFactory = ({
               "Failed to restore environment due to environment limit reached. Upgrade plan or remove an existing environment."
           });
         }
+        assertWithinResourceLimit({
+          limit: ResourceLimit.EnvironmentsPerProject,
+          used: activeEnvs.length,
+          describe: (max) =>
+            `Project already has the maximum of ${max} environments. Delete an environment before restoring this one.`
+        });
 
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
         const doc = await projectEnvDAL.restoreById(id, projectId, lastPos + 1, tx);

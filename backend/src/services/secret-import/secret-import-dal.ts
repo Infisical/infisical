@@ -248,6 +248,15 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByFolderId = async (folderId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db.replicaNode())(TableName.SecretImport).where({ folderId }).count({ count: "id" });
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count secret imports by folder" });
+    }
+  };
+
   // Bypasses the soft-deleted source filter of find. Positions are unique per folder across every
   // stored row, so renumbering must see imports whose source environment or project is soft-deleted.
   const findIncludingExpired = (folderId: string, tx?: Knex) => secretImportOrm.find({ folderId }, { tx });
@@ -695,6 +704,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     lockWithFolderAgainstDelete,
     findByIds,
     findIncludingExpired,
+    countByFolderId,
     findByFolderIds,
     findImportByFolderIds,
     findFolderIdsWithImports,

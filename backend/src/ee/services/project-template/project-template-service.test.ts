@@ -3,12 +3,15 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
 
+const mockConfig = vi.hoisted(() => ({ INFISICAL_CLOUD: false }));
+
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({})
+  getConfig: () => mockConfig
 }));
 
 const ORG_ID = "org-1";
@@ -25,7 +28,8 @@ const actor = {
   authMethod: null
 } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[1];
 
-const createService = () =>
+// Without orgTemplateCount the transaction refuses before its callback runs, so the cap is never consulted.
+const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {}) =>
   projectTemplateServiceFactory({
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
       projectTemplates: true,
@@ -47,12 +51,17 @@ const createService = () =>
         environments: [],
         projectManagedIdentities: [{ name: LEGACY_NAME, roles: [] }]
       }),
-      transaction: vi.fn().mockRejectedValue(REACHED_TRANSACTION)
+      find: vi.fn().mockResolvedValue([{ count: String(orgTemplateCount) }]),
+      create: vi.fn().mockRejectedValue(REACHED_TRANSACTION),
+      transaction:
+        orgTemplateCount === undefined
+          ? vi.fn().mockRejectedValue(REACHED_TRANSACTION)
+          : vi.fn((cb: (tx: unknown) => unknown) => cb({}))
     }
   } as unknown as Parameters<typeof projectTemplateServiceFactory>[0]);
 
-const create = (name: string) =>
-  createService().createProjectTemplate(
+const create = (name: string, service = createService()) =>
+  service.createProjectTemplate(
     {
       name: "template",
       type: ProjectType.SecretManager,
@@ -89,5 +98,23 @@ describe("project-managed identity names", () => {
 
   test("update rejects a new name with an invisible character", async () => {
     await expect(update([LEGACY_NAME, "new‮bot"])).rejects.toThrow(/bidirectional/);
+  });
+});
+
+describe("project template cap on Infisical Cloud", () => {
+  test("create refuses a template past the per-organization cap", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      const result = create("deploy-bot", createService({ orgTemplateCount: 100 }));
+      await expect(result).rejects.toBeInstanceOf(BadRequestError);
+      await expect(result).rejects.toThrow("Organization already has the maximum of 100 project templates");
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
+  });
+
+  test("create counts nothing on self-hosted", async () => {
+    const service = createService({ orgTemplateCount: 100 });
+    await expect(create("deploy-bot", service)).rejects.toBe(REACHED_TRANSACTION);
   });
 });

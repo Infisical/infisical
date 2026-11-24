@@ -75,6 +75,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -357,6 +358,19 @@ export const projectServiceFactory = ({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
         }
+      }
+
+      if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+        const [{ count: orgProjectCount }] = await projectDAL.find(
+          { orgId: organization.id },
+          { countDistinct: "id", tx }
+        );
+        assertWithinResourceLimit({
+          limit: ResourceLimit.ProjectsPerOrg,
+          used: Number(orgProjectCount),
+          describe: (max) =>
+            `Organization already has the maximum of ${max} projects. Delete projects you no longer use before creating another.`
+        });
       }
 
       if (type === ProjectType.SecretScanning) {
@@ -1075,6 +1089,19 @@ export const projectServiceFactory = ({
                   "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
               });
             }
+          }
+
+          if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+            const [{ count: orgProjectCount }] = await projectDAL.find(
+              { orgId: project.orgId },
+              { countDistinct: "id", tx }
+            );
+            assertWithinResourceLimit({
+              limit: ResourceLimit.ProjectsPerOrg,
+              used: Number(orgProjectCount),
+              describe: (max) =>
+                `Organization already has the maximum of ${max} projects. Delete a project before restoring this one.`
+            });
           }
 
           return projectDAL.restoreById(project.id, tx);

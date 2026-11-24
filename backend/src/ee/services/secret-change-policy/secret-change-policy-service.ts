@@ -6,6 +6,7 @@ import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { assertPolicyTypeSupportsDelegatedApproval } from "@app/services/delegated-approval/delegated-approval-fns";
 
@@ -157,6 +158,19 @@ export const secretChangePolicyServiceFactory = ({
     });
 
     return approvalPolicyDAL.transaction(async (tx) => {
+      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerProject) !== null) {
+        const [{ count: projectPolicyCount }] = await approvalPolicyDAL.find(
+          { projectId },
+          { countDistinct: "id", tx }
+        );
+        assertWithinResourceLimit({
+          limit: ResourceLimit.ApprovalPoliciesPerProject,
+          used: Number(projectPolicyCount),
+          describe: (max) =>
+            `Project already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+        });
+      }
+
       const doc = await approvalPolicyDAL.create(
         {
           projectId,

@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import type { Space as OctopusSpace } from "@octopusdeploy/api-client";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -20,6 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
@@ -91,6 +93,18 @@ export const integrationAuthServiceFactory = ({
   projectBotService,
   kmsDataKeyService
 }: TIntegrationAuthServiceFactoryDep) => {
+  const $assertCanAddIntegrationAuth = async (projectId: string, tx?: Knex) => {
+    if (getResourceLimit(ResourceLimit.IntegrationAuthsPerProject) === null) return;
+
+    const [{ count }] = await integrationAuthDAL.find({ projectId }, { countDistinct: "id", tx });
+    assertWithinResourceLimit({
+      limit: ResourceLimit.IntegrationAuthsPerProject,
+      used: Number(count),
+      describe: (max) =>
+        `Project already has the maximum of ${max} integration authorizations. Delete integrations you no longer use before connecting another.`
+    });
+  };
+
   const listIntegrationAuthByProjectId = async ({
     actorId,
     actor,
@@ -181,6 +195,10 @@ export const integrationAuthServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(url);
     }
 
+    if (installationId && integration === Integrations.GITHUB) {
+      await $assertCanAddIntegrationAuth(projectId);
+    }
+
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -266,6 +284,7 @@ export const integrationAuthServiceFactory = ({
       }
 
       if (!existingIntegrationAuth) {
+        await $assertCanAddIntegrationAuth(projectId, tx);
         return integrationAuthDAL.create(updateDoc, tx);
       }
 
@@ -303,6 +322,8 @@ export const integrationAuthServiceFactory = ({
     if (url) {
       await blockLocalAndPrivateIpAddresses(url);
     }
+
+    await $assertCanAddIntegrationAuth(projectId);
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -1900,6 +1921,8 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.Integrations
     );
+
+    await $assertCanAddIntegrationAuth(projectId);
 
     const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
       ...integrationAuth,

@@ -107,7 +107,7 @@ export type TSecretAccessApprovalPolicyServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
-    "create" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
+    "create" | "find" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
   >;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;

@@ -17,6 +17,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -762,6 +763,15 @@ export const secretSyncServiceFactory = ({
       },
       preSaveTransformDeps
     );
+
+    if (getResourceLimit(ResourceLimit.SecretSyncsPerProject) !== null) {
+      assertWithinResourceLimit({
+        limit: ResourceLimit.SecretSyncsPerProject,
+        used: await secretSyncDAL.countByProjectId(projectId),
+        describe: (max) =>
+          `Project already has the maximum of ${max} secret syncs. Delete secret syncs you no longer use before creating another.`
+      });
+    }
 
     try {
       const secretSync = await secretSyncDAL.create({

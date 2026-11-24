@@ -19,6 +19,13 @@ import { TSecretChangePolicyRow } from "./secret-change-policy-dal";
 import { toSecretChangePolicy } from "./secret-change-policy-fns";
 import { secretChangePolicyServiceFactory } from "./secret-change-policy-service";
 
+const mockConfig = vi.hoisted(() => ({ INFISICAL_CLOUD: false }));
+
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => mockConfig
+}));
+
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
 const ENV_DEV = { id: "env-dev", name: "Development", slug: "dev", projectId: PROJECT_ID };
@@ -86,7 +93,8 @@ const buildService = ({
   users = [] as { id: string; username: string }[],
   existingPolicy = undefined as TExistingPolicy | undefined,
   memberships = [{ effectiveUserIds: ["user-1"], effectiveGroupIds: [] }] as TMembership[],
-  rows = [buildRow()] as TSecretChangePolicyRow[]
+  rows = [buildRow()] as TSecretChangePolicyRow[],
+  projectPolicyCount = 0
 } = {}) => {
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
@@ -109,6 +117,7 @@ const buildService = ({
         Promise.resolve({ ...rows.find((el) => el.id === id), ...row })
       ),
       deleteById: vi.fn((id: string) => Promise.resolve(rows.find((row) => row.id === id))),
+      find: vi.fn().mockResolvedValue([{ count: String(projectPolicyCount) }]),
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(TX)))
     },
     approvalPolicyStepsDAL: {
@@ -411,6 +420,24 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
       userIds: ["user-1", "user-2"],
       groupIds: ["g-1"]
     });
+  });
+
+  test("refuses a policy past the Infisical Cloud cap on approval policies per project", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      const { service, deps } = buildService({ projectPolicyCount: 100 });
+
+      const result = create(service);
+      await expect(result).rejects.toBeInstanceOf(BadRequestError);
+      await expect(result).rejects.toThrow("Project already has the maximum of 100 approval policies");
+      expect(deps.approvalPolicyDAL.find).toHaveBeenCalledWith(
+        { projectId: PROJECT_ID },
+        { countDistinct: "id", tx: TX }
+      );
+      expect(deps.approvalPolicyDAL.create).not.toHaveBeenCalled();
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
   });
 
   test("returns the policy re-read inside the transaction in the legacy shape", async () => {

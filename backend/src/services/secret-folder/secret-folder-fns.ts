@@ -28,13 +28,16 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { TFolderChangeAction, TFolderMoveBlockingType, TFolderRenameScope } from "./secret-folder-types";
 
+// Paths deeper than this cannot be resolved, so the folder service refuses to create or move a folder past it.
+export const MAX_FOLDER_DEPTH = 20;
+
 export const buildFolderPath = (
   folder: TSecretFolders,
   foldersMap: Record<string, TSecretFolders>,
   depth: number = 0
 ): string => {
-  if (depth > 20) {
-    throw new InternalServerError({ message: "Maximum folder depth of 20 exceeded" });
+  if (depth > MAX_FOLDER_DEPTH) {
+    throw new InternalServerError({ message: `Maximum folder depth of ${MAX_FOLDER_DEPTH} exceeded` });
   }
   if (!folder.parentId) {
     return depth === 0 ? "/" : "";

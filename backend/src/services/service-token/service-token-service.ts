@@ -15,6 +15,7 @@ import { ForbiddenRequestError, NotFoundError, PermissionBoundaryError, Unauthor
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
@@ -138,6 +139,16 @@ export const serviceTokenServiceFactory = ({
     const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
     if (inputEnvs.length !== scopeEnvs.length)
       throw new NotFoundError({ message: `One or more selected environments not found` });
+
+    if (getResourceLimit(ResourceLimit.ServiceTokensPerProject) !== null) {
+      const [{ count: serviceTokenCount }] = await serviceTokenDAL.find({ projectId }, { countDistinct: "id" });
+      assertWithinResourceLimit({
+        limit: ResourceLimit.ServiceTokensPerProject,
+        used: Number(serviceTokenCount),
+        describe: (max) =>
+          `Project already has the maximum of ${max} service tokens. Delete service tokens you no longer use before creating another.`
+      });
+    }
 
     const secret = crypto.randomBytes(16).toString("hex");
     const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);

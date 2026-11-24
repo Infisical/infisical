@@ -18,6 +18,7 @@ import {
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
@@ -445,6 +446,19 @@ export const projectTemplateServiceFactory = ({
         : environments;
 
     const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      if (getResourceLimit(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
+        const [{ count: orgTemplateCount }] = await projectTemplateDAL.find(
+          { orgId: actor.orgId },
+          { countDistinct: "id", tx }
+        );
+        assertWithinResourceLimit({
+          limit: ResourceLimit.ProjectTemplatesPerOrg,
+          used: Number(orgTemplateCount),
+          describe: (max) =>
+            `Organization already has the maximum of ${max} project templates. Delete templates you no longer use before creating another.`
+        });
+      }
+
       const template = await projectTemplateDAL.create(
         {
           ...params,

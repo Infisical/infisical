@@ -109,5 +109,18 @@ export const webhookDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...webhookOrm, findById, findOne, find, findAllWebhooks, bulkUpdate };
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db.replicaNode())(TableName.Webhook)
+        .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .count({ count: `${TableName.Webhook}.id` });
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count webhooks by project" });
+    }
+  };
+
+  return { ...webhookOrm, findById, findOne, find, findAllWebhooks, bulkUpdate, countByProjectId };
 };

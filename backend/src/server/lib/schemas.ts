@@ -50,7 +50,10 @@ export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = 
     message: LOG_UNSAFE_TEXT_MESSAGE
   });
 
-export const BaseSecretNameSchema = z.string().trim().min(1);
+export const BaseSecretNameSchema = z.string().trim().min(1).max(500, "Secret name must be 500 or fewer characters");
+
+export const SECRET_COMMENT_MAX_LENGTH = 10000;
+export const SECRET_COMMENT_TOO_LONG = `Secret comment must be ${SECRET_COMMENT_MAX_LENGTH} or fewer characters`;
 
 export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(":") && !el.includes("/"),

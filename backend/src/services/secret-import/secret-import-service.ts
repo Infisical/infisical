@@ -24,6 +24,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -266,6 +267,15 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      if (getResourceLimit(ResourceLimit.ImportsPerFolder) !== null) {
+        assertWithinResourceLimit({
+          limit: ResourceLimit.ImportsPerFolder,
+          used: await secretImportDAL.countByFolderId(folder.id, tx),
+          adding: isReplication ? 2 : 1,
+          describe: (max) =>
+            `Folder '${secretPath}' already has the maximum of ${max} secret imports. Remove imports you no longer use before adding another.`
+        });
+      }
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {

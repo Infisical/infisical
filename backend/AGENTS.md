@@ -1011,6 +1011,16 @@ for verifiers such as Okta `private_key_jwt`. `kms_keys.isPublicKeyPublished` tu
 - KMS ECDSA signatures are DER, so an ES* JWT signed through the sign API needs its signature re-encoded as raw R||S
   before a JWKS verifier accepts it.
 
+### Resource Limits (everything is bounded)
+
+Every row a tenant can create and every field a tenant can send needs an upper bound.
+
+- **Bound every field in Zod, on every instance.** Every string and array in a request body gets a plain `.max()`, matched to the column width where there is one (see [`CODE_QUALITY.md`](CODE_QUALITY.md)). A `bytea`, `text` or `jsonb` column has no width, so the route is its only bound. Put it on a request schema only: responses are validated too, so a bound on a shared response schema turns rows written before it into 500s (`SecretMetadataInputSchema` is the input-only copy of the metadata schema for this reason).
+- **Cap every count.** A create (or restore) path that adds rows calls `assertWithinResourceLimit` from `src/lib/resource-limits/` with a count per the parent the rows hang off (org, project, folder). Count before the insert, inside the transaction with `tx` when there is one, and skip the count when `getResourceLimit(...)` returns null so self-hosted pays no query. Add the new cap to `ResourceLimit` and `CLOUD_RESOURCE_LIMITS`, far above the largest real tenant.
+- **Check only where the count grows.** Never on read, list, update or delete, so a tenant already over a new cap keeps what it has and can still clean up.
+- **Count caps apply only on Infisical Cloud** (`INFISICAL_CLOUD`) and sit on top of `PlanLimit`, which is null on most paid plans and so does not protect the database. Field bounds and folder depth (`MAX_FOLDER_DEPTH`) apply everywhere.
+- **Rows written as a side effect** (versions, commits, history, events, tokens) need a retention job or a per-parent cap before they ship.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1256,5 +1266,6 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
 5. Plan the blackbox tests in the root `tests/` suite (see "Every API change gets a blackbox test plan")
-6. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
-7. Run `make reviewable-api` to verify lint + types
+6. Bound the new resource: a count cap on its create path and a `.max()` on every input field (see "Resource Limits")
+7. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
+8. Run `make reviewable-api` to verify lint + types

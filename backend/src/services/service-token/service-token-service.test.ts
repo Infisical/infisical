@@ -1,5 +1,5 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   ProjectPermissionActions,
@@ -12,10 +12,10 @@ import { crypto } from "@app/lib/crypto";
 
 import { serviceTokenServiceFactory } from "./service-token-service";
 
+const mockConfig = vi.hoisted(() => ({ SALT_ROUNDS: 1, INFISICAL_CLOUD: false }));
+
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({
-    SALT_ROUNDS: 1
-  })
+  getConfig: () => mockConfig
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -480,6 +480,42 @@ describe("createServiceToken authorization", () => {
         })
       ).resolves.toBeDefined();
       expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Infisical Cloud cap", () => {
+    afterEach(() => {
+      mockConfig.INFISICAL_CLOUD = false;
+    });
+
+    const adminPermission = () =>
+      buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        b.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
+        b.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
+        b.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
+        b.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
+      });
+
+    test("refuses a new token once the project is at the cap", async () => {
+      mockConfig.INFISICAL_CLOUD = true;
+      const { service, serviceTokenDAL } = createService(adminPermission());
+      serviceTokenDAL.find.mockResolvedValue([{ count: "1000" }]);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).rejects.toThrow("Project already has the maximum of 1000 service tokens");
+      expect(serviceTokenDAL.find).toHaveBeenCalledWith({ projectId: PROJECT_ID }, { countDistinct: "id" });
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("does not count tokens on a self-hosted instance", async () => {
+      const { service, serviceTokenDAL } = createService(adminPermission());
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.find).not.toHaveBeenCalled();
     });
   });
 });
