@@ -14,7 +14,7 @@ export const refinePreserveFolderStructure = (
       code: z.ZodIssueCode.custom,
       path: ["keySchema"],
       message:
-        'Key schema cannot contain "/" while Mirror folder structure is on, because the folders already form the path.'
+        'Key schema cannot contain "/" while Preserve folder structure is on, because the folders already form the path.'
     });
   }
 };

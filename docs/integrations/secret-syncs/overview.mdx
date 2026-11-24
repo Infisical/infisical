@@ -114,7 +114,7 @@ Most destinations store secrets in one flat list, so the folder structure isn't 
 
 ### Keep the folder structure at the destination
 
-AWS Parameter Store and AWS Secrets Manager can keep each secret's folder in its name at the destination instead of flattening the folders. If you turn on **Mirror folder structure** in the destination step, a secret in `/backend/api` synced from `/backend` is written under `api/`, so it doesn't collide with a secret of the same name in `/backend`. For the exact names each service uses, see [AWS Parameter Store](/integrations/secret-syncs/aws-parameter-store) and [AWS Secrets Manager](/integrations/secret-syncs/aws-secrets-manager).
+AWS Parameter Store and AWS Secrets Manager can keep each secret's folder in its name at the destination instead of flattening the folders. If you turn on **Preserve folder structure** in the destination step, a secret in `/backend/api` synced from `/backend` is written under `api/`, so it doesn't collide with a secret of the same name in `/backend`. For the exact names each service uses, see [AWS Parameter Store](/integrations/secret-syncs/aws-parameter-store) and [AWS Secrets Manager](/integrations/secret-syncs/aws-secrets-manager).
 
 ## Key schemas
 

@@ -114,8 +114,8 @@ export const SecretSyncSourceFolderTree = ({
             <AnimatedCollapse isOpen={isReviewOpen}>
               <div className="flex flex-col gap-2 px-4 pb-3 text-xs text-label">
                 <p>
-                  Turn on Mirror folder structure in the Destination step to keep each one at its
-                  own path. To continue without folder structure mirroring, please resolve the
+                  Turn on Preserve folder structure in the Destination step to keep each one at its
+                  own path. To continue without preserving the folder structure, please resolve the
                   conflicts as listed below.
                 </p>
                 <ul className="flex flex-col gap-1.5">

@@ -42,7 +42,7 @@ export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) =
       {includeAllSubFolders &&
         destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne && (
           <Detail>
-            <DetailLabel>Mirror Folder Structure</DetailLabel>
+            <DetailLabel>Preserve Folder Structure</DetailLabel>
             <DetailValue>
               <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
                 {preserveFolderStructure ? "Enabled" : "Disabled"}

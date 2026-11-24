@@ -32,7 +32,7 @@ export const AwsParameterStoreSyncDestinationSection = ({ secretSync }: Props) =
       </Detail>
       {includeAllSubFolders && (
         <Detail>
-          <DetailLabel>Mirror Folder Structure</DetailLabel>
+          <DetailLabel>Preserve Folder Structure</DetailLabel>
           <DetailValue>
             <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
               {preserveFolderStructure ? "Enabled" : "Disabled"}

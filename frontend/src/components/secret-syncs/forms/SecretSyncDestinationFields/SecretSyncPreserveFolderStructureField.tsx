@@ -104,7 +104,7 @@ export const SecretSyncPreserveFolderStructureField = ({
           render={({ field: { value, onChange } }) => (
             <Field orientation="horizontal">
               <FieldContent>
-                <Label htmlFor="preserveFolderStructure">Mirror folder structure</Label>
+                <Label htmlFor="preserveFolderStructure">Preserve folder structure</Label>
                 {destination === SecretSync.AWSParameterStore ? (
                   <FieldDescription>
                     Recreate the Infisical folder tree under <Code>{destinationPrefix}</Code>, so{" "}
@@ -198,8 +198,8 @@ export const SecretSyncPreserveFolderStructureField = ({
           conflicts={conflicts}
           description={
             canPreserve
-              ? "With the folder structure flattened, each name can be used only once. Turn on Mirror folder structure to keep each secret at its own path, or rename or move one secret in each pair."
-              : "Many-to-one mapping writes every secret into one AWS secret, so each name can be used only once. Switch to one-to-one mapping and turn on Mirror folder structure, or rename or move one secret in each pair."
+              ? "With the folder structure flattened, each name can be used only once. Turn on Preserve folder structure to keep each secret at its own path, or rename or move one secret in each pair."
+              : "Many-to-one mapping writes every secret into one AWS secret, so each name can be used only once. Switch to one-to-one mapping and turn on Preserve folder structure, or rename or move one secret in each pair."
           }
         />
       )}

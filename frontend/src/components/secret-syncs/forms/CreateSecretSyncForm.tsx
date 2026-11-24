@@ -122,7 +122,7 @@ const getFormTabs = (
         rightExtra: {
           title: "About duplicate keys",
           description:
-            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: mirroring keeps every value at its own path, while flattening needs each name to be unique.",
+            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: preserving the folder structure keeps every value at its own path, while flattening needs each name to be unique.",
           examples: preservesFolderStructure
             ? [
                 { path: "/backend/API_KEY", result: `${mirroredPrefix}API_KEY`, tone: "success" },
@@ -153,8 +153,8 @@ const getFormTabs = (
           title: "Folder mapping",
           description:
             destination === SecretSync.AWSParameterStore
-              ? "Mirror recreates your Infisical folder tree under the base path, one-to-one. Every key keeps its own path, so duplicate keys never collide."
-              : "Mirror prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide.",
+              ? "Preserving the folder structure recreates your Infisical folder tree under the base path, one-to-one. Every key keeps its own path, so duplicate keys never collide."
+              : "Preserving the folder structure prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide.",
           examples: [
             {
               path: "/backend/api/API_KEY",
