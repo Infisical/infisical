@@ -29,6 +29,12 @@ export type TProjectCache = {
 
 // The users and identities in a product's projects, which that product's usage meter bills. Null orgId = whole
 // instance.
+// The current name of an identity, for `{{identity.username}}`: an access token carries the name it was issued
+// with, which a rename does not update.
+export type TActorNameStore = {
+  findIdentityName(identityId: string, options?: TReadOptions): Promise<string | null>;
+};
+
 export type TProjectIdentityStore = {
   countProjectIdentities(projectType: ProjectType, orgId: string | null, options?: TReadOptions): Promise<number>;
   countProjectIdentitiesByKind(

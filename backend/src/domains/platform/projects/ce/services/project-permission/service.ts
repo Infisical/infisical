@@ -21,7 +21,7 @@ import { Project } from "../../models/project";
 import { ProjectAccess } from "../../models/project-access";
 import { ProjectPermission } from "../../models/project-permission";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
-import { TProjectAccessListener, TProjectCache, TProjectStore } from "../dependencies";
+import { TActorNameStore, TProjectAccessListener, TProjectCache, TProjectStore } from "../dependencies";
 
 export type TGetProjectPermissionInput = {
   actor: TActorContext;
@@ -83,7 +83,7 @@ export type TProjectPermissionService = {
   }): Promise<{ sources: TProjectPermissionAuditSource[]; grants: ActorGrants }>;
 };
 
-type TLoadedAccess = { project: Project; grants: ActorGrants; grantActor: TGrantActor };
+type TLoadedAccess = { project: Project; grants: ActorGrants; grantActor: TGrantActor; identityName: string | null };
 
 export class ProjectPermissionService implements TProjectPermissionService {
   private readonly rolesByType: Map<ProjectType, TProjectRoles>;
@@ -94,6 +94,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
     private readonly actorGrantsService: TActorGrantsService,
     private readonly roleService: TRoleService,
     private readonly groupService: TGroupService,
+    private readonly actorNameStore: TActorNameStore,
     projectRoles: TProjectRoles[],
     private readonly memo: ActorContextMemo<TLoadedAccess>,
     private readonly onProjectAccess: TProjectAccessListener = () => {}
@@ -124,7 +125,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
   async findProjectAccess({ actor, projectId, type }: TGetProjectPermissionInput): Promise<ProjectAccess | null> {
     const { principal } = actor;
     const grantActor = ProjectPermissionService.grantActorFor(principal, projectId);
-    const { project, grants } = await this.memo.getOrCompute(actor, projectId, async () => {
+    const { project, grants, identityName } = await this.memo.getOrCompute(actor, projectId, async () => {
       const loaded = await this.projectCache.getOrLoad({
         projectId,
         fingerprint: () => this.projectStore.findVersion(projectId),
@@ -139,7 +140,11 @@ export class ProjectPermissionService implements TProjectPermissionService {
         orgId: loaded.orgId,
         projectId
       });
-      return { project: loaded, grants: actorGrants, grantActor };
+      const currentIdentityName =
+        principal.type === ActorType.IDENTITY && grantActor.id === principal.id
+          ? await this.actorNameStore.findIdentityName(principal.id)
+          : null;
+      return { project: loaded, grants: actorGrants, grantActor, identityName: currentIdentityName };
     });
 
     project.assertUsableBy({ orgId: actor.org.id, type });
@@ -151,7 +156,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
       grants,
       roles: this.getProjectRoles({ projectType: project.type }),
       principal,
-      identity: ProjectPermissionService.identityFor({ principal, grantActor, grants })
+      identity: ProjectPermissionService.identityFor({ principal, grantActor, grants, identityName })
     });
   }
 
@@ -303,16 +308,18 @@ export class ProjectPermissionService implements TProjectPermissionService {
   private static identityFor({
     principal,
     grantActor,
-    grants
+    grants,
+    identityName
   }: {
     principal: TPrincipal;
     grantActor: TGrantActor;
     grants: ActorGrants;
+    identityName: string | null;
   }): RuleIdentity {
     const isPrincipal = principal.id === grantActor.id;
     let username = "";
     if (isPrincipal && principal.type === ActorType.USER) username = principal.username;
-    if (isPrincipal && principal.type === ActorType.IDENTITY) username = principal.name;
+    if (isPrincipal && principal.type === ActorType.IDENTITY) username = identityName ?? principal.name;
     if (!isPrincipal && "assumed" in principal) username = principal.assumed?.actorName ?? "";
     // identity.auth is knowable only for the identity making the request.
     const auth = isPrincipal && principal.type === ActorType.IDENTITY && principal.authInfo ? principal.authInfo : null;

@@ -75,12 +75,14 @@ export class ProjectsModule {
   }: TProjectsDeps) {
     const connection = poolStoreConnection(db);
     const projectStore = new ProjectStore(connection);
+    const projectIdentityStore = new ProjectIdentityStore(connection);
     this.projectPermissionService = new ProjectPermissionService(
       projectStore,
       new ProjectCache(keyStore, cacheMarkerTtlSeconds),
       actorGrantsService,
       roleService,
       groupService,
+      projectIdentityStore,
       projectRoles,
       new ActorContextMemo(),
       onProjectAccess
@@ -92,7 +94,7 @@ export class ProjectsModule {
     );
     this.projectsService = new ProjectsService(
       projectStore,
-      new ProjectIdentityStore(connection),
+      projectIdentityStore,
       new TransactionRunner<TProjectsStores>(db, (trx, locks) => ({
         projectStore: new ProjectStore(singleStoreConnection(trx)),
         projectIdentityStore: new ProjectIdentityStore(singleStoreConnection(trx)),

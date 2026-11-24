@@ -5,11 +5,20 @@ import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-a
 import { TIdentityOwnership } from "@app/domains/platform/organizations/ce/module";
 import { DatabaseError } from "@app/lib/errors";
 
-import { TProjectIdentityStore } from "../services/dependencies";
+import { TActorNameStore, TProjectIdentityStore } from "../services/dependencies";
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
-export class ProjectIdentityStore implements TProjectIdentityStore {
+export class ProjectIdentityStore implements TProjectIdentityStore, TActorNameStore {
   constructor(private readonly connection: TStoreConnection) {}
+
+  async findIdentityName(identityId: string, options?: TReadOptions): Promise<string | null> {
+    try {
+      const row = await this.connection.reader(options)(TableName.Identity).where({ id: identityId }).first("name");
+      return row?.name ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find identity name" });
+    }
+  }
 
   async countProjectIdentities(
     projectType: ProjectType,

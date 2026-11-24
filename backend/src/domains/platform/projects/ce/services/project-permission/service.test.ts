@@ -25,6 +25,7 @@ import {
 import { genericProjectRoles } from "../../models/permissions/project-roles";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
 import { buildProjects } from "../../testing/build-projects";
+import { InMemoryActorNameStore } from "../../testing/in-memory-actor-name-store";
 import { InMemoryProjectCache } from "../../testing/in-memory-project-cache";
 import { InMemoryProjectStore } from "../../testing/in-memory-project-store";
 import { ProjectPermissionService } from "./service";
@@ -196,6 +197,28 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     // Assert
     expect(permission.can(readValueAt("/payments/ada"))).toBe(true);
     expect(permission.can(readValueAt("/payments/bob"))).toBe(false);
+  });
+
+  test("should fill {{identity.username}} with an identity's current name, not the one its token was issued with", async () => {
+    // Setup
+    const { service, as, addRole, addCustomRole, projectId, actorNameStore } = arrange();
+    const identity = identityPrincipal({ name: "billing" });
+    const role = await addCustomRole([
+      {
+        action: ProjectPermissionSecretActions.ReadValue,
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { secretPath: "/{{identity.username}}" }
+      } as TProjectRule
+    ]);
+    await addRole(ProjectMembershipRole.Custom, { customRoleId: role.id, who: { identityId: identity.id } });
+    actorNameStore.identityNames.set(identity.id, "payments");
+
+    // Action
+    const permission = await service.getProjectPermission({ actor: as(identity), projectId });
+
+    // Assert
+    expect(permission.can(readValueAt("/payments"))).toBe(true);
+    expect(permission.can(readValueAt("/billing"))).toBe(false);
   });
 
   test("should fill {{identity.auth.*}} from the identity making the request", async () => {
@@ -417,6 +440,7 @@ describe("ProjectPermissionService constructor", () => {
         actorGrantsService,
         roleService,
         groupService,
+        new InMemoryActorNameStore(),
         [pamRoles(), pamRoles()],
         new ActorContextMemo()
       );
