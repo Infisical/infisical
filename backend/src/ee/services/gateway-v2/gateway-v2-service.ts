@@ -17,12 +17,13 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { MAX_TARGET_IDS_PER_EVENT } from "@app/services/alert/alert-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
@@ -33,11 +34,11 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
@@ -63,6 +64,7 @@ import {
   PAM_INFO_OID
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
+import { emitGatewayOffline } from "./gateway-v2-events";
 import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
@@ -79,7 +81,7 @@ type TGatewayV2ServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  eventEmitter: TEventEmitter;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
@@ -109,6 +111,7 @@ export const gatewayV2ServiceFactory = ({
   permissionService,
   orgDAL,
   notificationService,
+  eventEmitter,
   appConnectionDAL,
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
@@ -1258,21 +1261,33 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const healthcheckNotify = async () => {
-    const unhealthyGateways = await gatewayV2DAL.find({
-      isHeartbeatStale: true
-    });
-
-    if (unhealthyGateways.length === 0) return;
+    const dueGateways = await gatewayV2DAL.findOfflineDueForAlert();
+    if (dueGateways.length === 0) return;
 
     logger.warn(
-      { gatewayIds: unhealthyGateways.map((g) => g.id) },
+      { gatewayIds: dueGateways.map((g) => g.id) },
       "Found gateways that may be offline or unreachable. Sending notifications."
     );
 
-    const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
+    const gatewaysByOrg = groupBy(dueGateways, (gw) => gw.orgId);
 
-    for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
+    for await (const [orgId, candidates] of Object.entries(gatewaysByOrg)) {
       try {
+        const gateways = await gatewayV2DAL.transaction(async (tx) => {
+          const claimed = await gatewayV2DAL.markOfflineAlerted(
+            candidates.map((gw) => gw.id),
+            tx
+          );
+          for await (const batch of chunkArray(claimed, MAX_TARGET_IDS_PER_EVENT)) {
+            await emitGatewayOffline(eventEmitter, { orgId, gateways: batch }, tx);
+          }
+          return claimed;
+        });
+        if (gateways.length === 0) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
           (admin) => admin.status !== OrgMembershipStatus.Invited
         );
@@ -1295,20 +1310,6 @@ export const gatewayV2ServiceFactory = ({
             link: `/organizations/${orgId}/networking`
           }))
         );
-
-        // Temporarily disabled email notifications due to excessive noise. Will be revised later
-        //
-        // await smtpService.sendMail({
-        //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-        //   subjectLine: "Gateway Health Alert",
-        //   substitutions: {
-        //     type: "gateway",
-        //     names: gatewayNames
-        //   },
-        //   template: SmtpTemplates.HealthAlert
-        // });
-
-        await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
         logger.error(error, `Failed to send gateway health notifications for organization [orgId=${orgId}]`);
       }

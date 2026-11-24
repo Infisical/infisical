@@ -267,6 +267,8 @@ import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/
 import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/cert-manager-signer-alert-dal";
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
+import { gatewayAlertDALFactory } from "@app/services/alert/providers/gateway-alert-dal";
+import { gatewayAlertProviderFactory } from "@app/services/alert/providers/gateway-alert-provider";
 import { honeyTokenAlertDALFactory } from "@app/services/alert/providers/honey-token-alert-dal";
 import { honeyTokenAlertProviderFactory } from "@app/services/alert/providers/honey-token-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
@@ -1062,6 +1064,12 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     auditLogStreamAlertProviderFactory({
       auditLogStreamAlertDAL: auditLogStreamAlertDALFactory(db),
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    gatewayAlertProviderFactory({
+      gatewayAlertDAL: gatewayAlertDALFactory(db),
       permissionService
     })
   );
@@ -2295,7 +2303,7 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     notificationService,
-    smtpService,
+    eventEmitter: eventOutboxService,
     appConnectionDAL,
     dynamicSecretDAL,
     identityKubernetesAuthDAL,

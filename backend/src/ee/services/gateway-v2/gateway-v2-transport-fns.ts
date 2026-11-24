@@ -37,6 +37,9 @@ export const buildGatewayReachableSql = () => {
 export const buildGatewayProbedSql = () =>
   `("${TABLE}"."directHeartbeat" IS NOT NULL OR "${TABLE}"."heartbeat" IS NOT NULL)`;
 
+// The last successful probe on any transport. GREATEST skips NULLs, and only a successful probe writes either column.
+export const buildGatewayLastSeenSql = () => `GREATEST("${TABLE}"."heartbeat", "${TABLE}"."directHeartbeat")`;
+
 export const resolveTransports = ({
   gateway,
   transport

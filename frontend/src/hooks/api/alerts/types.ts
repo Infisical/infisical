@@ -10,7 +10,8 @@ export enum AlertResourceType {
   AuditLogStream = "audit-log.stream",
   SecretRotation = "secret.rotation",
   SecretSync = "secret.sync",
-  HoneyToken = "secret.honey-token"
+  HoneyToken = "secret.honey-token",
+  Gateway = "gateway"
 }
 
 export enum AlertEventType {
@@ -23,7 +24,8 @@ export enum AlertEventType {
   AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed",
   SecretRotationFailed = "secret.rotation.failed",
   SecretSyncFailed = "secret.sync.failed",
-  HoneyTokenTriggered = "secret.honey-token.triggered"
+  HoneyTokenTriggered = "secret.honey-token.triggered",
+  GatewayOffline = "gateway.offline"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -45,7 +47,8 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   // Sync alerts are edited from the sync form, not the generic alert form.
   [AlertResourceType.SecretSync]: [],
   // Honey token alerts are edited from the honey token form, not the generic alert form.
-  [AlertResourceType.HoneyToken]: []
+  [AlertResourceType.HoneyToken]: [],
+  [AlertResourceType.Gateway]: [AlertEventType.GatewayOffline]
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -164,7 +167,8 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.AuditLogStream]: "Audit Log Stream",
   [AlertResourceType.SecretRotation]: "Secret Rotation",
   [AlertResourceType.SecretSync]: "Secret Sync",
-  [AlertResourceType.HoneyToken]: "Honey Token"
+  [AlertResourceType.HoneyToken]: "Honey Token",
+  [AlertResourceType.Gateway]: "Gateway"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -177,7 +181,8 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure",
   [AlertEventType.SecretRotationFailed]: "Rotation Failure",
   [AlertEventType.SecretSyncFailed]: "Sync Failure",
-  [AlertEventType.HoneyTokenTriggered]: "Honey Token Triggered"
+  [AlertEventType.HoneyTokenTriggered]: "Honey Token Triggered",
+  [AlertEventType.GatewayOffline]: "Gateway Offline"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -200,7 +205,9 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.SecretSyncFailed]:
     "Notify when a sync, import or remove fails after all of its retries.",
   [AlertEventType.HoneyTokenTriggered]:
-    "Notify when someone uses the honey token's decoy credentials."
+    "Notify when someone uses the honey token's decoy credentials.",
+  [AlertEventType.GatewayOffline]:
+    "Notify when a gateway stops responding to health checks. Sends once per outage, at most once an hour."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.
