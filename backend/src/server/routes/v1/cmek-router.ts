@@ -666,8 +666,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       void reply.header("Cache-Control", JWKS_CACHE_CONTROL).header("ETag", etag);
 
       if (req.headers["if-none-match"]?.split(",").some((tag) => tag.trim() === etag)) {
-        void reply.code(304).send();
-        return;
+        return reply.code(304).send();
       }
 
       return jwks;

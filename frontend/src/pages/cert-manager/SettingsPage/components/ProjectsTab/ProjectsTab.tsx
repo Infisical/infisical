@@ -56,7 +56,7 @@ import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
 import { CertManagerExportProjectModal } from "./CertManagerExportProjectModal";
 
-export const OrgCertManagerTab = () => {
+export const ProjectsTab = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
   const canManage = permission.can(
@@ -96,7 +96,7 @@ export const OrgCertManagerTab = () => {
         <CardHeader>
           <CardTitle>
             <FileBadgeIcon className="size-4 text-accent" />
-            Certificate Manager
+            Projects
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -146,7 +146,7 @@ export const OrgCertManagerTab = () => {
         <CardHeader>
           <CardTitle>
             <FileBadgeIcon className="size-4 text-accent" />
-            Certificate Manager
+            Projects
           </CardTitle>
         </CardHeader>
         <CardContent>

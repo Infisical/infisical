@@ -12,6 +12,7 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -56,6 +57,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -85,7 +87,8 @@ export const certificateAuthorityQueueFactory = ({
   caKeySourceService,
   gatewayV2Service,
   gatewayPoolService,
-  auditLogService
+  auditLogService,
+  oidcIssuerService
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -103,7 +106,8 @@ export const certificateAuthorityQueueFactory = ({
     pkiSyncQueue,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

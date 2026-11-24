@@ -318,7 +318,7 @@ export const membershipUserServiceFactory = ({
       roles: rolesToUse
     });
 
-    const isEmailInvalid = await isDisposableEmail(data.usernames);
+    const isEmailInvalid = isDisposableEmail(data.usernames);
     if (isEmailInvalid) {
       throw new BadRequestError({
         message: "Disposable emails are not allowed"
