@@ -52,7 +52,8 @@ vi.mock("@app/lib/certificates/extract-certificate", () => ({
 }));
 
 vi.mock("@app/services/certificate/certificate-fns", () => ({
-  isCertChainValid: vi.fn(() => Promise.resolve(true))
+  isCertChainValid: vi.fn(() => Promise.resolve(true)),
+  getSerialNumberSpellings: vi.fn((serialNumber: string) => [serialNumber])
 }));
 
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => ({
@@ -100,7 +101,7 @@ describe("CertificateEstV3Service", () => {
   };
 
   const mockCertificateDAL = {
-    findOne: vi.fn(),
+    find: vi.fn(),
     transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({}))
   };
 
@@ -189,7 +190,7 @@ describe("CertificateEstV3Service", () => {
     mockEstEnrollmentConfigDAL.findById.mockResolvedValue(mockEstConfig);
     mockProjectDAL.findOne.mockResolvedValue(mockProject);
     mockCertificatePolicyDAL.findById.mockResolvedValue(mockPolicy);
-    mockCertificateDAL.findOne.mockResolvedValue(null);
+    mockCertificateDAL.find.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -456,7 +457,7 @@ describe("CertificateEstV3Service", () => {
         subject: "CN=different.example.com",
         extensions: []
       }));
-      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-old", status: CertStatus.ACTIVE });
+      mockCertificateDAL.find.mockResolvedValue([{ id: "cert-old", status: CertStatus.ACTIVE }]);
 
       await expect(
         service.simpleReenrollByProfile({
@@ -501,27 +502,47 @@ describe("CertificateEstV3Service", () => {
       ).rejects.toThrow(/requires approval/i);
     });
 
-    it("should reject re-enrollment when the client certificate is revoked", async () => {
-      mockCertificateDAL.findOne.mockResolvedValue({ status: CertStatus.REVOKED });
+    it.each([
+      [
+        "the active record",
+        { status: CertStatus.REVOKED, deletedAt: null },
+        { status: CertStatus.REVOKED, deletedAt: null }
+      ],
+      [
+        "a deleted record its re-import shadows",
+        { status: CertStatus.ACTIVE, deletedAt: null },
+        { status: CertStatus.REVOKED, deletedAt: new Date() }
+      ]
+    ])(
+      "should reject re-enrollment when the client certificate is revoked (%s)",
+      async (_label, liveRecord, revokedRecord) => {
+        mockCertificateDAL.find.mockResolvedValue([liveRecord, revokedRecord]);
 
-      await expect(
-        service.simpleReenrollByProfile({
-          csr: "mock-csr",
-          profileId: "profile-123",
-          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
-        })
-      ).rejects.toThrow(UnauthorizedError);
+        await expect(
+          service.simpleReenrollByProfile({
+            csr: "mock-csr",
+            profileId: "profile-123",
+            sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+          })
+        ).rejects.toThrow(UnauthorizedError);
 
-      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
-    });
+        expect(mockCertificateDAL.find).toHaveBeenCalledWith(
+          { $in: { serialNumber: expect.any(Array) }, caId: "ca-123" },
+          expect.anything()
+        );
+        expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+      }
+    );
 
     it("should reject re-enrollment when the client certificate was deleted", async () => {
-      mockCertificateDAL.findOne.mockResolvedValue({
-        status: CertStatus.ACTIVE,
-        deletedAt: new Date(),
-        commonName: "device.example.com",
-        serialNumber: "01"
-      });
+      mockCertificateDAL.find.mockResolvedValue([
+        {
+          status: CertStatus.ACTIVE,
+          deletedAt: new Date(),
+          commonName: "device.example.com",
+          serialNumber: "01"
+        }
+      ]);
 
       await expect(
         service.simpleReenrollByProfile({

@@ -13,6 +13,7 @@ import {
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
   getCertificateDisplayName,
+  getSerialNumberSpellings,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
@@ -329,6 +330,36 @@ describe("resolveCurrentCertificateStatus", () => {
     expect(resolveCurrentCertificateStatus({ status: CertStatus.ACTIVE, notAfter: past }, before)).toBe(
       CertStatus.ACTIVE
     );
+  });
+});
+
+describe("getSerialNumberSpellings", () => {
+  it("covers a serial stored with a leading zero byte and the same serial parsed without it", () => {
+    const stored = `00${"ab".repeat(19)}`;
+    const parsed = "ab".repeat(19);
+
+    expect(getSerialNumberSpellings(parsed)).toContain(stored);
+    expect(getSerialNumberSpellings(stored)).toContain(parsed);
+  });
+
+  it.each([16, 20])("covers a %i-byte serial stored with the DER sign byte", (byteCount) => {
+    const parsed = `9f${"ab".repeat(byteCount - 1)}`;
+    const stored = `00${parsed}`;
+
+    expect(getSerialNumberSpellings(parsed)).toContain(stored);
+    expect(getSerialNumberSpellings(stored)).toContain(parsed);
+  });
+
+  it("adds no sign byte spelling to a serial whose top bit is clear", () => {
+    expect(getSerialNumberSpellings(`7f${"ab".repeat(15)}`)).not.toContain(`007f${"ab".repeat(15)}`);
+  });
+
+  it("covers a stored serial whose second byte starts with a zero digit", () => {
+    const stored = `000a${"bc".repeat(18)}`;
+    const parsed = `0a${"bc".repeat(18)}`;
+
+    expect(getSerialNumberSpellings(parsed)).toContain(stored);
+    expect(getSerialNumberSpellings(stored)).toContain(parsed);
   });
 });
 
