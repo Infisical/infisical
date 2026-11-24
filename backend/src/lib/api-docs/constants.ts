@@ -2712,7 +2712,8 @@ export const ALERTING = {
     projectId: "The ID of the project the alert belongs to.",
     alertId: "The ID of the saved alert the channel belongs to.",
     channelId: "The ID of the saved channel to test.",
-    description: "The alert's description, so the test notification shows it the way the alert's notifications will."
+    description:
+      "The description to show in the test notification. If omitted and `alertId` is set, the test uses the saved alert's description. Set to an empty string to send the test without a description."
   },
   LIST: {
     resourceType: "The type of resource to list alerts for.",

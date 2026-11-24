@@ -55,6 +55,8 @@ type Props = {
   // A getter, not a form path: forms that embed alert channels in another resource's form use
   // `description` for that resource, and their alerts have none.
   getAlertDescription?: () => string | undefined;
+  // Send test posts the description, so it is checked like the channel is, and the error lands on its field.
+  validateAlertDescription?: () => Promise<boolean>;
 };
 
 export const ChannelCard = ({
@@ -66,7 +68,8 @@ export const ChannelCard = ({
   onRemove,
   canRemove,
   renderRecipients,
-  getAlertDescription
+  getAlertDescription,
+  validateAlertDescription
 }: Props) => {
   const scopeVariant = useScopeVariant();
   const {
@@ -88,7 +91,11 @@ export const ChannelCard = ({
   const channelLabel = ALERT_CHANNEL_TYPE_LABELS[channelType];
 
   const onTest = async () => {
-    if (!(await trigger(`${channelPath}`))) return;
+    const [isChannelValid, isDescriptionValid] = await Promise.all([
+      trigger(`${channelPath}`),
+      validateAlertDescription?.() ?? true
+    ]);
+    if (!isChannelValid || !isDescriptionValid) return;
 
     const { config, recipients } = toChannelInput(getValues(`${channelPath}`));
     try {

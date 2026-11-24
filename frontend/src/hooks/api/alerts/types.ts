@@ -488,9 +488,15 @@ export type TChannelForm = z.infer<typeof channelFormSchema>;
 // The part of an alert form the shared channel fields read and write.
 export type TChannelsForm = { channels: TChannelForm[] };
 
+// The limit `POST /api/v1/alerts`, `PATCH /api/v1/alerts/:alertId` and the channel test all enforce.
+export const alertDescriptionFormSchema = z
+  .string()
+  .trim()
+  .max(1000, "Description must be 1,000 characters or fewer");
+
 const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
-  description: z.string().trim().max(1000).optional(),
+  description: alertDescriptionFormSchema.optional(),
   resourceType: z.nativeEnum(AlertResourceType),
   eventType: z.nativeEnum(AlertEventType),
   // Only the expiry event reads these; validated in superRefine so a hidden field can't block submit.

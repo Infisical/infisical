@@ -21,6 +21,7 @@ type Props = {
   resourceId?: string | null;
   channelPaywall?: TAlertChannelPaywall;
   getAlertDescription?: () => string | undefined;
+  validateAlertDescription?: () => Promise<boolean>;
   // The form field holding the channel list, for a form with more than one list. Defaults to `channels`.
   name?: string;
 };
@@ -55,6 +56,7 @@ export const ChannelsField = ({
   resourceId,
   channelPaywall,
   getAlertDescription,
+  validateAlertDescription,
   name = "channels"
 }: Props) => {
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -118,6 +120,7 @@ export const ChannelsField = ({
                 canRemove={fields.length > 1}
                 onRemove={() => remove(index)}
                 getAlertDescription={getAlertDescription}
+                validateAlertDescription={validateAlertDescription}
               />
             ))}
           </div>

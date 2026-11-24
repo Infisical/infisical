@@ -208,6 +208,13 @@ describe("alert description", () => {
     expect(blocks[1]).toEqual({ type: "section", text: { type: "plain_text", text: "*bold* & <x>", emoji: true } });
   });
 
+  test("slack puts the description, escaped, in the top-level text that previews and screen readers get", () => {
+    const { summary } = samplePayload();
+    const { text } = buildSlackPayload(withDescription("Renew it.\n<!channel> & co"));
+    expect(text?.endsWith(`${summary}\nRenew it.\n&lt;!channel&gt; &amp; co`)).toBe(true);
+    expect(buildSlackPayload(samplePayload()).text?.endsWith(summary)).toBe(true);
+  });
+
   test("slack adds no block when the alert has no description", () => {
     const withBlock = buildSlackPayload(withDescription("Page the on-call.")).attachments?.[0].blocks ?? [];
     const without = buildSlackPayload(samplePayload()).attachments?.[0].blocks ?? [];

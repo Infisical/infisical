@@ -75,8 +75,11 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
     ]
   });
 
+  // Slack reads `text` for the notification preview and to screen readers, which never see the blocks.
+  const fallbackText = [`${headerText} - ${payload.summary}`, payload.alert.description].filter(Boolean).join("\n");
+
   return {
-    text: escapeSlackText(`${headerText} - ${payload.summary}`),
+    text: escapeSlackText(fallbackText),
     blocks: [{ type: "header", text: { type: "plain_text", text: headerText, emoji: true } }],
     attachments: [{ color, blocks: attachmentBlocks }]
   };

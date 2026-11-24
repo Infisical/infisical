@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { UseFormReturn, useWatch } from "react-hook-form";
+import { twMerge } from "tailwind-merge";
 
 import { PkiSyncFilterValueBadges } from "@app/components/pki-syncs/PkiSyncFilterBadges";
 import { Badge } from "@app/components/v3";
@@ -40,8 +41,16 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
   </div>
 );
 
-const Detail = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex min-w-0 flex-col gap-1">
+const Detail = ({
+  label,
+  children,
+  className
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) => (
+  <div className={twMerge("flex min-w-0 flex-col gap-1", className)}>
     <span className="text-xs text-muted">{label}</span>
     <div className="text-sm break-words text-foreground">{children}</div>
   </div>
@@ -126,7 +135,11 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
               <EnabledBadge enabled={values.dailyReminder} />
             </Detail>
           )}
-          {values.description && <Detail label="Description">{values.description}</Detail>}
+          {values.description && (
+            <Detail label="Description" className="col-span-full whitespace-pre-wrap">
+              {values.description}
+            </Detail>
+          )}
         </div>
       </Section>
 

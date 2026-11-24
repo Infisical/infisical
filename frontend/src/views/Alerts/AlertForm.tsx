@@ -146,6 +146,7 @@ export const AlertForm = ({
     handleSubmit,
     getValues,
     setValue,
+    trigger,
     formState: { errors, isSubmitting }
   } = formMethods;
 
@@ -343,6 +344,7 @@ export const AlertForm = ({
             resourceId={resourceId ?? alert?.resourceId ?? null}
             channelPaywall={channelPaywall}
             getAlertDescription={() => getValues("description")}
+            validateAlertDescription={() => trigger("description", { shouldFocus: true })}
           />
         </div>
 

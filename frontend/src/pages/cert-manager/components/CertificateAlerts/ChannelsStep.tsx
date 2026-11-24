@@ -180,6 +180,7 @@ export const ChannelsStep = ({
           onRemove={() => onRemove(index)}
           renderRecipients={(props) => <EmailRecipientsField {...props} members={members} />}
           getAlertDescription={() => form.getValues("description")}
+          validateAlertDescription={() => form.trigger("description")}
         />
       ))}
     </div>
