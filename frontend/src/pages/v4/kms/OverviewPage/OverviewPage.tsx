@@ -2,15 +2,9 @@ import { useState } from "react";
 import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  DataTable,
-  type DataTableColumn,
-} from "@infisical/cipher/ui/data-table";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@infisical/cipher/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -26,7 +20,7 @@ import { FileSignatureIcon, LockOpenIcon } from "lucide-react";
 import {
   getUserTablePreference,
   PreferenceKey,
-  setUserTablePreference,
+  setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -38,11 +32,7 @@ import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectName } from "../../shell/resource-name";
 import { ImportKeysDialog } from "../keys/import-dialog";
-import {
-  DeleteKeyDialog,
-  ExportKeyDialog,
-  RotateKeyDialog,
-} from "../keys/key-dialogs";
+import { DeleteKeyDialog, ExportKeyDialog, RotateKeyDialog } from "../keys/key-dialogs";
 import { KeySheet } from "../keys/key-sheet";
 import {
   DecryptDialog,
@@ -50,7 +40,7 @@ import {
   GenerateMacDialog,
   SignDialog,
   VerifyDialog,
-  VerifyMacDialog,
+  VerifyMacDialog
 } from "../keys/operation-dialogs";
 import {
   algorithmLabel,
@@ -60,19 +50,13 @@ import {
   RESTRICTED,
   usageLabel,
   useKeyPermissions,
-  useKmsProjectId,
+  useKmsProjectId
 } from "../keys/shared";
 
 const MAX_SELECTED = 100;
 const PAGE_SIZE_PREFERENCE = "cmekClientTable";
 
-type Operation =
-  | "encrypt"
-  | "decrypt"
-  | "sign"
-  | "verify"
-  | "generateMac"
-  | "verifyMac";
+type Operation = "encrypt" | "decrypt" | "sign" | "verify" | "generateMac" | "verifyMac";
 type Open =
   | { kind: "create" | "import" }
   | { kind: Operation | "edit" | "export" | "rotate" | "delete"; key: TCmek };
@@ -83,43 +67,43 @@ const operationsByUsage = {
       kind: "encrypt",
       label: "Encrypt data",
       icon: <Icon name="lock" />,
-      permission: "encrypt",
+      permission: "encrypt"
     },
     {
       kind: "decrypt",
       label: "Decrypt data",
       icon: <Icon icon={LockOpenIcon} />,
-      permission: "decrypt",
-    },
+      permission: "decrypt"
+    }
   ],
   [KmsKeyUsage.SIGN_VERIFY]: [
     {
       kind: "sign",
       label: "Sign data",
       icon: <Icon icon={FileSignatureIcon} />,
-      permission: "sign",
+      permission: "sign"
     },
     {
       kind: "verify",
       label: "Verify data",
       icon: <Icon name="check-c" />,
-      permission: "verify",
-    },
+      permission: "verify"
+    }
   ],
   [KmsKeyUsage.GENERATE_VERIFY_MAC]: [
     {
       kind: "generateMac",
       label: "Generate MAC",
       icon: <Icon icon={FileSignatureIcon} />,
-      permission: "generateMac",
+      permission: "generateMac"
     },
     {
       kind: "verifyMac",
       label: "Verify MAC",
       icon: <Icon name="check-c" />,
-      permission: "verifyMac",
-    },
-  ],
+      permission: "verifyMac"
+    }
+  ]
 } as const satisfies Record<
   KmsKeyUsage,
   readonly {
@@ -130,32 +114,27 @@ const operationsByUsage = {
   }[]
 >;
 
-const disabledReason = (item: TCmek) =>
-  item.isDisabled ? "Enable the key first" : undefined;
+const disabledReason = (item: TCmek) => (item.isDisabled ? "Enable the key first" : undefined);
 
 const exportReason = (item: TCmek, permissions: KeyPermissions) => {
   const asymmetric = isAsymmetricKey(item);
   const blocked = !permissions.exportPrivateKey || !item.isExportable;
   if (blocked && (!asymmetric || !permissions.read)) {
-    return !permissions.exportPrivateKey
-      ? RESTRICTED
-      : "Created as non-exportable";
+    return !permissions.exportPrivateKey ? RESTRICTED : "Created as non-exportable";
   }
   return disabledReason(item);
 };
 
 const rotateReason = (item: TCmek, permissions: KeyPermissions) => {
   if (!permissions.rotate) return RESTRICTED;
-  if (item.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT)
-    return "Only encryption keys rotate";
+  if (item.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) return "Only encryption keys rotate";
   return disabledReason(item);
 };
 
 const isServed = (item: TCmek) => item.isPublicKeyPublished && !item.isDisabled;
 
 const copy = async (value: string, label: string) => {
-  if (await copyText(value, `Couldn't copy the ${label}`))
-    saved(`${label} copied`);
+  if (await copyText(value, `Couldn't copy the ${label}`)) saved(`${label} copied`);
 };
 
 const KeyMenu = ({
@@ -163,7 +142,7 @@ const KeyMenu = ({
   permissions,
   onOpen,
   onToggle,
-  onTogglePublish,
+  onTogglePublish
 }: {
   item: TCmek;
   permissions: KeyPermissions;
@@ -174,18 +153,13 @@ const KeyMenu = ({
   const editReason = permissions.edit ? undefined : RESTRICTED;
   let deleteReason: string | undefined;
   if (!permissions.remove) deleteReason = RESTRICTED;
-  else if (item.hasDeleteProtection)
-    deleteReason = "Turn off delete protection first";
+  else if (item.hasDeleteProtection) deleteReason = "Turn off delete protection first";
   return (
     <>
       {operationsByUsage[item.keyUsage].map((operation) => (
         <DropdownMenuItem
           key={operation.kind}
-          disabledReason={
-            permissions[operation.permission]
-              ? disabledReason(item)
-              : RESTRICTED
-          }
+          disabledReason={permissions[operation.permission] ? disabledReason(item) : RESTRICTED}
           onSelect={() => onOpen(operation.kind)}
         >
           {operation.icon}
@@ -197,29 +171,21 @@ const KeyMenu = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabledReason={
-              permissions.edit && permissions.publishPublicKey
-                ? undefined
-                : RESTRICTED
+              permissions.edit && permissions.publishPublicKey ? undefined : RESTRICTED
             }
             onSelect={onTogglePublish}
           >
             <Icon name="globe" />
-            {item.isPublicKeyPublished
-              ? "Unpublish public key"
-              : "Publish public key"}
+            {item.isPublicKeyPublished ? "Unpublish public key" : "Publish public key"}
           </DropdownMenuItem>
           {isServed(item) && item.jwksUrl && (
-            <DropdownMenuItem
-              onSelect={() => item.jwksUrl && copy(item.jwksUrl, "JWKS URL")}
-            >
+            <DropdownMenuItem onSelect={() => item.jwksUrl && copy(item.jwksUrl, "JWKS URL")}>
               <Icon name="link" />
               Copy JWKS URL
             </DropdownMenuItem>
           )}
           {isServed(item) && (
-            <DropdownMenuItem
-              onSelect={() => item.kid && copy(item.kid, "kid")}
-            >
+            <DropdownMenuItem onSelect={() => item.kid && copy(item.kid, "kid")}>
               <Icon name="copy" />
               Copy kid
             </DropdownMenuItem>
@@ -234,10 +200,7 @@ const KeyMenu = ({
         <Icon name="download" />
         Export key
       </DropdownMenuItem>
-      <DropdownMenuItem
-        disabledReason={editReason}
-        onSelect={() => onOpen("edit")}
-      >
+      <DropdownMenuItem disabledReason={editReason} onSelect={() => onOpen("edit")}>
         <Icon name="pencil" />
         Edit key
       </DropdownMenuItem>
@@ -264,13 +227,7 @@ const KeyId = ({ id }: { id: string }) => {
     <Inline gap={4} align="center" wrap={false}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <Tooltip content={<code>{id}</code>} side="top">
-          <MiddleTruncate
-            mono
-            keepEnd={4}
-            text={id}
-            title={false}
-            tabIndex={0}
-          />
+          <MiddleTruncate mono keepEnd={4} text={id} title={false} tabIndex={0} />
         </Tooltip>
       </div>
       <Tooltip content={copied ? "Copied" : "Copy key ID"} side="top">
@@ -299,7 +256,7 @@ const OpenDialog = ({
   projectId,
   permissions,
   onClose,
-  onDeleted,
+  onDeleted
 }: {
   open: Open;
   orgId: string;
@@ -309,8 +266,7 @@ const OpenDialog = ({
   onDeleted: (keyId: string) => void;
 }) => {
   if (!("key" in open)) {
-    if (open.kind === "import")
-      return <ImportKeysDialog projectId={projectId} onClose={onClose} />;
+    if (open.kind === "import") return <ImportKeysDialog projectId={projectId} onClose={onClose} />;
     return <KeySheet orgId={orgId} projectId={projectId} onClose={onClose} />;
   }
   const props = { cmek: open.key, onClose };
@@ -342,7 +298,7 @@ const nameStyle = {
   minWidth: 0,
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
+  whiteSpace: "nowrap"
 } as const;
 const iconStyle = { display: "inline-flex", flexShrink: 0 } as const;
 
@@ -373,7 +329,7 @@ const columns: DataTableColumn<TCmek>[] = [
           </Tooltip>
         )}
       </Inline>
-    ),
+    )
   },
   {
     id: "id",
@@ -381,19 +337,19 @@ const columns: DataTableColumn<TCmek>[] = [
     width: 196,
     maxWidth: 196,
     text: (r) => r.id,
-    render: (r) => <KeyId id={r.id} />,
+    render: (r) => <KeyId id={r.id} />
   },
   {
     id: "usage",
     header: "Key usage",
     width: 172,
-    render: (r) => usageLabel[r.keyUsage],
+    render: (r) => usageLabel[r.keyUsage]
   },
   {
     id: "algorithm",
     header: "Algorithm",
     width: 128,
-    render: (r) => algorithmLabel(r.algorithm),
+    render: (r) => algorithmLabel(r.algorithm)
   },
   {
     id: "status",
@@ -416,20 +372,20 @@ const columns: DataTableColumn<TCmek>[] = [
           </Tooltip>
         )}
       </Inline>
-    ),
+    )
   },
   {
     id: "version",
     header: "Version",
     width: 88,
-    render: (r) => `v${r.version}`,
+    render: (r) => `v${r.version}`
   },
   {
     id: "created",
     header: "Created",
     width: 104,
-    render: (r) => r.createdAt.slice(0, 10),
-  },
+    render: (r) => r.createdAt.slice(0, 10)
+  }
 ];
 
 const lastPageWithRows = ({
@@ -437,7 +393,7 @@ const lastPageWithRows = ({
   pageSize,
   totalCount,
   isPending,
-  rows,
+  rows
 }: {
   page: number;
   pageSize: number;
@@ -458,7 +414,7 @@ export const OverviewPage = () => {
   const [debouncedSearch] = useDebounce(search.trim());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() =>
-    getUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, 20),
+    getUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, 20)
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState<Open>();
@@ -467,15 +423,14 @@ export const OverviewPage = () => {
     direction: "asc" | "desc";
   }>({
     columnId: "name",
-    direction: "asc",
+    direction: "asc"
   });
   const { data, isPending } = kms.useKeys({
     projectId,
     offset: (page - 1) * pageSize,
     limit: pageSize,
     search: debouncedSearch,
-    orderDirection:
-      sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
+    orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
   const updateKey = kms.useUpdateKey();
   const bulkExport = kms.useBulkExport();
@@ -490,13 +445,12 @@ export const OverviewPage = () => {
     pageSize,
     totalCount,
     isPending,
-    rows: keys.length,
+    rows: keys.length
   });
   if (lastFilledPage !== page) setPage(lastFilledPage);
 
   if (permissions.isPending) return <Loader size="page" label="Loading keys" />;
-  if (!permissions.read)
-    return <AccessRestricted requirement="read KMS keys" />;
+  if (!permissions.read) return <AccessRestricted requirement="read KMS keys" />;
 
   const changePage = (next: number) => {
     setPage(next);
@@ -508,10 +462,9 @@ export const OverviewPage = () => {
       await updateKey.mutateAsync({
         keyId: item.id,
         projectId,
-        isDisabled: !item.isDisabled,
+        isDisabled: !item.isDisabled
       });
-      if (!item.isDisabled)
-        setSelected((current) => current.filter((id) => id !== item.id));
+      if (!item.isDisabled) setSelected((current) => current.filter((id) => id !== item.id));
       saved(item.isDisabled ? "Key enabled" : "Key disabled");
     } catch (error) {
       failed(`Failed to ${item.isDisabled ? "enable" : "disable"} key`, error);
@@ -523,17 +476,17 @@ export const OverviewPage = () => {
       await updateKey.mutateAsync({
         keyId: item.id,
         projectId,
-        isPublicKeyPublished: !item.isPublicKeyPublished,
+        isPublicKeyPublished: !item.isPublicKeyPublished
       });
       saved(
         item.isPublicKeyPublished
           ? `Public key of ${item.name} unpublished`
-          : `Public key of ${item.name} published`,
+          : `Public key of ${item.name} published`
       );
     } catch (error) {
       failed(
         `Failed to ${item.isPublicKeyPublished ? "unpublish" : "publish"} the public key`,
-        error,
+        error
       );
     }
   };
@@ -541,18 +494,16 @@ export const OverviewPage = () => {
   const exportSelected = async () => {
     try {
       const { keys: exported } = await bulkExport.mutateAsync({
-        keyIds: selected,
+        keyIds: selected
       });
       FileSaver.saveAs(
         new Blob([JSON.stringify(keysToExportJson(exported), null, 2)], {
-          type: "application/json;charset=utf-8;",
+          type: "application/json;charset=utf-8;"
         }),
-        `kms-keys-export-${new Date().toISOString().slice(0, 10)}.json`,
+        `kms-keys-export-${new Date().toISOString().slice(0, 10)}.json`
       );
       setSelected([]);
-      saved(
-        `Exported ${exported.length} ${exported.length === 1 ? "key" : "keys"}`,
-      );
+      saved(`Exported ${exported.length} ${exported.length === 1 ? "key" : "keys"}`);
     } catch (error) {
       failed("Failed to export keys", error);
     }
@@ -615,8 +566,8 @@ export const OverviewPage = () => {
                 label: "Rotate key",
                 icon: "sync",
                 disabledReason: (r) => rotateReason(r, permissions),
-                onSelect: (r) => setOpen({ kind: "rotate", key: r }),
-              },
+                onSelect: (r) => setOpen({ kind: "rotate", key: r })
+              }
             ],
             renderMenu: (r) => (
               <KeyMenu
@@ -626,7 +577,7 @@ export const OverviewPage = () => {
                 onToggle={() => toggleKey(r)}
                 onTogglePublish={() => togglePublish(r)}
               />
-            ),
+            )
           }}
           selectable
           selectionDisabledReason={(r) => {
@@ -639,7 +590,7 @@ export const OverviewPage = () => {
             if (ids.length > MAX_SELECTED) {
               toast({
                 tone: "bad",
-                title: `Select at most ${MAX_SELECTED} keys to export`,
+                title: `Select at most ${MAX_SELECTED} keys to export`
               });
               setSelected(ids.slice(0, MAX_SELECTED));
               return;
@@ -695,11 +646,7 @@ export const OverviewPage = () => {
                 pageSizeOptions={[10, 20, 50, 100]}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
-                  setUserTablePreference(
-                    PAGE_SIZE_PREFERENCE,
-                    PreferenceKey.PerPage,
-                    size,
-                  );
+                  setUserTablePreference(PAGE_SIZE_PREFERENCE, PreferenceKey.PerPage, size);
                   changePage(1);
                 }}
               />
@@ -709,9 +656,7 @@ export const OverviewPage = () => {
             <FloatingActionBar
               count={selected.length}
               total={keys.filter(eligible).length}
-              onSelectAll={() =>
-                setSelected(keys.filter(eligible).map((item) => item.id))
-              }
+              onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}
               onClear={() => setSelected([])}
               noun="keys"
               actions={[
@@ -719,11 +664,9 @@ export const OverviewPage = () => {
                   label: "Export",
                   icon: "download",
                   loading: bulkExport.isPending,
-                  disabledReason: permissions.exportPrivateKey
-                    ? undefined
-                    : RESTRICTED,
-                  onClick: exportSelected,
-                },
+                  disabledReason: permissions.exportPrivateKey ? undefined : RESTRICTED,
+                  onClick: exportSelected
+                }
               ]}
             />
           }
@@ -736,9 +679,7 @@ export const OverviewPage = () => {
           projectId={projectId}
           permissions={permissions}
           onClose={() => setOpen(undefined)}
-          onDeleted={(keyId) =>
-            setSelected((current) => current.filter((id) => id !== keyId))
-          }
+          onDeleted={(keyId) => setSelected((current) => current.filter((id) => id !== keyId))}
         />
       )}
     </TooltipProvider>
