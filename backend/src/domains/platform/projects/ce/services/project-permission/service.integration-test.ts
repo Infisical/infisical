@@ -191,6 +191,23 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     await expect(result).rejects.toThrow(`Project with ${tenant.project.id} not found`);
   });
 
+  test("should serve a project setting changed after the actor's permission was built", async () => {
+    // Setup
+    const { tenant, user, actor, service } = await arrange();
+    await h.factories.projectMembership({ orgId: tenant.org.id, projectId: tenant.project.id, userId: user.id });
+    await service.getProjectPermission({ actor: await actor(), projectId: tenant.project.id });
+    await h
+      .db(TableName.Project)
+      .where({ id: tenant.project.id })
+      .update({ enforceEncryptedSecretManagerSecretMetadata: true });
+
+    // Action
+    const access = await service.getProjectAccess({ actor: await actor(), projectId: tenant.project.id });
+
+    // Assert
+    expect(access.project.toJSON().enforceEncryptedSecretManagerSecretMetadata).toBe(true);
+  });
+
   test("should refuse another org's project", async () => {
     // Setup
     const { user, actor, service } = await arrange();

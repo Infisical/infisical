@@ -21,7 +21,7 @@ import { Project } from "../../models/project";
 import { ProjectAccess } from "../../models/project-access";
 import { ProjectPermission } from "../../models/project-permission";
 import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/standard-project-roles";
-import { TProjectCache, TProjectStore } from "../dependencies";
+import { TProjectAccessListener, TProjectCache, TProjectStore } from "../dependencies";
 
 export type TGetProjectPermissionInput = {
   actor: TActorContext;
@@ -95,7 +95,8 @@ export class ProjectPermissionService implements TProjectPermissionService {
     private readonly roleService: TRoleService,
     private readonly groupService: TGroupService,
     projectRoles: TProjectRoles[],
-    private readonly memo: ActorContextMemo<TLoadedAccess>
+    private readonly memo: ActorContextMemo<TLoadedAccess>,
+    private readonly onProjectAccess: TProjectAccessListener = () => {}
   ) {
     this.rolesByType = new Map();
     projectRoles.forEach((roles) => {
@@ -126,7 +127,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
     const { project, grants } = await this.memo.getOrCompute(actor, projectId, async () => {
       const loaded = await this.projectCache.getOrLoad({
         projectId,
-        fingerprint: () => this.projectStore.findDeletionState(projectId),
+        fingerprint: () => this.projectStore.findVersion(projectId),
         load: async () => {
           const found = await this.projectStore.findById(projectId);
           if (!found) throw new EntityNotFoundError({ message: `Project with ${projectId} not found` });
@@ -144,6 +145,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
     project.assertUsableBy({ orgId: actor.org.id, type });
     if (!grants.hasMembership) return null;
 
+    this.onProjectAccess({ project, grants });
     return ProjectAccess.create({
       project,
       grants,

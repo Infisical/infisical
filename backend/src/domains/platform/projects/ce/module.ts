@@ -10,7 +10,7 @@ import { ProjectCache } from "./data-access/project-cache";
 import { ProjectIdentityStore } from "./data-access/project-identity-store";
 import { ProjectStore } from "./data-access/project-store";
 import { TProjectRoles } from "./models/standard-project-roles";
-import { TProjectsStores } from "./services/dependencies";
+import { TProjectAccessListener, TProjectsStores } from "./services/dependencies";
 import { ProjectPermissionService, TProjectPermissionService } from "./services/project-permission/service";
 import {
   ProjectResourcePermissionService,
@@ -39,6 +39,7 @@ export type {
 } from "./services/project-resource-permission/service";
 export type { TProjectsTransaction } from "./services/projects/projects-transaction";
 export type { TProjectsService } from "./services/projects/service";
+export type { TProjectAccessListener } from "./services/dependencies";
 
 export type TProjectsDeps = {
   db: TDbClient;
@@ -51,6 +52,7 @@ export type TProjectsDeps = {
   projectRoles: TProjectRoles[];
   // Seconds the cached project is served without checking it; 0 checks on every read (tests).
   cacheMarkerTtlSeconds?: number;
+  onProjectAccess?: TProjectAccessListener;
 };
 
 export class ProjectsModule {
@@ -68,7 +70,8 @@ export class ProjectsModule {
     groupService,
     orgPermissionService,
     projectRoles,
-    cacheMarkerTtlSeconds
+    cacheMarkerTtlSeconds,
+    onProjectAccess
   }: TProjectsDeps) {
     const connection = poolStoreConnection(db);
     const projectStore = new ProjectStore(connection);
@@ -79,7 +82,8 @@ export class ProjectsModule {
       roleService,
       groupService,
       projectRoles,
-      new ActorContextMemo()
+      new ActorContextMemo(),
+      onProjectAccess
     );
     this.projectResourcePermissionService = new ProjectResourcePermissionService(
       this.projectPermissionService,

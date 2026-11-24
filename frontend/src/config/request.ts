@@ -75,7 +75,28 @@ let refreshPromise: Promise<string> | null = null;
 
 const SSO_SESSION_REFUSED_ERRORS = ["OrgSsoRequired", "ForeignSsoSession"];
 
-const signOutToLogin = ({ title, text }: { title: string; text: string }) => {
+// The refresh cookie would mint a new token for a session the org's SSO policy refused, so that session is ended on
+// the server and the client state cleared before the login page loads. Plain axios: the refused token must not be
+// sent, and this request must not re-enter the interceptors.
+const endRefusedSession = async () => {
+  try {
+    await axios.post("/api/v1/auth/logout", undefined, { withCredentials: true });
+    const { clearSession } = await import("@app/hooks/api/users/queries");
+    clearSession();
+  } catch (err) {
+    console.warn("Error ending the refused session:", err);
+  }
+};
+
+const signOutToLogin = ({
+  title,
+  text,
+  endSession = false
+}: {
+  title: string;
+  text: string;
+  endSession?: boolean;
+}) => {
   isRedirecting = true;
 
   try {
@@ -99,8 +120,11 @@ const signOutToLogin = ({ title, text }: { title: string; text: string }) => {
     console.warn("Could not save redirect URL to sessionStorage:", err);
   }
 
+  const ended = endSession ? endRefusedSession() : Promise.resolve();
   setTimeout(() => {
-    window.location.href = "/login";
+    ended.finally(() => {
+      window.location.href = "/login";
+    });
   }, 2000);
 
   setTimeout(resetRedirectingFlag, 3000);
@@ -161,7 +185,7 @@ apiRequest.interceptors.response.use(
       getAuthToken() &&
       !isRedirecting
     ) {
-      signOutToLogin({ title: "Sign in again", text: response.data?.message });
+      signOutToLogin({ title: "Sign in again", text: response.data?.message, endSession: true });
       return Promise.reject(
         new Error("Session refused by organization SSO policy - redirecting to login")
       );

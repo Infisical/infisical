@@ -49,16 +49,19 @@ export class ProjectStore implements TProjectStore {
     }
   }
 
-  async findDeletionState(projectId: string, options?: TReadOptions): Promise<string> {
+  async findVersion(projectId: string, options?: TReadOptions): Promise<string> {
     try {
-      const row = await this.connection
-        .reader(options)(TableName.Project)
+      const knex = this.connection.reader(options);
+      // As text, so two changes within one millisecond still differ.
+      const row = (await knex(TableName.Project)
         .where({ id: projectId })
-        .first("deleteAfter");
+        .first(knex.raw('"updatedAt"::text as "updatedAt"'), knex.raw('"deleteAfter"::text as "deleteAfter"'))) as
+        | { updatedAt: string; deleteAfter: string | null }
+        | undefined;
       if (!row) return "missing";
-      return row.deleteAfter ? new Date(row.deleteAfter).toISOString() : "";
+      return `${row.updatedAt}:${row.deleteAfter ?? ""}`;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find project deletion state" });
+      throw new DatabaseError({ error, name: "Find project version" });
     }
   }
 }

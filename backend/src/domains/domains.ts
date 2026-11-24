@@ -20,7 +20,7 @@ import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsModule } from "./platform/organizations/ce/module";
-import { ProjectsModule } from "./platform/projects/ce/module";
+import { ProjectsModule, TProjectAccessListener } from "./platform/projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 type TKmsCoreEnvConfig = Pick<
@@ -52,6 +52,8 @@ export type TDomainDeps = {
     | "isTestMode"
   > &
     TKmsCoreEnvConfig;
+  // Told about each actor's project access as it is resolved, for the request's audit context.
+  onProjectAccess?: TProjectAccessListener;
 };
 
 const kmsCoreEnv = (envConfig: TKmsCoreEnvConfig) => ({
@@ -133,7 +135,8 @@ export const createDomains = async (deps: TDomainDeps) => {
     groupService: accessControl.groupService,
     orgPermissionService: organizations.orgPermissionService,
     projectRoles: [new PamProjectRoles(), new AgentVaultProjectRoles(), kmsProjectRoles],
-    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined,
+    onProjectAccess: deps.onProjectAccess
   });
   const { projectsService } = projects;
   const { projectPermissionService, projectResourcePermissionService } = projects;

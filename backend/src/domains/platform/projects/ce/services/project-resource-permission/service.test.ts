@@ -12,6 +12,7 @@ import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceRoles } from "../../models/project-resource-permission";
 import { buildProjects } from "../../testing/build-projects";
+import { TProjectAccessListener } from "../dependencies";
 
 type TSet = ["read" | "edit", "thing"];
 
@@ -27,8 +28,8 @@ const roles: TResourceRoles<TSet> = {
   projectAdminRules: (): TPermissionRule<TSet>[] => [edit]
 };
 
-const arrange = () => {
-  const projects = buildProjects();
+const arrange = ({ onProjectAccess }: { onProjectAccess?: TProjectAccessListener } = {}) => {
+  const projects = buildProjects({ onProjectAccess });
   const org = actorOrg();
   const orgId = org.id;
   const projectId = projects.projectStore.add({ orgId, type: ProjectType.PAM }).id;
@@ -68,7 +69,7 @@ const arrange = () => {
       resources: resourceIds.map((resourceId) => ({ resourceType: "pam-folder", resourceId })),
       roles
     });
-  return { get, actor, addOrgRole, addProjectRole, addResourceRole, orgId, projectId, projects };
+  return { get, actor, addOrgRole, addProjectRole, addResourceRole, orgId, projectId, projects, userId };
 };
 
 describe("ProjectResourcePermissionService.getResourcePermission", () => {
@@ -147,6 +148,38 @@ describe("ProjectResourcePermissionService.getResourcePermission", () => {
       message: "You are not a member of this pam-folder.",
       hasDefaultName: true
     });
+  });
+
+  test("should report the member's project access, with its attributes, before refusing it on the resource", async () => {
+    // Setup
+    const onProjectAccess = vi.fn<TProjectAccessListener>();
+    const { get, addProjectRole, projects, orgId, projectId, userId } = arrange({ onProjectAccess });
+    await addProjectRole(ProjectMembershipRole.Member);
+    await projects.seed.attribute({ orgId, actor: { userId }, key: "team", value: "backend" });
+
+    // Action
+    const result = get(["f1"]);
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(onProjectAccess).toHaveBeenCalledTimes(1);
+    const [{ project, grants }] = onProjectAccess.mock.calls[0];
+    expect(project.id).toBe(projectId);
+    expect(grants.attributeMap()).toEqual({ team: "backend" });
+  });
+
+  test("should not report a project access for an org member who is not in the project", async () => {
+    // Setup
+    const onProjectAccess = vi.fn<TProjectAccessListener>();
+    const { get, addOrgRole, addResourceRole } = arrange({ onProjectAccess });
+    await addOrgRole();
+    await addResourceRole("f1", "viewer");
+
+    // Action
+    await get(["f1"]);
+
+    // Assert
+    expect(onProjectAccess).not.toHaveBeenCalled();
   });
 
   test("should allow an org member who is not in the project but holds a role on the resource", async () => {

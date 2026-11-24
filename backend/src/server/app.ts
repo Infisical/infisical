@@ -27,6 +27,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { recordProjectAccess } from "./lib/project-audit-context";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { etag } from "./plugins/etag";
@@ -173,7 +174,14 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
 
     // Before the routes: legacy services depend on the domains, and queue workers read the license as soon as they
     // start. Built here rather than in registerRoutes so plugins registered beside it (serve-ui) can use them too.
-    const domains = await createDomains({ db, keyStore, queueService: queue, cronJob, envConfig });
+    const domains = await createDomains({
+      db,
+      keyStore,
+      queueService: queue,
+      cronJob,
+      envConfig,
+      onProjectAccess: recordProjectAccess
+    });
     domains.license.start();
     domains.kmsCore.start(cronJob);
 

@@ -239,7 +239,6 @@ import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
-import { withProjectAuditContext } from "@app/server/lib/project-audit-context";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -657,18 +656,13 @@ export const registerRoutes = async (
   const { organizationsService, orgPermissionService, ssoSessionService, actorContextService } = domains.organizations;
   const { projectsService } = domains.projects;
   const { actorGrantsService } = domains.accessControl;
-  // Wrapped so each project check records the project and the actor's attributes for the audit log.
-  const projectPermissionService = withProjectAuditContext.projectPermission(domains.projects.projectPermissionService);
-  const secretsPermissionService = withProjectAuditContext.secretsPermission(domains.secrets.secretsPermissionService);
-  const kmsPermissionService = withProjectAuditContext.kmsPermission(domains.kms.kmsPermissionService);
-  const pamPermissionService = withProjectAuditContext.pamPermission(domains.pam.pamPermissionService);
-  const applicationPermissionService = withProjectAuditContext.applicationPermission(
-    domains.certManager.applicationPermissionService
-  );
-  const signerPermissionService = withProjectAuditContext.signerPermission(domains.codeSigning.signerPermissionService);
-  const accessBundlePermissionService = withProjectAuditContext.accessBundlePermission(
-    domains.agentVault.accessBundlePermissionService
-  );
+  const { projectPermissionService } = domains.projects;
+  const { secretsPermissionService } = domains.secrets;
+  const { kmsPermissionService } = domains.kms;
+  const { pamPermissionService } = domains.pam;
+  const { applicationPermissionService } = domains.certManager;
+  const { signerPermissionService } = domains.codeSigning;
+  const { accessBundlePermissionService } = domains.agentVault;
   const { certManagerService } = domains.certManager;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so

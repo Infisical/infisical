@@ -19,6 +19,8 @@ type TStoredProject = TProjectRecord & { deleteAfter: Date | null; rootOrgId: st
 export class InMemoryProjectStore implements TProjectStore {
   private readonly projects = new Map<string, TStoredProject>();
 
+  private readonly versions = new Map<string, number>();
+
   add(
     record: Partial<TProjectRecord> & Pick<TProjectRecord, "orgId">,
     { rootOrgId, deleteAfter = null }: { rootOrgId?: string; deleteAfter?: Date | null } = {}
@@ -41,6 +43,7 @@ export class InMemoryProjectStore implements TProjectStore {
   scheduleDeletion(projectId: string, deleteAfter: Date): void {
     const stored = this.projects.get(projectId);
     if (stored) this.projects.set(projectId, { ...stored, deleteAfter });
+    this.versions.set(projectId, (this.versions.get(projectId) ?? 0) + 1);
   }
 
   async countWorkspaces(orgId: string): Promise<number> {
@@ -57,10 +60,11 @@ export class InMemoryProjectStore implements TProjectStore {
     return stored && !stored.deleteAfter ? InMemoryProjectStore.toProject(stored) : null;
   }
 
-  async findDeletionState(projectId: string): Promise<string> {
+  // A counter stands in for updatedAt: every change through this store bumps it.
+  async findVersion(projectId: string): Promise<string> {
     const stored = this.projects.get(projectId);
     if (!stored) return "missing";
-    return stored.deleteAfter?.toISOString() ?? "";
+    return `${this.versions.get(projectId) ?? 0}:${stored.deleteAfter?.toISOString() ?? ""}`;
   }
 
   private static toProject({ deleteAfter: _deleteAfter, rootOrgId: _rootOrgId, ...record }: TStoredProject): Project {

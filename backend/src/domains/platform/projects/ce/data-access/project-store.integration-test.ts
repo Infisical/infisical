@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
 import { poolStoreConnection } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
@@ -76,24 +76,33 @@ describe("ProjectStore.findById", () => {
   });
 });
 
-describe("ProjectStore.findDeletionState", () => {
+describe("ProjectStore.findVersion", () => {
   const h = setupIntegration();
 
   const store = () => new ProjectStore(poolStoreConnection(h.db));
 
-  test("should give when a project is scheduled for deletion, nothing for a live one, and mark a missing one", async () => {
+  test("should change when the project is updated or scheduled for deletion, and read missing once it is gone", async () => {
     // Setup
     const org = await h.factories.organization();
-    const deleteAfter = new Date("2030-01-02T03:04:05.000Z");
-    const { project: scheduled } = await h.factories.project({ orgId: org.id, deleteAfter });
-    const { project: live } = await h.factories.project({ orgId: org.id });
+    const { project } = await h.factories.project({ orgId: org.id });
+    const initial = await store().findVersion(project.id);
 
     // Action
-    const states = await Promise.all(
-      [scheduled.id, live.id, randomUUID()].map((projectId) => store().findDeletionState(projectId))
-    );
+    await h
+      .db(TableName.Project)
+      .where({ id: project.id })
+      .update({ enforceEncryptedSecretManagerSecretMetadata: true });
+    const afterUpdate = await store().findVersion(project.id);
+    await h
+      .db(TableName.Project)
+      .where({ id: project.id })
+      .update({ deleteAfter: new Date(Date.now() + 60_000) });
+    const afterScheduling = await store().findVersion(project.id);
+    await h.db(TableName.Project).where({ id: project.id }).delete();
+    const afterDeletion = await store().findVersion(project.id);
 
     // Assert
-    expect(states).toEqual([deleteAfter.toISOString(), "", "missing"]);
+    expect(new Set([initial, afterUpdate, afterScheduling]).size).toBe(3);
+    expect(afterDeletion).toBe("missing");
   });
 });
