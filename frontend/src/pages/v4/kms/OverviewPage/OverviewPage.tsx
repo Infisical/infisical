@@ -63,12 +63,7 @@ type Open =
 
 const operationsByUsage = {
   [KmsKeyUsage.ENCRYPT_DECRYPT]: [
-    {
-      kind: "encrypt",
-      label: "Encrypt data",
-      icon: <Icon name="lock" />,
-      permission: "encrypt"
-    },
+    { kind: "encrypt", label: "Encrypt data", icon: <Icon name="lock" />, permission: "encrypt" },
     {
       kind: "decrypt",
       label: "Decrypt data",
@@ -83,12 +78,7 @@ const operationsByUsage = {
       icon: <Icon icon={FileSignatureIcon} />,
       permission: "sign"
     },
-    {
-      kind: "verify",
-      label: "Verify data",
-      icon: <Icon name="check-c" />,
-      permission: "verify"
-    }
+    { kind: "verify", label: "Verify data", icon: <Icon name="check-c" />, permission: "verify" }
   ],
   [KmsKeyUsage.GENERATE_VERIFY_MAC]: [
     {
@@ -339,12 +329,7 @@ const columns: DataTableColumn<TCmek>[] = [
     text: (r) => r.id,
     render: (r) => <KeyId id={r.id} />
   },
-  {
-    id: "usage",
-    header: "Key usage",
-    width: 172,
-    render: (r) => usageLabel[r.keyUsage]
-  },
+  { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.keyUsage] },
   {
     id: "algorithm",
     header: "Algorithm",
@@ -374,18 +359,8 @@ const columns: DataTableColumn<TCmek>[] = [
       </Inline>
     )
   },
-  {
-    id: "version",
-    header: "Version",
-    width: 88,
-    render: (r) => `v${r.version}`
-  },
-  {
-    id: "created",
-    header: "Created",
-    width: 104,
-    render: (r) => r.createdAt.slice(0, 10)
-  }
+  { id: "version", header: "Version", width: 88, render: (r) => `v${r.version}` },
+  { id: "created", header: "Created", width: 104, render: (r) => r.createdAt.slice(0, 10) }
 ];
 
 const lastPageWithRows = ({
@@ -418,10 +393,7 @@ export const OverviewPage = () => {
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState<Open>();
-  const [sort, setSort] = useState<{
-    columnId: string;
-    direction: "asc" | "desc";
-  }>({
+  const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: "name",
     direction: "asc"
   });
@@ -459,11 +431,7 @@ export const OverviewPage = () => {
 
   const toggleKey = async (item: TCmek) => {
     try {
-      await updateKey.mutateAsync({
-        keyId: item.id,
-        projectId,
-        isDisabled: !item.isDisabled
-      });
+      await updateKey.mutateAsync({ keyId: item.id, projectId, isDisabled: !item.isDisabled });
       if (!item.isDisabled) setSelected((current) => current.filter((id) => id !== item.id));
       saved(item.isDisabled ? "Key enabled" : "Key disabled");
     } catch (error) {
@@ -493,9 +461,7 @@ export const OverviewPage = () => {
 
   const exportSelected = async () => {
     try {
-      const { keys: exported } = await bulkExport.mutateAsync({
-        keyIds: selected
-      });
+      const { keys: exported } = await bulkExport.mutateAsync({ keyIds: selected });
       FileSaver.saveAs(
         new Blob([JSON.stringify(keysToExportJson(exported), null, 2)], {
           type: "application/json;charset=utf-8;"
@@ -588,10 +554,7 @@ export const OverviewPage = () => {
           selectedIds={selected}
           onSelectionChange={(ids) => {
             if (ids.length > MAX_SELECTED) {
-              toast({
-                tone: "bad",
-                title: `Select at most ${MAX_SELECTED} keys to export`
-              });
+              toast({ tone: "bad", title: `Select at most ${MAX_SELECTED} keys to export` });
               setSelected(ids.slice(0, MAX_SELECTED));
               return;
             }
