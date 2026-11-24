@@ -4,6 +4,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { isBase64 } from "@app/lib/base64";
 import {
   createDnsUpdateClient,
   DnsRcode,
@@ -52,9 +53,13 @@ const createTcpTransport =
       let onAbort = () => {};
       const socket = net.connect({ host, port });
 
+      // socket.setTimeout only catches silence, so a server trickling bytes needs a fixed deadline too
+      let deadline: NodeJS.Timeout | undefined;
+
       const finish = (error: Error | null, reply?: Buffer) => {
         if (settled) return;
         settled = true;
+        clearTimeout(deadline);
         abortSignal?.removeEventListener("abort", onAbort);
         socket.destroy();
         if (error) reject(error);
@@ -69,7 +74,9 @@ const createTcpTransport =
       }
       abortSignal?.addEventListener("abort", onAbort);
 
-      socket.setTimeout(RFC2136_REQUEST_TIMEOUT_MS, () => finish(new Error("the DNS server did not answer in time")));
+      const onTimeout = () => finish(new Error("the DNS server did not answer in time"));
+      deadline = setTimeout(onTimeout, RFC2136_REQUEST_TIMEOUT_MS);
+      socket.setTimeout(RFC2136_REQUEST_TIMEOUT_MS, onTimeout);
       socket.on("connect", () => {
         const length = Buffer.alloc(2);
         length.writeUInt16BE(message.length, 0);
@@ -177,9 +184,25 @@ const TSIG_ERROR_MESSAGES: Partial<Record<TsigError, string>> = {
   [TsigError.BadTrunc]: "the DNS server rejected the TSIG signature length"
 };
 
+// A secret copied out of a Kubernetes Secret or a CI variable is often base64 of the base64 the server expects.
+// Only a hint once the server rejects the key: a hand-made key can legitimately decode to base64-looking text.
+const looksDoubleEncoded = (secret: string) => {
+  const decoded = Buffer.from(secret, "base64").toString("latin1");
+  return decoded.length >= 16 && isBase64(decoded);
+};
+
+const DOUBLE_ENCODED_HINT =
+  ". The secret also looks base64-encoded twice; paste it exactly as it appears in the key file";
+
 // Turns a protocol error into a sentence a DNS admin can act on; messages never include the secret.
-export const getRfc2136ErrorMessage = (error: unknown) => {
+export const getRfc2136ErrorMessage = (error: unknown, tsigSecret?: string): string => {
   if (!(error instanceof DnsUpdateError)) return (error as Error)?.message || "unknown error";
+
+  // PowerDNS reports a wrong secret as REFUSED rather than BADSIG
+  const isKeyRejection = error.tsigError === TsigError.BadSig || error.rcode === DnsRcode.Refused;
+  if (isKeyRejection && tsigSecret && looksDoubleEncoded(tsigSecret)) {
+    return `${getRfc2136ErrorMessage(error)}${DOUBLE_ENCODED_HINT}`;
+  }
 
   switch (error.reason) {
     case DnsUpdateErrorReason.TsigRejected:
@@ -205,7 +228,7 @@ export const validateRfc2136ConnectionCredentials = async (
   const toValidationError = (error: unknown) => {
     logger.warn(error, `DNS Server (RFC 2136) connection check failed [host=${host}] [port=${port}]`);
     return new BadRequestError({
-      message: `Unable to validate DNS Server (RFC 2136) connection to '${host}:${port}': ${getRfc2136ErrorMessage(error)}`
+      message: `Unable to validate DNS Server (RFC 2136) connection to '${host}:${port}': ${getRfc2136ErrorMessage(error, config.credentials.tsigSecret)}`
     });
   };
 

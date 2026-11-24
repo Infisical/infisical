@@ -58,16 +58,6 @@ const IPV4_REGEX = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 const IPV6_REGEX = /^[0-9a-fA-F:]+:[0-9a-fA-F:.]*$/;
 const KEY_NAME_REGEX = /^(?:[A-Za-z0-9_-]{1,63}\.)*[A-Za-z0-9_-]{1,63}\.?$/;
 
-// A secret copied out of a Kubernetes Secret or a CI variable is often base64 of the base64 the server expects.
-const isDoubleEncoded = (value: string) => {
-  try {
-    const decoded = atob(value);
-    return decoded.length >= 16 && BASE64_REGEX.test(decoded);
-  } catch {
-    return false;
-  }
-};
-
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Rfc2136)
 });
@@ -106,10 +96,6 @@ const formSchema = z.discriminatedUnion("method", [
         .max(1024, "Secret cannot exceed 1024 characters")
         .refine((value) => BASE64_REGEX.test(value), {
           message: "Secret must be base64. Copy only the value between the quotes in the key file."
-        })
-        .refine((value) => !isDoubleEncoded(value), {
-          message:
-            "Secret looks base64-encoded twice. Paste the secret exactly as it appears in the key file."
         })
     })
   })

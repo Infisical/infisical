@@ -15,14 +15,6 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { Rfc2136ConnectionMethod } from "./rfc2136-connection-enums";
 
-const MIN_DOUBLE_ENCODED_LENGTH = 16;
-
-// A secret copied out of a Kubernetes Secret or a CI variable is often base64 of the base64 the server expects.
-const isDoubleEncodedBase64 = (value: string) => {
-  const decoded = Buffer.from(value, "base64").toString("latin1");
-  return decoded.length >= MIN_DOUBLE_ENCODED_LENGTH && isBase64(decoded);
-};
-
 export const Rfc2136ConnectionTsigKeyCredentialsSchema = z.object({
   host: z
     .string()
@@ -52,20 +44,8 @@ export const Rfc2136ConnectionTsigKeyCredentialsSchema = z.object({
     .trim()
     .min(1, "Secret required")
     .max(1024, "Secret cannot exceed 1024 characters")
-    .superRefine((value, ctx) => {
-      if (!isBase64(value)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Secret must be base64. Copy only the value between the quotes in the key file."
-        });
-        return;
-      }
-      if (isDoubleEncodedBase64(value)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Secret looks base64-encoded twice. Paste the secret exactly as it appears in the key file."
-        });
-      }
+    .refine(isBase64, {
+      message: "Secret must be base64. Copy only the value between the quotes in the key file."
     })
     .describe("The base64-encoded secret of the TSIG key.")
 });

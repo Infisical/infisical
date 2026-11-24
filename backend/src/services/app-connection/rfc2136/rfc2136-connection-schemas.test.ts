@@ -37,8 +37,8 @@ describe("Rfc2136ConnectionTsigKeyCredentialsSchema", () => {
     expect(result.error?.issues[0].message).toMatch(/must be base64/);
   });
 
-  it("explains a secret that was base64-encoded twice", () => {
-    const result = parse({ tsigSecret: Buffer.from(SECRET).toString("base64") });
-    expect(result.error?.issues[0].message).toMatch(/encoded twice/);
+  // a key made from a password can decode to base64-looking text and still be valid
+  it("accepts a secret whose decoded text also looks like base64", () => {
+    expect(parse({ tsigSecret: Buffer.from("mysecretpassword").toString("base64") }).success).toBe(true);
   });
 });

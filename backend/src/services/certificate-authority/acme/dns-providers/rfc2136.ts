@@ -73,9 +73,11 @@ const confirmTxtRecord = async (client: TDnsUpdateClient, name: string, value: s
   );
 };
 
-const toOrderError = (error: unknown, action: string, name: string) =>
+const toOrderError = (error: unknown, action: string, name: string, tsigSecret: string) =>
   error instanceof DnsUpdateError
-    ? new Error(`Failed to ${action} the TXT record '${name}' on the DNS server: ${getRfc2136ErrorMessage(error)}`)
+    ? new Error(
+        `Failed to ${action} the TXT record '${name}' on the DNS server: ${getRfc2136ErrorMessage(error, tsigSecret)}`
+      )
     : error;
 
 export const rfc2136InsertTxtRecord = async (
@@ -99,7 +101,7 @@ export const rfc2136InsertTxtRecord = async (
         const zone = await resolveZone(client, hostedZoneId, name, host);
         await client.updateTxtRecord({ zone, name, value: txtValue, ttl: ACME_CHALLENGE_TTL_SECONDS, action: "add" });
       } catch (error) {
-        throw toOrderError(error, "add", name);
+        throw toOrderError(error, "add", name, connection.credentials.tsigSecret);
       }
       await confirmTxtRecord(client, name, txtValue, host);
     },
@@ -126,7 +128,7 @@ export const rfc2136DeleteTxtRecord = async (
       const zone = await resolveZone(client, hostedZoneId, name, host);
       await client.updateTxtRecord({ zone, name, value: txtValue, ttl: 0, action: "delete" });
     } catch (error) {
-      throw toOrderError(error, "delete", name);
+      throw toOrderError(error, "delete", name, connection.credentials.tsigSecret);
     }
   });
 };

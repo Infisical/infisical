@@ -2,12 +2,17 @@ import net from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TsigAlgorithm } from "@app/lib/dns-update";
+import { DnsRcode, DnsUpdateError, DnsUpdateErrorReason, TsigAlgorithm, TsigError } from "@app/lib/dns-update";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
 import { Rfc2136ConnectionMethod } from "./rfc2136-connection-enums";
-import { executeWithRfc2136Client, validateRfc2136ConnectionCredentials } from "./rfc2136-connection-fns";
+import {
+  executeWithRfc2136Client,
+  getRfc2136ErrorMessage,
+  RFC2136_REQUEST_TIMEOUT_MS,
+  validateRfc2136ConnectionCredentials
+} from "./rfc2136-connection-fns";
 import { TRfc2136ConnectionConfig } from "./rfc2136-connection-types";
 
 const state = vi.hoisted(() => ({ checkedHosts: [] as unknown[], proxyOptions: [] as unknown[], proxyPort: 0 }));
@@ -29,7 +34,7 @@ vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), erro
 
 const GATEWAY_ID = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
 
-type TReplyMode = "echo-in-single-bytes" | "close" | "silent";
+type TReplyMode = "echo-in-single-bytes" | "close" | "silent" | "trickle";
 
 // A DNS-over-TCP server that answers each request with the request itself, flagged as a response and without its
 // TSIG record: an unsigned NOERROR reply, which is what Knot sends for a name it does not host.
@@ -46,6 +51,11 @@ const startServer = async (mode: TReplyMode) => {
         return;
       }
       if (mode === "silent") return;
+      if (mode === "trickle") {
+        // announces a long reply and sends only the first byte of it, so the socket is never idle-free of data
+        socket.write(Buffer.from([0xff, 0xff, 0x00]));
+        return;
+      }
 
       const request = received.subarray(2, 2 + received.readUInt16BE(0));
       const keyNameStart = request.indexOf(Buffer.from("\x0einfisical-acme", "latin1"), 12);
@@ -147,6 +157,19 @@ describe("executeWithRfc2136Client", () => {
     expect(state.proxyOptions).toEqual([{ protocol: GatewayProxyProtocol.Tcp, gatewayId: GATEWAY_ID }]);
   });
 
+  it("gives up at the deadline even while the server keeps sending data", async () => {
+    server = await startServer("trickle");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const pending = executeWithRfc2136Client(connection(server.port), {}, (client) => client.checkKey());
+      const assertion = expect(pending).rejects.toThrow("the DNS server did not answer in time");
+      await vi.advanceTimersByTimeAsync(RFC2136_REQUEST_TIMEOUT_MS + 1);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("never falls back to a direct connection when the Gateway is missing", async () => {
     await expect(
       executeWithRfc2136Client(
@@ -160,5 +183,27 @@ describe("executeWithRfc2136Client", () => {
       executeWithRfc2136Client(connection(53, { gatewayId: GATEWAY_ID }), {}, (client) => client.checkKey())
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(state.checkedHosts).toEqual([{ host: "dns.example.invalid", isGateway: true, isDynamicSecret: false }]);
+  });
+});
+
+describe("getRfc2136ErrorMessage", () => {
+  const badSig = new DnsUpdateError({
+    reason: DnsUpdateErrorReason.TsigRejected,
+    message: "x",
+    tsigError: TsigError.BadSig
+  });
+  const refused = new DnsUpdateError({ reason: DnsUpdateErrorReason.Rcode, message: "x", rcode: DnsRcode.Refused });
+  const doubleEncoded = Buffer.from("c2VjcmV0LWtleS1mb3ItdGVzdHMtMTIzNDU2Nzg5MDEy").toString("base64");
+
+  it("adds the double-encoding hint only when the server rejected the key", () => {
+    expect(getRfc2136ErrorMessage(badSig, doubleEncoded)).toMatch(/base64-encoded twice/);
+    expect(getRfc2136ErrorMessage(refused, doubleEncoded)).toMatch(/base64-encoded twice/);
+    expect(getRfc2136ErrorMessage(badSig, "c2VjcmV0LWtleS1mb3ItdGVzdHMtMTIzNDU2Nzg5MDEy")).not.toMatch(/twice/);
+    expect(
+      getRfc2136ErrorMessage(
+        new DnsUpdateError({ reason: DnsUpdateErrorReason.Rcode, message: "x", rcode: DnsRcode.NotImp }),
+        doubleEncoded
+      )
+    ).not.toMatch(/twice/);
   });
 });
