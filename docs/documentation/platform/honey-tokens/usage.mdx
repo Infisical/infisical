@@ -1,17 +1,15 @@
 ---
-title: "Using AWS honey tokens"
+title: "Use honey tokens"
 sidebarTitle: "Usage"
-description: "Create, monitor, and manage AWS honey tokens in your projects."
+description: "Create and manage honey tokens in your projects."
 ---
 
-<Note>
-  Before creating honey tokens, an organization admin must complete the
-  [one-time setup](/documentation/platform/honey-tokens/aws/setup).
-</Note>
+On Infisical Cloud, Infisical creates each honey token's decoy credentials in an AWS account that Infisical manages, so you can create honey tokens without connecting an AWS account first. You can also keep the decoy credentials in [your own AWS account](/documentation/platform/honey-tokens/own-aws-account).
 
-<Note>
-  Creating, editing, resetting, and revoking honey tokens requires project-level **Admin** permissions by default. Members and Viewers can only view honey tokens. See the [Permissions](/documentation/platform/honey-tokens/overview#permissions) section for details on configuring custom roles.
-</Note>
+## Prerequisites
+
+- [Permission](/documentation/platform/honey-tokens/overview#permissions) to create honey tokens in the project, which only project **Admins** have by default
+- If you self-host Infisical, [your own AWS account](/documentation/platform/honey-tokens/own-aws-account) connected to Infisical
 
 ## Creating a honey token
 
@@ -30,7 +28,9 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
     ![Select Honey Token Type](/images/platform/honey-tokens/honey-token-type.png)
   </Step>
   <Step>
-    In the **Configuration** step, choose the **AWS account** that holds the decoy credentials and the **Environment** to plant the honey token in. Infisical uses the secret path you're currently in.
+    In the **Configuration** step, choose the **Environment** to plant the honey token in. Infisical uses the secret path you're currently in.
+
+    For **AWS account**, select **Infisical Managed**. To use your organization's own AWS account, or if you self-host Infisical, select **Self hosted**.
 
     ![Honey Token Environment Step](/images/platform/honey-tokens/honey-token-environment.png)
   </Step>
@@ -54,7 +54,7 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
     In the **Alerts** step, choose who Infisical notifies when someone uses the honey token. By default, **Alert When Triggered** is on, with an email to the project's admins. To change the recipients or add channels, see [Get alerted when a honey token is triggered](#get-alerted-when-a-honey-token-is-triggered).
   </Step>
   <Step>
-    Select **Create Honey Token**. Infisical provisions the decoy credentials in your AWS account and stores them as secrets in the selected environment and path.
+    Select **Create Honey Token**. Infisical provisions the decoy credentials in the selected AWS account and stores them as secrets in the selected environment and path.
   </Step>
 </Steps>
 

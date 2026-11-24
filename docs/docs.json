@@ -243,13 +243,8 @@
                     "group": "Honey tokens",
                     "root": "documentation/platform/honey-tokens/overview",
                     "pages": [
-                      {
-                        "group": "AWS",
-                        "pages": [
-                          "documentation/platform/honey-tokens/aws/setup",
-                          "documentation/platform/honey-tokens/aws/usage"
-                        ]
-                      }
+                      "documentation/platform/honey-tokens/usage",
+                      "documentation/platform/honey-tokens/own-aws-account"
                     ]
                   }
                 ]
@@ -5586,6 +5581,14 @@
     {
       "source": "/documentation/platform/pam/dependencies/overview",
       "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/setup",
+      "destination": "/documentation/platform/honey-tokens/own-aws-account"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/usage",
+      "destination": "/documentation/platform/honey-tokens/usage"
     },
     {
       "source": "/documentation/platform/pam/recording-storage",
