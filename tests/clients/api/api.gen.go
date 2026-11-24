@@ -2094,6 +2094,7 @@ func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermis
 // Defines values for UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject.
 const (
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultAccessBundles     UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-access-bundles"
+	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultHooks             UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-hooks"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies           UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-proxies"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions          UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-sessions"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-skills"
@@ -2157,6 +2158,8 @@ const (
 func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject) Valid() bool {
 	switch e {
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultHooks:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies:
 		return true
@@ -2448,6 +2451,7 @@ func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsAction) Vali
 // Defines values for CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject.
 const (
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
+	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks             CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-hooks"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
@@ -2511,6 +2515,8 @@ const (
 func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject) Valid() bool {
 	switch e {
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
@@ -2787,6 +2793,7 @@ func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsAction) Vali
 // Defines values for CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject.
 const (
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
+	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks             CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-hooks"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
@@ -2850,6 +2857,8 @@ const (
 func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject) Valid() bool {
 	switch e {
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles:
+		return true
+	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultHooks:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
@@ -5081,6 +5090,7 @@ const (
 	CreateAlertJSONBodyChannelsChannelTypeEmail     CreateAlertJSONBodyChannelsChannelType = "email"
 	CreateAlertJSONBodyChannelsChannelTypePagerduty CreateAlertJSONBodyChannelsChannelType = "pagerduty"
 	CreateAlertJSONBodyChannelsChannelTypeSlack     CreateAlertJSONBodyChannelsChannelType = "slack"
+	CreateAlertJSONBodyChannelsChannelTypeSlackApp  CreateAlertJSONBodyChannelsChannelType = "slack-app"
 	CreateAlertJSONBodyChannelsChannelTypeWebhook   CreateAlertJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -5092,6 +5102,8 @@ func (e CreateAlertJSONBodyChannelsChannelType) Valid() bool {
 	case CreateAlertJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case CreateAlertJSONBodyChannelsChannelTypeSlack:
+		return true
+	case CreateAlertJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case CreateAlertJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -5243,6 +5255,7 @@ const (
 	TestAlertChannelJSONBodyChannelTypeEmail     TestAlertChannelJSONBodyChannelType = "email"
 	TestAlertChannelJSONBodyChannelTypePagerduty TestAlertChannelJSONBodyChannelType = "pagerduty"
 	TestAlertChannelJSONBodyChannelTypeSlack     TestAlertChannelJSONBodyChannelType = "slack"
+	TestAlertChannelJSONBodyChannelTypeSlackApp  TestAlertChannelJSONBodyChannelType = "slack-app"
 	TestAlertChannelJSONBodyChannelTypeWebhook   TestAlertChannelJSONBodyChannelType = "webhook"
 )
 
@@ -5254,6 +5267,8 @@ func (e TestAlertChannelJSONBodyChannelType) Valid() bool {
 	case TestAlertChannelJSONBodyChannelTypePagerduty:
 		return true
 	case TestAlertChannelJSONBodyChannelTypeSlack:
+		return true
+	case TestAlertChannelJSONBodyChannelTypeSlackApp:
 		return true
 	case TestAlertChannelJSONBodyChannelTypeWebhook:
 		return true
@@ -5585,6 +5600,7 @@ const (
 	UpdateAlertJSONBodyChannelsChannelTypeEmail     UpdateAlertJSONBodyChannelsChannelType = "email"
 	UpdateAlertJSONBodyChannelsChannelTypePagerduty UpdateAlertJSONBodyChannelsChannelType = "pagerduty"
 	UpdateAlertJSONBodyChannelsChannelTypeSlack     UpdateAlertJSONBodyChannelsChannelType = "slack"
+	UpdateAlertJSONBodyChannelsChannelTypeSlackApp  UpdateAlertJSONBodyChannelsChannelType = "slack-app"
 	UpdateAlertJSONBodyChannelsChannelTypeWebhook   UpdateAlertJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -5596,6 +5612,8 @@ func (e UpdateAlertJSONBodyChannelsChannelType) Valid() bool {
 	case UpdateAlertJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case UpdateAlertJSONBodyChannelsChannelTypeSlack:
+		return true
+	case UpdateAlertJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case UpdateAlertJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -34416,6 +34434,51 @@ func (e CreateDynamicSecretJSONBodyProvider29Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType.
+const (
+	CreateDynamicSecretJSONBodyProvider30Inputs0LeaseTypeRole CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType = "role"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType enum.
+func (e CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType) Valid() bool {
+	switch e {
+	case CreateDynamicSecretJSONBodyProvider30Inputs0LeaseTypeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType.
+const (
+	Branch CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType = "branch"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType enum.
+func (e CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType) Valid() bool {
+	switch e {
+	case Branch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider30Type.
+const (
+	Neon CreateDynamicSecretJSONBodyProvider30Type = "neon"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider30Type enum.
+func (e CreateDynamicSecretJSONBodyProvider30Type) Valid() bool {
+	switch e {
+	case Neon:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateDynamicSecret400JSONResponseBodyStatusCode.
 const (
 	CreateDynamicSecret400JSONResponseBodyStatusCodeN400 CreateDynamicSecret400JSONResponseBodyStatusCode = 400
@@ -62535,6 +62598,33 @@ func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessP
 	}
 }
 
+// Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionList       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionManage     ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionRead       ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission.
 const (
 	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission = "edit"
@@ -62556,6 +62646,33 @@ func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFold
 	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionManage:
 		return true
 	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionEdit       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionList       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionManage     ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionRead       ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermissionRead:
 		return true
 	default:
 		return false
@@ -64029,6 +64146,33 @@ func (e ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission)
 	}
 }
 
+// Defines values for ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionList       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionManage     ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionRead       ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission.
 const (
 	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission = "edit"
@@ -64050,6 +64194,33 @@ func (e ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAcce
 	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionManage:
 		return true
 	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermissionRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission.
+const (
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionEdit       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "edit"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionFullAccess ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "full-access"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionList       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "list"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionManage     ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "manage"
+	ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionRead       ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission = "read"
+)
+
+// Valid indicates whether the value is a known member of the ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission enum.
+func (e ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission) Valid() bool {
+	switch e {
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionEdit:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionFullAccess:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionList:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionManage:
+		return true
+	case ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermissionRead:
 		return true
 	default:
 		return false
@@ -66761,6 +66932,7 @@ const (
 	CreateSecretReminderJSONBodyChannelsChannelTypeEmail     CreateSecretReminderJSONBodyChannelsChannelType = "email"
 	CreateSecretReminderJSONBodyChannelsChannelTypePagerduty CreateSecretReminderJSONBodyChannelsChannelType = "pagerduty"
 	CreateSecretReminderJSONBodyChannelsChannelTypeSlack     CreateSecretReminderJSONBodyChannelsChannelType = "slack"
+	CreateSecretReminderJSONBodyChannelsChannelTypeSlackApp  CreateSecretReminderJSONBodyChannelsChannelType = "slack-app"
 	CreateSecretReminderJSONBodyChannelsChannelTypeWebhook   CreateSecretReminderJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -66772,6 +66944,8 @@ func (e CreateSecretReminderJSONBodyChannelsChannelType) Valid() bool {
 	case CreateSecretReminderJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case CreateSecretReminderJSONBodyChannelsChannelTypeSlack:
+		return true
+	case CreateSecretReminderJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case CreateSecretReminderJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -80475,6 +80649,96 @@ const (
 func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig400JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig400JSONResponseBodyStatusCodeN400 DeleteOidcConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig400JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig401JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig401JSONResponseBodyStatusCodeN401 DeleteOidcConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig401JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig403JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig403JSONResponseBodyStatusCodeN403 DeleteOidcConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig403JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig404JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig404JSONResponseBodyStatusCodeN404 DeleteOidcConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig404JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig422JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig422JSONResponseBodyStatusCodeN422 DeleteOidcConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig422JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig500JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig500JSONResponseBodyStatusCodeN500 DeleteOidcConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig500JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -101016,7 +101280,7 @@ type ListAlerts500JSONResponseBodyStatusCode float32
 
 // CreateAlertJSONBody defines parameters for CreateAlert.
 type CreateAlertJSONBody struct {
-	// Channels The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty.
+	// Channels The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`.
 	Channels []struct {
 		ChannelType CreateAlertJSONBodyChannelsChannelType `json:"channelType"`
 		Config      *map[string]interface{}                `json:"config,omitempty"`
@@ -119961,6 +120225,77 @@ type CreateDynamicSecretJSONBodyProvider29InputsLimitReset string
 // CreateDynamicSecretJSONBodyProvider29Type defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBodyProvider29Type string
 
+// CreateDynamicSecretJSONBodyProvider30 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30 struct {
+	Inputs CreateDynamicSecretJSONBody_Provider_30_Inputs `json:"inputs"`
+	Type   CreateDynamicSecretJSONBodyProvider30Type      `json:"type"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs0 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs0 struct {
+	// ApiKey Neon API key used to manage roles and branches.
+	ApiKey string `json:"apiKey"`
+
+	// BranchId The branch each lease's role is created on.
+	BranchId string `json:"branchId"`
+
+	// DatabaseName Database used in the returned connection string.
+	DatabaseName *string `json:"databaseName,omitempty"`
+
+	// LeaseType Each lease creates a Postgres role on an existing branch.
+	LeaseType CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType `json:"leaseType"`
+
+	// Pooled Return the pooled (PgBouncer) connection string.
+	Pooled *bool `json:"pooled,omitempty"`
+
+	// ProjectId ID of the Neon project, e.g. shiny-wind-028834.
+	ProjectId string `json:"projectId"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs0LeaseType string
+
+// CreateDynamicSecretJSONBodyProvider30Inputs1 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs1 struct {
+	// ApiKey Neon API key used to manage roles and branches.
+	ApiKey string `json:"apiKey"`
+
+	// DatabaseName Database used in the returned connection string.
+	DatabaseName *string `json:"databaseName,omitempty"`
+
+	// LeaseType Each lease creates a copy-on-write branch with its own compute endpoint.
+	LeaseType CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType `json:"leaseType"`
+
+	// ParentBranchId The branch each lease branches from. Defaults to the project's default branch.
+	ParentBranchId *string `json:"parentBranchId,omitempty"`
+
+	// Pooled Return the pooled (PgBouncer) connection string.
+	Pooled *bool `json:"pooled,omitempty"`
+
+	// ProjectId ID of the Neon project, e.g. shiny-wind-028834.
+	ProjectId string `json:"projectId"`
+
+	// ResetRolePassword Reset the role's password on the new branch so the lease does not share the parent branch's password.
+	ResetRolePassword *bool `json:"resetRolePassword,omitempty"`
+
+	// RoleName The existing role whose credentials are returned for the new branch.
+	RoleName string `json:"roleName"`
+
+	// SetBranchExpiration Also set the branch's Neon expiration time to the lease expiry, so Neon deletes it even if revocation never runs.
+	SetBranchExpiration *bool `json:"setBranchExpiration,omitempty"`
+}
+
+// CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Inputs1LeaseType string
+
+// CreateDynamicSecretJSONBody_Provider_30_Inputs defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBody_Provider_30_Inputs struct {
+	union json.RawMessage
+}
+
+// CreateDynamicSecretJSONBodyProvider30Type defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider30Type string
+
 // CreateDynamicSecretJSONBody_Provider defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBody_Provider struct {
 	union json.RawMessage
@@ -120415,7 +120750,7 @@ type CreateExternalKmsJSONBodyProvider0InputsCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
@@ -120528,7 +120863,7 @@ type CreateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
@@ -120570,7 +120905,7 @@ type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -120644,7 +120979,7 @@ type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -120718,7 +121053,7 @@ type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 st
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -120801,7 +121136,7 @@ type UpdateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
@@ -120843,7 +121178,7 @@ type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
@@ -120917,7 +121252,7 @@ type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Cre
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
@@ -121009,7 +121344,7 @@ type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Crede
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
@@ -121098,7 +121433,7 @@ type UpdateExternalKmsJSONBodyProvider0InputsCredential1 struct {
 		// AssumeRoleArn AWS user role to be assumed by infisical
 		AssumeRoleArn string `json:"assumeRoleArn"`
 
-		// ExternalId AWS assume role external id for further security in authentication
+		// ExternalId External ID sent when assuming the role. Must be your organization ID, which is also the default. An external KMS saved with another value keeps it until its credential changes, unless the value is another organization's ID or one of its project IDs.
 		ExternalId *string `json:"externalId,omitempty"`
 	} `json:"data"`
 	Type UpdateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
@@ -129262,7 +129597,7 @@ type DeleteIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// SecretPath The path of the folder the access is on.
+	// SecretPath The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.
 	SecretPath string `json:"secretPath"`
 }
 
@@ -129312,6 +129647,9 @@ type ListIdentityFolderAccess500JSONResponseBodyStatusCode float32
 type UpdateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission *UpdateIdentityFolderAccessJSONBodyPermission `json:"permission,omitempty"`
@@ -129384,6 +129722,9 @@ type UpdateIdentityFolderAccess500JSONResponseBodyStatusCode float32
 type CreateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission CreateIdentityFolderAccessJSONBodyPermission `json:"permission"`
@@ -129473,8 +129814,14 @@ type ListFolderAccessIdentitiesParams struct {
 // ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission string
 
+// ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
+type ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission string
+
 // ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission string
+
+// ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessIdentities.
+type ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission string
 
 // ListFolderAccessIdentities400JSONResponseBodyStatusCode defines parameters for ListFolderAccessIdentities.
 type ListFolderAccessIdentities400JSONResponseBodyStatusCode float32
@@ -129937,8 +130284,14 @@ type ListFolderAccessUsersParams struct {
 // ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission string
 
+// ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
+type ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission string
+
 // ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission string
+
+// ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission defines parameters for ListFolderAccessUsers.
+type ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission string
 
 // ListFolderAccessUsers400JSONResponseBodyStatusCode defines parameters for ListFolderAccessUsers.
 type ListFolderAccessUsers400JSONResponseBodyStatusCode float32
@@ -130260,7 +130613,7 @@ type DeleteUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// SecretPath The path of the folder the access is on.
+	// SecretPath The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.
 	SecretPath string `json:"secretPath"`
 }
 
@@ -130310,6 +130663,9 @@ type ListUserFolderAccess500JSONResponseBodyStatusCode float32
 type UpdateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission *UpdateUserFolderAccessJSONBodyPermission `json:"permission,omitempty"`
@@ -130382,6 +130738,9 @@ type UpdateUserFolderAccess500JSONResponseBodyStatusCode float32
 type CreateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
+
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
 	Permission CreateUserFolderAccessJSONBodyPermission `json:"permission"`
@@ -135222,10 +135581,34 @@ type OidcCallbackParams struct {
 	State *string `form:"state,omitempty" json:"state,omitempty"`
 }
 
+// DeleteOidcConfigParams defines parameters for DeleteOidcConfig.
+type DeleteOidcConfigParams struct {
+	// OrganizationId The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request.
+	OrganizationId *string `form:"organizationId,omitempty" json:"organizationId,omitempty"`
+}
+
+// DeleteOidcConfig400JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig400JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig401JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig401JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig403JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig403JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig404JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig404JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig422JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig422JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig500JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig500JSONResponseBodyStatusCode float32
+
 // GetOidcConfigParams defines parameters for GetOidcConfig.
 type GetOidcConfigParams struct {
-	// OrganizationId The ID of the organization to get the OIDC config for.
-	OrganizationId string `form:"organizationId" json:"organizationId"`
+	// OrganizationId The ID of the organization to get the OIDC config for. Defaults to the organization of the token used to make the request.
+	OrganizationId *string `form:"organizationId,omitempty" json:"organizationId,omitempty"`
 }
 
 // GetOidcConfig400JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
@@ -135287,8 +135670,8 @@ type UpdateOidcConfigJSONBody struct {
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
 
-	// OrganizationId The ID of the organization to update the OIDC config for.
-	OrganizationId string `json:"organizationId"`
+	// OrganizationId The ID of the organization to update the OIDC config for. Defaults to the organization of the token used to make the request.
+	OrganizationId *string `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -135362,8 +135745,8 @@ type CreateOidcConfigJSONBody struct {
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
 
-	// OrganizationId The ID of the organization to create the OIDC config for.
-	OrganizationId string `json:"organizationId"`
+	// OrganizationId The ID of the organization to create the OIDC config for. Defaults to the organization of the token used to make the request.
+	OrganizationId *string `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -156375,6 +156758,68 @@ func (t *CreateDynamicSecretJSONBody_Provider_27_Inputs) UnmarshalJSON(b []byte)
 	return err
 }
 
+// AsCreateDynamicSecretJSONBodyProvider30Inputs0 returns the union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as a CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) AsCreateDynamicSecretJSONBodyProvider30Inputs0() (CreateDynamicSecretJSONBodyProvider30Inputs0, error) {
+	var body CreateDynamicSecretJSONBodyProvider30Inputs0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30Inputs0 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as the provided CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) FromCreateDynamicSecretJSONBodyProvider30Inputs0(v CreateDynamicSecretJSONBodyProvider30Inputs0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30Inputs0 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs, using the provided CreateDynamicSecretJSONBodyProvider30Inputs0
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) MergeCreateDynamicSecretJSONBodyProvider30Inputs0(v CreateDynamicSecretJSONBodyProvider30Inputs0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDynamicSecretJSONBodyProvider30Inputs1 returns the union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as a CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) AsCreateDynamicSecretJSONBodyProvider30Inputs1() (CreateDynamicSecretJSONBodyProvider30Inputs1, error) {
+	var body CreateDynamicSecretJSONBodyProvider30Inputs1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30Inputs1 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs as the provided CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) FromCreateDynamicSecretJSONBodyProvider30Inputs1(v CreateDynamicSecretJSONBodyProvider30Inputs1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30Inputs1 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider_30_Inputs, using the provided CreateDynamicSecretJSONBodyProvider30Inputs1
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) MergeCreateDynamicSecretJSONBodyProvider30Inputs1(v CreateDynamicSecretJSONBodyProvider30Inputs1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDynamicSecretJSONBody_Provider_30_Inputs) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDynamicSecretJSONBody_Provider_30_Inputs) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCreateDynamicSecretJSONBodyProvider0 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider0
 func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider0() (CreateDynamicSecretJSONBodyProvider0, error) {
 	var body CreateDynamicSecretJSONBodyProvider0
@@ -157145,6 +157590,32 @@ func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyPr
 
 // MergeCreateDynamicSecretJSONBodyProvider29 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider29
 func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDynamicSecretJSONBodyProvider30 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider30
+func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider30() (CreateDynamicSecretJSONBodyProvider30, error) {
+	var body CreateDynamicSecretJSONBodyProvider30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider30 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider as the provided CreateDynamicSecretJSONBodyProvider30
+func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyProvider30(v CreateDynamicSecretJSONBodyProvider30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider30 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider30
+func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider30(v CreateDynamicSecretJSONBodyProvider30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -174341,39 +174812,39 @@ type ClientInterface interface {
 	CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGroup performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
-	DeleteGroup(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteGroup(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGroupById performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
-	GetGroupById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetGroupById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroupWithBody performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateGroupWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroupWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroup performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateGroup(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroup(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupMachineIdentities performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
-	ListGroupMachineIdentities(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupMachineIdentities(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveMachineIdentityFromGroup performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
-	RemoveMachineIdentityFromGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveMachineIdentityFromGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddMachineIdentityToGroup performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
-	AddMachineIdentityToGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddMachineIdentityToGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupProjects performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
-	ListGroupProjects(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupProjects(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroupUsers performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
-	ListGroupUsers(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGroupUsers(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
-	RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RemoveUserFromGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
-	AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddUserToGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateHoneyTokenWithBody performs a POST /api/v1/honey-tokens (the `CreateHoneyToken` operationId) request,
 	// with any type of body and a specified content type.
@@ -176702,6 +177173,11 @@ type ClientInterface interface {
 
 	// OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
 	OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+	//
+	// Delete OIDC config.
+	DeleteOidcConfig(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
@@ -183416,7 +183892,7 @@ func (c *Client) CreateGroup(ctx context.Context, body CreateGroupJSONRequestBod
 }
 
 // DeleteGroup performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
-func (c *Client) DeleteGroup(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteGroup(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteGroupRequest(c.Server, id)
 	if err != nil {
 		return nil, err
@@ -183429,7 +183905,7 @@ func (c *Client) DeleteGroup(ctx context.Context, id string, reqEditors ...Reque
 }
 
 // GetGroupById performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
-func (c *Client) GetGroupById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetGroupById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGroupByIdRequest(c.Server, id)
 	if err != nil {
 		return nil, err
@@ -183443,7 +183919,7 @@ func (c *Client) GetGroupById(ctx context.Context, id string, reqEditors ...Requ
 
 // UpdateGroupWithBody performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateGroupWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroupWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
 		return nil, err
@@ -183457,7 +183933,7 @@ func (c *Client) UpdateGroupWithBody(ctx context.Context, id string, contentType
 
 // UpdateGroup performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateGroup(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroup(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
@@ -183470,7 +183946,7 @@ func (c *Client) UpdateGroup(ctx context.Context, id string, body UpdateGroupJSO
 }
 
 // ListGroupMachineIdentities performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
-func (c *Client) ListGroupMachineIdentities(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupMachineIdentities(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupMachineIdentitiesRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -183483,7 +183959,7 @@ func (c *Client) ListGroupMachineIdentities(ctx context.Context, id string, para
 }
 
 // RemoveMachineIdentityFromGroup performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
-func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveMachineIdentityFromGroupRequest(c.Server, id, machineIdentityId)
 	if err != nil {
 		return nil, err
@@ -183496,7 +183972,7 @@ func (c *Client) RemoveMachineIdentityFromGroup(ctx context.Context, id string, 
 }
 
 // AddMachineIdentityToGroup performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
-func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddMachineIdentityToGroupRequest(c.Server, id, machineIdentityId)
 	if err != nil {
 		return nil, err
@@ -183509,7 +183985,7 @@ func (c *Client) AddMachineIdentityToGroup(ctx context.Context, id string, machi
 }
 
 // ListGroupProjects performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
-func (c *Client) ListGroupProjects(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupProjects(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupProjectsRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -183522,7 +183998,7 @@ func (c *Client) ListGroupProjects(ctx context.Context, id string, params *ListG
 }
 
 // ListGroupUsers performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
-func (c *Client) ListGroupUsers(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGroupUsers(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGroupUsersRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
@@ -183535,7 +184011,7 @@ func (c *Client) ListGroupUsers(ctx context.Context, id string, params *ListGrou
 }
 
 // RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
-func (c *Client) RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RemoveUserFromGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveUserFromGroupRequest(c.Server, id, username)
 	if err != nil {
 		return nil, err
@@ -183548,7 +184024,7 @@ func (c *Client) RemoveUserFromGroup(ctx context.Context, id string, username st
 }
 
 // AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
-func (c *Client) AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AddUserToGroup(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddUserToGroupRequest(c.Server, id, username)
 	if err != nil {
 		return nil, err
@@ -190769,6 +191245,21 @@ func (c *Client) GoogleLoginCallback(ctx context.Context, params *GoogleLoginCal
 // OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
 func (c *Client) OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOidcCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+//
+// Delete OIDC config.
+func (c *Client) DeleteOidcConfig(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOidcConfigRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -205238,12 +205729,12 @@ func NewCreateGroupRequestWithBody(server string, contentType string, body io.Re
 }
 
 // NewDeleteGroupRequest constructs an http.Request for the DeleteGroup method
-func NewDeleteGroupRequest(server string, id string) (*http.Request, error) {
+func NewDeleteGroupRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205272,12 +205763,12 @@ func NewDeleteGroupRequest(server string, id string) (*http.Request, error) {
 }
 
 // NewGetGroupByIdRequest constructs an http.Request for the GetGroupById method
-func NewGetGroupByIdRequest(server string, id string) (*http.Request, error) {
+func NewGetGroupByIdRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205306,7 +205797,7 @@ func NewGetGroupByIdRequest(server string, id string) (*http.Request, error) {
 }
 
 // NewUpdateGroupRequest calls the generic UpdateGroup builder with application/json body
-func NewUpdateGroupRequest(server string, id string, body UpdateGroupJSONRequestBody) (*http.Request, error) {
+func NewUpdateGroupRequest(server string, id openapi_types.UUID, body UpdateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -205317,12 +205808,12 @@ func NewUpdateGroupRequest(server string, id string, body UpdateGroupJSONRequest
 }
 
 // NewUpdateGroupRequestWithBody constructs an http.Request for the UpdateGroup method, with any body, and a specified content type
-func NewUpdateGroupRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateGroupRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205353,12 +205844,12 @@ func NewUpdateGroupRequestWithBody(server string, id string, contentType string,
 }
 
 // NewListGroupMachineIdentitiesRequest constructs an http.Request for the ListGroupMachineIdentities method
-func NewListGroupMachineIdentitiesRequest(server string, id string, params *ListGroupMachineIdentitiesParams) (*http.Request, error) {
+func NewListGroupMachineIdentitiesRequest(server string, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205450,19 +205941,19 @@ func NewListGroupMachineIdentitiesRequest(server string, id string, params *List
 }
 
 // NewRemoveMachineIdentityFromGroupRequest constructs an http.Request for the RemoveMachineIdentityFromGroup method
-func NewRemoveMachineIdentityFromGroupRequest(server string, id string, machineIdentityId string) (*http.Request, error) {
+func NewRemoveMachineIdentityFromGroupRequest(server string, id openapi_types.UUID, machineIdentityId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205491,19 +205982,19 @@ func NewRemoveMachineIdentityFromGroupRequest(server string, id string, machineI
 }
 
 // NewAddMachineIdentityToGroupRequest constructs an http.Request for the AddMachineIdentityToGroup method
-func NewAddMachineIdentityToGroupRequest(server string, id string, machineIdentityId string) (*http.Request, error) {
+func NewAddMachineIdentityToGroupRequest(server string, id openapi_types.UUID, machineIdentityId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "machineIdentityId", machineIdentityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205532,12 +206023,12 @@ func NewAddMachineIdentityToGroupRequest(server string, id string, machineIdenti
 }
 
 // NewListGroupProjectsRequest constructs an http.Request for the ListGroupProjects method
-func NewListGroupProjectsRequest(server string, id string, params *ListGroupProjectsParams) (*http.Request, error) {
+func NewListGroupProjectsRequest(server string, id openapi_types.UUID, params *ListGroupProjectsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205653,12 +206144,12 @@ func NewListGroupProjectsRequest(server string, id string, params *ListGroupProj
 }
 
 // NewListGroupUsersRequest constructs an http.Request for the ListGroupUsers method
-func NewListGroupUsersRequest(server string, id string, params *ListGroupUsersParams) (*http.Request, error) {
+func NewListGroupUsersRequest(server string, id openapi_types.UUID, params *ListGroupUsersParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205762,12 +206253,12 @@ func NewListGroupUsersRequest(server string, id string, params *ListGroupUsersPa
 }
 
 // NewRemoveUserFromGroupRequest constructs an http.Request for the RemoveUserFromGroup method
-func NewRemoveUserFromGroupRequest(server string, id string, username string) (*http.Request, error) {
+func NewRemoveUserFromGroupRequest(server string, id openapi_types.UUID, username string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -205803,12 +206294,12 @@ func NewRemoveUserFromGroupRequest(server string, id string, username string) (*
 }
 
 // NewAddUserToGroupRequest constructs an http.Request for the AddUserToGroup method
-func NewAddUserToGroupRequest(server string, id string, username string) (*http.Request, error) {
+func NewAddUserToGroupRequest(server string, id openapi_types.UUID, username string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -222215,6 +222706,60 @@ func NewOidcCallbackRequest(server string, params *OidcCallbackParams) (*http.Re
 	return req, nil
 }
 
+// NewDeleteOidcConfigRequest constructs an http.Request for the DeleteOidcConfig method
+func NewDeleteOidcConfigRequest(server string, params *DeleteOidcConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.OrganizationId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetOidcConfigRequest constructs an http.Request for the GetOidcConfig method
 func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.Request, error) {
 	var err error
@@ -222243,12 +222788,16 @@ func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
+		if params.OrganizationId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
 			}
+
 		}
 
 		if encoded := queryValues.Encode(); encoded != "" {
@@ -232890,57 +233439,57 @@ type ClientWithResponsesInterface interface {
 	// DeleteGroupWithResponse performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteGroupWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
+	DeleteGroupWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
 
 	// GetGroupByIdWithResponse performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetGroupByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error)
+	GetGroupByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error)
 
 	// UpdateGroupWithBodyWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateGroupWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// UpdateGroupWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateGroupWithResponse(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// ListGroupMachineIdentitiesWithResponse performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupMachineIdentitiesWithResponse(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error)
+	ListGroupMachineIdentitiesWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error)
 
 	// RemoveMachineIdentityFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error)
+	RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error)
 
 	// AddMachineIdentityToGroupWithResponse performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddMachineIdentityToGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error)
+	AddMachineIdentityToGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error)
 
 	// ListGroupProjectsWithResponse performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupProjectsWithResponse(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error)
+	ListGroupProjectsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error)
 
 	// ListGroupUsersWithResponse performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListGroupUsersWithResponse(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error)
+	ListGroupUsersWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error)
 
 	// RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error)
+	RemoveUserFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error)
 
 	// AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error)
+	AddUserToGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error)
 
 	// CreateHoneyTokenWithBodyWithResponse performs a POST /api/v1/honey-tokens (the `CreateHoneyToken` operationId) request,
 	// with any type of body and a specified content type.
@@ -235975,6 +236524,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	OidcCallbackWithResponse(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*OidcCallbackResponse, error)
+
+	// DeleteOidcConfigWithResponse performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+	//
+	// Delete OIDC config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteOidcConfigWithResponse(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error)
 
 	// GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
@@ -277297,10 +277853,13 @@ type CreateAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -277368,10 +277927,13 @@ func (r CreateAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -277490,10 +278052,13 @@ type DeleteAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -277561,10 +278126,13 @@ func (r DeleteAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -277683,10 +278251,13 @@ type GetAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                             `json:"id"`
-			Provider        string                                                         `json:"provider"`
-			Status          *string                                                        `json:"status,omitempty"`
-			StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -277754,10 +278325,13 @@ func (r GetAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                             `json:"id"`
-		Provider        string                                                         `json:"provider"`
-		Status          *string                                                        `json:"status,omitempty"`
-		StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -277876,10 +278450,13 @@ type UpdateAwsExternalKmsResponse struct {
 		ExternalKms struct {
 			Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-			Id              openapi_types.UUID                                                `json:"id"`
-			Provider        string                                                            `json:"provider"`
-			Status          *string                                                           `json:"status,omitempty"`
-			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+			// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+			HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Provider            string             `json:"provider"`
+			Status              *string            `json:"status,omitempty"`
+			StatusDetails       *string            `json:"statusDetails,omitempty"`
 		} `json:"externalKms"`
 		HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 		Id                   openapi_types.UUID `json:"id"`
@@ -277947,10 +278524,13 @@ func (r UpdateAwsExternalKmsResponse) GetJSON200() *struct {
 	ExternalKms struct {
 		Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-		Id              openapi_types.UUID                                                `json:"id"`
-		Provider        string                                                            `json:"provider"`
-		Status          *string                                                           `json:"status,omitempty"`
-		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+		// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+		HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Provider            string             `json:"provider"`
+		Status              *string            `json:"status,omitempty"`
+		StatusDetails       *string            `json:"statusDetails,omitempty"`
 	} `json:"externalKms"`
 	HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 	Id                   openapi_types.UUID `json:"id"`
@@ -319960,9 +320540,14 @@ type GetProjectIdentityMembershipByIdResponse struct {
 			CreatedAt time.Time `json:"createdAt"`
 			Id        string    `json:"id"`
 			Identity  struct {
-				AuthMethods []string           `json:"authMethods"`
-				Id          openapi_types.UUID `json:"id"`
-				Metadata    *[]struct {
+				// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+				ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+				AuthMethods              []string `json:"authMethods"`
+
+				// HasDeleteProtection Whether the machine identity is protected from deletion.
+				HasDeleteProtection bool               `json:"hasDeleteProtection"`
+				Id                  openapi_types.UUID `json:"id"`
+				Metadata            *[]struct {
 					Id    string `json:"id"`
 					Key   string `json:"key"`
 					Value string `json:"value"`
@@ -320040,9 +320625,14 @@ func (r GetProjectIdentityMembershipByIdResponse) GetJSON200() *struct {
 		CreatedAt time.Time `json:"createdAt"`
 		Id        string    `json:"id"`
 		Identity  struct {
-			AuthMethods []string           `json:"authMethods"`
-			Id          openapi_types.UUID `json:"id"`
-			Metadata    *[]struct {
+			// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+			ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+			AuthMethods              []string `json:"authMethods"`
+
+			// HasDeleteProtection Whether the machine identity is protected from deletion.
+			HasDeleteProtection bool               `json:"hasDeleteProtection"`
+			Id                  openapi_types.UUID `json:"id"`
+			Metadata            *[]struct {
 				Id    string `json:"id"`
 				Key   string `json:"key"`
 				Value string `json:"value"`
@@ -320499,6 +321089,7 @@ type DeleteIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -320564,6 +321155,7 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -320680,6 +321272,7 @@ type ListIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                `json:"folderId"`
 			Id                       openapi_types.UUID                                                `json:"id"`
 			IdentityId               openapi_types.UUID                                                `json:"identityId"`
+			IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                              `json:"isTemporary"`
 			Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                            `json:"projectId"`
@@ -320745,6 +321338,7 @@ func (r ListIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                `json:"folderId"`
 		Id                       openapi_types.UUID                                                `json:"id"`
 		IdentityId               openapi_types.UUID                                                `json:"identityId"`
+		IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                              `json:"isTemporary"`
 		Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                            `json:"projectId"`
@@ -320861,6 +321455,7 @@ type UpdateIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -320926,6 +321521,7 @@ func (r UpdateIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -321042,6 +321638,7 @@ type CreateIdentityFolderAccessResponse struct {
 			FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 			Id                       openapi_types.UUID                                                  `json:"id"`
 			IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+			IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                `json:"isTemporary"`
 			Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                              `json:"projectId"`
@@ -321107,6 +321704,7 @@ func (r CreateIdentityFolderAccessResponse) GetJSON200() *struct {
 		FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 		Id                       openapi_types.UUID                                                  `json:"id"`
 		IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+		IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                                `json:"isTemporary"`
 		Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                              `json:"projectId"`
@@ -321217,13 +321815,14 @@ type ListFolderAccessIdentitiesResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 		Identities []struct {
 			FolderRBACAccess *struct {
 				CreatedAt                time.Time                                                                         `json:"createdAt"`
 				Environment              string                                                                            `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 				Id                       openapi_types.UUID                                                                `json:"id"`
+				IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                              `json:"isTemporary"`
 				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                            `json:"projectId"`
@@ -321234,7 +321833,23 @@ type ListFolderAccessIdentitiesResponse struct {
 				TemporaryRange           *string                                                                           `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
-			IdentityId openapi_types.UUID `json:"identityId"`
+			IdentityId                openapi_types.UUID `json:"identityId"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                  `json:"createdAt"`
+				Environment              string                                                                                     `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+				Id                       openapi_types.UUID                                                                         `json:"id"`
+				IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                       `json:"isTemporary"`
+				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                     `json:"projectId"`
+				SecretPath               string                                                                                     `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
 				IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -321247,13 +321862,14 @@ type ListFolderAccessIdentitiesResponse struct {
 			Name string `json:"name"`
 		} `json:"identities"`
 
-		// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+		// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 		IdentitiesWithoutAccess []struct {
 			FolderRBACAccess *struct {
 				CreatedAt                time.Time                                                                                      `json:"createdAt"`
 				Environment              string                                                                                         `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 				Id                       openapi_types.UUID                                                                             `json:"id"`
+				IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                                           `json:"isTemporary"`
 				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                                         `json:"projectId"`
@@ -321264,7 +321880,23 @@ type ListFolderAccessIdentitiesResponse struct {
 				TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
-			IdentityId openapi_types.UUID `json:"identityId"`
+			IdentityId                openapi_types.UUID `json:"identityId"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                               `json:"createdAt"`
+				Environment              string                                                                                                  `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+				Id                       openapi_types.UUID                                                                                      `json:"id"`
+				IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                                    `json:"isTemporary"`
+				Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                                  `json:"projectId"`
+				SecretPath               string                                                                                                  `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
 				IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -321328,13 +321960,14 @@ type ListFolderAccessIdentitiesResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
-	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 	Identities []struct {
 		FolderRBACAccess *struct {
 			CreatedAt                time.Time                                                                         `json:"createdAt"`
 			Environment              string                                                                            `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 			Id                       openapi_types.UUID                                                                `json:"id"`
+			IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                              `json:"isTemporary"`
 			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                            `json:"projectId"`
@@ -321345,7 +321978,23 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                           `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
-		IdentityId openapi_types.UUID `json:"identityId"`
+		IdentityId                openapi_types.UUID `json:"identityId"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                  `json:"createdAt"`
+			Environment              string                                                                                     `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+			Id                       openapi_types.UUID                                                                         `json:"id"`
+			IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                       `json:"isTemporary"`
+			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                     `json:"projectId"`
+			SecretPath               string                                                                                     `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
 			IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -321358,13 +322007,14 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 		Name string `json:"name"`
 	} `json:"identities"`
 
-	// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+	// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 	IdentitiesWithoutAccess []struct {
 		FolderRBACAccess *struct {
 			CreatedAt                time.Time                                                                                      `json:"createdAt"`
 			Environment              string                                                                                         `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 			Id                       openapi_types.UUID                                                                             `json:"id"`
+			IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                                           `json:"isTemporary"`
 			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                                         `json:"projectId"`
@@ -321375,7 +322025,23 @@ func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
-		IdentityId openapi_types.UUID `json:"identityId"`
+		IdentityId                openapi_types.UUID `json:"identityId"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                               `json:"createdAt"`
+			Environment              string                                                                                                  `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+			Id                       openapi_types.UUID                                                                                      `json:"id"`
+			IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                                    `json:"isTemporary"`
+			Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                                  `json:"projectId"`
+			SecretPath               string                                                                                                  `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
 			IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -323929,7 +324595,7 @@ type ListFolderAccessUsersResponse struct {
 		// TotalCount The number of users of the project that match the search, with and without access together.
 		TotalCount float32 `json:"totalCount"`
 
-		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 		Users []struct {
 			Email            *string `json:"email"`
 			FirstName        *string `json:"firstName"`
@@ -323938,6 +324604,7 @@ type ListFolderAccessUsersResponse struct {
 				Environment              string                                                                  `json:"environment"`
 				FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 				Id                       openapi_types.UUID                                                      `json:"id"`
+				IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                    `json:"isTemporary"`
 				Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                  `json:"projectId"`
@@ -323948,6 +324615,22 @@ type ListFolderAccessUsersResponse struct {
 				TemporaryRange           *string                                                                 `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                               `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                        `json:"createdAt"`
+				Environment              string                                                                           `json:"environment"`
+				FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+				Id                       openapi_types.UUID                                                               `json:"id"`
+				IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                             `json:"isTemporary"`
+				Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                           `json:"projectId"`
+				SecretPath               string                                                                           `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                          `json:"temporaryMode"`
+				TemporaryRange           *string                                                                          `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			LastName   *string `json:"lastName"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
@@ -323962,7 +324645,7 @@ type ListFolderAccessUsersResponse struct {
 			Username string             `json:"username"`
 		} `json:"users"`
 
-		// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+		// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 		UsersWithoutAccess []struct {
 			Email            *string `json:"email"`
 			FirstName        *string `json:"firstName"`
@@ -323971,6 +324654,7 @@ type ListFolderAccessUsersResponse struct {
 				Environment              string                                                                               `json:"environment"`
 				FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 				Id                       openapi_types.UUID                                                                   `json:"id"`
+				IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                                 `json:"isTemporary"`
 				Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 				ProjectId                string                                                                               `json:"projectId"`
@@ -323981,6 +324665,22 @@ type ListFolderAccessUsersResponse struct {
 				TemporaryRange           *string                                                                              `json:"temporaryRange"`
 				UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 			} `json:"folderRBACAccess"`
+			InheritedFolderRBACAccess *struct {
+				CreatedAt                time.Time                                                                                     `json:"createdAt"`
+				Environment              string                                                                                        `json:"environment"`
+				FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+				Id                       openapi_types.UUID                                                                            `json:"id"`
+				IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+				IsTemporary              bool                                                                                          `json:"isTemporary"`
+				Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+				ProjectId                string                                                                                        `json:"projectId"`
+				SecretPath               string                                                                                        `json:"secretPath"`
+				TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+				TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+				TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+				TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+				UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+			} `json:"inheritedFolderRBACAccess"`
 			LastName   *string `json:"lastName"`
 			Membership struct {
 				Id             *openapi_types.UUID `json:"id"`
@@ -324046,7 +324746,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 	// TotalCount The number of users of the project that match the search, with and without access together.
 	TotalCount float32 `json:"totalCount"`
 
-	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 	Users []struct {
 		Email            *string `json:"email"`
 		FirstName        *string `json:"firstName"`
@@ -324055,6 +324755,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			Environment              string                                                                  `json:"environment"`
 			FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 			Id                       openapi_types.UUID                                                      `json:"id"`
+			IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                    `json:"isTemporary"`
 			Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                  `json:"projectId"`
@@ -324065,6 +324766,22 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                 `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                               `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                        `json:"createdAt"`
+			Environment              string                                                                           `json:"environment"`
+			FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+			Id                       openapi_types.UUID                                                               `json:"id"`
+			IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                             `json:"isTemporary"`
+			Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                           `json:"projectId"`
+			SecretPath               string                                                                           `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                          `json:"temporaryMode"`
+			TemporaryRange           *string                                                                          `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		LastName   *string `json:"lastName"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
@@ -324079,7 +324796,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 		Username string             `json:"username"`
 	} `json:"users"`
 
-	// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+	// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 	UsersWithoutAccess []struct {
 		Email            *string `json:"email"`
 		FirstName        *string `json:"firstName"`
@@ -324088,6 +324805,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			Environment              string                                                                               `json:"environment"`
 			FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 			Id                       openapi_types.UUID                                                                   `json:"id"`
+			IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                                                 `json:"isTemporary"`
 			Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 			ProjectId                string                                                                               `json:"projectId"`
@@ -324098,6 +324816,22 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 			TemporaryRange           *string                                                                              `json:"temporaryRange"`
 			UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 		} `json:"folderRBACAccess"`
+		InheritedFolderRBACAccess *struct {
+			CreatedAt                time.Time                                                                                     `json:"createdAt"`
+			Environment              string                                                                                        `json:"environment"`
+			FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+			Id                       openapi_types.UUID                                                                            `json:"id"`
+			IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+			IsTemporary              bool                                                                                          `json:"isTemporary"`
+			Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+			ProjectId                string                                                                                        `json:"projectId"`
+			SecretPath               string                                                                                        `json:"secretPath"`
+			TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+			TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+			TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+			TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+			UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+		} `json:"inheritedFolderRBACAccess"`
 		LastName   *string `json:"lastName"`
 		Membership struct {
 			Id             *openapi_types.UUID `json:"id"`
@@ -326658,6 +327392,7 @@ type DeleteUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -326723,6 +327458,7 @@ func (r DeleteUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -326839,6 +327575,7 @@ type ListUserFolderAccessResponse struct {
 			Environment              string                                                        `json:"environment"`
 			FolderId                 openapi_types.UUID                                            `json:"folderId"`
 			Id                       openapi_types.UUID                                            `json:"id"`
+			IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                          `json:"isTemporary"`
 			Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                        `json:"projectId"`
@@ -326904,6 +327641,7 @@ func (r ListUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                        `json:"environment"`
 		FolderId                 openapi_types.UUID                                            `json:"folderId"`
 		Id                       openapi_types.UUID                                            `json:"id"`
+		IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                          `json:"isTemporary"`
 		Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                        `json:"projectId"`
@@ -327020,6 +327758,7 @@ type UpdateUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -327085,6 +327824,7 @@ func (r UpdateUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -327201,6 +327941,7 @@ type CreateUserFolderAccessResponse struct {
 			Environment              string                                                          `json:"environment"`
 			FolderId                 openapi_types.UUID                                              `json:"folderId"`
 			Id                       openapi_types.UUID                                              `json:"id"`
+			IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 			IsTemporary              bool                                                            `json:"isTemporary"`
 			Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 			ProjectId                string                                                          `json:"projectId"`
@@ -327266,6 +328007,7 @@ func (r CreateUserFolderAccessResponse) GetJSON200() *struct {
 		Environment              string                                                          `json:"environment"`
 		FolderId                 openapi_types.UUID                                              `json:"folderId"`
 		Id                       openapi_types.UUID                                              `json:"id"`
+		IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 		IsTemporary              bool                                                            `json:"isTemporary"`
 		Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 		ProjectId                string                                                          `json:"projectId"`
@@ -347013,6 +347755,185 @@ func (r OidcCallbackResponse) ContentType() string {
 	return ""
 }
 
+type DeleteOidcConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+		AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+		ConfigurationType      string             `json:"configurationType"`
+		DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+		Id                     openapi_types.UUID `json:"id"`
+		IsActive               bool               `json:"isActive"`
+		Issuer                 *string            `json:"issuer,omitempty"`
+		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON200() *struct {
+	AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+	AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+	ConfigurationType      string             `json:"configurationType"`
+	DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+	Id                     openapi_types.UUID `json:"id"`
+	IsActive               bool               `json:"isActive"`
+	Issuer                 *string            `json:"issuer,omitempty"`
+	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+	OrgId                  openapi_types.UUID `json:"orgId"`
+	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOidcConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOidcConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOidcConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOidcConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOidcConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -355057,7 +355978,13 @@ type ListGatewaysResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *[]struct {
-		Capabilities            interface{}        `json:"capabilities,omitempty"`
+		Capabilities interface{} `json:"capabilities,omitempty"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 		ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 		CreatedAt               time.Time          `json:"createdAt"`
 		DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -355122,7 +356049,13 @@ type ListGatewaysResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListGatewaysResponse) GetJSON200() *[]struct {
-	Capabilities            interface{}        `json:"capabilities,omitempty"`
+	Capabilities interface{} `json:"capabilities,omitempty"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 	ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 	CreatedAt               time.Time          `json:"createdAt"`
 	DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -355723,17 +356656,23 @@ type DeleteGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		Capabilities    interface{}         `json:"capabilities,omitempty"`
-		CreatedAt       time.Time           `json:"createdAt"`
-		DirectAddress   *string             `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID  `json:"id"`
-		IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-		Name            string              `json:"name"`
-		RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-		UpdatedAt       time.Time           `json:"updatedAt"`
+		Capabilities interface{} `json:"capabilities,omitempty"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -355783,17 +356722,23 @@ type DeleteGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteGatewayResponse) GetJSON200() *struct {
-	Capabilities    interface{}         `json:"capabilities,omitempty"`
-	CreatedAt       time.Time           `json:"createdAt"`
-	DirectAddress   *string             `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID  `json:"id"`
-	IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-	Name            string              `json:"name"`
-	RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-	UpdatedAt       time.Time           `json:"updatedAt"`
+	Capabilities interface{} `json:"capabilities,omitempty"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -374056,18 +375001,24 @@ type CreateGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                        `json:"canRevoke"`
-		CreatedAt       time.Time                                   `json:"createdAt"`
-		DirectAddress   *string                                     `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                          `json:"id"`
-		IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-		Name            string                                      `json:"name"`
-		RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                   `json:"updatedAt"`
+		AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                        `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -374117,18 +375068,24 @@ type CreateGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateGatewayResponse) GetJSON200() *struct {
-	AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                        `json:"canRevoke"`
-	CreatedAt       time.Time                                   `json:"createdAt"`
-	DirectAddress   *string                                     `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                          `json:"id"`
-	IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-	Name            string                                      `json:"name"`
-	RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                   `json:"updatedAt"`
+	AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                        `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -374559,18 +375516,24 @@ type GetGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                     `json:"canRevoke"`
-		CreatedAt       time.Time                                `json:"createdAt"`
-		DirectAddress   *string                                  `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                       `json:"id"`
-		IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-		Name            string                                   `json:"name"`
-		RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                `json:"updatedAt"`
+		AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                     `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -374620,18 +375583,24 @@ type GetGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetGatewayResponse) GetJSON200() *struct {
-	AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                     `json:"canRevoke"`
-	CreatedAt       time.Time                                `json:"createdAt"`
-	DirectAddress   *string                                  `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                       `json:"id"`
-	IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-	Name            string                                   `json:"name"`
-	RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                `json:"updatedAt"`
+	AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                     `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -374732,18 +375701,24 @@ type UpdateGatewayResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-		CanRevoke       bool                                        `json:"canRevoke"`
-		CreatedAt       time.Time                                   `json:"createdAt"`
-		DirectAddress   *string                                     `json:"directAddress,omitempty"`
-		DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-		Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-		HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-		Id              openapi_types.UUID                          `json:"id"`
-		IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-		Name            string                                      `json:"name"`
-		RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-		UpdatedAt       time.Time                                   `json:"updatedAt"`
+		AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+		CanRevoke  bool                                        `json:"canRevoke"`
+
+		// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+		CliVersion *string `json:"cliVersion,omitempty"`
+
+		// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+		CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+		CreatedAt            time.Time           `json:"createdAt"`
+		DirectAddress        *string             `json:"directAddress,omitempty"`
+		DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+		Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+		HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+		Name                 string              `json:"name"`
+		RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+		UpdatedAt            time.Time           `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -374793,18 +375768,24 @@ type UpdateGatewayResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateGatewayResponse) GetJSON200() *struct {
-	AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-	CanRevoke       bool                                        `json:"canRevoke"`
-	CreatedAt       time.Time                                   `json:"createdAt"`
-	DirectAddress   *string                                     `json:"directAddress,omitempty"`
-	DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-	Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-	HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-	Id              openapi_types.UUID                          `json:"id"`
-	IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-	Name            string                                      `json:"name"`
-	RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-	UpdatedAt       time.Time                                   `json:"updatedAt"`
+	AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+	CanRevoke  bool                                        `json:"canRevoke"`
+
+	// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+	CliVersion *string `json:"cliVersion,omitempty"`
+
+	// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+	CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	DirectAddress        *string             `json:"directAddress,omitempty"`
+	DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+	Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+	HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+	Id                   openapi_types.UUID  `json:"id"`
+	IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+	Name                 string              `json:"name"`
+	RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -382791,7 +383772,7 @@ func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, body 
 // DeleteGroupWithResponse performs a DELETE /api/v1/groups/{id} (the `DeleteGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
+func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
 	rsp, err := c.DeleteGroup(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382802,7 +383783,7 @@ func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, id st
 // GetGroupByIdWithResponse performs a GET /api/v1/groups/{id} (the `GetGroupById` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error) {
+func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGroupByIdResponse, error) {
 	rsp, err := c.GetGroupById(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382814,7 +383795,7 @@ func (c *ClientWithResponses) GetGroupByIdWithResponse(ctx context.Context, id s
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroupWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382824,7 +383805,7 @@ func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Contex
 
 // UpdateGroupWithResponse performs a PATCH /api/v1/groups/{id} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id string, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroup(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382835,7 +383816,7 @@ func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, id st
 // ListGroupMachineIdentitiesWithResponse performs a GET /api/v1/groups/{id}/machine-identities (the `ListGroupMachineIdentities` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context.Context, id string, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error) {
+func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListGroupMachineIdentitiesResponse, error) {
 	rsp, err := c.ListGroupMachineIdentities(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382846,7 +383827,7 @@ func (c *ClientWithResponses) ListGroupMachineIdentitiesWithResponse(ctx context
 // RemoveMachineIdentityFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `RemoveMachineIdentityFromGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error) {
+func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveMachineIdentityFromGroupResponse, error) {
 	rsp, err := c.RemoveMachineIdentityFromGroup(ctx, id, machineIdentityId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382857,7 +383838,7 @@ func (c *ClientWithResponses) RemoveMachineIdentityFromGroupWithResponse(ctx con
 // AddMachineIdentityToGroupWithResponse performs a POST /api/v1/groups/{id}/machine-identities/{machineIdentityId} (the `AddMachineIdentityToGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.Context, id string, machineIdentityId string, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error) {
+func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.Context, id openapi_types.UUID, machineIdentityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddMachineIdentityToGroupResponse, error) {
 	rsp, err := c.AddMachineIdentityToGroup(ctx, id, machineIdentityId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382868,7 +383849,7 @@ func (c *ClientWithResponses) AddMachineIdentityToGroupWithResponse(ctx context.
 // ListGroupProjectsWithResponse performs a GET /api/v1/groups/{id}/projects (the `ListGroupProjects` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context, id string, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error) {
+func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupProjectsParams, reqEditors ...RequestEditorFn) (*ListGroupProjectsResponse, error) {
 	rsp, err := c.ListGroupProjects(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382879,7 +383860,7 @@ func (c *ClientWithResponses) ListGroupProjectsWithResponse(ctx context.Context,
 // ListGroupUsersWithResponse performs a GET /api/v1/groups/{id}/users (the `ListGroupUsers` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id string, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error) {
+func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id openapi_types.UUID, params *ListGroupUsersParams, reqEditors ...RequestEditorFn) (*ListGroupUsersResponse, error) {
 	rsp, err := c.ListGroupUsers(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382890,7 +383871,7 @@ func (c *ClientWithResponses) ListGroupUsersWithResponse(ctx context.Context, id
 // RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error) {
+func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error) {
 	rsp, err := c.RemoveUserFromGroup(ctx, id, username, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -382901,7 +383882,7 @@ func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Contex
 // AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error) {
+func (c *ClientWithResponses) AddUserToGroupWithResponse(ctx context.Context, id openapi_types.UUID, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error) {
 	rsp, err := c.AddUserToGroup(ctx, id, username, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -388879,6 +389860,19 @@ func (c *ClientWithResponses) OidcCallbackWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseOidcCallbackResponse(rsp)
+}
+
+// DeleteOidcConfigWithResponse performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+//
+// Delete OIDC config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteOidcConfigWithResponse(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error) {
+	rsp, err := c.DeleteOidcConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOidcConfigResponse(rsp)
 }
 
 // GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
@@ -417583,10 +418577,13 @@ func ParseCreateAwsExternalKmsResponse(rsp *http.Response) (*CreateAwsExternalKm
 			ExternalKms struct {
 				Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -417706,10 +418703,13 @@ func ParseDeleteAwsExternalKmsResponse(rsp *http.Response) (*DeleteAwsExternalKm
 			ExternalKms struct {
 				Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -417829,10 +418829,13 @@ func ParseGetAwsExternalKmsResponse(rsp *http.Response) (*GetAwsExternalKmsRespo
 			ExternalKms struct {
 				Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                             `json:"id"`
-				Provider        string                                                         `json:"provider"`
-				Status          *string                                                        `json:"status,omitempty"`
-				StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -417952,10 +418955,13 @@ func ParseUpdateAwsExternalKmsResponse(rsp *http.Response) (*UpdateAwsExternalKm
 			ExternalKms struct {
 				Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
 				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
-				Id              openapi_types.UUID                                                `json:"id"`
-				Provider        string                                                            `json:"provider"`
-				Status          *string                                                           `json:"status,omitempty"`
-				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+
+				// HasLegacyExternalId Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed.
+				HasLegacyExternalId *bool              `json:"hasLegacyExternalId,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Provider            string             `json:"provider"`
+				Status              *string            `json:"status,omitempty"`
+				StatusDetails       *string            `json:"statusDetails,omitempty"`
 			} `json:"externalKms"`
 			HasDeleteProtection  *bool              `json:"hasDeleteProtection,omitempty"`
 			Id                   openapi_types.UUID `json:"id"`
@@ -445325,9 +446331,14 @@ func ParseGetProjectIdentityMembershipByIdResponse(rsp *http.Response) (*GetProj
 				CreatedAt time.Time `json:"createdAt"`
 				Id        string    `json:"id"`
 				Identity  struct {
-					AuthMethods []string           `json:"authMethods"`
-					Id          openapi_types.UUID `json:"id"`
-					Metadata    *[]struct {
+					// ActiveLockoutAuthMethods The auth methods currently locked out for the machine identity after too many failed logins.
+					ActiveLockoutAuthMethods []string `json:"activeLockoutAuthMethods"`
+					AuthMethods              []string `json:"authMethods"`
+
+					// HasDeleteProtection Whether the machine identity is protected from deletion.
+					HasDeleteProtection bool               `json:"hasDeleteProtection"`
+					Id                  openapi_types.UUID `json:"id"`
+					Metadata            *[]struct {
 						Id    string `json:"id"`
 						Key   string `json:"key"`
 						Value string `json:"value"`
@@ -445675,6 +446686,7 @@ func ParseDeleteIdentityFolderAccessResponse(rsp *http.Response) (*DeleteIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -445792,6 +446804,7 @@ func ParseListIdentityFolderAccessResponse(rsp *http.Response) (*ListIdentityFol
 				FolderId                 openapi_types.UUID                                                `json:"folderId"`
 				Id                       openapi_types.UUID                                                `json:"id"`
 				IdentityId               openapi_types.UUID                                                `json:"identityId"`
+				IsPermissionRecursive    bool                                                              `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                              `json:"isTemporary"`
 				Permission               ListIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                            `json:"projectId"`
@@ -445909,6 +446922,7 @@ func ParseUpdateIdentityFolderAccessResponse(rsp *http.Response) (*UpdateIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               UpdateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -446026,6 +447040,7 @@ func ParseCreateIdentityFolderAccessResponse(rsp *http.Response) (*CreateIdentit
 				FolderId                 openapi_types.UUID                                                  `json:"folderId"`
 				Id                       openapi_types.UUID                                                  `json:"id"`
 				IdentityId               openapi_types.UUID                                                  `json:"identityId"`
+				IsPermissionRecursive    bool                                                                `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                                `json:"isTemporary"`
 				Permission               CreateIdentityFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                              `json:"projectId"`
@@ -446137,13 +447152,14 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 			Identities []struct {
 				FolderRBACAccess *struct {
 					CreatedAt                time.Time                                                                         `json:"createdAt"`
 					Environment              string                                                                            `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                `json:"folderId"`
 					Id                       openapi_types.UUID                                                                `json:"id"`
+					IsPermissionRecursive    bool                                                                              `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                              `json:"isTemporary"`
 					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                            `json:"projectId"`
@@ -446154,7 +447170,23 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 					TemporaryRange           *string                                                                           `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                         `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
-				IdentityId openapi_types.UUID `json:"identityId"`
+				IdentityId                openapi_types.UUID `json:"identityId"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                  `json:"createdAt"`
+					Environment              string                                                                                     `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                         `json:"folderId"`
+					Id                       openapi_types.UUID                                                                         `json:"id"`
+					IsPermissionRecursive    bool                                                                                       `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                       `json:"isTemporary"`
+					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                     `json:"projectId"`
+					SecretPath               string                                                                                     `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                 `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                 `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                    `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                    `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                  `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
 					IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -446167,13 +447199,14 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 				Name string `json:"name"`
 			} `json:"identities"`
 
-			// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+			// IdentitiesWithoutAccess The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 			IdentitiesWithoutAccess []struct {
 				FolderRBACAccess *struct {
 					CreatedAt                time.Time                                                                                      `json:"createdAt"`
 					Environment              string                                                                                         `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                             `json:"folderId"`
 					Id                       openapi_types.UUID                                                                             `json:"id"`
+					IsPermissionRecursive    bool                                                                                           `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                                           `json:"isTemporary"`
 					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                                         `json:"projectId"`
@@ -446184,7 +447217,23 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 					TemporaryRange           *string                                                                                        `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                                      `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
-				IdentityId openapi_types.UUID `json:"identityId"`
+				IdentityId                openapi_types.UUID `json:"identityId"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                               `json:"createdAt"`
+					Environment              string                                                                                                  `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                                      `json:"folderId"`
+					Id                       openapi_types.UUID                                                                                      `json:"id"`
+					IsPermissionRecursive    bool                                                                                                    `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                                    `json:"isTemporary"`
+					Permission               ListFolderAccessIdentities200JSONResponseBodyIdentitiesWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                                  `json:"projectId"`
+					SecretPath               string                                                                                                  `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                              `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                              `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                                 `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                                 `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                               `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
 					IsProjectAdmin bool                `json:"isProjectAdmin"`
@@ -447892,7 +448941,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 			// TotalCount The number of users of the project that match the search, with and without access together.
 			TotalCount float32 `json:"totalCount"`
 
-			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.
+			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
 			Users []struct {
 				Email            *string `json:"email"`
 				FirstName        *string `json:"firstName"`
@@ -447901,6 +448950,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					Environment              string                                                                  `json:"environment"`
 					FolderId                 openapi_types.UUID                                                      `json:"folderId"`
 					Id                       openapi_types.UUID                                                      `json:"id"`
+					IsPermissionRecursive    bool                                                                    `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                    `json:"isTemporary"`
 					Permission               ListFolderAccessUsers200JSONResponseBodyUsersFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                  `json:"projectId"`
@@ -447911,6 +448961,22 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					TemporaryRange           *string                                                                 `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                               `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                        `json:"createdAt"`
+					Environment              string                                                                           `json:"environment"`
+					FolderId                 openapi_types.UUID                                                               `json:"folderId"`
+					Id                       openapi_types.UUID                                                               `json:"id"`
+					IsPermissionRecursive    bool                                                                             `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                             `json:"isTemporary"`
+					Permission               ListFolderAccessUsers200JSONResponseBodyUsersInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                           `json:"projectId"`
+					SecretPath               string                                                                           `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                       `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                       `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                          `json:"temporaryMode"`
+					TemporaryRange           *string                                                                          `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                        `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				LastName   *string `json:"lastName"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
@@ -447925,7 +448991,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 				Username string             `json:"username"`
 			} `json:"users"`
 
-			// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.
+			// UsersWithoutAccess The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.
 			UsersWithoutAccess []struct {
 				Email            *string `json:"email"`
 				FirstName        *string `json:"firstName"`
@@ -447934,6 +449000,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					Environment              string                                                                               `json:"environment"`
 					FolderId                 openapi_types.UUID                                                                   `json:"folderId"`
 					Id                       openapi_types.UUID                                                                   `json:"id"`
+					IsPermissionRecursive    bool                                                                                 `json:"isPermissionRecursive"`
 					IsTemporary              bool                                                                                 `json:"isTemporary"`
 					Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessFolderRBACAccessPermission `json:"permission"`
 					ProjectId                string                                                                               `json:"projectId"`
@@ -447944,6 +449011,22 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 					TemporaryRange           *string                                                                              `json:"temporaryRange"`
 					UpdatedAt                time.Time                                                                            `json:"updatedAt"`
 				} `json:"folderRBACAccess"`
+				InheritedFolderRBACAccess *struct {
+					CreatedAt                time.Time                                                                                     `json:"createdAt"`
+					Environment              string                                                                                        `json:"environment"`
+					FolderId                 openapi_types.UUID                                                                            `json:"folderId"`
+					Id                       openapi_types.UUID                                                                            `json:"id"`
+					IsPermissionRecursive    bool                                                                                          `json:"isPermissionRecursive"`
+					IsTemporary              bool                                                                                          `json:"isTemporary"`
+					Permission               ListFolderAccessUsers200JSONResponseBodyUsersWithoutAccessInheritedFolderRBACAccessPermission `json:"permission"`
+					ProjectId                string                                                                                        `json:"projectId"`
+					SecretPath               string                                                                                        `json:"secretPath"`
+					TemporaryAccessEndTime   *time.Time                                                                                    `json:"temporaryAccessEndTime"`
+					TemporaryAccessStartTime *time.Time                                                                                    `json:"temporaryAccessStartTime"`
+					TemporaryMode            *string                                                                                       `json:"temporaryMode"`
+					TemporaryRange           *string                                                                                       `json:"temporaryRange"`
+					UpdatedAt                time.Time                                                                                     `json:"updatedAt"`
+				} `json:"inheritedFolderRBACAccess"`
 				LastName   *string `json:"lastName"`
 				Membership struct {
 					Id             *openapi_types.UUID `json:"id"`
@@ -449655,6 +450738,7 @@ func ParseDeleteUserFolderAccessResponse(rsp *http.Response) (*DeleteUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               DeleteUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -449772,6 +450856,7 @@ func ParseListUserFolderAccessResponse(rsp *http.Response) (*ListUserFolderAcces
 				Environment              string                                                        `json:"environment"`
 				FolderId                 openapi_types.UUID                                            `json:"folderId"`
 				Id                       openapi_types.UUID                                            `json:"id"`
+				IsPermissionRecursive    bool                                                          `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                          `json:"isTemporary"`
 				Permission               ListUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                        `json:"projectId"`
@@ -449889,6 +450974,7 @@ func ParseUpdateUserFolderAccessResponse(rsp *http.Response) (*UpdateUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               UpdateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -450006,6 +451092,7 @@ func ParseCreateUserFolderAccessResponse(rsp *http.Response) (*CreateUserFolderA
 				Environment              string                                                          `json:"environment"`
 				FolderId                 openapi_types.UUID                                              `json:"folderId"`
 				Id                       openapi_types.UUID                                              `json:"id"`
+				IsPermissionRecursive    bool                                                            `json:"isPermissionRecursive"`
 				IsTemporary              bool                                                            `json:"isTemporary"`
 				Permission               CreateUserFolderAccess200JSONResponseBodyFolderAccessPermission `json:"permission"`
 				ProjectId                string                                                          `json:"projectId"`
@@ -462237,6 +463324,122 @@ func ParseOidcCallbackResponse(rsp *http.Response) (*OidcCallbackResponse, error
 	return response, nil
 }
 
+// ParseDeleteOidcConfigResponse parses an HTTP response from a DeleteOidcConfigWithResponse call
+func ParseDeleteOidcConfigResponse(rsp *http.Response) (*DeleteOidcConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOidcConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+			AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+			ConfigurationType      string             `json:"configurationType"`
+			DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+			Id                     openapi_types.UUID `json:"id"`
+			IsActive               bool               `json:"isActive"`
+			Issuer                 *string            `json:"issuer,omitempty"`
+			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetOidcConfigResponse parses an HTTP response from a GetOidcConfigWithResponse call
 func ParseGetOidcConfigResponse(rsp *http.Response) (*GetOidcConfigResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -467454,7 +468657,13 @@ func ParseListGatewaysResponse(rsp *http.Response) (*ListGatewaysResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []struct {
-			Capabilities            interface{}        `json:"capabilities,omitempty"`
+			Capabilities interface{} `json:"capabilities,omitempty"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt    *time.Time         `json:"cliVersionReportedAt,omitempty"`
 			ConnectedResourcesCount float32            `json:"connectedResourcesCount"`
 			CreatedAt               time.Time          `json:"createdAt"`
 			DirectAddress           *string            `json:"directAddress,omitempty"`
@@ -467893,17 +469102,23 @@ func ParseDeleteGatewayResponse(rsp *http.Response) (*DeleteGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			Capabilities    interface{}         `json:"capabilities,omitempty"`
-			CreatedAt       time.Time           `json:"createdAt"`
-			DirectAddress   *string             `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time          `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time          `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32            `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID  `json:"id"`
-			IdentityId      *openapi_types.UUID `json:"identityId,omitempty"`
-			Name            string              `json:"name"`
-			RelayId         *openapi_types.UUID `json:"relayId,omitempty"`
-			UpdatedAt       time.Time           `json:"updatedAt"`
+			Capabilities interface{} `json:"capabilities,omitempty"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -479522,18 +480737,24 @@ func ParseCreateGatewayResponse(rsp *http.Response) (*CreateGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                        `json:"canRevoke"`
-			CreatedAt       time.Time                                   `json:"createdAt"`
-			DirectAddress   *string                                     `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                          `json:"id"`
-			IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-			Name            string                                      `json:"name"`
-			RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                   `json:"updatedAt"`
+			AuthMethod CreateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                        `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -479853,18 +481074,24 @@ func ParseGetGatewayResponse(rsp *http.Response) (*GetGatewayResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                     `json:"canRevoke"`
-			CreatedAt       time.Time                                `json:"createdAt"`
-			DirectAddress   *string                                  `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                               `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                               `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                 `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                       `json:"id"`
-			IdentityId      *openapi_types.UUID                      `json:"identityId,omitempty"`
-			Name            string                                   `json:"name"`
-			RelayId         *openapi_types.UUID                      `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                `json:"updatedAt"`
+			AuthMethod GetGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                     `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -479966,18 +481193,24 @@ func ParseUpdateGatewayResponse(rsp *http.Response) (*UpdateGatewayResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthMethod      UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
-			CanRevoke       bool                                        `json:"canRevoke"`
-			CreatedAt       time.Time                                   `json:"createdAt"`
-			DirectAddress   *string                                     `json:"directAddress,omitempty"`
-			DirectHeartbeat *time.Time                                  `json:"directHeartbeat,omitempty"`
-			Heartbeat       *time.Time                                  `json:"heartbeat,omitempty"`
-			HeartbeatTTL    *float32                                    `json:"heartbeatTTL,omitempty"`
-			Id              openapi_types.UUID                          `json:"id"`
-			IdentityId      *openapi_types.UUID                         `json:"identityId,omitempty"`
-			Name            string                                      `json:"name"`
-			RelayId         *openapi_types.UUID                         `json:"relayId,omitempty"`
-			UpdatedAt       time.Time                                   `json:"updatedAt"`
+			AuthMethod UpdateGateway200JSONResponseBody_AuthMethod `json:"authMethod"`
+			CanRevoke  bool                                        `json:"canRevoke"`
+
+			// CliVersion Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.
+			CliVersion *string `json:"cliVersion,omitempty"`
+
+			// CliVersionReportedAt When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified.
+			CliVersionReportedAt *time.Time          `json:"cliVersionReportedAt,omitempty"`
+			CreatedAt            time.Time           `json:"createdAt"`
+			DirectAddress        *string             `json:"directAddress,omitempty"`
+			DirectHeartbeat      *time.Time          `json:"directHeartbeat,omitempty"`
+			Heartbeat            *time.Time          `json:"heartbeat,omitempty"`
+			HeartbeatTTL         *float32            `json:"heartbeatTTL,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			IdentityId           *openapi_types.UUID `json:"identityId,omitempty"`
+			Name                 string              `json:"name"`
+			RelayId              *openapi_types.UUID `json:"relayId,omitempty"`
+			UpdatedAt            time.Time           `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

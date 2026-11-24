@@ -737,6 +737,9 @@ export enum EventType {
 
   UPDATE_ORG = "update-org",
   UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
+  CREATE_OIDC_CONFIG = "create-oidc-config",
+  UPDATE_OIDC_CONFIG = "update-oidc-config",
+  DELETE_OIDC_CONFIG = "delete-oidc-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -6095,6 +6098,48 @@ interface SecretScanningConfigReadEvent {
   metadata?: Record<string, never>; // not needed, based off projectId
 }
 
+interface CreateOidcConfigEvent {
+  type: EventType.CREATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    configurationType: string;
+    discoveryURL?: string | null;
+    issuer?: string | null;
+    allowedEmailDomains?: string | null;
+    isActive: boolean;
+    manageGroupMemberships: boolean;
+    jwtSignatureAlgorithm: string;
+  };
+}
+
+interface UpdateOidcConfigEvent {
+  type: EventType.UPDATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    configurationType?: string;
+    discoveryURL?: string;
+    issuer?: string;
+    authorizationEndpoint?: string;
+    jwksUri?: string;
+    tokenEndpoint?: string;
+    userinfoEndpoint?: string;
+    allowedEmailDomains?: string;
+    isActive?: boolean;
+    manageGroupMemberships?: boolean;
+    jwtSignatureAlgorithm?: string;
+    mfaClaimName?: string;
+    mfaAmrValues?: string[] | null;
+    clientCredentialsUpdated: boolean;
+  };
+}
+
+interface DeleteOidcConfigEvent {
+  type: EventType.DELETE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+  };
+}
+
 interface OrgAiConfigUpdateEvent {
   type: EventType.UPDATE_ORG_AI_CONFIG;
   metadata: {
@@ -9354,6 +9399,9 @@ export type Event =
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
   | OrgAiConfigUpdateEvent
+  | CreateOidcConfigEvent
+  | UpdateOidcConfigEvent
+  | DeleteOidcConfigEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

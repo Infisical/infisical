@@ -75,3 +75,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   mfaAmrValues: string[] | null;
 }> &
   TGenericPermission;
+
+export type TDeleteOidcCfgDTO = {
+  organizationId: string;
+} & TGenericPermission;

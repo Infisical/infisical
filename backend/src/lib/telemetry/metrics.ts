@@ -648,11 +648,12 @@ export enum SsoProvider {
 
 export enum SsoConfigAction {
   Create = "create",
-  Update = "update"
+  Update = "update",
+  Delete = "delete"
 }
 
 export const ssoConfigChangeCounter = infisicalCoreMeter.createCounter("infisical.sso.config.change.count", {
-  description: "SSO configuration changes (create/update) by provider. Detects unexpected SSO reconfiguration.",
+  description: "SSO configuration changes (create/update/delete) by provider. Detects unexpected SSO reconfiguration.",
   unit: "{change}"
 });
 

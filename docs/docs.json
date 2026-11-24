@@ -1535,7 +1535,8 @@
                     "pages": [
                       "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
                       "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
-                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
+                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/delete-oidc-config"
                     ]
                   },
                   {

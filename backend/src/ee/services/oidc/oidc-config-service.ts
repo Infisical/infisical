@@ -25,7 +25,7 @@ import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -87,6 +87,7 @@ import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
   OIDCConfigurationType,
   TCreateOidcCfgDTO,
+  TDeleteOidcCfgDTO,
   TGetOidcCfgDTO,
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
@@ -127,7 +128,7 @@ type TOidcConfigServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create" | "deleteById" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -689,6 +690,13 @@ export const oidcConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
 
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (!existingCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${org.id}' not found`
+      });
+    }
+
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
@@ -819,6 +827,13 @@ export const oidcConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (existingCfg) {
+      throw new ConflictError({
+        message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
+      });
+    }
+
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
@@ -866,6 +881,36 @@ export const oidcConfigServiceFactory = ({
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
     return oidcCfg;
+  };
+
+  const deleteOidcCfg = async ({ organizationId, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteOidcCfgDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actorId,
+      actor,
+      orgId: organizationId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Delete, OrgPermissionSubjects.Sso);
+
+    const oidcCfg = await oidcConfigDAL.findOne({ orgId: organizationId });
+    if (!oidcCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${organizationId}' not found`
+      });
+    }
+
+    const deletedCfg = await oidcConfigDAL.transaction(async (tx) => {
+      const deleted = await oidcConfigDAL.deleteById(oidcCfg.id, tx);
+      // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
+      await orgDAL.updateById(organizationId, { authEnforced: false, scimEnabled: false }, tx);
+      return deleted;
+    });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Delete, orgId: organizationId });
+
+    return deletedCfg;
   };
 
   const getOrgAuthStrategy = async (
@@ -1064,5 +1109,13 @@ export const oidcConfigServiceFactory = ({
     return Boolean(oidcConfig?.manageGroupMemberships);
   };
 
-  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg, isOidcManageGroupMembershipsEnabled };
+  return {
+    oidcLogin,
+    getOrgAuthStrategy,
+    getOidc,
+    updateOidcCfg,
+    createOidcCfg,
+    deleteOidcCfg,
+    isOidcManageGroupMembershipsEnabled
+  };
 };

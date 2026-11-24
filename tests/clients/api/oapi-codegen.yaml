@@ -470,6 +470,7 @@ output-options:
     - createOidcConfig
     - updateOidcConfig
     - getOidcConfig
+    - deleteOidcConfig
     - redirectOidcLogin
     - oidcCallback
     - listExternalGroupOrgRoleMappings

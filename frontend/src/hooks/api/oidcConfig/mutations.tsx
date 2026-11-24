@@ -142,3 +142,23 @@ export const useCreateOIDCConfig = () => {
     }
   });
 };
+
+export const useDeleteOIDCConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ organizationId }: { organizationId: string }) => {
+      const { data } = await apiRequest.delete("/api/v1/sso/oidc/config", {
+        params: { organizationId }
+      });
+      return data;
+    },
+    onSuccess(_, { organizationId }) {
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(organizationId) });
+      queryClient.invalidateQueries({
+        queryKey: oidcConfigKeys.getOIDCManageGroupMembershipsEnabled(organizationId)
+      });
+      // Deleting the config also turns off SSO enforcement and SCIM on the organization
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+    }
+  });
+};
