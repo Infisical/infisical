@@ -67,8 +67,8 @@ import {
 import { TGatewayV2DALFactory, TOfflineGateway } from "./gateway-v2-dal";
 import { emitGatewayOffline, GATEWAY_OFFLINE_BATCH_SIZE } from "./gateway-v2-events";
 import {
-  clearsGatewayHeartbeat,
   parseDirectAddress,
+  rearmsOfflineAlert,
   resolveClientTransports,
   resolveTransports
 } from "./gateway-v2-transport-fns";
@@ -815,7 +815,7 @@ export const gatewayV2ServiceFactory = ({
   // before the revoke would otherwise write them back after it, so the write only lands while the
   // version the request authenticated with is still current.
   const $writeAgentTransports = async (
-    gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat">,
+    gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat" | "healthAlertedAt">,
     tokenVersion: number | undefined,
     transports: Pick<
       TGatewaysV2Update,
@@ -827,7 +827,7 @@ export const gatewayV2ServiceFactory = ({
     }
     const [updated] = await gatewayV2DAL.update(
       { id: gateway.id, tokenVersion },
-      clearsGatewayHeartbeat(gateway, transports) ? { ...transports, healthAlertedAt: null } : transports
+      rearmsOfflineAlert(gateway, transports) ? { ...transports, healthAlertedAt: null } : transports
     );
     if (!updated) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });

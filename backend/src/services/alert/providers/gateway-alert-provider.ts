@@ -78,7 +78,7 @@ export const gatewayAlertProviderFactory = ({
       },
       eventKey: GATEWAY_OFFLINE_EVENT,
       eventLabel: "Offline",
-      webhookType: "com.infisical.gateway.offline",
+      webhookType: "com.infisical.networking.gateway.offline",
       resourceKind: "Gateway",
       resourceOwnerKind: "Organization",
       severity: "critical",

@@ -6,8 +6,8 @@ import { z } from "zod";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { PAGERDUTY_MAX_INCIDENTS_PER_RUN } from "@app/services/alert/channels/alert-channel-pagerduty-fns";
 
-export const GATEWAY_RESOURCE_TYPE = "gateway";
-export const GATEWAY_OFFLINE_EVENT = "gateway.offline";
+export const GATEWAY_RESOURCE_TYPE = "networking.gateway";
+export const GATEWAY_OFFLINE_EVENT = "networking.gateway.offline";
 
 // The engine drops event targets past a channel's per-run cap instead of deferring them, and a claimed
 // gateway is not alerted again this outage, so no event may name more gateways than PagerDuty takes.

@@ -10,8 +10,8 @@ export type TGatewayRef = {
 };
 
 export const gatewayAlertDALFactory = (db: TDbClient) => {
-  // Primary on purpose: the event is emitted in the transaction that marks the gateway alerted, and an empty
-  // read here is terminal, so a lagging replica would swallow the notification.
+  // Primary, as the findEventTargets contract in alert-types.ts requires of every event-path read: an empty result
+  // is terminal for the event.
   const findGatewaysByIds = async (gatewayIds: string[], orgId: string): Promise<TGatewayRef[]> => {
     if (gatewayIds.length === 0) return [];
     try {

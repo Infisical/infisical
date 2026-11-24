@@ -13,7 +13,7 @@ export enum AlertResourceType {
   SecretSync = "secret.sync",
   HoneyToken = "secret.honey-token",
   SecretScanning = "secret-scanning.data-source",
-  Gateway = "gateway"
+  Gateway = "networking.gateway"
 }
 
 export enum AlertEventType {
@@ -29,7 +29,7 @@ export enum AlertEventType {
   HoneyTokenTriggered = "secret.honey-token.triggered",
   SecretScanningSecretsDetected = "secret-scanning.data-source.secrets-detected",
   SecretScanningScanFailed = "secret-scanning.data-source.scan-failed",
-  GatewayOffline = "gateway.offline"
+  GatewayOffline = "networking.gateway.offline"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {

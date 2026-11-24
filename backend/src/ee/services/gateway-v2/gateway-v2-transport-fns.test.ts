@@ -1,8 +1,8 @@
 import { GatewayTransport, HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
 import {
-  clearsGatewayHeartbeat,
   isTransportHealthy,
   parseDirectAddress,
+  rearmsOfflineAlert,
   resolveClientTransports,
   resolveTransports
 } from "./gateway-v2-transport-fns";
@@ -253,31 +253,41 @@ describe("parseDirectAddress", () => {
   });
 });
 
-describe("clearsGatewayHeartbeat", () => {
-  const probedAt = new Date("2026-11-24T09:30:00Z");
+describe("rearmsOfflineAlert", () => {
+  const alertedAt = new Date("2026-11-24T10:05:00Z");
+  const beforeAlert = new Date("2026-11-24T09:00:00Z");
+  const afterAlert = new Date("2026-11-24T10:20:00Z");
 
-  test("dropping the direct transport clears its heartbeat, so the offline alert re-arms", () => {
-    expect(clearsGatewayHeartbeat({ heartbeat: probedAt, directHeartbeat: probedAt }, { directHeartbeat: null })).toBe(
-      true
-    );
-  });
-
-  test("switching relays clears the relay heartbeat", () => {
-    expect(clearsGatewayHeartbeat({ heartbeat: probedAt }, { heartbeat: null, directHeartbeat: null })).toBe(true);
-  });
-
-  test("a restart with the same transports keeps both heartbeats, so a crash loop keeps the hourly floor", () => {
+  test("dropping a transport that recovered after the alert re-arms it", () => {
     expect(
-      clearsGatewayHeartbeat(
-        { heartbeat: probedAt, directHeartbeat: probedAt },
-        { heartbeat: probedAt, directHeartbeat: probedAt }
+      rearmsOfflineAlert(
+        { heartbeat: beforeAlert, directHeartbeat: afterAlert, healthAlertedAt: alertedAt },
+        { heartbeat: beforeAlert, directHeartbeat: null }
+      )
+    ).toBe(true);
+  });
+
+  test("a new direct address mid-outage clears a heartbeat older than the alert, so the stamp stays", () => {
+    expect(
+      rearmsOfflineAlert(
+        { heartbeat: beforeAlert, directHeartbeat: beforeAlert, healthAlertedAt: alertedAt },
+        { heartbeat: beforeAlert, directHeartbeat: null }
       )
     ).toBe(false);
   });
 
-  test("clearing a heartbeat that was never set changes nothing", () => {
+  test("a restart with the same transports clears nothing, so a crash loop keeps the hourly floor", () => {
     expect(
-      clearsGatewayHeartbeat({ heartbeat: null, directHeartbeat: null }, { heartbeat: null, directHeartbeat: null })
+      rearmsOfflineAlert(
+        { heartbeat: afterAlert, directHeartbeat: afterAlert, healthAlertedAt: alertedAt },
+        { heartbeat: afterAlert, directHeartbeat: afterAlert }
+      )
+    ).toBe(false);
+  });
+
+  test("a gateway that was never alerted has nothing to re-arm", () => {
+    expect(
+      rearmsOfflineAlert({ heartbeat: afterAlert, healthAlertedAt: null }, { heartbeat: null, directHeartbeat: null })
     ).toBe(false);
   });
 });

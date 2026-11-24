@@ -100,7 +100,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
       const rows = await tx(TableName.GatewayV2)
         .whereIn("id", ids)
         .whereRaw(buildOfflineAlertDueSql())
-        .update({ healthAlertedAt: db.fn.now() as unknown as Date })
+        .update({ healthAlertedAt: new Date() })
         .returning(["id", "orgId", "name", "heartbeat", "directHeartbeat"]);
 
       // A due gateway was probed, so at least one of the two is set.

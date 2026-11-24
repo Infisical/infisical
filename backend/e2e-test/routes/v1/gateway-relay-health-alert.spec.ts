@@ -3,6 +3,8 @@
 // that wait would leave, and runs the cron's handler itself rather than waiting for the schedule.
 // Notifications are written straight to the table, which is what the notification queue's worker does.
 // Gateway alert events go into the real outbox under the alert consumer, so the server's consumer delivers them.
+// The assertions read `event_outbox` rows because no API shows which events the cron emitted; the last test follows
+// one through to the alert email instead.
 import crypto from "node:crypto";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
@@ -205,19 +207,19 @@ describe("Gateway and relay health alerts", () => {
 
   test("gateways that go offline together are split into events PagerDuty can take whole", async () => {
     const { gatewayV2Service } = buildServices();
-    const { orgId: bulkOrgId, cleanup: cleanupBulk } = await createIsolatedOrgAndProject("health-alert-bulk");
+    const {
+      orgId: bulkOrgId,
+      authToken: bulkAuthToken,
+      cleanup: cleanupBulk
+    } = await createIsolatedOrgAndProject("health-alert-bulk");
     try {
-      const rows = await testDb(TableName.GatewayV2)
-        .insert(
-          Array.from({ length: 12 }, (_, index) => ({
-            orgId: bulkOrgId,
-            name: `bulk-${index}`,
-            heartbeat: minutesAgo(10),
-            heartbeatTTL: 0
-          }))
-        )
-        .returning("id");
-      const ids = rows.map((row) => (row as { id: string }).id);
+      const gateways = [];
+      for (let index = 0; index < 12; index += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        gateways.push(await createGateway(bulkAuthToken));
+      }
+      const ids = gateways.map((gateway) => gateway.id);
+      await testDb(TableName.GatewayV2).whereIn("id", ids).update({ heartbeat: minutesAgo(10), heartbeatTTL: 0 });
 
       await gatewayV2Service.healthcheckNotify();
 

@@ -126,7 +126,7 @@ describe("gateway alert provider", () => {
     expect(payload.summary).toBe('Gateway "prod-eu" is offline');
     expect(`${payload.resourceKind} ${payload.eventLabel}`).toBe("Gateway Offline");
     expect(payload.severity).toBe("critical");
-    expect(payload.webhookType).toBe("com.infisical.gateway.offline");
+    expect(payload.webhookType).toBe("com.infisical.networking.gateway.offline");
     expect(payload.items).toEqual([
       {
         id: PROD_EU.id,

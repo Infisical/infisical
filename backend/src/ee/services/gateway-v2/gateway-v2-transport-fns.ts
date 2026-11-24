@@ -40,15 +40,21 @@ export const buildGatewayProbedSql = () =>
 // The last successful probe on any transport. GREATEST skips NULLs, and only a successful probe writes either column.
 export const buildGatewayLastSeenSql = () => `GREATEST("${TABLE}"."heartbeat", "${TABLE}"."directHeartbeat")`;
 
-// Clearing a heartbeat can move a gateway's last-seen time back before its last offline alert, which would
-// hide the next outage, so a reconnect that clears one has to re-arm the alert.
-export const clearsGatewayHeartbeat = (
-  previous: { heartbeat?: Date | null; directHeartbeat?: Date | null },
+// Clearing a heartbeat can move a gateway's last-seen time back before its last offline alert, which would hide
+// the next outage. Re-arm only when the cleared heartbeat is newer than that alert, which proves the gateway
+// recovered since; a restart that clears an older one (a new pod IP mid-outage) keeps the hourly floor.
+export const rearmsOfflineAlert = (
+  previous: { heartbeat?: Date | null; directHeartbeat?: Date | null; healthAlertedAt?: Date | null },
   next: { heartbeat?: Date | null; directHeartbeat?: Date | null }
-) =>
-  Boolean(
-    (previous.heartbeat && next.heartbeat === null) || (previous.directHeartbeat && next.directHeartbeat === null)
-  );
+) => {
+  const { healthAlertedAt } = previous;
+  if (!healthAlertedAt) return false;
+  const cleared = [
+    next.heartbeat === null ? previous.heartbeat : null,
+    next.directHeartbeat === null ? previous.directHeartbeat : null
+  ];
+  return cleared.some((probedAt) => probedAt && new Date(probedAt) > new Date(healthAlertedAt));
+};
 
 export const resolveTransports = ({
   gateway,
