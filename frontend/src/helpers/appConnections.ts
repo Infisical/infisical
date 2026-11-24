@@ -54,6 +54,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
 import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
+import { AzureBlobStorageConnectionMethod } from "@app/hooks/api/appConnections/types/azure-blob-storage-connection";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
@@ -715,6 +716,13 @@ export const APP_CONNECTION_MAP: Record<
     category: "STORAGE",
     description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
   },
+  [AppConnection.AzureBlobStorage]: {
+    name: "Azure Blob Storage",
+    image: "Microsoft Azure.png",
+    aliases: ["azure storage", "blob"],
+    category: "STORAGE",
+    description: "Store PAM session recordings in an Azure storage account."
+  },
   [AppConnection.Jira]: {
     name: "Jira",
     image: "Jira.svg",
@@ -829,6 +837,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
     case S3CompatibleConnectionMethod.AccessKey:
+    case AzureBlobStorageConnectionMethod.AccessKey:
       return { name: "Access Key", icon: KeyRoundIcon };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: UserIcon };
@@ -922,6 +931,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };
+    case AzureBlobStorageConnectionMethod.ClientSecret:
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:

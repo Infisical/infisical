@@ -540,18 +540,22 @@ const SettingsTab = ({
   useEffect(() => {
     if (account) {
       const s3 = account.settingsOverrides?.recordingS3Config;
+      const azure = account.settingsOverrides?.recordingAzureBlobConfig;
+      const azureTemplate =
+        (template?.settings as { recordingStorageBackend?: string } | undefined)
+          ?.recordingStorageBackend === "azure-blob";
       reset({
         gatewayId: account.gatewayId,
         gatewayPoolId: account.gatewayPoolId,
         recordingConnectionId: account.recordingConnectionId,
-        recordingBucket: s3?.bucket ?? "",
-        recordingRegion: s3?.region ?? "",
-        recordingKeyPrefix: s3?.keyPrefix ?? ""
+        recordingBucket: (azureTemplate ? azure?.container : s3?.bucket) ?? "",
+        recordingRegion: azureTemplate ? "" : (s3?.region ?? ""),
+        recordingKeyPrefix: (azureTemplate ? azure?.keyPrefix : s3?.keyPrefix) ?? ""
       });
       setShowGatewayPicker(false);
       setShowRecordingPicker(false);
     }
-  }, [account, reset]);
+  }, [account, template, reset]);
 
   if (isLoading) {
     return (
@@ -573,7 +577,11 @@ const SettingsTab = ({
   const hasRecordingOverride =
     Boolean(recordingConnId) || Boolean(recordingBucket) || Boolean(recordingRegion);
   const isRecordingOverriding = hasRecordingOverride || showRecordingPicker;
+  const isAzureRecording =
+    (template?.settings as { recordingStorageBackend?: string } | undefined)
+      ?.recordingStorageBackend === "azure-blob";
   const isS3CompatibleRecording =
+    isAzureRecording ||
     appConnections.find((c) => c.id === (recordingConnId ?? template?.recordingConnectionId))
       ?.app === AppConnection.S3Compatible;
 
@@ -618,16 +626,27 @@ const SettingsTab = ({
     const bucket = values.recordingBucket.trim();
     const region = values.recordingRegion.trim();
     const keyPrefix = values.recordingKeyPrefix.trim();
-    const hasS3Override = Boolean(bucket) || Boolean(region);
-    const settingsOverrides = hasS3Override
-      ? {
-          recordingS3Config: {
-            bucket,
-            ...(region && !isS3CompatibleRecording ? { region } : {}),
-            ...(keyPrefix ? { keyPrefix } : {})
-          }
+    const hasLocationOverride = Boolean(bucket) || Boolean(region);
+    const templateContainer = (
+      template?.settings as { recordingAzureBlobConfig?: { container?: string } } | undefined
+    )?.recordingAzureBlobConfig?.container;
+    let settingsOverrides = null;
+    if (isAzureRecording && (bucket || keyPrefix)) {
+      settingsOverrides = {
+        recordingAzureBlobConfig: {
+          container: bucket || templateContainer || "",
+          ...(keyPrefix ? { keyPrefix } : {})
         }
-      : null;
+      };
+    } else if (hasLocationOverride) {
+      settingsOverrides = {
+        recordingS3Config: {
+          bucket,
+          ...(region && !isS3CompatibleRecording ? { region } : {}),
+          ...(keyPrefix ? { keyPrefix } : {})
+        }
+      };
+    }
 
     updateAccount.mutate(
       {
@@ -649,12 +668,12 @@ const SettingsTab = ({
             } catch {
               createNotification(
                 {
-                  title: "Bucket CORS not configured",
+                  title: "Storage CORS not configured",
                   type: "warning",
-                  text: "Session playback requires the bucket to allow GET requests from this origin.",
+                  text: "Session playback requires the bucket or storage account to allow GET requests from this origin.",
                   callToAction: (
                     <a
-                      href="https://infisical.com/docs/documentation/platform/pam/recording-storage"
+                      href="https://infisical.com/docs/documentation/platform/pam/sessions/external-storage"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs underline"
@@ -776,10 +795,14 @@ const SettingsTab = ({
                 <div className="mt-4 flex flex-col gap-3">
                   <Alert variant="warning">
                     <AlertTriangleIcon />
-                    <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
+                    <AlertTitle>
+                      Changing {isAzureRecording ? "container" : "bucket"} affects existing
+                      recordings
+                    </AlertTitle>
                     <AlertDescription>
-                      Changing the bucket makes existing recordings inaccessible unless you manually
-                      migrate each object. Keep the same bucket and key prefix when rotating
+                      Changing the {isAzureRecording ? "container" : "bucket"} makes existing
+                      recordings inaccessible unless you manually migrate each object. Keep the same{" "}
+                      {isAzureRecording ? "container" : "bucket"} and key prefix when rotating
                       credentials.
                     </AlertDescription>
                   </Alert>
@@ -789,12 +812,22 @@ const SettingsTab = ({
                       value={recordingConnId}
                       onChange={(v) => setValue("recordingConnectionId", v, { shouldDirty: true })}
                       includeNone
+                      apps={
+                        isAzureRecording
+                          ? [AppConnection.AzureBlobStorage]
+                          : [AppConnection.AWS, AppConnection.S3Compatible]
+                      }
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className={isS3CompatibleRecording ? "col-span-2" : undefined}>
-                      <p className="mb-1 text-sm text-muted">S3 Bucket</p>
-                      <Input placeholder="my-recordings-bucket" {...register("recordingBucket")} />
+                      <p className="mb-1 text-sm text-muted">
+                        {isAzureRecording ? "Container" : "S3 Bucket"}
+                      </p>
+                      <Input
+                        placeholder={isAzureRecording ? "pam-recordings" : "my-recordings-bucket"}
+                        {...register("recordingBucket")}
+                      />
                     </div>
                     {!isS3CompatibleRecording && (
                       <div>
@@ -805,7 +838,8 @@ const SettingsTab = ({
                   </div>
                   <div>
                     <p className="mb-1 text-sm text-muted">
-                      Key Prefix <span className="text-xs text-muted">(optional)</span>
+                      {isAzureRecording ? "Blob name prefix" : "Key Prefix"}{" "}
+                      <span className="text-xs text-muted">(optional)</span>
                     </p>
                     <Input placeholder="recordings/" {...register("recordingKeyPrefix")} />
                   </div>

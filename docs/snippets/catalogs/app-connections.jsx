@@ -33,6 +33,14 @@ export const appConnections = [
     category: "Cloud Providers",
   },
   {
+    name: "Azure Blob Storage",
+    slug: "azure-blob-storage",
+    path: "/integrations/app-connections/azure-blob-storage",
+    description:
+      "Learn how to connect your Azure storage account to store PAM session recordings.",
+    category: "Cloud Providers",
+  },
+  {
     name: "Azure App Configuration",
     slug: "azure-app-configuration",
     path: "/integrations/app-connections/azure-app-configuration",

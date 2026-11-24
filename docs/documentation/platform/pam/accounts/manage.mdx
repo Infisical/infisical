@@ -80,7 +80,7 @@ To learn what each role allows, see [Access control](/documentation/platform/pam
 The account's [template](/documentation/platform/pam/templates/overview) sets its gateway and, for Windows and Windows AD accounts, where Infisical stores its session recordings. To use a different setting for this account only, go to the **Advanced** tab and select **Override** next to the setting:
 
 - **Gateway**: Select a different gateway or gateway pool
-- **Recording Settings**: Select a different bucket for this account's recordings (Windows and Windows AD accounts only, and only if the template's **Storage backend** is **S3 Bucket**), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
+- **Recording Settings**: Select a different bucket or container for this account's recordings (Windows and Windows AD accounts only, and only if the template's **Storage backend** is **S3 Bucket** or **Azure Blob Storage**), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
 
 Select **Save Changes**. To go back to the template's setting, select **Remove Override**.
 
@@ -104,7 +104,7 @@ When you delete an account, Infisical does the following:
 Infisical keeps the account's past sessions and recordings, but only product admins can view them.
 
 <Warning>
-  If the account's recordings are stored in an [S3 bucket](/documentation/platform/pam/sessions/external-storage), you can't play them back in Infisical after you delete the account. This includes every Windows and Windows AD recording.
+  If the account's recordings are stored in an [S3 bucket or an Azure Blob Storage container](/documentation/platform/pam/sessions/external-storage), you can't play them back in Infisical after you delete the account. This includes every Windows and Windows AD recording.
 </Warning>
 
 You can't delete an account in these cases:

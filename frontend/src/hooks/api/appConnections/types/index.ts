@@ -7,6 +7,7 @@ import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureADCSConnection } from "./azure-adcs-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
+import { TAzureBlobStorageConnection } from "./azure-blob-storage-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureDNSConnection } from "./azure-dns-connection";
@@ -176,6 +177,7 @@ export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./rundeck-connection";
+export * from "./azure-blob-storage-connection";
 export * from "./s3-compatible-connection";
 export * from "./salesforce-connection";
 export * from "./servicenow-connection";
@@ -292,6 +294,7 @@ export type TAppConnection =
   | THpeIloConnection
   | TServiceNowConnection
   | TS3CompatibleConnection
+  | TAzureBlobStorageConnection
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection

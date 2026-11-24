@@ -1,4 +1,4 @@
-export type TPamRecordingStorageBackend = "postgres" | "aws-s3";
+export type TPamRecordingStorageBackend = "postgres" | "aws-s3" | "azure-blob";
 
 export type TPamPlaybackChunk = {
   chunkIndex: number;

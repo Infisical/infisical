@@ -218,6 +218,7 @@ export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
 
 export type TPamAccountSettingsOverrides = {
   recordingS3Config?: { bucket: string; region?: string; keyPrefix?: string };
+  recordingAzureBlobConfig?: { container: string; keyPrefix?: string };
 };
 
 export type TPamAccount = {

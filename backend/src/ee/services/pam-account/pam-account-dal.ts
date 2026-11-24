@@ -15,7 +15,7 @@ import {
   rotationJitterCapSeconds
 } from "../pam-account-rotation/pam-rotation-fns";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { PAM_RECORDING_BACKEND_DETAILS } from "../pam-session-recording/pam-recording-backends";
 import { PamAccountType, PamHeartbeatStatus } from "../pam/pam-enums";
 import { ACCOUNT_TYPE_CONFIGS, accountTypeRequiresCredential } from "./pam-account-schemas";
 
@@ -71,13 +71,18 @@ export const accountAccessibilitySql = (accountTable: string, templateTable: str
     and ${credentialConfiguredSql(accountTable, templateTable)}
     and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
       or (
-        "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'
-        and ("${accountTable}"."recordingConnectionId" is not null
+        ("${accountTable}"."recordingConnectionId" is not null
           or "${templateTable}"."recordingConnectionId" is not null)
-        and coalesce(
-          "${accountTable}"."settingsOverrides"->'recordingS3Config',
-          "${templateTable}"."settings"->'recordingS3Config'
-        ) is not null
+        and (${Object.entries(PAM_RECORDING_BACKEND_DETAILS)
+          .map(
+            ([backend, { settingsKey }]) => `(
+          "${templateTable}"."settings"->>'recordingStorageBackend' = '${backend}'
+          and coalesce(
+            "${accountTable}"."settingsOverrides"->'${settingsKey}',
+            "${templateTable}"."settings"->'${settingsKey}'
+          ) is not null)`
+          )
+          .join(" or ")})
       ))
   )`;
 
@@ -337,6 +342,12 @@ export const pamAccountDALFactory = (db: TDbClient) => {
   };
 
   // Accounts stopped by a rejected credential stay stopped: a settings change is not what clears that.
+  const findRecordingConnectionOverridesByTemplateId = async (templateId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.AppConnection, `${TableName.AppConnection}.id`, `${TableName.PamAccount}.recordingConnectionId`)
+      .where(`${TableName.PamAccount}.templateId`, templateId)
+      .select<{ name: string; app: string }[]>(`${TableName.PamAccount}.name`, `${TableName.AppConnection}.app`);
+
   const reconcileHeartbeatScheduleForTemplate = async (
     templateId: string,
     opts?: { rescheduleAll?: boolean },
@@ -562,6 +573,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     countAccountsToHeartbeat,
     reconcileHeartbeatScheduleForTemplate,
     reconcileHeartbeatScheduleForAccount,
+    findRecordingConnectionOverridesByTemplateId,
     countByOrgId,
     findRotationCandidates,
     reconcileRotationScheduleForTemplate,

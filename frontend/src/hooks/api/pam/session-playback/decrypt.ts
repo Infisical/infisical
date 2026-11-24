@@ -85,12 +85,16 @@ const fetchCiphertext = async (
     const resp = await fetch(chunk.presignedGetUrl, { credentials: "omit" });
     if (!resp.ok) {
       if (resp.status === 404) {
-        throw new Error("Chunk data was not found in the external storage bucket.");
+        throw new Error("Chunk data was not found in the external storage bucket or container.");
       }
       if (resp.status === 403) {
-        throw new Error("Access denied when fetching chunk from external storage bucket.");
+        throw new Error(
+          "Access denied when fetching chunk from the external storage bucket or container."
+        );
       }
-      throw new Error(`Failed to fetch chunk from external storage bucket (HTTP ${resp.status})`);
+      throw new Error(
+        `Failed to fetch chunk from the external storage bucket or container (HTTP ${resp.status})`
+      );
     }
     const buf = await resp.arrayBuffer();
     return new Uint8Array(buf);

@@ -12,7 +12,7 @@ Every account uses one template, and the template's account type must match the 
 
 Infisical creates a template for each account type when your organization first opens PAM. If an account uses a default template, sessions on the account last up to one hour, and Infisical stores the recordings in its internal database. The default templates have no policies turned on, apart from [Output Masking](#output-masking) on the SSH and PostgreSQL templates.
 
-Windows and Windows AD accounts need recordings stored in AWS S3, so before anyone can launch sessions on them, change the default Windows templates to use [external storage](/documentation/platform/pam/sessions/external-storage).
+Windows and Windows AD accounts need recordings stored in an S3 bucket or an Azure Blob Storage container, so before anyone can launch sessions on them, change the default Windows templates to use [external storage](/documentation/platform/pam/sessions/external-storage).
 
 If an account type has no template, such as a type added after your organization started using PAM, the **Account Templates** page shows a message. Select **Add default templates** in the message to create the missing templates.
 
@@ -72,11 +72,11 @@ In PostgreSQL query results, if a number or another value that isn't text matche
 | Setting | What it does |
 | --- | --- |
 | **Gateway** | The gateway that the accounts connect through |
-| **Storage backend** | Where Infisical stores session recordings: **Internal Database** or **S3 Bucket** (see [External storage](/documentation/platform/pam/sessions/external-storage)) |
+| **Storage backend** | Where Infisical stores session recordings: **Internal Database**, **S3 Bucket**, or **Azure Blob Storage** (see [External storage](/documentation/platform/pam/sessions/external-storage)) |
 | **Session Log Masking** | Hides text that matches these patterns in session recordings |
 
 <Note>
-You can [override the gateway](/documentation/platform/pam/accounts/manage#override-the-template’s-settings) for one account on the account's **Advanced** tab. For Windows and Windows AD accounts, you can also override the recording bucket there.
+You can [override the gateway](/documentation/platform/pam/accounts/manage#override-the-template’s-settings) for one account on the account's **Advanced** tab. For Windows and Windows AD accounts, you can also override the recording bucket or container there.
 </Note>
 
 The **General** tab also has settings for [credential rotation](/documentation/platform/pam/credential-rotation/overview) and [credential health](/documentation/platform/pam/credential-health/overview) checks, for account types that support them.

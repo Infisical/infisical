@@ -32,6 +32,7 @@ import {
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { combineGatewayOptions, recordingGatewayOptions } from "../pam-session-recording/pam-recording-backends";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import {
@@ -195,7 +196,8 @@ export const pamSessionServiceFactory = ({
     const issues = getAccountAccessibilityIssues(account);
     if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
       throw new BadRequestError({
-        message: "S3 recording must be configured before launching this account"
+        message:
+          "External recording storage (S3 or Azure Blob Storage) must be configured on this account's template before it can be launched"
       });
     }
   };
@@ -247,6 +249,17 @@ export const pamSessionServiceFactory = ({
     }
   };
 
+  const assertGatewaySupportsRecording = async (gatewayId: string, account: { templateSettings?: unknown }) => {
+    const { filter } = recordingGatewayOptions(account);
+    if (!filter) return;
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway || !filter(gateway)) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway?.name ?? gatewayId}' must be updated to the latest version before it can record this account's sessions to Azure Blob Storage`
+      });
+    }
+  };
+
   // Called by the gateway
   const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
@@ -269,6 +282,7 @@ export const pamSessionServiceFactory = ({
 
     // Before activating the session or claiming recording secrets, so a refused fetch leaves nothing behind.
     await assertGatewayEnforcesOutputMasking(gatewayId, account);
+    await assertGatewaySupportsRecording(gatewayId, account);
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
@@ -822,19 +836,23 @@ export const pamSessionServiceFactory = ({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
       // Output masking never applies to AWS IAM, so its options would be empty there
-      ...(awsIamThroughGateway
-        ? {
-            filter: gatewayServesAwsIam,
-            unavailableMessage:
-              "No healthy gateway in this account's gateway pool can serve AWS IAM sessions. Update the pool's gateways to the latest version."
-          }
-        : outputMaskingGatewayOptions(account))
+      ...combineGatewayOptions(
+        awsIamThroughGateway
+          ? {
+              filter: gatewayServesAwsIam,
+              unavailableMessage:
+                "No healthy gateway in this account's gateway pool can serve AWS IAM sessions. Update the pool's gateways to the latest version."
+            }
+          : outputMaskingGatewayOptions(account),
+        recordingGatewayOptions(account)
+      )
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
     }
 
     await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
+    await assertGatewaySupportsRecording(effectiveGatewayId, account);
 
     if (awsIamThroughGateway) {
       const gateway = await gatewayV2DAL.findById(effectiveGatewayId);

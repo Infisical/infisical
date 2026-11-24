@@ -3549,6 +3549,13 @@ export const AppConnections = {
       apiKeyId: "The API Key ID used to authenticate with Spacelift.",
       apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     },
+    AZURE_BLOB_STORAGE: {
+      accountName: "The name of the Azure storage account, such as 'mystorageaccount'.",
+      tenantId: "The ID of the Microsoft Entra tenant the app registration belongs to.",
+      clientId: "The client ID of the Microsoft Entra app registration.",
+      clientSecret: "The client secret of the Microsoft Entra app registration.",
+      accountKey: "An access key of the storage account."
+    },
     S3_COMPATIBLE: {
       endpoint:
         "The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.",

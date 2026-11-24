@@ -12,7 +12,10 @@ import {
   PamAccountSettingsOverridesSchema,
   PamTemplateSettingsSchema
 } from "../pam-account-template/pam-account-template-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import {
+  isExternalRecordingBackend,
+  PAM_RECORDING_BACKEND_DETAILS
+} from "../pam-session-recording/pam-recording-backends";
 import {
   GcpServiceAccountAuthMethod,
   PamAccountType,
@@ -1334,10 +1337,12 @@ export const getAccountAccessibilityIssues = (account: {
     const overridesParsed = PamAccountSettingsOverridesSchema.safeParse(account.settingsOverrides ?? {});
     const parsedOverrides = overridesParsed.success ? overridesParsed.data : null;
 
+    const backend = parsedTemplateSettings?.recordingStorageBackend;
+    const settingsKey = isExternalRecordingBackend(backend) ? PAM_RECORDING_BACKEND_DETAILS[backend].settingsKey : null;
     const hasRecordingConfig = Boolean(
-      parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
+      settingsKey &&
       (account.recordingConnectionId || account.templateRecordingConnectionId) &&
-      (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+      (parsedOverrides?.[settingsKey] || parsedTemplateSettings?.[settingsKey])
     );
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }

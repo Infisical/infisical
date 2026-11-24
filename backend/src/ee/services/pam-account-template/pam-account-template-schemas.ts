@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
@@ -26,14 +27,41 @@ export const PamRecordingS3ConfigSchema = z.object({
   keyPrefix: z.string().trim().optional()
 });
 
+const AZURE_CONTAINER_NAME = new RE2(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+
+export const PamRecordingAzureBlobConfigSchema = z.object({
+  container: z
+    .string()
+    .trim()
+    .min(3, "Container name must be at least 3 characters")
+    .max(63, "Container name cannot exceed 63 characters")
+    .refine(
+      (name) => AZURE_CONTAINER_NAME.test(name),
+      "Container name can only contain lowercase letters, numbers and single hyphens between them"
+    ),
+  keyPrefix: z
+    .string()
+    .trim()
+    .max(256, "Key prefix cannot exceed 256 characters")
+    .refine(
+      (prefix) =>
+        !["\\", "?", "#"].some((char) => prefix.includes(char)) &&
+        !prefix.split("/").some((segment) => segment === "." || segment === ".."),
+      "Key prefix can't contain '.' or '..' folders, backslashes, '?' or '#'"
+    )
+    .optional()
+});
+
 export const PamAccountSettingsOverridesSchema = z.object({
-  recordingS3Config: PamRecordingS3ConfigSchema.optional()
+  recordingS3Config: PamRecordingS3ConfigSchema.optional(),
+  recordingAzureBlobConfig: PamRecordingAzureBlobConfigSchema.optional()
 });
 
 export const PamTemplateSettingsSchema = z.object({
   recordingEnabled: z.boolean().default(true),
   recordingStorageBackend: z.nativeEnum(PamRecordingStorageBackend).default(PamRecordingStorageBackend.Postgres),
   recordingS3Config: PamRecordingS3ConfigSchema.optional(),
+  recordingAzureBlobConfig: PamRecordingAzureBlobConfigSchema.optional(),
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotation: PamRotationConfigSchema.optional(),
   heartbeat: PamHeartbeatConfigSchema.optional(),
@@ -49,5 +77,7 @@ export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
 export type TPamTemplateSettingsInput = z.infer<typeof PamTemplateSettingsInputSchema>;
 export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
+export type TPamRecordingS3Config = z.infer<typeof PamRecordingS3ConfigSchema>;
+export type TPamRecordingAzureBlobConfig = z.infer<typeof PamRecordingAzureBlobConfigSchema>;
 export type TPamRotationConfig = z.infer<typeof PamRotationConfigSchema>;
 export type TPamHeartbeatConfig = z.infer<typeof PamHeartbeatConfigSchema>;

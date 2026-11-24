@@ -43,6 +43,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
           url: z.string(),
           objectKey: z.string(),
           method: z.literal("PUT"),
+          headers: z.record(z.string()).optional(),
           expiresInSeconds: z.number()
         })
       }

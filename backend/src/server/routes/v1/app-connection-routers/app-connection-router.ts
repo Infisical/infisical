@@ -34,6 +34,10 @@ import {
   SanitizedAzureAppConfigurationConnectionSchema
 } from "@app/services/app-connection/azure-app-configuration";
 import {
+  AzureBlobStorageConnectionListItemSchema,
+  SanitizedAzureBlobStorageConnectionSchema
+} from "@app/services/app-connection/azure-blob-storage";
+import {
   AzureClientSecretsConnectionListItemSchema,
   SanitizedAzureClientSecretsConnectionSchema
 } from "@app/services/app-connection/azure-client-secrets";
@@ -411,6 +415,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHpeIloConnectionSchema.options,
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
+  ...SanitizedAzureBlobStorageConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
   ...SanitizedClickHouseConnectionSchema.options,
   ...SanitizedIncidentIoConnectionSchema.options
@@ -513,6 +518,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HpeIloConnectionListItemSchema,
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
+  AzureBlobStorageConnectionListItemSchema,
   JiraConnectionListItemSchema,
   ClickHouseConnectionListItemSchema,
   IncidentIoConnectionListItemSchema

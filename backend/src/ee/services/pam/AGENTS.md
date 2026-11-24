@@ -196,9 +196,11 @@ template's `settings` column, not `policies`. Both are edited on the template de
 gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
 strips unknown keys, so a capability missing there is never stored and every check on it fails.
 
-**External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
-(`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
-backend list gateways read. Hosts beyond the built-in providers come from the server admin's
+**External recording storage** is the `aws-s3` backend for both AWS and S3-Compatible Storage connections
+(`resolveS3RecordingAccess`), and `azure-blob` for Azure Blob Storage connections. Don't add a backend per S3 provider: the value is in each chunk's AAD and in the
+backend list gateways read. Only a store that doesn't speak the S3 API gets its own backend (`azure-blob`), and
+then it also needs a gateway capability (`recordingGatewayOptions`), an entry in `PAM_RECORDING_BACKEND_DETAILS`,
+and its hosts in the CSP `connect-src` in `frontend/index.html`. Hosts beyond the built-in providers come from the server admin's
 `allowedStorageHostnames`, which `serve-ui.ts` also adds to the CSP `connect-src`, since browsers fetch chunks directly.
 
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
