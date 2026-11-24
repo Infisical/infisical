@@ -20,6 +20,7 @@ export type TInsertOutboxRow = {
 
 const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
 const STALE_SWEEP_STATEMENT_TIMEOUT_MS = 30_000;
+const STREAM_PURGE_STATEMENT_TIMEOUT_MS = 30_000;
 
 export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const batchInsert = async (rows: TInsertOutboxRow[], tx?: Knex) => {
@@ -339,9 +340,18 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteByStreamId = async (streamId: string, tx: Knex) => {
+  const deleteByStreamId = async (streamId: string, batchSize = 10_000) => {
     try {
-      await tx(TableName.AuditLogStreamOutbox).where({ streamId }).del();
+      let deleted: number;
+      do {
+        // eslint-disable-next-line no-await-in-loop
+        deleted = await db.transaction(async (trx): Promise<number> => {
+          await trx.raw(`SET LOCAL statement_timeout = ${STREAM_PURGE_STATEMENT_TIMEOUT_MS}`);
+          return trx(TableName.AuditLogStreamOutbox)
+            .whereIn("id", trx(TableName.AuditLogStreamOutbox).where({ streamId }).select("id").limit(batchSize))
+            .del();
+        });
+      } while (deleted === batchSize);
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: deleteByStreamId" });
     }

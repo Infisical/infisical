@@ -291,8 +291,8 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
 
     await service.deleteById(STREAM_ID, LogProvider.Splunk, actor);
 
-    expect(auditLogStreamOutboxDAL.deleteByStreamId).toHaveBeenCalledWith(STREAM_ID, expect.anything());
-    expect(auditLogStreamDAL.deleteById).toHaveBeenCalledWith(STREAM_ID, expect.anything());
+    expect(auditLogStreamDAL.deleteById).toHaveBeenCalledWith(STREAM_ID);
+    expect(auditLogStreamOutboxDAL.deleteByStreamId).toHaveBeenCalledWith(STREAM_ID);
   });
 
   test("leaves streams without session activity to the org permission alone", async () => {

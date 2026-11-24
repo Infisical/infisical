@@ -10,6 +10,7 @@ import {
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { TAuditLogStreamOutboxDALFactory } from "../audit-log-stream-outbox/audit-log-stream-outbox-dal";
@@ -305,11 +306,16 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    // Its queued events go with it, since no drain or prune ever reaches a deleted stream's rows.
-    const deletedLogStream = await auditLogStreamDAL.transaction(async (tx) => {
-      await auditLogStreamOutboxDAL.deleteByStreamId(logStreamId, tx);
-      return auditLogStreamDAL.deleteById(logStreamId, tx);
-    });
+    const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
+    // Its queued events go too, since no drain or prune ever reaches a deleted stream's rows.
+    await auditLogStreamOutboxDAL
+      .deleteByStreamId(logStreamId)
+      .catch((error) =>
+        logger.error(
+          error,
+          `audit-log-stream: failed to purge a deleted stream's queued events [streamId=${logStreamId}]`
+        )
+      );
 
     return decryptLogStream(deletedLogStream, kmsDataKeyService);
   };
