@@ -70,8 +70,8 @@ const buildService = (
   });
   service.init();
 
-  const runJob = (data: { orgId: string; sessionId: string; chunkIndex: number }) =>
-    handler!({ data, attemptsMade: 0 });
+  const runJob = (data: { orgId: string; sessionId: string; chunkIndex: number }, attemptsMade = 0) =>
+    handler!({ data, attemptsMade });
   const enqueuedRows = () => auditLogStreamOutboxService.enqueueStreamEvents.mock.calls[0] as unknown as [TRows];
 
   return {
@@ -164,6 +164,24 @@ describe("pamSessionActivityService", () => {
     expect(rows[0].payload).toMatchObject({
       eventType: PamSessionActivityEventType.Skipped,
       eventMetadata: { sessionId: session.id, chunkIndex: 2, reason: "chunk-too-large" }
+    });
+  });
+
+  test("tells every opted-in stream about a chunk whose last export attempt failed", async () => {
+    const { pamSessionChunkService, auditLogStreamOutboxService, runJob, enqueuedRows } = buildService([
+      stream("commands-only", commandsOnly)
+    ]);
+    pamSessionChunkService.readChunkEvents.mockRejectedValue(new Error("storage unavailable"));
+
+    await expect(runJob(job, 3)).rejects.toThrow("storage unavailable");
+    expect(auditLogStreamOutboxService.enqueueStreamEvents).not.toHaveBeenCalled();
+
+    await expect(runJob(job, 4)).rejects.toThrow("storage unavailable");
+    const [rows] = enqueuedRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].payload).toMatchObject({
+      eventType: PamSessionActivityEventType.Skipped,
+      eventMetadata: { sessionId: session.id, chunkIndex: 2, reason: "export-failed" }
     });
   });
 

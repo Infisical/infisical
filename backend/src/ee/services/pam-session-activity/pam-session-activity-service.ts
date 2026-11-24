@@ -119,6 +119,21 @@ export const pamSessionActivityServiceFactory = ({
     }
   };
 
+  // Lets a SIEM see a chunk whose activity is never sent.
+  const reportFailedExport = async ({ orgId, sessionId, chunkIndex }: TChunkExport) => {
+    const streams = await findActivityStreams(orgId);
+    const session = streams.length > 0 ? await pamSessionDAL.findById(sessionId) : null;
+    if (!session) return;
+
+    const skipped = buildPamSessionActivitySkippedEvent({
+      session,
+      orgId,
+      chunkIndex,
+      reason: PamSessionActivitySkipReason.ExportFailed
+    });
+    await auditLogStreamOutboxService.enqueueStreamEvents(streams.map((stream) => ({ stream, payload: skipped })));
+  };
+
   const init = () => {
     queueService.start(
       QueueName.PamSessionActivityExport,
@@ -131,6 +146,14 @@ export const pamSessionActivityServiceFactory = ({
             error,
             `pam-session-activity: chunk export failed [orgId=${orgId}] [sessionId=${sessionId}] [chunkIndex=${chunkIndex}] [attempt=${job.attemptsMade + 1}]`
           );
+          if (job.attemptsMade + 1 >= EXPORT_ATTEMPTS) {
+            await reportFailedExport({ orgId, sessionId, chunkIndex }).catch((reportError) =>
+              logger.error(
+                reportError,
+                `pam-session-activity: failed to report a failed chunk export [orgId=${orgId}] [sessionId=${sessionId}] [chunkIndex=${chunkIndex}]`
+              )
+            );
+          }
           throw error;
         }
       },

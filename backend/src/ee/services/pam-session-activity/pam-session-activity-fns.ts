@@ -107,7 +107,8 @@ const toTerminalCommand = (event: TRecordedEvent, channel?: string) => {
   if (channel !== "exec" || !text.startsWith(EXEC_PROMPT_PREFIX)) return null;
 
   const command = text.slice(EXEC_PROMPT_PREFIX.length);
-  return command.endsWith(EXEC_BLOCKED_SUFFIX)
+  // A command's own text can end with the notice, so only the gateway's flag marks it blocked.
+  return event.blocked === true && command.endsWith(EXEC_BLOCKED_SUFFIX)
     ? { command: command.slice(0, -EXEC_BLOCKED_SUFFIX.length), blocked: true }
     : { command, blocked: false };
 };
@@ -216,7 +217,13 @@ export const buildPamSessionActivityEvents = ({
           const line = decodeBytes(event.data);
           const previous = activity[activity.length - 1];
 
-          if (line === BLOCKED_NOTICE && !output && previous?.eventType === PamSessionActivityEventType.Command) {
+          // On an exec channel the notice is about a line of input, which isn't streamed.
+          if (
+            event.blocked === true &&
+            channel !== "exec" &&
+            !output &&
+            previous?.eventType === PamSessionActivityEventType.Command
+          ) {
             previous.eventMetadata.blocked = true;
           } else {
             if (output && (output.channel !== channel || output.chars + line.length > MAX_OUTPUT_CHARS)) flushOutput();

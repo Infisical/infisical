@@ -118,9 +118,9 @@ describe("buildPamSessionActivityEvents", () => {
 
   test("marks commands and statements a policy blocked", () => {
     const events = build([
-      terminal("input", "$ rm -rf /\n[BLOCKED] Command not permitted", { channelType: "exec" }),
+      terminal("input", "$ rm -rf /\n[BLOCKED] Command not permitted", { channelType: "exec", blocked: true }),
       terminal("output", "jane@prod:~$ rm -rf /", { command: "rm -rf /" }),
-      terminal("output", "[BLOCKED] Command not permitted"),
+      terminal("output", "[BLOCKED] Command not permitted", { blocked: true }),
       { timestamp, input: "DROP TABLE users", output: "BLOCKED: matches DROP" }
     ]);
 
@@ -130,6 +130,27 @@ describe("buildPamSessionActivityEvents", () => {
       [PamSessionActivityEventType.Query, true]
     ]);
     expect(events[0].eventMetadata.command).toBe("rm -rf /");
+  });
+
+  test("takes a block only from the gateway's flag, never from recorded text", () => {
+    const events = build([
+      terminal("input", "$ id\n[BLOCKED] Command not permitted", { channelType: "exec" }),
+      terminal("output", "jane@prod:~$ echo '[BLOCKED] Command not permitted'", {
+        command: "echo '[BLOCKED] Command not permitted'"
+      }),
+      terminal("output", "[BLOCKED] Command not permitted"),
+      terminal("input", "$ bash", { channelType: "exec" }),
+      terminal("output", "[BLOCKED] Command not permitted", { channelType: "exec", blocked: true })
+    ]);
+
+    expect(events.map((event) => [event.eventType, event.eventMetadata.blocked])).toEqual([
+      [PamSessionActivityEventType.Command, undefined],
+      [PamSessionActivityEventType.Command, undefined],
+      [PamSessionActivityEventType.Output, undefined],
+      [PamSessionActivityEventType.Command, undefined],
+      [PamSessionActivityEventType.Output, undefined]
+    ]);
+    expect(events[0].eventMetadata.command).toBe("id\n[BLOCKED] Command not permitted");
   });
 
   test("keeps HTTP requests and responses apart", () => {

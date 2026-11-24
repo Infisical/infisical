@@ -58,7 +58,7 @@ The account's [template](/documentation/platform/pam/templates/overview) also ch
 - If a [Command Blocking](/documentation/platform/pam/templates/overview#policies) policy rejects a command, the event for that command includes `"blocked": true`
 
 <Note>
-  To stream commands typed in an interactive SSH shell, update your [Gateway](/documentation/platform/gateways/overview) to the latest version. Older Gateways record those commands only as terminal output, so the commands reach a stream only if it includes output.
+  To stream commands typed in an interactive SSH shell, update your [Gateway](/documentation/platform/gateways/overview) to the latest version. Older Gateways record those commands only as terminal output, so the commands reach a stream only if it includes output. They also don't mark blocked SSH commands with `"blocked": true`.
 </Note>
 
 ## Event format
@@ -102,6 +102,6 @@ Session activity events have the same top-level fields as [audit log events](/do
 | `pam-session-activity-request` | An HTTP request | `method`, `url`, `requestId`, and `body` if the stream includes output |
 | `pam-session-activity-output` | Terminal output, sent only if the stream includes output | `output` and `channel` |
 | `pam-session-activity-response` | An HTTP response, sent only if the stream includes output | `status`, `requestId`, and `body` |
-| `pam-session-activity-skipped` | Activity too large to send, which you can still view in the session recording | `reason`, `chunkIndex`, and, if `reason` is `too-many-events`, `skippedEvents` |
+| `pam-session-activity-skipped` | Activity that was too large to send or that Infisical failed to export, which you can still view in the session recording | `reason`, `chunkIndex`, and, if `reason` is `too-many-events`, `skippedEvents` |
 
 Every `eventMetadata` also identifies the session and account with `sessionId`, `accountId`, `accountName`, `accountType`, `folderName`, and `host`. If a value is longer than 16,384 characters, Infisical shortens it and adds ` [truncated]` at the end.

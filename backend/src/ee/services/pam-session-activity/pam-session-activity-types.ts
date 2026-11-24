@@ -14,7 +14,8 @@ export enum PamSessionActivityEventType {
 
 export enum PamSessionActivitySkipReason {
   ChunkTooLarge = "chunk-too-large",
-  TooManyEvents = "too-many-events"
+  TooManyEvents = "too-many-events",
+  ExportFailed = "export-failed"
 }
 
 export type TPamSessionActivityMetadata = {
