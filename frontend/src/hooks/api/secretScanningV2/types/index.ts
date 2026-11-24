@@ -1,11 +1,8 @@
-import type {
-  AlertEventType,
-  TAlertChannelInput,
-} from "@app/hooks/api/alerts/types";
+import type { AlertEventType, TAlertChannelInput } from "@app/hooks/api/alerts/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   TGitLabDataSource,
-  TGitLabDataSourceOption,
+  TGitLabDataSourceOption
 } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { DiscriminativePick } from "@app/types";
 
@@ -17,16 +14,10 @@ import {
   SecretScanningFindingStatus,
   SecretScanningResourceOrderBy,
   SecretScanningScanStatus,
-  SecretScanningScanType,
+  SecretScanningScanType
 } from "../enums";
-import {
-  TBitbucketDataSource,
-  TBitbucketDataSourceOption,
-} from "./bitbucket-data-source";
-import {
-  TGitHubDataSource,
-  TGitHubDataSourceOption,
-} from "./github-data-source";
+import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
+import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 
 export type TSecretScanningDataSource =
   | TGitHubDataSource
@@ -79,10 +70,7 @@ export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
 };
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<
-    TCreateSecretScanningDataSourceDTO,
-    "type" | "connectionId" | "projectId" | "alerts"
-  >
+  Omit<TCreateSecretScanningDataSourceDTO, "type" | "connectionId" | "projectId" | "alerts">
 > & {
   type: SecretScanningDataSource;
   dataSourceId: string;

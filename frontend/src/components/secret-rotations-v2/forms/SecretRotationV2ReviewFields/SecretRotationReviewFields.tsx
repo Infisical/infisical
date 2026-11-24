@@ -5,11 +5,7 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
-import {
-  ALERT_EVENT_TYPE_LABELS,
-  AlertEventType,
-  TChannelForm,
-} from "@app/hooks/api/alerts";
+import { ALERT_EVENT_TYPE_LABELS, AlertEventType, TChannelForm } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { describeChannel } from "@app/views/Alerts";
 
@@ -54,38 +50,31 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationReviewFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationReviewFields,
-  [SecretRotation.UnixLinuxLocalAccount]:
-    UnixLinuxLocalAccountRotationReviewFields,
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields,
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
   [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationReviewFields,
-  [SecretRotation.OpenAIServiceAccount]:
-    OpenAIServiceAccountRotationReviewFields,
+  [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
-  [SecretRotation.SalesforceOauthCredentials]:
-    SalesforceOauthCredentialsRotationReviewFields,
-  [SecretRotation.DatadogApplicationKeySecret]:
-    DatadogApplicationKeySecretRotationReviewFields,
+  [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
+  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields,
   [SecretRotation.DatadogApiKey]: DatadogApiKeyRotationReviewFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields,
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
-  [SecretRotation.SnowflakeUserKeyPair]:
-    SnowflakeUserKeyPairRotationReviewFields,
+  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
-  [SecretRotation.CloudflareR2AccessKey]:
-    CloudflareR2AccessKeyRotationReviewFields,
+  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
-  [SecretRotation.GcpServiceAccountKey]:
-    GcpServiceAccountKeyRotationReviewFields,
-  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields,
+  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields,
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
 };
 
 const FailureAlertReview = ({
   isFailureAlertEnabled,
   channels,
-  isFailureAlertUnavailable,
+  isFailureAlertUnavailable
 }: {
   isFailureAlertEnabled: boolean;
   channels: TChannelForm[];
@@ -93,9 +82,7 @@ const FailureAlertReview = ({
 }) => {
   if (isFailureAlertUnavailable) {
     return (
-      <span className="text-sm text-muted">
-        Not loaded. Saving leaves the alert unchanged.
-      </span>
+      <span className="text-sm text-muted">Not loaded. Saving leaves the alert unchanged.</span>
     );
   }
 
@@ -122,9 +109,7 @@ type Props = {
   isFailureAlertUnavailable: boolean;
 };
 
-export const SecretRotationV2ReviewFields = ({
-  isFailureAlertUnavailable,
-}: Props) => {
+export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Props) => {
   const { watch } = useFormContext<TSecretRotationV2Form>();
 
   const {
@@ -137,7 +122,7 @@ export const SecretRotationV2ReviewFields = ({
     rotationInterval,
     rotateAtUtc,
     isFailureAlertEnabled,
-    channels,
+    channels
   } = watch();
 
   const Component = COMPONENT_MAP[type];
@@ -145,9 +130,7 @@ export const SecretRotationV2ReviewFields = ({
   return (
     <div className="mb-4 flex flex-col gap-6">
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">
-          Configuration
-        </DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">Configuration</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Connection">{connection.name}</ReviewField>
           <ReviewField label="Environment">{environment.name}</ReviewField>
@@ -162,18 +145,14 @@ export const SecretRotationV2ReviewFields = ({
       </DetailGroup>
       <Component />
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">
-          Details
-        </DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">Details</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Name">{name}</ReviewField>
           <ReviewField label="Description">{description}</ReviewField>
         </div>
       </DetailGroup>
       <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-1">
-          Alerts
-        </DetailGroupHeader>
+        <DetailGroupHeader className="border-b border-border pb-1">Alerts</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <FailureAlertReview
             isFailureAlertEnabled={isFailureAlertEnabled}

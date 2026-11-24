@@ -8,18 +8,18 @@ import {
   ItemDescription,
   ItemMedia,
   ItemTitle,
-  Toggle,
+  Toggle
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   AlertEventType,
-  AlertResourceType,
+  AlertResourceType
 } from "@app/hooks/api/alerts";
 import { ChannelsField } from "@app/views/Alerts";
 
-import { TSecretScanningDataSourceForm } from "./schemas";
+import { TDataSourceAlertField, TSecretScanningDataSourceForm } from "./schemas";
 
 type TProjectPermission = ReturnType<typeof useProjectPermission>["permission"];
 
@@ -27,101 +27,128 @@ type TProjectPermission = ReturnType<typeof useProjectPermission>["permission"];
 export const canManageDataSourceAlerts = (permission: TProjectPermission) =>
   permission.can(
     ProjectPermissionSecretScanningDataSourceActions.Edit,
-    ProjectPermissionSub.SecretScanningDataSources,
+    ProjectPermissionSub.SecretScanningDataSources
   );
 
-export const DATA_SOURCE_ALERT_TOGGLES: {
-  eventType: AlertEventType;
-  field: "isSecretsDetectedAlertEnabled" | "isScanFailedAlertEnabled";
+export const DATA_SOURCE_ALERTS: {
+  eventType: AlertEventType.SecretScanningSecretsDetected | AlertEventType.SecretScanningScanFailed;
+  field: TDataSourceAlertField;
   title: string;
 }[] = [
   {
     eventType: AlertEventType.SecretScanningSecretsDetected,
-    field: "isSecretsDetectedAlertEnabled",
-    title: "Alert When Secrets Are Detected",
+    field: "secretsDetectedAlert",
+    title: "Alert When Secrets Are Detected"
   },
   {
     eventType: AlertEventType.SecretScanningScanFailed,
-    field: "isScanFailedAlertEnabled",
-    title: "Alert When a Scan Fails",
-  },
+    field: "scanFailedAlert",
+    title: "Alert When a Scan Fails"
+  }
 ];
+
+type AlertFieldProps = {
+  projectId: string;
+  dataSourceId?: string;
+  alert: (typeof DATA_SOURCE_ALERTS)[number];
+};
+
+const AlertField = ({
+  projectId,
+  dataSourceId,
+  alert: { eventType, field, title }
+}: AlertFieldProps) => {
+  const { control, clearErrors } = useFormContext<TSecretScanningDataSourceForm>();
+  const enabled = useWatch({ control, name: `${field}.enabled` });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Controller
+        control={control}
+        name={`${field}.enabled`}
+        render={({ field: { value, onChange, onBlur, ref } }) => (
+          <Item variant="outline">
+            <ItemMedia variant="icon">
+              <BellIcon />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle id={`${field}-title`}>{title}</ItemTitle>
+              <ItemDescription id={`${field}-description`}>
+                {ALERT_EVENT_TYPE_DESCRIPTIONS[eventType]}
+              </ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <Toggle
+                ref={ref}
+                variant="ss"
+                checked={value}
+                onBlur={onBlur}
+                onCheckedChange={(checked) => {
+                  onChange(checked);
+                  if (!checked) clearErrors(`${field}.channels`);
+                }}
+                aria-labelledby={`${field}-title`}
+                aria-describedby={`${field}-description`}
+              />
+            </ItemActions>
+          </Item>
+        )}
+      />
+      {enabled && (
+        <ChannelsField
+          name={`${field}.channels`}
+          projectId={projectId}
+          resourceType={AlertResourceType.SecretScanning}
+          resourceId={dataSourceId}
+        />
+      )}
+    </div>
+  );
+};
 
 type Props = {
   projectId: string;
+  // Set when editing an existing data source.
+  dataSourceId?: string;
+  isAlertsUnavailable?: boolean;
 };
 
-export const SecretScanningDataSourceAlertsFields = ({ projectId }: Props) => {
-  const { control, clearErrors } =
-    useFormContext<TSecretScanningDataSourceForm>();
+export const SecretScanningDataSourceAlertsFields = ({
+  projectId,
+  dataSourceId,
+  isAlertsUnavailable = false
+}: Props) => {
   const { permission } = useProjectPermission();
-  const canManage = canManageDataSourceAlerts(permission);
-  const [isSecretsDetectedAlertEnabled, isScanFailedAlertEnabled] = useWatch({
-    control,
-    name: ["isSecretsDetectedAlertEnabled", "isScanFailedAlertEnabled"],
-  });
-  const isAnyAlertEnabled =
-    isSecretsDetectedAlertEnabled || isScanFailedAlertEnabled;
 
-  if (!canManage) {
+  if (isAlertsUnavailable) {
+    return (
+      <p className="text-sm text-danger">
+        Couldn&apos;t load this data source&apos;s alerts. Saving leaves them unchanged. Close and
+        reopen the data source to try again.
+      </p>
+    );
+  }
+
+  if (!canManageDataSourceAlerts(permission)) {
     return (
       <p className="text-sm text-muted">
-        You can&apos;t choose this data source&apos;s alerts. That needs
-        permission to edit data sources. It will get the default alerts, which
-        email project admins when secrets are detected and when a scan fails.
+        {dataSourceId
+          ? "You can't change this data source's alerts. That needs permission to edit data sources."
+          : "You can't choose this data source's alerts. That needs permission to edit data sources. It will get the default alerts, which email project admins when secrets are detected and when a scan fails."}
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {DATA_SOURCE_ALERT_TOGGLES.map(
-        ({ eventType, field: fieldName, title }) => (
-          <Controller
-            key={eventType}
-            control={control}
-            name={fieldName}
-            render={({ field: { value, onChange, onBlur, ref } }) => (
-              <Item variant="outline">
-                <ItemMedia variant="icon">
-                  <BellIcon />
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle id={`${fieldName}-title`}>{title}</ItemTitle>
-                  <ItemDescription id={`${fieldName}-description`}>
-                    {ALERT_EVENT_TYPE_DESCRIPTIONS[eventType]}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <Toggle
-                    ref={ref}
-                    variant="ss"
-                    checked={value}
-                    onBlur={onBlur}
-                    onCheckedChange={(checked) => {
-                      onChange(checked);
-                      if (!checked) clearErrors("channels");
-                    }}
-                    aria-labelledby={`${fieldName}-title`}
-                    aria-describedby={`${fieldName}-description`}
-                  />
-                </ItemActions>
-              </Item>
-            )}
-          />
-        ),
-      )}
-      {isAnyAlertEnabled ? (
-        <ChannelsField
+    <div className="flex flex-col gap-6">
+      {DATA_SOURCE_ALERTS.map((alert) => (
+        <AlertField
+          key={alert.field}
           projectId={projectId}
-          resourceType={AlertResourceType.SecretScanning}
+          dataSourceId={dataSourceId}
+          alert={alert}
         />
-      ) : (
-        <p className="text-sm text-muted">
-          No alerts for this data source. You can add them later from its
-          settings.
-        </p>
-      )}
+      ))}
     </div>
   );
 };

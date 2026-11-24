@@ -3,16 +3,12 @@ import {
   AlertChannelType,
   AlertPrincipalType,
   TAlertChannelRecipient,
-  TChannelForm,
+  TChannelForm
 } from "@app/hooks/api/alerts";
 
-const pluralize = (count: number, noun: string) =>
-  `${count} ${noun}${count === 1 ? "" : "s"}`;
+const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-const describeRecipientType = (
-  principalType: AlertPrincipalType,
-  count: number,
-) => {
+const describeRecipientType = (principalType: AlertPrincipalType, count: number) => {
   switch (principalType) {
     case AlertPrincipalType.ProjectMembers:
     case AlertPrincipalType.ProjectAdmins:
@@ -32,14 +28,10 @@ const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
   Object.values(AlertPrincipalType)
     .map((principalType) => ({
       principalType,
-      count: recipients.filter(
-        (recipient) => recipient.principalType === principalType,
-      ).length,
+      count: recipients.filter((recipient) => recipient.principalType === principalType).length
     }))
     .filter(({ count }) => count > 0)
-    .map(({ principalType, count }) =>
-      describeRecipientType(principalType, count),
-    )
+    .map(({ principalType, count }) => describeRecipientType(principalType, count))
     .join(", ");
 
 const describeSlackChannels = (channels: { name: string }[] = []) =>
