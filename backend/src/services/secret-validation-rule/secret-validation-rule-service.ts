@@ -300,16 +300,19 @@ export const secretValidationRuleServiceFactory = ({
     const { encryptor } = await $getCipher(projectId);
     const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
 
-    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerProject) !== null) {
-      const projectRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
-        const [{ count }] = await secretValidationRuleDAL.find({ projectId }, { countDistinct: "id", tx });
+    // Rules without an environment apply to every environment, so they share one bucket of their own.
+    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerEnvironment) !== null) {
+      const envRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
+        const [{ count }] = await secretValidationRuleDAL.find({ projectId, envId }, { countDistinct: "id", tx });
         return Number(count);
       });
       assertWithinResourceLimit({
-        limit: ResourceLimit.SecretValidationRulesPerProject,
-        used: projectRuleCount,
+        limit: ResourceLimit.SecretValidationRulesPerEnvironment,
+        used: envRuleCount,
         describe: (max) =>
-          `Project already has the maximum of ${max} secret validation rules. Delete rules you no longer use before creating another.`
+          environment
+            ? `Environment '${environment}' already has the maximum of ${max} secret validation rules. Delete rules you no longer use before creating another.`
+            : `Project already has the maximum of ${max} secret validation rules that apply to all environments. Delete rules you no longer use before creating another.`
       });
     }
 

@@ -10,6 +10,10 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({ INFISICAL_CLOUD: false })
+}));
+
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
 
 const build = ({ existingSecretKeys = [] as string[] }) => {

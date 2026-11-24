@@ -422,6 +422,19 @@ export const projectServiceFactory = ({
           });
       }
 
+      // Templates saved before the environment cap existed can list more environments than a project may hold.
+      const templateEnvironments = projectTemplate?.environments;
+      if (projectTemplate && templateEnvironments) {
+        const templateName = projectTemplate.name;
+        assertWithinResourceLimit({
+          limit: ResourceLimit.EnvironmentsPerProject,
+          used: 0,
+          adding: templateEnvironments.length,
+          describe: (max) =>
+            `Project template '${templateName}' has ${templateEnvironments.length} environments, more than the ${max} a project can have. Remove environments from the template and try again.`
+        });
+      }
+
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
 
       // Checked up front because a failed insert aborts this transaction. Generated slugs carry a random suffix,

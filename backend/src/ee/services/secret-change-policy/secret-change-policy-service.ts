@@ -158,17 +158,19 @@ export const secretChangePolicyServiceFactory = ({
     });
 
     return approvalPolicyDAL.transaction(async (tx) => {
-      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerProject) !== null) {
-        const [{ count: projectPolicyCount }] = await approvalPolicyDAL.find(
-          { projectId },
-          { countDistinct: "id", tx }
+      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerEnvironment) !== null) {
+        const policiesByEnv = await approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds(
+          envs.map((env) => env.id),
+          tx
         );
-        assertWithinResourceLimit({
-          limit: ResourceLimit.ApprovalPoliciesPerProject,
-          used: Number(projectPolicyCount),
-          describe: (max) =>
-            `Project already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
-        });
+        envs.forEach((env) =>
+          assertWithinResourceLimit({
+            limit: ResourceLimit.ApprovalPoliciesPerEnvironment,
+            used: policiesByEnv[env.id] ?? 0,
+            describe: (max) =>
+              `Environment '${env.slug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+          })
+        );
       }
 
       const doc = await approvalPolicyDAL.create(

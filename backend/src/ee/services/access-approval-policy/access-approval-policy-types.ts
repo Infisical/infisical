@@ -107,14 +107,14 @@ export type TSecretAccessApprovalPolicyServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
-    "create" | "find" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
+    "create" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
   >;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath" | "findByPolicyIdForUpdate"
+    "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath" | "findByPolicyIdForUpdate" | "countPoliciesByEnvIds"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find" | "update" | "findPendingByPolicyIdForUpdate">;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "delete">;

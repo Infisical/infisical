@@ -94,7 +94,7 @@ const buildService = ({
   existingPolicy = undefined as TExistingPolicy | undefined,
   memberships = [{ effectiveUserIds: ["user-1"], effectiveGroupIds: [] }] as TMembership[],
   rows = [buildRow()] as TSecretChangePolicyRow[],
-  projectPolicyCount = 0
+  envPolicyCounts = {} as Record<string, number>
 } = {}) => {
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
@@ -117,7 +117,6 @@ const buildService = ({
         Promise.resolve({ ...rows.find((el) => el.id === id), ...row })
       ),
       deleteById: vi.fn((id: string) => Promise.resolve(rows.find((row) => row.id === id))),
-      find: vi.fn().mockResolvedValue([{ count: String(projectPolicyCount) }]),
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(TX)))
     },
     approvalPolicyStepsDAL: {
@@ -135,7 +134,8 @@ const buildService = ({
     approvalPolicySecretEnvironmentDAL: {
       insertMany: vi.fn((rows_: unknown[]) => Promise.resolve(rows_)),
       delete: vi.fn().mockResolvedValue([]),
-      findSecretChangePolicyByEnvIdsAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
+      findSecretChangePolicyByEnvIdsAndSecretPath: vi.fn().mockResolvedValue(existingPolicy),
+      countPoliciesByEnvIds: vi.fn().mockResolvedValue(envPolicyCounts)
     },
     approvalRequestDAL: { update: vi.fn().mockResolvedValue([]) },
     secretChangePolicyDAL: {
@@ -422,17 +422,17 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
     });
   });
 
-  test("refuses a policy past the Infisical Cloud cap on approval policies per project", async () => {
+  test("refuses a policy past the Infisical Cloud cap on approval policies per environment", async () => {
     mockConfig.INFISICAL_CLOUD = true;
     try {
-      const { service, deps } = buildService({ projectPolicyCount: 100 });
+      const { service, deps } = buildService({ envPolicyCounts: { "env-dev": 3, "env-prod": 50 } });
 
-      const result = create(service);
+      const result = create(service, { environment: undefined, environments: ["dev", "prod"] });
       await expect(result).rejects.toBeInstanceOf(BadRequestError);
-      await expect(result).rejects.toThrow("Project already has the maximum of 100 approval policies");
-      expect(deps.approvalPolicyDAL.find).toHaveBeenCalledWith(
-        { projectId: PROJECT_ID },
-        { countDistinct: "id", tx: TX }
+      await expect(result).rejects.toThrow("Environment 'prod' already has the maximum of 50 approval policies");
+      expect(deps.approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds).toHaveBeenCalledWith(
+        ["env-dev", "env-prod"],
+        TX
       );
       expect(deps.approvalPolicyDAL.create).not.toHaveBeenCalled();
     } finally {

@@ -30,6 +30,7 @@ import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -803,6 +804,18 @@ export const approvalPolicyServiceFactory = ({
       : undefined;
 
     const writePolicy = async (tx: Knex) => {
+      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerProject) !== null) {
+        const [{ count: projectPolicyCount }] = await approvalPolicyDAL.find(
+          { projectId },
+          { countDistinct: "id", tx }
+        );
+        assertWithinResourceLimit({
+          limit: ResourceLimit.ApprovalPoliciesPerProject,
+          used: Number(projectPolicyCount),
+          describe: (max) =>
+            `Project already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+        });
+      }
       const newPolicy = await approvalPolicyDAL.create(
         {
           projectId,

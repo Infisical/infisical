@@ -751,11 +751,26 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
     }
   };
 
+  // A policy has one row per environment and secret path, so this counts distinct policies, not rows.
+  const countPoliciesByEnvIds = async (envIds: string[], tx?: Knex): Promise<Record<string, number>> => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.ApprovalPolicySecretEnvironment)
+        .whereIn("envId", envIds)
+        .groupBy("envId")
+        .select("envId")
+        .countDistinct({ count: "policyId" })) as { envId: string; count: string | number }[];
+      return Object.fromEntries(rows.map((row) => [row.envId, Number(row.count)]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count approval policies by environment" });
+    }
+  };
+
   return {
     ...orm,
     findPolicyByEnvIdsAndSecretPath,
     findSecretChangePolicyByEnvIdsAndSecretPath,
     findPolicyByEnvId,
-    findByPolicyIdForUpdate
+    findByPolicyIdForUpdate,
+    countPoliciesByEnvIds
   };
 };

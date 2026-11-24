@@ -6,13 +6,13 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
-import { SecretNameSchema } from "@app/server/lib/schemas";
+import { SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
-import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { SecretMetadataInputSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const commitChangeSummarySchema = z.object({
@@ -594,10 +594,15 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                 z.object({
                   secretKey: SecretNameSchema,
                   secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-                  secretComment: z.string().trim().optional().default(""),
+                  secretComment: z
+                    .string()
+                    .trim()
+                    .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+                    .optional()
+                    .default(""),
                   skipMultilineEncoding: z.boolean().optional(),
                   metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+                  secretMetadata: SecretMetadataInputSchema.optional(),
                   tagIds: z.string().array().optional()
                 })
               )
@@ -611,13 +616,18 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .string()
                     .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
                     .optional(),
-                  secretComment: z.string().trim().optional().default(""),
+                  secretComment: z
+                    .string()
+                    .trim()
+                    .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+                    .optional()
+                    .default(""),
                   skipMultilineEncoding: z
                     .boolean()
                     .nullish()
                     .transform((val) => (val === null ? false : val)),
                   metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+                  secretMetadata: SecretMetadataInputSchema.optional(),
                   tagIds: z.string().array().optional()
                 })
               )

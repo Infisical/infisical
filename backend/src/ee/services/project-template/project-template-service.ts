@@ -308,6 +308,14 @@ export const projectTemplateServiceFactory = ({
         message: `Failed to create project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
+    if (environments) {
+      assertWithinResourceLimit({
+        limit: ResourceLimit.EnvironmentsPerProject,
+        used: 0,
+        adding: environments.length,
+        describe: (max) => `A project template can hold at most ${max} environments, the most a project can have.`
+      });
+    }
 
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
@@ -570,6 +578,14 @@ export const projectTemplateServiceFactory = ({
     if (environments && plan.exceeds(PlanLimit.Environments, environments.length, 0)) {
       throw new BadRequestError({
         message: `Failed to update project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
+      });
+    }
+    if (environments) {
+      assertWithinResourceLimit({
+        limit: ResourceLimit.EnvironmentsPerProject,
+        used: 0,
+        adding: environments.length,
+        describe: (max) => `A project template can hold at most ${max} environments, the most a project can have.`
       });
     }
 

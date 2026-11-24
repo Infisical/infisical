@@ -128,14 +128,14 @@ export type TSecretChangePolicyMethods = {
 export type TSecretChangePolicyServiceFactoryDep = {
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
-    "findByIdForUpdate" | "create" | "find" | "updateById" | "deleteById" | "transaction"
+    "findByIdForUpdate" | "create" | "updateById" | "deleteById" | "transaction"
   >;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "updateById">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany" | "delete">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath"
+    "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath" | "countPoliciesByEnvIds"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;

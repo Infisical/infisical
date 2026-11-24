@@ -14,8 +14,9 @@ export enum ResourceLimit {
   ServiceTokensPerProject = "serviceTokensPerProject",
   IntegrationAuthsPerProject = "integrationAuthsPerProject",
   ApprovalPoliciesPerProject = "approvalPoliciesPerProject",
+  ApprovalPoliciesPerEnvironment = "approvalPoliciesPerEnvironment",
   ProjectTemplatesPerOrg = "projectTemplatesPerOrg",
-  SecretValidationRulesPerProject = "secretValidationRulesPerProject"
+  SecretValidationRulesPerEnvironment = "secretValidationRulesPerEnvironment"
 }
 
 const CLOUD_RESOURCE_LIMITS: Record<ResourceLimit, number> = {
@@ -29,8 +30,9 @@ const CLOUD_RESOURCE_LIMITS: Record<ResourceLimit, number> = {
   [ResourceLimit.ServiceTokensPerProject]: 1000,
   [ResourceLimit.IntegrationAuthsPerProject]: 100,
   [ResourceLimit.ApprovalPoliciesPerProject]: 100,
+  [ResourceLimit.ApprovalPoliciesPerEnvironment]: 50,
   [ResourceLimit.ProjectTemplatesPerOrg]: 100,
-  [ResourceLimit.SecretValidationRulesPerProject]: 100
+  [ResourceLimit.SecretValidationRulesPerEnvironment]: 50
 };
 
 export const getResourceLimit = (limit: ResourceLimit): number | null =>

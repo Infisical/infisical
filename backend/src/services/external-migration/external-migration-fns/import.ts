@@ -7,6 +7,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -90,6 +91,16 @@ export const importDataIntoInfisicalFn = async ({
           throw new BadRequestError({
             message: `Environment with slug '${slug}' already exists`,
             name: "CreateEnvironment"
+          });
+        }
+
+        if (getResourceLimit(ResourceLimit.EnvironmentsPerProject) !== null) {
+          const projectEnvs = await projectEnvDAL.find({ projectId }, { tx });
+          assertWithinResourceLimit({
+            limit: ResourceLimit.EnvironmentsPerProject,
+            used: projectEnvs.length,
+            describe: (max) =>
+              `Project already has the maximum of ${max} environments, so environment '${environment.name}' could not be imported.`
           });
         }
 
