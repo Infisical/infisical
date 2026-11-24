@@ -40,7 +40,7 @@ const Page = () => {
   const access = useV4Adapter("certificates").useProjectPermission({ projectId: projectId ?? "" });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiApplicationsTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiApplicationsTable", 20);
   const [creating, setCreating] = useState(false);
   const [configuring, setConfiguring] = useState<TPkiApplicationListItem>();
   const { data, isPending, error } = useV4Adapter("pkiApplications").useApplications({
@@ -207,7 +207,7 @@ const Page = () => {
             )
           }}
           pagination={
-            total > Math.min(pageSize, 20) ? (
+            showPagination(total) ? (
               <Pagination
                 label="Application pages"
                 variant="compact"

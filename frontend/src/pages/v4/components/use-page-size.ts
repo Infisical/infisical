@@ -6,6 +6,8 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 
+const SMALLEST_PAGE_SIZE = 10;
+
 export const usePageSize = (table: string, defaultSize: number) => {
   const [pageSize, setPageSize] = useState(() =>
     getUserTablePreference(table, PreferenceKey.PerPage, defaultSize)
@@ -17,5 +19,6 @@ export const usePageSize = (table: string, defaultSize: number) => {
     },
     [table]
   );
-  return [pageSize, savePageSize] as const;
+  const showPagination = (total: number) => total > Math.min(pageSize, SMALLEST_PAGE_SIZE);
+  return [pageSize, savePageSize, showPagination] as const;
 };

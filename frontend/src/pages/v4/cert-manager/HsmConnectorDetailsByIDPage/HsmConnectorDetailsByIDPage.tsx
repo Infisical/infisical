@@ -60,7 +60,10 @@ const KeyLabel = ({ value }: { value: string | null }) =>
 const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: string }) => {
   const go = useGo();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("hsmConnectorLinkedResourcesTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "hsmConnectorLinkedResourcesTable",
+    20
+  );
   const { data, isPending } = useV4Adapter("hsmConnectors").useLinkedResources(connectorId, {
     offset: (page - 1) * pageSize,
     limit: pageSize
@@ -192,7 +195,7 @@ const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: s
             getRowId={(cert) => cert.id}
             rowLabel={(cert) => cert.commonName}
             pagination={
-              totalCount > Math.min(pageSize, 20) ? (
+              showPagination(totalCount) ? (
                 <Pagination
                   label="Linked certificate pages"
                   variant="compact"

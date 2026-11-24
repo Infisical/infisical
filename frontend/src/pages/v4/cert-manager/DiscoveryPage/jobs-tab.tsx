@@ -65,7 +65,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryJobsTable", 25);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiDiscoveryJobsTable", 25);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TPkiDiscovery>();
   const [deleting, setDeleting] = useState<TPkiDiscovery>();
@@ -269,7 +269,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
           )
         }}
         pagination={
-          total > Math.min(pageSize, 25) ? (
+          showPagination(total) ? (
             <Pagination
               label="Discovery job pages"
               variant="compact"

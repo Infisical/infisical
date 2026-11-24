@@ -285,7 +285,10 @@ const RequestsCard = ({
   const adapter = useV4Adapter("codeSigning");
   const [filters, setFilters] = useState<TSignerRequestStatusFilter[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiSignerApprovalsTable", SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiSignerApprovalsTable",
+    SIGNERS_PAGE_SIZE
+  );
   const [sheet, setSheet] = useState<"request" | "pre-approve">();
   const [revoking, setRevoking] = useState<TSignerRequest>();
   const { data, isPending, error } = adapter.useSignerRequests({
@@ -508,7 +511,7 @@ const RequestsCard = ({
         }}
         persistentStatus={total ? `${total} ${total === 1 ? "request" : "requests"}` : undefined}
         pagination={
-          total > Math.min(pageSize, 25) ? (
+          showPagination(total) ? (
             <Pagination
               label="Request pages"
               variant="compact"

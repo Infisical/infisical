@@ -76,7 +76,7 @@ export const RootKeysSection = () => {
   const createRotation = admin.useCreateEncryptionKeyRotation();
   const deleteStagedKey = admin.useDeleteStagedEncryptionKey();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("adminRootKeysTable", 20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("adminRootKeysTable", 20);
   const { data: rotationsPage, isPending: rotationsPending } = admin.useEncryptionKeyRotations({
     offset: (page - 1) * pageSize,
     limit: pageSize
@@ -230,7 +230,7 @@ export const RootKeysSection = () => {
           }}
           empty={<EmptyState size="sm" icon="key" title="No root keys yet" />}
           pagination={
-            totalCount > Math.min(pageSize, 10) ? (
+            showPagination(totalCount) ? (
               <Pagination
                 label="Root key pages"
                 variant="compact"

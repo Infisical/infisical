@@ -41,7 +41,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize("pkiDiscoveryInstallationsTable", 25);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiDiscoveryInstallationsTable", 25);
   const [editing, setEditing] = useState<TPkiInstallation>();
   const [deleting, setDeleting] = useState<TPkiInstallation>();
   const [settingPassword, setSettingPassword] = useState<TPkiInstallation>();
@@ -219,7 +219,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
           )
         }}
         pagination={
-          total > Math.min(pageSize, 25) ? (
+          showPagination(total) ? (
             <Pagination
               label="Installation pages"
               variant="compact"
