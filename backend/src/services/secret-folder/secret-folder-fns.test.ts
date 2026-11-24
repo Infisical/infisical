@@ -14,7 +14,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -700,11 +700,19 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
 
     const error = thrown(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree));
 
-    expect(error).toBeInstanceOf(ForbiddenRequestError);
+    expect(error).toBeInstanceOf(PermissionBoundaryError);
     expect(error).toMatchObject({
-      name: "DeleteFolderAccessRestricted",
       message:
-        "Deleting the folder '/apps/scratch' requires permission to delete folders in it and in every folder below it in environment with slug 'dev'. Your access on '/apps/scratch' does not allow deleting folders. Ask someone who can delete folders there to delete it."
+        "Deleting the folder '/apps/scratch' requires permission to delete folders in it and in every folder below it in environment with slug 'dev'. Your access on '/apps/scratch' does not allow deleting folders. Ask someone who can delete folders there to delete it.",
+      details: {
+        missingPermissions: [
+          {
+            action: ProjectPermissionActions.Delete,
+            subject: ProjectPermissionSub.SecretFolders,
+            conditions: { environment: "dev", secretPath: "/apps/scratch" }
+          }
+        ]
+      }
     });
   });
 
