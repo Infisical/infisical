@@ -127,7 +127,7 @@ export const certificatesLive: CertificatesAdapter = {
   useExportCertificate,
   useUpdateCertificateMetadata: useUpdateCertificate,
   useAssignToApplication: useAssignCertificateToApplication,
-  useInventoryViews: () => useListCertificateInventoryViews(),
+  useInventoryViews: useListCertificateInventoryViews,
   useCreateInventoryView: useCreateCertificateInventoryView,
   useUpdateInventoryView: useUpdateCertificateInventoryView,
   useDeleteInventoryView: useDeleteCertificateInventoryView,

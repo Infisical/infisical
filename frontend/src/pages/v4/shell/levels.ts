@@ -114,7 +114,8 @@ export const shellTrail = ({
   blocked,
   nested = [],
   linkTo,
-  projectCounts
+  projectCounts,
+  productCounts
 }: {
   at: ShellLocation;
   projectName?: string;
@@ -124,6 +125,8 @@ export const shellTrail = ({
   linkTo: LinkTo;
   /** Count badges on the project level's links, by item id. */
   projectCounts?: Record<string, number>;
+  /** Count badges on an org-scoped product level's links, by item id. */
+  productCounts?: Record<string, number>;
 }): V4ShellLevel[] => {
   const product = at.product ? productOf(at.product) : undefined;
   const orgSettings = shellLevel(
@@ -153,7 +156,9 @@ export const shellTrail = ({
       shellLevel(linkTo, at.level, projectName ?? "Project", at.sections, opens, projectCounts)
     );
   else if (at.level === "pki" || at.level === "scanning" || at.level === "pam")
-    trail.push(shellLevel(linkTo, at.level, product?.label ?? at.level, at.sections, opens));
+    trail.push(
+      shellLevel(linkTo, at.level, product?.label ?? at.level, at.sections, opens, productCounts)
+    );
   if (projectSettings && at.inSettings) trail.push(projectSettings);
   return trail;
 };

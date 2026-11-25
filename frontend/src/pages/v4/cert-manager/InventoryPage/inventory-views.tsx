@@ -41,11 +41,16 @@ import type {
   TSystemView,
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub
+} from "@app/hooks/api/pkiApplications/types";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
+import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { useV4Session } from "../../data/session/contract";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
@@ -127,10 +132,12 @@ const filtersToView = ({
 };
 
 const SaveViewDialog = ({
+  applicationId,
   current,
   onClose,
   onSaved
 }: {
+  applicationId?: string;
   current: InventoryView;
   onClose: () => void;
   onSaved: (viewId: string) => void;
@@ -146,7 +153,7 @@ const SaveViewDialog = ({
   const submit = async () => {
     const trimmed = name.trim();
     const view = await create
-      .mutateAsync({ name: trimmed, filters: filtersToView(current), isShared })
+      .mutateAsync({ name: trimmed, filters: filtersToView(current), isShared, applicationId })
       .catch(readableFailure("Couldn't save the view"));
     saved(`View ${trimmed} saved`);
     onSaved(view.id);
@@ -277,26 +284,42 @@ const saveBlock = (canCreate: boolean, current: InventoryView) => {
   return undefined;
 };
 
+const APPLICATION_VIEW_ACTIONS: Record<ProjectPermissionActions, PkiApplicationResourceActions> = {
+  [ProjectPermissionActions.Read]: PkiApplicationResourceActions.Read,
+  [ProjectPermissionActions.Create]: PkiApplicationResourceActions.Create,
+  [ProjectPermissionActions.Edit]: PkiApplicationResourceActions.Edit,
+  [ProjectPermissionActions.Delete]: PkiApplicationResourceActions.Delete
+};
+
 export const InventoryViewsMenu = ({
   projectId,
+  applicationId,
+  applicationPermission,
   activeViewId,
   current,
   onSelect
 }: {
   projectId: string;
+  applicationId?: string;
+  applicationPermission?: PkiApplicationPermission["permission"];
   activeViewId: string | null;
   current: InventoryView;
   onSelect: (viewId: string | null, view: InventoryView) => void;
 }) => {
   const certificates = useV4Adapter("certificates");
-  const { data } = certificates.useInventoryViews();
+  const { data } = certificates.useInventoryViews(applicationId);
   const update = certificates.useUpdateInventoryView();
   const { user } = useV4Session();
   const { permission } = useProjectPermission(projectId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<TCertificateInventoryView>();
   const can = (action: ProjectPermissionActions) =>
-    permission.can(action, ProjectPermissionSub.CertificateInventoryViews);
+    applicationPermission
+      ? applicationPermission.can(
+          APPLICATION_VIEW_ACTIONS[action],
+          PkiApplicationResourceSub.CertificateInventoryViews
+        )
+      : permission.can(action, ProjectPermissionSub.CertificateInventoryViews);
 
   if (!can(ProjectPermissionActions.Read)) return null;
 
@@ -381,6 +404,7 @@ export const InventoryViewsMenu = ({
       </DropdownMenu>
       {saving && (
         <SaveViewDialog
+          applicationId={applicationId}
           current={current}
           onClose={() => setSaving(false)}
           onSaved={(viewId) => onSelect(viewId, current)}

@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  FilterBar,
-  type FilterBarField,
-  type FilterBarFilter
-} from "@infisical/cipher/patterns/filter-bar";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -33,10 +29,9 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import type { CaType } from "@app/hooks/api/ca/enums";
-import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
-import { EnrollmentType, type TCertificateProfile } from "@app/hooks/api/certificateProfiles/types";
+import type { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { CertKeyAlgorithm, CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
+import type { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
@@ -44,7 +39,6 @@ import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
-import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import { v4Path } from "../../links";
 import { CertificateSyncsDialog } from "../CertificateDetailsByIDPage/certificate-syncs";
 import {
@@ -63,20 +57,11 @@ import { ImportCertificatesSheet } from "../components/certificate-requests/impo
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { AssignApplicationDialog } from "./assign-application-dialog";
 import { certificatesToCsv } from "./csv-export";
+import { enrollmentLabel, filterParams, inventoryFields } from "./inventory-filters";
 import { type InventoryView, InventoryViewsMenu, type InventoryViewScope } from "./inventory-views";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
-
-const options = (entries: Record<string, string>) =>
-  Object.entries(entries).map(([value, label]) => ({ value, label }));
-const enrollmentLabel: Record<EnrollmentType, string> = {
-  [EnrollmentType.API]: "API",
-  [EnrollmentType.EST]: "EST",
-  [EnrollmentType.ACME]: "ACME",
-  [EnrollmentType.SCEP]: "SCEP",
-  [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
-};
 
 const dateIn = (days: string) => {
   const date = new Date();
@@ -125,27 +110,6 @@ const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
   return filters;
 };
 
-const filterParams = (filters: FilterBarFilter[]): Partial<TListCertificatesDTO> => {
-  const params: Partial<TListCertificatesDTO> = {};
-  filters.forEach(({ field, operator, values }) => {
-    if (!values.length) return;
-    if (field === "notAfter" || field === "notBefore") {
-      const date = new Date(values[0]);
-      const bound = operator === "after" ? "From" : "To";
-      params[`${field}${bound}`] = date;
-      return;
-    }
-    if (field === "status") params.status = values.join(",");
-    if (field === "enrollmentType") params.enrollmentTypes = values;
-    if (field === "keyAlgorithm") params.keyAlgorithm = values;
-    if (field === "keySize") params.keySizes = values.map(Number);
-    if (field === "source") params.source = values;
-    if (field === "caId") params.caIds = values;
-    if (field === "profileId") params.profileIds = values;
-  });
-  return params;
-};
-
 const sortKeys: Record<string, string> = {
   expires: "notAfter",
   issued: "notBefore"
@@ -163,79 +127,6 @@ const algorithmLabel = (algorithm?: string | null) =>
   (algorithm && certKeyAlgorithmToNameMap[algorithm as CertKeyAlgorithm]) || algorithm || "None";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-
-const inventoryFields = (
-  authorities: TUnifiedCertificateAuthority[],
-  profiles: TCertificateProfile[]
-): FilterBarField[] => [
-  {
-    key: "status",
-    label: "Status",
-    type: "multi-select",
-    options: [
-      { value: CertStatus.ACTIVE, label: "Active" },
-      { value: CertStatus.RENEWED, label: "Renewed" },
-      { value: CertStatus.EXPIRED, label: "Expired" },
-      { value: CertStatus.REVOKED, label: "Revoked" },
-      { value: CertStatus.DELETED, label: "Deleted" }
-    ]
-  },
-  { key: "notAfter", label: "Expiration date", type: "date" },
-  { key: "notBefore", label: "Issued date", type: "date" },
-  {
-    key: "enrollmentType",
-    label: "Enrollment method",
-    type: "multi-select",
-    options: options(enrollmentLabel)
-  },
-  {
-    key: "keyAlgorithm",
-    label: "Algorithm",
-    type: "multi-select",
-    options: options(certKeyAlgorithmToNameMap)
-  },
-  {
-    key: "keySize",
-    label: "Key size",
-    type: "multi-select",
-    options: [
-      { value: "256", label: "256-bit (ECDSA)" },
-      { value: "384", label: "384-bit (ECDSA)" },
-      { value: "521", label: "521-bit (ECDSA)" },
-      { value: "2048", label: "2048-bit (RSA)" },
-      { value: "3072", label: "3072-bit (RSA)" },
-      { value: "4096", label: "4096-bit (RSA)" }
-    ]
-  },
-  {
-    key: "source",
-    label: "Source",
-    type: "multi-select",
-    options: [
-      { value: CertSource.Issued, label: "Managed" },
-      { value: CertSource.Discovered, label: "Discovered" },
-      { value: CertSource.Imported, label: "Imported" }
-    ]
-  },
-  {
-    key: "caId",
-    label: "Certificate authority",
-    type: "multi-select",
-    options: authorities.map((ca) => ({
-      value: ca.id,
-      label: ca.name || ca.id
-    }))
-  },
-  {
-    key: "profileId",
-    label: "Profile",
-    type: "multi-select",
-    options: profiles.map((entry) => ({
-      value: entry.id,
-      label: entry.slug
-    }))
-  }
-];
 
 const inventoryColumns = (orgId: string): DataTableColumn<TCertificate>[] => [
   {
@@ -637,7 +528,13 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
         {importing && <ImportCertificatesSheet onClose={() => setImporting(false)} />}
         <FilterBar
           label="Certificate filters"
-          fields={inventoryFields(authorities, profiles?.certificateProfiles ?? [])}
+          fields={inventoryFields(
+            authorities,
+            (profiles?.certificateProfiles ?? []).map((entry) => ({
+              value: entry.id,
+              label: entry.slug
+            }))
+          )}
           value={filters}
           onChange={(next) => {
             setFilters(next);

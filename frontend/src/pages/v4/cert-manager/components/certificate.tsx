@@ -13,11 +13,12 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
-import { Inline } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
+import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, type CaType } from "@app/hooks/api/ca/enums";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
@@ -105,20 +106,23 @@ export const CertificateStatusBadge = ({
     </Badge>
   );
   if (!revocation?.isPending) return statusBadge;
+  const detail = [
+    status !== CertStatus.ACTIVE && `This certificate is ${label.toLowerCase()}.`,
+    revocation.revokeReplacesRequestReason
+  ]
+    .filter(Boolean)
+    .join(" ");
   const pendingBadge = (
-    <Badge tone="warn" size={size}>
+    <Badge tone="warn" dot size={size} collapse={Boolean(size)}>
       Revocation pending
     </Badge>
   );
-  return (
-    <Inline gap={6} align="center">
-      {status !== CertStatus.ACTIVE && statusBadge}
-      {revocation.revokeReplacesRequestReason ? (
-        <Tooltip content={revocation.revokeReplacesRequestReason}>{pendingBadge}</Tooltip>
-      ) : (
-        pendingBadge
-      )}
-    </Inline>
+  return detail ? (
+    <Tooltip content={detail}>
+      <span>{pendingBadge}</span>
+    </Tooltip>
+  ) : (
+    pendingBadge
   );
 };
 
@@ -222,6 +226,23 @@ export const useHasProjectCertificateSyncs = (orgId: string, enabled: boolean) =
     enabled: enabled && Boolean(projectId)
   });
   return Boolean(data?.some((sync) => !sync.applicationId));
+};
+
+export const usePendingRequestCount = (orgId: string, enabled: boolean) => {
+  const { projectId } = useCertManagerProjectId(orgId, { enabled });
+  const approvals = useV4Adapter("approvalRequests");
+  const scope = {
+    scope: ApprovalPolicyScope.Project,
+    scopeId: enabled ? (projectId ?? "") : ""
+  };
+  const requests = [
+    approvals.useRequests({ policyType: ApprovalPolicyType.CertRequest, ...scope }).data,
+    approvals.useRequests({ policyType: ApprovalPolicyType.CertRevocation, ...scope }).data,
+    approvals.useRequests({ policyType: ApprovalPolicyType.CertCodeSigning, ...scope }).data
+  ];
+  return requests
+    .flatMap((list) => list ?? [])
+    .filter((request) => request.status === ApprovalRequestStatus.Pending).length;
 };
 
 export const CertManagerNotSetUp = ({ orgId }: { orgId: string }) => (

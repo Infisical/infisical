@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  FilterBar,
-  type FilterBarField,
-  type FilterBarFilter
-} from "@infisical/cipher/patterns/filter-bar";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
@@ -15,8 +11,6 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { useNavigate } from "@tanstack/react-router";
 
-import { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import {
   PkiApplicationResourceActions,
@@ -28,7 +22,6 @@ import { getApplicationCertificateAccess } from "@app/pages/cert-manager/Certifi
 import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
-import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { v4Path } from "../../links";
 import {
@@ -42,32 +35,15 @@ import {
   useRevocationApprovals
 } from "../components/certificate";
 import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
+import { filterParams, inventoryFields } from "../InventoryPage/inventory-filters";
+import {
+  type InventoryView,
+  InventoryViewsMenu,
+  type InventoryViewScope
+} from "../InventoryPage/inventory-views";
 import { appCan, plural } from "./shared";
 
 const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
-
-const enrollmentLabel: Record<EnrollmentType, string> = {
-  [EnrollmentType.API]: "API",
-  [EnrollmentType.EST]: "EST",
-  [EnrollmentType.ACME]: "ACME",
-  [EnrollmentType.SCEP]: "SCEP",
-  [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
-};
-
-const filterParams = (filters: FilterBarFilter[]): Partial<TListCertificatesDTO> => {
-  const params: Partial<TListCertificatesDTO> = {};
-  filters.forEach(({ field, operator, values }) => {
-    if (!values.length) return;
-    if (field === "notAfter") {
-      params[operator === "after" ? "notAfterFrom" : "notAfterTo"] = new Date(values[0]);
-      return;
-    }
-    if (field === "status") params.status = values.join(",");
-    if (field === "enrollmentType") params.enrollmentTypes = values;
-    if (field === "profileId") params.profileIds = values;
-  });
-  return params;
-};
 
 export const CertificatesTab = ({
   orgId,
@@ -89,6 +65,9 @@ export const CertificatesTab = ({
   const { data: profiles = [] } = adapter.useApplicationProfiles(application.id);
   const [query, setQuery] = useState(initialSearch ?? "");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [viewScope, setViewScope] = useState<InventoryViewScope>();
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: "expires",
     direction: "asc"
@@ -113,6 +92,8 @@ export const CertificatesTab = ({
     limit: pageSize,
     search: query.trim() || undefined,
     ...filterParams(filters),
+    includeDeleted: includeDeleted || undefined,
+    metadataFilter: viewScope?.metadata,
     sortBy: sort.columnId === "issued" ? "notBefore" : "notAfter",
     sortOrder: sort.direction
   });
@@ -131,33 +112,6 @@ export const CertificatesTab = ({
       params: { orgId, certificateId: cert.id },
       search: { fromApplication: application.name }
     });
-
-  const fields: FilterBarField[] = [
-    {
-      key: "status",
-      label: "Status",
-      type: "multi-select",
-      options: [
-        { value: CertStatus.ACTIVE, label: "Active" },
-        { value: CertStatus.RENEWED, label: "Renewed" },
-        { value: CertStatus.EXPIRED, label: "Expired" },
-        { value: CertStatus.REVOKED, label: "Revoked" }
-      ]
-    },
-    { key: "notAfter", label: "Expiration date", type: "date" },
-    {
-      key: "enrollmentType",
-      label: "Enrollment method",
-      type: "multi-select",
-      options: Object.entries(enrollmentLabel).map(([value, label]) => ({ value, label }))
-    },
-    {
-      key: "profileId",
-      label: "Profile",
-      type: "multi-select",
-      options: profiles.map((profile) => ({ value: profile.profileId, label: profile.profileSlug }))
-    }
-  ];
 
   const columns: DataTableColumn<TCertificate>[] = [
     {
@@ -182,7 +136,7 @@ export const CertificatesTab = ({
     {
       id: "status",
       header: "Status",
-      width: 112,
+      width: 176,
       render: (cert) => <CertificateStatusBadge cert={cert} revocation={revocationOf(cert)} />
     },
     {
@@ -224,6 +178,16 @@ export const CertificatesTab = ({
   const clear = () => {
     setQuery("");
     setFilters([]);
+    setIncludeDeleted(false);
+    setActiveViewId(null);
+    setViewScope(undefined);
+    setPage(1);
+  };
+  const applyView = (viewId: string | null, view: InventoryView) => {
+    setActiveViewId(viewId);
+    setFilters(view.filters);
+    setIncludeDeleted(view.includeDeleted);
+    setViewScope(view.scope);
     setPage(1);
   };
 
@@ -231,10 +195,15 @@ export const CertificatesTab = ({
     <Stack gap="toolbar">
       <FilterBar
         label="Certificate filters"
-        fields={fields}
+        fields={inventoryFields(
+          authorities,
+          profiles.map((profile) => ({ value: profile.profileId, label: profile.profileSlug }))
+        )}
         value={filters}
         onChange={(next) => {
           setFilters(next);
+          setActiveViewId(null);
+          setViewScope(undefined);
           setPage(1);
         }}
         search={
@@ -251,14 +220,24 @@ export const CertificatesTab = ({
           />
         }
         actions={
-          <Button
-            variant="outline"
-            icon="upload"
-            disabledReason={canImport ? undefined : RESTRICTED}
-            onClick={() => setImporting(true)}
-          >
-            Import
-          </Button>
+          <>
+            <InventoryViewsMenu
+              projectId={projectId}
+              applicationId={application.id}
+              applicationPermission={access.permission}
+              activeViewId={activeViewId}
+              current={{ filters, includeDeleted, scope: viewScope }}
+              onSelect={applyView}
+            />
+            <Button
+              variant="outline"
+              icon="upload"
+              disabledReason={canImport ? undefined : RESTRICTED}
+              onClick={() => setImporting(true)}
+            >
+              Import
+            </Button>
+          </>
         }
       />
       {importing && (

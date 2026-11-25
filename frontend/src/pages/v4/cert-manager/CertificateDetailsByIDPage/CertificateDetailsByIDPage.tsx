@@ -250,7 +250,6 @@ const issuanceItems = (cert: TCertificate, org: string): DataListItem[] => [
   ]),
   ["Profile", cert.profileName ? <code key="profile">{cert.profileName}</code> : "None"],
   ["Application", cert.applicationName ?? "None"],
-  ["Enrollment", cert.enrollmentType?.toUpperCase() ?? "None"],
   ["Auto renewal", cert.renewBeforeDays ? `${cert.renewBeforeDays} days before expiry` : "Off"]
 ];
 
