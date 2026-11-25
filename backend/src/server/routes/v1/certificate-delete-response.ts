@@ -12,7 +12,7 @@ export const DeleteCertResponseSchemas = {
     certificate: SanitizedCertificateSchema
   }),
   202: z.object({
-    message: z.string().trim(),
+    message: z.string().trim().describe(CERTIFICATES.DELETE.message),
     status: z.literal(CertificateDeletionStatus.PendingApproval).describe(CERTIFICATES.DELETE.status),
     serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumberRes),
     approvalRequestId: z.string().uuid().describe(CERTIFICATES.DELETE.approvalRequestId)

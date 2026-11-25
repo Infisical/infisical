@@ -2598,6 +2598,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to delete.",
     serialNumber: "The serial number of the certificate to delete.",
     serialNumberRes: "The serial number of the certificate.",
+    message:
+      "A readable explanation that the certificate's Application requires approval to delete it, so it isn't deleted yet.",
     status:
       "pending_approval when a deletion approval policy covers the certificate's profile. An approval request was created, and the certificate isn't deleted until the request is approved. A certificate that was deleted right away returns HTTP 200 with the deleted certificate instead.",
     approvalRequestId: "The ID of the approval request created for the deletion."
