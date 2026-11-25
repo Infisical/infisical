@@ -126,8 +126,15 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
     );
 
     secretsToRename.forEach((secret, index) => {
-      if (results[index].status === "fulfilled")
-        renameHeldDraft(secret.env, secretPath, secret.key, data.key);
+      const result = results[index];
+      if (result.status !== "fulfilled" || "approval" in result.value) return;
+      if (renameHeldDraft(secret.env, secretPath, secret.key, data.key) !== "conflict") return;
+      createNotification({
+        type: "warning",
+        text: `Your unsaved value for ${secret.key} in ${
+          environments.find((env) => env.slug === secret.env)?.name ?? secret.env
+        } was dropped because ${data.key} already has an unsaved change there`
+      });
     });
 
     if (results.every((result) => result.status === "fulfilled")) {

@@ -63,7 +63,12 @@ type TUnsavedEditsRegistry = {
   takeDraft: (key: string) => TUnsavedChange[] | undefined;
   holdDrafts: (changes: TUnsavedChange[]) => void;
   dropHeldDrafts: () => void;
-  renameHeldDraft: (environment: string, secretPath: string, from: string, to: string) => void;
+  renameHeldDraft: (
+    environment: string,
+    secretPath: string,
+    from: string,
+    to: string
+  ) => "moved" | "conflict" | "none";
   setCommitting: (isCommitting: boolean) => void;
 };
 
@@ -156,13 +161,19 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       renameHeldDraft: (environment, secretPath, from, to) => {
         const key = getUnsavedDraftKey(environment, secretPath, from);
         const edit = edits.get(key);
-        if (!edit?.isHeld) return;
+        if (!edit?.isHeld) return "none";
+        const target = getUnsavedDraftKey(environment, secretPath, to);
         edits.delete(key);
+        if (edits.has(target)) {
+          sync();
+          return "conflict";
+        }
         hold(
-          getUnsavedDraftKey(environment, secretPath, to),
+          target,
           edit.getChanges().map((change) => ({ ...change, secretKey: to }))
         );
         sync();
+        return "moved";
       },
       dropHeldDrafts: () => {
         edits.forEach((edit, key) => {
@@ -203,7 +214,7 @@ export const useRenameHeldDraft = () => {
   const registry = useContext(UnsavedEditsRegistryContext);
   return useCallback(
     (environment: string, secretPath: string, from: string, to: string) =>
-      registry?.renameHeldDraft(environment, secretPath, from, to),
+      registry?.renameHeldDraft(environment, secretPath, from, to) ?? "none",
     [registry]
   );
 };
