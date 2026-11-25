@@ -185,6 +185,22 @@ const trialNotice = (productKey: string, cause: string | null): SubscriptionPlan
   cause
 });
 
+const renewalNotice = (cause: string | null): SubscriptionPlanNotice => ({
+  type: "subscription_payment_failed",
+  cause,
+  since: minutesAgo(3 * 24 * 60)
+});
+
+const NOTICES: Record<ShellScenario, () => SubscriptionPlanNotice[]> = {
+  empty: () => [],
+  optimal: () => [renewalNotice(null)],
+  stressed: () => [
+    renewalNotice("payment_action_required"),
+    trialNotice("secrets_management", "payment_action_required"),
+    trialNotice("pam", "payment_action_required")
+  ]
+};
+
 const admin = (
   id: string,
   firstName: string,
@@ -254,13 +270,7 @@ export const shellDemo: ShellAdapter = {
     const base = adminDemo.useSubscription("").data!;
     return ok({
       ...base,
-      notices:
-        scenario === "stressed"
-          ? [
-              trialNotice("secrets_management", "payment_action_required"),
-              trialNotice("pam", "payment_action_required")
-            ]
-          : []
+      notices: NOTICES[scenario]()
     });
   },
   useAuditLogStreams: () => ok([]),

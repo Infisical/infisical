@@ -97,6 +97,9 @@ Rules:
   final answer goes in the client, not as a status check in `UsageReportService`.
 - **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
   `licenseBilling` and passed only to subscription code.
+- **A failed renewal reaches the org as the `subscription_payment_failed` plan notice**, pulled with the plan since
+  the License Server never calls us. It drives the org-wide banner and carries no payment link, because every member
+  reads the plan; the invoice link stays on the permission-checked billing overview.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).
 - **Only `license-policy/entitlement-projection.ts` imports `./default-features`, by that exact specifier.** The e2e
   suite aliases it to `e2e-test/fakes/default-features.ts`, so a free tier read anywhere else escapes the
