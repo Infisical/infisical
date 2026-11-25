@@ -49,6 +49,7 @@ import {
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
+import { RenewalAwaitingApprovalError } from "../certificate-request/certificate-request-approval-fns";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -3492,9 +3493,10 @@ describe("CertificateV3Service", () => {
         setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
         vi.mocked(mockCertificateDAL.hasRenewalAwaitingApproval).mockResolvedValue(true);
 
-        await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
-          /already waiting for approval/
-        );
+        const renewal = service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+        await expect(renewal).rejects.toThrow(/already waiting for approval/);
+        await expect(renewal).rejects.toBeInstanceOf(RenewalAwaitingApprovalError);
+        await expect(renewal).rejects.toBeInstanceOf(BadRequestError);
         expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       });
 
@@ -3880,7 +3882,7 @@ describe("CertificateV3Service", () => {
             constraints: { version: 1, constraints: { operation: CertRequestPolicyOperation.Issuance } }
           };
 
-          const coverWith = (issuance: typeof issuancePolicy) =>
+          const coverWith = (issuance: typeof issuancePolicy | null) =>
             mockApprovalPolicyService.matchPolicy.mockImplementation(
               async (
                 _type: ApprovalPolicyType,
@@ -3935,6 +3937,60 @@ describe("CertificateV3Service", () => {
 
             expect(result.status).toBe(CertificateRequestStatus.ISSUED);
             expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+          });
+
+          it("holds a machine identity's renewal from a CSR under the Issuance policy", async () => {
+            setupRenewal(mockOriginalCert);
+            coverWith(issuancePolicy);
+
+            const result = await service.renewCertificate({
+              certificateId: "cert-123",
+              ...mockActor,
+              actor: ActorType.IDENTITY,
+              actorId: "identity-123",
+              renewalKeySource: CertificateRenewalKeySource.Csr,
+              csr: "-----BEGIN CERTIFICATE REQUEST-----\nrenewal\n-----END CERTIFICATE REQUEST-----"
+            });
+
+            expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+            expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+            expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+              expect.objectContaining({
+                policy: expect.objectContaining({ id: "issuance-policy-1" }),
+                machineIdentityId: "identity-123"
+              })
+            );
+          });
+
+          it("holds a machine identity's unchanged renewal of an imported certificate under the Issuance policy", async () => {
+            setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+            coverWith(issuancePolicy);
+
+            const result = await renewAsMachineIdentity();
+
+            expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+            expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+            expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+              expect.objectContaining({
+                policy: expect.objectContaining({ id: "issuance-policy-1" }),
+                machineIdentityId: "identity-123"
+              })
+            );
+          });
+
+          it("lets a machine identity's renewal that changes the certificate through when no Issuance policy covers the profile", async () => {
+            setupRenewal(mockOriginalCert);
+            coverWith(null);
+
+            const result = await renewAsMachineIdentity({ commonName: "renamed.example.com" });
+
+            expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+            expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+            expect(mockApprovalPolicyService.matchPolicy).toHaveBeenCalledWith(
+              ApprovalPolicyType.CertRequest,
+              expect.anything(),
+              expect.objectContaining({ operation: CertRequestPolicyOperation.Issuance })
+            );
           });
         });
 

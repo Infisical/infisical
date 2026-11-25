@@ -7,6 +7,7 @@ import { QueueJobs } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
+import { RenewalAwaitingApprovalError } from "../certificate-request/certificate-request-approval-fns";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
@@ -116,6 +117,14 @@ export const certificateV3QueueServiceFactory = ({
                   }
                 });
               } catch (error) {
+                // Not a failure: an earlier renewal of this certificate is held for approval and waits on that decision.
+                if (error instanceof RenewalAwaitingApprovalError) {
+                  logger.info(
+                    `${QueueJobs.CertificateV3DailyAutoRenewal}: skipped certificate with a renewal awaiting approval [certificateId=${certificate.id}] [projectId=${certificate.projectId}]`
+                  );
+                  // eslint-disable-next-line no-continue
+                  continue;
+                }
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 logger.error(error, `Failed to renew certificate ${certificate.id}: ${errorMessage}`);
                 await auditLogService.createAuditLog({

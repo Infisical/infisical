@@ -16,6 +16,14 @@ export type TCertificateRequestApprovalPolicy = TCertRequestPolicy & {
   steps: Awaited<ReturnType<TApprovalPolicyDALFactory["findStepsByPolicyId"]>>;
 };
 
+// The daily auto-renewal job skips a certificate on this error, since the held renewal is waiting on a decision
+// rather than failing.
+export class RenewalAwaitingApprovalError extends BadRequestError {
+  constructor() {
+    super({ message: "A renewal of this certificate is already waiting for approval." });
+  }
+}
+
 // Locks the certificate first, so two renewals of it submitted at once can't both pass and each raise a request.
 export const assertNoRenewalAwaitingApproval = async (
   certificateDAL: Pick<TCertificateDALFactory, "findByIdForUpdate" | "hasRenewalAwaitingApproval">,
@@ -24,7 +32,7 @@ export const assertNoRenewalAwaitingApproval = async (
 ) => {
   const lockedCertificate = await certificateDAL.findByIdForUpdate(certificate.certificateId, tx);
   if (await certificateDAL.hasRenewalAwaitingApproval(certificate, tx)) {
-    throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
+    throw new RenewalAwaitingApprovalError();
   }
   return lockedCertificate;
 };
