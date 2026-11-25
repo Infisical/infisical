@@ -79,8 +79,8 @@ Two services, split by who calls them, like Events:
 - `src/ee/services/audit-log/audit-log-catalog.test.ts` pins the catalog to its producers at compile time: every
   enum literal union equals its source enum, and every snapshot type accepts the type it replaced. A failure there
   means a producer changed: update the catalog deliberately.
-- Integration (`*.integration-test.ts`): the store contract (`ee/testing/audit-log-store-contract.ts`, also run on the
-  in-memory store) and ingestion into real `audit_logs`, including a failed insert leaving the buffer untrimmed. The buffer contract
-  runs only in memory: the integration harness has no Redis server yet.
+- Integration (`*.integration-test.ts`): the buffer contract on a real Redis (`setupRedis`), the store contract
+  (`ee/testing/audit-log-store-contract.ts`, also run on the in-memory store) and ingestion into real `audit_logs`,
+  including a failed insert leaving the buffer untrimmed.
 - Blackbox: `tests/suites/secretmanager/auditlogs/` and `tests/suites/auditlog/` cover recording, retention, settings
   and stream delivery end to end.

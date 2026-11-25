@@ -47,7 +47,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
 | `lib/actor-context/` | `TActorContext`, `ActorContextMemo`, `roleHolderOf` (the user or identity whose roles decide, the assumed actor inside its project; refuses any other principal) | |
 | `lib/data-access/` | `ReadFrom`, `TReadOptions`, `TStoreConnection`, `poolStoreConnection`, `singleStoreConnection`, `findOnReplicaThenPrimary`, `toCount` and other row helpers every store needs | |
-| `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
+| `lib/testing/integration/` | The integration harness: Postgres (`setupIntegration`) and Redis (`setupRedis`, a fresh logical database per test) | |
 
 Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
 lint enforces it. Code goes here only when it has no business rule and a second domain needs it (or will, like

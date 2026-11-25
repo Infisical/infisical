@@ -4,3 +4,5 @@ export type { TEmptyDatabase } from "./postgres";
 export { randomId } from "./run";
 export type { TIntegration, TSetupIntegrationOptions } from "./setup-integration";
 export { setupIntegration } from "./setup-integration";
+export { setupRedis } from "./servers/redis";
+export type { TRedisServer } from "./servers/redis";
