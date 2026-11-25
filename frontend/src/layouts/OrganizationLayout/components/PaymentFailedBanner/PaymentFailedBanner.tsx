@@ -38,10 +38,18 @@ enum NoticeCause {
   PaymentProcessing = "payment_processing"
 }
 
-const buildRenewalFailureMessage = (cause: string | null) =>
-  cause === NoticeCause.PaymentActionRequired
-    ? "Your bank needs to approve the latest subscription payment. Approve it to keep this organization's paid features."
-    : "We couldn't collect the latest subscription payment. Update the payment method to keep this organization's paid features.";
+// The notice doesn't say whether access is already paused (past due vs. unpaid), so the copy promises nothing
+// about features; the billing page states that. Only someone who can act is told what to do.
+const buildRenewalFailureMessage = (isBankApproval: boolean, canResolve: boolean) => {
+  if (isBankApproval) {
+    return canResolve
+      ? "The bank needs to approve the latest subscription payment. Approve it to complete the payment."
+      : "The bank needs to approve the latest subscription payment.";
+  }
+  return canResolve
+    ? "We couldn't collect the latest subscription payment. Update the payment method to resolve it."
+    : "We couldn't collect the latest subscription payment.";
+};
 
 const listFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
@@ -113,9 +121,16 @@ export const PaymentFailedBanner = () => {
     ? `Your payment for ${listProducts(processingNotices)} is processing. Access continues meanwhile.`
     : null;
 
+  // Billing lives on the root organization, and a sub-org role grants nothing there.
+  const canResolve =
+    isRootOrganization &&
+    canReadBilling &&
+    permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+
+  const isBankApproval = renewalNotice?.cause === NoticeCause.PaymentActionRequired;
   const failureMessages: string[] = [];
   if (renewalNotice) {
-    failureMessages.push(buildRenewalFailureMessage(renewalNotice.cause));
+    failureMessages.push(buildRenewalFailureMessage(isBankApproval, canResolve));
   }
   if (failedTrialNotices.length) {
     failureMessages.push(buildFailureMessage(failedTrialNotices));
@@ -125,11 +140,10 @@ export const PaymentFailedBanner = () => {
     return <OrgAlertBanner role="status" isDismissible={false} text={processingMessage} />;
   }
 
-  // Billing lives on the root organization, and a sub-org role grants nothing there.
-  const canResolve =
-    isRootOrganization &&
-    canReadBilling &&
-    permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+  const askAdminMessage =
+    isBankApproval && !failedTrialNotices.length
+      ? "Ask an organization admin to approve it."
+      : "Ask an organization admin to update payment.";
   // Paying a trial again while its payment settles could charge twice.
   const canPayTrial = failedTrialNotices.length > 0 && !processingNotices.length;
   const showAction = canResolve && (Boolean(renewalNotice) || canPayTrial);
@@ -142,7 +156,7 @@ export const PaymentFailedBanner = () => {
         <>
           <span className="font-medium">Action needed:</span> {failureMessages.join(" ")}
           {processingMessage && ` ${processingMessage}`}
-          {!canResolve && " Ask an organization admin to update payment."}
+          {!canResolve && ` ${askAdminMessage}`}
         </>
       }
       action={
