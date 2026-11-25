@@ -25,3 +25,11 @@
 
 - [ ] None
 - [ ] Yes, I added a fragment under `upgrade-impact/changes/`
+
+## Checklist
+
+- [ ] Title follows the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/#summary) format: `type(scope): short description` (scope is optional, e.g., `fix: prevent crash on sync` or `fix(api): handle null response`). 
+- [ ] Tested locally
+- [ ] Updated docs (if needed)
+- [ ] Updated AGENTS.md files (if needed)
+- [ ] Read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview)
