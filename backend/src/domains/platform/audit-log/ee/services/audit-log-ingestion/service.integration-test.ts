@@ -53,7 +53,7 @@ describe("AuditLogIngestionService.drain on Postgres", () => {
     const stored = await h.db(TableName.AuditLog).where({ orgId: tn.org.id });
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ projectId: tn.project.id, projectName: tn.project.name });
-    const days = (new Date(stored[0].expiresAt).getTime() - new Date(stored[0].createdAt).getTime()) / 86_400_000;
+    const days = ((stored[0].expiresAt as Date).getTime() - (stored[0].createdAt as Date).getTime()) / 86_400_000;
     expect(days).toBe(7);
     expect(delivered.map((row) => row.id)).toEqual([stored[0].id]);
     expect((await keyStore.streamCollect("audit-log-stream", 10, 10)).entries).toHaveLength(0);
