@@ -54,4 +54,25 @@ describe("renderComment", () => {
     expect(comment).toContain("```yaml\ncategory: config\nimpactLevel: high\ntitle: REDIS_URL is required");
     expect(comment).toContain("**Remove `upgrade-impact/changes/new-table.yaml`**\n\nAdditive migration.");
   });
+
+  it("keeps model-written text from mentioning people or leaving its code formatting", () => {
+    const comment = renderComment([
+      {
+        kind: "change",
+        file: "upgrade-impact/changes/a.yaml`** @octocat",
+        reason: "Ask @octocat and @org/team, or mail a@b.co.",
+        fragment: {
+          category: "config",
+          impactLevel: "low",
+          title: "T",
+          description: "```\n@octocat",
+          action: "A"
+        }
+      }
+    ]);
+
+    expect(comment).toContain("**Change `upgrade-impact/changes/a.yaml** @octocat`**");
+    expect(comment).toContain("Ask @\u200boctocat and @\u200borg/team, or mail a@\u200bb.co.");
+    expect(comment).toMatch(/\n````yaml\ncategory: config[\s\S]*```[\s\S]*\n````\n/);
+  });
 });

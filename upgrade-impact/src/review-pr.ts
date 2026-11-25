@@ -73,20 +73,36 @@ export const parseDeclaration = (body: string): Declaration => {
   return checked[0].startsWith("yes") ? "yes" : "unclear";
 };
 
+// The model writes these strings from pull request content, so they are kept from doing anything
+// in the comment beyond being read: a mention would notify people, and a backtick would end the
+// code span or block the text sits in.
+const withoutMentions = (text: string) => text.replace(/@(?=\w)/g, "@\u200b");
+
+const codeSpan = (text: string) => `\`${text.replace(/`/g, "")}\``;
+
+const codeBlock = (language: string, text: string) => {
+  const longestBacktickRun = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(Math.max(3, longestBacktickRun + 1));
+
+  return `${fence}${language}\n${text}\n${fence}`;
+};
+
 export const renderComment = (findings: Finding[]) => {
   if (findings.length === 0) {
     return "";
   }
 
   const sections = findings.map((finding) => {
+    const reason = withoutMentions(finding.reason);
+
     if (finding.kind === "remove") {
-      return `**Remove \`${finding.file}\`**\n\n${finding.reason}`;
+      return `**Remove ${codeSpan(finding.file)}**\n\n${reason}`;
     }
 
-    const heading = finding.kind === "add" ? `Add \`${finding.file}\`` : `Change \`${finding.file}\``;
-    const suggestion = finding.fragment ? `\n\n\`\`\`yaml\n${stringify(finding.fragment).trim()}\n\`\`\`` : "";
+    const heading = `${finding.kind === "add" ? "Add" : "Change"} ${codeSpan(finding.file)}`;
+    const suggestion = finding.fragment ? `\n\n${codeBlock("yaml", stringify(finding.fragment).trim())}` : "";
 
-    return `**${heading}**\n\n${finding.reason}${suggestion}`;
+    return `**${heading}**\n\n${reason}${suggestion}`;
   });
 
   return [
