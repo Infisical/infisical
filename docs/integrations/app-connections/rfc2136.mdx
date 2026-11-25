@@ -308,12 +308,12 @@ If Infisical can't save the connection or add a challenge record, the error mess
 | `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server, and sync the DNS server's clock with NTP |
 | `does not recognize the TSIG key name or its algorithm` | Check **Key Name** for typos, and check that the DNS server has loaded the key |
 | `its clock differs from Infisical's by more than 5 minutes` | Sync the DNS server's clock with NTP |
-| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE` and `allow-dnsupdate-from`), and that **Host** is the zone's primary server |
+| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`), that the server accepts updates from the IP address of Infisical or your Gateway (PowerDNS `allow-dnsupdate-from`), and that **Host** is the zone's primary server |
 | `did not accept the update for this zone` | Check the **Zone** on the certificate authority, **Key Name** and **Algorithm**, and that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`) |
 | `does not accept dynamic updates` | Turn on dynamic updates on the DNS server, such as `dnsupdate=yes` in PowerDNS |
 | `is not authoritative for any zone containing` | Point **Host** at the zone's primary server, or enter the **Zone** on the certificate authority |
 | `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
 | `is an alias (CNAME)` | Publish the CNAME in public DNS so Infisical follows it, or remove the CNAME from the DNS server |
 | `but does not serve it` | Check that **Host** is the zone's primary server, and that the key's policy allows TXT records at the challenge name |
-| `still doesn't serve the challenge record` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
+| `serve the challenge record after` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
 | `could not connect to the DNS server`, `did not answer in time`, or `closed the connection without answering` | Check that the DNS server accepts TCP connections on **Port** from Infisical or your Gateway (some firewalls allow only UDP on port 53), or connect through a Gateway |

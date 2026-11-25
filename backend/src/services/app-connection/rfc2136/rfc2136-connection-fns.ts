@@ -172,7 +172,7 @@ const RCODE_MESSAGES: Partial<Record<DnsRcode, string>> = {
   // Servers reuse REFUSED and NOTAUTH for several causes (PowerDNS for a wrong secret or clock, Knot for an unknown
   // key or an ACL denial), so these name every cause rather than guess one
   [DnsRcode.Refused]:
-    "the DNS server refused the update. Possible causes: wrong key name, secret or algorithm; the server's clock is more than 5 minutes off; the key isn't allowed to update this name; or Host isn't the zone's primary server",
+    "the DNS server refused the update. Possible causes: wrong key name, secret or algorithm; the server's clock is more than 5 minutes off; the key isn't allowed to update this name; the server doesn't accept updates from Infisical's address; or Host isn't the zone's primary server",
   [DnsRcode.NotAuth]:
     "the DNS server did not accept the update for this zone. Possible causes: wrong zone; wrong key name or algorithm; or the key isn't allowed to update this name",
   [DnsRcode.NotZone]: "the record name is not inside the zone"
