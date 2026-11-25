@@ -656,7 +656,11 @@ export const useCreateCommits = () => {
                 secrets: {
                   create: envSecrets
                     .filter((secret) => secret.isCreate)
-                    .map(({ secretKey, secretValue }) => ({ secretKey, secretValue })),
+                    .map(({ secretKey, secretValue, secretComment }) => ({
+                      secretKey,
+                      secretValue,
+                      secretComment
+                    })),
                   update: envSecrets
                     .filter((secret) => !secret.isCreate)
                     .map(({ secretKey, secretValue, secretComment, tagIds }) => ({

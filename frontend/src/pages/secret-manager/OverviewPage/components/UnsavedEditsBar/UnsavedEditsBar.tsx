@@ -90,8 +90,20 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       if (!changes.length) return;
       const held: TRegisteredEdit = {
         getChanges: () => changes,
-        settle: () => {
-          if (edits.get(key) === held) edits.delete(key);
+        settle: (committed) => {
+          const remaining = changes.filter(
+            (change) =>
+              !committed.some(
+                (done) =>
+                  done.environment === change.environment &&
+                  done.secretKey === change.secretKey &&
+                  done.secretValue === change.secretValue
+              )
+          );
+          if (edits.get(key) === held) {
+            edits.delete(key);
+            hold(key, remaining);
+          }
           sync();
         },
         discard: () => {
@@ -113,7 +125,12 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
           sync();
         };
       },
-      getEdits: () => [...edits.values()],
+      getEdits: () =>
+        [...edits.entries()].map(([key, edit]) => ({
+          getChanges: () => edit.getChanges(),
+          settle: (committed: TUnsavedChange[]) => edits.get(key)?.settle(committed),
+          discard: () => edits.get(key)?.discard()
+        })),
       takeDraft: (key) => {
         const edit = edits.get(key);
         if (!edit?.isHeld) return undefined;
