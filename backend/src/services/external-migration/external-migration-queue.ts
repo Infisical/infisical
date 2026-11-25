@@ -150,6 +150,7 @@ export const externalMigrationQueueFactory = ({
 
       const { projectsNotImported } = await importDataIntoInfisicalFn({
         input: decryptedJson,
+        plan: await licenseService.getPlan(decryptedJson.actorOrgId),
         projectDAL,
         projectEnvDAL,
         secretDAL,

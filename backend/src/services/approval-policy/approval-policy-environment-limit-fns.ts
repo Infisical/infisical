@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { ResourceLimit, TResourceLimits } from "@app/lib/resource-limits";
 
 import { TApprovalPolicySecretEnvironmentDALFactory } from "./approval-policy-dal";
 
@@ -9,18 +9,20 @@ import { TApprovalPolicySecretEnvironmentDALFactory } from "./approval-policy-da
 export const assertApprovalPolicyEnvironmentCapacity = async (
   {
     approvalPolicySecretEnvironmentDAL,
+    resourceLimits,
     envs,
     currentEnvIds = [],
     describe
   }: {
     approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "countPoliciesByEnvIds">;
+    resourceLimits: TResourceLimits;
     envs: { id: string; slug: string }[];
     currentEnvIds?: string[];
     describe: (envSlug: string, max: number) => string;
   },
   tx: Knex
 ) => {
-  if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerEnvironment) === null) return;
+  if (resourceLimits.max(ResourceLimit.ApprovalPoliciesPerEnvironment) === null) return;
 
   const current = new Set(currentEnvIds);
   const joiningEnvs = envs.filter((env) => !current.has(env.id));
@@ -31,7 +33,7 @@ export const assertApprovalPolicyEnvironmentCapacity = async (
     tx
   );
   joiningEnvs.forEach((env) =>
-    assertWithinResourceLimit({
+    resourceLimits.assertWithin({
       limit: ResourceLimit.ApprovalPoliciesPerEnvironment,
       used: policiesByEnv[env.id] ?? 0,
       describe: (max) => describe(env.slug, max)

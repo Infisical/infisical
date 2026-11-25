@@ -6,6 +6,7 @@ import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { getResourceLimits } from "@app/lib/resource-limits";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { assertPolicyTypeSupportsDelegatedApproval } from "@app/services/delegated-approval/delegated-approval-fns";
@@ -157,10 +158,12 @@ export const secretChangePolicyServiceFactory = ({
       projectId
     });
 
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
     return approvalPolicyDAL.transaction(async (tx) => {
       await assertApprovalPolicyEnvironmentCapacity(
         {
           approvalPolicySecretEnvironmentDAL,
+          resourceLimits,
           envs,
           describe: (envSlug, max) =>
             `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
@@ -289,6 +292,7 @@ export const secretChangePolicyServiceFactory = ({
 
     return updatePolicy({
       policy,
+      resourceLimits: await getResourceLimits(licenseService, actorOrgId),
       name,
       approvals,
       secretPath,

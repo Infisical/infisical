@@ -24,7 +24,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -266,9 +266,10 @@ export const secretImportServiceFactory = ({
       if (existingImport) throw new BadRequestError({ message: `Cyclic import not allowed` });
     }
 
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
     const secImport = await secretImportDAL.transaction(async (tx) => {
-      if (getResourceLimit(ResourceLimit.ImportsPerFolder) !== null) {
-        assertWithinResourceLimit({
+      if (resourceLimits.max(ResourceLimit.ImportsPerFolder) !== null) {
+        resourceLimits.assertWithin({
           limit: ResourceLimit.ImportsPerFolder,
           used: await secretImportDAL.countByFolderId(folder.id, tx),
           adding: isReplication ? 2 : 1,

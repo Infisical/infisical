@@ -6,6 +6,7 @@ import { TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { canonicalizeSecretPath, canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
+import { TResourceLimits } from "@app/lib/resource-limits";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -53,6 +54,7 @@ type TUpdatePolicyInput = Pick<
   | "bypassForMachineIdentities"
 > & {
   policy: Pick<TApprovalPolicies, "id">;
+  resourceLimits: TResourceLimits;
   requestedEnvs?: TSecretChangePolicyEnvironment[];
   approverCount: number;
   userApproverIds: string[];
@@ -368,6 +370,7 @@ export const secretChangePolicyFnsFactory = ({
 
   const updatePolicy = ({
     policy,
+    resourceLimits,
     name,
     approvals,
     secretPath,
@@ -434,6 +437,7 @@ export const secretChangePolicyFnsFactory = ({
         await assertApprovalPolicyEnvironmentCapacity(
           {
             approvalPolicySecretEnvironmentDAL,
+            resourceLimits,
             envs,
             currentEnvIds: current.envs.map((env) => env.id),
             describe: (envSlug, max) =>

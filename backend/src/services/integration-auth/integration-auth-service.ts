@@ -13,6 +13,7 @@ import {
   TIntegrationAuthsInsert
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -21,7 +22,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { countOnPrimary, getResourceLimits, ResourceLimit, TResourceLimits } from "@app/lib/resource-limits";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
@@ -82,6 +83,7 @@ type TIntegrationAuthServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -91,16 +93,17 @@ export const integrationAuthServiceFactory = ({
   integrationAuthDAL,
   integrationDAL,
   projectBotService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TIntegrationAuthServiceFactoryDep) => {
-  const $assertCanAddIntegrationAuth = async (projectId: string, tx?: Knex) => {
-    if (getResourceLimit(ResourceLimit.IntegrationAuthsPerProject) === null) return;
+  const $assertCanAddIntegrationAuth = async (resourceLimits: TResourceLimits, projectId: string, tx?: Knex) => {
+    if (resourceLimits.max(ResourceLimit.IntegrationAuthsPerProject) === null) return;
 
     const countAuths = async (trx: Knex) => {
       const [{ count }] = await integrationAuthDAL.find({ projectId }, { countDistinct: "id", tx: trx });
       return Number(count);
     };
-    assertWithinResourceLimit({
+    resourceLimits.assertWithin({
       limit: ResourceLimit.IntegrationAuthsPerProject,
       used: tx ? await countAuths(tx) : await countOnPrimary(integrationAuthDAL, countAuths),
       describe: (max) =>
@@ -198,8 +201,9 @@ export const integrationAuthServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(url);
     }
 
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
     if (installationId && integration === Integrations.GITHUB) {
-      await $assertCanAddIntegrationAuth(projectId);
+      await $assertCanAddIntegrationAuth(resourceLimits, projectId);
     }
 
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
@@ -287,7 +291,7 @@ export const integrationAuthServiceFactory = ({
       }
 
       if (!existingIntegrationAuth) {
-        await $assertCanAddIntegrationAuth(projectId, tx);
+        await $assertCanAddIntegrationAuth(resourceLimits, projectId, tx);
         return integrationAuthDAL.create(updateDoc, tx);
       }
 
@@ -326,7 +330,7 @@ export const integrationAuthServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(url);
     }
 
-    await $assertCanAddIntegrationAuth(projectId);
+    await $assertCanAddIntegrationAuth(await getResourceLimits(licenseService, actorOrgId), projectId);
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -1925,7 +1929,7 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    await $assertCanAddIntegrationAuth(projectId);
+    await $assertCanAddIntegrationAuth(await getResourceLimits(licenseService, actorOrgId), projectId);
 
     const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
       ...integrationAuth,

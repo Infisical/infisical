@@ -248,9 +248,24 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Counts the imports the folder's list shows. Users cannot see or directly remove the other rows (reserved replication
+  // rows, imports whose source environment or project is soft-deleted), so counting them would block a folder that looks
+  // empty. They stay bounded: replication adds one reserved row per import, and importEnv cascades on hard delete.
   const countByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const [doc] = await (tx || db.replicaNode())(TableName.SecretImport).where({ folderId }).count({ count: "id" });
+      const [doc] = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where(`${TableName.SecretImport}.folderId`, folderId)
+        .where(
+          (bd) =>
+            void bd
+              .where(`${TableName.SecretImport}.isReserved`, false)
+              .orWhereNull(`${TableName.SecretImport}.isReserved`)
+        )
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count({ count: `${TableName.SecretImport}.id` });
       return Number(doc?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count secret imports by folder" });

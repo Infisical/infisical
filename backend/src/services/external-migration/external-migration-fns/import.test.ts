@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
@@ -8,10 +10,6 @@ import { importDataIntoInfisicalFn } from "./import";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
-}));
-
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INFISICAL_CLOUD: false })
 }));
 
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
@@ -71,6 +69,7 @@ const build = ({ existingSecretKeys = [] as string[] }) => {
     projectService: { createProject },
     folderCommitService: { createCommit: vi.fn() },
     folderVersionDAL: { create: vi.fn() },
+    plan: Plan.restore(testFeatures()),
     input: {
       data: {
         projects: [{ id: "p1", name: "Imported" }],
@@ -116,5 +115,22 @@ describe("importDataIntoInfisicalFn", () => {
     expect(createProject).toHaveBeenCalledTimes(1);
     expect(createProject.mock.calls[0][0].tx).toBeDefined();
     expect(withSpy).toHaveBeenCalled();
+  });
+
+  test("should refuse an environment past the plan's environment limit and leave no project behind", async () => {
+    // Setup
+    const { dto, committedProjects } = build({});
+    dto.plan = Plan.restore({ ...testFeatures(), environmentLimit: 1 });
+    vi.mocked(dto.projectEnvDAL.find).mockResolvedValue([{ id: "existing-env" }] as never);
+
+    // Action
+    const result = importDataIntoInfisicalFn(dto);
+
+    // Assert
+    await expect(result).rejects.toThrow(
+      "Project already has the 1 environments your plan allows, so environment 'Production' could not be imported."
+    );
+    expect(dto.projectEnvDAL.create).not.toHaveBeenCalled();
+    expect(committedProjects).toEqual([]);
   });
 });

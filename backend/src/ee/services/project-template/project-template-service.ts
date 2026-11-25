@@ -18,7 +18,7 @@ import {
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
@@ -308,14 +308,7 @@ export const projectTemplateServiceFactory = ({
         message: `Failed to create project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
-    if (environments) {
-      assertWithinResourceLimit({
-        limit: ResourceLimit.EnvironmentsPerProject,
-        used: 0,
-        adding: environments.length,
-        describe: (max) => `A project template can hold at most ${max} environments, the most a project can have.`
-      });
-    }
+    const resourceLimits = await getResourceLimits(licenseService, actor.orgId);
 
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
@@ -454,12 +447,12 @@ export const projectTemplateServiceFactory = ({
         : environments;
 
     const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
-      if (getResourceLimit(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
+      if (resourceLimits.max(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
         const [{ count: orgTemplateCount }] = await projectTemplateDAL.find(
           { orgId: actor.orgId },
           { countDistinct: "id", tx }
         );
-        assertWithinResourceLimit({
+        resourceLimits.assertWithin({
           limit: ResourceLimit.ProjectTemplatesPerOrg,
           used: Number(orgTemplateCount),
           describe: (max) =>
@@ -578,17 +571,6 @@ export const projectTemplateServiceFactory = ({
     if (environments && plan.exceeds(PlanLimit.Environments, environments.length, 0)) {
       throw new BadRequestError({
         message: `Failed to update project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
-      });
-    }
-    const currentEnvironmentCount = Array.isArray(projectTemplate.environments)
-      ? projectTemplate.environments.length
-      : 0;
-    if (environments && environments.length > currentEnvironmentCount) {
-      assertWithinResourceLimit({
-        limit: ResourceLimit.EnvironmentsPerProject,
-        used: 0,
-        adding: environments.length,
-        describe: (max) => `A project template can hold at most ${max} environments, the most a project can have.`
       });
     }
 

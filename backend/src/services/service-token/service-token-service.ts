@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -15,7 +16,7 @@ import { ForbiddenRequestError, NotFoundError, PermissionBoundaryError, Unauthor
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
@@ -41,6 +42,7 @@ type TServiceTokenServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -53,7 +55,8 @@ export const serviceTokenServiceFactory = ({
   projectDAL,
   accessTokenQueue,
   smtpService,
-  orgDAL
+  orgDAL,
+  licenseService
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -140,12 +143,13 @@ export const serviceTokenServiceFactory = ({
     if (inputEnvs.length !== scopeEnvs.length)
       throw new NotFoundError({ message: `One or more selected environments not found` });
 
-    if (getResourceLimit(ResourceLimit.ServiceTokensPerProject) !== null) {
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
+    if (resourceLimits.max(ResourceLimit.ServiceTokensPerProject) !== null) {
       const serviceTokenCount = await countOnPrimary(serviceTokenDAL, async (tx) => {
         const [{ count }] = await serviceTokenDAL.find({ projectId }, { countDistinct: "id", tx });
         return Number(count);
       });
-      assertWithinResourceLimit({
+      resourceLimits.assertWithin({
         limit: ResourceLimit.ServiceTokensPerProject,
         used: serviceTokenCount,
         describe: (max) =>

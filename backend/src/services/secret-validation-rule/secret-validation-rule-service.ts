@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretValidationRuleActions,
@@ -10,7 +11,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
-import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
@@ -64,6 +65,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -76,7 +78,8 @@ export const secretValidationRuleServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   permissionService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -272,22 +275,25 @@ export const secretValidationRuleServiceFactory = ({
 
   // Rules without an environment apply to every environment, so they share one bucket of their own.
   const $assertEnvironmentRuleCapacity = async ({
+    orgId,
     projectId,
     envId,
     environment,
     wayOut
   }: {
+    orgId: string;
     projectId: string;
     envId: string | null;
     environment?: string | null;
     wayOut: string;
   }) => {
-    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerEnvironment) === null) return;
+    const resourceLimits = await getResourceLimits(licenseService, orgId);
+    if (resourceLimits.max(ResourceLimit.SecretValidationRulesPerEnvironment) === null) return;
     const envRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
       const [{ count }] = await secretValidationRuleDAL.find({ projectId, envId }, { countDistinct: "id", tx });
       return Number(count);
     });
-    assertWithinResourceLimit({
+    resourceLimits.assertWithin({
       limit: ResourceLimit.SecretValidationRulesPerEnvironment,
       used: envRuleCount,
       describe: (max) =>
@@ -328,6 +334,7 @@ export const secretValidationRuleServiceFactory = ({
     const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
 
     await $assertEnvironmentRuleCapacity({
+      orgId: actor.orgId,
       projectId,
       envId,
       environment,
@@ -398,6 +405,7 @@ export const secretValidationRuleServiceFactory = ({
     await $assertNoOverlap({ projectId, type, envId, secretPath: finalSecretPath, config, excludeRuleId: ruleId });
     if (envId !== (existingRule.envId ?? null)) {
       await $assertEnvironmentRuleCapacity({
+        orgId: actor.orgId,
         projectId,
         envId,
         environment,

@@ -87,7 +87,7 @@ type TFindFilter = { policyId?: string; projectId?: string; envId?: string; orga
 // unexpected reach shows up as a crash rather than a silent pass.
 const buildService = ({
   permission = allowCreate,
-  plan = { secretApproval: true },
+  plan = { secretApproval: true, smApprovalPoliciesPerEnvironmentLimit: 50 } as Partial<TPlanFeatures>,
   project = { id: PROJECT_ID, version: ProjectVersion.V3 } as { id: string; version: ProjectVersion } | null,
   envs = [ENV_DEV, ENV_PROD],
   users = [] as { id: string; username: string }[],

@@ -3,11 +3,11 @@ import path from "node:path";
 import slugify from "@sindresorhus/slugify";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
+import { PlanLimit } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -30,6 +30,7 @@ export const importDataIntoInfisicalFn = async ({
   folderVersionDAL,
   folderCommitService,
   eventEmitter,
+  plan,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -94,14 +95,13 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        if (getResourceLimit(ResourceLimit.EnvironmentsPerProject) !== null) {
+        if (plan.isLimited(PlanLimit.Environments)) {
           const projectEnvs = await projectEnvDAL.find({ projectId }, { tx });
-          assertWithinResourceLimit({
-            limit: ResourceLimit.EnvironmentsPerProject,
-            used: projectEnvs.length,
-            describe: (max) =>
-              `Project already has the maximum of ${max} environments, so environment '${environment.name}' could not be imported.`
-          });
+          if (plan.exceeds(PlanLimit.Environments, projectEnvs.length)) {
+            throw new BadRequestError({
+              message: `Project already has the ${plan.limit(PlanLimit.Environments)} environments your plan allows, so environment '${environment.name}' could not be imported. Upgrade your plan to import more environments.`
+            });
+          }
         }
 
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);

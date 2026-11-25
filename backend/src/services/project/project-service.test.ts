@@ -201,7 +201,8 @@ describe("projects per organization cap", () => {
   test("refuses a new project once the organization is at the cap on Infisical Cloud", async () => {
     config.INFISICAL_CLOUD = true;
     try {
-      const { service, projectDAL, tx } = setup();
+      const { service, projectDAL, tx, licenseService } = setup();
+      licenseService.setPlan("root", { smProjectsPerOrgLimit: 1000 });
       projectDAL.find.mockResolvedValue([{ count: "1000" }]);
 
       await expect(createProject(service)).rejects.toThrow(

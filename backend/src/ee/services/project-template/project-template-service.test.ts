@@ -29,14 +29,12 @@ const actor = {
 } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[1];
 
 // Without orgTemplateCount the transaction refuses before its callback runs, so the cap is never consulted.
-const createService = ({
-  orgTemplateCount,
-  storedEnvironments = []
-}: { orgTemplateCount?: number; storedEnvironments?: unknown[] } = {}) =>
+const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {}) =>
   projectTemplateServiceFactory({
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
       projectTemplates: true,
-      environmentLimit: null
+      environmentLimit: null,
+      smProjectTemplatesPerOrgLimit: 100
     }),
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({
@@ -51,7 +49,7 @@ const createService = ({
         name: "template",
         type: ProjectType.SecretManager,
         roles: [],
-        environments: storedEnvironments,
+        environments: [],
         projectManagedIdentities: [{ name: LEGACY_NAME, roles: [] }]
       }),
       find: vi.fn().mockResolvedValue([{ count: String(orgTemplateCount) }]),
@@ -105,44 +103,6 @@ describe("project-managed identity names", () => {
 });
 
 describe("project template cap on Infisical Cloud", () => {
-  const templateEnvironments = (count: number) =>
-    Array.from({ length: count }, (_, i) => ({ name: `Env ${i}`, slug: `env-${i}`, position: i + 1 }));
-
-  const updateEnvironmentsWithStored = (stored: number, submitted: number) => {
-    const service = createService({ storedEnvironments: templateEnvironments(stored) });
-    return service.updateProjectTemplateById(
-      TEMPLATE_ID,
-      { environments: templateEnvironments(submitted) } as unknown as Parameters<
-        typeof service.updateProjectTemplateById
-      >[1],
-      actor
-    );
-  };
-
-  test("update keeps a template already over the environment cap editable at the same size", async () => {
-    mockConfig.INFISICAL_CLOUD = true;
-    try {
-      await expect(updateEnvironmentsWithStored(60, 60)).rejects.toBe(REACHED_TRANSACTION);
-      await expect(updateEnvironmentsWithStored(60, 55)).rejects.toBe(REACHED_TRANSACTION);
-    } finally {
-      mockConfig.INFISICAL_CLOUD = false;
-    }
-  });
-
-  test("update refuses growing a template past the environment cap", async () => {
-    mockConfig.INFISICAL_CLOUD = true;
-    try {
-      await expect(updateEnvironmentsWithStored(60, 61)).rejects.toThrow(
-        "A project template can hold at most 50 environments, the most a project can have."
-      );
-      await expect(updateEnvironmentsWithStored(10, 51)).rejects.toThrow(
-        "A project template can hold at most 50 environments"
-      );
-    } finally {
-      mockConfig.INFISICAL_CLOUD = false;
-    }
-  });
-
   test("create refuses a template past the per-organization cap", async () => {
     mockConfig.INFISICAL_CLOUD = true;
     try {

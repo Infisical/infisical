@@ -1,6 +1,7 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
@@ -100,7 +101,8 @@ const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
     projectDAL: projectDAL as never,
     accessTokenQueue: accessTokenQueue as never,
     smtpService: smtpService as never,
-    orgDAL: orgDAL as never
+    orgDAL: orgDAL as never,
+    licenseService: new FakeLicenseService().setPlan(ACTOR_ORG_ID, { smServiceTokensPerProjectLimit: 1000 })
   });
 
   return { service, serviceTokenDAL, permissionService };

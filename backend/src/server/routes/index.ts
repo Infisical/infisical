@@ -2229,7 +2229,8 @@ export const registerRoutes = async (
     integrationDAL,
     permissionService,
     projectBotService,
-    kmsDataKeyService
+    kmsDataKeyService,
+    licenseService
   });
 
   // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
@@ -2586,7 +2587,7 @@ export const registerRoutes = async (
     approvalPolicySecretEnvironmentDAL
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL, licenseService });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,
@@ -2595,7 +2596,8 @@ export const registerRoutes = async (
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
-    projectDAL
+    projectDAL,
+    licenseService
   });
   const secretImportService = secretImportServiceFactory({
     eventEmitter,
@@ -2819,7 +2821,8 @@ export const registerRoutes = async (
     projectDAL,
     accessTokenQueue,
     smtpService,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const identityService = identityServiceFactory({
@@ -3634,7 +3637,8 @@ export const registerRoutes = async (
     webhookDAL,
     projectEnvDAL,
     projectDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    licenseService
   });
 
   const secretSyncService = secretSyncServiceFactory({

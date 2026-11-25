@@ -1,10 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretTagDALFactory } from "./secret-tag-dal";
@@ -21,6 +22,7 @@ type TSecretTagServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
 };
 
 export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory>;
@@ -28,7 +30,8 @@ export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory
 export const secretTagServiceFactory = ({
   secretTagDAL,
   permissionService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  licenseService
 }: TSecretTagServiceFactoryDep) => {
   const createTag = async ({ slug, actor, color, actorId, actorOrgId, actorAuthMethod, projectId }: TCreateTagDTO) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -44,12 +47,13 @@ export const secretTagServiceFactory = ({
     const existingTag = await secretTagDAL.findOne({ slug, projectId });
     if (existingTag) throw new BadRequestError({ message: "Tag already exists" });
 
-    if (getResourceLimit(ResourceLimit.TagsPerProject) !== null) {
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
+    if (resourceLimits.max(ResourceLimit.TagsPerProject) !== null) {
       const tagCount = await countOnPrimary(secretTagDAL, async (tx) => {
         const [{ count }] = await secretTagDAL.find({ projectId }, { countDistinct: "id", tx });
         return Number(count);
       });
-      assertWithinResourceLimit({
+      resourceLimits.assertWithin({
         limit: ResourceLimit.TagsPerProject,
         used: tagCount,
         describe: (max) =>

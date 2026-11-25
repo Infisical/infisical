@@ -6,6 +6,7 @@ import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { getResourceLimits } from "@app/lib/resource-limits";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
@@ -511,10 +512,12 @@ export const secretAccessApprovalPolicyServiceFactory = ({
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       await assertApprovalPolicyEnvironmentCapacity(
         {
           approvalPolicySecretEnvironmentDAL,
+          resourceLimits,
           envs,
           describe: (envSlug, max) =>
             `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
@@ -651,6 +654,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       }
     }
 
+    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
     return approvalPolicyDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
       if (!lockedPolicy) {
@@ -709,6 +713,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
         await assertApprovalPolicyEnvironmentCapacity(
           {
             approvalPolicySecretEnvironmentDAL,
+            resourceLimits,
             envs,
             currentEnvIds: current.environments.map((env) => env.id),
             describe: (envSlug, max) =>

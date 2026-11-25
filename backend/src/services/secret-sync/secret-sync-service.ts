@@ -17,7 +17,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertWithinResourceLimit, countOnPrimary, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -764,8 +764,9 @@ export const secretSyncServiceFactory = ({
       preSaveTransformDeps
     );
 
-    if (getResourceLimit(ResourceLimit.SecretSyncsPerProject) !== null) {
-      assertWithinResourceLimit({
+    const resourceLimits = await getResourceLimits(licenseService, actor.orgId);
+    if (resourceLimits.max(ResourceLimit.SecretSyncsPerProject) !== null) {
+      resourceLimits.assertWithin({
         limit: ResourceLimit.SecretSyncsPerProject,
         used: await countOnPrimary(secretSyncDAL, (tx) => secretSyncDAL.countByProjectId(projectId, tx)),
         describe: (max) =>

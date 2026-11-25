@@ -1,6 +1,8 @@
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError } from "@app/lib/errors";
 
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from ".";
+import { getResourceLimits, ResourceLimit } from ".";
 
 const config = { INFISICAL_CLOUD: true };
 
@@ -8,26 +10,71 @@ vi.mock("@app/lib/config/env", () => ({
   getConfig: () => config
 }));
 
+const ORG_ID = "org-1";
+
+const licenseWithWebhookCap = (cap: number | null | undefined) =>
+  new FakeLicenseService().setPlan(ORG_ID, { smWebhooksPerProjectLimit: cap });
+
 describe("resource limits", () => {
   beforeEach(() => {
     config.INFISICAL_CLOUD = true;
   });
 
-  test("caps apply on Infisical Cloud", () => {
-    expect(getResourceLimit(ResourceLimit.WebhooksPerProject)).toBe(100);
+  test("caps come from the org's plan on Infisical Cloud", async () => {
+    const limits = await getResourceLimits(licenseWithWebhookCap(100), ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBe(100);
   });
 
-  test("self-hosted instances are never capped", () => {
-    config.INFISICAL_CLOUD = false;
-    expect(getResourceLimit(ResourceLimit.WebhooksPerProject)).toBeNull();
+  test("a null cap on the plan leaves the org uncapped", async () => {
+    const limits = await getResourceLimits(licenseWithWebhookCap(null), ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBeNull();
     expect(() =>
-      assertWithinResourceLimit({ limit: ResourceLimit.WebhooksPerProject, used: 1_000_000, describe: () => "over" })
+      limits.assertWithin({ limit: ResourceLimit.WebhooksPerProject, used: 1_000_000, describe: () => "over" })
     ).not.toThrow();
   });
 
-  test("allows reaching the cap and refuses going past it", () => {
+  test("a plan without the cap leaves the org uncapped", async () => {
+    const limits = await getResourceLimits(licenseWithWebhookCap(undefined), ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBeNull();
+  });
+
+  test("self-hosted instances are never capped and never read the plan", async () => {
+    config.INFISICAL_CLOUD = false;
+    const licenseService = licenseWithWebhookCap(1);
+    const getPlan = vi.spyOn(licenseService, "getPlan");
+
+    const limits = await getResourceLimits(licenseService, ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBeNull();
+    expect(() =>
+      limits.assertWithin({ limit: ResourceLimit.WebhooksPerProject, used: 1_000_000, describe: () => "over" })
+    ).not.toThrow();
+    expect(getPlan).not.toHaveBeenCalled();
+  });
+
+  test("uses the last known plan while the License Server is unreachable", async () => {
+    const licenseService = licenseWithWebhookCap(100);
+    licenseService.fallbackOrgs.add(ORG_ID);
+    licenseService.lastKnown.set(ORG_ID, {
+      plan: { ...testFeatures(), smWebhooksPerProjectLimit: null },
+      fetchedAt: Date.now()
+    });
+
+    const limits = await getResourceLimits(licenseService, ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBeNull();
+  });
+
+  test("keeps the fallback plan's cap when there is no last known plan", async () => {
+    const licenseService = licenseWithWebhookCap(100);
+    licenseService.fallbackOrgs.add(ORG_ID);
+
+    const limits = await getResourceLimits(licenseService, ORG_ID);
+    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBe(100);
+  });
+
+  test("allows reaching the cap and refuses going past it", async () => {
+    const limits = await getResourceLimits(licenseWithWebhookCap(100), ORG_ID);
     const check = (used: number, adding?: number) => () =>
-      assertWithinResourceLimit({
+      limits.assertWithin({
         limit: ResourceLimit.WebhooksPerProject,
         used,
         adding,

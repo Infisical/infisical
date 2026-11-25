@@ -75,7 +75,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
+import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -343,6 +343,7 @@ export const projectServiceFactory = ({
 
     // Before the transaction: a plan cache miss calls the License Server.
     const plan = await licenseService.getPlan(organization.id);
+    const resourceLimits = await getResourceLimits(licenseService, organization.id);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -360,12 +361,12 @@ export const projectServiceFactory = ({
         }
       }
 
-      if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+      if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
         const [{ count: orgProjectCount }] = await projectDAL.find(
           { orgId: organization.id },
           { countDistinct: "id", tx }
         );
-        assertWithinResourceLimit({
+        resourceLimits.assertWithin({
           limit: ResourceLimit.ProjectsPerOrg,
           used: Number(orgProjectCount),
           describe: (max) =>
@@ -422,16 +423,11 @@ export const projectServiceFactory = ({
           });
       }
 
-      // Templates saved before the environment cap existed can list more environments than a project may hold.
+      // A template saved under a higher environment limit (before a plan change) can list more than the plan allows.
       const templateEnvironments = projectTemplate?.environments;
-      if (projectTemplate && templateEnvironments) {
-        const templateName = projectTemplate.name;
-        assertWithinResourceLimit({
-          limit: ResourceLimit.EnvironmentsPerProject,
-          used: 0,
-          adding: templateEnvironments.length,
-          describe: (max) =>
-            `Project template '${templateName}' has ${templateEnvironments.length} environments, more than the ${max} a project can have. Remove environments from the template and try again.`
+      if (projectTemplate && templateEnvironments && plan.exceeds(PlanLimit.Environments, 0, templateEnvironments.length)) {
+        throw new BadRequestError({
+          message: `Project template '${projectTemplate.name}' has ${templateEnvironments.length} environments, more than the ${plan.limit(PlanLimit.Environments)} your plan allows in a project. Remove environments from the template or upgrade your plan.`
         });
       }
 
@@ -1091,8 +1087,9 @@ export const projectServiceFactory = ({
           }
         }
 
+        const resourceLimits = await getResourceLimits(licenseService, project.orgId);
         const restored = await projectDAL.transaction(async (tx) => {
-          if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+          if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
             await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
           }
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
@@ -1107,12 +1104,12 @@ export const projectServiceFactory = ({
             }
           }
 
-          if (getResourceLimit(ResourceLimit.ProjectsPerOrg) !== null) {
+          if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
             const [{ count: orgProjectCount }] = await projectDAL.find(
               { orgId: project.orgId },
               { countDistinct: "id", tx }
             );
-            assertWithinResourceLimit({
+            resourceLimits.assertWithin({
               limit: ResourceLimit.ProjectsPerOrg,
               used: Number(orgProjectCount),
               describe: (max) =>
