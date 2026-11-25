@@ -327,7 +327,19 @@ const InboxBody = ({
           ]}
         />
       )}
-      <div className={styles.scroll} data-scroll-fade="y" data-swipe-scroll>
+      <div
+        className={styles.scroll}
+        data-scroll-fade="y"
+        data-swipe-scroll
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
+          const key = (event.target as HTMLElement)
+            .closest("[data-list-row]")
+            ?.getAttribute("data-list-row");
+          const group = shown.find((entry) => entry.key === key);
+          if (group && toHref(group.latest.link)) readGroup(group);
+        }}
+      >
         <List
           label="Notifications"
           variant="bare"
