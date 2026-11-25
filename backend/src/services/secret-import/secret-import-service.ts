@@ -272,7 +272,6 @@ export const secretImportServiceFactory = ({
         resourceLimits.assertWithin({
           limit: ResourceLimit.ImportsPerFolder,
           used: await secretImportDAL.countByFolderId(folder.id, tx),
-          adding: isReplication ? 2 : 1,
           describe: (max) =>
             `Folder '${secretPath}' already has the maximum of ${max} secret imports. Remove imports you no longer use before adding another.`
         });

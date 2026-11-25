@@ -425,7 +425,11 @@ export const projectServiceFactory = ({
 
       // A template saved under a higher environment limit (before a plan change) can list more than the plan allows.
       const templateEnvironments = projectTemplate?.environments;
-      if (projectTemplate && templateEnvironments && plan.exceeds(PlanLimit.Environments, 0, templateEnvironments.length)) {
+      if (
+        projectTemplate &&
+        templateEnvironments &&
+        plan.exceeds(PlanLimit.Environments, 0, templateEnvironments.length)
+      ) {
         throw new BadRequestError({
           message: `Project template '${projectTemplate.name}' has ${templateEnvironments.length} environments, more than the ${plan.limit(PlanLimit.Environments)} your plan allows in a project. Remove environments from the template or upgrade your plan.`
         });

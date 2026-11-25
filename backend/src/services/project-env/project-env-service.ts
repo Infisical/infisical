@@ -76,8 +76,6 @@ export const projectEnvServiceFactory = ({
         });
       }
 
-      const envs = await projectEnvDAL.find({ projectId });
-
       const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
       if (slugHolder) {
         if (slugHolder.deleteAfter) {
@@ -95,13 +93,16 @@ export const projectEnvServiceFactory = ({
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
       const plan = await licenseService.getPlan(actorOrgId);
-      if (plan.exceeds(PlanLimit.Environments, envs.length)) {
-        throw new BadRequestError({
-          message:
-            "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
-        });
-      }
       const env = await projectEnvDAL.transaction(async (tx) => {
+        // Counted on the primary: the lock serializes creates, but a replica can still miss the one that just committed.
+        const envs = await projectEnvDAL.find({ projectId }, { tx });
+        if (plan.exceeds(PlanLimit.Environments, envs.length)) {
+          throw new BadRequestError({
+            message:
+              "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
+          });
+        }
+
         if (position !== undefined) {
           // Check if there's an environment at the specified position
           const existingEnvWithPosition = await projectEnvDAL.findOne({ projectId, position }, tx);

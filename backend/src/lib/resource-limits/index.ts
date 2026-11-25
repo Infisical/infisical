@@ -38,7 +38,12 @@ export type TResourceLimits = {
   max: (limit: ResourceLimit) => number | null;
   // `describe` receives the cap and returns the whole message, so each call site can name the resource and the
   // way out in its own words.
-  assertWithin: (args: { limit: ResourceLimit; used: number; adding?: number; describe: (max: number) => string }) => void;
+  assertWithin: (args: {
+    limit: ResourceLimit;
+    used: number;
+    adding?: number;
+    describe: (max: number) => string;
+  }) => void;
 };
 
 const resourceLimitsFromPlan = (plan: Plan | null): TResourceLimits => {

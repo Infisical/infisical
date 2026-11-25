@@ -2587,7 +2587,12 @@ export const registerRoutes = async (
     approvalPolicySecretEnvironmentDAL
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL, licenseService });
+  const secretTagService = secretTagServiceFactory({
+    secretTagDAL,
+    permissionService,
+    secretV2BridgeDAL,
+    licenseService
+  });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,

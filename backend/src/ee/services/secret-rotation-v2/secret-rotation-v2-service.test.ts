@@ -502,7 +502,10 @@ describe("create rotation cap", () => {
   });
 
   const createDeps = (rotationCount: number) => ({
-    licenseService: new FakeLicenseService().setPlan("org-1", { secretRotation: true, smSecretRotationsPerProjectLimit: 500 }),
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      secretRotation: true,
+      smSecretRotationsPerProjectLimit: 500
+    }),
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility([{ action: "manage", subject: "all" }])
