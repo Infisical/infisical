@@ -50,10 +50,10 @@ describe("a session's services request schema", () => {
   });
 
   test("refuses a list longer than both caps together before parsing its entries", () => {
-    const issues = issuesOf(Array.from({ length: 71 }, () => "Not A Slug"));
+    const issues = issuesOf(Array.from({ length: 81 }, () => "Not A Slug"));
     expect(issues).toEqual([
       expect.objectContaining({
-        message: "A session can carry at most 50 of the project's services and 20 inline services."
+        message: "A session can carry at most 50 of the project's services and 30 inline services."
       })
     ]);
   });
@@ -112,14 +112,14 @@ describe("inline services request schema", () => {
     expect(issues[0].path).toEqual([1, "name"]);
   });
 
-  test("caps the list at 20", () => {
-    const services = Array.from({ length: 21 }, (_, index) =>
+  test("caps the list at 30", () => {
+    const services = Array.from({ length: 31 }, (_, index) =>
       bearer("token", { hostPattern: `h${index}.example.com` })
     );
     expect(issuesOf(services)[0]).toMatchObject({
       code: "custom",
       message:
-        "A session can carry at most 20 inline services. Add the others to the project and list them by name instead."
+        "A session can carry at most 30 inline services. Add the others to the project and list them by name instead."
     });
   });
 

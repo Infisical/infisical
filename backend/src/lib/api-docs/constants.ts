@@ -5565,7 +5565,7 @@ export const AGENT_VAULT = {
       "The name of the access bundle this session carries. Leave it out to start a session that has only services and skills, from the project or sent with it.",
     accessBundleRead: "The access bundle this session carries. Null for a session without an access bundle.",
     services:
-      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 30. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     serviceName:
       "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
@@ -5597,7 +5597,7 @@ export const AGENT_VAULT = {
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 30. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:
