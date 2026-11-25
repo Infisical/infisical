@@ -34,6 +34,7 @@ export {
   resolveEventClassFilter
 } from "./models/event-class";
 export type { TConfigurableAuditLogEventClass } from "./models/event-class";
+export type * from "./models/catalog";
 export { EventType, SecretApprovalEvent, UserAgentType } from "./models/event-type";
 
 export const ACTOR_TYPE_TO_METADATA_ID_KEY = AuditLogActor.METADATA_ID_KEYS;
