@@ -1108,7 +1108,8 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        kmsDataKeyService
+        kmsDataKeyService,
+        onSecretsLoaded: reportSize
       });
       reportSize(countSecrets(importedSecrets));
 

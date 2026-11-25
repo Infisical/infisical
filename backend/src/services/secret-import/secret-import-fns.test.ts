@@ -71,6 +71,29 @@ describe("fnSecretsV2FromImports", () => {
     expect(imports[0].secrets.map((s) => s.secretValue)).toEqual(["expanded-A", "expanded-B"]);
   });
 
+  it("reports the rows each level loads before decrypting them", async () => {
+    const decryptor = vi.fn((value?: Buffer | null) => value?.toString() ?? "");
+    const reported: number[] = [];
+    const { args } = makeArgs({ decryptor, onSecretsLoaded: (count) => reported.push(count) });
+
+    await fnSecretsV2FromImports(args);
+
+    expect(reported).toEqual([2]);
+  });
+
+  it("decrypts nothing when the loaded rows are refused", async () => {
+    const decryptor = vi.fn((value?: Buffer | null) => value?.toString() ?? "");
+    const { args } = makeArgs({
+      decryptor,
+      onSecretsLoaded: () => {
+        throw new Error("refused");
+      }
+    });
+
+    await expect(fnSecretsV2FromImports(args)).rejects.toThrow("refused");
+    expect(decryptor).not.toHaveBeenCalled();
+  });
+
   it("stops before reading any import when the client already disconnected", async () => {
     const controller = new AbortController();
     controller.abort();
