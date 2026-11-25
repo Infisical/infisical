@@ -1,0 +1,4 @@
+.invalid {
+  display: inline-flex;
+  color: var(--cipher-bad);
+}
