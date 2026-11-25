@@ -175,8 +175,8 @@ With namespace isolation on, these references must be in the same namespace as t
 
 A reference to another namespace fails validation, and the error shows in the resource's status.
 
-- When `infisicalAuthRef` or `infisicalConnectionRef` isn't set, the operator uses the `InfisicalAuth` or `InfisicalConnection` named `default` in the operator's namespace. With isolation on, that only works for resources in the operator's namespace, so resources in other namespaces must reference one in their own namespace.
-- The operator checks an `InfisicalAuth` every time a resource uses it. If you turn isolation on, an existing `InfisicalAuth` that references another namespace stops working, even if it was ready before.
-- v1alpha1 resources (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`) aren't restricted. Use RBAC to control who can create them.
+- Only resources in the operator's namespace can use the default `InfisicalAuth` and `InfisicalConnection` (the ones named `default`, used when `infisicalAuthRef` or `infisicalConnectionRef` isn't set)
+- An existing `InfisicalAuth` that references another namespace stops working when you turn isolation on, even if it was ready before
+- v1alpha1 resources (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`) aren't restricted, so use RBAC to control who can create them
 
 `namespaceIsolation` is supported in chart version `0.11.19` and above.
