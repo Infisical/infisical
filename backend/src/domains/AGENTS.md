@@ -14,6 +14,7 @@ src/domains/
 ├── lib/                        # shared building blocks, no business logic
 ├── platform/                   # domains other products depend on
 │   ├── events/
+│   ├── audit-log/
 │   ├── license/
 │   ├── kms-core/
 │   ├── instance-config-core/
@@ -32,7 +33,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 [access-control](platform/access-control/AGENTS.md), [organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
-[events](platform/events/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md), [code-signing](certificates/code-signing/AGENTS.md),
+[events](platform/events/AGENTS.md), [audit-log](platform/audit-log/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md), [code-signing](certificates/code-signing/AGENTS.md),
 [kms](kms/kms/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
@@ -311,6 +312,15 @@ whenever the pod dies in between.
 - Outside a transaction, call `eventEmitterService.emit(events)`.
 - Take `eventEmitterService: TEventEmitterService` in your module deps; `domains.ts` builds Events first. Define your events
   with `EventDefinition.define` in your own domain.
+
+### Recording audit logs
+
+Record through `auditLogRecorderService.record(actor, { event, projectId? })` (see `platform/audit-log/AGENTS.md`)
+after your transaction commits, never inside `run`. Don't read the plan, the project's retention or the audit
+settings to do it: `actor.audit` (`TActorAuditConfig`) carries them, filled in at the top level. Organizations'
+`actorContextService` builds only `TActorContextBase` (principal and org); `server/lib/actor-context-builder.ts`
+adds `audit`, so a test that builds contexts from Organizations' service wraps it with
+`ActorContextServiceWithFakeAudit`, and a hand-built context sets `audit: new FakeActorAuditConfig()`.
 
 ## Errors
 
