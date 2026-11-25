@@ -133,11 +133,7 @@ type TSecretFolderServiceFactoryDep = {
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<
     TSecretImportDALFactory,
-    | "findFolderIdsWithImports"
-    | "findImportByFolderIds"
-    | "findFolderIdsWithDirectSameProjectImports"
-    | "findByFolderIds"
-    | "updateById"
+    "findFolderIdsWithImports" | "findImportByFolderIds" | "findFolderIdsWithDirectSameProjectImports"
   >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
@@ -501,40 +497,6 @@ export const secretFolderServiceFactory = ({
     assertNoDirectImportEnteringEnforcedPath(enforcedImportDestination, permission);
   };
 
-  // a replicated import is read through its reserved import, whose importPath is the absolute path of the replication
-  // folder. a rename in or above the importing folder must rewrite it, or the import silently resolves to no secrets.
-  const $repointReservedImports = async (projectId: string, renamedFolderIds: string[], tx: Knex) => {
-    if (!renamedFolderIds.length) return;
-    const subtree = await folderDAL.findByEnvsDeep({ parentIds: renamedFolderIds }, tx);
-    const reservedImports = (
-      await secretImportDAL.findByFolderIds(
-        subtree.map((folder) => folder.id),
-        tx
-      )
-    ).filter((secretImport) => secretImport.isReserved);
-    if (!reservedImports.length) return;
-
-    const importingFolders = await folderDAL.findSecretPathByFolderIds(
-      projectId,
-      [...new Set(reservedImports.map((reservedImport) => reservedImport.folderId))],
-      tx
-    );
-    const pathByFolderId = new Map(
-      importingFolders.filter(Boolean).map((folder) => [folder!.id, folder!.path] as const)
-    );
-
-    await Promise.all(
-      reservedImports.map(async (reservedImport) => {
-        const folderPath = pathByFolderId.get(reservedImport.folderId);
-        if (!folderPath) return;
-        const importPath = path.posix.join(folderPath, path.posix.basename(reservedImport.importPath));
-        if (importPath !== reservedImport.importPath) {
-          await secretImportDAL.updateById(reservedImport.id, { importPath }, tx);
-        }
-      })
-    );
-  };
-
   const updateManyFolders = async ({
     actor,
     actorId,
@@ -596,7 +558,7 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
-      const updated = await Promise.all(
+      return Promise.all(
         entries.map(async ({ newFolder, parentFolder, env, folder }) => {
           const { environment, id, name, description } = newFolder;
 
@@ -698,16 +660,6 @@ export const secretFolderServiceFactory = ({
           return { oldFolder: folder, newFolder: doc };
         })
       );
-
-      // after every entry is written, so a batch renaming a folder and one of its ancestors reads the final paths
-      await $repointReservedImports(
-        projectId as string,
-        updated
-          .filter(({ oldFolder, newFolder }) => oldFolder.name !== newFolder.name)
-          .map(({ newFolder }) => newFolder.id),
-        tx
-      );
-      return updated;
     };
 
     // Execute with provided transaction or create new one
@@ -842,7 +794,6 @@ export const secretFolderServiceFactory = ({
         tx
       );
       if (!doc) throw new NotFoundError({ message: `Failed to update folder with ID '${id}'`, name: "UpdateFolder" });
-      if (rename) await $repointReservedImports(projectId, [doc.id], tx);
 
       // Read the new folder path AFTER the update to get the updated name in the path.
       const [newFolderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
