@@ -339,6 +339,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           allowedEmailDomains: true,
           isActive: true,
           manageGroupMemberships: true,
+          jwtSignatureAlgorithm: true,
           mfaClaimName: true,
           mfaAmrValues: true
         })

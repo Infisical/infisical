@@ -202535,7 +202535,7 @@ type OidcCallbackParams struct {
 // DeleteOidcConfigParams defines parameters for DeleteOidcConfig.
 type DeleteOidcConfigParams struct {
 	// OrganizationId The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *string `form:"organizationId,omitempty" json:"organizationId,omitempty"`
+	OrganizationId *openapi_types.UUID `form:"organizationId,omitempty" json:"organizationId,omitempty"`
 }
 
 // DeleteOidcConfig400JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
@@ -202559,7 +202559,7 @@ type DeleteOidcConfig500JSONResponseBodyStatusCode float32
 // GetOidcConfigParams defines parameters for GetOidcConfig.
 type GetOidcConfigParams struct {
 	// OrganizationId The ID of the organization to get the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *string `form:"organizationId,omitempty" json:"organizationId,omitempty"`
+	OrganizationId *openapi_types.UUID `form:"organizationId,omitempty" json:"organizationId,omitempty"`
 }
 
 // GetOidcConfig400JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
@@ -202622,7 +202622,7 @@ type UpdateOidcConfigJSONBody struct {
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
 
 	// OrganizationId The ID of the organization to update the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *string `json:"organizationId,omitempty"`
+	OrganizationId *openapi_types.UUID `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -202697,7 +202697,7 @@ type CreateOidcConfigJSONBody struct {
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
 
 	// OrganizationId The ID of the organization to create the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *string `json:"organizationId,omitempty"`
+	OrganizationId *openapi_types.UUID `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -320585,7 +320585,7 @@ func NewDeleteOidcConfigRequest(server string, params *DeleteOidcConfigParams) (
 
 		if params.OrganizationId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -320639,7 +320639,7 @@ func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.
 
 		if params.OrganizationId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -499164,6 +499164,7 @@ type UpdateOidcConfigResponse struct {
 		IsActive               bool               `json:"isActive"`
 		Issuer                 *string            `json:"issuer,omitempty"`
 		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
@@ -499227,6 +499228,7 @@ func (r UpdateOidcConfigResponse) GetJSON200() *struct {
 	IsActive               bool               `json:"isActive"`
 	Issuer                 *string            `json:"issuer,omitempty"`
 	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
@@ -651728,6 +651730,7 @@ func ParseUpdateOidcConfigResponse(rsp *http.Response) (*UpdateOidcConfigRespons
 			IsActive               bool               `json:"isActive"`
 			Issuer                 *string            `json:"issuer,omitempty"`
 			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
