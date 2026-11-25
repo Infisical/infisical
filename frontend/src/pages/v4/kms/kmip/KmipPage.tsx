@@ -28,11 +28,6 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   type KmipClientCertificate,
@@ -44,6 +39,7 @@ import { useDebounced } from "../../access/org/use-debounced";
 import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { UpgradeGate } from "../../license";
 import { KmipCertificateDialog } from "./certificate-dialog";
@@ -73,9 +69,7 @@ export const KmipPage = () => {
   const debouncedSearch = useDebounced(search.trim());
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("kmipClientTable", PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize("kmipClientTable", 20);
   const [overlay, setOverlay] = useState<Overlay>();
   const canRead = permission.can(
     ProjectPermissionKmipActions.ReadClients,
@@ -260,7 +254,6 @@ export const KmipPage = () => {
                     onPageSizeChange={(size) => {
                       setPerPage(size);
                       setPage(1);
-                      setUserTablePreference("kmipClientTable", PreferenceKey.PerPage, size);
                     }}
                   />
                 ) : undefined
@@ -312,6 +305,7 @@ export const KmipPage = () => {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
+                loading={remove.isPending}
                 onClick={async () => {
                   try {
                     await remove.mutateAsync({ id: overlay.client.id, projectId });

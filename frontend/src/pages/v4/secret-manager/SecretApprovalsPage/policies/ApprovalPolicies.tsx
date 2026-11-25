@@ -224,6 +224,7 @@ export const ApprovalPolicies = ({
     [policies, typeFilter, environmentFilter]
   );
   const list = usePagedList({
+    table: "approvalPoliciesTable",
     rows: filtered,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (policy, needle) =>
@@ -353,7 +354,7 @@ export const ApprovalPolicies = ({
     );
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Policy filters"
         fields={[

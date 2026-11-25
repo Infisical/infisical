@@ -48,12 +48,13 @@ const rotation = {
 const makeFactory = () =>
   salesforceOauthCredentialsRotationFactory(
     rotation,
-    ...([{}, {}, {}, {}, {}] as unknown as [
+    ...([{}, {}, {}, {}, {}, {}] as unknown as [
       Parameters<typeof salesforceOauthCredentialsRotationFactory>[1],
       Parameters<typeof salesforceOauthCredentialsRotationFactory>[2],
       Parameters<typeof salesforceOauthCredentialsRotationFactory>[3],
       Parameters<typeof salesforceOauthCredentialsRotationFactory>[4],
-      Parameters<typeof salesforceOauthCredentialsRotationFactory>[5]
+      Parameters<typeof salesforceOauthCredentialsRotationFactory>[5],
+      Parameters<typeof salesforceOauthCredentialsRotationFactory>[6]
     ])
   );
 

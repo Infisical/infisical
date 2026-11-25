@@ -59,6 +59,7 @@ const newExternalKey = (orgId: string, overrides: Partial<Parameters<typeof KmsK
     name: "aws-key",
     provider: "aws",
     encryptedProviderInputs: Buffer.from("encrypted-inputs"),
+    providerInputsVersion: 2,
     ...overrides
   });
 
@@ -104,7 +105,8 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         expect(found?.toJSON().internal).toBeNull();
         expect(found?.toJSON().external).toMatchObject({
           provider: "aws",
-          encryptedProviderInputs: Buffer.from("encrypted-inputs")
+          encryptedProviderInputs: Buffer.from("encrypted-inputs"),
+          providerInputsVersion: 2
         });
       });
 
@@ -361,13 +363,13 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         expect(stored.internal?.encryptedKey).not.toEqual(key.toJSON().internal?.encryptedKey);
       });
 
-      test("should persist an external key's new provider inputs", async () => {
+      test("should persist an external key's new provider inputs and their version", async () => {
         // Setup
         const { keyStore, newOrg } = await setup();
-        const key = newExternalKey(await newOrg());
+        const key = newExternalKey(await newOrg(), { providerInputsVersion: 1 });
         await keyStore.insert(key);
         const loaded = (await keyStore.findForUpdate(key.id)) as KmsKey;
-        loaded.replaceProviderInputs(Buffer.from("new-inputs"));
+        loaded.replaceProviderInputs(Buffer.from("new-inputs"), 2, key);
 
         // Action
         await keyStore.save(loaded);
@@ -375,6 +377,7 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         // Assert
         const stored = ((await keyStore.findById(key.id)) as KmsKey).toJSON();
         expect(stored.external?.encryptedProviderInputs).toEqual(Buffer.from("new-inputs"));
+        expect(stored.external?.providerInputsVersion).toBe(2);
       });
     });
 

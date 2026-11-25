@@ -18,6 +18,7 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 import { RESTRICTED, type Sort } from "../../../access/ui";
 import { ProviderIcon } from "../../../components/provider-icon";
+import { usePageSize } from "../../../components/use-page-size";
 import { orgHref, useGo } from "../../../links";
 import { copySyncId, destinationNameOf, usePkiSyncOption, usePkiSyncPermissions } from "./shared";
 import {
@@ -156,7 +157,7 @@ export const PkiSyncsTable = ({
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("pkiSyncTable", 20);
   const [dialog, setDialog] = useState<{ kind: PkiSyncDialogKind; sync: TPkiSync }>();
 
   const picked = (field: string) => filters.find((filter) => filter.field === field)?.values ?? [];
@@ -271,7 +272,7 @@ export const PkiSyncsTable = ({
   const presentDestinations = [...new Set(syncs.map((sync) => sync.destination))] as PkiSync[];
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Certificate sync filters"
         fields={[

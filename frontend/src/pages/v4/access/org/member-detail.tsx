@@ -172,6 +172,7 @@ const UserGroupsSection = ({ username }: { username: string }) => {
   const removeUser = access.useRemoveUserFromGroup();
   const [removing, setRemoving] = useState<TGroupWithProjectMemberships>();
   const list = usePagedList({
+    table: "userGroupsTable",
     rows: groups,
     perPage: 10,
     initialSort: { columnId: "name", direction: "asc" },
@@ -469,7 +470,7 @@ export const OrgMemberDetail = () => {
                     [
                       "Status",
                       <Badge key="status" tone={status.tone}>
-                        <Icon icon={status.icon} size={12} />
+                        <Icon icon={status.icon} />
                         {status.label}
                       </Badge>
                     ],

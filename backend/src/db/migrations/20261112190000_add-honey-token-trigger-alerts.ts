@@ -3,7 +3,6 @@ import { Knex } from "knex";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -38,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
     createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);

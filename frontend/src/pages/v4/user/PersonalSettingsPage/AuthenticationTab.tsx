@@ -23,8 +23,8 @@ import { useNavigate, useRouteContext } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import { LoginMethod } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
@@ -140,24 +140,12 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
   });
   const oldPassword = form.watch("oldPassword");
   const newPassword = form.watch("newPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password: newPassword,
-    policy: passwordPolicy
-  });
   const { errors, submitCount } = form.formState;
 
   const save = async () => {
     const valid = await form.trigger();
     if (!valid) {
       failed("Fix the highlighted fields, then try again.");
-      return;
-    }
-    if ((await validatePassword(newPassword)) === "breached") {
-      form.setError("newPassword", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      failed("Choose a password that has not appeared in a data breach.");
       return;
     }
     if (user.encryptionVersion !== UserEncryptionVersion.V2) {
@@ -167,6 +155,11 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
     try {
       await changePassword.mutateAsync({ oldPassword, newPassword });
     } catch (cause) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(cause);
+      if (breachedPasswordMessage) {
+        form.setError("newPassword", { type: "server", message: breachedPasswordMessage });
+        return;
+      }
       failed("Failed to change password", cause);
       return;
     }
@@ -200,7 +193,7 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
         </Button>
       }
       saveLabel="Change password"
-      dirty={Boolean(oldPassword || newPassword) && breachStatus !== "checking"}
+      dirty={Boolean(oldPassword || newPassword)}
       onDiscard={() => form.reset()}
       onSave={save}
     >
@@ -217,7 +210,9 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
           label="New password"
           value={newPassword}
           policy={passwordPolicy}
-          breachStatus={breachStatus}
+          serverError={
+            errors.newPassword?.type === "server" ? errors.newPassword.message : undefined
+          }
           registration={form.register("newPassword")}
           error={errors.newPassword?.message}
           submitCount={submitCount}

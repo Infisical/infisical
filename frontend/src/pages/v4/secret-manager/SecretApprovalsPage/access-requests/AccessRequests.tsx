@@ -18,11 +18,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import type { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { ApprovalStatus } from "@app/hooks/api/secretApprovalRequest/types";
 import {
@@ -32,6 +27,7 @@ import {
 } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/AccessApprovalRequest.utils";
 
 import { useProjectPermission } from "../../../access/permissions";
+import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useUpgradeGate } from "../../../license";
@@ -89,9 +85,7 @@ export const AccessRequests = ({
   const [sort, setSort] = useState<Sort>();
   const [requesting, setRequesting] = useState(false);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
 
   const { data: members, isPending: membersPending } = approvals.useMembers(projectId);
   const { data: license } = approvals.useLicense(orgId);
@@ -339,7 +333,7 @@ export const AccessRequests = ({
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Access request filters"
         fields={fields}
@@ -468,7 +462,6 @@ export const AccessRequests = ({
               onPageSizeChange={(next) => {
                 setPerPage(next);
                 setPage(1);
-                setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
               }}
             />
           ) : undefined

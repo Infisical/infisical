@@ -62,6 +62,7 @@ export const ServiceTokensTab = () => {
 
   const rows = useMemo(() => tokens.data ?? [], [tokens.data]);
   const list = usePagedList({
+    table: "projectServiceTokens",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (token, needle) =>
@@ -95,7 +96,7 @@ export const ServiceTokensTab = () => {
           {token.scopes.map(({ environment, secretPath }) => (
             <Badge key={`${environment}-${secretPath}`} tone="soft">
               <span className={styles.scopeEnv}>{environment}</span>
-              <Icon name="folder" size={12} />
+              <Icon name="folder" />
               <span>{secretPath}</span>
             </Badge>
           ))}
@@ -138,7 +139,7 @@ export const ServiceTokensTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Service token filters"
         fields={[]}

@@ -201,6 +201,7 @@ export const PamMembersTab = () => {
 
   const rows = useMemo(() => members.data ?? [], [members.data]);
   const list = usePagedList({
+    table: "pamMembersTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>
@@ -296,7 +297,7 @@ export const PamMembersTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Member filters"
         fields={[]}

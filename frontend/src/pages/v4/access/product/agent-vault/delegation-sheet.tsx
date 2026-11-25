@@ -254,7 +254,7 @@ const Content = ({ identity }: { identity: Identity }) => {
           {isAllMembers && delegation && (
             <Alert>
               <Inline gap={8}>
-                <Icon icon={UsersRoundIcon} size={14} />
+                <Icon icon={UsersRoundIcon} size="var(--cipher-size-icon-small)" />
                 Every project member is covered. Turn this off to pick users and groups instead.
                 <MissingAccessBundlesHint
                   bundles={delegation.missingAccessBundles}

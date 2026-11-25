@@ -12,7 +12,7 @@ import { authKeys } from "../auth/queries";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { TListActorProjectMembershipsParams } from "../projects/types";
-import { setAuthToken } from "../reactQuery";
+import { setAuthToken, setMfaTempToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { webAuthnKeys } from "../webauthn/queries";
 import { userKeys } from "./query-keys";
@@ -202,7 +202,7 @@ export const useGetOrgUsers = (orgId: string, options?: { enabled?: boolean }) =
     enabled: Boolean(orgId) && (options?.enabled ?? true)
   });
 
-export const useGetOrgUserAccess = (orgId: string) =>
+export const useGetOrgUserAccess = (orgId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: userKeys.getOrgUserAccess(orgId),
     queryFn: async () => {
@@ -211,7 +211,7 @@ export const useGetOrgUserAccess = (orgId: string) =>
       );
       return data.users;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId) && (options?.enabled ?? true)
   });
 
 // mutation
@@ -393,6 +393,8 @@ export const useLogoutUser = () => {
         logoutTimer = null;
       }
       setAuthToken("");
+      // A pending MFA token would otherwise be sent as the bearer and, once expired, fail the logout.
+      setMfaTempToken("");
       // Remove the login check cache immediately so the restrict-login-signup
       // middleware doesn't find stale auth data and redirect to select-organization.
       qc.removeQueries({ queryKey: authKeys.getAuthToken });

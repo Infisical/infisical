@@ -99,10 +99,11 @@ const useRevokeCertificate = () => {
 };
 
 export const certificatesLive: CertificatesAdapter = {
-  useInstanceState: (orgId) =>
+  useInstanceState: (orgId, options) =>
     useQuery({
       queryKey: certManagerInstanceKeys.state(orgId),
-      queryFn: fetchCertManagerInstanceState
+      queryFn: fetchCertManagerInstanceState,
+      enabled: options?.enabled
     }),
   useCertificates: useListWorkspaceCertificates,
   useDashboardStats: useGetCertDashboardStats,
@@ -126,7 +127,7 @@ export const certificatesLive: CertificatesAdapter = {
   useExportCertificate,
   useUpdateCertificateMetadata: useUpdateCertificate,
   useAssignToApplication: useAssignCertificateToApplication,
-  useInventoryViews: () => useListCertificateInventoryViews(),
+  useInventoryViews: useListCertificateInventoryViews,
   useCreateInventoryView: useCreateCertificateInventoryView,
   useUpdateInventoryView: useUpdateCertificateInventoryView,
   useDeleteInventoryView: useDeleteCertificateInventoryView,

@@ -99,6 +99,7 @@ import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/comp
 import { useProjectPermission } from "../../access/permissions";
 import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { nameLabel, useProjectName } from "../../shell/resource-name";
@@ -300,7 +301,7 @@ export const OverviewPage = () => {
   const [carriedQuery, setCarriedQuery] = useState<{ path: string; search: string }>();
   const [sort, setSort] = useState<Sort>({ field: "name", direction: "asc" });
   const [paging, setPaging] = useState({ scope: "", page: 1 });
-  const [perPage, setPerPage] = useState(100);
+  const [perPage, setPerPage] = usePageSize("secretOverviewTable", 100);
   const [revealAll, setRevealAll] = useState(false);
   const [showValues, setShowValues] = useState(
     () => localStorage.getItem("overview-reveal-all-values") === "true"

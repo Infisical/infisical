@@ -25,11 +25,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { buildGitHubAppUrl } from "@app/helpers/appConnections";
 import { getProjectDisplayName } from "@app/helpers/project";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection } from "@app/hooks/api/appConnections/types";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
@@ -39,6 +34,7 @@ import { useOrgId, useOrgPermission, useProjectPermission } from "../access/perm
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
 import { copyText } from "../clipboard";
+import { usePageSize } from "../components/use-page-size";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
@@ -491,9 +487,7 @@ export const AppConnectionsTable = ({
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "app", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() =>
-    getUserTablePreference("appConnectionsTable", PreferenceKey.PerPage, 20)
-  );
+  const [pageSize, setPageSize] = usePageSize("appConnectionsTable", 20);
   const returnedApp = useReturnedConnectionFlow();
   const [adding, setAdding] = useState<{ app?: AppConnection } | undefined>(() =>
     returnedApp ? { app: returnedApp } : undefined
@@ -553,7 +547,7 @@ export const AppConnectionsTable = ({
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       {!isProject && <ProjectScopeBanner />}
       <FilterBar
         label="App connection filters"
@@ -672,7 +666,6 @@ export const AppConnectionsTable = ({
               pageSizeOptions={[10, 20, 50, 100]}
               onPageSizeChange={(next) => {
                 setPageSize(next);
-                setUserTablePreference("appConnectionsTable", PreferenceKey.PerPage, next);
                 setPage(1);
               }}
             />

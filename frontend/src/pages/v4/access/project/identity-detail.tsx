@@ -332,12 +332,12 @@ const DetailsCard = ({
                   "Delete protection",
                   identity.hasDeleteProtection ? (
                     <Badge key="protection" tone="ok">
-                      <Icon name="check" size={12} />
+                      <Icon name="check" />
                       Enabled
                     </Badge>
                   ) : (
                     <Badge key="protection" tone="outline">
-                      <Icon icon={BanIcon} size={12} />
+                      <Icon icon={BanIcon} />
                       Disabled
                     </Badge>
                   )

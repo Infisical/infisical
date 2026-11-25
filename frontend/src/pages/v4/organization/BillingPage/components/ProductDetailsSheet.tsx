@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -172,7 +173,7 @@ const ScopeRow = ({
         <ShareBar count={count} total={total} tone={isSubOrg ? "muted" : undefined} />
         <CountShare count={count} total={total} isIdentity={isIdentity} />
       </div>
-      {isOpen && (
+      <AnimatedCollapse open={isOpen}>
         <div className={styles.scopeChildren}>
           {projects?.map((project) => (
             <span key={project.id} className={styles.spread}>
@@ -187,7 +188,7 @@ const ScopeRow = ({
             </span>
           )}
         </div>
-      )}
+      </AnimatedCollapse>
     </div>
   );
 };

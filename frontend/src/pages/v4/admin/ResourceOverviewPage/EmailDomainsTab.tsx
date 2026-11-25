@@ -175,7 +175,7 @@ export const EmailDomainsTab = () => {
   ];
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Email domain filters"
         fields={[]}

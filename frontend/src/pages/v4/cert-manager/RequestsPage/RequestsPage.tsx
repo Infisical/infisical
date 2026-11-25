@@ -195,7 +195,7 @@ const RequestsTable = ({
   const filtered = Boolean(term) || statuses.length !== 1 || statuses[0] !== "pending";
   const onlyPending = statuses.length === 1 && statuses[0] === "pending";
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label={isSigning ? "Signing request filters" : "Application request filters"}
         fields={[statusField]}

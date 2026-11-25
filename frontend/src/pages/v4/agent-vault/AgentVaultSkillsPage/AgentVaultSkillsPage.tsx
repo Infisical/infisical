@@ -24,11 +24,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import type { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -37,6 +32,7 @@ import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -78,9 +74,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<TAgentVaultSkill>();
   useAgentVaultCreateIntent(() => setCreating(true), canCreate);
@@ -240,7 +234,6 @@ const Skills = ({ projectId }: { projectId: string }) => {
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

@@ -45,7 +45,11 @@ const toAnnouncement = (item: TAnnouncement): Announcement => {
   const href = safeLink(item.link);
   return {
     id: item.id,
-    eyebrow: publishedDate(item.published, { year: "numeric", month: "long", day: "numeric" }),
+    eyebrow: publishedDate(item.published, {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    }),
     title: item.title,
     description: item.body,
     media: item.imageUrl ? <img src={item.imageUrl} alt="" /> : undefined,
@@ -104,7 +108,9 @@ export const useShellChrome = () => {
   const org = useV4Adapter("org");
   const live = useV4Mode() === "live";
   const logout = org.useLogout();
-  const { data: orgPermission } = useV4Adapter("access").useOrgPermission({ orgId });
+  const { data: orgPermission } = useV4Adapter("access").useOrgPermission({
+    orgId
+  });
   const { theme, setTheme } = useV4ThemeChoice("profile-menu");
   const go = useGo();
   const canInvite = Boolean(
@@ -112,7 +118,10 @@ export const useShellChrome = () => {
   );
   const copyToken = async () => {
     if (await copyText(org.getSessionToken(), "Failed to copy user token to clipboard")) {
-      toast({ tone: "ok", title: "Copied current login session token to clipboard" });
+      toast({
+        tone: "ok",
+        title: "Copied current login session token to clipboard"
+      });
     }
   };
   const logOut = async () => {
@@ -165,7 +174,9 @@ export const useShellChrome = () => {
   const onAnnouncementsOpenChange = (open: boolean) => {
     setAnnouncementsOpen(open);
     if (!open && latest && latest.id !== announcementData?.lastSeenAnnouncementId)
-      markSeen.mutateAsync(latest.id).catch(() => undefined);
+      markSeen
+        .mutateAsync(latest.id)
+        .catch((error) => failed("Couldn't mark the announcement as seen", error));
   };
   const account: TopBarAccount = {
     name: user.name,
@@ -182,7 +193,10 @@ export const useShellChrome = () => {
     status: { label: "Infisical status", href: "https://status.infisical.com" },
     whatsNew: latest && {
       unread,
-      latest: publishedDate(latest.published, { month: "short", day: "numeric" }),
+      latest: publishedDate(latest.published, {
+        month: "short",
+        day: "numeric"
+      }),
       onSelect: openAnnouncements
     },
     items: [
@@ -204,10 +218,20 @@ export const useShellChrome = () => {
         href: "https://github.com/Infisical/infisical/issues",
         external: true
       },
-      { label: "Email Support", icon: Mail, href: supportEmailHref(orgId, currentOrg?.rootOrgId) },
+      {
+        label: "Email Support",
+        icon: Mail,
+        href: supportEmailHref(orgId, currentOrg?.rootOrgId)
+      },
       ...(isInfisicalCloud()
         ? []
-        : [{ label: "Server admins", icon: Users, onSelect: () => setServerAdminsOpen(true) }])
+        : [
+            {
+              label: "Server admins",
+              icon: Users,
+              onSelect: () => setServerAdminsOpen(true)
+            }
+          ])
     ],
     version: version.label
   };
@@ -216,6 +240,22 @@ export const useShellChrome = () => {
     help,
     versionBadge: version.badge,
     announcements: latest && { unread, onClick: openAnnouncements },
+    whatsNew:
+      latest && unread > 0
+        ? {
+            title: latest.title,
+            date: publishedDate(latest.published, {
+              month: "short",
+              day: "numeric"
+            }),
+            open: openAnnouncements,
+            dismiss: () => {
+              markSeen
+                .mutateAsync(latest.id)
+                .catch((error) => failed("Couldn't mark the announcement as seen", error));
+            }
+          }
+        : undefined,
     dialog: (
       <>
         {latest && (

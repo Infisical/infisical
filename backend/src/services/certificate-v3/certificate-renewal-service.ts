@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
@@ -27,10 +28,12 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   caIssuesFromCsr,
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { extractSubjectAltNames } from "@app/services/certificate-common/certificate-csr-utils";
 import {
   TProfileCustomExtension,
   TResolvedCustomExtension
@@ -38,6 +41,7 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
+  ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
   IssuerType,
   TCertificateProfileWithConfigs
@@ -137,7 +141,8 @@ import {
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages,
-  validateRenewalEligibility
+  validateRenewalEligibility,
+  withIssuedRenewalNames
 } from "./certificate-renewal-fns";
 import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
 import {
@@ -490,6 +495,7 @@ export const certificateRenewalServiceFactory = ({
     actorOrgId,
     removeRootsFromChain,
     resolvedCustomExtensions,
+    altNameEntries,
     approvedCertificateRequestId
   }: {
     keySource: CertificateRenewalKeySource;
@@ -512,6 +518,7 @@ export const certificateRenewalServiceFactory = ({
     actorOrgId: string;
     removeRootsFromChain?: boolean;
     resolvedCustomExtensions?: TResolvedCustomExtension[];
+    altNameEntries?: TCertificateRequest["subjectAlternativeNames"];
     approvedCertificateRequestId?: string;
   }): Promise<TCertificateIssuanceResponse> => {
     const isCsrAuthoritative = keySource === CertificateRenewalKeySource.Csr;
@@ -589,6 +596,7 @@ export const certificateRenewalServiceFactory = ({
         customExtensions: resolvedCustomExtensions,
         commonName: certificateRequest.commonName,
         altNames: isCsrAuthoritative ? undefined : requestedAltNames.map((san) => san.value).join(","),
+        altNameEntries,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
         ttl,
@@ -661,12 +669,8 @@ export const certificateRenewalServiceFactory = ({
 
   // The CSR a keyless certificate renews on its existing key pair from: the one its originating request
   // carried, or the one supplied when it was imported (imports have no request row).
-  const $findStoredCsr = async (certificateId: string, originatingRequestCsr?: string | null) => {
-    const requestCsr =
-      originatingRequestCsr === undefined
-        ? (await certificateDAL.getOriginatingRequestByCertId(certificateId)).csr
-        : originatingRequestCsr;
-    if (requestCsr) return requestCsr;
+  const $findStoredCsr = async (certificateId: string, originatingRequestCsr: string | null) => {
+    if (originatingRequestCsr) return originatingRequestCsr;
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId });
     return certificateBody?.importedCsr ?? null;
   };
@@ -699,7 +703,7 @@ export const certificateRenewalServiceFactory = ({
     const { enrollmentType } = originatingRequest;
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
+        message: `Certificate is not eligible for renewal: ${ENROLLMENT_TYPE_NAME_MAP[enrollmentType as EnrollmentType] ?? enrollmentType} certificates cannot be renewed`
       });
     }
 
@@ -734,7 +738,7 @@ export const certificateRenewalServiceFactory = ({
       actorCtx: TRenewalActor;
       isEditingCertificate: boolean;
     },
-    tx: Knex
+    tx?: Knex
   ) => {
     const { certMetadata, projectPermission } = isEditingCertificate
       ? await assertCanEditCertificate({
@@ -762,6 +766,36 @@ export const certificateRenewalServiceFactory = ({
     );
 
     return { certMetadata, projectPermission };
+  };
+
+  const $readImportedCertificateAltNames = async ({
+    certificate,
+    encryptedCertificate,
+    actorCtx,
+    isEditingCertificate,
+    internal
+  }: {
+    certificate: TCertificates;
+    encryptedCertificate?: Buffer | null;
+    actorCtx: TRenewalActor;
+    isEditingCertificate: boolean;
+    internal: boolean;
+  }) => {
+    const profile = certificate.profileId
+      ? await certificateProfileDAL.findByIdWithConfigs(certificate.profileId)
+      : undefined;
+    if (!profile) return [];
+    if (!internal) {
+      await $authorizeRenewal({ originalCert: certificate, profile, actorCtx, isEditingCertificate });
+    }
+
+    if (!encryptedCertificate) return [];
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(certificate.projectId)
+    });
+    const x509Certificate = new x509.X509Certificate(await kmsDecryptor({ cipherTextBlob: encryptedCertificate }));
+    const sanExtension = x509Certificate.getExtension("2.5.29.17");
+    return sanExtension ? extractSubjectAltNames(sanExtension.value) : [];
   };
 
   const $resolveRenewalIssuer = async (
@@ -1504,16 +1538,46 @@ export const certificateRenewalServiceFactory = ({
     const callerKeySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
     let keySource = callerKeySource;
     let csr = requestedCsr;
+    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
+    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
+    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
+
+    // Read once for both licence checks. They run before the transaction because getPlan can reach
+    // Redis and the License Server, and the renewal transaction must hold no network call.
+    const certForLicenseChecks = await certificateDAL.findById(certificateId);
+    if (!certForLicenseChecks) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
-    // it runs as a CSR renewal: the CSR is the source of truth for the subject and names on every CA type.
+    // it runs as a CSR renewal that keeps the names the current certificate has.
     let isStoredCsr = false;
+    let issuedNames: { commonName: string | null; altNames: TCertificateRequest["subjectAlternativeNames"] | null } = {
+      commonName: null,
+      altNames: null
+    };
     if (
       keySource === CertificateRenewalKeySource.Reuse &&
       !(await certificateSecretDAL.findOne({ certId: certificateId }))
     ) {
-      const storedCsr = await $findStoredCsr(certificateId);
+      const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificateId);
+      const importedBody = originatingRequest.csr ? null : await certificateBodyDAL.findOne({ certId: certificateId });
+      const storedCsr = originatingRequest.csr ?? importedBody?.importedCsr ?? null;
       if (storedCsr) {
+        issuedNames = {
+          commonName: originatingRequest.exists
+            ? originatingRequest.commonName
+            : certForLicenseChecks.commonName || null,
+          altNames: originatingRequest.exists
+            ? resolveRenewalAltNames(originatingRequest, certForLicenseChecks.altNames)
+            : await $readImportedCertificateAltNames({
+                certificate: certForLicenseChecks,
+                encryptedCertificate: importedBody?.encryptedCertificate,
+                actorCtx,
+                isEditingCertificate,
+                internal
+              })
+        };
         keySource = CertificateRenewalKeySource.Csr;
         csr = storedCsr;
         isStoredCsr = true;
@@ -1521,21 +1585,24 @@ export const certificateRenewalServiceFactory = ({
     }
 
     let csrRenewalRequest: TCertificateRequest | null = null;
+    let csrNamesRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
       assertCsrRenewalAttributes(attributes, { isStoredCsr });
-      csrRenewalRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
+      csrNamesRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
+      csrRenewalRequest = isStoredCsr ? withIssuedRenewalNames(csrNamesRequest, issuedNames) : csrNamesRequest;
     }
 
-    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
-    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
-    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
 
-    // Read once for both licence checks. They run before the transaction because getPlan can reach
-    // Redis and the License Server, and the renewal transaction must hold no network call.
-    const certForLicenseChecks = await certificateDAL.findById(certificateId);
-    if (!certForLicenseChecks) {
-      throw new NotFoundError({ message: "Certificate not found" });
+    let checkedRenewalCaId: string | null = null;
+    if (isStoredCsr) {
+      const renewalProfile = certForLicenseChecks.profileId
+        ? await certificateProfileDAL.findByIdWithConfigs(certForLicenseChecks.profileId)
+        : undefined;
+      const renewalCaId = renewalProfile?.caId || certForLicenseChecks.caId;
+      const renewalCa = renewalCaId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(renewalCaId) : undefined;
+      checkedRenewalCaId = renewalCaId ?? null;
+      if (caSignsCsrAsSent(renewalCa?.externalCa?.type as CaType | undefined)) csrRenewalRequest = csrNamesRequest;
     }
 
     await $assertRequestedAlgorithmsLicensed({ originalCert: certForLicenseChecks, csrRenewalRequest, attributes });
@@ -1593,6 +1660,13 @@ export const certificateRenewalServiceFactory = ({
               message: "This certificate has no order with its CA to reissue. Place a new order instead."
             });
           }
+        }
+
+        if (isStoredCsr && (ca?.id ?? null) !== checkedRenewalCaId) {
+          throw new BadRequestError({
+            message:
+              "The certificate profile's certificate authority changed while this renewal was being prepared. Renew the certificate again."
+          });
         }
 
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
@@ -1756,6 +1830,7 @@ export const certificateRenewalServiceFactory = ({
           return {
             renewalMode: CertificateRenewalMode.KeyPreserving as const,
             resolvedCustomExtensions,
+            altNameEntries: isStoredCsr ? certificateRequest.subjectAlternativeNames : undefined,
             keySource,
             csr,
             ca,
@@ -2102,7 +2177,7 @@ export const certificateRenewalServiceFactory = ({
     const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
+        message: `Certificate is not eligible for auto-renewal: ${ENROLLMENT_TYPE_NAME_MAP[enrollmentType as EnrollmentType] ?? enrollmentType} certificates cannot be auto-renewed`
       });
     }
 

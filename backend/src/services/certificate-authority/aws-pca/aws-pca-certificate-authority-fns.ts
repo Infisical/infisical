@@ -16,6 +16,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ProjectType, TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -189,6 +190,7 @@ type TAwsPcaCertificateAuthorityFnsDeps = {
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 /**
@@ -199,12 +201,14 @@ const createPcaClient = async ({
   appConnectionId,
   region,
   appConnectionDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  instanceConfigService
 }: {
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -214,6 +218,7 @@ const createPcaClient = async ({
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
   const awsConfig = await getAwsConnectionConfig(
     { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
     region
   );
 
@@ -355,7 +360,8 @@ export const AwsPcaCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsDataKeyService,
   kmsKeyService,
-  certificateProfileDAL
+  certificateProfileDAL,
+  instanceConfigService
 }: TAwsPcaCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -394,7 +400,8 @@ export const AwsPcaCertificateAuthorityFns = ({
       appConnectionId,
       region,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
     const describeResult = await pcaClient.send(
       new DescribeCertificateAuthorityCommand({
@@ -496,7 +503,8 @@ export const AwsPcaCertificateAuthorityFns = ({
         appConnectionId,
         region,
         appConnectionDAL,
-        kmsDataKeyService
+        kmsDataKeyService,
+        instanceConfigService
       });
       const describeResult = await pcaClient.send(
         new DescribeCertificateAuthorityCommand({
@@ -643,7 +651,8 @@ export const AwsPcaCertificateAuthorityFns = ({
       appConnectionId,
       region,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     // Get signing algorithm from the CA's key type (not the leaf key type)
@@ -938,7 +947,8 @@ export const AwsPcaCertificateAuthorityFns = ({
       appConnectionId,
       region,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
 
     const revocationReason = CRL_REASON_TO_REVOCATION_REASON_MAP[reason];

@@ -20,11 +20,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   ApprovalStatus,
@@ -35,6 +30,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { toast } from "../../../access/toast";
+import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useGo } from "../../../links";
@@ -89,9 +85,7 @@ export const ChangeRequests = ({
   const [debouncedSearch] = useDebounce(search.trim());
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [pageSize, setPageSize] = usePageSize(TABLE, 20);
   const [selected, setSelected] = useState<Record<string, ChangeRequest>>({});
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [reviewing, setReviewing] = useState(false);
@@ -265,7 +259,7 @@ export const ChangeRequests = ({
             {failures[row.id] && (
               <Tooltip content={failures[row.id]}>
                 <span role="img" aria-label={`Review failed: ${failures[row.id]}`}>
-                  <Icon name="alert-c" size={16} />
+                  <Icon name="alert-c" size="var(--cipher-size-icon-label)" />
                 </span>
               </Tooltip>
             )}
@@ -322,7 +316,7 @@ export const ChangeRequests = ({
     );
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Change request filters"
         fields={[
@@ -409,7 +403,6 @@ export const ChangeRequests = ({
               pageSizeOptions={[10, 20, 50, 100]}
               onPageSizeChange={(next) => {
                 setPageSize(next);
-                setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 setPage(1);
               }}
             />

@@ -26,6 +26,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../../access/permissions";
 import { failed, toast } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
+import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useGo, v4Path } from "../../../links";
 import {
@@ -111,7 +112,7 @@ export const SecretSyncsTab = ({
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("secretSyncTable", 20);
   const [creating, setCreating] = useState<{ destination?: SecretSync; draft?: FieldValues }>();
   const [dialog, setDialog] = useState<{ kind: SyncDialogKind; sync: TSecretSync }>();
 
@@ -330,7 +331,7 @@ export const SecretSyncsTab = ({
   const presentDestinations = [...new Set(syncs.map((sync) => sync.destination))];
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Secret sync filters"
         fields={[

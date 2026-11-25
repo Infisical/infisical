@@ -14,6 +14,7 @@ import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificateAuthoritiesLive } from "./certificate-authorities/live";
 import { certificatesLive } from "./certificates/live";
 import { codeSigningLive } from "./code-signing/live";
+import { homeLive } from "./home/live";
 import { hsmConnectorsLive } from "./hsm-connectors/live";
 import { integrationsLive } from "./integrations/live";
 import { kmipLive } from "./kmip/live";
@@ -82,5 +83,6 @@ export const liveAdapters: V4Adapters = {
   appConnections: appConnectionsLive,
   secretInsights: secretInsightsLive,
   pamAccess: pamAccessLive,
-  shell: shellLive
+  shell: shellLive,
+  home: homeLive
 };

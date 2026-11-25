@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
@@ -16,6 +17,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import type { Organization } from "@app/hooks/api/organization/types";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
@@ -45,10 +47,13 @@ const MfaCard = ({ organization, canEdit }: { organization: Organization; canEdi
   const org = useV4Adapter("org");
   const updateOrg = org.useUpdateOrganization();
   const { data: entitlements } = useV4Adapter("orgSettings").useEntitlements(organization.id);
+  const { data: serverDetails } = useFetchServerStatus();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const isEmailAvailable = serverDetails?.emailConfigured ?? true;
   const enforced = organization.enforceMfa;
-  const method = organization.selectedMfaMethod ?? MfaMethod.EMAIL;
-  const stored = useMemo(() => ({ enforced, method }), [enforced, method]);
+  const allowed = organization.allowedMfaMethods;
+  const methods = useMemo(() => (allowed?.length ? allowed : [MfaMethod.EMAIL]), [allowed]);
+  const stored = useMemo(() => ({ enforced, methods }), [enforced, methods]);
   const { value, save, status, pending } = useAutosave({
     value: stored,
     errorMessage: "Couldn't update multi-factor authentication. Try again.",
@@ -56,11 +61,11 @@ const MfaCard = ({ organization, canEdit }: { organization: Organization; canEdi
       await updateOrg.mutateAsync({
         orgId: organization.id,
         enforceMfa: next.enforced,
-        selectedMfaMethod: next.method
+        allowedMfaMethods: next.methods
       });
       saved(
         next.enforced === stored.enforced
-          ? "MFA method updated"
+          ? "Allowed MFA methods updated"
           : `MFA ${next.enforced ? "enforced" : "no longer enforced"}`
       );
     }
@@ -75,14 +80,17 @@ const MfaCard = ({ organization, canEdit }: { organization: Organization; canEdi
     }
     run();
   };
+  const enforce = (checked: boolean) => {
+    if (checked && !isEmailAvailable && value.methods.includes(MfaMethod.EMAIL)) {
+      failed("Remove Email from the allowed methods first. This instance has no SMTP configured.");
+      return;
+    }
+    save({ ...value, enforced: checked });
+  };
   return (
     <SettingsCard
-      title={
-        <Inline gap={8} wrap={false}>
-          Multi-factor authentication
-          {value.enforced && <Badge tone="ok">Enforced</Badge>}
-        </Inline>
-      }
+      title="Multi-factor authentication"
+      badges={value.enforced && <Badge tone="ok">Enforced</Badge>}
       saveStatus={status}
     >
       <Stack gap={16}>
@@ -93,17 +101,29 @@ const MfaCard = ({ organization, canEdit }: { organization: Organization; canEdi
           checked={value.enforced}
           disabled={pending}
           disabledReason={canEdit ? undefined : RESTRICTED}
-          onCheckedChange={(checked) => gated(() => save({ ...value, enforced: checked }))}
+          onCheckedChange={(checked) => gated(() => enforce(checked))}
         />
         {value.enforced && (
-          <Field label="MFA method">
-            <Select
-              label="MFA method"
-              width="md"
-              value={value.method}
+          <Field
+            label="Allowed methods"
+            description={
+              isEmailAvailable
+                ? "Members sign in with their preferred method from this list."
+                : "Email isn't available because this instance has no SMTP configured."
+            }
+          >
+            <MultiSelect
+              label="Allowed methods"
+              value={value.methods}
               disabled={!canEdit || pending}
-              options={MFA_METHODS}
-              onChange={(next) => gated(() => save({ ...value, method: next as MfaMethod }))}
+              options={MFA_METHODS.map((option) => ({
+                ...option,
+                disabled: option.value === MfaMethod.EMAIL && !isEmailAvailable
+              }))}
+              onChange={(next) => {
+                if (!next.length) return;
+                gated(() => save({ ...value, methods: next as MfaMethod[] }));
+              }}
             />
           </Field>
         )}
@@ -148,7 +168,7 @@ const SessionLengthCard = ({
         saved("Session length updated");
       }}
     >
-      <Inline gap={12} align="start" wrap={false}>
+      <>
         <Field label="Expires after" error={error}>
           <Input
             type="number"
@@ -171,7 +191,7 @@ const SessionLengthCard = ({
             onChange={(unit) => setDraft({ ...draft, unit })}
           />
         </Field>
-      </Inline>
+      </>
     </SettingsCard>
   );
 };

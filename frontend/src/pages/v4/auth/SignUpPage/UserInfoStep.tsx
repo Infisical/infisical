@@ -8,14 +8,17 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { z } from "zod";
 
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import {
+  createPasswordSchema,
+  doesPasswordMeetPolicy
+} from "@app/components/utilities/checks/password/passwordPolicy";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { submitSignupOnboarding, useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
@@ -82,29 +85,16 @@ export const UserInfoStep = ({
 
   const passwordValue = watch("password");
   const confirmPasswordValue = watch("confirmPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password: passwordValue,
-    policy: config.passwordPolicy
-  });
   const showDangerState = submitCount > 0;
   const showOrganizationNameError =
     (showDangerState || Boolean(dirtyFields.organizationName)) && Boolean(errors.organizationName);
   const doPasswordsMatch =
     confirmPasswordValue.length > 0 && passwordValue === confirmPasswordValue;
-  const isPasswordValidated = breachStatus === "safe" || breachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(passwordValue, config.passwordPolicy);
 
   const onSubmit = async (formData: UserInfoFormData) => {
     if (isPreview) return;
     const telemetry = new Telemetry().getInstance();
-
-    const latestBreachStatus = await validatePassword(formData.password);
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
-    }
 
     const attributionSource = isInvite ? undefined : formData.attributionSource || undefined;
     const response = await completeSignup({
@@ -116,7 +106,13 @@ export const UserInfoStep = ({
       organizationName: formData.organizationName || undefined,
       attributionSource,
       hubspotUtk: getHubSpotUtk()
+    }).catch((error: unknown) => {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (!breachedPasswordMessage) throw error;
+      setError("password", { type: "server", message: breachedPasswordMessage });
+      return undefined;
     });
+    if (!response) return;
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
@@ -192,7 +188,7 @@ export const UserInfoStep = ({
           <PasswordField
             value={passwordValue}
             policy={config.passwordPolicy}
-            breachStatus={breachStatus}
+            serverError={errors.password?.type === "server" ? errors.password.message : undefined}
             registration={register("password")}
             error={showDangerState ? errors.password?.message : undefined}
             submitCount={submitCount}

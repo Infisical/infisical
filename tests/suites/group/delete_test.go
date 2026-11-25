@@ -29,7 +29,7 @@ func TestGroup_Delete(t *testing.T) {
 		}
 
 		// Action
-		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID.String())
+		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestGroup_Delete(t *testing.T) {
 		sub.LinkGroup(t, group)
 
 		// Action
-		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID.String())
+		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)

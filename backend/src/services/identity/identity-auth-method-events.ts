@@ -4,8 +4,8 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
 export const IDENTITY_AUTH_METHOD_CHANGED_EVENT = "identity.authentication.auth-method-changed";

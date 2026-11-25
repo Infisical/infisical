@@ -611,7 +611,7 @@ const CrossSignedMenu = ({
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon" icon="more" iconOnly>
+      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         Cross-signed certificate options
       </Button>
     </DropdownMenuTrigger>

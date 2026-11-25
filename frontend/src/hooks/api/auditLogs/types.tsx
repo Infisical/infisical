@@ -103,6 +103,11 @@ export interface EstAccountActor {
   metadata: EstAccountActorMetadata;
 }
 
+export interface MicrosoftAutoenrollmentAccountActor {
+  type: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT;
+  metadata: { profileId: string };
+}
+
 export interface AgentVaultProxyActor {
   type: ActorType.AGENT_VAULT_PROXY;
   metadata: { agentVaultProxyId: string };
@@ -118,6 +123,7 @@ export type Actor =
   | AcmeProfileActor
   | AcmeAccountActor
   | EstAccountActor
+  | MicrosoftAutoenrollmentAccountActor
   | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
@@ -1087,6 +1093,7 @@ interface SecretFolderAccessEventMetadata {
   environment: string;
   secretPath: string;
   permission: string;
+  isPermissionRecursive?: boolean;
   userId?: string;
   identityId?: string;
   isTemporary: boolean;

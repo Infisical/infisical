@@ -1,6 +1,15 @@
 import { UnrecoverableError } from "bullmq";
 
 import { ProjectType } from "@app/db/schemas";
+import {
+  EventResultStatus,
+  MAX_OUTBOX_ATTEMPTS,
+  parseEventPayload,
+  runEventsConcurrentlyByKey,
+  TEvent,
+  TEventConsumer,
+  TEventConsumerResult
+} from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -8,14 +17,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
-import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
-import {
-  EventResultStatus,
-  IEventConsumer,
-  MAX_OUTBOX_ATTEMPTS,
-  TEvent,
-  TEventConsumerResult
-} from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
@@ -83,7 +84,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   projectDAL,
   appConnectionDAL,
   kmsDataKeyService
-}: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
+}: TDelegatedApprovalDispatchConsumerDep): TEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(

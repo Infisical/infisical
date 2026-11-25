@@ -37,11 +37,13 @@ export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
   kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL,
   alertService
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({
     kmsDataKeyService,
+    instanceConfigService,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL

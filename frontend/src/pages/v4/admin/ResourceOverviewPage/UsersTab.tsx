@@ -83,7 +83,7 @@ export const UsersTab = () => {
           <span>{fullName(user) ?? <Muted>Not set</Muted>}</span>
           {user.superAdmin && (
             <Badge tone="info">
-              <Icon icon={UserCogIcon} size={12} />
+              <Icon icon={UserCogIcon} />
               Server admin
             </Badge>
           )}
@@ -123,7 +123,7 @@ export const UsersTab = () => {
   const pageIds = new Set(users.map((user) => user.id));
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="User filters"
         fields={[
@@ -234,7 +234,7 @@ export const UsersTab = () => {
                 {isSelf(user) && (
                   <Tooltip content="Are you sure you want to remove yourself from this instance?">
                     <Badge tone="bad">
-                      <Icon name="alert" size={12} />
+                      <Icon name="alert" />
                       Deleting yourself
                     </Badge>
                   </Tooltip>

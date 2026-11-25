@@ -31,6 +31,7 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 
 import { failed, saved, toast } from "../../../access/toast";
+import { usePageSize } from "../../../components/use-page-size";
 import { ExportMenu } from "./export-menu";
 import { FilterPopover } from "./filter-popover";
 import type { QueryResult, TableDetail } from "./protocol";
@@ -122,7 +123,7 @@ export const BrowseGrid = ({
   const [current, setCurrent] = useState<GridRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = usePageSize("pamDataExplorerTable", 50);
   const [filters, setFilters] = useState<FilterCondition[]>([]);
   const [sorts, setSorts] = useState<SortCondition[]>([]);
   const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);

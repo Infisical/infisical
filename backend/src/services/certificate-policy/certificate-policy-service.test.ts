@@ -8,7 +8,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
@@ -17,7 +17,9 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "../certificate-common/certificate-constants";
+import { buildSubjectAlternativeNamesFromTemplate } from "../certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
+import { RequestReference } from "./certificate-policy-fns";
 import { certificatePolicyServiceFactory, TCertificatePolicyServiceFactory } from "./certificate-policy-service";
 import {
   TCertificatePolicy,
@@ -45,8 +47,10 @@ describe("CertificatePolicyService", () => {
     countByProjectId: vi.fn(),
     isPolicyInUse: vi.fn(),
     getProfilesUsingPolicy: vi.fn(),
+    findMicrosoftAutoenrollmentProfiles: vi.fn(),
+    lockById: vi.fn(),
     findByNameAndProjectId: vi.fn(),
-    transaction: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback("tx")),
     find: vi.fn(),
     findOne: vi.fn(),
     findMany: vi.fn(),
@@ -185,6 +189,41 @@ describe("CertificatePolicyService", () => {
       expect(result).toEqual(sampleTemplate);
     });
 
+    it("refuses a same-as-common-name SAN rule when the subject rules allow no common name", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+            sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+          }
+        })
+      ).rejects.toThrow('To use "Same as common name"');
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a SAN rule that requires and denies the same value", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            sans: [
+              {
+                type: CertSubjectAlternativeNameType.DNS_NAME,
+                required: [RequestReference.CommonName],
+                denied: [RequestReference.CommonName]
+              }
+            ]
+          }
+        })
+      ).rejects.toThrow("both requires and denies");
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
     // Previously tested service-level validations that are now schema-level:
     // - Missing attributes validation (now mandatory in schema)
     // - Missing key usages validation (now mandatory in schema)
@@ -270,6 +309,71 @@ describe("CertificatePolicyService", () => {
     });
   });
 
+  describe("SAN rules that reference the request common name", () => {
+    const dns = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+    const sanRulePolicy = (rule: { allowed?: string[]; required?: string[]; denied?: string[] }) =>
+      ({
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }]
+      }) as never;
+    const isValid = (policy: never, commonName: string | undefined, sanValue: string) =>
+      service.validateRequestAgainstPolicy(policy, { commonName, subjectAlternativeNames: [dns(sanValue)] }).isValid;
+
+    it("requires a DNS SAN equal to the request's common name in any case, and a common name to be present", () => {
+      const policy = sanRulePolicy({ required: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "APP.example.com")).toBe(true);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(false);
+      expect(isValid(policy, undefined, "app.example.com")).toBe(false);
+    });
+
+    it("refuses a SAN equal to the request's common name when the policy denies it", () => {
+      const policy = sanRulePolicy({ denied: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "app.example.com")).toBe(false);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(true);
+    });
+
+    it("matches an IP address common name by address, not by spelling", () => {
+      const policy = {
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, required: [RequestReference.CommonName] }]
+      } as never;
+
+      expect(
+        service.validateRequestAgainstPolicy(policy, {
+          commonName: "::1",
+          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "0:0:0:0:0:0:0:1" }]
+        }).isValid
+      ).toBe(true);
+    });
+
+    it("matches an allowed common name reference as a whole value, never as a wildcard pattern", () => {
+      const policy = sanRulePolicy({ allowed: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "*.example.com", "*.example.com")).toBe(true);
+      expect(isValid(policy, "*.example.com", "api.example.com")).toBe(false);
+    });
+
+    it("applies the same reference rules when building the SANs for a CSR", () => {
+      const sans = (rule: { required?: string[]; denied?: string[] }) => [
+        { type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }
+      ];
+      const request = { commonName: "app.example.com", subjectAlternativeNames: [dns("app.example.com")] };
+
+      expect(buildSubjectAlternativeNamesFromTemplate(request, sans({ required: [RequestReference.CommonName] }))).toBe(
+        "app.example.com"
+      );
+      expect(() =>
+        buildSubjectAlternativeNamesFromTemplate(request, sans({ denied: [RequestReference.CommonName] }))
+      ).toThrow(BadRequestError);
+    });
+  });
+
   describe("updatePolicy", () => {
     it("should update policy with valid data", async () => {
       const updateData = { name: "updated-template-name" };
@@ -285,11 +389,90 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
-      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith("policy-123", {
-        ...updateData,
-        name: expect.any(String)
-      });
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith(
+        "policy-123",
+        {
+          ...updateData,
+          name: expect.any(String)
+        },
+        "tx"
+      );
       expect(result).toEqual(updatedTemplate);
+    });
+
+    it("refuses custom extension rules that leave out the extensions a Microsoft Autoenrollment profile on the policy adds", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }] }
+        })
+      ).rejects.toThrow("Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules");
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses removing the key algorithm a Microsoft Autoenrollment profile on the policy asks Windows for", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", profileDefaults: null, applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { keyAlgorithm: ["RSA-4096"] } }
+        })
+      ).rejects.toThrow(
+        /'windows-computers' uses this policy with Microsoft Autoenrollment in Application 'fleet'.*no default key algorithm/
+      );
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses a signature-only edit that drops the algorithm a Microsoft Autoenrollment profile has Windows sign with", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        {
+          profileName: "windows-computers",
+          profileDefaults: { keyAlgorithm: "RSA_2048", signatureAlgorithm: "RSA-SHA384" },
+          applicationName: "fleet"
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { signature: ["SHA256-RSA"] } }
+        })
+      ).rejects.toThrow(/asks Windows to sign its requests with RSA-SHA384/);
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lets a policy restrict custom extensions when no Microsoft Autoenrollment profile uses it", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({
+        ...mockActor,
+        policyId: "policy-123",
+        data: { customExtensions: [{ oid: "1.2.3.4", allowed: ["*"] }] }
+      });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
@@ -302,6 +485,42 @@ describe("CertificatePolicyService", () => {
           data: { name: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("refuses a SAN rule change that leaves a bound profile's common name default without a matching rule", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([
+        {
+          id: "profile-1",
+          slug: "web-servers",
+          defaults: {
+            subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
+          }
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*@example.com"] }] }
+        })
+      ).rejects.toThrow("Certificate profile 'web-servers' uses this policy and would no longer be valid.");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("accepts turning off the subject restriction while a SAN rule uses the common name", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({
+        ...sampleTemplate,
+        subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+      });
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { subject: null } });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
   });
 

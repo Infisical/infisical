@@ -4,6 +4,13 @@
   gap: var(--cipher-space-4);
   min-width: 0;
 }
+.roleCell[data-wrap] {
+  align-items: flex-start;
+  width: 100%;
+}
+.roleCell[data-wrap] > :first-child {
+  flex: 1 1 auto;
+}
 .editor {
   width: 288px;
 }
@@ -34,6 +41,8 @@
 }
 .memberIcon {
   display: inline-flex;
+  margin-inline-end: var(--cipher-space-8);
+  vertical-align: middle;
   color: var(--cipher-muted);
 }
 .muted {

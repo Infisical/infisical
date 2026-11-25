@@ -27,6 +27,7 @@ import type {
   TAgentVaultActorRef,
   TAgentVaultBundleSkill,
   TAgentVaultGrantedMember,
+  TAgentVaultHookPage,
   TAgentVaultMcpTool,
   TAgentVaultMember,
   TAgentVaultMemberWriteResult,
@@ -51,6 +52,7 @@ import type {
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TListAgentVaultAccessBundlesDTO,
+  TListAgentVaultHooksDTO,
   TListAgentVaultMcpToolsDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
@@ -175,6 +177,21 @@ const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string)
       return data.accessBundle;
     },
     enabled: Boolean(accessBundleId)
+  });
+};
+
+const useListAgentVaultHooks = (projectId: string, params: TListAgentVaultHooksDTO = {}) => {
+  const orgId = useOrgId();
+
+  return useQuery({
+    placeholderData: keepPreviousInProject(projectId),
+    queryKey: agentVaultKeys.hookList(orgId, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultHookPage>("/api/v1/agent-vault/hooks", {
+        params: { ...params, projectId }
+      });
+      return data;
+    }
   });
 };
 
@@ -1175,6 +1192,7 @@ export const agentVaultResourcesLive: AgentVaultResourcesAdapter = {
   useAddAccessBundleSkills: useAddAgentVaultAccessBundleSkill,
   useRemoveAccessBundleSkill: useRemoveAgentVaultAccessBundleSkill,
 
+  useHooks: useListAgentVaultHooks,
   useProxies: useListAgentVaultProxies,
   useCreateProxy: useCreateAgentVaultProxy,
   useUpdateProxy: useUpdateAgentVaultProxy,

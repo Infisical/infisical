@@ -65,6 +65,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
 import { ShowMoreFooter } from "../../components/show-more-footer";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 
 export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
@@ -494,7 +495,7 @@ export const FindingsTable = ({
   const { status } = filters;
   const dataSourceId = scope?.id ?? filters.dataSourceId;
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("secretScanningFindingsTable", 20);
   const [selected, setSelected] = useState<string[]>([]);
   const [opened, setOpened] = useState<TSecretScanningFinding | null>(null);
   const [change, setChange] = useState<{

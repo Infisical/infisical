@@ -21,7 +21,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import { useServerConfig } from "@app/context";
 import {
   useEnableEmailAuthAccountRecovery,
@@ -29,6 +28,7 @@ import {
   useVerifyAccountRecoveryEmail
 } from "@app/hooks/api";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
@@ -95,29 +95,20 @@ const EnterPasswordStep = ({
   });
   const password = watch("password");
   const confirmPassword = watch("confirmPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
   const { mutateAsync: resetPasswordV2, isPending } = useResetPasswordV2();
 
   const handlePasswordReset = async ({ password: nextPassword }: FormData) => {
     if (isPreview) return;
-    const latestBreachStatus = await validatePassword(nextPassword);
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
+    try {
+      await resetPasswordV2({ newPassword: nextPassword, verificationToken });
+    } catch (error) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (!breachedPasswordMessage) throw error;
+      setError("password", { type: "server", message: breachedPasswordMessage });
       return;
     }
-    await resetPasswordV2({ newPassword: nextPassword, verificationToken });
     onComplete();
   };
-
-  let disabledReason: string | undefined;
-  if (breachStatus === "checking") disabledReason = "Checking known data breaches";
-  else if (breachStatus === "breached") disabledReason = "Choose a password that isn't breached";
 
   return (
     <AuthPage
@@ -138,7 +129,6 @@ const EnterPasswordStep = ({
             password={password}
             confirmPassword={confirmPassword}
             policy={config.passwordPolicy}
-            breachStatus={breachStatus}
             submitCount={submitCount}
           />
           <Button
@@ -147,7 +137,6 @@ const EnterPasswordStep = ({
             size="lg"
             className="w-full"
             loading={isSubmitting || isPending}
-            disabledReason={disabledReason}
           >
             Change password
           </Button>

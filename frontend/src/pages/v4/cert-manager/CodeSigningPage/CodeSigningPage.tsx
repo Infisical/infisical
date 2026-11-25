@@ -23,6 +23,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -47,7 +48,10 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(SIGNERS_PAGE_SIZE);
+  const [pageSize, setPageSize, showPagination] = usePageSize(
+    "pkiCodeSigningSignersTable",
+    SIGNERS_PAGE_SIZE
+  );
   const [creating, setCreating] = useState(false);
   const { data, isPending, error } = adapter.useSigners({
     projectId,
@@ -157,7 +161,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
     );
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <Inline gap={12} align="center" wrap={false}>
         <Input
           icon="search"
@@ -184,7 +188,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         empty={empty}
         persistentStatus={total ? `${total} ${total === 1 ? "signer" : "signers"}` : undefined}
         pagination={
-          total > pageSize ? (
+          showPagination(total) ? (
             <Pagination
               label="Signer pages"
               variant="compact"
@@ -221,6 +225,7 @@ const Page = () => {
     <Stack gap={24}>
       <PageHeader
         title="Signers"
+        description="A signer is a code-signing certificate plus the members and approval policy that control who can sign with it."
         badges={<DocumentationLink href={CODE_SIGNING_DOCS.signers} subject="Signers" />}
       />
       <SignersList orgId={orgId} projectId={projectId} />

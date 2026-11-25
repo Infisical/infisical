@@ -191,7 +191,7 @@ export const UpgradeView = ({
             <Text>{prod.name}</Text>
             <Inline gap={4}>
               <SmallText muted>{fromPlanName}</SmallText>
-              <Icon name="chev-right" size={12} />
+              <Icon name="chev-right" size="var(--cipher-size-icon-caption)" />
               <SmallText>{plan.name}</SmallText>
             </Inline>
             {plan.feature && <SmallText muted>{plan.feature}</SmallText>}

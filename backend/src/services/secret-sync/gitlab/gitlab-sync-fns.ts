@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { GitbeakerRequestError } from "@gitbeaker/rest";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { GitLabConnectionMethod, TGitLabConnection } from "@app/services/app-connection/gitlab";
@@ -34,12 +35,14 @@ interface TGitLabVariableUpdate extends Omit<TGitLabVariablePayload, "key"> {}
 type TGitLabSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 const getValidAccessToken = async (
   connection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
 ): Promise<string> => {
   if (
     connection.method === GitLabConnectionMethod.OAuth &&
@@ -53,6 +56,7 @@ const getValidAccessToken = async (
       connection.projectId,
       appConnectionDAL,
       kmsDataKeyService,
+      instanceConfigService,
       connection.credentials.instanceUrl
     );
     return accessToken;
@@ -291,7 +295,7 @@ export const GitLabSyncFns = {
   syncSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsDataKeyService }: TGitLabSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService, instanceConfigService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { connection, environment, destinationConfig } = secretSync;
@@ -299,7 +303,12 @@ export const GitLabSyncFns = {
 
     const resourceId = scope === GitLabSyncScope.Project ? destinationConfig.projectId : destinationConfig.groupId;
 
-    const accessToken = await getValidAccessToken(connection, appConnectionDAL, kmsDataKeyService);
+    const accessToken = await getValidAccessToken(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     try {
       const currentVariables = await getGitLabVariables({
@@ -408,7 +417,7 @@ export const GitLabSyncFns = {
   removeSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsDataKeyService }: TGitLabSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService, instanceConfigService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { connection, destinationConfig } = secretSync;
@@ -416,7 +425,12 @@ export const GitLabSyncFns = {
 
     const resourceId = scope === GitLabSyncScope.Project ? destinationConfig.projectId : destinationConfig.groupId;
 
-    const accessToken = await getValidAccessToken(connection, appConnectionDAL, kmsDataKeyService);
+    const accessToken = await getValidAccessToken(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     const allVariables = await getGitLabVariables({
       accessToken,

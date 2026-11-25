@@ -42,7 +42,7 @@ function CredentialSet({
   return (
     <section className={styles.credentialSet}>
       <Text className={styles.credentialHead} data-tone={tone}>
-        <Icon name={icon} size={14} />
+        <Icon name={icon} size="var(--cipher-size-icon-small)" />
         {title}
       </Text>
       {description && <SmallText muted>{description}</SmallText>}
@@ -137,7 +137,7 @@ export function RotationCredentialsDialog({
           )}
           {next && (
             <SmallText className={styles.nextRotation}>
-              <Icon name="sync" size={14} />
+              <Icon name="sync" size="var(--cipher-size-icon-small)" />
               <span>
                 Next rotation occurs on: {format(next, "MM/dd/yyyy")} at {format(next, "h:mm aa")}{" "}
                 <span className={styles.muted}>(Local Time)</span>

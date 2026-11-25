@@ -84,6 +84,7 @@ export const ProjectMembersTab = () => {
 
   const rows = useMemo(() => members.data ?? [], [members.data]);
   const list = usePagedList({
+    table: "projectMembersTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>
@@ -176,7 +177,7 @@ export const ProjectMembersTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label={`${accessLabel(scope.projectType, "user")} filters`}
         fields={[

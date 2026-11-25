@@ -154,7 +154,11 @@ export function SecretEntryFields({
             }
           >
             <span className={styles.hint}>
-              <Icon name="info" size={14} label="About secret references" />
+              <Icon
+                name="info"
+                size="var(--cipher-size-icon-small)"
+                label="About secret references"
+              />
             </span>
           </Tooltip>
           <span className={styles.push}>
@@ -220,7 +224,11 @@ export function SecretEntryFields({
                   </FieldLabel>
                   <Tooltip content="When enabled, newlines in secret values are escaped as \n for environment variable output.">
                     <span className={styles.hint}>
-                      <Icon name="info" size={14} label="About multiline encoding" />
+                      <Icon
+                        name="info"
+                        size="var(--cipher-size-icon-small)"
+                        label="About multiline encoding"
+                      />
                     </span>
                   </Tooltip>
                 </span>

@@ -44,13 +44,13 @@ export const SUBJECT_LABELS: Record<SubjectType, string> = {
 };
 
 export const SUBJECT_PLACEHOLDERS: Record<SubjectType, string> = {
-  common_name: "*.example.com",
-  organization: "Acme Inc.",
-  organizational_unit: "Engineering",
-  country: "US",
-  state: "California",
-  locality: "San Francisco",
-  domain_component: "corp,example,com"
+  common_name: "e.g. *.example.com",
+  organization: "e.g. Acme Inc.",
+  organizational_unit: "e.g. Engineering",
+  country: "e.g. US",
+  state: "e.g. California",
+  locality: "e.g. San Francisco",
+  domain_component: "e.g. corp,example,com"
 };
 
 export const SAN_TYPES: SanType[] = ["dns_name", "ip_address", "email", "uri", "upn"];
@@ -64,11 +64,11 @@ export const SAN_LABELS: Record<SanType, string> = {
 };
 
 export const SAN_PLACEHOLDERS: Record<SanType, string> = {
-  dns_name: "*.example.com",
-  ip_address: "10.0.0.1",
-  email: "admin@example.com",
-  uri: "spiffe://example.com/service",
-  upn: "user@example.com"
+  dns_name: "e.g. *.example.com",
+  ip_address: "e.g. 10.0.0.1",
+  email: "e.g. admin@example.com",
+  uri: "e.g. spiffe://example.com/service",
+  upn: "e.g. user@example.com"
 };
 
 export const EFFECT_OPTIONS: { value: RuleEffect; label: string }[] = [

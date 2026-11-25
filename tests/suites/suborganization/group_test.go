@@ -71,7 +71,7 @@ func TestSubOrgGroup_Native(t *testing.T) {
 		groupID := sub.NewGroup(t, "native")
 
 		// Action
-		res, err := sub.Admin.API.AddUserToGroupWithResponse(t.Context(), groupID.String(), rootOnly.Email)
+		res, err := sub.Admin.API.AddUserToGroupWithResponse(t.Context(), groupID, rootOnly.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -323,7 +323,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), tn.Admin.Email)
+		res, err := sub.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, tn.Admin.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID.String(), tn.Admin.Email)
+		res, err := sub.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID, tn.Admin.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -363,7 +363,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID.String(), identity.ID.String())
+		res, err := sub.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID, identity.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -384,7 +384,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.RemoveMachineIdentityFromGroupWithResponse(t.Context(), group.ID.String(), identity.ID.String())
+		res, err := sub.Admin.API.RemoveMachineIdentityFromGroupWithResponse(t.Context(), group.ID, identity.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -403,13 +403,13 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID.String(), api.UpdateGroupJSONRequestBody{Name: new("renamed")})
+		res, err := sub.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID, api.UpdateGroupJSONRequestBody{Name: new("renamed")})
 
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, string(res.Body), "Cannot update name or slug of a linked group")
-		got, err := tn.Admin.API.GetGroupByIdWithResponse(t.Context(), group.ID.String())
+		got, err := tn.Admin.API.GetGroupByIdWithResponse(t.Context(), group.ID)
 		require.NoError(t, err)
 		require.NotNil(t, got.JSON200)
 		require.Equal(t, group.Name, got.JSON200.Name)
@@ -425,7 +425,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID.String(), api.UpdateGroupJSONRequestBody{Role: new("admin")})
+		res, err := sub.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID, api.UpdateGroupJSONRequestBody{Role: new("admin")})
 
 		// Assert
 		require.NoError(t, err)
@@ -568,7 +568,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		sub.LinkGroup(t, group, "member")
 
 		// Action
-		res, err := sub.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID.String())
+		res, err := sub.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -585,7 +585,7 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 func groupIdentityIDs(t *testing.T, client *api.ClientWithResponses, groupID uuid.UUID) []uuid.UUID {
 	t.Helper()
 	filter := api.ListGroupMachineIdentitiesParamsFilter("assignedMachineIdentities")
-	res, err := client.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID.String(), &api.ListGroupMachineIdentitiesParams{Filter: &filter})
+	res, err := client.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID, &api.ListGroupMachineIdentitiesParams{Filter: &filter})
 	require.NoError(t, err)
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	ids := []uuid.UUID{}

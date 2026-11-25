@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +25,8 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Meta } from "@infisical/cipher/ui/text";
-import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
@@ -36,11 +37,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
 import { copyToClipboard } from "@app/helpers/clipboard";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
@@ -49,6 +45,7 @@ import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -167,9 +164,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     direction: "asc"
   });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [dialog, setDialog] = useState<{ variable?: TAgentVaultVariable }>();
   const [deleting, setDeleting] = useState<TAgentVaultVariable>();
   const [revealed, setRevealed] = useState<Record<string, string>>({});
@@ -319,31 +314,37 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
       : `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove the reference before you delete it.`;
 
   return (
-    <Stack gap={16}>
-      <Inline gap={8} wrap={false}>
-        <Input
-          icon="search"
-          aria-label="Search variables"
-          placeholder="Search variables..."
-          slashShortcut
-          maxLength={255}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-        />
-        {canCreate && (
-          <Button
-            variant="accent"
-            icon="plus"
-            disabledReason={isAtLimit ? limitReason : undefined}
-            onClick={openCreate}
-          >
-            {`Add ${isPersonal ? "personal" : "global"} variable`}
-          </Button>
-        )}
-      </Inline>
+    <Stack gap={24}>
+      <FilterBar
+        label={isPersonal ? "Personal variable filters" : "Global variable filters"}
+        searchValue={search}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search variables"
+            placeholder="Search variables..."
+            slashShortcut
+            maxLength={255}
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        }
+        actions={
+          canCreate && (
+            <Button
+              variant="accent"
+              icon="plus"
+              disabledReason={isAtLimit ? limitReason : undefined}
+              onClick={openCreate}
+            >
+              {`Add ${isPersonal ? "personal" : "global"} variable`}
+            </Button>
+          )
+        }
+      />
       <DataTable
         filtered={Boolean(searchTerm)}
         label={isPersonal ? "Personal variables" : "Global variables"}
@@ -393,7 +394,6 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
               onPageSizeChange={(next) => {
                 setPerPage(next);
                 setPage(1);
-                setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
               }}
             />
           ) : undefined
@@ -464,14 +464,12 @@ export const AgentVaultVariablesPage = () => {
         <PageHeader
           title="Variables"
           badges={<DocumentationLink href={AgentVaultDocs.variables} subject="variables" />}
-          actions={
+          tabs={
             canReadGlobalVariables ? (
-              <ToggleGroup
-                type="single"
-                aria-label="Variable scope"
+              <Tabs
+                label="Variable scope"
                 value={scope}
-                onValueChange={(next) => {
-                  if (!next) return;
+                onValueChange={(next) =>
                   navigate({
                     to: route,
                     params: { orgId, projectId },
@@ -479,12 +477,13 @@ export const AgentVaultVariablesPage = () => {
                       ...prev,
                       selectedTab: next as AgentVaultVariableScope
                     })
-                  });
-                }}
-              >
-                <ToggleGroupItem value={AgentVaultVariableScope.Global}>Global</ToggleGroupItem>
-                <ToggleGroupItem value={AgentVaultVariableScope.Personal}>Personal</ToggleGroupItem>
-              </ToggleGroup>
+                  })
+                }
+                tabs={[
+                  { value: AgentVaultVariableScope.Global, label: "Global" },
+                  { value: AgentVaultVariableScope.Personal, label: "Personal" }
+                ]}
+              />
             ) : undefined
           }
         />

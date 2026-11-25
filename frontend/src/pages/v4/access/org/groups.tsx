@@ -33,6 +33,7 @@ import {
 import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -60,7 +61,7 @@ const managedByColumn = (orgId: string): DataTableColumn<TGroupOrgMembership> =>
   header: "Managed by",
   render: (group) => (
     <Badge tone="outline">
-      <Icon name="building" size={12} />
+      <Icon name="building" />
       {group.orgId !== orgId ? "Root organization" : "Sub-organization"}
     </Badge>
   )
@@ -186,7 +187,7 @@ export const OrgGroupsTab = () => {
   );
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("orgGroupsTable", 20);
   const [dialog, setDialog] = useState<{ group?: GroupDraft }>();
   const [deleting, setDeleting] = useState<TGroupOrgMembership>();
   const debouncedSearch = useDebounced(search.trim());
@@ -280,7 +281,7 @@ export const OrgGroupsTab = () => {
   const searching = Boolean(debouncedSearch);
   const canCreate = can(OrgPermissionGroupActions.Create);
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization group filters"
         fields={[

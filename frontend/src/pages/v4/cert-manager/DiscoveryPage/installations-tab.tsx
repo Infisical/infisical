@@ -14,6 +14,7 @@ import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import {
@@ -40,7 +41,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiDiscoveryInstallationsTable", 25);
   const [editing, setEditing] = useState<TPkiInstallation>();
   const [deleting, setDeleting] = useState<TPkiInstallation>();
   const [settingPassword, setSettingPassword] = useState<TPkiInstallation>();
@@ -160,7 +161,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
     );
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <Input
         icon="search"
         aria-label="Search installations"
@@ -218,7 +219,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
           )
         }}
         pagination={
-          total > pageSize ? (
+          showPagination(total) ? (
             <Pagination
               label="Installation pages"
               variant="compact"

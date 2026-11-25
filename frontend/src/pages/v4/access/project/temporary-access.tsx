@@ -87,7 +87,7 @@ export const DurationBadge = ({ grant }: { grant: GrantDraft }) => {
   return (
     <Tooltip content={tooltip}>
       <Badge tone={expired ? "bad" : "warn"}>
-        {expired ? <Icon icon={ClockAlertIcon} size={12} /> : <Icon name="clock" size={12} />}
+        {expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />}
         {text}
       </Badge>
     </Tooltip>
@@ -166,20 +166,17 @@ export const DurationPicker = ({
     return () => window.clearTimeout(timer);
   }, [defaultOpen]);
   const { text, tooltip, expired } = durationOf(grant);
+  const clockIcon = expired ? ClockAlertIcon : "clock";
   const trigger = (
     <PopoverTrigger asChild>
       <Button
         layout="trigger"
         variant="outline"
+        icon={grant.isTemporary ? clockIcon : undefined}
         disabledReason={disabledReason}
         aria-label={`${label}: ${text}`}
       >
-        <span
-          style={{ display: "inline-flex", alignItems: "center", gap: "var(--cipher-space-6)" }}
-        >
-          {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
-          {text}
-        </span>
+        {text}
       </Button>
     </PopoverTrigger>
   );

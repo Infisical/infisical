@@ -184,7 +184,7 @@ const OauthClientsList = ({
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="OAuth application filters"
         fields={[]}

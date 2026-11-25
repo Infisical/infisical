@@ -34,14 +34,12 @@ import {
   buildServiceSchema,
   credentialLabel,
   hasDatabase,
-  HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   HTTP_CREDENTIAL_TYPES,
   HTTP_METHODS,
   isAllMethods,
   isCredentialMemberProvided,
   isOAuthAuthorizationMissing,
   isOAuthVariableCredential,
-  isPlainHttpUrl,
   MCP_SERVICE_STEP_FIELDS,
   McpToolScope,
   NATIVE_CREDENTIAL_TYPES,
@@ -52,6 +50,7 @@ import {
   SERVICE_TYPE_LABELS,
   serviceKindOf,
   ServiceStep,
+  serviceHookDraftOf,
   storedMemberFields,
   storedOAuthVariableKey,
   type TServiceForm,
@@ -136,6 +135,8 @@ const NATIVE_FIELD_OF_CONFIG_ERROR: [string, keyof TServiceForm][] = [
 // The server keeps a completed authorization for 10 minutes. Expiring it here a little early covers the poll that
 // delivered it, so the sheet never offers one the server has already dropped.
 const OAUTH_AUTHORIZATION_LIFETIME_MS = (10 * 60 - 30) * 1000;
+const NO_HOOK = "none";
+const HOOK_PICKER_LIMIT = 100;
 const OAUTH_AUTHORIZATION_EXPIRED_MESSAGE =
   "This authorization expired before the service was saved. Authorize again.";
 
@@ -206,6 +207,7 @@ export const ServiceSheet = ({
   const resources = useV4Adapter("agentVaultResources");
   const create = resources.useCreateService(projectId);
   const update = resources.useUpdateService(projectId);
+  const savedHooks = resources.useHooks(projectId, { limit: HOOK_PICKER_LIMIT });
   const isCreate = !service;
   const fromRequest = isCreate ? request : undefined;
   const [prefilled] = useState(
@@ -238,7 +240,6 @@ export const ServiceSheet = ({
   const kind = serviceKindOf(form.serviceType);
   const isMcp = kind === "mcp";
   const nativeType = isNativeServiceType(form.serviceType) ? form.serviceType : null;
-  const hasStoredHook = Boolean(service?.hook);
   const isMemberProvided = isCredentialMemberProvided(form);
 
   const referencedKeys = useMemo(() => {
@@ -467,11 +468,6 @@ export const ServiceSheet = ({
       return false;
     }
 
-    if (isBadRequest && message === HOOK_SIGNING_SECRET_REQUIRED_MESSAGE) {
-      setErrors({ hookSigningSecret: message });
-      goTo(ServiceStep.Hook);
-      return false;
-    }
     return true;
   };
 
@@ -857,61 +853,34 @@ export const ServiceSheet = ({
   );
 
   const hookContent = (
-    <Stack gap={16}>
-      <Switch
-        label="Use a hook"
-        description="Your server allows or refuses what agents send before the proxy adds the credential."
-        checked={form.hookEnabled}
-        onChange={(checked) => {
-          set("hookEnabled", checked);
-          if (!checked) setErrors({});
+    <Field
+      label="Hook"
+      description="Your server allows or refuses what agents send before the proxy adds the credential."
+    >
+      <Select
+        label="Hook"
+        value={form.hook.hookId || NO_HOOK}
+        options={[
+          { value: NO_HOOK, label: "No hook" },
+          ...(form.hook.hookId &&
+          !savedHooks.data?.hooks.some((hook) => hook.id === form.hook.hookId)
+            ? [{ value: form.hook.hookId, label: form.hook.hookName || "Current hook" }]
+            : []),
+          ...(savedHooks.data?.hooks ?? []).map((hook) => ({ value: hook.id, label: hook.name }))
+        ]}
+        onChange={(next) => {
+          if (next === form.hook.hookId) return;
+          const hook = savedHooks.data?.hooks.find((entry) => entry.id === next);
+          set(
+            "hook",
+            hook
+              ? { ...serviceHookDraftOf(), hookId: hook.id, hookName: hook.name }
+              : serviceHookDraftOf()
+          );
+          setErrors({});
         }}
       />
-      {form.hookEnabled && (
-        <>
-          <Field
-            label="Hook URL"
-            description={
-              isPlainHttpUrl(form.hookUrl)
-                ? "Requests and answers are sent unencrypted over http://."
-                : undefined
-            }
-            error={err("hookUrl")}
-            wide
-          >
-            <Input
-              mono
-              value={form.hookUrl}
-              invalid={Boolean(err("hookUrl"))}
-              placeholder="https://hooks.example.com/agent-vault"
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => set("hookUrl", event.target.value)}
-            />
-          </Field>
-          <Field
-            label="Signing secret"
-            description={
-              hasStoredHook &&
-              form.hookSigningSecret !== UNCHANGED_SECRET &&
-              form.hookSigningSecret !== ""
-                ? "Proxies switch to the new secret on their next check-in."
-                : "At least 32 characters."
-            }
-            error={err("hookSigningSecret")}
-            wide
-          >
-            <StoredSecretInput
-              label="Signing secret"
-              value={form.hookSigningSecret}
-              hasStored={hasStoredHook}
-              invalid={Boolean(err("hookSigningSecret"))}
-              onChange={(value) => set("hookSigningSecret", value)}
-            />
-          </Field>
-        </>
-      )}
-    </Stack>
+    </Field>
   );
 
   const reviewTarget = (() => {
@@ -967,7 +936,7 @@ export const ServiceSheet = ({
           ] as [string, string]
         ]
       : []),
-    ["Hook", form.hookEnabled ? form.hookUrl : "Off"]
+    ["Hook", form.hook.hookName || "Off"]
   ];
 
   const isAuthorizationMissing = isOAuthAuthorizationMissing(form, service);
@@ -1078,7 +1047,7 @@ export const ServiceSheet = ({
       : []),
     {
       title: "Hook",
-      summary: form.hookEnabled ? "On" : "Off",
+      summary: form.hook.hookName || "Off",
       validate: () => validateStep(ServiceStep.Hook),
       content: hookContent
     },

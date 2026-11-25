@@ -7,7 +7,7 @@ const AGENT_VAULT_MAX_TOOL_NAME_LENGTH = 128;
 export const AGENT_VAULT_MAX_ALLOWED_TOOLS = 500;
 
 // The MCP spec says a tool name SHOULD be 1-128 of these characters; held as a must so a name can't carry characters
-// that Postgres drivers rewrite or that the Go backend folds together. The proxy compares names exactly.
+// that Postgres drivers rewrite. The proxy compares names exactly.
 const TOOL_NAME_RE = new RE2(/^[A-Za-z0-9_.-]+$/);
 
 const toolNameError = (name: string) => {

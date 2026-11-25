@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { subject } from "@casl/ability";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -37,10 +37,10 @@ import { orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeletePolicyDialog } from "../components/delete-dialogs";
+import { ExtensionName } from "../components/extension-name";
 import {
   CRITICALITY_LABELS,
   domainComponentChain,
-  extensionLabel,
   formatValidity,
   hasEnforcement,
   POLICY_DOCS,
@@ -83,6 +83,14 @@ const Values = ({
   </Inline>
 );
 
+const ruleValueGrid = {
+  display: "grid",
+  gridTemplateColumns: "auto auto",
+  gap: 8,
+  alignItems: "center",
+  justifyContent: "end"
+} as const;
+
 const RuleValueList = ({
   rule,
   format: formatValue,
@@ -92,16 +100,16 @@ const RuleValueList = ({
   format?: (value: string) => string;
   mono?: boolean;
 }) => (
-  <Stack gap={8}>
+  <div style={ruleValueGrid}>
     {(["required", "allowed", "denied"] as const)
       .filter((state) => rule[state]?.length)
       .map((state) => (
-        <Inline key={state} gap={8} align="center">
+        <Fragment key={state}>
           <SmallText muted>{POLICY_STATE_LABELS[state]}</SmallText>
           <Values values={rule[state] ?? []} format={formatValue} mono={mono} />
-        </Inline>
+        </Fragment>
       ))}
-  </Stack>
+  </div>
 );
 
 const ruleId = (rule: RuleValues & { oid: string }) =>
@@ -241,12 +249,7 @@ const ExtensionsCard = ({
         items={rules.map(
           (rule) =>
             [
-              <Stack key={`label-${ruleId(rule)}`} gap={2}>
-                {extensionLabel(rule.oid, rule.label)}
-                <SmallText muted>
-                  <code>{rule.oid}</code>
-                </SmallText>
-              </Stack>,
+              <ExtensionName key={`label-${ruleId(rule)}`} oid={rule.oid} label={rule.label} />,
               <Stack key={`value-${ruleId(rule)}`} gap={8}>
                 {rule.critical && (
                   <div>

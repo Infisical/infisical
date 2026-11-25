@@ -58,7 +58,7 @@ export const OrganizationFeatures = () => {
           const detail = feature.detail?.(subscription);
           return (
             <span key={feature.key} className={styles.feature}>
-              <Icon name="check" size={14} />
+              <Icon name="check" size="var(--cipher-size-icon-small)" />
               <span>
                 {feature.label}
                 {detail && <span className={styles.secondary}> ({detail})</span>}

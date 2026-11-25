@@ -183,6 +183,7 @@ export const OrgRolesTab = () => {
   const isDefault = (role: TOrgRole) =>
     org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug;
   const list = usePagedList({
+    table: "orgRolesTable",
     rows: roles,
     initialSort: { columnId: "type", direction: "asc" },
     matches: (role, needle) =>
@@ -250,7 +251,7 @@ export const OrgRolesTab = () => {
         const custom = isCustomOrgRole(role.slug);
         return (
           <Badge tone="outline">
-            <Icon icon={custom ? WrenchIcon : "server"} size={12} />
+            <Icon icon={custom ? WrenchIcon : "server"} />
             {custom ? "Custom" : "Platform"}
           </Badge>
         );
@@ -312,7 +313,7 @@ export const OrgRolesTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization role filters"
         fields={[]}

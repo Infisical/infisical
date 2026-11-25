@@ -24,6 +24,8 @@ const gateway = (id: string, name: string, online: boolean, pkcs11: boolean): TG
   heartbeatTTL: 60,
   directAddress: null,
   directHeartbeat: null,
+  cliVersion: null,
+  cliVersionReportedAt: null,
   canRevoke: false,
   connectedResourcesCount: 0,
   identity: null,

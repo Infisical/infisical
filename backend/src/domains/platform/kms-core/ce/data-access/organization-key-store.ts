@@ -1,6 +1,7 @@
 import { TableName } from "@app/db/schemas";
 import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator";
 
 import { OrganizationKey } from "../models/organization-key";
 import { TOrganizationKeyStore } from "../services/dependencies";
@@ -45,6 +46,16 @@ export class OrganizationKeyStore implements TOrganizationKeyStore {
       return Boolean(org);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check org KMS key references" });
+    }
+  }
+
+  async isOrganization(id: string, options?: TReadOptions): Promise<boolean> {
+    if (!isUuidV4(id)) return false;
+    try {
+      const org = await this.connection.reader(options)(TableName.Organization).where({ id }).first("id");
+      return Boolean(org);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find organization" });
     }
   }
 

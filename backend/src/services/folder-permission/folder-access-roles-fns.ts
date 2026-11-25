@@ -125,8 +125,33 @@ export const reviveFolderAccess = <TActor extends TProjectMemberActor>(
   }))
 });
 
-const isRoleActiveAt = (role: Pick<TCachedProjectMemberRole, "isTemporary" | "temporaryAccessEndTime">, now: Date) =>
+const isRoleActiveAt = (role: { isTemporary: boolean; temporaryAccessEndTime?: Date | null }, now: Date) =>
   !role.isTemporary || Boolean(role.temporaryAccessEndTime && now < role.temporaryAccessEndTime);
+
+// A folder inherits an actor's access from the nearest folder above it that holds an active grant applying to
+// subfolders, the same grant buildFolderScopedPrivilegeRules lets decide the folder. An expired grant decides
+// nothing, so it is skipped before the nearest one is picked.
+export const pickInheritedGrants = ({
+  grants,
+  ancestorFolderIds,
+  actorIdOf,
+  now
+}: {
+  grants: TAdditionalPrivileges[];
+  // nearest ancestor first
+  ancestorFolderIds: string[];
+  actorIdOf: (grant: TAdditionalPrivileges) => string;
+  now: Date;
+}) => {
+  const distanceOf = (grant: TAdditionalPrivileges) => ancestorFolderIds.indexOf(grant.folderId ?? "");
+  const inheritedGrantByActorId = new Map<string, TAdditionalPrivileges>();
+  grants.forEach((grant) => {
+    if (!grant.role || !grant.appliesToSubfolders || distanceOf(grant) === -1 || !isRoleActiveAt(grant, now)) return;
+    const nearest = inheritedGrantByActorId.get(actorIdOf(grant));
+    if (!nearest || distanceOf(grant) < distanceOf(nearest)) inheritedGrantByActorId.set(actorIdOf(grant), grant);
+  });
+  return inheritedGrantByActorId;
+};
 
 const isBuiltInAdmin = (role: TFolderAccessRole) => role.id === null && role.slug === ProjectMembershipRole.Admin;
 
@@ -145,11 +170,13 @@ const toPublicRole = ({ id, slug, name }: TCachedProjectMemberRole): TFolderAcce
 export const splitFolderAccess = <TActor extends TProjectMemberActor>({
   folderAccess,
   grantByActorId,
+  inheritedGrantByActorId,
   actorIdOf,
   now
 }: {
   folderAccess: TCachedFolderAccess<TActor>;
   grantByActorId: Map<string, TAdditionalPrivileges>;
+  inheritedGrantByActorId: Map<string, TAdditionalPrivileges>;
   actorIdOf: (actor: TActor) => string;
   now: Date;
 }) => {
@@ -163,19 +190,23 @@ export const splitFolderAccess = <TActor extends TProjectMemberActor>({
 
     const grantingRoles = activeRoles.filter((role) => granting.has(folderAccessRoleKey(role)));
     const grant = grantByActorId.get(actorIdOf(actor)) ?? null;
+    const ancestorGrant = inheritedGrantByActorId.get(actorIdOf(actor));
+    const inheritedGrant = ancestorGrant && isRoleActiveAt(ancestorGrant, now) ? ancestorGrant : null;
     // an admin is kept out of withoutAccess even if no probe matched: that list is what the grant
     // picker offers, and a folder grant could only remove privileges from an admin
-    if (isProjectAdmin || grantingRoles.length || grant) {
+    if (isProjectAdmin || grantingRoles.length || grant || inheritedGrant) {
       withAccess.push({
         actor,
         membership: { id: actor.membershipId, isProjectAdmin, roles: grantingRoles.map(toPublicRole) },
-        grant
+        grant,
+        inheritedGrant
       });
     } else {
       withoutAccess.push({
         actor,
         membership: { id: actor.membershipId, isProjectAdmin, roles: activeRoles.map(toPublicRole) },
-        grant: null
+        grant: null,
+        inheritedGrant: null
       });
     }
   });

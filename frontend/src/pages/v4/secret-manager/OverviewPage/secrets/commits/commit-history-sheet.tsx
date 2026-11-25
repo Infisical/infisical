@@ -154,7 +154,11 @@ function Author({ commit }: { commit: ViewCommit }) {
       {commit.actorType === "platform" && (
         <Tooltip content={PLATFORM_HINT}>
           <span className={styles.hint}>
-            <Icon name="info" size={12} label="About platform commits" />
+            <Icon
+              name="info"
+              size="var(--cipher-size-icon-caption)"
+              label="About platform commits"
+            />
           </span>
         </Tooltip>
       )}
@@ -177,7 +181,7 @@ function CommitRow({ commit, onSelect }: { commit: ViewCommit; onSelect: () => v
       </span>
       <ChangeSummary summary={summary} />
       <code className={styles.shortId}>{shortId(commit.id)}</code>
-      <Icon name="chev-right" size={16} className={styles.chevron} />
+      <Icon name="chev-right" size="var(--cipher-size-icon-label)" className={styles.chevron} />
     </button>
   );
 }
@@ -263,7 +267,11 @@ function CommitMeta({
           <Badge tone="outline">{envName}</Badge>
           {path !== "/" && (
             <span className={styles.path}>
-              <Icon name="folder" size={14} className={styles.titleIcon} />
+              <Icon
+                name="folder"
+                size="var(--cipher-size-icon-small)"
+                className={styles.titleIcon}
+              />
               <MiddleTruncate mono keepEnd={24}>
                 {path}
               </MiddleTruncate>
@@ -507,7 +515,7 @@ function RestoreFolderList({
       onClick={() => onSelect(item.path)}
     >
       <span className={styles.folderName}>
-        <Icon name="folder" size={16} />
+        <Icon name="folder" size="var(--cipher-size-icon-label)" />
         <span className={styles.truncate}>{item.path}</span>
       </span>
       {item.changes.length > 0 && <Badge tone="soft">{item.changes.length}</Badge>}

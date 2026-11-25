@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useMemo, useState } from "react";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { Badge, BadgeGroup } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { ClockAlertIcon, ClockIcon } from "lucide-react";
 
+import { usePageSize } from "../components/use-page-size";
 import { grantLabel, isGrantExpired, type RoleGrant } from "./roles";
 
 import styles from "./access.module.css";
@@ -155,7 +156,8 @@ export const usePagedList = <Row,>({
   compare,
   initialSort,
   initialSearch = "",
-  perPage: initialPerPage = 20
+  perPage: initialPerPage = 20,
+  table
 }: {
   rows: readonly Row[];
   matches: (row: Row, needle: string) => boolean;
@@ -163,11 +165,12 @@ export const usePagedList = <Row,>({
   initialSort: Sort;
   initialSearch?: string;
   perPage?: number;
+  table: string;
 }) => {
   const [search, setSearchValue] = useState(initialSearch);
   const [sort, setSort] = useState<Sort>(initialSort);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(initialPerPage);
+  const [perPage, setPerPage] = usePageSize(table, initialPerPage);
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return rows
@@ -205,13 +208,21 @@ export const usePagedList = <Row,>({
   };
 };
 
-export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; max?: number }) => {
+export const RoleBadges = ({
+  roles,
+  max = 2,
+  wrap = false
+}: {
+  roles: readonly RoleGrant[];
+  max?: number;
+  wrap?: boolean;
+}) => {
   const badge = (grant: RoleGrant) => {
     const expired = isGrantExpired(grant);
     const node = (
       <Badge key={grant.id} tone={expired ? "bad" : "soft"}>
         {grantLabel(grant)}
-        {grant.isTemporary && <Icon icon={expired ? ClockAlertIcon : ClockIcon} size={12} />}
+        {grant.isTemporary && <Icon icon={expired ? ClockAlertIcon : ClockIcon} />}
       </Badge>
     );
     return grant.isTemporary ? (
@@ -222,6 +233,7 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
       node
     );
   };
+  if (!wrap) return <BadgeGroup className={styles.roleGroup}>{roles.map(badge)}</BadgeGroup>;
   const overflow = roles.slice(max);
   return (
     <span className={styles.roles}>

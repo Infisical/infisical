@@ -1038,6 +1038,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1563,6 +1564,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -1777,6 +1789,18 @@ const OverviewPageContent = () => {
       subscription?.secretsFolderRbac,
       openUpgradeGate
     ]
+  );
+
+  // an inherited grant is managed on the folder that set it, so the nested sheet hands off to that one
+  const handleManageInheritedAccess = useCallback(
+    (inheritedPath: string) => {
+      setFolderAccessTarget(null);
+      setIsCurrentFolderAccessOpen(false);
+      navigate({ search: (prev) => ({ ...prev, secretPath: inheritedPath }) }).then(() =>
+        setIsCurrentFolderAccessOpen(true)
+      );
+    },
+    [navigate]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
@@ -4767,7 +4791,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4799,7 +4823,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",
@@ -5565,6 +5589,7 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
+          onManageInheritedAccess={handleManageInheritedAccess}
         />
       )}
       {isCurrentFolderAccessOpen && (
@@ -5575,6 +5600,7 @@ const OverviewPageContent = () => {
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
+          onManageInheritedAccess={handleManageInheritedAccess}
         />
       )}
       <ConfirmationAlertDialog

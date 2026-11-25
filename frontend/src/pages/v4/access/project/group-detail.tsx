@@ -52,6 +52,7 @@ import {
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
@@ -161,7 +162,7 @@ const GroupMembersCard = ({
   const [typeFilter, setTypeFilter] = useState<FilterMemberType[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("projectGroupMembersTable", 20);
   const [assuming, setAssuming] = useState<Member>();
   const debouncedSearch = useDebounced(search.trim());
 
@@ -216,22 +217,25 @@ const GroupMembersCard = ({
 
   const columns: DataTableColumn<Member>[] = [
     {
-      id: "type",
-      header: "Member type",
-      width: 40,
-      render: (member) => (
-        <span className={styles.memberIcon}>
-          <Icon name={member.type === GroupMemberType.USER ? "user" : "machine"} />
-        </span>
-      )
-    },
-    {
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
+      minWidth: 160,
+      text: (member) => (member.email ? `${member.name} (${member.email})` : member.name),
       render: (member) => (
         <span>
+          <span
+            className={styles.memberIcon}
+            role="img"
+            aria-label={member.type === GroupMemberType.USER ? "User" : "Machine identity"}
+          >
+            <Icon
+              name={member.type === GroupMemberType.USER ? "user" : "machine"}
+              size="var(--cipher-size-icon-small)"
+            />
+          </span>
           {member.name}
           {member.email && <span className={styles.muted}>{` (${member.email})`}</span>}
         </span>
@@ -248,7 +252,7 @@ const GroupMembersCard = ({
     inline: [
       {
         label: "Assume privileges",
-        icon: "user",
+        icon: "sign-in",
         disabledReason: assumeBlocked,
         onSelect: setAssuming
       }
@@ -439,6 +443,7 @@ export const ProjectGroupDetail = () => {
                     groupId={group.id}
                     groupName={group.name}
                     roles={membership.roles}
+                    wrap
                   />
                 ],
                 [`Joined ${accessNoun(scope.projectType)}`, formatDateTime(membership.createdAt)]

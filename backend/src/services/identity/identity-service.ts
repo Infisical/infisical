@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -61,6 +62,7 @@ type TIdentityServiceFactoryDep = {
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   organizationsProjectsService: TOrganizationsProjectsService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -81,6 +83,7 @@ export const identityServiceFactory = ({
   licenseService,
   usageMeteringService,
   organizationsProjectsService,
+  instanceConfigService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -293,7 +296,7 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -424,7 +427,7 @@ export const identityServiceFactory = ({
       baseMessage: "Failed to remove a more privileged identity from the organization"
     });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, id, isActorSuperAdmin);
 
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });

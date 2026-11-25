@@ -21,6 +21,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
 | `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                   |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
 | `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
@@ -131,11 +132,14 @@ Gateway-routed types run through one RPC — `testConnectionWithGateway` → the
 Windows RDP, SSH cert auth, MsSQL NTLM/Kerberos, and K8s gateway-auth). A null test result (gateway offline / missing
 the connection-test protocol) skips rather than blocks.
 
-Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
-`requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
-metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the
-gateway and injects a backend-minted short-lived token so no credential reaches the client. See
-`access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
+Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** mints
+short-lived credentials in `access()` and returns them in session metadata; **gateway-injection**
+(`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the gateway and injects a backend-minted
+short-lived token so no credential reaches the client. `AwsIam` (`requiresGateway: false`) is both: the console,
+and any account without a gateway, is gateway-less and capped at one hour, because Infisical Cloud's `AssumeRole`
+is role chaining. CLI sessions on an account with a gateway go through it instead, and the gateway re-signs each
+request (SigV4) with STS credentials it re-fetches from `getSessionCredentials` before they expire, so the session
+can outlive them. See `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
 **Snowflake is gateway-injection with no wire protocol**: the gateway answers the part of Snowflake's REST
 API that drivers speak and runs each statement through its own client (CLI `packages/pam/handlers/snowflake/`),
@@ -265,6 +269,13 @@ resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Adm
 read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
 playback), as it does for scope-less audit-log rows. `getSessionCredentials` still refuses — no account
 means no credentials to mint.
+
+**Recordings are also read server-side.** `pam-session-activity/` decrypts each newly stored chunk and
+maps its events in `buildPamSessionActivityEvents` for log streams with `filters.pamSessionActivity`, so
+a change to the recording event format (database entries, terminal events, HTTP events) needs the
+same change there as in the session viewer. Only a PAM product admin can create or change a stream
+that receives session activity (`assertCanStreamPamSessionActivity`), since org-level stream access
+would otherwise hand session content to people PAM never let view it.
 
 ## Conventions
 

@@ -168,6 +168,7 @@ export const RelaysPanel = ({
   const deleteRelay = networking.useDeleteRelay();
   const [deleting, setDeleting] = useState<TRelay>();
   const list = usePagedList({
+    table: "relaysTable",
     rows: relays,
     matches,
     compare,

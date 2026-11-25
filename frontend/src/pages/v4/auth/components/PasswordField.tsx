@@ -4,7 +4,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { StatusText } from "@infisical/cipher/ui/text";
 
 import { getPasswordRequirements } from "@app/components/utilities/checks/password/passwordPolicy";
-import type { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import type { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 import { PasswordInput } from "./PasswordInput";
@@ -15,7 +14,7 @@ type Props = {
   label?: string;
   value: string;
   policy: TPasswordPolicy;
-  breachStatus: PasswordBreachCheckStatus;
+  serverError?: string;
   registration: UseFormRegisterReturn;
   error?: string;
   submitCount: number;
@@ -25,7 +24,7 @@ export const PasswordField = ({
   label = "Password",
   value,
   policy,
-  breachStatus,
+  serverError,
   registration,
   error,
   submitCount
@@ -49,22 +48,9 @@ export const PasswordField = ({
               </StatusText>
             );
           })}
-          {breachStatus === "checking" && (
-            <StatusText icon="clock">Checking known data breaches</StatusText>
-          )}
-          {breachStatus === "safe" && (
-            <StatusText tone="ok" icon="check">
-              No known data breach matches found
-            </StatusText>
-          )}
-          {breachStatus === "breached" && (
+          {serverError && (
             <StatusText tone="bad" icon="alert-c">
-              This password was found in a known data breach.
-            </StatusText>
-          )}
-          {breachStatus === "unavailable" && (
-            <StatusText icon="info">
-              Breach check unavailable. Other requirements still apply.
+              {serverError}
             </StatusText>
           )}
         </div>

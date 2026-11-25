@@ -175,6 +175,7 @@ export const OrgMembersTab = () => {
     [members, roles, roleFilter]
   );
   const list = usePagedList({
+    table: "orgMembersTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>
@@ -280,7 +281,7 @@ export const OrgMembersTab = () => {
               {member.user.superAdmin && (
                 <Tooltip content="Server admin">
                   <Badge tone="info">
-                    <Icon icon={UserCogIcon} size={12} />
+                    <Icon icon={UserCogIcon} />
                     Server admin
                   </Badge>
                 </Tooltip>
@@ -303,7 +304,7 @@ export const OrgMembersTab = () => {
               content={`Last login with ${member.membership.lastLoginAuthMethod} on ${formatDateTime(member.membership.lastLoginTime)}`}
             >
               <button type="button" className={styles.rowHint} aria-label="Last login">
-                <Icon icon={InfoIcon} size={14} />
+                <Icon icon={InfoIcon} size="var(--cipher-size-icon-small)" />
               </button>
             </Tooltip>
           )}
@@ -450,7 +451,7 @@ export const OrgMembersTab = () => {
   const canCreate = can(OrgPermissionMemberActions.Create);
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization user filters"
         fields={[

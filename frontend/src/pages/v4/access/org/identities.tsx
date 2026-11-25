@@ -49,6 +49,7 @@ import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -242,7 +243,7 @@ export const OrgIdentitiesTab = () => {
   const [scope, setScope] = useState<ScopeTab>("organization");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = usePageSize("identityTable", 10);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Row>();
@@ -345,12 +346,12 @@ export const OrgIdentitiesTab = () => {
       render: (row) =>
         isProjectScoped(row) ? (
           <Badge tone="outline">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             {row.project?.name ?? "Project"}
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             {managedByLabel(isSubOrg, isOwned(row))}
           </Badge>
         )
@@ -452,7 +453,7 @@ export const OrgIdentitiesTab = () => {
 
   return (
     <Stack gap={32}>
-      <Stack gap={16}>
+      <Stack gap="toolbar">
         <FilterBar
           label="Machine identity filters"
           fields={[]}

@@ -32,6 +32,7 @@ import { SecretSharingAccessType, type TSharedSecret } from "@app/hooks/api/secr
 
 import { failed, toast } from "../access/toast";
 import { NoExpiry } from "../components/no-expiry";
+import { usePageSize } from "../components/use-page-size";
 import { useV4Adapter } from "../data/adapters";
 import { secretRequestLink, sharedSecretLink, writeLink } from "./links";
 
@@ -43,9 +44,9 @@ const muted = (text: string) => <SmallText muted>{text}</SmallText>;
 
 const isPast = (value: Date | string | null) => value !== null && new Date(value) < new Date();
 
-const usePaging = () => {
+const usePaging = (table: string) => {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+  const [pageSize, setPageSize] = usePageSize(table, PAGE_SIZES[0]);
   const pagination = (label: string, total?: number) =>
     total ? (
       <Pagination
@@ -109,7 +110,7 @@ const sharedStatus = (row: TSharedSecret) => {
 
 export const SharedSecretsTable = ({ subOrganization }: { subOrganization?: string }) => {
   const sharing = useV4Adapter("secretSharing");
-  const { dto, pagination } = usePaging();
+  const { dto, pagination } = usePaging("sharedSecretsTable");
   const { data, isPending, error } = sharing.useSharedSecrets(dto);
   const deleteSharedSecret = sharing.useDeleteSharedSecret();
   const [deleting, setDeleting] = useState<TSharedSecret>();
@@ -214,7 +215,7 @@ const requestStatus = (row: TSharedSecret) => {
 
 export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: string }) => {
   const sharing = useV4Adapter("secretSharing");
-  const { dto, pagination } = usePaging();
+  const { dto, pagination } = usePaging("secretRequestsTable");
   const { data, isPending, error } = sharing.useSecretRequests(dto);
   const deleteSecretRequest = sharing.useDeleteSecretRequest();
   const revealSecretValue = sharing.useRevealSecretRequestValue();
@@ -236,12 +237,12 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
       render: (row) =>
         row.accessType === SecretSharingAccessType.Anyone ? (
           <Badge tone="soft">
-            <Icon name="globe" size={12} />
+            <Icon name="globe" />
             Anyone
           </Badge>
         ) : (
           <Badge tone="soft">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             Organization
           </Badge>
         )

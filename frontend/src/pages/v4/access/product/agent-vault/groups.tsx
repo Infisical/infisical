@@ -74,7 +74,7 @@ export const AgentVaultGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Group filters"
         fields={[]}

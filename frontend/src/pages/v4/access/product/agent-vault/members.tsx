@@ -107,7 +107,7 @@ export const AgentVaultMembersTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="User filters"
         fields={[]}

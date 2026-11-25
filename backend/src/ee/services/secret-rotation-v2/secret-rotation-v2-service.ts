@@ -4,6 +4,8 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -72,6 +74,7 @@ import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/key
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
@@ -82,9 +85,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -156,6 +158,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  instanceConfigService: TInstanceConfigService;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds"
@@ -187,6 +190,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -259,6 +263,7 @@ export const secretRotationV2ServiceFactory = ({
   auditLogService,
   secretQueueService,
   keyStore,
+  instanceConfigService,
   queueService,
   folderCommitService,
   eventEmitter,
@@ -267,7 +272,8 @@ export const secretRotationV2ServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
-  secretValidationRuleService
+  secretValidationRuleService,
+  oidcIssuerService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $resolvePasswordValidationContext = async ({
     projectId,
@@ -650,7 +656,9 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
-      passwordValidationContext
+      instanceConfigService,
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -1050,7 +1058,9 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        passwordValidationContext
+        instanceConfigService,
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1418,7 +1428,9 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        passwordValidationContext
+        instanceConfigService,
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1784,7 +1796,10 @@ export const secretRotationV2ServiceFactory = ({
       kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService,
-      keyStore
+      keyStore,
+      instanceConfigService,
+      undefined,
+      oidcIssuerService
     );
 
     if (!rotationFactory.checkActiveCredentials)
@@ -2185,7 +2200,9 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
-      passwordValidationContext
+      instanceConfigService,
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

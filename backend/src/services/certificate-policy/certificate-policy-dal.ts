@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { TProfileCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
@@ -272,15 +273,71 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
         id: string;
         slug: string;
         description?: string;
-        defaults?: { customExtensions?: TProfileCustomExtension[] } | null;
+        defaults?: {
+          customExtensions?: TProfileCustomExtension[];
+          subjectAltNames?: { type: CertSubjectAlternativeNameType; value: string }[];
+        } | null;
       }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get profiles using certificate policy" });
     }
   };
 
+  const lockById = async (id: string, tx: Knex) => {
+    try {
+      await tx(TableName.PkiCertificatePolicy).where({ id }).forUpdate().first("id");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock certificate policy" });
+    }
+  };
+
+  const findMicrosoftAutoenrollmentProfiles = async (policyId: string, tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.PkiCertificateProfile)
+        .join(
+          TableName.PkiApplicationProfile,
+          `${TableName.PkiApplicationProfile}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
+        .join(
+          TableName.PkiApplication,
+          `${TableName.PkiApplication}.id`,
+          `${TableName.PkiApplicationProfile}.applicationId`
+        )
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.InternalCertificateAuthority}.caId`,
+          `${TableName.PkiCertificateProfile}.caId`
+        )
+        .leftJoin(
+          TableName.CertificateAuthoritySecret,
+          `${TableName.CertificateAuthoritySecret}.caId`,
+          `${TableName.PkiCertificateProfile}.caId`
+        )
+        .where(`${TableName.PkiCertificateProfile}.certificatePolicyId`, policyId)
+        .whereNotNull(`${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`)
+        .select(
+          db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"),
+          db.ref("defaults").withSchema(TableName.PkiCertificateProfile).as("profileDefaults"),
+          db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"),
+          db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("caKeyAlgorithm"),
+          db.ref("keySource").withSchema(TableName.CertificateAuthoritySecret).as("caKeySource")
+        )) as {
+        profileName: string;
+        profileDefaults: unknown;
+        applicationName: string;
+        caKeyAlgorithm: string | null;
+        caKeySource: string | null;
+      }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment profiles using a certificate policy" });
+    }
+  };
+
   return {
     ...certificatePolicyOrm,
+    findMicrosoftAutoenrollmentProfiles,
+    lockById,
     create,
     updateById,
     deleteById,

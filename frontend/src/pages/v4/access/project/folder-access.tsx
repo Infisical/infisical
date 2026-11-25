@@ -470,7 +470,7 @@ export const FolderAccessSection = ({
       primary: true,
       render: (row) => (
         <Inline gap={6} wrap={false} style={{ minWidth: 0 }}>
-          <Icon icon={FolderIcon} size={14} />
+          <Icon icon={FolderIcon} size="var(--cipher-size-icon-small)" />
           <MiddleTruncate mono keepEnd={14}>
             {row.secretPath}
           </MiddleTruncate>

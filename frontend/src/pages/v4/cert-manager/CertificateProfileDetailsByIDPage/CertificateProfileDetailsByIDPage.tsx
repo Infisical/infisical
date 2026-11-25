@@ -17,7 +17,7 @@ import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { SmallText } from "@infisical/cipher/ui/text";
+import { Heading, SmallText } from "@infisical/cipher/ui/text";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 
@@ -42,13 +42,8 @@ import { orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeleteProfileDialog } from "../components/delete-dialogs";
-import {
-  extensionLabel,
-  PROFILE_DOCS,
-  SAN_LABELS,
-  type SanType,
-  usageLabel
-} from "../components/policy-model";
+import { ExtensionName } from "../components/extension-name";
+import { PROFILE_DOCS, SAN_LABELS, type SanType, usageLabel } from "../components/policy-model";
 import { CertificateProfileSheet } from "../components/profile-sheet";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/certificate-profiles/$profileId");
@@ -129,12 +124,11 @@ const Defaults = ({ defaults }: { defaults?: TCertificateProfileDefaults | null 
   const extensions: DataListItem[] = (defaults?.customExtensions ?? []).map(
     (extension) =>
       [
-        <Stack key={`label-${extension.oid}`} gap={2}>
-          {extensionLabel(extension.oid, extension.label)}
-          <SmallText muted>
-            <code>{extension.oid}</code>
-          </SmallText>
-        </Stack>,
+        <ExtensionName
+          key={`label-${extension.oid}`}
+          oid={extension.oid}
+          label={extension.label}
+        />,
         <Inline key={`value-${extension.oid}`} gap={8} align="center">
           {extension.value ? (
             <code>{extension.value}</code>
@@ -166,13 +160,19 @@ const Defaults = ({ defaults }: { defaults?: TCertificateProfileDefaults | null 
       </Card>
     );
   return (
-    <>
+    <Stack gap={16}>
+      <Stack gap={4}>
+        <Heading level={2} size="subsection">
+          Defaults
+        </Heading>
+        <SmallText muted>Used when a certificate request leaves a field unset.</SmallText>
+      </Stack>
       {sections.map((section) => (
         <Card key={section.title} variant="framed" title={section.title}>
           <DataList variant="props" items={section.items} />
         </Card>
       ))}
-    </>
+    </Stack>
   );
 };
 
@@ -343,9 +343,7 @@ const ProfileDetail = ({
           </Card>
         }
       >
-        <Stack gap={16}>
-          <Defaults defaults={profile.defaults} />
-        </Stack>
+        <Defaults defaults={profile.defaults} />
       </DetailLayout>
       {editing && (
         <CertificateProfileSheet

@@ -46,13 +46,13 @@ const ManagedByBadge = ({ identity }: { identity: IdentityMember }) => {
   if (identity.isManagedByAgentVault)
     return (
       <Badge tone="accent">
-        <Icon name="agent-lock" size={12} />
+        <Icon name="agent-lock" />
         Agent Vault
       </Badge>
     );
   return (
     <Badge tone="outline">
-      <Icon name="building" size={12} />
+      <Icon name="building" />
       {organization.isSubOrganization && organization.id === identity.orgId
         ? "Sub-organization"
         : "Organization"}
@@ -130,7 +130,7 @@ export const AgentVaultIdentitiesTab = () => {
   const verb = managed ? "Delete" : "Remove";
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Machine identity filters"
         fields={[]}

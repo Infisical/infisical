@@ -68,6 +68,7 @@ export const ProjectRolesTab = () => {
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({
+    table: "projectRolesTable",
     rows: roles,
     initialSort: { columnId: "source", direction: "asc" },
     matches: (role, needle) =>
@@ -115,12 +116,12 @@ export const ProjectRolesTab = () => {
       render: (role) =>
         isCustomProjectRole(role.slug) ? (
           <span className={styles.source}>
-            <Icon icon={WrenchIcon} size={12} />
+            <Icon icon={WrenchIcon} size="var(--cipher-size-icon-caption)" />
             Custom
           </span>
         ) : (
           <span className={styles.source}>
-            <Icon name="server" size={12} />
+            <Icon name="server" size="var(--cipher-size-icon-caption)" />
             Platform
           </span>
         )
@@ -166,7 +167,7 @@ export const ProjectRolesTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label={`${accessLabel(scope.projectType, "role")} filters`}
         fields={[]}

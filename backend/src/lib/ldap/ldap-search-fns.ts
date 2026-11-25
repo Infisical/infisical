@@ -1,7 +1,11 @@
 import ldap from "@infisical/ldapjs";
 import RE2 from "re2";
 
+import { sidStringToBuffer } from "@app/lib/windows-sid/windows-sid-fns";
+
+const LDAP_TIME_LIMIT_EXCEEDED = 3;
 const LDAP_SIZE_LIMIT_EXCEEDED = 4;
+const LDAP_CLIENT_TIMEOUT_ERROR_NAME = "TimeoutError";
 
 type TLdapAttribute = { type: string; values: string[]; buffers: Buffer[] };
 
@@ -10,10 +14,13 @@ export const getLdapAttribute = (entry: ldap.SearchEntry, name: string): string 
     (attribute) => attribute.type.toLowerCase() === name.toLowerCase()
   )?.values?.[0] ?? "";
 
-export const getLdapAttributeBuffer = (entry: ldap.SearchEntry, name: string): Buffer | undefined =>
+export const getLdapAttributeBuffers = (entry: ldap.SearchEntry, name: string): Buffer[] =>
   (entry as unknown as { attributes: TLdapAttribute[] }).attributes?.find(
     (attribute) => attribute.type.toLowerCase() === name.toLowerCase()
-  )?.buffers?.[0];
+  )?.buffers ?? [];
+
+export const getLdapAttributeBuffer = (entry: ldap.SearchEntry, name: string): Buffer | undefined =>
+  getLdapAttributeBuffers(entry, name)[0];
 
 export const buildDomainBaseDN = (domainFqdn: string): string =>
   domainFqdn
@@ -39,7 +46,7 @@ export const netbiosFromDomainFqdn = (domainFqdn: string): string => domainFqdn.
 
 export type TLdapSearchOptions = {
   baseDN: string;
-  filter: string;
+  filter: string | ldap.Filter;
   attributes: string[];
   timeLimitSeconds: number;
   scope?: "base" | "one" | "sub";
@@ -48,6 +55,11 @@ export type TLdapSearchOptions = {
   acceptSizeLimitExceeded?: boolean;
   mapError?: (input: { err?: Error; status?: number }) => Error;
 };
+
+export const isLdapSearchTimeout = ({ err, status }: { err?: Error; status?: number }) =>
+  status === LDAP_TIME_LIMIT_EXCEEDED ||
+  (err as { code?: number } | undefined)?.code === LDAP_TIME_LIMIT_EXCEEDED ||
+  err?.name === LDAP_CLIENT_TIMEOUT_ERROR_NAME;
 
 const defaultMapError = ({ err, status }: { err?: Error; status?: number }) =>
   err ?? new Error(`LDAP search failed with status ${status}`);
@@ -88,3 +100,6 @@ export const searchLdap = (client: ldap.Client, options: TLdapSearchOptions): Pr
       }
     );
   });
+
+export const buildSidEqualityFilter = (sid: string) =>
+  new ldap.EqualityFilter({ attribute: "objectSid", value: sidStringToBuffer(sid) });

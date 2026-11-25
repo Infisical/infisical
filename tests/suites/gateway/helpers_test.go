@@ -53,13 +53,15 @@ func gcpAuth() map[string]any {
 // gatewayView is a gateway as the v3 routes return it. The auth method is a union in
 // the generated client, so the body is read by hand.
 type gatewayView struct {
-	ID           uuid.UUID  `json:"id"`
-	Name         string     `json:"name"`
-	CanRevoke    bool       `json:"canRevoke"`
-	RelayID      *uuid.UUID `json:"relayId"`
-	Heartbeat    *time.Time `json:"heartbeat"`
-	HeartbeatTTL *float64   `json:"heartbeatTTL"`
-	AuthMethod   struct {
+	ID                   uuid.UUID  `json:"id"`
+	Name                 string     `json:"name"`
+	CanRevoke            bool       `json:"canRevoke"`
+	RelayID              *uuid.UUID `json:"relayId"`
+	Heartbeat            *time.Time `json:"heartbeat"`
+	HeartbeatTTL         *float64   `json:"heartbeatTTL"`
+	CliVersion           *string    `json:"cliVersion"`
+	CliVersionReportedAt *time.Time `json:"cliVersionReportedAt"`
+	AuthMethod           struct {
 		Method string         `json:"method"`
 		Config map[string]any `json:"config"`
 	} `json:"authMethod"`

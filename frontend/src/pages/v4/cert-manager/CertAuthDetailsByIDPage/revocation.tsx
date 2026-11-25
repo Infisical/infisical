@@ -91,15 +91,17 @@ const useUpdateConfiguration = (ca: TInternalCertificateAuthority) => {
   return { apply, pending: update.isPending };
 };
 
+type CrlSetting = "urls" | "validity";
+
 const CrlSettingsDialog = ({
   ca,
   plan,
-  open,
+  setting,
   onClose
 }: {
   ca: TInternalCertificateAuthority;
   plan?: CaPlan;
-  open: boolean;
+  setting: CrlSetting;
   onClose: () => void;
 }) => {
   const formId = useId();
@@ -118,17 +120,20 @@ const CrlSettingsDialog = ({
   });
 
   const submit = async () => {
-    const next = { ...crlUrlErrors(urls), crlValidityDays: crlValidityIssue(validity) };
+    const next =
+      setting === "urls" ? crlUrlErrors(urls) : { crlValidityDays: crlValidityIssue(validity) };
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
     const submitted = urls.map((url) => url.value.trim());
-    const changed: Configuration = {
-      ...((submitted.length !== current.length ||
-        submitted.some((url, index) => url !== current[index])) && {
-        crlDistributionPointUrls: submitted
-      }),
-      ...(Number(validity) !== currentValidity && { crlValidityDays: Number(validity) })
-    };
+    const changed: Configuration =
+      setting === "urls"
+        ? {
+            ...((submitted.length !== current.length ||
+              submitted.some((url, index) => url !== current[index])) && {
+              crlDistributionPointUrls: submitted
+            })
+          }
+        : { ...(Number(validity) !== currentValidity && { crlValidityDays: Number(validity) }) };
     if (Object.keys(changed).length === 0) {
       onClose();
       return;
@@ -138,13 +143,16 @@ const CrlSettingsDialog = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => !next && !pending && requestDiscard()}>
+      <Dialog open onOpenChange={(next) => !next && !pending && requestDiscard()}>
         <DialogContent pending={pending}>
           <DialogHeader>
-            <DialogTitle>Edit CRL settings</DialogTitle>
+            <DialogTitle>
+              {setting === "urls" ? "Edit CRL mirror URLs" : "Edit CRL validity"}
+            </DialogTitle>
             <DialogDescription>
-              URL changes apply to certificates issued after you save. Changing the validity
-              regenerates the CRL.
+              {setting === "urls"
+                ? "Changes apply to certificates issued after you save."
+                : "Saving a new validity regenerates the CRL."}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -155,7 +163,7 @@ const CrlSettingsDialog = ({
               submit();
             }}
           >
-            <Stack gap={16}>
+            {setting === "urls" ? (
               <CrlUrlsField
                 urls={urls}
                 errors={errors}
@@ -165,6 +173,7 @@ const CrlSettingsDialog = ({
                   setErrors({});
                 }}
               />
+            ) : (
               <CrlValidityField
                 value={validity}
                 error={errors.crlValidityDays}
@@ -179,7 +188,7 @@ const CrlSettingsDialog = ({
                   setErrors((currentErrors) => ({ ...currentErrors, crlValidityDays: undefined }));
                 }}
               />
-            </Stack>
+            )}
           </form>
           <DialogFooter>
             <Button variant="primary" type="submit" form={formId} loading={pending}>
@@ -210,22 +219,36 @@ const OcspLabel = ({ locked }: { locked: boolean }) => (
   </Inline>
 );
 
-const RevocationDetails = ({ ca }: { ca: TInternalCertificateAuthority }) => {
+const CrlDetails = ({
+  ca,
+  editBlock,
+  onEdit
+}: {
+  ca: TInternalCertificateAuthority;
+  editBlock?: string;
+  onEdit: (setting: CrlSetting) => void;
+}) => {
   const mirrors = ca.configuration.crlDistributionPointUrls ?? [];
   const validity = ca.configuration.crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS;
+  const editButton = (setting: CrlSetting, label: string) => ({
+    action: (
+      <Button
+        variant="ghost"
+        size="icon"
+        icon="pencil"
+        iconOnly
+        disabledReason={editBlock}
+        onClick={() => onEdit(setting)}
+      >
+        {label}
+      </Button>
+    )
+  });
   return (
     <DataList
       variant="props"
       density="compact"
       items={[
-        ...(ca.configuration.isOcspEnabled
-          ? [
-              [
-                "OCSP responder URL",
-                <code key="ocsp">{`${window.origin}/api/v1/cert-manager/ocsp/${ca.id}`}</code>
-              ] as const
-            ]
-          : []),
         [
           "CRL mirror URLs",
           mirrors.length ? (
@@ -236,9 +259,14 @@ const RevocationDetails = ({ ca }: { ca: TInternalCertificateAuthority }) => {
             </Stack>
           ) : (
             "None"
-          )
+          ),
+          editButton("urls", "Edit CRL mirror URLs")
         ],
-        ["CRL validity", `${validity} ${validity === 1 ? "day" : "days"}`]
+        [
+          "CRL validity",
+          `${validity} ${validity === 1 ? "day" : "days"}`,
+          editButton("validity", "Edit CRL validity")
+        ]
       ]}
     />
   );
@@ -253,7 +281,7 @@ export const RevocationCard = ({
 }) => {
   const { permission } = useCaScope();
   const { apply, pending } = useUpdateConfiguration(ca);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<CrlSetting>();
   const editBlock = caBlock(permission, ProjectPermissionCertificateAuthorityActions.Edit, ca.name);
   const saveBlock = editBlock ?? (pending ? "Saving" : undefined);
   const ocspOn = ca.configuration.isOcspEnabled ?? false;
@@ -264,17 +292,6 @@ export const RevocationCard = ({
       variant="framed"
       title="Revocation"
       hint="How clients check whether certificates issued by this CA are revoked. Changes apply to certificates issued afterwards."
-      action={
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Edit CRL settings"
-          disabledReason={editBlock}
-          onClick={() => setEditing(true)}
-        >
-          Edit
-        </Button>
-      }
     >
       <Stack gap={16}>
         <Switch
@@ -289,6 +306,18 @@ export const RevocationCard = ({
             apply({ isOcspEnabled: checked }, checked ? "OCSP enabled" : "OCSP disabled")
           }
         />
+        {ocspOn && (
+          <DataList
+            variant="props"
+            density="compact"
+            items={[
+              [
+                "OCSP responder URL",
+                <code key="ocsp">{`${window.origin}/api/v1/cert-manager/ocsp/${ca.id}`}</code>
+              ]
+            ]}
+          />
+        )}
         <Switch
           layout="row"
           label="Managed CRL URL"
@@ -302,10 +331,15 @@ export const RevocationCard = ({
             )
           }
         />
-        <RevocationDetails ca={ca} />
+        <CrlDetails ca={ca} editBlock={editBlock} onEdit={setEditing} />
       </Stack>
       {editing && (
-        <CrlSettingsDialog ca={ca} plan={plan} open={editing} onClose={() => setEditing(false)} />
+        <CrlSettingsDialog
+          ca={ca}
+          plan={plan}
+          setting={editing}
+          onClose={() => setEditing(undefined)}
+        />
       )}
     </Card>
   );
@@ -330,7 +364,6 @@ export const CrlList = ({ ca, plan }: { ca: TInternalCertificateAuthority; plan?
       <List
         label="Certificate revocation lists"
         title="Certificate revocation lists"
-        size="sm"
         loading={isPending}
         loadingRows={2}
         action={
@@ -385,7 +418,7 @@ export const CrlList = ({ ca, plan }: { ca: TInternalCertificateAuthority; plan?
               actions={
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" icon="more" iconOnly>
+                    <Button variant="ghost" size="icon-row" icon="more" iconOnly>
                       CRL options
                     </Button>
                   </DropdownMenuTrigger>

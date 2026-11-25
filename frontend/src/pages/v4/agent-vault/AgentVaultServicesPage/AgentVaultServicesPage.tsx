@@ -1,30 +1,25 @@
 import { useState } from "react";
+import { FilterBar, type FilterBarField } from "@infisical/cipher/patterns/filter-bar";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Toggle } from "@infisical/cipher/ui/toggle";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import type { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -39,6 +34,14 @@ const ORDER_BY: Record<string, "name" | "type" | "createdAt"> = {
   type: "type",
   createdAt: "createdAt"
 };
+const FILTER_FIELDS: FilterBarField[] = [
+  {
+    key: "setup",
+    label: "Setup",
+    type: "select",
+    options: [{ value: "requires-setup", label: "Requires setup" }]
+  }
+];
 const DEFAULT_SORT = { columnId: "name", direction: "asc" as "asc" | "desc" };
 
 const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
@@ -52,9 +55,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const [debouncedSearch] = useDebounce(search);
   const [sort, setSort] = useState(DEFAULT_SORT);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [sheet, setSheet] = useState<{ service?: TAgentVaultService }>();
   const [settingUp, setSettingUp] = useState<TAgentVaultService>();
   useAgentVaultCreateIntent(() => setSheet({}), canManageServices);
@@ -167,28 +168,27 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             } Your sessions can't reach ${requiringSetupCount === 1 ? "it" : "them"} until you set ${requiringSetupCount === 1 ? "it" : "them"} up.`}
           </Alert>
         )}
-        <Inline gap={8} wrap={false}>
-          <Input
-            icon="search"
-            aria-label="Search services"
-            placeholder="Search services..."
-            slashShortcut
-            maxLength={255}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-          />
-          <Toggle
-            variant="outline"
-            pressed={onlyRequiringSetup}
-            onPressedChange={setRequiringSetup}
-          >
-            <Icon name="alert" />
-            Requires setup
-          </Toggle>
-        </Inline>
+        <FilterBar
+          label="Service filters"
+          searchValue={search}
+          fields={FILTER_FIELDS}
+          value={onlyRequiringSetup ? [{ field: "setup", values: ["requires-setup"] }] : []}
+          onChange={(next) => setRequiringSetup(next.some((filter) => filter.field === "setup"))}
+          search={
+            <Input
+              icon="search"
+              aria-label="Search services"
+              placeholder="Search services..."
+              slashShortcut
+              maxLength={255}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
+          }
+        />
         <ServicesTable
           orgId={orgId}
           projectId={projectId}
@@ -215,7 +215,6 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

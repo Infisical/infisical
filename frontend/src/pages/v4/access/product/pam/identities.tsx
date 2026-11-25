@@ -286,6 +286,7 @@ export const PamIdentitiesTab = () => {
 
   const rows = useMemo(() => identities.data ?? [], [identities.data]);
   const list = usePagedList({
+    table: "pamIdentitiesTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) => member.name.toLowerCase().includes(needle),
@@ -323,12 +324,12 @@ export const PamIdentitiesTab = () => {
       render: (member) =>
         isPamManaged(member, projectId) ? (
           <Badge tone="soft">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             PAM
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             Organization
           </Badge>
         )
@@ -387,7 +388,7 @@ export const PamIdentitiesTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Machine identity filters"
         fields={[]}

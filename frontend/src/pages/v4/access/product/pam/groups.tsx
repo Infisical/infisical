@@ -181,6 +181,7 @@ export const PamGroupsTab = () => {
 
   const rows = useMemo(() => groups.data ?? [], [groups.data]);
   const list = usePagedList({
+    table: "pamGroupsTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (row, needle) =>
@@ -258,7 +259,7 @@ export const PamGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack gap="toolbar">
       <FilterBar
         label="Group filters"
         fields={[]}

@@ -59,6 +59,7 @@ import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
@@ -282,7 +283,7 @@ const GroupMembersSection = ({
   const [kinds, setKinds] = useState<FilterMemberType[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("groupMembersTable", 20);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<TGroupMember>();
   const debouncedSearch = useDebounced(search.trim());
@@ -322,7 +323,7 @@ const GroupMembersSection = ({
               role="img"
               aria-label={isUser ? "User" : "Machine identity"}
             >
-              <Icon name={isUser ? "user" : "machine"} size={14} />
+              <Icon name={isUser ? "user" : "machine"} size="var(--cipher-size-icon-small)" />
             </span>
             <span>{memberName(member)}</span>
             {email && <Muted>{`(${email})`}</Muted>}
