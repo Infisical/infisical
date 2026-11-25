@@ -120,15 +120,30 @@ export const assertCanRevokeCertificate = async ({ certificate, ...dto }: TAsser
   });
 };
 
-// An actor who can't revoke directly may still request a revocation, so the caller must refuse them
-// unless a revocation approval policy covers the certificate.
-export const assertCanRevokeOrRequestRevocation = async (
-  dto: TAssertCanRevokeCertificateDTO
-): Promise<{ canRevokeDirectly: boolean }> => {
+export const assertCanDeleteCertificate = async (dto: TAssertCanEditCertificateDTO) => {
+  await assertCertificatePermission({
+    ...dto,
+    resourceAction: ResourcePermissionCertificateActions.Delete,
+    projectAction: ProjectPermissionCertificateActions.Delete
+  });
+};
+
+// Revoking and deleting a certificate both need Delete. An actor with only the request action may still ask for
+// either, so the caller must refuse them unless an approval policy covers the certificate.
+const assertCanActOrRequestApproval = async <T extends TAssertCanEditCertificateDTO>(
+  dto: T,
+  {
+    requestAction,
+    assertCanActDirectly
+  }: {
+    requestAction: ResourcePermissionCertificateActions;
+    assertCanActDirectly: (dto: T) => Promise<void>;
+  }
+): Promise<boolean> => {
   const { certificate } = dto;
   if (!certificate.applicationId) {
-    await assertCanRevokeCertificate(dto);
-    return { canRevokeDirectly: true };
+    await assertCanActDirectly(dto);
+    return true;
   }
 
   const { permission } = await dto.permissionService.getResourcePermission({
@@ -141,19 +156,34 @@ export const assertCanRevokeOrRequestRevocation = async (
     actorOrgId: dto.actorOrgId
   });
 
-  const canRevokeDirectly = permission.can(
+  const canActDirectly = permission.can(
     ResourcePermissionCertificateActions.Delete,
     ResourcePermissionSub.Certificates
   );
-  if (!canRevokeDirectly) {
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionCertificateActions.RequestRevocation,
-      ResourcePermissionSub.Certificates
-    );
+  if (!canActDirectly) {
+    ForbiddenError.from(permission).throwUnlessCan(requestAction, ResourcePermissionSub.Certificates);
   }
 
-  return { canRevokeDirectly };
+  return canActDirectly;
 };
+
+export const assertCanRevokeOrRequestRevocation = async (
+  dto: TAssertCanRevokeCertificateDTO
+): Promise<{ canRevokeDirectly: boolean }> => ({
+  canRevokeDirectly: await assertCanActOrRequestApproval(dto, {
+    requestAction: ResourcePermissionCertificateActions.RequestRevocation,
+    assertCanActDirectly: assertCanRevokeCertificate
+  })
+});
+
+export const assertCanDeleteOrRequestDeletion = async (
+  dto: TAssertCanEditCertificateDTO
+): Promise<{ canDeleteDirectly: boolean }> => ({
+  canDeleteDirectly: await assertCanActOrRequestApproval(dto, {
+    requestAction: ResourcePermissionCertificateActions.RequestDeletion,
+    assertCanActDirectly: assertCanDeleteCertificate
+  })
+});
 
 export const assertCanEditCertificateResult = ({
   projectPermission,

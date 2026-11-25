@@ -899,12 +899,19 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 
 **Before changing certificate deletion, the expiry cleanup job, renewal or certificate syncs, read
 [`src/services/certificate/AGENTS.md`](src/services/certificate/AGENTS.md).** For code elsewhere:
-- Delete only through `softDeleteCertificates` (`certificate-fns.ts`); nothing hard deletes certificates, so
-  the row stays.
+- Delete only through `softDeleteCertificates` (`certificate-fns.ts`), so the row stays. The only hard deletes
+  are the `ON DELETE CASCADE` foreign keys `certificates.caId` and `certificates.projectId`, when a CA or a
+  project is deleted.
 - A new query over `certificates` filters `whereNull("deletedAt")` unless it deliberately shows deleted rows.
 - Deletion is not revocation: CRL and OCSP keep deleted certificates, the licence quota still counts an
   issued one until it expires or is revoked, and a deleted certificate is never renewed
   (`assertCertificateNotDeleted`).
+
+**A delete someone asks for goes through `certificateService.deleteCert`**, never straight to
+`softDeleteCertificates`, because `deleteCert` is where an Application's deletion approval policy holds the
+request (`cert-deletion` type). Only an approved request deletes through `deleteApprovedCertificate`. Not
+gated, by decision: the expiry cleanup job (`certificate-cleanup-queue.ts`), and CA and project deletion,
+which remove certificates through those foreign key cascades.
 
 ### Certificate revocation: CRL and OCSP
 

@@ -19,6 +19,7 @@ export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
   CertRevocation = "cert-revocation",
+  CertDeletion = "cert-deletion",
   CertCodeSigning = "cert-code-signing",
   SecretChange = "secret-change",
   SecretAccess = "secret-access"

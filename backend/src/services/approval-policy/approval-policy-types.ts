@@ -28,6 +28,14 @@ import {
   TAutoApprovalPolicyResponse
 } from "./auto-approval/auto-approval-types";
 import {
+  TCertDeletionPolicy,
+  TCertDeletionPolicyConditions,
+  TCertDeletionPolicyConstraints,
+  TCertDeletionPolicyInputs,
+  TCertDeletionRequest,
+  TCertDeletionRequestData
+} from "./cert-deletion/cert-deletion-policy-types";
+import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
   TCertRequestPolicyConstraints,
@@ -76,24 +84,28 @@ export type TApprovalPolicy =
   | TPamAccessPolicy
   | TCertRequestPolicy
   | TCertRevocationPolicy
+  | TCertDeletionPolicy
   | TCodeSigningPolicy
   | TSecretAccessPolicy;
 export type TApprovalPolicyInputs =
   | TPamAccessPolicyInputs
   | TCertRequestPolicyInputs
   | TCertRevocationPolicyInputs
+  | TCertDeletionPolicyInputs
   | TCodeSigningPolicyInputs
   | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
   | TCertRevocationPolicyConditions
+  | TCertDeletionPolicyConditions
   | TCodeSigningPolicyConditions
   | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
   | TCertRevocationPolicyConstraints
+  | TCertDeletionPolicyConstraints
   | TCodeSigningPolicyConstraints
   | TSecretAccessPolicyConstraints;
 
@@ -101,12 +113,14 @@ export type TApprovalRequest =
   | TPamAccessRequest
   | TCertRequestRequest
   | TCertRevocationRequest
+  | TCertDeletionRequest
   | TCodeSigningRequest
   | TSecretAccessRequest;
 export type TApprovalRequestData =
   | TPamAccessRequestData
   | TCertRequestRequestData
   | TCertRevocationRequestData
+  | TCertDeletionRequestData
   | TCodeSigningRequestData
   | TSecretChangeRequestData
   | TSecretAccessRequestData;

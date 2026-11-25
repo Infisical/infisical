@@ -20,6 +20,7 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
+import { TCertDeletionRequestData } from "./cert-deletion/cert-deletion-policy-types";
 import { getRenewedCertificateId } from "./cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
@@ -270,8 +271,10 @@ export const getApprovalRequestSubjectMetadata = (
     };
   }
 
-  if (request.type === ApprovalPolicyType.CertRevocation) {
-    const { certificateId, commonName, profileName } = requestData as TCertRevocationRequestData;
+  if (request.type === ApprovalPolicyType.CertRevocation || request.type === ApprovalPolicyType.CertDeletion) {
+    const { certificateId, commonName, profileName } = requestData as
+      | TCertRevocationRequestData
+      | TCertDeletionRequestData;
     return { certificateId, commonName, profileName };
   }
 

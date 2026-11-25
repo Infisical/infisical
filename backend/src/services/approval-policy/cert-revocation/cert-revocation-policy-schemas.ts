@@ -16,40 +16,46 @@ import {
   RevocationStepShortfallKind
 } from "./cert-revocation-policy-fns";
 
-const ProfileSlugSchema = z.string().trim().min(1).max(255);
+export const ProfileSlugSchema = z.string().trim().min(1).max(255);
 
-// Revocation is rare and destructive, so no actor skips its approval. A literal, unlike a refine, shows the only
-// accepted value in the API docs.
-const NoMachineIdentityBypassSchema = z.literal(false, {
-  errorMap: () => ({ message: "Revocation approval policies can't be bypassed by machine identities" })
-});
+// Certificate actions are rare and destructive, so no actor skips their approval. A literal, unlike a refine, shows the
+// only accepted value in the API docs.
+export const buildNoMachineIdentityBypassSchema = (policyLabel: string) =>
+  z.literal(false, {
+    errorMap: () => ({ message: `${policyLabel} approval policies can't be bypassed by machine identities` })
+  });
 
 const PolicyStepSchema = BaseCreateApprovalPolicySchema.shape.steps.element;
 
-// Revocation has no auto-approval rules and no bypass, so a policy without an approver would hold every request it
-// matches with nobody able to approve it.
-const CertRevocationPolicyStepsSchema = PolicyStepSchema.extend({
-  approvers: PolicyStepSchema.shape.approvers.min(1, "Each approval step needs at least one approver")
-})
-  .array()
-  .min(1, "A revocation approval policy needs at least one approval step")
-  .superRefine((steps, ctx) => {
-    steps.forEach((step, index) => {
-      // A group's members can change after the policy is saved, so a step with a group is counted when a revocation
-      // is requested instead.
-      if (step.approvers.some((approver) => approver.type === ApproverType.Group)) return;
-      const shortfall = getRevocationStepShortfall({
-        requiredApprovals: step.requiredApprovals,
-        approverCount: new Set(step.approvers.map((approver) => approver.id)).size
-      });
-      if (shortfall?.kind !== RevocationStepShortfallKind.TooFewApprovers) return;
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [index, "requiredApprovals"],
-        message: `Step ${index + 1} requires ${shortfall.requiredApprovals} approvals but only has ${formatApproverCount(shortfall.approverCount)}. Add approvers to the step or lower its required approvals.`
+// These policies have no auto-approval rules and no bypass, so a policy without an approver would hold every request
+// it matches with nobody able to approve it.
+export const buildApplicationApprovalStepsSchema = (actionNoun: string) =>
+  PolicyStepSchema.extend({
+    approvers: PolicyStepSchema.shape.approvers.min(1, "Each approval step needs at least one approver")
+  })
+    .array()
+    .min(1, `A ${actionNoun} approval policy needs at least one approval step`)
+    .superRefine((steps, ctx) => {
+      steps.forEach((step, index) => {
+        // A group's members can change after the policy is saved, so a step with a group is counted when a request
+        // is raised instead.
+        if (step.approvers.some((approver) => approver.type === ApproverType.Group)) return;
+        const shortfall = getRevocationStepShortfall({
+          requiredApprovals: step.requiredApprovals,
+          approverCount: new Set(step.approvers.map((approver) => approver.id)).size
+        });
+        if (shortfall?.kind !== RevocationStepShortfallKind.TooFewApprovers) return;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "requiredApprovals"],
+          message: `Step ${index + 1} requires ${shortfall.requiredApprovals} approvals but only has ${formatApproverCount(shortfall.approverCount)}. Add approvers to the step or lower its required approvals.`
+        });
       });
     });
-  });
+
+const NoMachineIdentityBypassSchema = buildNoMachineIdentityBypassSchema("Revocation");
+
+const CertRevocationPolicyStepsSchema = buildApplicationApprovalStepsSchema("revocation");
 
 export const CertRevocationPolicyInputsSchema = z.object({
   profileName: ProfileSlugSchema,

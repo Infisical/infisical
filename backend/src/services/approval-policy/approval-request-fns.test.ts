@@ -82,6 +82,30 @@ describe("upsertApprovalRequestStepDecision", () => {
   });
 });
 
+describe("getApprovalRequestSubjectMetadata", () => {
+  test.each([ApprovalPolicyType.CertRevocation, ApprovalPolicyType.CertDeletion])(
+    "names the certificate a %s request is about",
+    (type) => {
+      const metadata = getApprovalRequestSubjectMetadata({
+        type,
+        requestData: {
+          version: 1,
+          requestData: {
+            certificateId: "cert-1",
+            serialNumber: "4f1a9c2be07d",
+            commonName: "web.example.com",
+            profileId: "profile-1",
+            profileName: "web-servers",
+            applicationId: "app-1"
+          }
+        }
+      });
+
+      expect(metadata).toEqual({ certificateId: "cert-1", commonName: "web.example.com", profileName: "web-servers" });
+    }
+  );
+});
+
 describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
   const certRequest = (requestData: object) => ({
     type: ApprovalPolicyType.CertRequest,
