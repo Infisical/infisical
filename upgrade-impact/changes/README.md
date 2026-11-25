@@ -58,7 +58,7 @@ A changed default (`config`):
 
 ```yaml
 category: config
-impactLevel: low
+impactLevel: high
 title: Audit log retention defaults to 90 days
 description: Instances that never set AUDIT_LOG_RETENTION_DAYS kept audit logs forever. They now delete logs older than 90 days.
 action: To keep the old behavior, set AUDIT_LOG_RETENTION_DAYS=0 before upgrading.

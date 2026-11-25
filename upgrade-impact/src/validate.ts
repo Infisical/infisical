@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-import { FRAGMENT_FILE_NAME, parseFragment } from "./fragments.js";
+import { FRAGMENT_FILE_NAME, MIGRATIONS_ENTRY_TITLE, parseFragment } from "./fragments.js";
 import { compareVersions, getAddedFiles, hasGitRef } from "./git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "./schema.js";
 
@@ -216,6 +216,13 @@ const validateFragments = async (changesDir: string, errors: string[]) => {
       }
 
       const titleKey = normalizeEntryKey(title);
+
+      if (titleKey === normalizeEntryKey(MIGRATIONS_ENTRY_TITLE)) {
+        errors.push(
+          `changes/${file} uses the title "${title}", which is reserved for the entry a release adds for its migrations. Name the specific change instead.`
+        );
+      }
+
       const fileWithSameTitle = fileByTitle.get(titleKey);
 
       if (fileWithSameTitle) {

@@ -324,16 +324,27 @@ describe("validateUpgradeImpactData", () => {
     );
     await fs.writeFile(path.join(changesDir, "Bad_Name.yml"), "");
     await fs.writeFile(
+      path.join(changesDir, "migrations.yaml"),
+      stringify({
+        category: "database",
+        impactLevel: "low",
+        title: "database migrations run at  startup",
+        description: "D",
+        action: "A"
+      })
+    );
+    await fs.writeFile(
       path.join(changesDir, "same-title.yaml"),
       stringify({ category: "deployment", impactLevel: "low", title: " t ", description: "D", action: "A" })
     );
 
     const { errors } = await validateUpgradeImpactData({ dataDir, changesDir, skipGitChecks: true });
 
-    expect(errors).toHaveLength(4);
+    expect(errors).toHaveLength(5);
     expect(errors[0]).toContain("changes/Bad_Name.yml must be named");
     expect(errors[1]).toContain("changes/bad.yaml is not a valid upgrade impact fragment");
-    expect(errors[2]).toContain("changes/same-title.yaml repeats the title of changes/good.yaml");
-    expect(errors[3]).toContain("changes/vague.yaml uses unclear operator action");
+    expect(errors[2]).toContain("changes/migrations.yaml uses the title");
+    expect(errors[3]).toContain("changes/same-title.yaml repeats the title of changes/good.yaml");
+    expect(errors[4]).toContain("changes/vague.yaml uses unclear operator action");
   });
 });

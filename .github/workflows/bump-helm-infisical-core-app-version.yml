@@ -157,7 +157,12 @@ jobs:
             : > "$BUMP_OUTPUT"
             GITHUB_OUTPUT="$BUMP_OUTPUT" ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
 
-            git add helm-charts/infisical-standalone-postgres upgrade-impact/data upgrade-impact/changes
+            git add helm-charts/infisical-standalone-postgres upgrade-impact/data
+            # A release branch cut before fragments existed has no such directory, and git add
+            # fails on a path that matches nothing.
+            if [ -d upgrade-impact/changes ]; then
+              git add upgrade-impact/changes
+            fi
             if git diff --cached --quiet; then
               echo "Nothing to commit for ${TAG_NAME} on ${BASE}."
               PUSHED=false

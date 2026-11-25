@@ -51,7 +51,7 @@ export const getPreviousStableTag = (tag: string) => {
 
 export const getTagDate = (tag: string) => runGit(["log", "-1", "--format=%cI", tag]);
 
-export const getAddedFiles = (fromTag: string | null, toTag: string) => {
+const getFilesWithStatus = (fromTag: string | null, toTag: string, wantedStatus: "A" | "M") => {
   if (!fromTag) {
     return [];
   }
@@ -61,10 +61,14 @@ export const getAddedFiles = (fromTag: string | null, toTag: string) => {
   return runGit(["diff", "--name-status", "--no-renames", `${fromTag}..${toTag}`])
     .split("\n")
     .map((line) => line.split("\t"))
-    .filter(([status]) => status === "A")
+    .filter(([status]) => status === wantedStatus)
     .map(([, file]) => file)
     .filter(Boolean);
 };
+
+export const getAddedFiles = (fromTag: string | null, toTag: string) => getFilesWithStatus(fromTag, toTag, "A");
+
+export const getModifiedFiles = (fromTag: string | null, toTag: string) => getFilesWithStatus(fromTag, toTag, "M");
 
 export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${ref}:${file}`]);
 

@@ -9,6 +9,7 @@ import {
   getAddingCommit,
   getFileAtRef,
   getFilesAtRef,
+  getModifiedFiles,
   getPreviousStableTag,
   getTagDate,
   hasGitRef
@@ -20,6 +21,7 @@ const MIGRATIONS_DIR = "backend/src/db/migrations/";
 
 export const FRAGMENTS_DIR = "upgrade-impact/changes";
 export const FRAGMENT_FILE_NAME = /^[a-z0-9][a-z0-9-]*\.yaml$/;
+export const MIGRATIONS_ENTRY_TITLE = "Database migrations run at startup";
 
 export const FragmentSchema = z
   .object({
@@ -153,7 +155,7 @@ export const draftFromFragments = (fragments: ReleaseFragment[], migrationFiles:
     const noun = sorted.length === 1 ? "migration" : "migrations";
 
     draft.dbSchemaChanges.push({
-      title: "Database migrations run at startup",
+      title: MIGRATIONS_ENTRY_TITLE,
       description: `This release adds ${sorted.length} database ${noun}.`,
       action: "No manual action required; Infisical runs migrations during startup. Back up the database before upgrading.",
       confidence: "high",
@@ -186,8 +188,17 @@ export const collectFragmentRelease = (tag: string): FragmentRelease => {
   const previousTag = getPreviousStableTag(tag);
   const addedFiles = getAddedFiles(previousTag, tag);
 
+  // A fragment that reuses the name of one the previous tag still carried is a new note, but the
+  // diff reports it as modified. An adding commit in the range tells it apart from an edit in
+  // place, which is never collected.
+  const reAddedFragments = previousTag
+    ? getModifiedFiles(previousTag, tag)
+        .filter(isFragmentPath)
+        .filter((file) => getAddingCommit(previousTag, tag, file))
+    : [];
+
   const fragments = previousTag
-    ? addedFiles.filter(isFragmentPath).map((file) => ({
+    ? [...addedFiles.filter(isFragmentPath), ...reAddedFragments].map((file) => ({
         file,
         fragment: parseFragment(getFileAtRef(tag, file), file),
         evidence: evidenceForFragment(previousTag, tag, file)

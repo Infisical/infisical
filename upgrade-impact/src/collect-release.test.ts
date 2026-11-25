@@ -59,9 +59,15 @@ describe("collectFragmentRelease", () => {
 
     await commit("chore(release): v1.0.1 (#3)", {
       "upgrade-impact/changes/from-pr.yaml": null,
-      "upgrade-impact/changes/from-commit.yaml": null,
-      "upgrade-impact/changes/from-merge.yaml": null
+      "upgrade-impact/changes/from-commit.yaml": null
     });
+    await commit("feat: reuse a released name (#5)", {
+      "upgrade-impact/changes/from-pr.yaml": fragmentYaml("Reuses a released name")
+    });
+    await commit("edit in place (#6)", {
+      "upgrade-impact/changes/from-merge.yaml": fragmentYaml("Edited after its release")
+    });
+    git("tag", "v1.0.2");
 
     process.chdir(path.join(repo, "upgrade-impact"));
   });
@@ -92,6 +98,15 @@ describe("collectFragmentRelease", () => {
     ]);
     expect(release.draft.impactLevel).toBe("medium");
     expect(release.draft.requiresDbMigration).toBe(true);
+  });
+
+  it("collects a fragment that reuses a released name, but not one edited in place", () => {
+    const release = collectFragmentRelease("v1.0.2");
+
+    expect(release.fragments.map(({ file, evidence }) => [file, evidence.ref])).toEqual([
+      ["upgrade-impact/changes/from-pr.yaml", "#5"]
+    ]);
+    expect(release.draft.configChanges.map((entry) => entry.title)).toEqual(["Reuses a released name"]);
   });
 
   it("removes released fragments an earlier release left behind, and spares unreleased ones", async () => {
