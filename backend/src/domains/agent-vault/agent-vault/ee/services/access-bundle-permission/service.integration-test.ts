@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { AccessScope, ProjectMembershipRole, ProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing/knex-grant-seeder";
@@ -45,6 +46,7 @@ describe("AccessBundlePermissionService.getAccessBundlePermission", () => {
     const { projectPermissionService } = buildProjectsModule(h.db, { projectRoles: [new AgentVaultProjectRoles()] });
     const service = new AccessBundlePermissionService(projectPermissionService, actorGrantsService);
     const actor: TActorContext = {
+      audit: new FakeActorAuditConfig(),
       principal: {
         type: ActorType.USER,
         id: user.id,

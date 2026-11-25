@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { AccessScope, ProjectMembershipRole, ProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { RuleIdentity } from "@app/domains/platform/access-control/ce/module";
 import { FakeActorGrantsService } from "@app/domains/platform/access-control/ce/testing/fake-actor-grants-service";
@@ -24,6 +25,7 @@ const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
 
 const userActor = (userId: string): TActorContext => ({
+  audit: new FakeActorAuditConfig(),
   principal: {
     type: ActorType.USER,
     id: userId,
@@ -211,7 +213,10 @@ describe("AccessBundlePermissionService.getAccessBundlePermission", () => {
   test("should let an actor that is not a user or identity reach no bundle", async () => {
     // Setup
     const { service, actor } = setup();
-    const serviceActor: TActorContext = { ...actor, principal: { type: ActorType.SERVICE, id: "st", name: "st", projectId: "p" } };
+    const serviceActor: TActorContext = {
+      ...actor,
+      principal: { type: ActorType.SERVICE, id: "st", name: "st", projectId: "p" }
+    };
 
     // Action
     const reach = await service.getAccessBundlePermission({ actor: serviceActor, projectId: PROJECT_ID });

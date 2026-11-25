@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { TActorContext, TActorOrg, TActorOrgSsoPolicy } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import type { TIdentityPrincipal, TPrincipal, TUserPrincipal } from "@app/lib/auth/principal";
 
@@ -44,6 +45,7 @@ export const identityPrincipal = (overrides: Partial<TIdentityPrincipal> = {}): 
 
 // New object every call, since permission services memoize per context object (like per request).
 export const actorContext = ({ principal, org }: { principal: TPrincipal; org: TActorOrg }): TActorContext => ({
+  audit: new FakeActorAuditConfig(),
   principal,
   org
 });

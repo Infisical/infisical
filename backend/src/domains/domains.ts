@@ -1,3 +1,4 @@
+import type { ClickHouseClient } from "@clickhouse/client";
 import type { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -13,6 +14,8 @@ import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
+import { AuditLogModule } from "./platform/audit-log/ce/module";
+import { AuditLogEeModule } from "./platform/audit-log/ee/module";
 import { EventsModule } from "./platform/events/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
@@ -38,6 +41,9 @@ type TKmsCoreEnvConfig = Pick<
 
 export type TDomainDeps = {
   db: TDbClient;
+  // A separate database for audit logs, when one is configured.
+  auditLogDb?: TDbClient;
+  clickhouse: ClickHouseClient | null;
   keyStore: TDomainKeyStore;
   queueService: TDomainQueue;
   cronJob: TDomainCron;
@@ -54,6 +60,9 @@ export type TDomainDeps = {
     | "isSecondaryInstance"
     | "isGeneralWorkerRunModeEnabled"
     | "OTEL_TELEMETRY_COLLECTION_ENABLED"
+    | "CLICKHOUSE_AUDIT_LOG_ENABLED"
+    | "CLICKHOUSE_AUDIT_LOG_TABLE_NAME"
+    | "CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS"
   > &
     TKmsCoreEnvConfig;
   // Gets each actor's project access as it resolves, feeding the request's audit context.
@@ -128,6 +137,10 @@ export const createDomains = async (deps: TDomainDeps) => {
     isGeneralWorkerRunModeEnabled: deps.envConfig.isGeneralWorkerRunModeEnabled,
     isTelemetryEnabled: deps.envConfig.OTEL_TELEMETRY_COLLECTION_ENABLED
   });
+
+  // Built right after Events: any domain may record audit logs through it.
+  const isClickHouseAuditLogEnabled = Boolean(deps.clickhouse && deps.envConfig.CLICKHOUSE_AUDIT_LOG_ENABLED);
+  const auditLog = new AuditLogModule({ keyStore: deps.keyStore, useTimeOrderedIds: isClickHouseAuditLogEnabled });
 
   const accessControl = new AccessControlModule({
     db: deps.db,
@@ -224,8 +237,26 @@ export const createDomains = async (deps: TDomainDeps) => {
     processEnv: { ...process.env }
   });
 
+  const auditLogEe = new AuditLogEeModule({
+    db: deps.auditLogDb ?? deps.db,
+    keyStore: deps.keyStore,
+    queueService: deps.queueService,
+    instanceConfigService: instanceConfigCore.instanceConfigService,
+    clickhouse:
+      deps.clickhouse && isClickHouseAuditLogEnabled
+        ? {
+            driver: deps.clickhouse,
+            tableName: deps.envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+            insertSettings: deps.envConfig.CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS
+          }
+        : null,
+    isGeneralWorkerRunModeEnabled: deps.envConfig.isGeneralWorkerRunModeEnabled
+  });
+
   return {
     accessControl,
+    auditLog,
+    auditLogEe,
     events,
     license,
     licenseBilling,

@@ -1,5 +1,6 @@
 import { SecretFolderRole } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub,
@@ -11,6 +12,7 @@ import { FolderGrant } from "../models/folder-grant";
 import { FakeSecretsPermissionService } from "./fake-secrets-permission-service";
 
 const actor: TActorContext = {
+  audit: new FakeActorAuditConfig(),
   principal: {
     type: ActorType.USER,
     id: "user-id",

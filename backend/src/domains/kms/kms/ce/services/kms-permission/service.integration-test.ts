@@ -1,5 +1,6 @@
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
@@ -23,6 +24,7 @@ describe("KmsPermissionService.getKmsPermission", () => {
     const projects = buildProjectsModule(h.db, { projectRoles: [kmsProjectRoles] });
     const kms = new KmsModule({ projectPermissionService: projects.projectPermissionService });
     const actor: TActorContext = {
+      audit: new FakeActorAuditConfig(),
       principal: {
         type: ActorType.USER,
         id: user.id,

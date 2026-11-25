@@ -255,6 +255,7 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
+  AuditLogProjectConfig: (projectId: string) => `audit-log-project-config-${projectId}` as const,
   AuditLogProjectSettings: (orgId: string, projectId: string) =>
     `audit-log-settings-project-${orgId}-${projectId}` as const,
   AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,

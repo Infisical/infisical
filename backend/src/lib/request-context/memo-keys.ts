@@ -17,6 +17,13 @@ export const requestMemoKeys = {
 
   licensePlan: (orgId: string) => `license:plan:${orgId}`,
 
+  auditLogOrgConfig: (orgId: string) => `audit-log-config:org:${orgId}`,
+
+  auditLogProjectConfig: (projectId: string) => `audit-log-config:project:${projectId}`,
+
+  auditLogEventClasses: (orgId: string, projectId?: string | null) =>
+    `audit-log-config:event-classes:${orgId}:${projectId ?? ""}`,
+
   userFindById: (userId: string) => `user:findById:${userId}`,
 
   identityFindById: (identityId: string) => `identity:findById:${identityId}`,

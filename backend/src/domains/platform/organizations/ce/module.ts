@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { ActorContextMemo } from "@app/domains/lib/actor-context";
+import { ActorContextMemo, type TActorContextBase } from "@app/domains/lib/actor-context";
 import { poolStoreConnection, singleStoreConnection } from "@app/domains/lib/data-access";
 import { TransactionRunner } from "@app/domains/lib/transactions";
 import { TActorGrantsService, TRoleService } from "@app/domains/platform/access-control/ce/module";
@@ -44,7 +44,8 @@ export class OrganizationsModule {
 
   readonly ssoSessionService: TSsoSessionService;
 
-  readonly actorContextService: TActorContextService;
+  // Builds the principal and org only; the top level adds the audit configuration (server/lib/actor-context-builder.ts).
+  readonly actorContextService: TActorContextService<TActorContextBase>;
 
   constructor({ db, actorGrantsService, roleService, actorOrgCacheTtlSeconds }: TOrganizationsDeps) {
     const connection = poolStoreConnection(db);

@@ -1,6 +1,6 @@
 import { validate as isUuid } from "uuid";
 
-import type { TActorContext, TActorOrg } from "@app/domains/lib/actor-context";
+import type { TActorContext, TActorContextBase, TActorOrg } from "@app/domains/lib/actor-context";
 import { EntityNotFoundError, PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import { isUserPrincipal, platformPrincipal, TPrincipal } from "@app/lib/auth/principal";
 
@@ -8,8 +8,8 @@ import { FOREIGN_SSO_SESSION_ERROR_NAME, TSsoSessionRefusal } from "../../models
 import { TActorOrgCache, TOrganizationStore } from "../dependencies";
 import { TSsoSessionService } from "../sso-session/service";
 
-export type TRequestActorContext = {
-  actor: TActorContext;
+export type TRequestActorContext<TContext extends TActorContextBase = TActorContext> = {
+  actor: TContext;
   // Null when the request is not scoped to an existing org. Read this, not actor.org, to find out.
   org: TActorOrg | null;
   // Set when the sign-in policy refuses the session; the request is treated as signed out.
@@ -19,21 +19,24 @@ export type TRequestActorContext = {
 // One or the other, so a context can't be built from an org that isn't the one the id names.
 export type TRequestOrg = { org: TActorOrg | null } | { orgId: string | undefined };
 
-export type TActorContextService = {
+// What every caller gets is a full TActorContext: the top level (server/lib/actor-context-builder.ts) wraps this
+// domain's service, which builds the principal and org, and adds the audit configuration. This domain's own
+// ActorContextService is TActorContextService<TActorContextBase>.
+export type TActorContextService<TContext extends TActorContextBase = TActorContext> = {
   // The org a context is scoped to, read fresh. Null when it doesn't exist or the id isn't an org id. The user
   // session check reads it before forRequest and hands it over, so a request reads its org once.
   findActorOrg(orgId: string): Promise<TActorOrg | null>;
   // For the auth middleware. Sessions not scoped to an existing org (none picked yet, or an API key) get an org
   // that throws when read. Takes the org the request already read (null if it found none), or its id to read it
   // here, from a short-lived cache for anything but a user.
-  forRequest(input: { principal: TPrincipal } & TRequestOrg): Promise<TRequestActorContext>;
+  forRequest(input: { principal: TPrincipal } & TRequestOrg): Promise<TRequestActorContext<TContext>>;
   // For use outside a request. Throws if the org doesn't exist.
-  forPrincipal(input: { principal: TPrincipal; orgId: string }): Promise<TActorContext>;
+  forPrincipal(input: { principal: TPrincipal; orgId: string }): Promise<TContext>;
   // Like forPrincipal, but re-checks the sign-in policy for a user session used outside its own request (stream
   // refresh, callback, queued job, a check for another member using the requester's sign-in method).
-  forSession(input: { principal: TPrincipal; orgId: string }): Promise<TActorContext>;
+  forSession(input: { principal: TPrincipal; orgId: string }): Promise<TContext>;
   // Platform work on nobody's behalf (queues, crons, consumers).
-  system(input: { orgId: string }): Promise<TActorContext>;
+  system(input: { orgId: string }): Promise<TContext>;
 };
 
 const notScopedToAnOrg = () =>
@@ -41,7 +44,7 @@ const notScopedToAnOrg = () =>
     message: "This request is not scoped to an organization. Select an organization and try again."
   });
 
-export class ActorContextService implements TActorContextService {
+export class ActorContextService implements TActorContextService<TActorContextBase> {
   constructor(
     private readonly organizationStore: TOrganizationStore,
     private readonly ssoSessionService: TSsoSessionService,
@@ -59,13 +62,13 @@ export class ActorContextService implements TActorContextService {
     return { actor: { principal, org }, org, ssoRefusal };
   }
 
-  async forPrincipal({ principal, orgId }: { principal: TPrincipal; orgId: string }): Promise<TActorContext> {
+  async forPrincipal({ principal, orgId }: { principal: TPrincipal; orgId: string }): Promise<TActorContextBase> {
     const org = await this.organizationStore.findActorOrg(orgId);
     if (!org) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return { principal, org };
   }
 
-  async forSession({ principal, orgId }: { principal: TPrincipal; orgId: string }): Promise<TActorContext> {
+  async forSession({ principal, orgId }: { principal: TPrincipal; orgId: string }): Promise<TActorContextBase> {
     const actor = await this.forPrincipal({ principal, orgId });
     const refusal = await this.ssoSessionService.findSsoSessionRefusal(actor);
     if (refusal) {
@@ -77,7 +80,7 @@ export class ActorContextService implements TActorContextService {
     return actor;
   }
 
-  system({ orgId }: { orgId: string }): Promise<TActorContext> {
+  system({ orgId }: { orgId: string }): Promise<TActorContextBase> {
     return this.forPrincipal({ principal: platformPrincipal(), orgId });
   }
 
@@ -89,12 +92,12 @@ export class ActorContextService implements TActorContextService {
   }
 
   // Non-enumerable so spreading req.actor doesn't hit the throwing org getter.
-  private static unscoped(principal: TPrincipal): TActorContext {
+  private static unscoped(principal: TPrincipal): TActorContextBase {
     return Object.defineProperty({ principal }, "org", {
       enumerable: false,
       get: () => {
         throw notScopedToAnOrg();
       }
-    }) as TActorContext;
+    }) as TActorContextBase;
   }
 }

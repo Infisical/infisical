@@ -20,6 +20,17 @@ export class FakeQueue {
     this.handlers.set(queue, handler);
   };
 
+  schedulers = new Map<string, { queue: QueueName; every?: number; pattern?: string }>();
+
+  upsertJobScheduler = async (queue: QueueName, schedulerId: string, repeat: { every?: number; pattern?: string }) => {
+    this.schedulers.set(schedulerId, { queue, ...repeat });
+  };
+
+  // Runs a started queue's handler once, the way a scheduler tick would.
+  async tick(queue: QueueName) {
+    await this.handlers.get(queue)?.({ data: undefined });
+  }
+
   // Waits for fire-and-forget enqueues, then runs every queued job once.
   async drain() {
     await new Promise((resolve) => {

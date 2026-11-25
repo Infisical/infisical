@@ -176,6 +176,8 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
     // start. Built here rather than in registerRoutes so plugins registered beside it (serve-ui) can use them too.
     const domains = await createDomains({
       db,
+      auditLogDb,
+      clickhouse,
       keyStore,
       queueService: queue,
       cronJob,

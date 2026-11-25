@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { AccessScope, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { buildAccessControl } from "@app/domains/platform/access-control/ce/testing/build-access-control";
 import { PAST, TSeedActor, temporaryColumns } from "@app/domains/platform/access-control/ce/testing/grant-fixture";
@@ -51,6 +52,7 @@ export const buildSecretsPermission = () => {
   const projectId = addProject();
 
   const actor = (principal: TPrincipal): TActorContext => ({
+    audit: new FakeActorAuditConfig(),
     principal,
     org: {
       id: orgId,

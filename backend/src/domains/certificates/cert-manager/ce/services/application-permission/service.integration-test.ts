@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { ProjectMembershipRole, ProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
@@ -51,6 +52,7 @@ describe("ApplicationPermissionService.getApplicationPermission", () => {
       projectResourcePermissionService: buildProjectsModule(h.db).projectResourcePermissionService
     });
     const actor: TActorContext = {
+      audit: new FakeActorAuditConfig(),
       principal: {
         type: ActorType.USER,
         id: user.id,

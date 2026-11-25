@@ -7,6 +7,7 @@ import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { PamProjectRoles } from "@app/domains/pam/pam/ce/module";
 import { AccessControlModule } from "@app/domains/platform/access-control/ce/module";
 import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
+import { ActorContextServiceWithFakeAudit } from "@app/domains/platform/organizations/ce/testing/actor-context-with-fake-audit";
 import { ProjectsModule } from "@app/domains/platform/projects/ce/module";
 import { SecretsModule } from "@app/domains/secrets-manager/secrets/ce/module";
 
@@ -40,7 +41,7 @@ export const buildPermissionDomains = (db: Knex, keyStore: TDomainKeyStore) => {
   });
 
   return {
-    actorContextService: organizations.actorContextService,
+    actorContextService: new ActorContextServiceWithFakeAudit(organizations.actorContextService),
     orgPermissionService: organizations.orgPermissionService,
     projectPermissionService: projects.projectPermissionService,
     secretsPermissionService: secrets.secretsPermissionService,

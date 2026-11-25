@@ -9,6 +9,7 @@ import { accessControlServices } from "@app/domains/platform/access-control/ce/t
 import { PAST } from "@app/domains/platform/access-control/ce/testing/grant-fixture";
 import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing/knex-grant-seeder";
 import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
+import { ActorContextServiceWithFakeAudit } from "@app/domains/platform/organizations/ce/testing/actor-context-with-fake-audit";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import type { TPrincipal } from "@app/lib/auth/principal";
 
@@ -47,7 +48,11 @@ describe("ProjectPermissionService.getProjectPermission", () => {
       authMethod: AuthMethod.EMAIL,
       isSuperAdmin: false
     };
-    const actor = () => organizations.actorContextService.forPrincipal({ principal, orgId: tenant.org.id });
+    const actor = () =>
+      new ActorContextServiceWithFakeAudit(organizations.actorContextService).forPrincipal({
+        principal,
+        orgId: tenant.org.id
+      });
     return { tenant, seed, user, actor, service: projects.projectPermissionService };
   };
 

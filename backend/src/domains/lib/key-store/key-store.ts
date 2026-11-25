@@ -12,4 +12,8 @@ export type TDomainKeyStore = Pick<
   | "incrementByWithExpiry"
   | "pgIncrementBy"
   | "pgGetIntItem"
+  | "streamAdd"
+  | "streamCollect"
+  | "streamTrim"
+  | "acquireLock"
 >;

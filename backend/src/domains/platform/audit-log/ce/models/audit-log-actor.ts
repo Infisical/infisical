@@ -179,6 +179,7 @@ export type TAuditLogActorRecord =
   | IdentityActor
   | ScimClientActor
   | PlatformActor
+  | UnknownUserActor
   | KmipClientActor
   | AcmeProfileActor
   | AcmeAccountActor

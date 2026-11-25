@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { AccessScope, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { setupIntegration, TTenant } from "@app/domains/lib/testing/integration";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
@@ -33,6 +34,7 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
     }).secretsPermissionService;
 
   const actorIn = (tenant: TTenant, principal: TPrincipal): TActorContext => ({
+    audit: new FakeActorAuditConfig(),
     principal,
     org: {
       id: tenant.org.id,
@@ -108,7 +110,12 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
         projectId: tenant.project.id
       })
       .returning("*");
-    const principal: TPrincipal = { type: ActorType.SERVICE, id: token.id, name: "token", projectId: tenant.project.id };
+    const principal: TPrincipal = {
+      type: ActorType.SERVICE,
+      id: token.id,
+      name: "token",
+      projectId: tenant.project.id
+    };
 
     // Action
     const { permission } = await build().getSecretsPermission({

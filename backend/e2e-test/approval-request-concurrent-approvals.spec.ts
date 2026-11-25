@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { approvalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -37,6 +38,7 @@ const userGroupMembershipDAL = userGroupMembershipDALFactory(testDb);
 const approvalPolicyDAL = approvalPolicyDALFactory(testDb);
 
 const asApprover = (userId: string, orgId: string): TApprovalActorContext => ({
+  audit: new FakeActorAuditConfig(),
   id: userId,
   type: ActorType.USER,
   authMethod: AuthMethod.EMAIL,

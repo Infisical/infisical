@@ -1,5 +1,6 @@
 import { ProjectType, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { ProjectResourcePermission, TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
@@ -7,6 +8,7 @@ import { SignerRoles } from "../../models/signer-resource-roles";
 import { SignerPermissionService } from "./service";
 
 const actor: TActorContext = {
+  audit: new FakeActorAuditConfig(),
   principal: {
     type: ActorType.USER,
     id: "user-1",

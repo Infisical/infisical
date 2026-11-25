@@ -616,6 +616,8 @@ import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
+import { ActorContextBuilder } from "../lib/actor-context-builder";
+import { AuditConfigSource } from "../lib/audit-config-source";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
 import { injectActorContext } from "../plugins/auth/inject-actor-context";
@@ -662,7 +664,7 @@ export const registerRoutes = async (
   const { usageMeteringService, licenseService } = domains.license;
   const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = domains.kmsCore;
   const { instanceConfigService } = domains.instanceConfigCore;
-  const { organizationsService, orgPermissionService, ssoSessionService, actorContextService } = domains.organizations;
+  const { organizationsService, orgPermissionService, ssoSessionService } = domains.organizations;
   const { projectsService } = domains.projects;
   const { actorGrantsService } = domains.accessControl;
   const { projectPermissionService } = domains.projects;
@@ -779,6 +781,20 @@ export const registerRoutes = async (
   const userNotificationDAL = userNotificationDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
+
+  const auditLogSettingsService = auditLogSettingsServiceFactory({
+    orgPermissionService,
+    projectPermissionService,
+    auditLogSettingsDAL,
+    orgDAL,
+    projectDAL,
+    licenseService,
+    keyStore
+  });
+
+  // Every actor context carries its org's audit configuration; see server/lib/actor-context-builder.ts.
+  const auditConfigSource = new AuditConfigSource(licenseService, projectDAL, auditLogSettingsService, keyStore);
+  const actorContextService = new ActorContextBuilder(domains.organizations.actorContextService, auditConfigSource);
 
   const deferredGatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails"> = {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -1231,27 +1247,18 @@ export const registerRoutes = async (
     auditLogStreamOutboxService
   });
 
-  const auditLogSettingsService = auditLogSettingsServiceFactory({
-    orgPermissionService,
-    projectPermissionService,
-    auditLogSettingsDAL,
-    orgDAL,
-    projectDAL,
-    licenseService,
-    keyStore
+  const auditLogQueue = auditLogQueueServiceFactory({
+    auditLogRecorderService: domains.auditLog.auditLogRecorderService,
+    auditConfigSource
   });
-
-  const auditLogQueue = await auditLogQueueServiceFactory({
-    auditLogDAL,
-    instanceConfigService,
-    queueService,
-    projectDAL,
-    licenseService,
-    auditLogSettingsService,
-    auditLogStreamOutboxService,
-    clickhouseClient: clickhouse,
-    keyStore
-  });
+  // Until log streams are a domain, ingestion hands each stored batch to the legacy outbox.
+  if (appCfg.AUDIT_LOG_STREAMS_ENABLED) {
+    domains.auditLogEe.registerConsumer({
+      name: "audit-log-stream-outbox",
+      deliver: (rows) => auditLogStreamOutboxService.enqueueForLogs(rows)
+    });
+  }
+  await domains.auditLogEe.start();
 
   const announcementService = announcementServiceFactory({ userDAL, keyStore });
 
@@ -5212,6 +5219,7 @@ export const registerRoutes = async (
     saml: samlService,
     ldap: ldapService,
     auditLog: auditLogService,
+    auditLogRecorderService: domains.auditLog.auditLogRecorderService,
     auditLogStream: auditLogStreamService,
     auditLogSettings: auditLogSettingsService,
     certificate: certificateService,

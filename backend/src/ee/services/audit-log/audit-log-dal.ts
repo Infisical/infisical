@@ -6,7 +6,6 @@ import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs, TAuditLogsInsert } from "@app/db/schemas";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
-import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 
@@ -24,7 +23,6 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
   create: (data: TAuditLogsInsert, isPostgresStorageDisabled: boolean) => Promise<TAuditLogs>;
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
-  batchCreate: (logs: TAuditLogsInsert[], isPostgresStorageDisabled: boolean) => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -71,7 +69,6 @@ export type TPamAuditLogScope = {
 const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
-const AUDIT_LOG_BATCH_INSERT_CHUNK_SIZE = 1000;
 
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
@@ -315,22 +312,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(data);
   };
 
-  const batchCreate: TAuditLogDALFactory["batchCreate"] = async (logs, isPostgresStorageDisabled) => {
-    if (logs.length === 0) return;
-    if (isPostgresStorageDisabled) return;
-
-    try {
-      await db.transaction(async (tx) => {
-        for (const chunk of chunkArray(logs, AUDIT_LOG_BATCH_INSERT_CHUNK_SIZE)) {
-          // eslint-disable-next-line no-await-in-loop
-          await tx(TableName.AuditLog).insert(chunk).onConflict().ignore();
-        }
-      });
-    } catch (error) {
-      throw new DatabaseError({ error, name: "auditLogBulkInsert" });
-    }
-  };
-
   const countByDateAndActor = async (
     {
       orgId,
@@ -431,7 +412,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
   return {
     ...auditLogOrm,
     create,
-    batchCreate,
     pruneAuditLog,
     getApproximateRowCount,
     find,
