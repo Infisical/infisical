@@ -619,7 +619,6 @@ import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { secretReadConcurrencyLimit } from "../plugins/secret-read-concurrency-limit";
 import { secretsOrgBudget } from "../plugins/secrets-org-budget";
-import { secretsRateLimit } from "../plugins/secrets-rate-limit";
 import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
@@ -5199,7 +5198,6 @@ export const registerRoutes = async (
   await server.register(injectPermission);
   await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
-  await server.register(secretsRateLimit);
   await server.register(secretsOrgBudget, { keyStore });
   await server.register(secretReadConcurrencyLimit);
   await server.register(injectAuditLogInfo);

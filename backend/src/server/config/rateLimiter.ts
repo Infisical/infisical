@@ -9,7 +9,6 @@ export type RateLimitConfiguration = {
   publicEndpointLimit: number;
   writeLimit: number;
   secretsLimit: number;
-  secretsActorLimit: number;
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
@@ -20,7 +19,7 @@ export type RateLimitConfiguration = {
 // Requests without an org, and the limits the license server does not set per plan, use these.
 // Read, write and secrets limits come from the org's plan (see inject-rate-limits.ts).
 // Mirrored in backend-go/internal/ee/services/ratelimit/types.go.
-export const DEFAULT_RATE_LIMITS: Readonly<Omit<RateLimitConfiguration, "secretsActorLimit">> = Object.freeze({
+export const DEFAULT_RATE_LIMITS: Readonly<RateLimitConfiguration> = Object.freeze({
   readLimit: 60,
   publicEndpointLimit: 30,
   writeLimit: 200,

@@ -5,12 +5,6 @@ import { DEFAULT_RATE_LIMITS, RateLimitConfiguration } from "@app/server/config/
 
 import { injectRateLimits } from "./inject-rate-limits";
 
-const config = vi.hoisted(() => ({ SECRETS_ACTOR_RATE_LIMIT_OFFSET: 10 }));
-
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => config
-}));
-
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
@@ -48,25 +42,15 @@ const injectedFor = async ({
 
 const rateLimitsFor = async (options: TRequestOptions) => (await injectedFor(options)).rateLimits;
 
-describe("injectRateLimits secretsActorLimit", () => {
-  test("uses the actor limit the plan sets", async () => {
-    const limits = await rateLimitsFor({ planRateLimits: { secretsLimit: 300, secretsActorLimit: 700 } });
-    expect(limits.secretsActorLimit).toBe(700);
+describe("injectRateLimits", () => {
+  test("uses the limits the organization's plan sets", async () => {
+    const limits = await rateLimitsFor({ planRateLimits: { readLimit: 900, writeLimit: 800, secretsLimit: 300 } });
+    expect(limits).toMatchObject({ readLimit: 900, writeLimit: 800, secretsLimit: 300 });
   });
 
-  test("falls back to the plan's secrets limit plus SECRETS_ACTOR_RATE_LIMIT_OFFSET when the plan sets no actor limit", async () => {
-    const limits = await rateLimitsFor({ planRateLimits: { secretsLimit: 300 } });
-    expect(limits.secretsActorLimit).toBe(310);
-  });
-
-  test("falls back to the default secrets limit plus SECRETS_ACTOR_RATE_LIMIT_OFFSET when the plan sets neither", async () => {
-    const limits = await rateLimitsFor({ planRateLimits: {} });
-    expect(limits.secretsActorLimit).toBe(DEFAULT_RATE_LIMITS.secretsLimit + 10);
-  });
-
-  test("uses the default secrets limit plus SECRETS_ACTOR_RATE_LIMIT_OFFSET for a request without an organization", async () => {
-    const limits = await rateLimitsFor({ orgId: "" });
-    expect(limits.secretsActorLimit).toBe(DEFAULT_RATE_LIMITS.secretsLimit + 10);
+  test("uses the default limits for a plan that sets none and for a request without an organization", async () => {
+    expect(await rateLimitsFor({ planRateLimits: {} })).toEqual(DEFAULT_RATE_LIMITS);
+    expect(await rateLimitsFor({ orgId: "" })).toEqual(DEFAULT_RATE_LIMITS);
   });
 });
 
@@ -77,21 +61,20 @@ describe("injectRateLimits on a fallback plan", () => {
     const limits = await rateLimitsFor({
       ...fallback,
       getLastKnownPlan: async () => ({
-        plan: { rateLimits: { readLimit: 900, writeLimit: 800, secretsLimit: 1000, secretsActorLimit: 1010 } },
+        plan: { rateLimits: { readLimit: 900, writeLimit: 800, secretsLimit: 1000 } },
         fetchedAt: Date.now()
       })
     });
     expect(limits).toMatchObject({
       readLimit: 900,
       writeLimit: 800,
-      secretsLimit: 1000,
-      secretsActorLimit: 1010
+      secretsLimit: 1000
     });
   });
 
   test("keeps the fallback plan's limits when no last known plan is cached", async () => {
     const limits = await rateLimitsFor(fallback);
-    expect(limits).toMatchObject({ secretsLimit: 40, secretsActorLimit: 50 });
+    expect(limits).toMatchObject({ secretsLimit: 40 });
   });
 
   test("keeps the fallback plan's limits when the last known plan cannot be read", async () => {
@@ -101,7 +84,7 @@ describe("injectRateLimits on a fallback plan", () => {
         throw new Error("key store unavailable");
       }
     });
-    expect(limits).toMatchObject({ secretsLimit: 40, secretsActorLimit: 50 });
+    expect(limits).toMatchObject({ secretsLimit: 40 });
   });
 
   test("does not read the last known plan for a plan that is not a fallback", async () => {

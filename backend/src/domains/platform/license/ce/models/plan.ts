@@ -60,7 +60,6 @@ export type TPlanFeatures = {
     readLimit: number;
     writeLimit: number;
     secretsLimit: number;
-    secretsActorLimit?: number;
   };
   kmsPqc: boolean;
   enforceMfa: boolean;

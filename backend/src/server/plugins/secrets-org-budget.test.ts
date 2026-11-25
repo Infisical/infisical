@@ -84,7 +84,7 @@ const buildServer = async ({ withRateLimiter = true }: { withRateLimiter?: boole
     Object.assign(req, {
       realIp: "10.0.0.1",
       auth: rootOrgId ? { orgId: req.headers["x-sub-org-id"] ?? rootOrgId, rootOrgId } : undefined,
-      rateLimits: { ...DEFAULT_RATE_LIMITS, secretsLimit: 1000, secretsActorLimit: 1000 },
+      rateLimits: { ...DEFAULT_RATE_LIMITS, secretsLimit: 1000 },
       rateLimitPlanSlug: "pro"
     });
   });

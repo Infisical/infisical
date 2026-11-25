@@ -381,17 +381,6 @@ const envSchema = z
         .optional()
         .describe("Most secrets one batch request may include. Unset, batch requests have no limit")
     ),
-    SECRETS_RATE_LIMIT_ENABLED: zodStrBool
-      .default("false")
-      .describe("Limit secret requests per machine identity or user, on top of the per-IP secrets rate limit"),
-    SECRETS_ACTOR_RATE_LIMIT_OFFSET: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .default(25)
-      .describe(
-        "When an organization's plan sets no secrets rate limit per machine identity or user, each one gets the per-IP secrets rate limit plus this many requests per minute"
-      ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),
