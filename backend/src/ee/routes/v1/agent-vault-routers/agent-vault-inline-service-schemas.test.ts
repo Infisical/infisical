@@ -122,6 +122,9 @@ describe("inline services request schema", () => {
         "A session can carry at most 30 inline services. Add the others to the project and list them by name instead."
     });
     expect(issuesOf(services.slice(0, 30))).toEqual([]);
+
+    const names = Array.from({ length: 50 }, (_, index) => `service-${index}`);
+    expect(issuesOf([...names, ...services.slice(0, 30)])).toEqual([]);
   });
 
   test("takes a description like a bundle service's, a blank one as none", () => {
