@@ -25,6 +25,7 @@ import { getRenewedCertificateId } from "./cert-request/cert-request-policy-sche
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
+import { isCertificateActionPolicyType } from "./pki-approvers/certificate-action-policy-fns";
 
 export interface TCreateApprovalRequestWithStepsParams {
   projectId: string;
@@ -271,7 +272,7 @@ export const getApprovalRequestSubjectMetadata = (
     };
   }
 
-  if (request.type === ApprovalPolicyType.CertRevocation || request.type === ApprovalPolicyType.CertDeletion) {
+  if (isCertificateActionPolicyType(request.type)) {
     const { certificateId, commonName, profileName } = requestData as
       | TCertRevocationRequestData
       | TCertDeletionRequestData;

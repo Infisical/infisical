@@ -1,4 +1,4 @@
-import { OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalPolicyType, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
@@ -27,7 +27,7 @@ import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { listUserNotifications } from "../../testUtils/notifications";
 import { pollUntil } from "../../testUtils/poll";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "../../testUtils/users";
+import { createProjectMemberUser, deleteUsers } from "../../testUtils/users";
 
 const COMMON_NAME = "delete-me.example.com";
 
@@ -73,13 +73,8 @@ describe("Certificate deletion approval", { timeout: 60_000 }, () => {
     await deleteUsers(createdUserIds);
   });
 
-  const createMember = async (label: string): Promise<TUser> => {
-    const { userId, username } = await createUser(label);
-    createdUserIds.push(userId);
-    await addUserMembership({ userId, orgId, role: OrgMembershipRole.Member });
-    await addUserMembership({ userId, orgId, projectId, role: ProjectMembershipRole.Member });
-    return { userId, username, token: await createUserAccessToken({ userId, orgId }) };
-  };
+  const createMember = (label: string): Promise<TUser> =>
+    createProjectMemberUser({ label, orgId, projectId, createdUserIds });
 
   const setUp = async () => {
     const newProfile = () =>

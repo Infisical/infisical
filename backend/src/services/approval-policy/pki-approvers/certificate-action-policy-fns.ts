@@ -3,6 +3,9 @@ import { approverKey, TApproverEntry, TApprovingPeople } from "./application-app
 
 export type TCertificateActionPolicyType = ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion;
 
+export const isCertificateActionPolicyType = (type: string): type is TCertificateActionPolicyType =>
+  type === ApprovalPolicyType.CertRevocation || type === ApprovalPolicyType.CertDeletion;
+
 export const CERTIFICATE_ACTIONS: Record<
   TCertificateActionPolicyType,
   { label: string; noun: string; verb: string; gerund: string }

@@ -165,6 +165,158 @@ describe("certificateService.deleteCert", () => {
   });
 });
 
+type TMock = ReturnType<typeof vi.fn>;
+
+// Revocation and deletion open, refuse and replace approval requests through the same code, so they share these rules.
+type TCertificateActionCase = {
+  label: string;
+  noun: string;
+  verb: string;
+  policyName: string;
+  requestAction: string;
+  actPermissions: RawRuleOf<MongoAbility>[];
+  cannotActPermissions: RawRuleOf<MongoAbility>[];
+  pendingStatus: string;
+  actedStatus: string;
+  build: (opts?: { applicationPermissions?: RawRuleOf<MongoAbility>[] }) => {
+    act: () => Promise<{ status: string }>;
+    findPending: TMock;
+    otherFindPending?: TMock;
+    approvalPolicyService: { matchPolicy: TMock; isPendingRequestUndecidable: TMock; createRequestFromPolicy: TMock };
+    approvalRequestDAL: { update: TMock; findByIdForUpdate: TMock };
+    auditLogService: { createAuditLog: TMock };
+    untouched: () => boolean;
+  };
+};
+
+const describeCertificateActionRequestRules = (c: TCertificateActionCase) => {
+  describe(`${c.noun} requests`, () => {
+    it.each([
+      [
+        "a step has nobody who can approve",
+        [{ requiredApprovals: 1, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 0 }],
+        `${c.label} approval policy '${c.policyName}' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy.`
+      ],
+      [
+        "a step requires more approvals than people who can approve it",
+        [
+          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }], approverCount: 1 },
+          { requiredApprovals: 2, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 1 }
+        ],
+        `${c.label} approval policy '${c.policyName}' requires 2 approvals on step 2 but has only 1 approver who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals.`
+      ]
+    ])("refuses to open a request nobody could approve when %s", async (_label, steps, message) => {
+      const ctx = c.build();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue({ id: "policy-1", name: c.policyName, steps });
+
+      await expect(ctx.act()).rejects.toThrow(new BadRequestError({ message }));
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.untouched()).toBe(true);
+    });
+
+    it("refuses a second request while one is still waiting for approval", async () => {
+      const ctx = c.build();
+      ctx.findPending.mockResolvedValue({ id: "approval-request-0", expiresAt: new Date(Date.now() + 60_000) });
+
+      await expect(ctx.act()).rejects.toThrow(
+        new BadRequestError({
+          message: `A ${c.noun} of certificate '${liveCertificate.friendlyName}' is already waiting for approval.`
+        })
+      );
+      expect(ctx.findPending).toHaveBeenCalledWith({ certificateId: "cert-1", projectId: "project-1" }, tx);
+      if (ctx.otherFindPending) expect(ctx.otherFindPending).not.toHaveBeenCalled();
+      expect(ctx.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("approval-request-0", tx);
+      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).toHaveBeenCalledWith("approval-request-0", tx);
+      expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.untouched()).toBe(true);
+    });
+
+    it("expires a lapsed pending request and opens a new one", async () => {
+      const ctx = c.build();
+      ctx.findPending.mockResolvedValue({ id: "approval-request-0", expiresAt: new Date(Date.now() - 60_000) });
+
+      const result = await ctx.act();
+
+      expect(ctx.approvalRequestDAL.update).toHaveBeenCalledWith(
+        { id: "approval-request-0", status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Expired },
+        tx
+      );
+      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).not.toHaveBeenCalled();
+      expect(ctx.auditLogService.createAuditLog).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
+      expect(result.status).toBe(c.pendingStatus);
+    });
+  });
+
+  describe(`${c.noun} permissions`, () => {
+    const canOnlyRequest = [{ action: c.requestAction, subject: "certificates" }];
+
+    it(`opens an approval request for an actor who can only request a ${c.noun}`, async () => {
+      const ctx = c.build({ applicationPermissions: canOnlyRequest });
+
+      const result = await ctx.act();
+
+      expect(result.status).toBe(c.pendingStatus);
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
+      expect(ctx.untouched()).toBe(true);
+    });
+
+    it(`tells an actor who can only request a ${c.noun} that no policy covers the certificate and to ask an Application Admin`, async () => {
+      const ctx = c.build({ applicationPermissions: canOnlyRequest });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const error = await ctx.act().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ForbiddenRequestError);
+      expect((error as Error).message).toBe(
+        `Certificate '${liveCertificate.friendlyName}' isn't covered by a ${c.noun} approval policy, so you need permission to ${c.verb} it directly. Ask an Application Admin to ${c.verb} it.`
+      );
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.untouched()).toBe(true);
+    });
+
+    it(`holds the ${c.noun} for an actor who can ${c.verb} when a policy covers the certificate`, async () => {
+      const ctx = c.build({ applicationPermissions: c.actPermissions });
+
+      const result = await ctx.act();
+
+      expect(result.status).toBe(c.pendingStatus);
+      expect(ctx.untouched()).toBe(true);
+    });
+
+    it(`acts at once for an actor who can ${c.verb} when no policy covers the certificate`, async () => {
+      const ctx = c.build({ applicationPermissions: c.actPermissions });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const result = await ctx.act();
+
+      expect(result.status).toBe(c.actedStatus);
+      expect(ctx.untouched()).toBe(false);
+    });
+
+    it(`refuses an actor who can neither ${c.verb} nor request a ${c.noun}, the same way whether or not a policy applies`, async () => {
+      const covered = c.build({ applicationPermissions: c.cannotActPermissions });
+      const uncovered = c.build({ applicationPermissions: c.cannotActPermissions });
+      uncovered.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const [coveredError, uncoveredError] = await Promise.all(
+        [covered, uncovered].map((ctx) => ctx.act().catch((error: unknown) => error))
+      );
+
+      for (const error of [coveredError, uncoveredError]) {
+        expect(error instanceof ForbiddenError || error instanceof ForbiddenRequestError).toBe(true);
+      }
+      expect((coveredError as Error).message).toBe((uncoveredError as Error).message);
+      for (const ctx of [covered, uncovered]) {
+        expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+        expect(ctx.untouched()).toBe(true);
+      }
+    });
+  });
+};
+
 describe("certificate deletion behind an approval policy", () => {
   const applicationCertificate = {
     ...liveCertificate,
@@ -455,48 +607,6 @@ describe("certificate deletion behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [
-        "has no approvers who can approve",
-        { requiredApprovals: 1, approverCount: 0 },
-        "Deletion approval policy 'prod-deletions' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy."
-      ],
-      [
-        "has too few approvers who can approve",
-        { requiredApprovals: 2, approverCount: 1 },
-        "Deletion approval policy 'prod-deletions' requires 2 approvals on step 1 but has only 1 approver who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
-      ]
-    ])("refuses a request nobody could approve when a step %s", async (_label, step, message) => {
-      const ctx = buildDeletionService();
-      ctx.approvalPolicyService.matchPolicy.mockResolvedValue({
-        ...deletionPolicy,
-        steps: [{ ...step, approvers: [] }]
-      });
-
-      await expect(ctx.service.deleteCert(deleteRequest)).rejects.toThrow(message);
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-      expect(ctx.storedCertificate().deletedAt).toBeNull();
-    });
-
-    it("refuses a second request while one is still waiting for approval", async () => {
-      const ctx = buildDeletionService();
-      ctx.certificateDAL.findPendingDeletionApprovalRequest.mockResolvedValue({
-        id: "approval-request-0",
-        expiresAt: new Date(Date.now() + 60_000)
-      });
-
-      await expect(ctx.service.deleteCert(deleteRequest)).rejects.toThrow(
-        "A deletion of certificate 'web' is already waiting for approval."
-      );
-      expect(ctx.certificateDAL.findPendingDeletionApprovalRequest).toHaveBeenCalledWith(
-        { certificateId: "cert-1", projectId: "project-1" },
-        tx
-      );
-      expect(ctx.certificateDAL.findPendingRevocationApprovalRequest).not.toHaveBeenCalled();
-      expect(ctx.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("approval-request-0", tx);
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-    });
-
     it("cancels a pending request its approvers can no longer approve, records why, and opens a new one", async () => {
       const ctx = buildDeletionService();
       ctx.certificateDAL.findPendingDeletionApprovalRequest.mockResolvedValue({
@@ -525,78 +635,28 @@ describe("certificate deletion behind an approval policy", () => {
       ]);
       expect(result.status).toBe(CertificateDeletionStatus.PendingApproval);
     });
-
-    it("expires a lapsed pending request and opens a new one", async () => {
-      const ctx = buildDeletionService();
-      ctx.certificateDAL.findPendingDeletionApprovalRequest.mockResolvedValue({
-        id: "approval-request-0",
-        expiresAt: new Date(Date.now() - 60_000)
-      });
-
-      const result = await ctx.service.deleteCert(deleteRequest);
-
-      expect(ctx.approvalRequestDAL.update).toHaveBeenCalledWith(
-        { id: "approval-request-0", status: ApprovalRequestStatus.Pending },
-        { status: ApprovalRequestStatus.Expired },
-        tx
-      );
-      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).not.toHaveBeenCalled();
-      expect(ctx.auditLogService.createAuditLog).not.toHaveBeenCalled();
-      expect(result.status).toBe(CertificateDeletionStatus.PendingApproval);
-    });
   });
 
-  describe("deleteCert permissions", () => {
-    const canOnlyRequest = [{ action: "request-deletion", subject: "certificates" }];
-    const canDelete = [{ action: "delete", subject: "certificates" }];
-    const canNeither = [{ action: ["read", "list", "request-revocation"], subject: "certificates" }];
-
-    it("opens an approval request for an actor who can only request a deletion", async () => {
-      const ctx = buildDeletionService({ applicationPermissions: canOnlyRequest });
-
-      const result = await ctx.service.deleteCert(deleteRequest);
-
-      expect(result.status).toBe(CertificateDeletionStatus.PendingApproval);
-      expect(ctx.storedCertificate().deletedAt).toBeNull();
-    });
-
-    it("tells an actor who can only request a deletion that no policy covers the certificate and to ask an Application Admin", async () => {
-      const ctx = buildDeletionService({ applicationPermissions: canOnlyRequest });
-      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
-
-      const error = await ctx.service.deleteCert(deleteRequest).catch((e: unknown) => e);
-
-      expect(error).toBeInstanceOf(ForbiddenRequestError);
-      expect((error as Error).message).toBe(
-        "Certificate 'web' isn't covered by a deletion approval policy, so you need permission to delete it directly. Ask an Application Admin to delete it."
-      );
-      expect(ctx.storedCertificate().deletedAt).toBeNull();
-    });
-
-    it("holds the deletion for an actor who can delete when a policy covers the certificate", async () => {
-      const ctx = buildDeletionService({ applicationPermissions: canDelete });
-
-      const result = await ctx.service.deleteCert(deleteRequest);
-
-      expect(result.status).toBe(CertificateDeletionStatus.PendingApproval);
-      expect(ctx.storedCertificate().deletedAt).toBeNull();
-    });
-
-    it("refuses an actor who can neither delete nor request a deletion, whether or not a policy applies", async () => {
-      const covered = buildDeletionService({ applicationPermissions: canNeither });
-      const uncovered = buildDeletionService({ applicationPermissions: canNeither });
-      uncovered.approvalPolicyService.matchPolicy.mockResolvedValue(null);
-
-      const errors = await Promise.all(
-        [covered, uncovered].map((ctx) => ctx.service.deleteCert(deleteRequest).catch((error: unknown) => error))
-      );
-
-      for (const error of errors) expect(error).toBeInstanceOf(ForbiddenError);
-      for (const ctx of [covered, uncovered]) {
-        expect(ctx.approvalPolicyService.matchPolicy).not.toHaveBeenCalled();
-        expect(ctx.storedCertificate().deletedAt).toBeNull();
-      }
-    });
+  describeCertificateActionRequestRules({
+    label: "Deletion",
+    noun: "deletion",
+    verb: "delete",
+    policyName: deletionPolicy.name,
+    requestAction: "request-deletion",
+    actPermissions: [{ action: "delete", subject: "certificates" }],
+    cannotActPermissions: [{ action: ["read", "list", "request-revocation"], subject: "certificates" }],
+    pendingStatus: CertificateDeletionStatus.PendingApproval,
+    actedStatus: CertificateDeletionStatus.Deleted,
+    build: (opts) => {
+      const ctx = buildDeletionService(opts);
+      return {
+        ...ctx,
+        act: () => ctx.service.deleteCert(deleteRequest),
+        findPending: ctx.certificateDAL.findPendingDeletionApprovalRequest,
+        otherFindPending: ctx.certificateDAL.findPendingRevocationApprovalRequest,
+        untouched: () => !ctx.storedCertificate().deletedAt
+      };
+    }
   });
 
   describe("deleteApprovedCertificate", () => {
@@ -1641,20 +1701,6 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
     });
 
-    it("refuses a second request while one is still waiting for approval", async () => {
-      const ctx = buildRevocationService();
-      ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
-        id: "approval-request-0",
-        expiresAt: new Date(Date.now() + 60_000)
-      });
-
-      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toBeInstanceOf(BadRequestError);
-      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).toHaveBeenCalledWith("approval-request-0", tx);
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-      expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
-      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-    });
-
     it("locks the pending request before reading whether its approvers can still approve it", async () => {
       const ctx = buildRevocationService();
       ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
@@ -1953,30 +1999,6 @@ describe("certificate revocation behind an approval policy", () => {
       ).rejects.toThrow("Several deleted certificates match this thumbprint. Revoke by certificate ID instead.");
     });
 
-    it.each([
-      [
-        "a step has nobody who can approve",
-        [{ requiredApprovals: 1, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 0 }],
-        "Revocation approval policy 'prod-revocations' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy."
-      ],
-      [
-        "a step requires more approvals than people who can approve it",
-        [
-          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }], approverCount: 1 },
-          { requiredApprovals: 2, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 1 }
-        ],
-        "Revocation approval policy 'prod-revocations' requires 2 approvals on step 2 but has only 1 approver who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
-      ]
-    ])("refuses to open a request nobody could approve when %s", async (_label, steps, message) => {
-      const ctx = buildRevocationService();
-      ctx.approvalPolicyService.matchPolicy.mockResolvedValue({ ...revocationPolicy, steps });
-
-      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(new BadRequestError({ message }));
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
-      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-    });
-
     it("opens a request when a group's members cover a step's required approvals", async () => {
       const ctx = buildRevocationService();
       ctx.approvalPolicyService.matchPolicy.mockResolvedValue({
@@ -2018,26 +2040,6 @@ describe("certificate revocation behind an approval policy", () => {
         expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
         expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       });
-    });
-
-    it("expires a lapsed pending request and opens a new one", async () => {
-      const ctx = buildRevocationService();
-      ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
-        id: "approval-request-0",
-        expiresAt: new Date(Date.now() - 60_000)
-      });
-
-      const result = await ctx.service.revokeCert(revokeRequest);
-
-      expect(ctx.approvalRequestDAL.update).toHaveBeenCalledWith(
-        { id: "approval-request-0", status: ApprovalRequestStatus.Pending },
-        { status: ApprovalRequestStatus.Expired },
-        tx
-      );
-      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).not.toHaveBeenCalled();
-      expect(ctx.auditLogService.createAuditLog).not.toHaveBeenCalled();
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
-      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
     });
 
     it("tells the requester the earlier request was decided meanwhile when expiring it finds it no longer pending", async () => {
@@ -2104,74 +2106,27 @@ describe("certificate revocation behind an approval policy", () => {
     });
   });
 
-  describe("revokeCert permissions", () => {
-    const canOnlyRequest = [{ action: "request-revocation", subject: "certificates" }];
-    const canRevoke = [{ action: "delete", subject: "certificates" }];
-    const canNeither = [{ action: ["read", "list"], subject: "certificates" }];
-
-    const isForbidden = (error: unknown) => error instanceof ForbiddenError || error instanceof ForbiddenRequestError;
-
-    it("opens an approval request for an actor who can only request a revocation", async () => {
-      const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });
-
-      const result = await ctx.service.revokeCert(revokeRequest);
-
-      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
-      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
-    });
-
-    it("tells an actor who can only request a revocation that no policy covers the certificate and to ask an Application Admin", async () => {
-      const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });
-      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
-
-      const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
-
-      expect(error).toBeInstanceOf(ForbiddenRequestError);
-      expect((error as Error).message).toBe(
-        `Certificate '${applicationCertificate.friendlyName}' isn't covered by a revocation approval policy, so you need permission to revoke it directly. Ask an Application Admin to revoke it.`
-      );
-      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
-      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-    });
-
-    it("opens an approval request for an actor who can revoke when a policy covers the certificate", async () => {
-      const ctx = buildRevocationService({ applicationPermissions: canRevoke });
-
-      const result = await ctx.service.revokeCert(revokeRequest);
-
-      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
-      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-    });
-
-    it("revokes for an actor who can revoke when no policy covers the certificate", async () => {
-      const ctx = buildRevocationService({ applicationPermissions: canRevoke });
-      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
-
-      const result = await ctx.service.revokeCert(revokeRequest);
-
-      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
-      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
-    });
-
-    it("refuses an actor who can neither revoke nor request, the same way whether or not a policy applies", async () => {
-      const covered = buildRevocationService({ applicationPermissions: canNeither });
-      const uncovered = buildRevocationService({ applicationPermissions: canNeither });
-      uncovered.approvalPolicyService.matchPolicy.mockResolvedValue(null);
-
-      const coveredError = await covered.service.revokeCert(revokeRequest).catch((error: unknown) => error);
-      const uncoveredError = await uncovered.service.revokeCert(revokeRequest).catch((error: unknown) => error);
-
-      expect(isForbidden(coveredError)).toBe(true);
-      expect((coveredError as Error).message).toBe((uncoveredError as Error).message);
-      for (const ctx of [covered, uncovered]) {
-        expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-        expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-        expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
-      }
-    });
+  describeCertificateActionRequestRules({
+    label: "Revocation",
+    noun: "revocation",
+    verb: "revoke",
+    policyName: revocationPolicy.name,
+    requestAction: "request-revocation",
+    actPermissions: [{ action: "delete", subject: "certificates" }],
+    cannotActPermissions: [{ action: ["read", "list"], subject: "certificates" }],
+    pendingStatus: CertificateRevocationStatus.PendingApproval,
+    actedStatus: CertificateRevocationStatus.Revoked,
+    build: (opts) => {
+      const ctx = buildRevocationService(opts);
+      return {
+        ...ctx,
+        act: () => ctx.service.revokeCert(revokeRequest),
+        findPending: ctx.certificateDAL.findPendingRevocationApprovalRequest,
+        untouched: () =>
+          ctx.storedCertificate().status === CertStatus.ACTIVE &&
+          ctx.certificateAuthorityService.revokeCertificate.mock.calls.length === 0
+      };
+    }
   });
 
   describe("revokeOwnedCertificate", () => {

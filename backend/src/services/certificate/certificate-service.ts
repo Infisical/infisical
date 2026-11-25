@@ -13,7 +13,7 @@ import {
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -108,7 +108,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSignerDALFactory } from "@app/services/signer/signer-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import {
+  PostHogEventTypes,
+  TCertificateDeletedEvent,
+  TCertificateRevokedEvent
+} from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -1542,6 +1546,69 @@ export const certificateServiceFactory = ({
     }
   };
 
+  // Revocation and deletion record an approved request's outcome the same way: as the platform, labelled with names
+  // that are read best effort, with a failure audited and notified and a success counted for the requester.
+  const $approvedActionRecorder = (
+    approvalRequest: TApprovalRequest,
+    policyType: TCertificateActionPolicyType,
+    certificateId: string
+  ) => {
+    const { noun } = CERTIFICATE_ACTIONS[policyType];
+    const actor = { type: ActorType.PLATFORM as const, metadata: {} };
+    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`;
+    return {
+      logContext,
+      audit: (event: TCreateAuditLogDTO["event"]) =>
+        auditLogService.createAuditLog({ projectId: approvalRequest.projectId, actor, event }),
+      // The name only labels the event, so failing to read it mustn't lose the event or the failure notice.
+      resolveApplicationName: (id?: string | null) =>
+        $resolveApplicationName(id).catch((error) => {
+          logger.warn(error, `Failed to read the Application name for an approved ${noun}'s audit event ${logContext}`);
+          return null;
+        }),
+      // Identifying fields come from the request, which always has them: the certificate may be gone or unreadable.
+      recordFailure: async (event: TCreateAuditLogDTO["event"], reason: string) => {
+        try {
+          await auditLogService.createAuditLog({ projectId: approvalRequest.projectId, actor, event });
+        } catch (error) {
+          logger.error(error, `Failed to record a failed approved ${noun}'s audit event ${logContext}`);
+        }
+        await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
+      },
+      sendRequesterTelemetry: async (payload: TCertificateRevokedEvent | TCertificateDeletedEvent) => {
+        const distinctId = approvalRequest.machineIdentityId
+          ? `identity-${approvalRequest.machineIdentityId}`
+          : approvalRequest.requesterId && approvalRequest.requesterEmail;
+        if (!distinctId) return;
+        await telemetryService.sendPostHogEvents({
+          ...payload,
+          distinctId,
+          organizationId: approvalRequest.organizationId
+        });
+      }
+    };
+  };
+
+  // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo the
+  // approval and the requester never sees the error. It records its outcome in the audit log instead and never throws.
+  const $runApprovedCertificateAction = async <R extends { certificateId: string }, O extends { kind: string }>(
+    approvalRequest: TApprovalRequest,
+    policyType: TCertificateActionPolicyType,
+    perform: (requestData: R) => Promise<O>,
+    record: (requestData: R, outcome: O) => Promise<void>
+  ) => {
+    const requestData = approvalRequest.requestData.requestData as unknown as R;
+    const outcome = await perform(requestData);
+    try {
+      await record(requestData, outcome);
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to record the outcome of an approved ${CERTIFICATE_ACTIONS[policyType].noun} [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+      );
+    }
+  };
+
   type TApprovedRevocationOutcome =
     | { kind: ApprovedRevocationOutcomeKind.Revoked; cert: TRevocableCertificate; crlWarning?: string }
     | { kind: ApprovedRevocationOutcomeKind.AlreadyRevoked }
@@ -1687,108 +1754,64 @@ export const certificateServiceFactory = ({
     { certificateId, commonName, serialNumber, applicationId, revocationReason }: TCertRevocationRequestData,
     outcome: TApprovedRevocationOutcome
   ) => {
-    const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
-    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`;
-    // The name only labels the event, so failing to read it mustn't lose the event or the failure notice.
-    const resolveLabel = (id?: string | null) =>
-      $resolveApplicationName(id).catch((error) => {
-        logger.warn(
-          error,
-          `Failed to read the Application name for an approved revocation's audit event ${logContext}`
-        );
-        return null;
-      });
+    const recorder = $approvedActionRecorder(approvalRequest, ApprovalPolicyType.CertRevocation, certificateId);
 
     if (outcome.kind === ApprovedRevocationOutcomeKind.AlreadyRevoked) {
-      logger.info(`Approved revocation skipped: certificate already revoked ${logContext}`);
+      logger.info(`Approved revocation skipped: certificate already revoked ${recorder.logContext}`);
       return;
     }
 
+    const requester = { requesterName: approvalRequest.requesterName, requesterEmail: approvalRequest.requesterEmail };
+
     if (outcome.kind === ApprovedRevocationOutcomeKind.Failed) {
-      // Identifying fields come from the request, which always has them: the certificate itself may be gone
-      // (its CA was deleted and cascaded) or unreadable by the time the revocation fails.
-      const { reason } = outcome;
-      try {
-        await auditLogService.createAuditLog({
-          projectId: approvalRequest.projectId,
-          actor: auditActor,
-          event: {
-            type: EventType.CERT_REVOCATION_FAILED,
-            metadata: {
-              certId: certificateId,
-              cn: commonName,
-              serialNumber,
-              applicationId,
-              applicationName: await resolveLabel(applicationId),
-              revocationReason,
-              approvalRequestId: approvalRequest.id,
-              requesterName: approvalRequest.requesterName,
-              requesterEmail: approvalRequest.requesterEmail,
-              error: reason
-            }
+      await recorder.recordFailure(
+        {
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: {
+            certId: certificateId,
+            cn: commonName,
+            serialNumber,
+            applicationId,
+            applicationName: await recorder.resolveApplicationName(applicationId),
+            revocationReason,
+            approvalRequestId: approvalRequest.id,
+            ...requester,
+            error: outcome.reason
           }
-        });
-      } catch (error) {
-        logger.error(error, `Failed to record a failed approved revocation's audit event ${logContext}`);
-      }
-      await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
+        },
+        outcome.reason
+      );
       return;
     }
 
     const { cert, crlWarning } = outcome;
-    await auditLogService.createAuditLog({
-      projectId: approvalRequest.projectId,
-      actor: auditActor,
-      event: {
-        type: EventType.REVOKE_CERT,
-        metadata: {
-          certId: cert.id,
-          cn: cert.commonName,
-          serialNumber: cert.serialNumber,
-          applicationId: cert.applicationId,
-          applicationName: await resolveLabel(cert.applicationId),
-          revocationReason,
-          approvalRequestId: approvalRequest.id,
-          requesterName: approvalRequest.requesterName,
-          requesterEmail: approvalRequest.requesterEmail,
-          crlWarning
-        }
+    await recorder.audit({
+      type: EventType.REVOKE_CERT,
+      metadata: {
+        certId: cert.id,
+        cn: cert.commonName,
+        serialNumber: cert.serialNumber,
+        applicationId: cert.applicationId,
+        applicationName: await recorder.resolveApplicationName(cert.applicationId),
+        revocationReason,
+        approvalRequestId: approvalRequest.id,
+        ...requester,
+        crlWarning
       }
     });
-
-    const requesterDistinctId = approvalRequest.machineIdentityId
-      ? `identity-${approvalRequest.machineIdentityId}`
-      : approvalRequest.requesterId && approvalRequest.requesterEmail;
-    if (requesterDistinctId) {
-      await telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.CertificateRevoked,
-        distinctId: requesterDistinctId,
-        organizationId: approvalRequest.organizationId,
-        properties: {
-          orgId: approvalRequest.organizationId,
-          projectId: approvalRequest.projectId,
-          revocationReason
-        }
-      });
-    }
+    await recorder.sendRequesterTelemetry({
+      event: PostHogEventTypes.CertificateRevoked,
+      properties: { orgId: approvalRequest.organizationId, projectId: approvalRequest.projectId, revocationReason }
+    });
   };
 
-  // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo
-  // the approval and the requester never sees the error. It records its outcome in the audit log instead and
-  // never throws.
-  const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
-    const requestData = approvalRequest.requestData.requestData as TCertRevocationRequestData;
-    const outcome = await $revokeForApproval(approvalRequest, requestData);
-
-    try {
-      await $recordApprovedRevocation(approvalRequest, requestData, outcome);
-    } catch (error) {
-      logger.error(
-        error,
-        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
-      );
-    }
-  };
+  const revokeApprovedCertificate = (approvalRequest: TApprovalRequest) =>
+    $runApprovedCertificateAction(
+      approvalRequest,
+      ApprovalPolicyType.CertRevocation,
+      (requestData: TCertRevocationRequestData) => $revokeForApproval(approvalRequest, requestData),
+      (requestData, outcome) => $recordApprovedRevocation(approvalRequest, requestData, outcome)
+    );
 
   const $deleteForApproval = async (
     approvalRequest: TApprovalRequest,
@@ -1851,53 +1874,42 @@ export const certificateServiceFactory = ({
     { certificateId, commonName, friendlyName, serialNumber, applicationId }: TCertDeletionRequestData,
     outcome: TApprovedDeletionOutcome
   ) => {
-    const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
-    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`;
-    // The name only labels the event, so failing to read it mustn't lose the event or the failure notice.
-    const resolveLabel = (id?: string | null) =>
-      $resolveApplicationName(id).catch((error) => {
-        logger.warn(error, `Failed to read the Application name for an approved deletion's audit event ${logContext}`);
-        return null;
-      });
+    const recorder = $approvedActionRecorder(approvalRequest, ApprovalPolicyType.CertDeletion, certificateId);
 
     if (outcome.kind === ApprovedDeletionOutcomeKind.AlreadyDeleted) {
-      logger.info(`Approved deletion skipped: certificate already deleted ${logContext}`);
+      logger.info(`Approved deletion skipped: certificate already deleted ${recorder.logContext}`);
       return;
     }
 
     // The policy only labels the events, so failing to read it mustn't lose them.
     const policy = approvalRequest.policyId
       ? await approvalPolicyDAL.findById(approvalRequest.policyId).catch((error) => {
-          logger.warn(error, `Failed to read the approval policy for an approved deletion's audit event ${logContext}`);
+          logger.warn(
+            error,
+            `Failed to read the approval policy for an approved deletion's audit event ${recorder.logContext}`
+          );
           return undefined;
         })
       : undefined;
     const approvalLabel = getApprovalRequestAuditLabel(approvalRequest, policy);
 
     if (outcome.kind === ApprovedDeletionOutcomeKind.Failed) {
-      const { reason } = outcome;
-      try {
-        await auditLogService.createAuditLog({
-          projectId: approvalRequest.projectId,
-          actor: auditActor,
-          event: {
-            type: EventType.CERT_DELETION_FAILED,
-            metadata: {
-              certId: certificateId,
-              cn: commonName,
-              friendlyName,
-              serialNumber,
-              applicationId,
-              applicationName: await resolveLabel(applicationId),
-              ...approvalLabel,
-              error: reason
-            }
+      await recorder.recordFailure(
+        {
+          type: EventType.CERT_DELETION_FAILED,
+          metadata: {
+            certId: certificateId,
+            cn: commonName,
+            friendlyName,
+            serialNumber,
+            applicationId,
+            applicationName: await recorder.resolveApplicationName(applicationId),
+            ...approvalLabel,
+            error: outcome.reason
           }
-        });
-      } catch (error) {
-        logger.error(error, `Failed to record a failed approved deletion's audit event ${logContext}`);
-      }
-      await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
+        },
+        outcome.reason
+      );
       return;
     }
 
@@ -1912,58 +1924,34 @@ export const certificateServiceFactory = ({
     usageMeteringService.emit(approvalRequest.organizationId, Meter.ActiveCerts);
     usageMeteringService.emit(approvalRequest.organizationId, Meter.WildcardCerts);
 
-    await auditLogService.createAuditLog({
-      projectId: approvalRequest.projectId,
-      actor: auditActor,
-      event: {
-        type: EventType.DELETE_CERT,
-        metadata: {
-          certId: deletedCert.id,
-          cn: deletedCert.commonName,
-          friendlyName: deletedCert.friendlyName,
-          serialNumber: deletedCert.serialNumber,
-          notAfter: deletedCert.notAfter.toISOString(),
-          source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
-          statusAtDeletion: resolveCertificateStatus(deletedCert),
-          applicationId: deletedCert.applicationId,
-          applicationName: await resolveLabel(deletedCert.applicationId),
-          ...approvalLabel
-        }
+    await recorder.audit({
+      type: EventType.DELETE_CERT,
+      metadata: {
+        certId: deletedCert.id,
+        cn: deletedCert.commonName,
+        friendlyName: deletedCert.friendlyName,
+        serialNumber: deletedCert.serialNumber,
+        notAfter: deletedCert.notAfter.toISOString(),
+        source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+        statusAtDeletion: resolveCertificateStatus(deletedCert),
+        applicationId: deletedCert.applicationId,
+        applicationName: await recorder.resolveApplicationName(deletedCert.applicationId),
+        ...approvalLabel
       }
     });
-
-    const requesterDistinctId = approvalRequest.machineIdentityId
-      ? `identity-${approvalRequest.machineIdentityId}`
-      : approvalRequest.requesterId && approvalRequest.requesterEmail;
-    if (requesterDistinctId) {
-      await telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.CertificateDeleted,
-        distinctId: requesterDistinctId,
-        organizationId: approvalRequest.organizationId,
-        properties: {
-          orgId: approvalRequest.organizationId,
-          projectId: approvalRequest.projectId
-        }
-      });
-    }
+    await recorder.sendRequesterTelemetry({
+      event: PostHogEventTypes.CertificateDeleted,
+      properties: { orgId: approvalRequest.organizationId, projectId: approvalRequest.projectId }
+    });
   };
 
-  // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo
-  // the approval and the requester never sees the error. It records its outcome in the audit log instead and
-  // never throws.
-  const deleteApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
-    const requestData = approvalRequest.requestData.requestData as TCertDeletionRequestData;
-    const outcome = await $deleteForApproval(approvalRequest, requestData);
-
-    try {
-      await $recordApprovedDeletion(approvalRequest, requestData, outcome);
-    } catch (error) {
-      logger.error(
-        error,
-        `Failed to record the outcome of an approved deletion [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
-      );
-    }
-  };
+  const deleteApprovedCertificate = (approvalRequest: TApprovalRequest) =>
+    $runApprovedCertificateAction(
+      approvalRequest,
+      ApprovalPolicyType.CertDeletion,
+      (requestData: TCertDeletionRequestData) => $deleteForApproval(approvalRequest, requestData),
+      (requestData, outcome) => $recordApprovedDeletion(approvalRequest, requestData, outcome)
+    );
 
   /**
    * Return certificate body and certificate chain for certificate with

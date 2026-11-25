@@ -5,7 +5,7 @@
 // An approved revocation that fails tells the requester and the saved approvers who can still approve. Each test
 // has its own CA, so deleting it (which deletes its certificates) between the request and its approval makes the
 // approved revocation fail and send that notice.
-import { ProjectMembershipRole, OrgMembershipRole, TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
 import {
   ApprovalPolicyType,
@@ -44,13 +44,7 @@ import { createProjectGroup, deleteGroups, removeUserFromGroup } from "../../tes
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { listUserNotifications } from "../../testUtils/notifications";
 import { pollUntil, waitUntilBlockedBy } from "../../testUtils/poll";
-import {
-  addUserMembership,
-  createUser,
-  createUserAccessToken,
-  deactivateOrgMembership,
-  deleteUsers
-} from "../../testUtils/users";
+import { createProjectMemberUser, createUser, deactivateOrgMembership, deleteUsers } from "../../testUtils/users";
 
 const COMMON_NAME = "revoke-me.example.com";
 const NO_APPROVING_ROLE =
@@ -87,13 +81,8 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     await deleteUsers(createdUserIds);
   });
 
-  const createApprover = async (label: string): Promise<TApprover> => {
-    const { userId, username } = await createUser(label);
-    createdUserIds.push(userId);
-    const orgMembershipId = await addUserMembership({ userId, orgId, role: OrgMembershipRole.Member });
-    await addUserMembership({ userId, orgId, projectId, role: ProjectMembershipRole.Member });
-    return { userId, username, orgMembershipId, token: await createUserAccessToken({ userId, orgId }) };
-  };
+  const createApprover = (label: string): Promise<TApprover> =>
+    createProjectMemberUser({ label, orgId, projectId, createdUserIds });
 
   // The org's admin creates the Application, so it is the Application's Admin and the requester. `approver` is the
   // saved approver whose access each test changes; `other` is a second approver who keeps Operator throughout.
