@@ -13,7 +13,7 @@ import { isValidEmailDomain } from "@app/lib/validator";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
-import { getEmailDomainVerificationRecordValue } from "./email-domain-fns";
+import { getEmailDomainVerificationRecordValue, toEmailDomainResponse } from "./email-domain-fns";
 import {
   EmailDomainStatus,
   EmailDomainVerificationError,
@@ -81,7 +81,7 @@ export const emailDomainServiceFactory = ({
       });
     }
 
-    const verificationCode = getEmailDomainVerificationRecordValue(crypto.randomBytes(32).toString("hex"));
+    const verificationCode = crypto.randomBytes(32).toString("hex");
     const verificationRecordName = `${DNS_RECORD_PREFIX}.${normalizedDomain}`;
     const codeExpiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
@@ -123,7 +123,7 @@ export const emailDomainServiceFactory = ({
       throw new BadRequestError({ message: emailDomain.error });
     }
 
-    return emailDomain.data;
+    return toEmailDomainResponse(emailDomain.data);
   };
 
   const verifyEmailDomain = async ({
@@ -240,12 +240,7 @@ export const emailDomainServiceFactory = ({
       });
     }
 
-    return {
-      emailDomain: {
-        ...updatedEmailDomain.data,
-        verificationCode: getEmailDomainVerificationRecordValue(updatedEmailDomain.data.verificationCode)
-      }
-    };
+    return { emailDomain: toEmailDomainResponse(updatedEmailDomain.data) };
   };
 
   const listEmailDomains = async ({ actor, actorId, actorAuthMethod, actorOrgId, orgId }: TListEmailDomainsDTO) => {
@@ -263,11 +258,7 @@ export const emailDomainServiceFactory = ({
     );
 
     const emailDomains = await emailDomainDAL.find({ orgId });
-    // Domains created before codes carried the prefix store the bare code
-    return emailDomains.map((emailDomain) => ({
-      ...emailDomain,
-      verificationCode: getEmailDomainVerificationRecordValue(emailDomain.verificationCode)
-    }));
+    return emailDomains.map(toEmailDomainResponse);
   };
 
   const deleteEmailDomain = async ({
@@ -312,10 +303,7 @@ export const emailDomainServiceFactory = ({
     }
 
     await emailDomainDAL.deleteById(emailDomainId);
-    return {
-      ...emailDomainRecord,
-      verificationCode: getEmailDomainVerificationRecordValue(emailDomainRecord.verificationCode)
-    };
+    return toEmailDomainResponse(emailDomainRecord);
   };
 
   return {

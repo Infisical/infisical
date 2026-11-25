@@ -1,10 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import {
-  getEmailDomainVerificationRecordValue,
-  isIdpAuthoritativeForDomain,
-  verifyEmailDomainOwnership
-} from "./email-domain-fns";
+import { isIdpAuthoritativeForDomain, toEmailDomainResponse, verifyEmailDomainOwnership } from "./email-domain-fns";
 import { EmailDomainStatus } from "./email-domain-types";
 
 const ownedDomain = { id: "domain-1", orgId: "org-1", domain: "acme.com", status: EmailDomainStatus.Verified };
@@ -73,14 +69,11 @@ describe("isIdpAuthoritativeForDomain", () => {
   });
 });
 
-describe("getEmailDomainVerificationRecordValue", () => {
-  test("returns a code that already carries the prefix as it is", () => {
-    expect(getEmailDomainVerificationRecordValue("infisical-domain-verification=abc123")).toBe(
-      "infisical-domain-verification=abc123"
-    );
-  });
-
-  test("adds the prefix to the bare code of a domain created before codes carried it", () => {
-    expect(getEmailDomainVerificationRecordValue("abc123")).toBe("infisical-domain-verification=abc123");
+describe("toEmailDomainResponse", () => {
+  test("returns the stored bare code as the full TXT record value", () => {
+    expect(toEmailDomainResponse({ id: "domain-1", verificationCode: "abc123" })).toEqual({
+      id: "domain-1",
+      verificationCode: "infisical-domain-verification=abc123"
+    });
   });
 });

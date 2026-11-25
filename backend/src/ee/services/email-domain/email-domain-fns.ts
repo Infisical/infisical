@@ -6,11 +6,13 @@ import { EmailDomainStatus } from "./email-domain-types";
 
 const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
-// A verification code is the whole TXT record value.
 export const getEmailDomainVerificationRecordValue = (verificationCode: string) =>
-  verificationCode.startsWith(`${DNS_TXT_VALUE_PREFIX}=`)
-    ? verificationCode
-    : `${DNS_TXT_VALUE_PREFIX}=${verificationCode}`;
+  `${DNS_TXT_VALUE_PREFIX}=${verificationCode}`;
+
+export const toEmailDomainResponse = <T extends { verificationCode: string }>(emailDomain: T): T => ({
+  ...emailDomain,
+  verificationCode: getEmailDomainVerificationRecordValue(emailDomain.verificationCode)
+});
 
 /**
  * Given an email and orgId, verifies the org is allowed to manage a user with this email and
