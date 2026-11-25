@@ -39,6 +39,16 @@ Used to configure platform-specific security and operational settings.
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="INSTANCE_SETUP_TOKEN" type="string" optional>
+  A token that the first super admin must enter to set up the instance. The token must be
+  6 to 32 characters long. If the token is shorter or longer, Infisical doesn't start.
+  To generate a token, run `openssl rand -hex 16`.
+  If you set the token, the super admin signup page asks for it, and the
+  [Bootstrap instance](/api-reference/endpoints/admin/bootstrap-instance) endpoint rejects
+  requests without it.
+  Infisical ignores the token once the instance is set up.
+</ParamField>
+
 <ParamField query="PORT" type="int" default="8080" optional>
   Specifies the internal port on which the application listens.
 </ParamField>
@@ -72,6 +82,29 @@ Example values:
   Air-gapped deployments should set this to `true` to suppress the outbound
   request entirely. Instances configured with an offline license disable the
   check automatically.
+</ParamField>
+
+<ParamField query="BREACHED_PASSWORD_CHECK_ENABLED" type="bool" optional>
+  When a user signs up, changes their password, resets a forgotten password, or
+  adds a password to an account that doesn't have one, Infisical can check the new
+  password against [a public list of passwords exposed in data breaches](https://haveibeenpwned.com/Passwords)
+  and reject the password if it's on the list. The check also covers the first
+  admin account when you create it in the Infisical web interface.
+
+  If you self-host Infisical, the check is off by default. On Infisical Cloud and
+  dedicated instances, it's on by default. Set this to `true` or `false` to
+  override the default.
+
+  For the check to work, Infisical needs outbound HTTPS access on port 443 to
+  `api.pwnedpasswords.com`:
+
+  - Allow the hostname in your firewall. The service runs behind Cloudflare, so its IP addresses change
+  - If your instance reaches the internet through a proxy, set `HTTPS_PROXY`. Infisical doesn't use `HTTP_PROXY` for this check
+  - Infisical doesn't need inbound access or an API key
+
+  Infisical sends only the first five characters of the password's SHA-1 hash, so
+  the password never leaves your instance. If Infisical can't reach
+  `api.pwnedpasswords.com` within three seconds, it accepts the password.
 </ParamField>
 
 <ParamField
@@ -1179,6 +1212,6 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 
 ## Environment variable overrides
 
-If you can't reach the environment variables of your deployment directly, override them from **Environment Variables** in the [Server Console](/documentation/platform/admin-panel/server-admin). A saved value takes up to five minutes to reach every container.
+If you can't reach the environment variables of your deployment directly, override them from **Environment Variables** in the [Server Console](/documentation/platform/admin-panel/server-admin). A saved value takes up to a minute to reach every container.
 
 ![Environment Variables Overrides Page](../../images/self-hosting/configuration/overrides/page.png)

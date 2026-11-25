@@ -3,12 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { Organization } from "@app/hooks/api/organization/types";
 
+import { BREACHED_PASSWORD_ERROR } from "../auth/errors";
 import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   AdminEmailDomain,
   RootKeyEncryptionStrategy,
+  SuperAdminErrorCode,
   TAdminCreateEmailDomainDTO,
   TCreateAdminUserDTO,
   TCreatedEncryptionKeyRotation,
@@ -30,6 +32,9 @@ export const useCreateAdminUser = () => {
     object,
     TCreateAdminUserDTO
   >({
+    meta: {
+      handledErrorCodes: [BREACHED_PASSWORD_ERROR, SuperAdminErrorCode.InvalidSetupToken]
+    },
     mutationFn: async (opt) => {
       const { data } = await apiRequest.post("/api/v1/admin/signup", opt);
       return data;

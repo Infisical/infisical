@@ -1,14 +1,12 @@
-import RE2 from "re2";
-
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
+import { CliCapability, cliSupports, isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -67,10 +65,12 @@ import {
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
+  AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials,
-  generateRdsAuthToken
+  generateRdsAuthToken,
+  toAwsRoleSessionName
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -106,6 +106,7 @@ type TPamSessionServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -129,6 +130,12 @@ type TPamSessionServiceFactoryDep = {
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
 
+// A gateway that predates AWS IAM brokering leaves it out of the account types it advertises
+const gatewayServesAwsIam = (gateway: { capabilities?: unknown }) =>
+  (gateway.capabilities as { supported_account_types?: string[] } | null)?.supported_account_types?.includes(
+    PamAccountType.AwsIam
+  ) === true;
+
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
@@ -137,6 +144,7 @@ export const pamSessionServiceFactory = ({
   membershipRoleDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   gatewayV2Service,
   gatewayV2DAL,
   gatewayPoolService,
@@ -297,9 +305,26 @@ export const pamSessionServiceFactory = ({
         authMethod: credentials.authMethod as string,
         serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
         orgId,
+        instanceConfigService,
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AwsIam) {
+      const stsCredentials = await generateAwsIamSessionCredentials({
+        roleArn: connectionDetails.roleArn as string,
+        externalId: orgId,
+        roleSessionName: toAwsRoleSessionName(session.actorEmail || session.actorName),
+        sessionDuration: Math.max(
+          AWS_STS_MIN_DURATION_SECONDS,
+          Math.min(remainingSeconds, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS)
+        )
+      });
+      credentials.accessKeyId = stsCredentials.accessKeyId;
+      credentials.secretAccessKey = stsCredentials.secretAccessKey;
+      credentials.sessionToken = stsCredentials.sessionToken;
+      credentials.expiresAt = stsCredentials.expiresAt.toISOString();
     }
 
     if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
@@ -477,6 +502,43 @@ export const pamSessionServiceFactory = ({
     };
   };
 
+  // Called by the user or identity that launched the session. A session through a gateway is left to the
+  // gateway, which would otherwise keep serving it while the session list shows it as ended
+  const endOwnSession = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    const ownerId = ctx.actor === ActorType.IDENTITY ? session?.identityId : session?.userId;
+    if (!session || ownerId !== ctx.actorId) {
+      throw new NotFoundError({ message: `Session '${sessionId}' not found` });
+    }
+
+    await verifyProductMembership(permissionService, session.projectId, ctx);
+
+    if (session.gatewayId) {
+      throw new BadRequestError({
+        message: `Session '${sessionId}' runs through a gateway, so it ends when you close it in the CLI`
+      });
+    }
+
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    if (updatedSession) {
+      void reportPamSessionEnded({
+        session: updatedSession,
+        orgId: ctx.actorOrgId,
+        endReason: PamSessionEndReason.Completed,
+        telemetryService,
+        userDAL
+      });
+    }
+
+    return {
+      projectId: session.projectId,
+      accountId: session.accountId,
+      accountName: session.accountName,
+      alreadyEnded: !updatedSession
+    };
+  };
+
   const resolveAccountByPath = (projectId: string, path: string) =>
     resolveAccountByPathFn({ pamFolderDAL, pamAccountDAL }, projectId, path);
 
@@ -589,9 +651,9 @@ export const pamSessionServiceFactory = ({
         accountFolderId: account.folderId,
         projectId
       });
-      if (!grant) {
-        // Distinguish "no request yet" from "request awaiting review" and from "folder has no
-        // approvers", so the CLI can guide the user instead of prompting into a 400
+      // Distinguish "no request yet" from "request awaiting review" and from "folder has no
+      // approvers", so the CLI can guide the user instead of prompting into a 400
+      const getApprovalGateDetails = async () => {
         const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
           pamAccessRequestService.getAccessStatusBatch(
             { actorId: actor.actorId, actor: actor.actor },
@@ -600,16 +662,19 @@ export const pamSessionServiceFactory = ({
           ),
           pamAccessRequestService.getFolderPolicyConfigured(account.folderId ? [account.folderId] : [])
         ]);
+        return {
+          requireReason: policy.requireReason,
+          hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
+          hasApprovalPolicy: Boolean(
+            account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
+          )
+        };
+      };
+      if (!grant) {
         throw new ForbiddenRequestError({
           name: "PAM_APPROVAL_REQUIRED",
           message: "Access request required",
-          details: {
-            requireReason: policy.requireReason,
-            hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
-            hasApprovalPolicy: Boolean(
-              account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
-            )
-          }
+          details: await getApprovalGateDetails()
         });
       }
       // A null expiresAt means a never-expiring grant per the checkGrant contract
@@ -619,7 +684,7 @@ export const pamSessionServiceFactory = ({
           throw new ForbiddenRequestError({
             name: "PAM_GRANT_EXPIRED",
             message: "Your approved access has expired",
-            details: { requireReason: policy.requireReason }
+            details: await getApprovalGateDetails()
           });
         }
         sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
@@ -633,8 +698,26 @@ export const pamSessionServiceFactory = ({
       });
     }
 
-    // AWS IAM: no gateway, no proxy -- generate STS credentials directly
-    if (account.accountType === PamAccountType.AwsIam) {
+    // An AWS IAM account with a gateway brokers CLI sessions through it, where credentials are re-minted
+    // as they expire. The console, and any account without a gateway, gets credentials directly.
+    const awsIamThroughGateway =
+      account.accountType === PamAccountType.AwsIam &&
+      accessMethod === PamAccessMethod.Cli &&
+      Boolean(account.gatewayId ?? account.templateGatewayId ?? account.gatewayPoolId ?? account.templateGatewayPoolId);
+
+    if (
+      awsIamThroughGateway &&
+      isCliUserAgent(actorUserAgent) &&
+      !cliSupports(actorUserAgent, CliCapability.AwsIamGateway)
+    ) {
+      throw new BadRequestError({
+        message:
+          "This AWS IAM account connects through a gateway, which needs a newer Infisical CLI. Update the CLI and try again."
+      });
+    }
+
+    if (account.accountType === PamAccountType.AwsIam && !awsIamThroughGateway) {
+      sessionDurationMs = Math.min(sessionDurationMs, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS * 1000);
       const stsDurationSeconds = Math.floor(sessionDurationMs / 1000);
 
       if (stsDurationSeconds < AWS_STS_MIN_DURATION_SECONDS) {
@@ -649,20 +732,12 @@ export const pamSessionServiceFactory = ({
       // Machine identities have no email; fall back to the identity name for STS attribution.
       const federatedUsername = actorEmail || actorName;
 
-      // STS requires roleSessionName to be 2-64 chars; pad short names with random characters
-      // so the actor's name stays recognizable in CloudTrail (1-char identity name, user with
-      // no email and empty names)
-      let roleSessionName = federatedUsername.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64);
-      if (roleSessionName.length < 2) {
-        roleSessionName = `${roleSessionName}${alphaNumericNanoId(8)}`;
-      }
-
       const stsCredentials = await generateAwsIamSessionCredentials({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
         externalId: actor.actorOrgId,
-        roleSessionName,
+        roleSessionName: toAwsRoleSessionName(federatedUsername),
         sessionDuration: stsDurationSeconds
       });
 
@@ -749,13 +824,29 @@ export const pamSessionServiceFactory = ({
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
-      ...outputMaskingGatewayOptions(account)
+      // Output masking never applies to AWS IAM, so its options would be empty there
+      ...(awsIamThroughGateway
+        ? {
+            filter: gatewayServesAwsIam,
+            unavailableMessage:
+              "No healthy gateway in this account's gateway pool can serve AWS IAM sessions. Update the pool's gateways to the latest version."
+          }
+        : outputMaskingGatewayOptions(account))
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
     }
 
     await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
+
+    if (awsIamThroughGateway) {
+      const gateway = await gatewayV2DAL.findById(effectiveGatewayId);
+      if (!gateway || !gatewayServesAwsIam(gateway)) {
+        throw new BadRequestError({
+          message: `Gateway '${gateway?.name ?? effectiveGatewayId}' must be updated to the latest version before it can serve AWS IAM sessions`
+        });
+      }
+    }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
@@ -832,6 +923,13 @@ export const pamSessionServiceFactory = ({
       metadata.clientId = rawCredentials.clientId as string;
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
+    } else if (account.accountType === PamAccountType.AwsIam) {
+      metadata.roleArn = rawConnectionDetails.roleArn as string;
+      metadata.expiresAt = expiresAt.toISOString();
+      const awsAccountId = extractAwsAccountIdFromArn(metadata.roleArn);
+      if (awsAccountId) {
+        metadata.awsAccountId = awsAccountId;
       }
     } else if (account.accountType === PamAccountType.Snowflake) {
       for (const key of ["account", "warehouse", "database", "schema", "role"]) {
@@ -920,6 +1018,7 @@ export const pamSessionServiceFactory = ({
     getSessionById,
     getSessionCredentials,
     endSessionFromGateway,
+    endOwnSession,
     terminateSession
   };
 };

@@ -145,6 +145,17 @@ describe("requestEmailChangeOTP managed-email gate", () => {
   });
 });
 
+describe("email change to a disposable domain", () => {
+  test("requestEmailChangeOTP refuses it before sending a code", async () => {
+    const { service, tokenService } = buildService({});
+
+    await expect(service.requestEmailChangeOTP({ userId: USER_ID, newEmail: "alice@mailinator.com" })).rejects.toThrow(
+      "Email address 'alice@mailinator.com' is from a disposable email provider. Use a different email address."
+    );
+    expect(tokenService.createTokenForUser).not.toHaveBeenCalled();
+  });
+});
+
 type TMfaOverrides = {
   userRow?: { email?: string | null; isMfaEnabled?: boolean; selectedMfaMethod?: MfaMethod | null };
   orgs?: { id: string; rootOrgId?: string | null; enforceMfa?: boolean; allowedMfaMethods?: MfaMethod[] | null }[];

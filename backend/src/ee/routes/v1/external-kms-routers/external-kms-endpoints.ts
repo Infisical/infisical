@@ -24,7 +24,13 @@ const sanitizedExternalSchema = KmsKeysSchema.extend({
     provider: true
   }).extend({
     configuration: z.union([SanitizedExternalKmsAwsSchema, SanitizedExternalKmsGcpSchema]),
-    credentialsHash: z.string().optional()
+    credentialsHash: z.string().optional(),
+    hasLegacyExternalId: z
+      .boolean()
+      .optional()
+      .describe(
+        "Whether the AWS assume-role external ID was saved before external IDs had to be the organization ID, and is not the organization ID. It keeps working until the credential is changed."
+      )
   })
 });
 

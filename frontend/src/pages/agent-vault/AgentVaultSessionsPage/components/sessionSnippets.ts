@@ -1,6 +1,7 @@
 export enum SnippetLanguage {
   Python = "python",
   TypeScript = "typescript",
+  Go = "go",
   Cli = "cli"
 }
 
@@ -13,8 +14,9 @@ export type SnippetValues = {
 };
 
 export const INSTALL_COMMANDS: Record<SnippetLanguage, string> = {
-  [SnippetLanguage.Python]: "pip install 'infisicalsdk>=1.3.0'",
+  [SnippetLanguage.Python]: "pip install 'infisicalsdk>=1.4.0'",
   [SnippetLanguage.TypeScript]: "npm install @infisical/sdk",
+  [SnippetLanguage.Go]: "go get github.com/infisical/go-sdk",
   [SnippetLanguage.Cli]: "npm install -g @infisical/cli"
 };
 
@@ -61,6 +63,37 @@ try {
   await runAgent(session.token); // Your code that starts the agent
 } finally {
   await client.agentVault().sessions.revoke(session.id);
+}`;
+  }
+
+  if (language === SnippetLanguage.Go) {
+    return `package main
+
+import (
+	"context"
+	"log"
+
+	infisical "github.com/infisical/go-sdk"
+)
+
+func main() {
+	client := infisical.NewInfisicalClient(context.Background(), infisical.Config{SiteUrl: "${siteUrl}"})
+	_, err := client.Auth().UniversalAuthLogin("${clientId}", "${clientSecret}")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+		ProjectID:    "${projectId}",
+		AccessBundle: "${accessBundle}",
+		TTL:          "1h",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.AgentVault().Sessions().Revoke(session.ID)
+
+	runAgent(session.Token) // Your code that starts the agent
 }`;
   }
 

@@ -9,6 +9,7 @@ import {
   TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
@@ -46,10 +47,12 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningAlertEvent } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-events";
 import {
   GitRepositoryScanFindingDetailsSchema,
   SecretScanningFindingLocationSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
+import { TAlertChannelInput } from "@app/services/alert/alert-channel-service-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 
 export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
@@ -124,10 +127,11 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   isScanNewCommitsEnabled?: boolean;
   isDiscoveryEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
+  alerts?: { eventType: SecretScanningAlertEvent; channels: TAlertChannelInput[] }[];
 };
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId">
+  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId" | "alerts">
 > & {
   dataSourceId: string;
   type: SecretScanningDataSource;
@@ -323,6 +327,7 @@ export type TSecretScanningFactoryUpdateWebhook<
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TSecretScanningFactory<
@@ -370,6 +375,7 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   discoverResource: TSecretScanningDiscoverResource;
   queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
+  instanceConfigService: TInstanceConfigService;
 }) => Promise<void>;
 
 // `secretValue` is only used to compute the finding's blind index before it is saved; it is never stored.

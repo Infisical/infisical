@@ -6,6 +6,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, GatewayTransportError } from "@app/lib/errors";
+import { escapeXml } from "@app/lib/xml";
 import {
   getJenkinsErrorMessage,
   jenkinsRequest,
@@ -42,16 +43,6 @@ export const getJenkinsCredentialStorePath = (destinationConfig: TJenkinsSyncWit
   return `${folderPath}/credentials/store/folder/domain/_`;
 };
 
-const escapeXml = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;")
-    // XML parsers normalize a literal carriage return to a newline, so it is sent as a character reference
-    .replaceAll("\r", "&#13;");
-
 // Jenkins replaces the whole credential with this body on update, so every field is always sent
 export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) =>
   [
@@ -59,9 +50,9 @@ export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) 
     // Who can use the credential, not which store holds it: SYSTEM would hide it from builds, and folder
     // stores accept only GLOBAL
     "<scope>GLOBAL</scope>",
-    `<id>${escapeXml(id)}</id>`,
+    `<id>${escapeXml(id, { encodeCarriageReturn: true })}</id>`,
     `<description>${JENKINS_CREDENTIAL_DESCRIPTION}</description>`,
-    `<secret>${escapeXml(secret)}</secret>`,
+    `<secret>${escapeXml(secret, { encodeCarriageReturn: true })}</secret>`,
     "</org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>"
   ].join("");
 

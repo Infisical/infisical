@@ -9,6 +9,7 @@ import {
   TMembershipRolesInsert,
   TUsers
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
@@ -16,15 +17,17 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 
@@ -44,8 +47,6 @@ import { TProjectAccessRequestDALFactory } from "../project/project-access-reque
 import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
-import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
 import { TUserDALFactory } from "../user/user-dal";
@@ -62,6 +63,7 @@ import { newOrgMembershipUserFactory } from "./org/org-membership-user-factory";
 import { newProjectMembershipUserFactory } from "./project/project-membership-user-factory";
 
 type TMembershipUserServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   orgDAL: Pick<
@@ -101,6 +103,7 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit" | "getSeatPlan" | "assertSeatsForInvites">;
@@ -109,6 +112,7 @@ type TMembershipUserServiceFactoryDep = {
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
 
 export const membershipUserServiceFactory = ({
+  instanceConfigService,
   membershipUserDAL,
   roleDAL,
   membershipRoleDAL,
@@ -130,6 +134,7 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
+  keyStore,
   alertChannelRecipientDAL,
   eventEmitter,
   orgInviteQuota
@@ -138,6 +143,7 @@ export const membershipUserServiceFactory = ({
     [AccessScope.Organization]: newOrgMembershipUserFactory({
       permissionService,
       licenseService,
+      instanceConfigService,
       smtpService,
       orgDAL,
       tokenService,
@@ -312,7 +318,7 @@ export const membershipUserServiceFactory = ({
       roles: rolesToUse
     });
 
-    const isEmailInvalid = await isDisposableEmail(data.usernames);
+    const isEmailInvalid = isDisposableEmail(data.usernames);
     if (isEmailInvalid) {
       throw new BadRequestError({
         message: "Disposable emails are not allowed"
@@ -345,9 +351,7 @@ export const membershipUserServiceFactory = ({
     if (!newUserEmails.length && users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
-    const serverCfg = await getServerCfg();
-    const isEmailLoginEnabled =
-      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const isEmailLoginEnabled = (await instanceConfigService.getLoginPolicy()).allows(LoginMethod.EMAIL);
 
     const newExistingUsers = users.filter((user) => !existingUserIds.has(user.id));
     await factory.onCreateMembershipUserGuard(dto, newExistingUsers, newUserEmails);
@@ -476,6 +480,7 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -712,6 +717,9 @@ export const membershipUserServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    if (scopeData.scope === AccessScope.Project) {
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
+    }
     return { membership: membershipDoc };
   };
 

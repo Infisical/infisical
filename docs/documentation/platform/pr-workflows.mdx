@@ -42,6 +42,12 @@ This guide shows you how to create approval policies that require changes to sec
 
     A bypass can only be performed by the person who created the change request. Bypassers cannot bypass requests submitted by others.
 
+    #### Require approval for imported secrets
+
+    By default, a [secret import](/documentation/platform/secret-reference#secret-imports) into a folder the policy covers can read the source folder directly, so a change in the source skips approval.
+
+    Enable the **Require Approval for Imported Secrets** toggle to make every new import from the same project into the covered folders respect the policy, so each change that reaches them goes through a change request. Existing imports that ignore the policy aren't changed. When you save the policy, Infisical lists them so you can recreate them. For the steps and for what still takes effect without approval, see [Require approval for imported secrets](/documentation/platform/secret-reference#require-approval-for-imported-secrets).
+
   </Step>
   <Step title="Submit a change request">
     When a user modifies secrets in an environment that has an active change policy, a change request is automatically created and sent to the assigned approvers.
@@ -60,13 +66,14 @@ This guide shows you how to create approval policies that require changes to sec
     ![Review a change request](../../images/platform/pr-workflows/secret-update-pr.png)
 
     After a change request is merged, the updated secrets are automatically synced to connected applications (for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
-
   </Step>
 </Steps>
 
 ## Review several change requests at once
 
 To review several open change requests in one pass, select them on the **Approvals** page and review them together in one panel. You can select up to 50 requests at a time, across pages.
+
+If every selected request already has the approvals its policy requires, the selection bar also shows **Merge**. Select it to merge the selected requests oldest first without opening the panel. Requests that fail to merge stay selected.
 
 <Steps>
   <Step>
@@ -78,6 +85,9 @@ To review several open change requests in one pass, select them on the **Approva
   <Step>
     In the review panel, select **Approve** or **Reject** for every request. The panel groups requests by environment and folder and shows each request's changes and approval count. If two selected requests change the same secret, both show an **Overlaps on** warning, and the older request merges first.
 
+    Requests you already reviewed open with your earlier decision selected and are labeled **Already approved** or **Already rejected**. Requests that don't need your review and already meet their policy open with **Approve** selected.
+  </Step>
+  <Step>
     To decide in bulk, open **Decide All**. **Approve Remaining** and **Reject Remaining** keep the decisions you already made. **Approve All** and **Reject All** replace every decision.
   </Step>
   <Step>
@@ -86,8 +96,10 @@ To review several open change requests in one pass, select them on the **Approva
   <Step>
     Open **Submit** and select how to submit:
 
-    - **Submit Reviews**: records your approvals and rejections without merging
-    - **Submit & Merge**: records your reviews, then merges each approved request that meets its policy (unavailable if you approved nothing)
+    - **Submit Reviews**: records the decisions you changed without merging (unavailable if you changed nothing)
+    - **Submit & Merge**: records the decisions you changed, then merges each request marked **Approve** that meets its policy (unavailable if no request is marked **Approve**)
+
+    Infisical doesn't send a review again for a decision you didn't change.
   </Step>
 </Steps>
 

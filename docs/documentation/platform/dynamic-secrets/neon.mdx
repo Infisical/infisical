@@ -1,0 +1,171 @@
+---
+title: "Neon dynamic secrets"
+sidebarTitle: "Neon"
+description: "Learn how to create short-lived Neon PostgreSQL roles and database branches on demand."
+---
+
+The Neon dynamic secret gives each lease its own credentials for a [Neon](https://neon.com) PostgreSQL database. Depending on how you configure the dynamic secret, each lease creates one of the following in Neon:
+
+- A PostgreSQL role on an existing branch, to give an application or a team member short-lived credentials for a shared database
+- A new [branch](https://neon.com/docs/introduction/branching) with its own read-write compute, to give a preview environment, a CI run, or a debugging session its own copy of the parent branch's schema and data
+
+Every lease returns a connection string that's ready to use. When a lease is revoked or expires, Infisical deletes its role or branch.
+
+To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- A Neon [API key](https://neon.com/docs/manage/api-keys), which you can create in the Neon Console under **Organization settings** > **API keys** (an organization API key or a project-scoped API key works)
+- The ID of your Neon project (for example, `shiny-wind-028834`), which the Neon Console shows in the project's **Settings**
+- For leases that create roles, the ID of the branch to create the roles on (for example, `br-aged-salad-637688`), which the Neon Console shows on the project's **Branches** page
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **Neon**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="API Key" type="string" required>
+      Your Neon API key. When you edit the dynamic secret, leave this blank to keep the current key.
+    </ParamField>
+
+    <ParamField path="Project ID" type="string" required>
+      The ID of your Neon project.
+    </ParamField>
+
+    <ParamField path="Each Lease Creates" type="string" required default="A PostgreSQL role">
+      The resource that each lease creates in Neon. Select **A PostgreSQL role** for a role on an existing branch, or **A database branch** for a new branch. The fields that follow depend on your choice.
+    </ParamField>
+
+    <Tabs>
+      <Tab title="A PostgreSQL role">
+        <Warning>
+          Neon adds every role that's created through its API to the `neon_superuser` role, so a leased role has the same privileges as the project's owner role. If you need narrower privileges, use the [PostgreSQL dynamic secret](/documentation/platform/dynamic-secrets/postgresql) with your Neon connection details and your own `CREATE ROLE` and `GRANT` statements.
+        </Warning>
+
+        <ParamField path="Branch ID" type="string" required>
+          The ID of the branch to create each lease's role on.
+        </ParamField>
+
+        <ParamField path="Database" type="string" required default="neondb">
+          The database in the connection string that each lease returns.
+        </ParamField>
+
+        <ParamField path="Pooled Connection" type="boolean" default="false">
+          Turn this on to get Neon's [pooled connection string](https://neon.com/docs/connect/connection-pooling) instead of a direct connection string. The host in a pooled connection string includes `-pooler`.
+        </ParamField>
+
+        <ParamField path="Role Name Template" type="string" default="{{randomUsername}}">
+          The name of the role that Infisical creates for each lease. The default gives each role a random lowercase name. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the roles easier to find in Neon.
+        </ParamField>
+      </Tab>
+      <Tab title="A database branch">
+        <Note>
+          Each branch lease creates a branch with a read-write compute. Both count toward the branch and compute limits of your Neon plan.
+        </Note>
+
+        <ParamField path="Parent Branch ID" type="string">
+          The ID of the branch that each new branch is created from. If you leave this empty, Infisical uses the project's default branch.
+        </ParamField>
+
+        <ParamField path="Database" type="string" required default="neondb">
+          The database in the connection string that each lease returns.
+        </ParamField>
+
+        <ParamField path="Role" type="string" required>
+          An existing role on the parent branch, such as `neondb_owner`. Each lease returns the credentials of this role for the new branch.
+        </ParamField>
+
+        <ParamField path="Pooled Connection" type="boolean" default="false">
+          Turn this on to get Neon's [pooled connection string](https://neon.com/docs/connect/connection-pooling) instead of a direct connection string. The host in a pooled connection string includes `-pooler`.
+        </ParamField>
+
+        <ParamField path="Rotate Role Password" type="boolean" default="true">
+          A new branch inherits the roles and passwords of its parent branch. When this is on, Infisical resets the role's password on each new branch, so the password that a lease returns doesn't work on the parent branch.
+        </ParamField>
+
+        <ParamField path="Set Neon Branch Expiration" type="boolean" default="false">
+          When this is on, Infisical also sets an [expiration time](https://neon.com/docs/guides/branch-expiration) in Neon on each new branch, matching the time the lease expires. Neon then deletes the branch even if Infisical can't delete it.
+        </ParamField>
+
+        <ParamField path="Branch Name Template" type="string" default="{{randomUsername}}">
+          The name of the branch that Infisical creates for each lease. The default gives each branch a random lowercase name. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the branches easier to find in Neon.
+        </ParamField>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it checks that:
+
+    - The API key can access the project
+    - The branch exists (Infisical checks the project's default branch if you left **Parent Branch ID** empty)
+    - The database exists on that branch
+    - For branch leases, the role exists
+
+    If a check fails, Infisical shows the error from Neon and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+
+    Infisical waits for Neon to finish creating the role or branch, so the credentials work as soon as Infisical shows them.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `DATABASE_URL`: the full PostgreSQL connection string
+    - `DB_HOST`, `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`: the host, database, role, and password from the connection string
+    - `BRANCH_ID` and `BRANCH_NAME`: the ID and name of the new branch (branch leases only)
+
+    <Warning>
+      Infisical shows these values only once. Copy them before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to delete its role or branch in Neon before the lease expires. When a lease expires, Infisical deletes its role or branch automatically. In both cases, Infisical revokes the lease only after Neon finishes deleting the role or branch. Infisical still revokes the lease if the role or branch was already deleted, for example in the Neon Console or when the branch reached its expiration time in Neon.
+
+While the dynamic secret has active leases, you can't change its **Project ID**, **Each Lease Creates**, or **Branch ID**, because Infisical needs those values to delete the roles and branches of the leases. To change one of these fields, revoke the active leases first.
+
+## Renew a lease
+
+<Steps>
+  <Step>
+    Select the dynamic secret to see its leases, then select **Renew lease** next to a lease.
+  </Step>
+  <Step>
+    Enter the **TTL** to add to the lease, then select **Renew Lease**.
+  </Step>
+</Steps>
+
+For a branch lease, if the branch has an expiration time in Neon, Infisical also moves the expiration time to the new end of the lease.

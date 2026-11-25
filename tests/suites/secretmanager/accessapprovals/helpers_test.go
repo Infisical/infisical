@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -14,6 +15,10 @@ import (
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
+
+// longPolicyPath is the longest path a policy stores: 16 folders of 63 characters,
+// 1024 characters in all.
+var longPolicyPath = strings.Repeat("/"+strings.Repeat("a", 63), 16)
 
 const (
 	guardedPath = "/app"

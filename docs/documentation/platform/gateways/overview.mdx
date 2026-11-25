@@ -54,9 +54,34 @@ Gateways send a heartbeat every 3 minutes, each carrying a TTL that says how lon
 
 A gateway running both modes is probed on each transport separately, so it stays healthy while either one works. Its detail page shows the two transports individually, which is how you tell a relay outage from a direct listen one.
 
+It also shows the Infisical CLI version the gateway last reported. Gateways on releases older than v0.43.131 show as older than v0.43.131, so upgrade them to see the exact version.
+
 Relays send a heartbeat every 30 minutes and are marked unhealthy after an hour without one.
 
-Infisical notifies all organization admins of unhealthy gateways and relays by email and in-app notification.
+Infisical sends organization admins an in-app notification when a gateway or relay in the organization becomes unhealthy.
+
+### Get alerted when a gateway goes offline
+
+Set up a **Gateway Offline** alert to notify your team through email, Slack, a webhook, or PagerDuty when a gateway becomes unhealthy. The alert covers every gateway in your organization, including gateways you add later.
+
+Infisical sends one notification when a gateway misses two check-ins in a row, so a single failed check-in doesn't notify anyone. If the gateway stays offline, Infisical doesn't send another notification until the gateway is back online and then goes offline again. Infisical sends at most one notification per gateway per hour, even if the gateway keeps going offline and coming back. Organization admins get the in-app notification on the same schedule, whether or not an alert is set up.
+
+To create an alert, your [organization role](/documentation/platform/access-controls/role-based-access-controls) needs the **List Gateways** and **Edit Gateways** actions on the **Gateways** policy.
+
+<Steps>
+    <Step>
+        Go to **Networking**, select the **Gateways** tab, and select **Alerts**. If alerts already exist, select **Add Alert** at the bottom of the list.
+    </Step>
+    <Step>
+        Enter a **Name** for the alert and select the **Gateway Offline** event.
+    </Step>
+    <Step>
+        Select **Add channel** and set up at least one [notification channel](/documentation/platform/identities/machine-identities#notification-channels).
+    </Step>
+    <Step>
+        Select **Create Alert**.
+    </Step>
+</Steps>
 
 ## High availability
 

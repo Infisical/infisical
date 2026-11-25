@@ -28,6 +28,7 @@ type TRowTable =
   | TableName.AgentVaultAccessBundle
   | TableName.AgentVaultService
   | TableName.AgentVaultSkill
+  | TableName.AgentVaultHook
   | TableName.AgentVaultProxy
   | TableName.AgentVaultSession
   | TableName.AgentVaultVariable;
@@ -36,6 +37,7 @@ const ROW_NOT_FOUND: Record<TRowTable, (id: string) => string> = {
   [TableName.AgentVaultAccessBundle]: (id) => `Access bundle with ID '${id}' not found`,
   [TableName.AgentVaultService]: (id) => `Service with ID '${id}' not found`,
   [TableName.AgentVaultSkill]: (id) => `Skill with ID '${id}' not found`,
+  [TableName.AgentVaultHook]: (id) => `Hook with ID '${id}' not found`,
   [TableName.AgentVaultProxy]: (id) => `Proxy with ID '${id}' not found`,
   [TableName.AgentVaultSession]: (id) => `Session with ID '${id}' not found`,
   [TableName.AgentVaultVariable]: (id) => `Variable with ID '${id}' not found`
@@ -146,6 +148,7 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
       resolveFromRow(TableName.AgentVaultAccessBundle, ctx, id),
     resolveFromService: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultService, ctx, id),
     resolveFromSkill: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSkill, ctx, id),
+    resolveFromHook: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultHook, ctx, id),
     resolveFromProxy: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultProxy, ctx, id),
     resolveFromSession: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSession, ctx, id),
     resolveFromVariable: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultVariable, ctx, id),

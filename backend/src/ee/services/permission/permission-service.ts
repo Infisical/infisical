@@ -78,6 +78,7 @@ import {
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildFolderScopedPrivilegeRules,
+  buildFolderScopedPrivilegeRulesByGrant,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
@@ -187,8 +188,7 @@ export const buildProjectPermissionRules = (
           default:
             // Membership rows can still hold role slugs whose products were removed
             // (e.g. "ssh-host-bootstrapper"). Contribute no rules instead of failing
-            // the whole permission build, so the actor's other roles keep working;
-            // backend-go skips unknown slugs the same way.
+            // the whole permission build, so the actor's other roles keep working.
             logger.warn(`buildProjectPermissionRules: unknown project role slug, granting no rules [role=${role}]`);
             return [];
         }
@@ -820,12 +820,13 @@ export const permissionServiceFactory = ({
       // immediately instead of waiting for the cached blob to be refetched.
       const folderScopedPrivileges: TProjectFolderScopedPrivilege[] = cached.folderScopedPrivileges
         .filter(isActiveRole)
-        .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+        .map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
           id,
           folderId,
           role,
           environmentSlug,
-          secretPath
+          secretPath,
+          appliesToSubfolders: Boolean(appliesToSubfolders)
         }));
 
       const projectDetailsCtx = {
@@ -1230,13 +1231,16 @@ export const permissionServiceFactory = ({
     const folderAccessByActorId = new Map(
       [...folderScopedPrivilegesByActorId].map(([actorId, privileges]) => [
         actorId,
-        privileges.filter(isActiveRole).map(({ id, folderId, role, environmentSlug, secretPath }) => ({
-          id,
-          folderId,
-          role,
-          environmentSlug,
-          secretPath
-        }))
+        privileges
+          .filter(isActiveRole)
+          .map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
+            id,
+            folderId,
+            role,
+            environmentSlug,
+            secretPath,
+            appliesToSubfolders: Boolean(appliesToSubfolders)
+          }))
       ])
     );
 
@@ -1448,7 +1452,11 @@ export const permissionServiceFactory = ({
       secretFolderDAL
     });
 
-    privileges.filter(isActiveRole).forEach((priv) => {
+    const activePrivileges = privileges.filter(isActiveRole);
+    const rulesByPrivilegeId = new Map(
+      buildFolderScopedPrivilegeRulesByGrant(activePrivileges).map(({ privilege, rules }) => [privilege.id, rules])
+    );
+    activePrivileges.forEach((priv) => {
       sources.push({
         id: priv.id,
         type: "additional_privilege",
@@ -1456,7 +1464,7 @@ export const permissionServiceFactory = ({
         isTemporary: Boolean(priv.isTemporary),
         temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
         temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-        permissions: packRules(buildFolderScopedPrivilegeRules([priv]))
+        permissions: packRules(rulesByPrivilegeId.get(priv.id) ?? [])
       });
     });
 

@@ -9,9 +9,7 @@ import {
   keyPrefixSchema,
   s3BucketNameSchema
 } from "@app/services/object-storage/object-storage-path-fns";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
-import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
@@ -214,8 +212,12 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((el) => el === "true"),
-    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
+    BREACHED_PASSWORD_CHECK_ENABLED: zodStrBool
+      .optional()
+      .describe(
+        "Check new passwords against Have I Been Pwned. When unset, on for Infisical Cloud and Dedicated and off for self-hosted."
+      ),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -296,12 +298,6 @@ const envSchema = z
     ),
     CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
     AUDIT_LOG_STREAMS_ENABLED: zodStrBool.default("true").describe("Enable sending audit logs to external log streams"),
-    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.optional(), // deprecated: use DISABLE_POSTGRES_AUDIT_LOG_STORAGE instead
-    DISABLE_POSTGRES_AUDIT_LOG_STORAGE: z
-      .string()
-      .optional()
-      .transform((val) => (val === undefined ? undefined : val === "true"))
-      .describe("Disable PostgreSQL audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
       .describe("Generate sanitized schema with views after migrations"),
@@ -349,6 +345,7 @@ const envSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
+    INSTANCE_SETUP_TOKEN: zpStr(z.string().min(6).max(32).optional()),
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
@@ -361,6 +358,7 @@ const envSchema = z
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
 
     OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
+    ALLOW_CRON_JOB_TRIGGER: zodStrBool.default("false"),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -447,18 +445,6 @@ const envSchema = z
       z.coerce.date().default(new Date("2026-05-04T00:00:00.000Z"))
     ),
     // Oauth
-    CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
-    CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),
-    CLIENT_ID_GITHUB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_GITLAB_LOGIN_URL: zpStr(
-      z
-        .string()
-        .optional()
-        .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
-    ), // fallback since URL_GITLAB_LOGIN has been renamed
     DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
     // integration client secrets
     // heroku
@@ -652,66 +638,6 @@ const envSchema = z
     // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
     SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
-    // aws
-    INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
-
-    // github oauth
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // github app
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_APP_HOST: zpStr(z.string().optional()),
-
-    // github radar app
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: zpStr(z.string().optional()),
-
-    // gitlab oauth
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // gcp app
-    INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
-
-    // Legacy Single Multi Purpose Azure App Connection
-    INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure App Configuration App Connection
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure Key Vault App Connection
-    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure Client Secrets App Connection
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure DevOps App Connection
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Heroku App Connection
-    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Stripe App Connection
-    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_STRIPE_SECRET_KEY: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
-
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -754,13 +680,6 @@ const envSchema = z
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
 
-    /* Go Sidecar ----------------------------------------------------------------------------- */
-    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
-    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
-    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
-    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
-    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
-
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
@@ -790,8 +709,6 @@ const envSchema = z
     ...data,
     SECRET_SCANNING_STUCK_SCAN_TIMEOUT: getSecretScanningStuckScanTimeout(data),
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
-    DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
-      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
@@ -835,40 +752,16 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    isGithubRadarConfigured:
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) &&
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) &&
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG) &&
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID) &&
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) &&
-      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET),
     isSecondaryInstance: Boolean(data.INFISICAL_PRIMARY_INSTANCE_URL),
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
-    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
-      data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID:
-      data.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID:
-      data.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID:
-      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
-    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
+    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0
   }));
 
+// The values an instance admin can override from the admin console are not here: Instance Config Core parses them
+// from the process env and serves them through instanceConfigService.getOverridableEnv().
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
 let envCfg: TEnvConfig;
 let originalEnvConfig: TEnvConfig;
@@ -877,7 +770,12 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
+// readFipsSetting is InstanceConfigCoreModule.readFipsSetting bound to a connection; leave it undefined to skip
+// initializing cryptography.
+export const initEnvConfig = async (
+  readFipsSetting?: () => Promise<boolean | null>,
+  logger?: CustomLogger
+): Promise<TEnvConfig> => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -892,8 +790,8 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
     originalEnvConfig = config;
   }
 
-  if (superAdminDAL) {
-    const fipsEnabled = await crypto.initialize(superAdminDAL);
+  if (readFipsSetting) {
+    const fipsEnabled = await crypto.initialize(readFipsSetting);
 
     await initializePqcSupport();
 
@@ -961,311 +859,6 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
     replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
   };
-};
-
-// A list of environment variables that can be overwritten
-export const overwriteSchema: {
-  [key: string]: {
-    name: string;
-    fields: { key: keyof TEnvConfig; description?: string }[];
-  };
-} = {
-  auditLogs: {
-    name: "Audit Logs",
-    fields: [
-      {
-        key: "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
-        description: "Disable PostgreSQL audit log storage"
-      },
-      {
-        key: "DISABLE_AUDIT_LOG_STORAGE",
-        description: "Legacy alias for DISABLE_POSTGRES_AUDIT_LOG_STORAGE (deprecated)"
-      }
-    ]
-  },
-  aws: {
-    name: "AWS",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_AWS_ACCESS_KEY_ID",
-        description: "The Access Key ID of your AWS account."
-      },
-      {
-        key: "INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY",
-        description: "The Client Secret of your AWS application."
-      }
-    ]
-  },
-  azureAppConfiguration: {
-    name: "Azure App Connection: App Configuration",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
-        description: "The Application (Client) ID of your Azure application."
-      },
-      {
-        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET",
-        description: "The Client Secret of your Azure application."
-      }
-    ]
-  },
-  azureKeyVault: {
-    name: "Azure App Connection: Key Vault",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
-        description: "The Application (Client) ID of your Azure application."
-      },
-      {
-        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET",
-        description: "The Client Secret of your Azure application."
-      }
-    ]
-  },
-  azureClientSecrets: {
-    name: "Azure App Connection: Client Secrets",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID",
-        description: "The Application (Client) ID of your Azure application."
-      },
-      {
-        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET",
-        description: "The Client Secret of your Azure application."
-      }
-    ]
-  },
-  azureDevOps: {
-    name: "Azure App Connection: DevOps",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",
-        description: "The Application (Client) ID of your Azure application."
-      },
-      {
-        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET",
-        description: "The Client Secret of your Azure application."
-      }
-    ]
-  },
-  gcp: {
-    name: "GCP",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
-        description:
-          'The GCP credentials JSON used as the impersonation source. Accepts either a service account key (type "service_account") or a workload identity federation config (type "external_account"). For external_account, the referenced credential source (file, URL, or metadata endpoint) must be reachable from the instance.'
-      }
-    ]
-  },
-  github_app: {
-    name: "GitHub App",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID",
-        description: "The Client ID of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET",
-        description: "The Client Secret of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_SLUG",
-        description: "The Slug of your GitHub application. This is the one found in the URL."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_ID",
-        description: "The App ID of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
-        description: "The Private Key of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_APP_HOST",
-        description:
-          "The hostname of the GitHub instance used by the shared GitHub App (e.g. github.example.com for GitHub Enterprise Server). Defaults to github.com. Must be set when the shared app is registered on a GHES instance."
-      }
-    ]
-  },
-  github_oauth: {
-    name: "GitHub OAuth",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
-        description: "The Client ID of your GitHub OAuth application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
-        description: "The Client Secret of your GitHub OAuth application."
-      }
-    ]
-  },
-  github_radar_app: {
-    name: "GitHub Radar App",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID",
-        description: "The Client ID of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET",
-        description: "The Client Secret of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG",
-        description: "The Slug of your GitHub application. This is the one found in the URL."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_ID",
-        description: "The App ID of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY",
-        description: "The Private Key of your GitHub application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET",
-        description: "The Webhook Secret of your GitHub application."
-      }
-    ]
-  },
-  github_sso: {
-    name: "GitHub SSO",
-    fields: [
-      {
-        key: "CLIENT_ID_GITHUB_LOGIN",
-        description: "The Client ID of your GitHub OAuth application."
-      },
-      {
-        key: "CLIENT_SECRET_GITHUB_LOGIN",
-        description: "The Client Secret of your GitHub OAuth application."
-      }
-    ]
-  },
-  gitlab_oauth: {
-    name: "GitLab OAuth",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID",
-        description: "The Client ID of your GitLab OAuth application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET",
-        description: "The Client Secret of your GitLab OAuth application."
-      }
-    ]
-  },
-  gitlab_sso: {
-    name: "GitLab SSO",
-    fields: [
-      {
-        key: "CLIENT_ID_GITLAB_LOGIN",
-        description: "The Client ID of your GitLab application."
-      },
-      {
-        key: "CLIENT_SECRET_GITLAB_LOGIN",
-        description: "The Secret of your GitLab application."
-      },
-      {
-        key: "CLIENT_GITLAB_LOGIN_URL",
-        description:
-          "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
-      }
-    ]
-  },
-  google_sso: {
-    name: "Google SSO",
-    fields: [
-      {
-        key: "CLIENT_ID_GOOGLE_LOGIN",
-        description: "The Client ID of your GCP OAuth2 application."
-      },
-      {
-        key: "CLIENT_SECRET_GOOGLE_LOGIN",
-        description: "The Client Secret of your GCP OAuth2 application."
-      }
-    ]
-  },
-  heroku: {
-    name: "Heroku",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID",
-        description: "The Client ID of your Heroku application."
-      },
-      {
-        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
-        description: "The Client Secret of your Heroku application."
-      }
-    ]
-  },
-  stripe: {
-    name: "Stripe",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
-        description: "The Client ID of your Stripe app."
-      },
-      {
-        key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
-        description:
-          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
-      },
-      {
-        key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
-        description:
-          "The secret API key of the Stripe account that owns your Stripe app. Infisical authenticates as this account and names the customer's account with Stripe-Context."
-      }
-    ]
-  },
-  secretSharing: {
-    name: "Secret Sharing",
-    fields: [
-      {
-        key: "DISABLE_PUBLIC_SECRET_SHARING",
-        description:
-          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
-      }
-    ]
-  }
-};
-
-export const overridableKeys = new Set(
-  Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
-);
-
-export const validateOverrides = (config: Record<string, string>) => {
-  const allowedOverrides = Object.fromEntries(
-    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
-  );
-
-  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
-  const parsedResult = envSchema.safeParse(tempEnv);
-
-  if (!parsedResult.success) {
-    const errorDetails = parsedResult.error.issues
-      .map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
-      .join("\n");
-    throw new BadRequestError({ message: errorDetails });
-  }
-};
-
-export const overrideEnvConfig = (config: Record<string, string>) => {
-  const allowedOverrides = Object.fromEntries(
-    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
-  );
-
-  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
-  const parsedResult = envSchema.safeParse(tempEnv);
-
-  if (parsedResult.success) {
-    envCfg = Object.freeze({
-      ...parsedResult.data,
-      ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY,
-      ROOT_ENCRYPTION_KEY: envCfg.ROOT_ENCRYPTION_KEY
-    });
-  }
 };
 
 export const formatSmtpConfig = () => {

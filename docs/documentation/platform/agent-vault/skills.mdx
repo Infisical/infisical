@@ -105,9 +105,9 @@ If you self-host Infisical behind a reverse proxy or load balancer, set its requ
 
 To open a skill, go to **Skills** in your Agent Vault project and select the skill. You can also open it from an access bundle: in the **Skills** section, open the skill's actions menu and select **View Skill**.
 
-If you're a member of the project rather than an admin, open the skill from an access bundle that's granted to you. The **Skills** page is only for admins.
+If you're a member of the project rather than an admin, open the skill from an access bundle that's granted to you. The **Skills** page is only for admins. With the CLI, run [`infisical agent-vault skills get`](/cli/reference#agent-vault-skills-get) to list the skills you can see, or pass a skill's name to see its files.
 
-The skill opens in a side panel that shows the latest version of its files. To get a copy of the files, select **Options** in the panel, then select **Download**. Infisical downloads the files as a zip file, and scripts that are executable in Infisical stay executable.
+The skill opens in a side panel that shows the latest version of its files. To get a copy of the files, select **Options** in the panel, then select **Download**. Infisical downloads the files as a zip file, and scripts that are executable in Infisical stay executable. To download the files to a folder with the CLI instead, run [`infisical agent-vault skills pull`](/cli/reference#agent-vault-skills-pull).
 
 <Frame>
   <img src="/images/platform/agent-vault/skill-view.png" alt="The review-guidelines skill in a side panel, with its files on the left and a preview of SKILL.md on the right" />
@@ -150,6 +150,14 @@ You can't rename or delete `SKILL.md`. The editor doesn't show binary files, suc
 
 <Tabs>
   <Tab title="CLI">
+    If you don't have the skill folder on this host, download it with [`infisical agent-vault skills pull`](/cli/reference#agent-vault-skills-pull):
+
+    ```bash
+    infisical agent-vault skills pull code-review ./skills/code-review --project-id <project-id>
+    ```
+
+    `pull` and `push` skip hidden files, so a skill's hidden files are lost if you pull it and push it again.
+
     Change the files in the skill folder, then push the folder again:
 
     ```bash
@@ -209,17 +217,30 @@ A rollback keeps the skill's current name. If the older version has a different 
 
 To delete a skill and every version of it:
 
-<Steps>
-  <Step>
-    In your Agent Vault project, go to **Skills** and select the skill.
-  </Step>
-  <Step>
-    Select **Options**, then select **Delete Skill**. The dialog lists the access bundles the skill is in.
-  </Step>
-  <Step>
-    Type the skill's name and select **Delete**.
-  </Step>
-</Steps>
+<Tabs>
+  <Tab title="CLI">
+    Run [`infisical agent-vault skills delete`](/cli/reference#agent-vault-skills-delete) with the skill's name and the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id), then type the name when the CLI asks. The command needs `--project-id` on the command line, even if you've set the project in an environment variable:
+
+    ```bash
+    infisical agent-vault skills delete code-review --project-id <project-id>
+    ```
+
+    To delete the skill from a script or an agent, pass `--yes` to skip the question.
+  </Tab>
+  <Tab title="Infisical">
+    <Steps>
+      <Step>
+        In your Agent Vault project, go to **Skills** and select the skill.
+      </Step>
+      <Step>
+        Select **Options**, then select **Delete Skill**. The dialog lists the access bundles the skill is in.
+      </Step>
+      <Step>
+        Type the skill's name and select **Delete**.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
 Infisical removes the skill from every access bundle and every session that has it.
 

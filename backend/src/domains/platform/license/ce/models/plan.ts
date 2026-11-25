@@ -87,6 +87,7 @@ export type TPlanFeatures = {
   pkiAcme: boolean;
   pkiEst: boolean;
   pkiScep: boolean;
+  pkiMicrosoftAutoenrollment: boolean;
   pkiPqc: boolean;
   // On by default so self-hosted OSS keeps it; on cloud the License Server's free-plan default withholds it.
   caCrl: boolean;
@@ -162,6 +163,7 @@ export enum PlanFeature {
   AgentVaultHooks = "agentVaultHooks",
   PkiEst = "pkiEst",
   PkiScep = "pkiScep",
+  PkiMicrosoftAutoenrollment = "pkiMicrosoftAutoenrollment",
   PkiPqc = "pkiPqc",
   PkiOcsp = "pkiOcsp",
   PkiAwsKmsSigning = "pkiAwsKmsSigning",
@@ -254,6 +256,7 @@ export class Plan {
     [PlanFeature.AgentVaultHooks]: "Agent Vault Hooks",
     [PlanFeature.PkiEst]: "EST Enrollment",
     [PlanFeature.PkiScep]: "SCEP Enrollment",
+    [PlanFeature.PkiMicrosoftAutoenrollment]: "Microsoft Autoenrollment",
     [PlanFeature.PkiPqc]: "Post-quantum Certificates",
     [PlanFeature.PkiOcsp]: "OCSP",
     [PlanFeature.PkiAwsKmsSigning]: "AWS KMS Certificate Signing",

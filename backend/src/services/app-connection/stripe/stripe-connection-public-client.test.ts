@@ -1,15 +1,9 @@
 import { AxiosError } from "axios";
 import RE2 from "re2";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
-}));
-
-// eslint-disable-next-line import/first
 import { InternalServerError } from "@app/lib/errors";
 
-// eslint-disable-next-line import/first
 import {
   getStripeAppRequestConfig,
   getStripeErrorMessage,
@@ -34,7 +28,7 @@ const axiosErrorWith = (status: number, data: unknown) =>
 
 describe("stripe public client", () => {
   it("authenticates as the app and names the account", () => {
-    const config = getStripeAppRequestConfig("acct_123");
+    const config = getStripeAppRequestConfig("acct_123", "sk_test_app");
 
     expect(config.headers).toEqual({
       Authorization: "Bearer sk_test_app",
@@ -50,7 +44,7 @@ describe("stripe public client", () => {
   });
 
   it("adds an idempotency key without dropping existing headers", () => {
-    const config = withIdempotencyKey(getStripeAppRequestConfig("acct_123"));
+    const config = withIdempotencyKey(getStripeAppRequestConfig("acct_123", "sk_test_app"));
     const idempotencyKey = config.headers?.["Idempotency-Key"] as string;
 
     expect(config.headers?.["Stripe-Context"]).toBe("acct_123");

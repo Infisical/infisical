@@ -4,11 +4,6 @@ import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import {
-  CustomRolesUpgradeIntent,
-  FolderAccessControlsUpgradeIntent,
-  UpgradeGate
-} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -25,12 +20,11 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useOrganization, useProject, useSubscription } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useCreateProjectRole } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
-import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
@@ -53,15 +47,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
   const { mutateAsync: createProjectRole } = useCreateProjectRole();
-  const {
-    popUp: upgradePlanPopUp,
-    handlePopUpOpen: handleUpgradePlanPopUpOpen,
-    handlePopUpToggle: handleUpgradePlanPopUpToggle
-  } = usePopUp(["upgradePlan", "folderAccessUpgrade"] as const);
-  const canOfferFolderAccess =
-    currentProject?.type === ProjectType.SecretManager && !subscription?.secretsFolderRbac;
 
   const {
     control,
@@ -81,11 +67,6 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     if (!currentProject?.id) return;
-
-    if (subscription && !subscription.rbac) {
-      handleUpgradePlanPopUpOpen("upgradePlan");
-      return;
-    }
 
     const newRole = await createProjectRole({
       projectId: currentProject.id,
@@ -112,134 +93,106 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <>
-      <Sheet
-        open={popUp.role.isOpen}
-        onOpenChange={(open) => {
-          handlePopUpToggle("role", open);
-          if (!open) reset();
-        }}
-      >
-        <SheetContent>
-          <form
-            onSubmit={handleSubmit(onFormSubmit)}
-            autoComplete="off"
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <SheetHeader>
-              <SheetTitle>Create Role</SheetTitle>
-              <SheetDescription>
-                Create a custom project role. You can configure its permissions after creation.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
-              <FieldGroup>
-                <Controller
-                  control={control}
-                  name="name"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-name">Name</FieldLabel>
-                      <Input
-                        {...field}
-                        id="create-project-role-name"
-                        placeholder="Billing Team"
-                        autoComplete="off"
-                        data-1p-ignore
-                        isError={Boolean(error)}
-                        onChange={(e) => {
-                          onChange(e);
-                          if (getFieldState("slug").isDirty) return;
-                          setValue("slug", slugify(e.target.value, { lowercase: true }), {
-                            shouldValidate: true
-                          });
-                        }}
-                        name="create-project-role-name"
-                      />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="slug"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-slug">Slug</FieldLabel>
-                      <Input
-                        {...field}
-                        id="create-project-role-slug"
-                        placeholder="billing"
-                        autoComplete="off"
-                        data-1p-ignore
-                        isError={Boolean(error)}
-                      />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="description"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-description">Description</FieldLabel>
-                      <Input
-                        {...field}
-                        id="create-project-role-description"
-                        placeholder="Manage billing settings"
-                        autoComplete="off"
-                        data-1p-ignore
-                        isError={Boolean(error)}
-                      />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-            </div>
-            <SheetFooter className="justify-end border-t">
-              <SheetClose asChild>
-                <Button variant="ghost" isDisabled={isSubmitting}>
-                  Cancel
-                </Button>
-              </SheetClose>
-              <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
-                Create Role
+    <Sheet
+      open={popUp.role.isOpen}
+      onOpenChange={(open) => {
+        handlePopUpToggle("role", open);
+        if (!open) reset();
+      }}
+    >
+      <SheetContent>
+        <form
+          onSubmit={(e) => {
+            e.stopPropagation();
+            return handleSubmit(onFormSubmit)(e);
+          }}
+          autoComplete="off"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <SheetHeader>
+            <SheetTitle>Create Role</SheetTitle>
+            <SheetDescription>
+              Create a custom project role. You can configure its permissions after creation.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+            <FieldGroup>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="create-project-role-name">Name</FieldLabel>
+                    <Input
+                      {...field}
+                      id="create-project-role-name"
+                      placeholder="Billing Team"
+                      autoComplete="off"
+                      data-1p-ignore
+                      isError={Boolean(error)}
+                      onChange={(e) => {
+                        onChange(e);
+                        if (getFieldState("slug").isDirty) return;
+                        setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                          shouldValidate: true
+                        });
+                      }}
+                      name="create-project-role-name"
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="slug"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="create-project-role-slug">Slug</FieldLabel>
+                    <Input
+                      {...field}
+                      id="create-project-role-slug"
+                      placeholder="billing"
+                      autoComplete="off"
+                      data-1p-ignore
+                      isError={Boolean(error)}
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="description"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="create-project-role-description">Description</FieldLabel>
+                    <Input
+                      {...field}
+                      id="create-project-role-description"
+                      placeholder="Manage billing settings"
+                      autoComplete="off"
+                      data-1p-ignore
+                      isError={Boolean(error)}
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </div>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost" isDisabled={isSubmitting}>
+                Cancel
               </Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
-      <UpgradeGate
-        paywallKey="project.role"
-        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
-        onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        intent={{
-          ...CustomRolesUpgradeIntent,
-          isEnterpriseFeature: false
-        }}
-        alternative={
-          canOfferFolderAccess
-            ? {
-                title: "Only Need Folder-Level Access?",
-                description:
-                  "Folder access controls grant users and machine identities access to specific environments and folders without a custom role. They're included with Secrets Management Pro.",
-                actionLabel: "View Pro Plan",
-                onSelect: () => {
-                  handleUpgradePlanPopUpToggle("upgradePlan", false);
-                  handleUpgradePlanPopUpOpen("folderAccessUpgrade");
-                }
-              }
-            : undefined
-        }
-      />
-      <UpgradeGate
-        paywallKey="project.role.folder-access"
-        isOpen={upgradePlanPopUp.folderAccessUpgrade.isOpen}
-        onOpenChange={(open) => handleUpgradePlanPopUpToggle("folderAccessUpgrade", open)}
-        intent={FolderAccessControlsUpgradeIntent}
-      />
-    </>
+            </SheetClose>
+            <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
+              Create Role
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -48,11 +48,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
@@ -80,7 +82,9 @@ import {
   serializeAutoApprovalDraft,
   TAutoApprovalDraft,
   toAutoApprovalConfig,
-  toAutoApprovalDraft
+  toAutoApprovalDraft,
+  toRequesterCheckValue,
+  TRequesterCheckOptions
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { usePamProductUsers } from "../../components/usePamProductUsers";
@@ -129,6 +133,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
+  const { data: productGroups } = useListWorkspaceGroups(currentProject.id, currentProject.type);
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -302,6 +307,26 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     return [...groups, ...users];
   }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
 
+  // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
+  // members: a requester can reach the folder through a group the rule doesn't name
+  const requesterOptions = useMemo<TRequesterCheckOptions>(
+    () => [
+      ...(productGroups ?? []).map(({ group }) => ({
+        value: toRequesterCheckValue(ApproverType.Group, group.id),
+        label: group.name,
+        subtitle: "Group",
+        kind: ApproverType.Group
+      })),
+      ...productUsers.map((u) => ({
+        value: toRequesterCheckValue(ApproverType.User, u.id),
+        label: u.name,
+        subtitle: u.email,
+        kind: ApproverType.User
+      }))
+    ],
+    [productUsers, productGroups]
+  );
+
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
     setApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
@@ -385,6 +410,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onChange={setAutoApprovalDraft}
         showErrors={showAutoApprovalErrors}
         hasApprovers={approvers.length > 0}
+        requesterOptions={requesterOptions}
       />
 
       <Card>
