@@ -54,7 +54,7 @@ describe("detectInstanceAwsAccountId", () => {
     const { detectInstanceAwsAccountId } = await freshModule();
     send.mockResolvedValue({ Account: "123456789012" });
 
-    await expect(detectInstanceAwsAccountId(KEYS)).resolves.toBe("123456789012");
+    await expect(detectInstanceAwsAccountId(KEYS)).resolves.toEqual({ status: "found", accountId: "123456789012" });
     expect(clientConfigs[0].credentials).toEqual(KEYS);
   });
 
@@ -62,22 +62,25 @@ describe("detectInstanceAwsAccountId", () => {
     const { detectInstanceAwsAccountId } = await freshModule();
     send.mockResolvedValue({ Account: "210987654321" });
 
-    await expect(detectInstanceAwsAccountId(undefined)).resolves.toBe("210987654321");
+    await expect(detectInstanceAwsAccountId(undefined)).resolves.toEqual({
+      status: "found",
+      accountId: "210987654321"
+    });
     expect(clientConfigs[0].credentials).toBeUndefined();
   });
 
-  test("reports no account when the credential chain finds nothing, as off AWS", async () => {
+  test("reports no credentials when the credential chain finds nothing, as off AWS", async () => {
     const { detectInstanceAwsAccountId } = await freshModule();
     send.mockRejectedValue(noCredentials());
 
-    await expect(detectInstanceAwsAccountId(undefined)).resolves.toBeUndefined();
+    await expect(detectInstanceAwsAccountId(undefined)).resolves.toEqual({ status: "no-credentials" });
   });
 
-  test("reports no account instead of throwing when STS fails", async () => {
+  test("reports a failed lookup, not missing credentials, when STS rejects the request", async () => {
     const { detectInstanceAwsAccountId } = await freshModule();
-    send.mockRejectedValue(Object.assign(new Error("Access denied"), { name: "AccessDenied" }));
+    send.mockRejectedValue(Object.assign(new Error("The security token is invalid"), { name: "InvalidClientTokenId" }));
 
-    await expect(detectInstanceAwsAccountId(KEYS)).resolves.toBeUndefined();
+    await expect(detectInstanceAwsAccountId(KEYS)).resolves.toEqual({ status: "failed" });
   });
 
   test("gives up after the timeout, cancels the STS request and logs only the timeout", async () => {
@@ -91,7 +94,7 @@ describe("detectInstanceAwsAccountId", () => {
         })
     );
 
-    await expect(detectInstanceAwsAccountId(KEYS, 20)).resolves.toBeUndefined();
+    await expect(detectInstanceAwsAccountId(KEYS, 20)).resolves.toEqual({ status: "failed" });
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -102,20 +105,26 @@ describe("detectInstanceAwsAccountId", () => {
   });
 });
 
-describe("getStsRegion", () => {
+describe("getStsClientConfig", () => {
   test.each([
-    ["eu-west-1", true, "us-east-1"],
-    ["ap-southeast-1", true, "us-east-1"],
-    ["us-west-2", true, "us-west-2"],
-    ["ca-central-1", true, "ca-central-1"],
-    ["us-gov-west-1", true, "us-gov-west-1"],
-    ["eu-west-1", false, "eu-west-1"]
-  ])("region %s with FIPS mode %s calls STS in %s", async (region, isFipsMode, expected) => {
-    const { getStsRegion } = await freshModule();
-    vi.stubEnv("AWS_REGION", region);
+    ["eu-west-1", true, "us-east-1", true],
+    ["ap-southeast-1", true, "us-east-1", true],
+    ["us-west-2", true, "us-west-2", true],
+    ["ca-central-1", true, "ca-central-1", true],
+    ["us-gov-west-1", true, "us-gov-west-1", true],
+    ["cn-north-1", true, "cn-north-1", false],
+    ["cn-northwest-1", true, "cn-northwest-1", false],
+    ["eu-west-1", false, "eu-west-1", false],
+    ["cn-north-1", false, "cn-north-1", false]
+  ])(
+    "region %s with FIPS mode %s calls STS in %s, FIPS endpoint %s",
+    async (region, isFipsMode, expectedRegion, fipsEndpoint) => {
+      const { getStsClientConfig } = await freshModule();
+      vi.stubEnv("AWS_REGION", region);
 
-    expect(getStsRegion(isFipsMode)).toBe(expected);
-  });
+      expect(getStsClientConfig(isFipsMode)).toEqual({ region: expectedRegion, useFipsEndpoint: fipsEndpoint });
+    }
+  );
 
   test("passes the FIPS fallback region and the FIPS endpoint flag to STS", async () => {
     const { detectInstanceAwsAccountId } = await freshModule();
@@ -161,6 +170,17 @@ describe("getInstanceAwsAccountId", () => {
 
     vi.advanceTimersByTime(AWS_ACCOUNT_RECHECK_MS + 1);
     await expect(getInstanceAwsAccountId(undefined)).resolves.toBe("210987654321");
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  test("fails instead of reporting no account when the lookup fails, and tries again on the next request", async () => {
+    const { getInstanceAwsAccountId } = await freshModule();
+    send
+      .mockRejectedValueOnce(Object.assign(new Error("connect ETIMEDOUT"), { name: "TimeoutError" }))
+      .mockResolvedValueOnce({ Account: "123456789012" });
+
+    await expect(getInstanceAwsAccountId(KEYS)).rejects.toThrow("couldn't read its AWS account ID from AWS STS");
+    await expect(getInstanceAwsAccountId(KEYS)).resolves.toBe("123456789012");
     expect(send).toHaveBeenCalledTimes(2);
   });
 
