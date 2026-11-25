@@ -37,6 +37,7 @@ import { getApplicationCertificateAccess } from "@app/pages/cert-manager/Certifi
 
 import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { CertificateSyncsDialog } from "../CertificateDetailsByIDPage/certificate-syncs";
@@ -456,7 +457,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
     direction: "asc"
   });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiCertificateInventoryTable", 25);
   const [importing, setImporting] = useState(false);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [activeViewId, setActiveViewId] = useState<string | null>(search.viewId ?? null);
@@ -609,7 +610,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               : sourceLine(total, authorities.length)
           }
           pagination={
-            totalCount > pageSize && (
+            showPagination(totalCount) && (
               <Pagination
                 label="Certificate pages"
                 variant="compact"

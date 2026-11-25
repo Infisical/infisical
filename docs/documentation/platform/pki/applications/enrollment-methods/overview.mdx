@@ -29,6 +29,11 @@ Enrollment methods define how certificates are requested from your Application. 
     
     Legacy protocol supported by Jamf, Intune, and network equipment.
   </Card>
+  <Card title="Microsoft Autoenrollment" icon="windows" iconType="brands" href="/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment">
+    **Best for:** Domain-joined Windows computers
+
+    Windows computers enroll and renew through Group Policy, with nothing installed on them.
+  </Card>
 </CardGroup>
 
 ## Comparison
@@ -39,6 +44,7 @@ Enrollment methods define how certificates are requested from your Application. 
 | **ACME** | RFC 8555 | Client-driven | HTTP-01 | Web servers, Kubernetes |
 | **EST** | RFC 7030 | Re-enrollment | Certificate-based | Enterprise devices |
 | **SCEP** | Draft RFC | Re-enrollment | Challenge password | MDM, network devices |
+| **Microsoft Autoenrollment** | MS-XCEP, MS-WSTEP | Windows autoenrollment | Kerberos and Active Directory | Domain-joined Windows computers |
 
 ## How enrollment works
 
@@ -47,7 +53,7 @@ Enrollment methods define how certificates are requested from your Application. 
     A Product Admin attaches a [Certificate Profile](/documentation/platform/pki/settings/profiles) to the Application. The profile defines certificate parameters (CA, validity, constraints).
   </Step>
   <Step title="Configure enrollment methods on the profile">
-    In your Application's **Settings** tab, select **Configure** on an attached profile and add enrollment methods (API, ACME, EST, or SCEP).
+    In your Application's **Settings** tab, select **Configure** on an attached profile and add enrollment methods (API, ACME, EST, SCEP, or Microsoft Autoenrollment).
   </Step>
   <Step title="Point your client to the endpoint">
     Configure your service, device, or tooling to use the enrollment endpoint provided by Infisical.

@@ -16,6 +16,7 @@ import type { TUnusedAccessActor } from "@app/hooks/api/secretInsights/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { errorMessage } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { UnusedAccessSheet } from "./unused-access-sheet";
 import {
@@ -40,7 +41,7 @@ export const UnusedAccessCard = ({
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = usePageSize("insightsUnusedAccessTable", 10);
   const [selected, setSelected] = useState<TUnusedAccessActor | null>(null);
   const { data, isPending, error } = useV4Adapter("secretInsights").useUnusedAccess({
     projectId,

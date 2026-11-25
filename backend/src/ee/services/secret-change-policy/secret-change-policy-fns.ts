@@ -43,7 +43,13 @@ type TSecretChangePolicyFnsFactoryDep = {
 
 type TUpdatePolicyInput = Pick<
   TUpdateSapDTO,
-  "name" | "approvals" | "secretPath" | "enforcementLevel" | "allowedSelfApprovals" | "bypassForMachineIdentities"
+  | "name"
+  | "approvals"
+  | "secretPath"
+  | "enforcementLevel"
+  | "allowedSelfApprovals"
+  | "enforceOnSecretImports"
+  | "bypassForMachineIdentities"
 > & {
   policy: Pick<TApprovalPolicies, "id">;
   requestedEnvs?: TSecretChangePolicyEnvironment[];
@@ -54,15 +60,26 @@ type TUpdatePolicyInput = Pick<
   groupBypassers: string[];
 };
 
+type TSecretChangePolicyConstraints = { allowedSelfApprovals?: boolean; enforceOnSecretImports?: boolean };
+
 const SecretChangePolicyConstraintsSchema = z
-  .object({
-    constraints: z.object({ allowedSelfApprovals: z.boolean().optional() }).passthrough().optional()
-  })
+  .object({ constraints: z.record(z.string(), z.unknown()).optional() })
   .passthrough();
 
-export const readSecretChangePolicyConstraints = (constraints: unknown): { allowedSelfApprovals?: boolean } => {
+const readStoredConstraints = (constraints: unknown) => {
   const parsed = SecretChangePolicyConstraintsSchema.safeParse(constraints);
   return parsed.success ? (parsed.data.constraints ?? {}) : {};
+};
+
+// Each field is read on its own, so one malformed key cannot silently reset the others to their defaults.
+export const readSecretChangePolicyConstraints = (constraints: unknown): TSecretChangePolicyConstraints => {
+  const raw = readStoredConstraints(constraints);
+  const result: TSecretChangePolicyConstraints = {};
+  if (typeof raw.allowedSelfApprovals === "boolean") result.allowedSelfApprovals = raw.allowedSelfApprovals;
+  if (typeof raw.enforceOnSecretImports === "boolean") {
+    result.enforceOnSecretImports = raw.enforceOnSecretImports;
+  }
+  return result;
 };
 
 // The global approval system stores what the legacy policy row carried inline: the path per environment row,
@@ -70,6 +87,7 @@ export const readSecretChangePolicyConstraints = (constraints: unknown): { allow
 export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChangePolicy => {
   const [firstStep] = row.steps;
   const [environment] = row.environments;
+  const constraints = readSecretChangePolicyConstraints(row.constraints);
   return {
     id: row.id,
     name: row.name,
@@ -81,7 +99,8 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
     deletedAt: null,
     secretPath: row.secretPath,
     approvals: firstStep?.requiredApprovals ?? 1,
-    allowedSelfApprovals: readSecretChangePolicyConstraints(row.constraints).allowedSelfApprovals ?? true,
+    allowedSelfApprovals: constraints.allowedSelfApprovals ?? true,
+    enforceOnSecretImports: constraints.enforceOnSecretImports ?? false,
     envId: environment.id,
     environment,
     environments: row.environments,
@@ -353,6 +372,7 @@ export const secretChangePolicyFnsFactory = ({
     secretPath,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     requestedEnvs,
     approverCount,
@@ -382,11 +402,11 @@ export const secretChangePolicyFnsFactory = ({
       if (name !== undefined) updateDoc.name = name;
       if (enforcementLevel !== undefined) updateDoc.enforcementLevel = enforcementLevel;
       if (bypassForMachineIdentities !== undefined) updateDoc.bypassForMachineIdentities = bypassForMachineIdentities;
-      if (allowedSelfApprovals !== undefined) {
-        updateDoc.constraints = {
-          version: 1,
-          constraints: { ...readSecretChangePolicyConstraints(lockedPolicy.constraints), allowedSelfApprovals }
-        };
+      if (allowedSelfApprovals !== undefined || enforceOnSecretImports !== undefined) {
+        const constraints = readStoredConstraints(lockedPolicy.constraints);
+        if (allowedSelfApprovals !== undefined) constraints.allowedSelfApprovals = allowedSelfApprovals;
+        if (enforceOnSecretImports !== undefined) constraints.enforceOnSecretImports = enforceOnSecretImports;
+        updateDoc.constraints = { version: 1, constraints };
       }
       if (Object.keys(updateDoc).length) await approvalPolicyDAL.updateById(policy.id, updateDoc, tx);
 

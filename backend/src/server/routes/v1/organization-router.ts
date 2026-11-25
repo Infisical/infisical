@@ -537,10 +537,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .refine((methods) => new Set(methods).size === methods.length, "MFA methods must not repeat")
           .optional()
           .describe("Methods members may use to satisfy MFA while it is enforced"),
-        selectedMfaMethod: z
-          .nativeEnum(MfaMethod)
-          .optional()
-          .describe("Deprecated: use allowedMfaMethods. Sets the allowed MFA methods to this one method."),
         ssoMfaTrust: z.nativeEnum(SsoMfaTrust).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
         bypassOrgAuthEnabled: z.boolean().optional(),

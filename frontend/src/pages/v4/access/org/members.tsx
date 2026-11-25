@@ -175,6 +175,7 @@ export const OrgMembersTab = () => {
     [members, roles, roleFilter]
   );
   const list = usePagedList({
+    table: "orgMembersTable",
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>

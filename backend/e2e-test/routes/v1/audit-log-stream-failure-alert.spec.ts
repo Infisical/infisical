@@ -1,5 +1,5 @@
 import { auditLogStreamOutboxTuning } from "e2e-test/fakes/audit-log-stream-outbox-constants";
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
+import { eventOutbox } from "e2e-test/fakes/events-module";
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
 import { TTestSmtpService } from "e2e-test/mocks/smtp";
 import { createAlert } from "e2e-test/testUtils/alerts";

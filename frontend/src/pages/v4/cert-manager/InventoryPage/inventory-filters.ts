@@ -14,7 +14,8 @@ export const enrollmentLabel: Record<EnrollmentType, string> = {
   [EnrollmentType.API]: "API",
   [EnrollmentType.EST]: "EST",
   [EnrollmentType.ACME]: "ACME",
-  [EnrollmentType.SCEP]: "SCEP"
+  [EnrollmentType.SCEP]: "SCEP",
+  [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
 };
 
 export const inventoryFields = (

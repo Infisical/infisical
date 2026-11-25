@@ -20,6 +20,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { CertSubjectAlternativeNameType, formatSANType } from "@app/helpers/certificateConstants";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
@@ -85,11 +86,8 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   const hasExtendedKeyUsages =
     certRequest?.extendedKeyUsages && certRequest.extendedKeyUsages.length > 0;
 
-  const filteredAltNames =
-    certRequest?.altNames?.filter(
-      (san: { type: string; value: string }) => san.value !== certRequest?.commonName
-    ) || [];
-  const hasAltNames = filteredAltNames.length > 0;
+  const altNames = certRequest?.altNames ?? [];
+  const hasAltNames = altNames.length > 0;
 
   // Use certificate request details for subject info and basic constraints (fallback to approval request data)
   const organization = certRequestDetails?.organization || certRequest?.organization;
@@ -261,11 +259,14 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             <div className="mt-4 border-t border-border-control pt-4">
               <p className="mb-3 text-xs text-muted">Subject Alternative Names (SANs)</p>
               <div className="flex flex-wrap gap-2">
-                {filteredAltNames.map((san: { type: string; value: string }) => (
+                {altNames.map((san: { type: string; value: string }) => (
                   <span
                     key={`${san.type}-${san.value}`}
                     className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                   >
+                    <span className="text-muted">
+                      {formatSANType(san.type as CertSubjectAlternativeNameType)}:
+                    </span>{" "}
                     {san.value}
                   </span>
                 ))}

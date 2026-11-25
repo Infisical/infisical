@@ -22,7 +22,9 @@ import {
   CertKeyAlgorithm,
   CertSignatureAlgorithm,
   CertStatus,
-  mapSanTypeToX509Type
+  mapLegacyAltNameType,
+  TAltNameType,
+  toAltNameMappings
 } from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
@@ -259,7 +261,7 @@ export const assertCsrRenewalAttributes = (
     );
     throw new BadRequestError({
       message: isStoredCsr
-        ? `Reusing this key pair renews from the signing request Infisical holds for it, which sets ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
+        ? `Reusing this key pair renews from the signing request Infisical holds for it and the certificate's current names, which set ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
         : `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
@@ -397,6 +399,22 @@ export const resolveRenewalSubject = (
     domainComponents: splitStoredList(source.domainComponents)
   };
 };
+
+const CURRENT_SAN_TYPES = Object.values(CertSubjectAlternativeNameType) as string[];
+
+export const withIssuedRenewalNames = (
+  csrRequest: TCertificateRequest,
+  issued: { commonName: string | null; altNames?: { type: CertSubjectAlternativeNameType; value: string }[] | null }
+): TCertificateRequest => ({
+  ...csrRequest,
+  commonName: csrRequest.commonName || issued.commonName || undefined,
+  subjectAlternativeNames: issued.altNames?.length
+    ? issued.altNames.map(({ type, value }) => ({
+        type: CURRENT_SAN_TYPES.includes(type) ? type : mapLegacyAltNameType(type as unknown as TAltNameType),
+        value
+      }))
+    : csrRequest.subjectAlternativeNames
+});
 
 export const resolveRenewalAltNames = (
   requested: { exists: boolean; altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null },
@@ -688,10 +706,7 @@ export const buildCsrFromExistingKey = async ({
   const algorithm = keyAlgorithmToAlgCfg(keyAlgorithm);
   const { privateKey, publicKey } = await importKeyPairFromPem({ privateKeyPem, keyAlgorithm });
 
-  const altNames = (certificateRequest.subjectAlternativeNames ?? []).map((san) => ({
-    type: mapSanTypeToX509Type(san.type),
-    value: san.value
-  }));
+  const altNames = toAltNameMappings(certificateRequest.subjectAlternativeNames ?? []);
 
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
     name: buildRenewalDistinguishedName(certificateRequest),

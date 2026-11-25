@@ -68,6 +68,7 @@ export const ProjectRolesTab = () => {
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({
+    table: "projectRolesTable",
     rows: roles,
     initialSort: { columnId: "source", direction: "asc" },
     matches: (role, needle) =>

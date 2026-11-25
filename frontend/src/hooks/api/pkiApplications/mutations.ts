@@ -23,6 +23,7 @@ import {
   TSetAcmeEnrollmentDTO,
   TSetApiEnrollmentDTO,
   TSetEstEnrollmentDTO,
+  TSetMicrosoftAutoenrollmentEnrollmentDTO,
   TSetScepEnrollmentDTO,
   TUpdatePkiApplicationDTO,
   TUpdatePkiApplicationMemberRoleDTO
@@ -308,6 +309,50 @@ export const useClearPkiApplicationScepEnrollment = () => {
   return useMutation({
     mutationFn: async ({ applicationId, profileId }: TClearEnrollmentMethodDTO) => {
       const { data } = await apiRequest.delete(`${enrollmentBase(applicationId, profileId)}/scep`);
+      return data;
+    },
+    onSuccess: () => invalidateAll(qc)
+  });
+};
+
+export const useSetPkiApplicationMicrosoftAutoenrollmentEnrollment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      profileId,
+      ...body
+    }: TSetMicrosoftAutoenrollmentEnrollmentDTO) => {
+      const { data } = await apiRequest.put(
+        `${enrollmentBase(applicationId, profileId)}/microsoft-autoenrollment`,
+        body
+      );
+      return data;
+    },
+    onSuccess: () => invalidateAll(qc)
+  });
+};
+
+export const useReenrollPkiApplicationMicrosoftAutoenrollmentComputers = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ applicationId, profileId }: TClearEnrollmentMethodDTO) => {
+      const { data } = await apiRequest.post(
+        `${enrollmentBase(applicationId, profileId)}/microsoft-autoenrollment/reenroll`
+      );
+      return data;
+    },
+    onSuccess: () => invalidateAll(qc)
+  });
+};
+
+export const useClearPkiApplicationMicrosoftAutoenrollmentEnrollment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ applicationId, profileId }: TClearEnrollmentMethodDTO) => {
+      const { data } = await apiRequest.delete(
+        `${enrollmentBase(applicationId, profileId)}/microsoft-autoenrollment`
+      );
       return data;
     },
     onSuccess: () => invalidateAll(qc)

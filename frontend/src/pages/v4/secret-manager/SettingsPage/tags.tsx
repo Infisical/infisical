@@ -198,6 +198,7 @@ export const TagsSettings = () => {
 
   const rows = useMemo(() => tags.data ?? [], [tags.data]);
   const list = usePagedList({
+    table: "secretTagsTable",
     rows,
     initialSort: { columnId: "slug", direction: "asc" },
     matches: (tag, needle) => tag.slug.toLowerCase().includes(needle),

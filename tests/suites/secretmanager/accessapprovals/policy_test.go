@@ -206,6 +206,37 @@ func TestAccessApprovalPolicy_Create(t *testing.T) {
 			res.message(t))
 		require.Empty(t, policyIDs(t, proj))
 	})
+
+	t.Run("should save a policy path of 1024 characters", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newProject(t)
+
+		// Action
+		res := createPolicyAs(t, g.tn.Admin, policyFor(g.proj, longPolicyPath, userApprover(g.approver)))
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.status, "creating returned %s", apierr.Body(res.body))
+		ids := policyIDs(t, g.proj)
+		require.Len(t, ids, 1)
+		require.Equal(t, longPolicyPath, mustGetPolicy(t, g.proj, ids[0]).SecretPath)
+	})
+
+	t.Run("should refuse a policy path over 1024 characters and create no policy", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newProject(t)
+
+		// Action
+		res := createPolicyAs(t, g.tn.Admin, policyFor(g.proj, longPolicyPath+"a", userApprover(g.approver)))
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, res.status, "creating returned %s", apierr.Body(res.body))
+		require.Contains(t, string(res.body), "String must contain at most 1024 character(s)")
+		require.Empty(t, policyIDs(t, g.proj))
+	})
 }
 
 func TestAccessApprovalPolicy_Update(t *testing.T) {
@@ -348,6 +379,41 @@ func TestAccessApprovalPolicy_Update(t *testing.T) {
 		policy := mustGetPolicy(t, g.proj, g.policyID)
 		require.NotNil(t, policy.MaxTimePeriod)
 		require.Equal(t, "1h", *policy.MaxTimePeriod)
+	})
+
+	t.Run("should save a new path of 1024 characters", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t)
+
+		// Action
+		res := updatePolicy(t, g.proj, g.policyID, policyBody{
+			"secretPath": longPolicyPath,
+			"approvers":  subjects([]approver{userApprover(g.approver)}),
+		})
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.status, "updating returned %s", apierr.Body(res.body))
+		require.Equal(t, longPolicyPath, mustGetPolicy(t, g.proj, g.policyID).SecretPath)
+	})
+
+	t.Run("should refuse a new path over 1024 characters and keep the old path", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t)
+
+		// Action
+		res := updatePolicy(t, g.proj, g.policyID, policyBody{
+			"secretPath": longPolicyPath + "a",
+			"approvers":  subjects([]approver{userApprover(g.approver)}),
+		})
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, res.status, "updating returned %s", apierr.Body(res.body))
+		require.Contains(t, string(res.body), "String must contain at most 1024 character(s)")
+		require.Equal(t, guardedPath, mustGetPolicy(t, g.proj, g.policyID).SecretPath)
 	})
 }
 

@@ -22,6 +22,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useOrgId } from "../../access/permissions";
 import { failed } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { orgHref, useGo } from "../../links";
@@ -64,7 +65,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiDiscoveryJobsTable", 25);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TPkiDiscovery>();
   const [deleting, setDeleting] = useState<TPkiDiscovery>();
@@ -268,7 +269,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
           )
         }}
         pagination={
-          total > pageSize ? (
+          showPagination(total) ? (
             <Pagination
               label="Discovery job pages"
               variant="compact"

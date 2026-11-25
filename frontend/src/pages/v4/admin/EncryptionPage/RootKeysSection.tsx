@@ -20,6 +20,7 @@ import {
 
 import { saved } from "../../access/toast";
 import { Muted } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { DeactivateKeyDialog } from "./DeactivateKeyDialog";
 import { GeneratedKeyDialog } from "./GeneratedKeyDialog";
@@ -75,7 +76,7 @@ export const RootKeysSection = () => {
   const createRotation = admin.useCreateEncryptionKeyRotation();
   const deleteStagedKey = admin.useDeleteStagedEncryptionKey();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("adminRootKeysTable", 20);
   const { data: rotationsPage, isPending: rotationsPending } = admin.useEncryptionKeyRotations({
     offset: (page - 1) * pageSize,
     limit: pageSize
@@ -229,7 +230,7 @@ export const RootKeysSection = () => {
           }}
           empty={<EmptyState size="sm" icon="key" title="No root keys yet" />}
           pagination={
-            totalCount > pageSize ? (
+            showPagination(totalCount) ? (
               <Pagination
                 label="Root key pages"
                 variant="compact"

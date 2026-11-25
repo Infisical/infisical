@@ -30,6 +30,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.apiConfigId`,
           `${TableName.PkiApplicationProfile}.acmeConfigId`,
           `${TableName.PkiApplicationProfile}.scepConfigId`,
+          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
           `${TableName.PkiApplicationProfile}.createdAt`,
           `${TableName.PkiApplicationProfile}.updatedAt`
         )
@@ -79,6 +80,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.estConfigId`,
           `${TableName.PkiApplicationProfile}.acmeConfigId`,
           `${TableName.PkiApplicationProfile}.scepConfigId`,
+          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
           `${TableName.PkiApplication}.name as applicationName`
         );
       return rows as Array<{
@@ -88,6 +90,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
         estConfigId?: string | null;
         acmeConfigId?: string | null;
         scepConfigId?: string | null;
+        microsoftAutoenrollmentConfigId?: string | null;
         applicationName: string;
       }>;
     } catch (error) {
@@ -95,8 +98,11 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...orm,
+    primaryNode,
     findAllByProfileId,
     findByApplicationId,
     findOneByApplicationAndProfile,

@@ -163,6 +163,11 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		env[k] = v
 	}
 
+	// The service account the instance impersonates GCP App Connections' accounts with,
+	// for the GCP Certificate Manager sync. Instance-wide, so it also enables GCP dynamic
+	// secrets and PAM GCP for every shared suite. The oauth fake verifies its signature.
+	env["INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"] = oauth.GCPInstanceCredential()
+
 	// The License Server is one more fake, reached the same way as any other third
 	// party: by name, over TLS fakenet terminates. It is what makes entitlements
 	// resolve per organization rather than per instance.

@@ -8,6 +8,11 @@ import {
   TUsers,
   UserDeviceSchema
 } from "@app/db/schemas";
+import {
+  LoginMethod,
+  SignUpRefusal,
+  TInstanceConfigService
+} from "@app/domains/platform/instance-config-core/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
@@ -33,9 +38,8 @@ import {
   recordAuthAttemptMetric,
   recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
-import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -47,7 +51,6 @@ import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
 import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
-import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
@@ -87,6 +90,7 @@ import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "updateById">;
   orgDAL: TOrgDALFactory;
@@ -108,6 +112,7 @@ type TAuthLoginServiceFactoryDep = {
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
 export const authLoginServiceFactory = ({
+  instanceConfigService,
   userDAL,
   userAliasDAL,
   tokenService,
@@ -206,8 +211,7 @@ export const authLoginServiceFactory = ({
     authMethod: AuthMethod;
     organizationId?: string;
     issuingRootOrgId?: string;
-    // The method the login page opens on; an email code is sent up front only for that.
-    initialMfaMethod: MfaMethod;
+    initialMfaMethod: MfaMethod; // The method the login page opens on.
     allowedMfaMethods: MfaMethod[];
     idpMfaOrgId?: string;
   }) => {
@@ -222,7 +226,6 @@ export const authLoginServiceFactory = ({
         issuingRootOrgId,
         email,
         allowedMfaMethods,
-        requiredMfaMethod: initialMfaMethod,
         idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
@@ -450,7 +453,7 @@ export const authLoginServiceFactory = ({
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
@@ -460,11 +463,7 @@ export const authLoginServiceFactory = ({
       throw new BadRequestError({ message: "Salt or verifier not found" });
     }
 
-    if (
-      serverCfg.enabledLoginMethods &&
-      !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
-      !providerAuthToken
-    ) {
+    if (!loginPolicy.allows(LoginMethod.EMAIL) && !providerAuthToken) {
       // bypass server configuration when user is an organization admin - this is to prevent lockout
       const userOrgs = await orgDAL.findAllOrgsByUserId(userEnc.userId);
       if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
@@ -617,8 +616,8 @@ export const authLoginServiceFactory = ({
         throw new BadRequestError({ message: "Invalid credentials" });
       }
 
-      const serverCfg = await getServerCfg();
-      if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL)) {
+      const loginPolicy = await instanceConfigService.getLoginPolicy();
+      if (!loginPolicy.allows(LoginMethod.EMAIL)) {
         const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
         if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
           throw new BadRequestError({ message: "Invalid credentials" });
@@ -868,6 +867,8 @@ export const authLoginServiceFactory = ({
     const aliasType = authMethodToAliasType(authMethod);
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
+    // A disposable address never creates or renames an account, and verifies only an account already on it.
+    const isDisposableAddress = isDisposableEmail(sanitizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
@@ -904,12 +905,13 @@ export const authLoginServiceFactory = ({
           ).length > 0
         : false;
 
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    const { defaultAuthOrgId } = loginPolicy;
 
     const oauthAuthMethod = authMethod as OAuthAuthMethod;
     let canBypassDisabledLoginMethod = false;
 
-    if (user && isOAuthLoginMethodDisabled(oauthAuthMethod, serverCfg.enabledLoginMethods)) {
+    if (user && isOAuthLoginMethodDisabled(oauthAuthMethod, loginPolicy)) {
       // Existing organization admins retain access to prevent account lockout.
       const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
       canBypassDisabledLoginMethod = userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin);
@@ -917,7 +919,7 @@ export const authLoginServiceFactory = ({
 
     assertOAuthLoginMethodEnabled({
       authMethod: oauthAuthMethod,
-      enabledLoginMethods: serverCfg.enabledLoginMethods,
+      loginPolicy,
       canBypass: canBypassDisabledLoginMethod
     });
 
@@ -927,16 +929,22 @@ export const authLoginServiceFactory = ({
     let orgName: undefined | string;
     if (!user) {
       // Create a new user based on oAuth
-      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
-
-      if (serverCfg?.allowedSignUpDomain) {
-        const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain))
-          throw new BadRequestError({
-            message: `Email with a domain (@${domain}) is not supported`,
-            name: "Oauth 2 login"
-          });
+      const signUpRefusal = (await instanceConfigService.getSignUpPolicy()).refusalFor(email);
+      if (signUpRefusal === SignUpRefusal.Closed) {
+        throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
       }
+      if (signUpRefusal === SignUpRefusal.DomainNotAllowed) {
+        throw new BadRequestError({
+          message: `Email with a domain (@${email.split("@")[1]}) is not supported`,
+          name: "Oauth 2 login"
+        });
+      }
+
+      if (isDisposableAddress)
+        throw new BadRequestError({
+          message: `Email address '${sanitizedEmail}' is from a disposable email provider. Sign in with an account that uses a different email address.`,
+          name: "Oauth 2 login"
+        });
 
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
@@ -958,13 +966,13 @@ export const authLoginServiceFactory = ({
           tx
         );
 
-        if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(serverCfg.defaultAuthOrgId), () =>
-            orgDAL.findOrgById(serverCfg.defaultAuthOrgId as string)
+        if (authMethod === AuthMethod.GITHUB && defaultAuthOrgId && !appCfg.isCloud) {
+          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(defaultAuthOrgId), () =>
+            orgDAL.findOrgById(defaultAuthOrgId as string)
           );
           if (!defaultOrg) {
             throw new BadRequestError({
-              message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+              message: `Failed to find default organization with ID ${defaultAuthOrgId}`
             });
           }
           orgId = defaultOrg.id;
@@ -1053,7 +1061,7 @@ export const authLoginServiceFactory = ({
       // letting the stale-alias guard below decline promotion and fall through to the email-
       // verification flow (no session). With existingAlias set, isTrustedForAccount requires the
       // alias to be non-stale AND already verified or provider-verified in this login.
-      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
+      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount && !isDisposableAddress) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
@@ -1116,7 +1124,9 @@ export const authLoginServiceFactory = ({
     // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
     // victim's email under their own externalId, and inheriting the flag on a later login would mint a
     // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
-    const isAliasVerified = isEmailVerifiedByProvider;
+    const isAliasVerified =
+      isEmailVerifiedByProvider &&
+      (!isDisposableAddress || sanitizeEmail(user.email || user.username) === sanitizedEmail);
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
       try {

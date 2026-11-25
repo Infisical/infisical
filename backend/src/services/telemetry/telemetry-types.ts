@@ -877,6 +877,7 @@ export type TSecretApprovalPolicyCreatedEvent = {
     secretPath: string;
     approvals: number;
     enforcementLevel: EnforcementLevel;
+    enforceOnSecretImports?: boolean;
   };
 };
 
@@ -1943,6 +1944,7 @@ export type TFolderAccessGrantEvent = {
     actorType: ActorType.USER | ActorType.IDENTITY;
     permission: SecretFolderRole;
     isTemporary: boolean;
+    isPermissionRecursive: boolean;
   };
 };
 
@@ -2396,6 +2398,7 @@ export type TSecretApprovalPolicyUpdatedEvent = {
   properties: {
     policyId: string;
     projectId?: string;
+    enforceOnSecretImports?: boolean;
   };
 };
 

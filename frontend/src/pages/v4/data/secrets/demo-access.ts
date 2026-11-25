@@ -56,7 +56,8 @@ const toUser = (entry: ReturnType<typeof split>["with"][number]) => {
     firstName,
     lastName: rest.join(" ") || null,
     membership: entry.membership,
-    folderRBACAccess: entry.access
+    folderRBACAccess: entry.access,
+    inheritedFolderRBACAccess: null
   };
 };
 
@@ -64,7 +65,8 @@ const toIdentity = (entry: ReturnType<typeof split>["with"][number]) => ({
   identityId: entry.actor.id,
   name: entry.actor.name,
   membership: entry.membership,
-  folderRBACAccess: entry.access
+  folderRBACAccess: entry.access,
+  inheritedFolderRBACAccess: null
 });
 
 const temporary = (type?: TFolderGrantType) =>
@@ -94,6 +96,7 @@ type GrantDto = {
   secretPath: string;
   permission?: TFolderAccess["permission"];
   type?: TFolderGrantType;
+  isPermissionRecursive?: boolean;
 };
 
 const upsert = (store: DemoStore, actor: string, dto: GrantDto) =>
@@ -117,6 +120,7 @@ const upsert = (store: DemoStore, actor: string, dto: GrantDto) =>
         createdAt: timestamp
       }),
       permission: dto.permission ?? existing?.permission,
+      isPermissionRecursive: dto.isPermissionRecursive ?? existing?.isPermissionRecursive ?? false,
       ...(dto.type || !existing ? temporary(dto.type) : {}),
       updatedAt: timestamp
     } as DemoFolderAccess["grants"][number];

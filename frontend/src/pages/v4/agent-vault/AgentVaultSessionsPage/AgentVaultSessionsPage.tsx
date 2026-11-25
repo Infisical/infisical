@@ -52,6 +52,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../access/permissions";
 import { NoExpiry } from "../../components/no-expiry";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { CreateSessionSheet } from "./create-session-sheet";
@@ -508,9 +509,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       : AgentVaultSessionScope.All;
   });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
 
   const statuses = (filters.find((filter) => filter.field === "status")?.values ??
     []) as AgentVaultSessionStatus[];
@@ -650,7 +649,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

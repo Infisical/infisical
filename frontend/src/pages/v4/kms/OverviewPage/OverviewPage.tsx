@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -8,7 +8,6 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
@@ -20,10 +19,12 @@ import { FileSignatureIcon, LockOpenIcon } from "lucide-react";
 
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectName } from "../../shell/resource-name";
 import { ImportKeysDialog } from "../keys/import-dialog";
@@ -54,11 +55,6 @@ type Operation = "encrypt" | "decrypt" | "sign" | "verify" | "generateMac" | "ve
 type Open =
   | { kind: "create" | "import" }
   | { kind: Operation | "edit" | "export" | "rotate" | "delete"; key: TCmek };
-
-const usageOptions = Object.values(KmsKeyUsage).map((value) => ({
-  value,
-  label: usageLabel[value]
-}));
 
 const operationsByUsage = {
   [KmsKeyUsage.ENCRYPT_DECRYPT]: [
@@ -283,6 +279,14 @@ const OpenDialog = ({
   }
 };
 
+const nameStyle = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
+} as const;
+const iconStyle = { display: "inline-flex", flexShrink: 0 } as const;
+
 const columns: DataTableColumn<TCmek>[] = [
   {
     id: "name",
@@ -290,20 +294,21 @@ const columns: DataTableColumn<TCmek>[] = [
     primary: true,
     sortable: true,
     grow: true,
+    minWidth: 200,
     text: (r) => `${r.name}: ${r.description ?? ""}`,
     render: (r) => (
-      <Inline gap={8} align="center" wrap={false}>
-        {r.name}
+      <Inline gap={8} align="center" wrap={false} style={{ minWidth: 0 }}>
+        <span style={nameStyle}>{r.name}</span>
         {r.description && (
           <Tooltip content={r.description} side="top">
-            <span aria-label={r.description} role="img">
+            <span aria-label={r.description} role="img" style={iconStyle}>
               <Icon name="info" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
         )}
         {!r.isExportable && (
           <Tooltip content="Created as non-exportable" side="top">
-            <span aria-label="Not exportable" role="img">
+            <span aria-label="Not exportable" role="img" style={iconStyle}>
               <Icon name="lock" size="var(--cipher-size-icon-small)" />
             </span>
           </Tooltip>
@@ -349,9 +354,26 @@ const columns: DataTableColumn<TCmek>[] = [
       </Inline>
     )
   },
-  { id: "version", header: "Version", width: 72, render: (r) => `v${r.version}` },
+  { id: "version", header: "Version", width: 88, render: (r) => `v${r.version}` },
   { id: "created", header: "Created", width: 104, render: (r) => r.createdAt.slice(0, 10) }
 ];
+
+const lastPageWithRows = ({
+  page,
+  pageSize,
+  totalCount,
+  isPending,
+  rows
+}: {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  isPending: boolean;
+  rows: number;
+}) => {
+  if (isPending || page === 1 || rows > 0) return page;
+  return Math.max(1, Math.ceil(totalCount / pageSize));
+};
 
 export const OverviewPage = () => {
   const { orgId, projectId } = useKmsProjectId();
@@ -359,10 +381,9 @@ export const OverviewPage = () => {
   const permissions = useKeyPermissions(projectId);
   const projectName = useProjectName(projectId).name;
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
-  const usage = filters.find((filter) => filter.field === "usage")?.values[0] ?? "all";
+  const [debouncedSearch] = useDebounce(search.trim());
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("cmekClientTable", 20);
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState<Open>();
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
@@ -373,17 +394,25 @@ export const OverviewPage = () => {
     projectId,
     offset: (page - 1) * pageSize,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
   const updateKey = kms.useUpdateKey();
   const bulkExport = kms.useBulkExport();
   const keys = data?.keys ?? [];
   const totalCount = data?.totalCount ?? 0;
-  const rows = keys.filter((item) => usage === "all" || item.keyUsage === usage);
   const eligible = (item: TCmek) => !item.isDisabled && item.isExportable;
-  const filtered = Boolean(search) || usage !== "all";
+  const filtered = Boolean(debouncedSearch);
   const createReason = permissions.create ? undefined : RESTRICTED;
+
+  const lastFilledPage = lastPageWithRows({
+    page,
+    pageSize,
+    totalCount,
+    isPending,
+    rows: keys.length
+  });
+  if (lastFilledPage !== page) setPage(lastFilledPage);
 
   if (permissions.isPending) return <Loader size="page" label="Loading keys" />;
   if (!permissions.read) return <AccessRestricted requirement="read KMS keys" />;
@@ -474,27 +503,18 @@ export const OverviewPage = () => {
         />
         <FilterBar
           label="Key filters"
-          fields={[{ key: "usage", label: "Key usage", type: "select", options: usageOptions }]}
-          value={filters}
-          onChange={setFilters}
-          search={
-            <Input
-              icon="search"
-              aria-label="Search keys"
-              placeholder="Search keys by name or ID"
-              slashShortcut
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                changePage(1);
-              }}
-            />
-          }
+          searchLabel="Search keys"
+          searchPlaceholder="Search keys by name or ID"
+          searchValue={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            changePage(1);
+          }}
         />
         <DataTable
           filtered={filtered}
           label={projectName ? `Keys in ${projectName}` : "Keys"}
-          rows={rows}
+          rows={keys}
           columns={columns}
           loading={isPending}
           getRowId={(r) => r.id}
@@ -546,10 +566,10 @@ export const OverviewPage = () => {
                     variant="link"
                     onClick={() => {
                       setSearch("");
-                      setFilters([]);
+                      changePage(1);
                     }}
                   >
-                    Clear filters
+                    Clear search
                   </Button>
                 }
               />

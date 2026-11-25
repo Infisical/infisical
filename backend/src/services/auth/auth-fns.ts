@@ -1,9 +1,9 @@
+import { LoginMethod, LoginPolicy } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { LoginMethod } from "../super-admin/super-admin-types";
 import {
   AuthMethod,
   AuthModeAccountRecoveryTokenPayload,
@@ -30,21 +30,21 @@ const oauthLoginMethods = {
 
 export type OAuthAuthMethod = keyof typeof oauthLoginMethods;
 
-export const isOAuthLoginMethodDisabled = (
-  authMethod: OAuthAuthMethod,
-  enabledLoginMethods?: readonly string[] | null
-) => Boolean(enabledLoginMethods && !enabledLoginMethods.includes(oauthLoginMethods[authMethod].loginMethod));
+type TLoginMethodPolicy = Pick<LoginPolicy, "allows">;
+
+export const isOAuthLoginMethodDisabled = (authMethod: OAuthAuthMethod, loginPolicy: TLoginMethodPolicy) =>
+  !loginPolicy.allows(oauthLoginMethods[authMethod].loginMethod);
 
 export const assertOAuthLoginMethodEnabled = ({
   authMethod,
-  enabledLoginMethods,
+  loginPolicy,
   canBypass = false
 }: {
   authMethod: OAuthAuthMethod;
-  enabledLoginMethods?: readonly string[] | null;
+  loginPolicy: TLoginMethodPolicy;
   canBypass?: boolean;
 }) => {
-  if (!isOAuthLoginMethodDisabled(authMethod, enabledLoginMethods) || canBypass) return;
+  if (!isOAuthLoginMethodDisabled(authMethod, loginPolicy) || canBypass) return;
 
   throw new BadRequestError({
     message: oauthLoginMethods[authMethod].disabledMessage,

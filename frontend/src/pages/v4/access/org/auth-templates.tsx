@@ -46,6 +46,7 @@ import {
   MachineIdentityAuthMethod
 } from "@app/hooks/api/identityAuthTemplates/types";
 
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -415,7 +416,7 @@ export const AuthTemplatesSection = () => {
   const canDelete = can(OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("templatesTable", 20);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const debouncedSearch = useDebounced(search.trim());
   const { data, isPending } = access.useIdentityAuthTemplates({
