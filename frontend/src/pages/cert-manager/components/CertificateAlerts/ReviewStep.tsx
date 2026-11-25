@@ -123,6 +123,11 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
       <Section title="Basic Information">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
           <Detail label="Name">{values.name}</Detail>
+          {values.description && (
+            <Detail label="Description" className="col-span-full whitespace-pre-wrap lg:col-span-3">
+              {values.description}
+            </Detail>
+          )}
           <Detail label="Alert Type">{CERTIFICATE_ALERT_EVENT_LABELS[values.eventType]}</Detail>
           <Detail label="Status">
             <EnabledBadge enabled={values.enabled} />
@@ -133,11 +138,6 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
           {isExpiry && (
             <Detail label="Repeat daily">
               <EnabledBadge enabled={values.dailyReminder} />
-            </Detail>
-          )}
-          {values.description && (
-            <Detail label="Description" className="col-span-full whitespace-pre-wrap">
-              {values.description}
             </Detail>
           )}
         </div>
