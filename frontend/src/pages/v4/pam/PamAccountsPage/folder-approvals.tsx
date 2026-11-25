@@ -19,8 +19,10 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { SheetBody, SheetFooter, useSheetView } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
@@ -154,6 +156,40 @@ const ApproverCard = ({
         empty={empty}
       />
     </Card>
+  );
+};
+
+const EmailApproversCard = ({
+  folderId,
+  approvers,
+  enabled
+}: {
+  folderId: string;
+  approvers: Approver[];
+  enabled: boolean;
+}) => {
+  const setConfig = useV4Adapter("pamAccess").useSetApprovalConfig();
+  const { value, save, status, pending } = useAutosave({
+    value: enabled,
+    errorMessage: "Couldn't update approver emails. Try again.",
+    onSave: (next) =>
+      setConfig.mutateAsync({
+        folderId,
+        steps: [{ approvers }],
+        emailApproversOnRequest: next
+      })
+  });
+  return (
+    <SettingsCard title="Approver emails" saveStatus={status}>
+      <Switch
+        layout="row"
+        label="Email approvers on new requests"
+        description="Approvers always get an in-app notification."
+        checked={value}
+        disabled={pending}
+        onCheckedChange={(checked) => save(checked)}
+      />
+    </SettingsCard>
   );
 };
 
@@ -454,6 +490,7 @@ const ApprovalsEditor = ({
   panel,
   canRevoke,
   initialDraft: savedState,
+  emailApprovers,
   slugById,
   onDirtyChange,
   onOpenAlert
@@ -462,6 +499,7 @@ const ApprovalsEditor = ({
   panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   initialDraft: Draft;
+  emailApprovers: boolean;
   slugById: Record<string, string>;
   onDirtyChange: (dirty: boolean) => void;
   onOpenAlert: (alert?: TAlert) => void;
@@ -590,6 +628,11 @@ const ApprovalsEditor = ({
               change({ approvers: without(latest.current.approvers, approver) })
             }
           />
+          <EmailApproversCard
+            folderId={folderId}
+            approvers={savedState.approvers}
+            enabled={emailApprovers}
+          />
           <ApproverCard
             title="Break-glass users"
             label="break-glass user"
@@ -695,6 +738,7 @@ export const FolderApprovals = ({
       panel={panel}
       canRevoke={canRevoke}
       initialDraft={stored}
+      emailApprovers={config.emailApproversOnRequest ?? true}
       slugById={Object.fromEntries(
         (config.notificationConfigs ?? []).map((entry) => [
           entry.workflowIntegrationId,

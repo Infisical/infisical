@@ -185,6 +185,12 @@ const trialNotice = (productKey: string, cause: string | null): SubscriptionPlan
   cause
 });
 
+const renewalNotice = (cause: string | null): SubscriptionPlanNotice => ({
+  type: "subscription_payment_failed",
+  cause,
+  since: minutesAgo(3 * 24 * 60)
+});
+
 const admin = (
   id: string,
   firstName: string,
@@ -257,10 +263,13 @@ export const shellDemo: ShellAdapter = {
       notices:
         scenario === "stressed"
           ? [
+              renewalNotice("payment_action_required"),
               trialNotice("secrets_management", "payment_action_required"),
               trialNotice("pam", "payment_action_required")
             ]
-          : []
+          : scenario === "optimal"
+            ? [renewalNotice(null)]
+            : []
     });
   },
   useAuditLogStreams: () => ok([]),

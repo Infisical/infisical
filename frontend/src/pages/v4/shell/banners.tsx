@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
+import { useRouterState } from "@tanstack/react-router";
 import DOMPurify from "dompurify";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import rehypeRaw from "rehype-raw";
@@ -17,7 +18,7 @@ import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiv
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import type { SubscriptionPlanNotice } from "@app/hooks/api/subscriptions/types";
+import type { TrialPaymentFailedNotice } from "@app/hooks/api/subscriptions/types";
 import { AnalyticsEvent } from "@app/lib/analytics";
 
 import { failed } from "../access/toast";
@@ -61,7 +62,7 @@ const humanizeKey = (key: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
-const productLabel = (notice: SubscriptionPlanNotice) => {
+const productLabel = (notice: TrialPaymentFailedNotice) => {
   const product = PRODUCT_LABELS[notice.productKey] ?? humanizeKey(notice.productKey);
   return notice.trialPlanKey ? `${product} ${humanizeKey(notice.trialPlanKey)}` : product;
 };
@@ -69,10 +70,10 @@ const productLabel = (notice: SubscriptionPlanNotice) => {
 const productList = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 const shortDate = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
 
-const listProducts = (notices: SubscriptionPlanNotice[]) =>
+const listProducts = (notices: TrialPaymentFailedNotice[]) =>
   productList.format(notices.map(productLabel));
 
-const failureMessage = (notices: SubscriptionPlanNotice[]) => {
+const failureMessage = (notices: TrialPaymentFailedNotice[]) => {
   const products = listProducts(notices);
   const accessEndsAt = shortDate.format(
     Math.min(...notices.map((notice) => new Date(notice.accessEndsAt).getTime()))
@@ -105,46 +106,74 @@ const docsAction = (href: string) => (
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count > 1 ? "s" : ""}`;
 
-const useTrialBanner = (orgId: string): ShellBanner | undefined => {
+const renewalFailureMessage = (isBankApproval: boolean, canResolve: boolean) => {
+  if (isBankApproval)
+    return canResolve
+      ? "Your bank needs to approve the latest subscription payment. Approve it to complete the payment."
+      : "Your bank needs to approve the latest subscription payment.";
+  return canResolve
+    ? "We couldn't collect the latest subscription payment. Update the payment method to resolve it."
+    : "We couldn't collect the latest subscription payment.";
+};
+
+const usePaymentBanner = (orgId: string): ShellBanner | undefined => {
   const shell = useV4Adapter("shell");
   const go = useGo();
   const { organization } = useV4Session();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { data: subscription } = shell.useSubscription(orgId);
   const { data: orgPermission } = useV4Adapter("access").useOrgPermission({ orgId });
+  const allNotices = subscription?.notices ?? [];
   const now = Date.now();
-  const notices = (subscription?.notices ?? []).filter(
-    (notice) =>
+  const notices = allNotices.filter(
+    (notice): notice is TrialPaymentFailedNotice =>
       notice.type === "trial_payment_failed" && new Date(notice.accessEndsAt).getTime() > now
   );
-  if (!notices.length) return undefined;
+  const renewal = allNotices.find((notice) => notice.type === "subscription_payment_failed");
+  if (!notices.length && !renewal) return undefined;
   const processing = notices.filter((notice) => notice.cause === "payment_processing");
   const failedNotices = notices.filter((notice) => notice.cause !== "payment_processing");
   const processingMessage = processing.length
     ? `Your payment for ${listProducts(processing)} is processing. Access continues meanwhile.`
     : "";
-  if (!failedNotices.length)
-    return { id: "trial-payment", tone: "info", message: processingMessage };
   const permission = orgPermission?.permission;
+  const canReadBilling = Boolean(
+    permission?.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing)
+  );
+  const isRoot = !organization.isSubOrganization;
+  if (isRoot && canReadBilling && pathname.endsWith(orgHref(orgId, "/billing")))
+    return processingMessage
+      ? { id: "payment", tone: "info", message: processingMessage }
+      : undefined;
+  if (!renewal && !failedNotices.length)
+    return { id: "payment", tone: "info", message: processingMessage };
   const canResolve =
-    !organization.isSubOrganization &&
-    Boolean(permission?.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing)) &&
+    isRoot &&
+    canReadBilling &&
     Boolean(
       permission?.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing)
     );
+  const isBankApproval = renewal?.cause === "payment_action_required";
+  const askAdmin =
+    isBankApproval && !failedNotices.length
+      ? "Ask an organization admin to approve it."
+      : "Ask an organization admin to update payment.";
+  const canPayTrial = failedNotices.length > 0 && !processing.length;
   return {
-    id: "trial-payment",
+    id: "payment",
     tone: "bad",
     title: "Action needed",
     message: [
-      failureMessage(failedNotices),
+      renewal ? renewalFailureMessage(isBankApproval, canResolve) : "",
+      failedNotices.length ? failureMessage(failedNotices) : "",
       processingMessage,
-      canResolve ? "" : "Ask an organization admin to update payment."
+      canResolve ? "" : askAdmin
     ]
       .filter(Boolean)
       .join(" "),
-    actions: canResolve && !processing.length && (
+    actions: canResolve && (Boolean(renewal) || canPayTrial) && (
       <Button variant="outline" size="sm" onClick={() => go(orgHref(orgId, "/billing"))}>
-        Complete payment
+        {renewal ? "Review billing" : "Complete payment"}
       </Button>
     )
   };
@@ -479,7 +508,7 @@ export const ShellBanners = ({
   home = "",
   certManagerOverview
 }: ShellBannerContext) => {
-  const trial = useTrialBanner(orgId);
+  const payment = usePaymentBanner(orgId);
   const agentVaultFreeUsage = useAgentVaultFreeUsageBanner(
     orgId,
     product === ProjectType.AgentVault && Boolean(projectId)
@@ -487,7 +516,7 @@ export const ShellBanners = ({
   const network = useNetworkBanner(orgId, scope === "org");
   const instance = useInstanceBanners(scope, orgId);
   const stacked = [
-    ...(scope === "org" || scope === "project" ? [trial] : []),
+    ...(scope === "org" || scope === "project" ? [payment] : []),
     agentVaultFreeUsage,
     network,
     ...instance
