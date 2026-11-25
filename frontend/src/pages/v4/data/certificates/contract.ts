@@ -67,7 +67,10 @@ export const certificateFileName = (name: string) =>
   name.replace(/^\*\./, "wildcard.").replace(/[^a-zA-Z0-9._-]+/g, "_") || "certificate";
 
 export type CertificatesAdapter = {
-  useInstanceState: (orgId: string) => V4QueryResult<TCertManagerInstanceState>;
+  useInstanceState: (
+    orgId: string,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<TCertManagerInstanceState>;
   useCertificates: (
     dto: TListCertificatesDTO
   ) => V4QueryResult<{ certificates: TCertificate[]; totalCount: number }>;

@@ -20,6 +20,7 @@ import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
+import { useHasProjectCertificateSyncs } from "../cert-manager/components/certificate";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -30,7 +31,7 @@ import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
 import { useCornerCard } from "./corner";
 import { productCurrentId, shellTrail, type V4ShellLevel } from "./levels";
-import { resolveShellLocation, type ShellLocation } from "./location";
+import { resolveShellLocation, type ShellLocation, withoutNavItem } from "./location";
 import {
   hueOf,
   orgSections,
@@ -183,7 +184,7 @@ export const V4Shell = ({
     session.organization;
   const base = orgHref(orgId);
   const { selectedTab } = location.search as { selectedTab?: string };
-  const at: ShellLocation = nav
+  const located: ShellLocation = nav
     ? {
         level: "org",
         sections: orgSections(session.organization.isSubOrganization)
@@ -193,6 +194,9 @@ export const V4Shell = ({
         selectedTab,
         session.organization.isSubOrganization
       );
+  const hasCertificateSyncs = useHasProjectCertificateSyncs(orgId, located.level === "pki");
+  const at =
+    located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located;
   const go = (href: string) => navigate({ href: resolve(href) });
   const product = at.product ? productOf(at.product) : undefined;
   const hue = hueOf(product);
