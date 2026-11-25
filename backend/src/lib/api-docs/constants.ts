@@ -5868,7 +5868,7 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
 };
 
 const CERT_REQUEST_POLICY_OPERATION_VALUES =
-  "Which certificate requests the policy holds for approval. 'issuance' holds new certificates, and renewals that change the certificate, come with a CSR, or renew an imported or discovered certificate. 'renewal' holds every renewal, including automatic renewals and the EST, SCEP and Microsoft Autoenrollment re-enrollments that renew an existing certificate. When both kinds of policy cover a profile, its renewals go to the 'renewal' policy.";
+  "Which certificate requests the policy holds for approval. 'issuance' holds new certificates, and renewals that change the certificate, come with a CSR, or renew an imported or discovered certificate. 'renewal' holds every renewal, including automatic renewals, EST re-enrollments with a certificate from the same Application and profile, SCEP renewal requests that a device signs with its existing certificate, and Microsoft Autoenrollment renewals. When both kinds of policy cover a profile, its renewals go to the 'renewal' policy. If the 'renewal' policy lets machine identities bypass approval, a machine identity's renewal that the 'issuance' policy would hold goes to the 'issuance' policy instead.";
 
 export const APPROVAL_POLICY_CERT_REQUEST = {
   operation: `${CERT_REQUEST_POLICY_OPERATION_VALUES} Omitted, the policy is an 'issuance' policy.`,
