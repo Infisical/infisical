@@ -1652,6 +1652,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
             canRenewFromCsr: z.boolean().describe(CERTIFICATES.GET.canRenewFromCsr),
+            enrollmentType: z.string().nullable().optional().describe(CERTIFICATES.GET.enrollmentType),
+            isRenewedByClient: z.boolean().describe(CERTIFICATES.GET.isRenewedByClient),
             latestRenewalCertificateId: z
               .string()
               .uuid()

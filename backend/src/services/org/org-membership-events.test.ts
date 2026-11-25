@@ -1,5 +1,5 @@
+import { MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "@app/domains/platform/events/ce/module";
 import { ActorType } from "@app/services/auth/auth-type";
-import { MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
 import {
   emitGroupLinkRemoved,

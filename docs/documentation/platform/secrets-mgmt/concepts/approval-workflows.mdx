@@ -27,6 +27,7 @@ Policies support several configuration options:
 - **Approvers** — The users or groups responsible for reviewing change requests that match the policy.
 - **Required approvals** — The minimum number of approval votes needed before a change request can be merged.
 - **Self-approval** — Whether an approver can approve their own change request. Disabling this ensures that every change is reviewed by a different person.
+- **Imported secrets**: Whether changes that reach the covered folders through [secret imports](/documentation/platform/secret-reference#require-approval-for-imported-secrets) from the same project also need approval
 - **Enforcement level** — Controls how strictly the policy is applied. There are two levels:
 
 | Level | Behavior |

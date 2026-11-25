@@ -13,6 +13,7 @@ export type TSecretApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities: boolean;
+  enforceOnSecretImports: boolean;
 };
 
 export enum ApproverType {
@@ -62,6 +63,20 @@ export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
 
+export type TListSecretApprovalPolicyImportsDTO = {
+  policyId: string;
+  isReplication?: boolean;
+};
+
+export type TSecretApprovalPolicyImport = {
+  id: string;
+  environment: { slug: string; name: string };
+  secretPath: string;
+  sourceEnvironment: { slug: string; name: string };
+  sourceSecretPath: string;
+  isReplication: boolean;
+};
+
 export type TGetSecretApprovalPolicyOfBoardDTO = {
   projectId: string;
   environment: string;
@@ -79,6 +94,7 @@ export type TCreateSecretPolicyDTO = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities?: boolean;
+  enforceOnSecretImports?: boolean;
 };
 
 export type TUpdateSecretPolicyDTO = {
@@ -90,6 +106,7 @@ export type TUpdateSecretPolicyDTO = {
   approvals?: number;
   allowedSelfApprovals?: boolean;
   bypassForMachineIdentities?: boolean;
+  enforceOnSecretImports?: boolean;
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
   projectId: string;

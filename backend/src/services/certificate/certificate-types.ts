@@ -145,7 +145,8 @@ export enum ApprovedRevocationFailureStage {
 }
 
 export enum CertificateRevocationSource {
-  MicrosoftIntune = "microsoft-intune"
+  MicrosoftIntune = "microsoft-intune",
+  SameCertificate = "same-certificate"
 }
 
 export enum PlatformRevocationOutcome {
@@ -245,6 +246,10 @@ export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
 };
+
+export const toAltNameMappings = (
+  entries: { type: CertSubjectAlternativeNameType; value: string }[]
+): TAltNameMapping[] => entries.map(({ type, value }) => ({ type: mapSanTypeToX509Type(type), value }));
 
 export enum ACMESANType {
   DNS = "dns",

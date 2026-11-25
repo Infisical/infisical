@@ -37,6 +37,10 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     }
     ```
 
+    If you set [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token)
+    on the instance, add the token to the request body as `setupToken`. Without it, the
+    request fails with a `403` response.
+
     Example using curl:
 
     ```bash
@@ -85,6 +89,10 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     ```
 
     This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+
+    If you set [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token)
+    on the instance, pass the token with `--setup-token` or the `INFISICAL_INSTANCE_SETUP_TOKEN`
+    environment variable. Without it, the command fails.
     
     ### API response structure
 

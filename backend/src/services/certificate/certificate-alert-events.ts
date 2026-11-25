@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 export const CERT_MANAGER_APPLICATION_RESOURCE_TYPE = "cert-manager.application";

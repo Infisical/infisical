@@ -15,6 +15,8 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -34,6 +36,7 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  enforceOnSecretImports: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
@@ -50,6 +53,7 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
+  enforceOnSecretImports?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
@@ -69,6 +73,20 @@ export type TGetBoardSapDTO = {
   secretPath: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TListSecretChangePolicyImportsDTO = {
+  sapId: string;
+  isReplication?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TSecretChangePolicyImport = {
+  id: string;
+  environment: { slug: string; name: string };
+  secretPath: string;
+  sourceEnvironment: { slug: string; name: string };
+  sourceSecretPath: string;
+  isReplication: boolean;
+};
+
 export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
 
 export type TSecretChangePolicyApprover = { type: ApproverType; id: string; username?: string | null };
@@ -76,6 +94,7 @@ export type TSecretChangePolicyBypasser = { type: BypasserType; id: string; user
 
 export type TSecretChangePolicy = TSecretApprovalPolicies & {
   projectId: string;
+  enforceOnSecretImports: boolean;
   environments: TSecretChangePolicyEnvironment[];
   environment: TSecretChangePolicyEnvironment;
   approvers: TSecretChangePolicyApprover[];
@@ -103,6 +122,7 @@ export type TSecretChangePolicyMethods = {
     tx?: Knex
   ) => Promise<Map<string, TSecretChangePolicy>>;
   getSecretApprovalPolicyOfFolder: (dto: TGetBoardSapDTO) => Promise<TSecretChangePolicy | undefined>;
+  listSecretApprovalPolicyImports: (dto: TListSecretChangePolicyImportsDTO) => Promise<TSecretChangePolicyImport[]>;
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
@@ -122,6 +142,8 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findSameProjectImportsByEnvIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
 };

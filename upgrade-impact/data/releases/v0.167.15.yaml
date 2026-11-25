@@ -1,0 +1,119 @@
+version: v0.167.15
+releasedAt: 2026-11-24T11:42:33-03:00
+sourceTag: v0.167.15
+previousTag: v0.167.14
+impactLevel: medium
+summary: The organization API no longer accepts selectedMfaMethod, so
+  automation must set allowedMfaMethods instead. Startup runs five database
+  migrations. Most are additive; one drops organizations.selectedMfaMethod, and
+  one changes certificate serial uniqueness to allow re-importing deleted
+  certificates and can block rollback if duplicate serials exist.
+requiresDbMigration: true
+breakingChanges:
+  - title: Organization selectedMfaMethod removed
+    description: PATCH /api/v1/organization/:organizationId ignores
+      selectedMfaMethod, and organization responses no longer return it. A
+      request that sets enforceMfa to true with selectedMfaMethod keeps the
+      organization's allowed methods, which default to email only, so it
+      leaves email allowed or, without SMTP, fails with a 400 error. Pods
+      still running v0.167.14 write the dropped column when MFA settings
+      change, so those changes fail until every pod runs v0.167.15.
+    action: Before upgrading, change automation that sets selectedMfaMethod to
+      send allowedMfaMethods (for example ["totp"]) instead. Don't change
+      organization MFA settings until every pod runs v0.167.15.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9787"
+        url: https://github.com/Infisical/infisical/pull/9787
+        description: Remove selectedMfaMethod from organizations
+      - type: file
+        ref: backend/src/server/routes/v1/organization-router.ts
+        path: backend/src/server/routes/v1/organization-router.ts
+        description: PATCH body accepts allowedMfaMethods only
+      - type: file
+        ref: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        path: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        description: Drops selectedMfaMethod column
+dbSchemaChanges:
+  - title: Agent Vault hooks migration
+    description: Adds Agent Vault hooks tables and service hook columns, then
+      migrates existing per-service hooks into saved hook records while keeping
+      legacy service hook fields for rolling compatibility.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261119120000_agent-vault-hooks.ts
+        path: backend/src/db/migrations/20261119120000_agent-vault-hooks.ts
+        description: Creates hooks table and service hook columns
+  - title: Folder access subfolders column
+    description: Adds an appliesToSubfolders column and constraint on additional
+      privileges for recursive folder access.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261104151509_additional-privileges-applies-to-subfolders.ts
+        path: backend/src/db/migrations/20261104151509_additional-privileges-applies-to-subfolders.ts
+        description: Adds appliesToSubfolders column and check constraint
+  - title: Organization MFA column removal
+    description: Drops organizations.selectedMfaMethod from the database.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        path: backend/src/db/migrations/20261120120000_drop-org-selected-mfa-method.ts
+        description: Drops selectedMfaMethod column
+  - title: Universal Auth secret lookup index
+    description: Adds a concurrent index on identity universal auth client secrets
+      for login lookups. The migration runs outside a transaction.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261120130000_add-identity-ua-client-secrets-lookup-index.ts
+        path: backend/src/db/migrations/20261120130000_add-identity-ua-client-secrets-lookup-index.ts
+        description: Creates concurrent lookup index
+  - title: PKI certificate serial index
+    description: Replaces global certificate serial uniqueness with a live-only
+      unique index and adds a serialNumber index. The migration runs outside a
+      transaction.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261120163418_certificate-serial-unique-live-only.ts
+        path: backend/src/db/migrations/20261120163418_certificate-serial-unique-live-only.ts
+        description: Creates live-only unique serial index
+configChanges: []
+deploymentNotes: []
+knownIssues:
+  - title: PKI certificate rollback duplicates
+    description: Rollback can fail after deleted certificates are re-imported,
+      because the old global unique constraint cannot be restored when duplicate
+      serial numbers exist.
+    action: Before rollback, delete extra certificate rows that share a serial number.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261120163418_certificate-serial-unique-live-only.ts
+        path: backend/src/db/migrations/20261120163418_certificate-serial-unique-live-only.ts
+        description: Down migration throws on duplicate serials
+      - type: pr
+        ref: "9819"
+        url: https://github.com/Infisical/infisical/pull/9819
+        description: Allows re-importing deleted certificates
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-24T15:15:56.326Z
+  sourceRange:
+    from: v0.167.14
+    to: v0.167.15

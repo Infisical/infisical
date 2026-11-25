@@ -1,8 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, vi } from "vitest";
 
-import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
-
 import { gcpCertificateManagerPkiSyncFactory } from "./gcp-certificate-manager-pki-sync-fns";
 
 const { clientMock, createClientMock, calls } = vi.hoisted(() => {
@@ -110,11 +108,7 @@ const certificateDAL = {
 } as never;
 
 const buildFns = () =>
-  gcpCertificateManagerPkiSyncFactory({
-    certificateSyncDAL,
-    certificateDAL,
-    instanceConfigService: new FakeInstanceConfigService()
-  });
+  gcpCertificateManagerPkiSyncFactory({ certificateSyncDAL, certificateDAL, gcpAuthDeps: {} as never });
 
 const unboundSync = (syncOptions: Record<string, unknown>) =>
   pkiSync({

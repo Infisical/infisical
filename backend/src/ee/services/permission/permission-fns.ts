@@ -14,7 +14,6 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -690,78 +689,93 @@ const RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE = buildFolderScopedDenyRulesByR
 
 const FOLDER_EDITING_ROLES = new Set([SecretFolderRole.Edit, SecretFolderRole.Manage, SecretFolderRole.FullAccess]);
 
-export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
+export const canonicalFolderPath = (folderPath: string) => {
+  const segments = folderPath.split("/").filter(Boolean);
+  return segments.length ? `/${segments.join("/")}` : "/";
+};
 
-export const buildFolderScopedPrivilegeRules = (
-  privileges: TProjectFolderScopedPrivilege[]
-): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const scopedGrants = privileges.flatMap((privilege) => {
-    // make sure the role is valid
+export const recursiveFolderPathGlob = (folderPath: string) => {
+  const path = canonicalFolderPath(folderPath);
+  return path === "/" ? "/**" : `${path}/**`;
+};
+
+const folderPathDepth = (folderPath: string) => folderPath.split("/").filter(Boolean).length;
+
+export const isFolderPathBelow = (folderPath: string, ancestorPath: string) => {
+  const folder = canonicalFolderPath(folderPath);
+  const ancestor = canonicalFolderPath(ancestorPath);
+  return folder !== ancestor && folder.startsWith(ancestor === "/" ? "/" : `${ancestor}/`);
+};
+
+export const buildFolderScopedPrivilegeRulesByGrant = <T extends TProjectFolderScopedPrivilege>(
+  privileges: T[]
+): { privilege: T; rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] }[] => {
+  const scopedGrants = privileges.map((privilege) => {
     if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
       throw new NotFoundError({
         name: "FolderRoleInvalid",
         message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
       });
     }
-    if (privilege.appliesToSubfolders && privilege.secretPath !== "/") {
-      logger.warn(
-        `buildFolderScopedPrivilegeRules: ignoring a folder access grant that applies to subfolders outside the root folder [grantId=${privilege.id}] [environment=${privilege.environmentSlug}] [secretPath=${privilege.secretPath}]`
-      );
-      return [];
-    }
-    return [
-      {
-        role: privilege.role as SecretFolderRole,
-        isRecursive: privilege.appliesToSubfolders,
-        conditions: {
-          environment: privilege.environmentSlug,
-          secretPath: privilege.appliesToSubfolders
-            ? { $glob: recursiveFolderPathGlob(privilege.secretPath) }
-            : privilege.secretPath
-        }
+    const secretPath = canonicalFolderPath(privilege.secretPath);
+    return {
+      privilege,
+      role: privilege.role as SecretFolderRole,
+      isRecursive: privilege.appliesToSubfolders,
+      environment: privilege.environmentSlug,
+      secretPath,
+      conditions: {
+        environment: privilege.environmentSlug,
+        secretPath: privilege.appliesToSubfolders ? { $glob: recursiveFolderPathGlob(secretPath) } : secretPath
       }
-    ];
+    };
   });
+
+  const recursiveGrants = scopedGrants
+    .filter((grant) => grant.isRecursive)
+    .sort((a, b) => folderPathDepth(a.secretPath) - folderPathDepth(b.secretPath));
+  const exactGrants = scopedGrants.filter((grant) => !grant.isRecursive);
+
+  const recursiveRoleByFolder = new Map(
+    recursiveGrants.map((grant) => [`${grant.environment}:${grant.secretPath}`, grant.role])
+  );
+  const usesRecursiveTables = (grant: (typeof scopedGrants)[number]) => {
+    if (grant.isRecursive) return true;
+    const segments = grant.secretPath.split("/").filter(Boolean);
+    for (let depth = segments.length - 1; depth >= 0; depth -= 1) {
+      const decidingRole = recursiveRoleByFolder.get(`${grant.environment}:/${segments.slice(0, depth).join("/")}`);
+      if (decidingRole) return FOLDER_EDITING_ROLES.has(decidingRole);
+    }
+    return false;
+  };
 
   const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
     rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
 
-  // An exact grant is built from the recursive role table when a recursive grant in its environment already lets the
-  // actor create and edit folders, so a higher exact role on a subfolder never takes that away. The two tables differ
-  // only in folder create and edit, from the edit tier up, so a lower exact role still narrows it.
-  const folderEditingEnvironments = new Set(
-    scopedGrants
-      .filter((grant) => grant.isRecursive && FOLDER_EDITING_ROLES.has(grant.role))
-      .map((grant) => grant.conditions.environment)
-  );
-  const usesRecursiveTables = (grant: (typeof scopedGrants)[number]) =>
-    grant.isRecursive || folderEditingEnvironments.has(grant.conditions.environment);
-
-  const rulesFor = (grants: typeof scopedGrants) => [
-    ...grants.flatMap((grant) =>
-      withConditions(
-        (usesRecursiveTables(grant) ? RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE : FOLDER_SCOPED_DENY_RULES_BY_ROLE)[
-          grant.role
-        ],
-        grant.conditions
-      )
-    ),
-    ...grants.flatMap((grant) =>
-      withConditions(
-        (usesRecursiveTables(grant) ? RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS : SECRET_FOLDER_ROLE_PERMISSIONS)[
-          grant.role
-        ],
-        grant.conditions
-      )
-    )
-  ];
-
-  // if recursive is defined for sub folder as well, we will need to change this, so it is possible to grant permission to sub folder as well.
-  return [
-    ...rulesFor(scopedGrants.filter((grant) => grant.isRecursive)),
-    ...rulesFor(scopedGrants.filter((grant) => !grant.isRecursive))
-  ];
+  return [...recursiveGrants, ...exactGrants].map((grant) => {
+    const isRecursiveTable = usesRecursiveTables(grant);
+    return {
+      privilege: grant.privilege,
+      rules: [
+        ...withConditions(
+          (isRecursiveTable ? RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE : FOLDER_SCOPED_DENY_RULES_BY_ROLE)[
+            grant.role
+          ],
+          grant.conditions
+        ),
+        ...withConditions(
+          (isRecursiveTable ? RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS : SECRET_FOLDER_ROLE_PERMISSIONS)[grant.role],
+          grant.conditions
+        )
+      ]
+    };
+  });
 };
+
+export const buildFolderScopedPrivilegeRules = (
+  privileges: TProjectFolderScopedPrivilege[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] =>
+  buildFolderScopedPrivilegeRulesByGrant(privileges).flatMap(({ rules }) => rules);
 
 // Compiling a template is the most expensive step of building an ability, and almost no rule set needs
 // it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template

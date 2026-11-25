@@ -1,4 +1,5 @@
 import { TFolderAccess } from "@app/hooks/api/folderAccess";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import {
   TFolderAccessActor,
   toIdentityActor,
@@ -32,3 +33,13 @@ export const toFolderAccessActor = (
     inheritedFolderRBACAccess: inheritedAccess
   });
 };
+
+// project admins have full access on every folder, so they can't hold folder access
+export const hasActiveProjectAdminRole = (
+  roles: { role: string; isTemporary: boolean; temporaryAccessEndTime?: string | Date | null }[]
+) =>
+  roles.some(
+    ({ role, isTemporary, temporaryAccessEndTime }) =>
+      role === ProjectMembershipRole.Admin &&
+      (!isTemporary || (temporaryAccessEndTime && new Date(temporaryAccessEndTime) > new Date()))
+  );

@@ -1,7 +1,5 @@
 import { describe, expect, test } from "vitest";
 
-import { TAuditLogs } from "@app/db/schemas";
-
 import { TAuditLogStreamOutboxRow } from "../audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { chunkAuditLogsByBatchLimit } from "./audit-log-stream-batching";
 import { TLogStreamFactoryProviderBatchLimit } from "./audit-log-stream-types";
@@ -14,7 +12,7 @@ const buildRow = (idx: number, padBytes = 0): TAuditLogStreamOutboxRow =>
     payload: {
       id: `log-${idx.toString().padStart(6, "0")}`,
       eventMetadata: { pad: "x".repeat(padBytes) }
-    } as unknown as TAuditLogs
+    } as unknown as TAuditLogStreamOutboxRow["payload"]
   }) as TAuditLogStreamOutboxRow;
 
 // A roomy limit used when we want chunks driven purely by count.
