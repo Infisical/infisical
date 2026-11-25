@@ -14,9 +14,17 @@
   overflow: hidden;
 }
 
+.grabber {
+  align-self: center;
+  flex: none;
+  width: var(--cipher-space-32);
+  height: var(--cipher-space-4);
+  margin-top: var(--cipher-space-8);
+  background: var(--cipher-line);
+}
+
 .sheet .head {
-  padding-top: var(--cipher-space-16);
-  padding-right: calc(var(--cipher-space-16) + var(--cipher-size-control-sm));
+  padding-top: var(--cipher-space-8);
 }
 
 .inbox {
@@ -29,13 +37,12 @@
 .head {
   display: flex;
   align-items: center;
-  gap: var(--cipher-space-8);
+  gap: var(--cipher-space-4);
   padding: var(--cipher-space-12) var(--cipher-space-12) var(--cipher-space-8)
     var(--cipher-space-16);
 }
 
-.title {
-  flex: 1;
+.heading {
   min-width: 0;
   margin: 0;
   font-family: var(--cipher-type-title-sm-font-family);
@@ -45,15 +52,27 @@
   letter-spacing: var(--cipher-type-title-sm-letter-spacing);
 }
 
-.filters {
-  padding: 0 var(--cipher-space-12) var(--cipher-space-8);
+.markAll {
+  margin-left: auto;
+}
+
+.filters [data-slot="tabs-list"][data-variant="underline"][data-orientation="horizontal"] {
+  padding-inline: var(--cipher-space-4);
+}
+
+.scroll [data-list-row] {
+  padding-block: var(--cipher-space-8);
+}
+
+.tile,
+.tile + [aria-hidden] {
+  translate: 0 -0.2em;
 }
 
 .scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
 }
 
 .body {

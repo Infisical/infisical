@@ -1,4 +1,11 @@
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import ReactMarkdown from "react-markdown";
 import {
   AlertDialog,
@@ -25,6 +32,7 @@ import { List, ListRow, ListSection } from "@infisical/cipher/ui/list";
 import { PopoverContent } from "@infisical/cipher/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@infisical/cipher/ui/sheet";
 import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useAppShell } from "@infisical/cipher/ui/top-bar";
 
 import type { TUserNotification } from "@app/hooks/api/notifications/types";
@@ -59,12 +67,11 @@ const toHref = (link?: string | null) => {
   }
 };
 
-type Filter = "all" | "unread" | "critical";
+type Filter = "all" | "unread";
 
 const EMPTY_TITLES: Record<Filter, string> = {
   all: "No notifications",
-  unread: "No unread notifications",
-  critical: "No critical notifications"
+  unread: "No unread notifications"
 };
 
 export const useNotificationInbox = (orgId: string) => {
@@ -85,6 +92,40 @@ export const useNotificationInbox = (orgId: string) => {
       if (Date.now() - closedAt.current < 250) return;
       setOpen(true);
     }
+  };
+};
+
+const SWIPE_CLOSE_PX = 80;
+
+const useSwipeDown = (onClose: () => void) => {
+  const drag = useRef<{ startY: number; pointerId: number } | null>(null);
+  const reset = (element: HTMLElement) => {
+    drag.current = null;
+    element.style.removeProperty("translate");
+    element.style.removeProperty("transition");
+  };
+  return {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement;
+      if (event.pointerType === "mouse" || target.closest("button, a, [role='tab']")) return;
+      const scroller = target.closest<HTMLElement>("[data-swipe-scroll]");
+      if (scroller && scroller.scrollTop > 0) return;
+      drag.current = { startY: event.clientY, pointerId: event.pointerId };
+    },
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
+      if (drag.current?.pointerId !== event.pointerId) return;
+      const offset = Math.max(0, event.clientY - drag.current.startY);
+      const { style } = event.currentTarget;
+      style.setProperty("transition", "none");
+      style.setProperty("translate", `0 ${offset}px`);
+    },
+    onPointerUp: (event: PointerEvent<HTMLElement>) => {
+      if (drag.current?.pointerId !== event.pointerId) return;
+      const offset = event.clientY - drag.current.startY;
+      reset(event.currentTarget);
+      if (offset > SWIPE_CLOSE_PX) onClose();
+    },
+    onPointerCancel: (event: PointerEvent<HTMLElement>) => reset(event.currentTarget)
   };
 };
 
@@ -114,12 +155,7 @@ const InboxBody = ({
 
   const groups = groupNotifications(notifications);
   const unread = notifications.filter((notification) => !notification.isRead).length;
-  const critical = groups.filter((group) => group.tone === "bad" && group.unread).length;
-  const visible = groups.filter((group) => {
-    if (filter === "unread") return group.unread > 0;
-    if (filter === "critical") return group.tone === "bad";
-    return true;
-  });
+  const visible = filter === "unread" ? groups.filter((group) => group.unread > 0) : groups;
   const shown = visible.slice(0, shownCount);
   const today = shown.filter((group) => isToday(group.latest.createdAt));
   const earlier = shown.filter((group) => !isToday(group.latest.createdAt));
@@ -171,7 +207,14 @@ const InboxBody = ({
         label={plainText(latest.title)}
         href={href}
         onClick={(event) => openGroup(event, group, href)}
-        media={<Media size="sm" icon={notificationIcon(latest.type)} tone={group.tone} />}
+        media={
+          <Media
+            size="sm"
+            icon={notificationIcon(latest.type)}
+            tone={group.tone}
+            className={styles.tile}
+          />
+        }
         unread={group.unread > 0}
         title={<ReactMarkdown components={inline}>{latest.title}</ReactMarkdown>}
         badge={
@@ -224,24 +267,29 @@ const InboxBody = ({
     );
   };
 
+  const markAllButton = (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      icon="check"
+      iconOnly
+      className={styles.markAll}
+      loading={markAll.isPending}
+      disabledReason={unread ? undefined : "No unread notifications"}
+      onClick={() =>
+        markAll
+          .mutateAsync({ orgId })
+          .catch((error) => failed("Failed to mark notifications as read", error))
+      }
+    >
+      Mark all as read
+    </Button>
+  );
+
   return (
     <div className={styles.inbox}>
       <div className={styles.head}>
         {title}
-        {unread > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            loading={markAll.isPending}
-            onClick={() =>
-              markAll
-                .mutateAsync({ orgId })
-                .catch((error) => failed("Failed to mark notifications as read", error))
-            }
-          >
-            Mark all as read
-          </Button>
-        )}
         {notifications.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -249,7 +297,7 @@ const InboxBody = ({
                 More actions
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="start">
               <DropdownMenuItem
                 variant="destructive"
                 disabledReason={
@@ -265,13 +313,12 @@ const InboxBody = ({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {unread ? <Tooltip content="Mark all as read">{markAllButton}</Tooltip> : markAllButton}
       </div>
       {groups.length > 0 && (
         <Tabs
           className={styles.filters}
           label="Filter notifications"
-          variant="segmented"
-          width="full"
           value={filter}
           onChange={(value) => {
             setFilter(value as Filter);
@@ -279,12 +326,11 @@ const InboxBody = ({
           }}
           tabs={[
             { value: "all", label: "All" },
-            { value: "unread", label: "Unread", count: unread || undefined },
-            { value: "critical", label: "Critical", count: critical || undefined, countTone: "bad" }
+            { value: "unread", label: "Unread", count: unread || undefined }
           ]}
         />
       )}
-      <div className={styles.scroll} data-scroll-fade="y">
+      <div className={styles.scroll} data-scroll-fade="y" data-swipe-scroll>
         <List
           label="Notifications"
           variant="bare"
@@ -350,6 +396,7 @@ export const NotificationInbox = ({
     if (narrow && inbox.open) setNavigationOpen?.(false);
   }, [narrow, inbox.open, setNavigationOpen]);
   const close = () => inbox.onOpenChange(false);
+  const swipe = useSwipeDown(close);
   const body = (title: ReactNode) => (
     <InboxBody
       orgId={orgId}
@@ -362,15 +409,22 @@ export const NotificationInbox = ({
   if (narrow)
     return (
       <Sheet open={inbox.open} onOpenChange={inbox.onOpenChange}>
-        <SheetContent side="bottom" aria-describedby={undefined} className={styles.sheet}>
-          {inbox.open && body(<SheetTitle className={styles.title}>Notifications</SheetTitle>)}
+        <SheetContent
+          side="bottom"
+          aria-describedby={undefined}
+          showCloseButton={false}
+          className={styles.sheet}
+          {...swipe}
+        >
+          <span className={styles.grabber} aria-hidden />
+          {inbox.open && body(<SheetTitle className={styles.heading}>Notifications</SheetTitle>)}
         </SheetContent>
       </Sheet>
     );
   return (
     inbox.open && (
       <PopoverContent align="end" side="bottom" className={styles.popover}>
-        {body(<h2 className={styles.title}>Notifications</h2>)}
+        {body(<h2 className={styles.heading}>Notifications</h2>)}
       </PopoverContent>
     )
   );
