@@ -46,13 +46,16 @@ const toDependent = (node: TSecretDependencyTreeNode, parent: string): Dependent
 };
 
 export const useDependents = (secret: Secret) => {
-  const { data } = useV4Adapter("secrets").useSecretReferences({
+  const { data, isPending } = useV4Adapter("secrets").useSecretReferences({
     projectId: secret.project,
     environment: secret.environment,
     secretPath: secret.path,
     secretKey: secret.name
   });
-  return data?.tree.children.map((child) => toDependent(child, "root")) ?? [];
+  return {
+    dependents: data?.tree.children.map((child) => toDependent(child, "root")) ?? [],
+    isPending
+  };
 };
 
 const toDependentNode = (dependent: Dependent): FileTreeNode => ({
@@ -84,7 +87,7 @@ export function ReferencesDialog({
     secretPath: secret.path,
     secretKey: secret.name
   });
-  const dependents = useDependents(secret);
+  const { dependents } = useDependents(secret);
   let circular = false;
   const nodeFor = (node: TSecretReferenceTraceNode, seen: string[]): FileTreeNode => {
     const id = `${node.environment} ${node.secretPath} ${node.key}`;
