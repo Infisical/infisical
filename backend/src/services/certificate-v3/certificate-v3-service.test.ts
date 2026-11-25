@@ -3872,6 +3872,72 @@ describe("CertificateV3Service", () => {
           );
         });
 
+        describe("and an Issuance policy covers it too, while the Renewal policy lets machine identities bypass it", () => {
+          const issuancePolicy = {
+            ...approvalPolicy,
+            id: "issuance-policy-1",
+            bypassForMachineIdentities: false,
+            constraints: { version: 1, constraints: { operation: CertRequestPolicyOperation.Issuance } }
+          };
+
+          const coverWith = (issuance: typeof issuancePolicy) =>
+            mockApprovalPolicyService.matchPolicy.mockImplementation(
+              async (
+                _type: ApprovalPolicyType,
+                _projectId: string,
+                inputs: { operation?: CertRequestPolicyOperation }
+              ) =>
+                inputs.operation === CertRequestPolicyOperation.Renewal
+                  ? { ...alwaysPolicy, bypassForMachineIdentities: true }
+                  : issuance
+            );
+
+          const renewAsMachineIdentity = (attributes?: { commonName: string }) =>
+            service.renewCertificate({
+              certificateId: "cert-123",
+              ...mockActor,
+              actor: ActorType.IDENTITY,
+              actorId: "identity-123",
+              attributes
+            });
+
+          it("holds a machine identity's renewal that changes the certificate under the Issuance policy", async () => {
+            setupRenewal(mockOriginalCert);
+            coverWith(issuancePolicy);
+
+            const result = await renewAsMachineIdentity({ commonName: "renamed.example.com" });
+
+            expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+            expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+            expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+              expect.objectContaining({
+                policy: expect.objectContaining({ id: "issuance-policy-1" }),
+                machineIdentityId: "identity-123"
+              })
+            );
+          });
+
+          it("lets a machine identity's unchanged renewal through without approval", async () => {
+            setupRenewal(mockOriginalCert);
+            coverWith(issuancePolicy);
+
+            const result = await renewAsMachineIdentity();
+
+            expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+            expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+          });
+
+          it("lets a machine identity's renewal that changes the certificate through when the Issuance policy lets machine identities bypass it too", async () => {
+            setupRenewal(mockOriginalCert);
+            coverWith({ ...issuancePolicy, bypassForMachineIdentities: true });
+
+            const result = await renewAsMachineIdentity({ commonName: "renamed.example.com" });
+
+            expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+            expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+          });
+        });
+
         it("issues the approved renewal without holding it again", async () => {
           setupRenewal(mockOriginalCert);
           mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);
