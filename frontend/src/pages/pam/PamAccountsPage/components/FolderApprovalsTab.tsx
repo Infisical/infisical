@@ -32,7 +32,7 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel,
+  FieldTitle,
   IconButton,
   Pagination,
   Table,
@@ -512,15 +512,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           )}
           <Field orientation="horizontal">
             <FieldContent>
-              <FieldLabel htmlFor="email-approvers-on-request">Email approvers</FieldLabel>
+              <FieldTitle>Email Approvers</FieldTitle>
               <FieldDescription id="email-approvers-on-request-description">
-                Email approvers when someone requests access. In-app notifications, alerts, and
-                emails about break-glass use and auto-approvals are sent either way.
+                Approvers get an email for each new access request, in addition to the in-app
+                notification.
               </FieldDescription>
             </FieldContent>
             <Toggle
               id="email-approvers-on-request"
               variant="pam"
+              aria-label="Email Approvers"
               aria-describedby="email-approvers-on-request-description"
               checked={emailApprovers}
               onCheckedChange={setEmailApprovers}
