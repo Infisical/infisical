@@ -19,6 +19,7 @@ import {
   WebhookAuthType
 } from "@app/hooks/api/alerts";
 
+import { getChannelErrors, useChannelPath } from "./channelPath";
 import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
 
 const NO_AUTH = "none";
@@ -37,8 +38,9 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
     setValue,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
-  const channel = useWatch({ control, name: `channels.${index}` });
-  const channelErrors = errors.channels?.[index];
+  const channelPath = useChannelPath(index);
+  const channel = useWatch({ control, name: `${channelPath}` });
+  const channelErrors = getChannelErrors(errors, channelPath);
   const isUrlChanged = isWebhookUrlChanged(channel);
 
   return (
@@ -49,7 +51,7 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
           value={channel?.authType ?? NO_AUTH}
           onValueChange={(value) =>
             setValue(
-              `channels.${index}.authType`,
+              `${channelPath}.authType`,
               value === NO_AUTH ? undefined : (value as WebhookAuthType),
               { shouldDirty: true }
             )
@@ -82,18 +84,18 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
                         aria-label={name.label}
                         placeholder={name.placeholder}
                         isError={Boolean(channelErrors?.[name.field])}
-                        {...register(`channels.${index}.${name.field}`)}
+                        {...register(`${channelPath}.${name.field}`)}
                       />
                       <FieldError errors={[channelErrors?.[name.field]]} />
                     </Field>
                   )}
                   <Field className="min-w-0 flex-1">
                     <ChannelSecretInput
-                      id={`channel-${index}-${secret.field}`}
+                      id={`${channelPath}-${secret.field}`}
                       ariaLabel={secret.label}
                       placeholder={secretPlaceholder}
                       isError={Boolean(channelErrors?.[secret.field])}
-                      registration={register(`channels.${index}.${secret.field}`)}
+                      registration={register(`${channelPath}.${secret.field}`)}
                     />
                     <FieldError errors={[channelErrors?.[secret.field]]} />
                   </Field>

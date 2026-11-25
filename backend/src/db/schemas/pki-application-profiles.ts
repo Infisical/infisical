@@ -16,7 +16,8 @@ export const PkiApplicationProfilesSchema = z.object({
   acmeConfigId: z.string().uuid().nullable().optional(),
   scepConfigId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  microsoftAutoenrollmentConfigId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiApplicationProfiles = z.infer<typeof PkiApplicationProfilesSchema>;

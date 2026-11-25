@@ -111,6 +111,4 @@ export enum PamAccountWarning {
 
 // Whether sessions for this type produce a session log the gateway can mask.
 export const accountTypeSupportsSessionLogMasking = (accountType: PamAccountType): boolean =>
-  accountType !== PamAccountType.Windows &&
-  accountType !== PamAccountType.WindowsAd &&
-  accountType !== PamAccountType.AwsIam;
+  accountType !== PamAccountType.Windows && accountType !== PamAccountType.WindowsAd;

@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -68,7 +69,11 @@ export const fakeAwsConnection = {
 
 // Mirrors the real access-key branch, which hands back whatever the connection carries and
 // makes no request. The assume-role branch is the one that calls STS, and no spec uses it.
-export const getAwsConnectionConfig = (appConnection: TAwsConnectionConfig, region = AWSRegion.US_EAST_1) => {
+export const getAwsConnectionConfig = (
+  appConnection: TAwsConnectionConfig,
+  _instanceConfigService: TInstanceConfigService,
+  region = AWSRegion.US_EAST_1
+) => {
   if (state.configError) return Promise.reject(new BadRequestError({ message: state.configError }));
   const { credentials } = appConnection;
 

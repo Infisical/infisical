@@ -60,6 +60,11 @@ const oauthAuditFieldsOf = (credential: TAgentVaultCredentialSummary) => {
   return { oauthIssuer: credential.issuer, oauthScopes: credential.grantedScopes };
 };
 
+const hookChangeKindOf = ({ previous, current }: { previous: unknown; current: unknown }) => {
+  if (!previous) return "set" as const;
+  return current ? ("updated" as const) : ("removed" as const);
+};
+
 // A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
 // since a member sets them once however many bundles give them the service.
 export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider) => {
@@ -221,7 +226,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
                 : service.credential.memberProvidedFields,
             ...transformationNames,
             variableKeys: variableKeysOf(service),
-            hookUrl: service.hook?.url
+            ...(service.hook ? { hook: service.hook } : {})
           }
         }
       });
@@ -305,9 +310,6 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             tlsEnabled: update.tlsEnabled,
             tlsVerify: update.tlsVerify,
             tlsCaChanged: update.tlsCaChanged,
-            hookChanged: update.hookChanged,
-            hookUrl: update.hookUrl,
-            hookSecretReplaced: update.hookSecretReplaced,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
             hostPattern: update.hostPattern ?? (update.serverUrl ? serviceTypeFields.hostPattern : undefined),
             credentialType: req.body.credential?.type,
@@ -341,7 +343,12 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             credentialReplaced,
             personalValuesCleared,
             variableKeys:
-              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined
+              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined,
+            ...(update.hookChange && {
+              hookChanged: hookChangeKindOf(update.hookChange),
+              hook: update.hookChange.current,
+              previousHook: update.hookChange.previous
+            })
           }
         }
       });

@@ -30,8 +30,11 @@ import (
 // internal CA under a policy that allows anything.
 type scepProfile struct {
 	api     *api.ClientWithResponses
+	project *pki.Project
 	app     pki.Application
 	profile pki.Profile
+	// ca is the certificate of the CA the profile issues from.
+	ca *x509.Certificate
 }
 
 // staticChallenge is the enrollment sscep was run against: a static challenge
@@ -54,10 +57,11 @@ func withoutRenewal(enrollment api.SetPkiApplicationScepEnrollmentJSONRequestBod
 func newScepProfile(t *testing.T, tn *harness.Tenant, enrollment api.SetPkiApplicationScepEnrollmentJSONRequestBody) scepProfile {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
-	profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, pki.AllowAll(t)))
+	ca := pki.NewInternalCA(t, proj)
+	profile := pki.NewProfile(t, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)))
 	app := pki.NewApplication(t, proj, profile)
 	pki.EnableSCEP(t, app, profile, enrollment)
-	return scepProfile{api: tn.Anonymous(t), app: app, profile: profile}
+	return scepProfile{api: tn.Anonymous(t), project: proj, app: app, profile: profile, ca: pki.CACertificate(t, tn.Admin, ca.ID)}
 }
 
 // operation sends a SCEP GET, which is how a client without POSTPKIOperation, or

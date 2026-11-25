@@ -51,10 +51,11 @@ Go to the **Certificate Requests** tab and select **Request Certificate**. Selec
 | **CSR** | You provide your own Certificate Signing Request |
 
 For automated issuance, configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview):
-- [API](/documentation/platform/pki/applications/enrollment-methods/api) — Direct API calls or Infisical Agent
-- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme) — Certbot, cert-manager, and ACME clients
-- [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
-- [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
+- [API](/documentation/platform/pki/applications/enrollment-methods/api): Direct API calls or Infisical Agent
+- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme): Certbot, cert-manager, and ACME clients
+- [EST](/documentation/platform/pki/applications/enrollment-methods/est): RFC 7030 enrollment
+- [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep): Mobile device management (Jamf, Intune)
+- [Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment): Domain-joined Windows computers through Group Policy
 
 ### When issuance fails
 
@@ -67,6 +68,12 @@ Some requests are rejected before Infisical creates a certificate request, such 
 Select **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.
 
 A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
+
+### Importing a deleted certificate again
+
+You can import a deleted certificate again. It's added as a new certificate, and the deleted one stays in the inventory. A certificate with a revocation recorded in your organization can't be imported.
+
+If you import it into a profile on the same certificate authority as the deleted certificate, revoking either certificate revokes both. So when you import it into a different Application or profile than the one it was deleted from, the import needs permission to revoke the deleted certificate, and if a [revocation approval policy](/documentation/platform/pki/applications/approvals#revocation) covers the deleted certificate, the Application and profile you import into must be covered by the same policy.
 
 ### Managing an imported certificate
 

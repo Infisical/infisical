@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { TAgentVaultServiceHookInput, TAgentVaultServiceHookView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSkillFile } from "../agent-vault-skill/agent-vault-skill-types";
 import {
@@ -12,7 +13,6 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultHookInput } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
@@ -70,7 +70,8 @@ export type TAgentVaultInlineServiceInput = {
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
-  hook?: TAgentVaultHookInput;
+  // A saved hook of the project, by name.
+  hook?: TAgentVaultServiceHookInput;
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {
@@ -106,7 +107,8 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  hook: { url: string } | null;
+  // Left out for a caller who can't read hooks, since null would claim there is none.
+  hook?: TAgentVaultServiceHookView | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;

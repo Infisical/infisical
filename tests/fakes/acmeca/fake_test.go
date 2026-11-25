@@ -97,6 +97,7 @@ func TestAcmeCAFake_Issue(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []string{"a.example.test"}, leaf.DNSNames)
 		require.Len(t, ca.State(t).Issued, 1)
+		require.Equal(t, []string{"a.example.test"}, ca.State(t).Orders[0].Names)
 	})
 
 	t.Run("should refuse to finalize when the challenge was never answered", func(t *testing.T) {

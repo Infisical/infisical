@@ -81,6 +81,7 @@ export type SubscriptionPlan = {
   pkiAcme: boolean;
   pkiEst: boolean;
   pkiScep: boolean;
+  pkiMicrosoftAutoenrollment: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
   pkiOcsp: boolean;
@@ -120,6 +121,7 @@ export type SubscriptionPlan = {
   secretsBrokering: boolean;
   agentVaultByoS3: boolean;
   agentVaultManagedStorage: boolean;
+  agentVaultHooks: boolean;
   // null means 30 days.
   agentVaultSessionLogRetentionDays: number | null;
   pam?: boolean | null;

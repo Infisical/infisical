@@ -34,6 +34,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -49,7 +50,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";

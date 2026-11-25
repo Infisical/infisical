@@ -5,6 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -25,6 +26,7 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -52,7 +54,6 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -62,8 +63,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -95,6 +94,7 @@ import {
 import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   userDAL: Pick<
     TUserDALFactory,
     | "create"
@@ -158,6 +158,7 @@ type TOidcConfigServiceFactoryDep = {
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
 
 export const oidcConfigServiceFactory = ({
+  instanceConfigService,
   orgDAL,
   userDAL,
   userAliasDAL,
@@ -260,9 +261,9 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     idpMfa
   }: TOidcLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
+    if (!loginPolicy.allows(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({
         message: "Login with OIDC is disabled by administrator."
       });

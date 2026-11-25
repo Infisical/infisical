@@ -15,7 +15,6 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   kmsDefaultKeyId: true,
   defaultMembershipRole: true,
   enforceMfa: true,
-  selectedMfaMethod: true,
   allowedMfaMethods: true,
   ssoMfaTrust: true,
   allowSecretSharingOutsideOrganization: true,

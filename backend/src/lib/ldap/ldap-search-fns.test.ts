@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 
 import {
   buildDomainBaseDN,
+  buildSidEqualityFilter,
   escapeLdapFilterValue,
   getLdapAttribute,
   getLdapAttributeBuffer,
@@ -184,5 +185,22 @@ describe("netbiosFromDomainFqdn", () => {
   test("uppercases the first label", () => {
     expect(netbiosFromDomainFqdn("corp.example.com")).toBe("CORP");
     expect(netbiosFromDomainFqdn("corp")).toBe("CORP");
+  });
+});
+
+const COMPUTER_SID = "S-1-5-21-1111111111-2222222222-3333333333-1105";
+
+const COMPUTER_SID_BYTES = Buffer.from([
+  0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x15, 0x00, 0x00, 0x00, 0xc7, 0x35, 0x3a, 0x42, 0x8e, 0x6b, 0x74,
+  0x84, 0x55, 0xa1, 0xae, 0xc6, 0x51, 0x04, 0x00, 0x00
+]);
+
+describe("buildSidEqualityFilter", () => {
+  test("matches objectSid on the binary SID, not its string form", () => {
+    const filter = buildSidEqualityFilter(COMPUTER_SID) as unknown as { toBer: () => { buffer: Buffer } };
+    const encoded = Buffer.from(filter.toBer().buffer);
+
+    expect(encoded.includes(COMPUTER_SID_BYTES)).toBe(true);
+    expect(encoded.includes(Buffer.from(COMPUTER_SID))).toBe(false);
   });
 });

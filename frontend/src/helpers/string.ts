@@ -38,3 +38,13 @@ export const getInitials = (value: string) =>
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join("") || "?";
+
+export const bytesToBinaryString = (bytes: Uint8Array) => {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return binary;
+};
+
+export const bytesToBase64 = (bytes: Uint8Array) => btoa(bytesToBinaryString(bytes));

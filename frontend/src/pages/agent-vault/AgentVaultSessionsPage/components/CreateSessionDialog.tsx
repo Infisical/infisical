@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useState } from "react";
-import { SiPython, SiTypescript } from "react-icons/si";
+import { SiGo, SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import axios from "axios";
 import {
@@ -66,7 +66,7 @@ import {
   SandboxPlatformPanel,
   setupPrompt
 } from "./SandboxPlatformPanel";
-import { hasScriptLanguages, ScriptLanguage } from "./sandboxSnippets";
+import { hasScriptLanguages, resolveScriptLanguage, ScriptLanguage } from "./sandboxSnippets";
 import { formatSessionExpiry } from "./SessionExpiry";
 import { sessionFieldErrorOf } from "./sessionFormErrors";
 import {
@@ -92,7 +92,13 @@ type TCreateSessionTab = SnippetLanguage | typeof CREATE_NOW_TAB;
 const SNIPPET_CODE_LANGUAGES: Record<SnippetLanguage, CodeLanguage> = {
   [SnippetLanguage.TypeScript]: CodeLanguage.TypeScript,
   [SnippetLanguage.Python]: CodeLanguage.Python,
+  [SnippetLanguage.Go]: CodeLanguage.Go,
   [SnippetLanguage.Cli]: CodeLanguage.Shell
+};
+
+const SCRIPT_LANGUAGES: Partial<Record<TCreateSessionTab, ScriptLanguage>> = {
+  [SnippetLanguage.Python]: ScriptLanguage.Python,
+  [SnippetLanguage.Go]: ScriptLanguage.Go
 };
 
 const TAB_STORAGE_KEY = "agentVaultCreateSessionTab";
@@ -205,8 +211,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const isOwnSandbox = platform === OWN_SANDBOX;
   const isCreateNow = isOwnSandbox && tab === CREATE_NOW_TAB;
   const language = tab === CREATE_NOW_TAB ? SnippetLanguage.Cli : tab;
-  const scriptLanguage =
-    tab === SnippetLanguage.Python ? ScriptLanguage.Python : ScriptLanguage.TypeScript;
+  const preferredScriptLanguage = SCRIPT_LANGUAGES[tab] ?? ScriptLanguage.TypeScript;
+  const scriptLanguage = isOwnSandbox
+    ? preferredScriptLanguage
+    : resolveScriptLanguage(platform, preferredScriptLanguage);
 
   const onPlatformPick = (value: TPlatformTab) => {
     setPlatform(value);
@@ -392,6 +400,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <TabsTrigger value={SnippetLanguage.Python} disabled={isLocked}>
             <SiPython />
             Python
+          </TabsTrigger>
+          <TabsTrigger value={SnippetLanguage.Go} disabled={isLocked}>
+            <SiGo />
+            Go
           </TabsTrigger>
           <TabsTrigger value={SnippetLanguage.Cli} disabled={isLocked}>
             <TerminalIcon />

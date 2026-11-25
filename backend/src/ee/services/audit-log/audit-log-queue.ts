@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -27,6 +28,7 @@ import { TAuditLogStreamEntry, TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
+  instanceConfigService: TInstanceConfigService;
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -74,6 +76,7 @@ const AUDIT_LOG_STREAM_CONSUMER_LOCK_TTL_MS = 60_000;
 
 export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
+  instanceConfigService,
   queueService,
   projectDAL,
   licenseService,
@@ -174,7 +177,8 @@ export const auditLogQueueServiceFactory = async ({
         format: "JSONEachRow"
       });
     } else {
-      await auditLogDAL.batchCreate(logs);
+      const { DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getOverridableEnv();
+      await auditLogDAL.batchCreate(logs, DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
     }
   };
 

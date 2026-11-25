@@ -10,6 +10,8 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { EventsModule } from "./platform/events/ce/module";
+import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
@@ -44,6 +46,9 @@ export type TDomainDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
     | "isProductionMode"
+    | "isSecondaryInstance"
+    | "isGeneralWorkerRunModeEnabled"
+    | "OTEL_TELEMETRY_COLLECTION_ENABLED"
   > &
     TKmsCoreEnvConfig;
 };
@@ -107,6 +112,16 @@ export const startStandaloneKmsCore = async ({
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
+  // Built first: any domain may emit through it.
+  const events = new EventsModule({
+    db: deps.db,
+    queueService: deps.queueService,
+    cronJob: deps.cronJob,
+    isSecondaryInstance: deps.envConfig.isSecondaryInstance,
+    isGeneralWorkerRunModeEnabled: deps.envConfig.isGeneralWorkerRunModeEnabled,
+    isTelemetryEnabled: deps.envConfig.OTEL_TELEMETRY_COLLECTION_ENABLED
+  });
+
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
   const { organizationsProjectsService } = organizationsProjects;
   const secrets = new SecretsModule({ organizationsProjectsService });
@@ -154,5 +169,26 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsDataKeyService: kmsCore.kmsDataKeyService
   });
 
-  return { license, licenseBilling, kmsCoreEe, kmsCore, externalKms, organizationsProjects, certManager, agentVault };
+  const instanceConfigCore = await InstanceConfigCoreModule.create({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    kmsRootKeyService: kmsCore.kmsRootKeyService,
+    // A copy taken at boot: the values an admin can override are parsed from it, overrides on top.
+    processEnv: { ...process.env }
+  });
+
+  return {
+    events,
+    license,
+    licenseBilling,
+    kmsCoreEe,
+    kmsCore,
+    externalKms,
+    instanceConfigCore,
+    organizationsProjects,
+    certManager,
+    agentVault
+  };
 };
+
+export type TDomains = Awaited<ReturnType<typeof createDomains>>;

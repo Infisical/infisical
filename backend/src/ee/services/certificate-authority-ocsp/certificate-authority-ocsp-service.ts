@@ -155,9 +155,16 @@ export const certificateAuthorityOcspServiceFactory = ({
       { tx: certificateDAL.primaryNode() }
     );
 
-    const bySerial = new Map(
-      certificates.map((certificate) => [normalizeSerialNumber(certificate.serialNumber), certificate])
-    );
+    const bySerial = new Map<string, (typeof certificates)[number]>();
+    certificates.forEach((certificate) => {
+      const serialNumber = normalizeSerialNumber(certificate.serialNumber);
+      const kept = bySerial.get(serialNumber);
+      const isEarlierRevocation =
+        certificate.status === CertStatus.REVOKED &&
+        (kept?.status !== CertStatus.REVOKED ||
+          new Date(certificate.revokedAt as Date).getTime() < new Date(kept.revokedAt as Date).getTime());
+      if (!kept || isEarlierRevocation) bySerial.set(serialNumber, certificate);
+    });
 
     return entries.map((entry) => {
       const certificate = bySerial.get(entry.serialNumber);

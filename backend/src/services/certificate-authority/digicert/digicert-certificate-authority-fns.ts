@@ -68,7 +68,10 @@ type TDigiCertCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "transaction" | "updateById" | "findOneLiveFirst"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -933,7 +936,7 @@ export const DigiCertCertificateAuthorityFns = ({
       throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
     }
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`

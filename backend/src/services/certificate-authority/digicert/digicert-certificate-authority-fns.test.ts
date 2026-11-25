@@ -66,7 +66,7 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
       serialNumber: "0a1b",
       externalMetadata: { type: CaType.DIGICERT, orderId: ORDER_ID, certificateId: storedCertificateId }
     }),
-    findOne: vi.fn().mockResolvedValue({
+    findOneLiveFirst: vi.fn().mockResolvedValue({
       id: ORIGINAL_CERTIFICATE_ID,
       serialNumber: "0a1b",
       externalMetadata: { type: CaType.DIGICERT, orderId: ORDER_ID, certificateId: storedCertificateId }

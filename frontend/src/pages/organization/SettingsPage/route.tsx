@@ -10,7 +10,7 @@ const SettingsPageQueryParams = z.object({
 
 // These tabs moved to dedicated pages; keep old deep links (bookmarks, backend
 // redirects like the Slack install and SCIM setup flows) working.
-const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> = {
+const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab?: string }> = {
   "workflow-integrations": {
     to: "/organizations/$orgId/integrations",
     selectedTab: "workflow-integrations"
@@ -29,7 +29,8 @@ const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> =
   },
   "sso-settings": { to: "/organizations/$orgId/sso", selectedTab: "sso" },
   "provisioning-settings": { to: "/organizations/$orgId/sso", selectedTab: "provisioning" },
-  "project-templates": { to: "/organizations/$orgId/settings", selectedTab: "product-settings" }
+  "project-templates": { to: "/organizations/$orgId/projects/secret-management/product-settings" },
+  "product-settings": { to: "/organizations/$orgId/projects/secret-management/product-settings" }
 };
 
 export const Route = createFileRoute(
@@ -53,7 +54,7 @@ export const Route = createFileRoute(
       throw redirect({
         to: moved.to,
         params: { orgId: params.orgId },
-        search: { selectedTab: moved.selectedTab }
+        search: moved.selectedTab === undefined ? undefined : { selectedTab: moved.selectedTab }
       } as any);
     }
   }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/webhook"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -168,6 +169,28 @@ func TestAlert_Create(t *testing.T) {
 		require.NotNilf(t, got.JSON200, "reading the alert returned %d: %s", got.StatusCode(), apierr.Body(got.Body))
 		require.Equal(t, "scheduled", got.JSON200.Alert.TriggerType)
 		require.Equal(t, map[string]any{"alertBefore": "7d"}, got.JSON200.Alert.Condition)
+		require.Len(t, got.JSON200.Alert.Channels, 1)
+		require.Equal(t, sink.URL, got.JSON200.Alert.Channels[0].Config["url"])
+	})
+
+	t.Run("should keep a certificate expiry alert's application scope, lead time and channel", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		condition := map[string]any{"alertBefore": "14d", "applicationIds": []any{app.ID.String()}}
+
+		// Action
+		alertID := fixture.NewCertificateExpiryAlert(t, tn.Admin, app.ID, "14d", sink.URL)
+
+		// Assert
+		got, err := tn.Admin.API.GetAlertByIdWithResponse(t.Context(), alertID)
+		require.NoError(t, err)
+		require.NotNilf(t, got.JSON200, "reading the alert returned %d: %s", got.StatusCode(), apierr.Body(got.Body))
+		require.Equal(t, "scheduled", got.JSON200.Alert.TriggerType)
+		require.Equal(t, condition, got.JSON200.Alert.Condition)
 		require.Len(t, got.JSON200.Alert.Channels, 1)
 		require.Equal(t, sink.URL, got.JSON200.Alert.Channels[0].Config["url"])
 	})
