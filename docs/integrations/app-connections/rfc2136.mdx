@@ -292,6 +292,8 @@ When you [register an ACME certificate authority](/documentation/platform/pki/ca
 
 If a domain's `_acme-challenge` name is a CNAME in public DNS, Infisical adds the TXT record at the CNAME's target. The connection then has to point at the primary server for the target's zone, and if you enter a zone, enter the target's zone.
 
+After adding a challenge record, Infisical waits up to 60 seconds for each of the zone's public nameservers to serve it before the certificate authority checks it. On Infisical Cloud, the order fails if a nameserver still doesn't serve the record after 60 seconds.
+
 ## Troubleshooting
 
 If Infisical can't save the connection or add a challenge record, the error message names the problem. Find the message in the following table:
@@ -309,4 +311,5 @@ If Infisical can't save the connection or add a challenge record, the error mess
 | `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
 | `is an alias (CNAME)` | Publish the CNAME in public DNS so Infisical follows it, or remove the CNAME from the DNS server |
 | `but does not serve it` | Check that **Host** is the zone's primary server, and that the key's policy allows TXT records at the challenge name |
+| `still doesn't serve the challenge record` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
 | `could not connect to the DNS server`, `did not answer in time`, or `closed the connection without answering` | Check that the DNS server accepts TCP connections on **Port** from Infisical or your Gateway (some firewalls allow only UDP on port 53), or connect through a Gateway |
