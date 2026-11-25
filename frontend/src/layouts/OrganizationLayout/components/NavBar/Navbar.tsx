@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
@@ -20,7 +18,6 @@ import {
   Plus,
   Settings,
   Sun,
-  TriangleAlertIcon,
   User,
   UserPlus,
   Users
@@ -48,7 +45,6 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -155,7 +151,6 @@ export const Navbar = () => {
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
-  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
 
   const subOrgQuery = subOrganizationsQuery.list({ isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
@@ -170,11 +165,6 @@ export const Navbar = () => {
   const showSubOrgs =
     Boolean(subscription.subOrganization) && (subOrganizations.length > 0 || canCreateSubOrg);
 
-  const isCardDeclined = Boolean(subscription?.cardDeclined);
-  const isCardDeclinedMoreThan30Days = Boolean(
-    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
-  );
-
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
@@ -185,9 +175,6 @@ export const Navbar = () => {
 
   const location = useLocation();
   const activeProduct = useActiveProduct();
-  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
-
-  const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
 
   const rootOrg = isSubOrganization
     ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
@@ -195,29 +182,14 @@ export const Navbar = () => {
 
   const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
 
-  useEffect(() => {
-    if (isModalIntrusive) {
-      setShowCardDeclinedModal(true);
-      sessionStorage.setItem("paymentFailed", "true");
-      return;
-    }
-
-    if (isCardDeclined && !sessionStorage.getItem("paymentFailed")) {
-      sessionStorage.setItem("paymentFailed", "true");
-      setShowCardDeclinedModal(true);
-    }
-  }, [subscription, isBillingPage, isModalIntrusive]);
-
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
-    isSubOrganization: targetIsSubOrganization = false,
-    onSuccess
+    isSubOrganization: targetIsSubOrganization = false
   }: {
     organizationId?: string;
     navigateTo?: string;
     isSubOrganization?: boolean;
-    onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
 
@@ -235,8 +207,7 @@ export const Navbar = () => {
         await handleOrgSelection({
           organizationId,
           navigateTo,
-          isSubOrganization: targetIsSubOrganization,
-          onSuccess
+          isSubOrganization: targetIsSubOrganization
         });
       });
       return;
@@ -256,33 +227,6 @@ export const Navbar = () => {
       switchFrom: location,
       isSubOrganization: targetIsSubOrganization
     });
-
-    if (onSuccess) {
-      await onSuccess();
-    }
-  };
-
-  const handleNavigateToRootOrgBilling = async () => {
-    const navigateToBilling = () => {
-      navigate({
-        to: "/organizations/$orgId/billing",
-        params: { orgId: rootOrg.id }
-      });
-    };
-
-    const onSuccess = () => {
-      setShowCardDeclinedModal(false);
-    };
-
-    if (isSubOrganization) {
-      await handleOrgSelection({
-        organizationId: rootOrg.id,
-        navigateTo: "/organizations/$orgId/billing",
-        onSuccess
-      });
-    } else {
-      await navigateToBilling();
-    }
   };
 
   const handleNavigateToAdminConsole = async () => {
@@ -443,22 +387,6 @@ export const Navbar = () => {
                       </Badge>
                     )}
                   </Link>
-                  {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center">
-                          <TriangleAlertIcon className="size-3.5 animate-pulse cursor-help text-warning" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        Your payment could not be processed
-                        {subscription.cardDeclinedReason
-                          ? `: ${subscription.cardDeclinedReason}`
-                          : ""}
-                        . Please update your payment method to continue enjoying premium features.
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
                 </div>
                 <NavbarSwitcherTrigger aria-label="switch-org" />
                 <NavbarSwitcherContent className="w-96">
@@ -829,36 +757,6 @@ export const Navbar = () => {
         </DropdownMenu>
       </ButtonGroup>
 
-      <Dialog
-        open={showCardDeclinedModal}
-        onOpenChange={(isOpen) => {
-          if (!isModalIntrusive) setShowCardDeclinedModal(isOpen);
-        }}
-      >
-        <DialogContent showCloseButton={!isModalIntrusive}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-warning" />
-              Your payment could not be processed.
-            </DialogTitle>
-            <DialogDescription>
-              We were unable to process your last payment
-              {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
-              Please update your payment information to continue using premium features.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            {!isModalIntrusive && (
-              <Button variant="outline" onClick={() => setShowCardDeclinedModal(false)}>
-                Dismiss
-              </Button>
-            )}
-            <Button variant="org" onClick={handleNavigateToRootOrgBilling}>
-              Update Payment Method
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}

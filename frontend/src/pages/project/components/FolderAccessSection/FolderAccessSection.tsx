@@ -63,7 +63,7 @@ import {
   useListIdentityFolderAccess,
   useListUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import { analytics, AnalyticsEvent, FolderAccessGrantSheetSource } from "@app/lib/analytics";
+import { analytics, AnalyticsEvent, FolderAccessAddSheetSource } from "@app/lib/analytics";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   findInheritedGrant,
@@ -74,7 +74,7 @@ import { RemoveFolderAccessDialog } from "@app/pages/secret-manager/OverviewPage
 import { EditFolderAccessSheet } from "./EditFolderAccessSheet";
 import { toFolderAccessActor } from "./folder-access-section.utils";
 import { GrantFolderAccessSheet } from "./GrantFolderAccessSheet";
-import { TFolderAccessSectionActor } from "./types";
+import { folderAccessChangeSourceOf, TFolderAccessSectionActor } from "./types";
 
 const FOLDER_ACCESS_DOCS_URL =
   "https://infisical.com/docs/documentation/platform/access-controls/folder-rbac";
@@ -135,7 +135,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
 
-  const openGrantSheet = (source: FolderAccessGrantSheetSource) => {
+  const openGrantSheet = (source: FolderAccessAddSheetSource) => {
     if (!hasFolderRbacPlan) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
@@ -144,7 +144,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
       return;
     }
     setIsGrantOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessGrantSheetOpened, currentOrg.id, {
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessAddSheetOpened, currentOrg.id, {
       source,
       actorType: actor.type,
       projectId
@@ -174,6 +174,12 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
       await deleteIdentityAccess.mutateAsync({ ...target, identityId: actor.id });
     }
     createNotification({ type: "success", text: "Folder access removed" });
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source: folderAccessChangeSourceOf(actor),
+      action: "removed",
+      actorType: actor.type,
+      projectId
+    });
     setDeleteTarget(null);
   };
 

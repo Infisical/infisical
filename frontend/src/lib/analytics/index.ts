@@ -53,7 +53,9 @@ export const analytics = {
 export { AnalyticsEvent };
 export type {
   BillingCancellationAction,
-  FolderAccessGrantSheetSource,
+  FolderAccessChangeSource,
+  FolderAccessSheetSource,
+  FolderAccessAddSheetSource,
   OnboardingResource,
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,

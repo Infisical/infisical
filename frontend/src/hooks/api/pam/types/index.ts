@@ -781,6 +781,7 @@ export type TPamApprovalConfig = {
   })[];
   breakGlassUsers: { type: PamApproverType; id: string }[];
   autoApproval: TAutoApprovalConfigResponse;
+  emailApproversOnRequest: boolean;
 };
 
 export type TPamAccessGrant = {
@@ -834,4 +835,5 @@ export type TSetPamApprovalConfigDTO = {
   breakGlassUsers?: { type: PamApproverType; id: string }[];
   // Omit to leave the folder's auto-approval rules unchanged
   autoApproval?: TAutoApprovalConfig;
+  emailApproversOnRequest?: boolean;
 };
