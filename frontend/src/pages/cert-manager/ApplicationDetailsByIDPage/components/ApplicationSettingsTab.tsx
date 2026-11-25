@@ -2,7 +2,7 @@ import { ReactNode, useId, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueries, UseQueryResult } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
@@ -73,6 +73,7 @@ import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
   CertRequestPolicyConditions,
+  combineNewestFirst,
   TApprovalPolicy,
   useDeleteApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
@@ -174,13 +175,6 @@ const ApplicationPolicyActionsMenu = ({
   );
 };
 
-const combineApplicationPolicies = (results: UseQueryResult<TApprovalPolicy[]>[]) => ({
-  policies: results
-    .flatMap(({ data = [] }) => data)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-  isPending: results.some((result) => result.isPending)
-});
-
 type ApplicationPoliciesTableProps = {
   applicationId: string;
   onEdit: (policy: TApprovalPolicy) => void;
@@ -196,7 +190,7 @@ const ApplicationPoliciesTable = ({
   canEdit,
   canDelete
 }: ApplicationPoliciesTableProps) => {
-  const { policies: sortedPolicies, isPending } = useQueries({
+  const { data: sortedPolicies, isPending } = useQueries({
     queries: APPLICATION_POLICY_TYPES.map((policyType) =>
       approvalPolicyQuery.list({
         policyType,
@@ -204,7 +198,7 @@ const ApplicationPoliciesTable = ({
         scopeId: applicationId
       })
     ),
-    combine: combineApplicationPolicies
+    combine: combineNewestFirst<TApprovalPolicy>
   });
 
   if (!isPending && sortedPolicies.length === 0) {

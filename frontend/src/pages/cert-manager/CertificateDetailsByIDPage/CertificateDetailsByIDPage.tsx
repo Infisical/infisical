@@ -39,15 +39,8 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
-import {
-  ApprovalPolicyType,
-  TCertificateActionPolicyType,
-  useCertificateActionPolicyProfileNames
-} from "@app/hooks/api/approvalPolicies";
-import {
-  TPendingCertificateAction,
-  usePendingCertificateActions
-} from "@app/hooks/api/approvalRequests";
+import { ApprovalPolicyType, TCertificateActionPolicyType } from "@app/hooks/api/approvalPolicies";
+import { useCertificateActionApprovalData } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -130,22 +123,7 @@ const Page = () => {
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
   );
-  const { data: pendingRevocations } = usePendingCertificateActions(
-    ApprovalPolicyType.CertRevocation,
-    certificate?.applicationId
-  );
-  const { data: revocationPolicyProfileNames } = useCertificateActionPolicyProfileNames(
-    ApprovalPolicyType.CertRevocation,
-    certificate?.applicationId
-  );
-  const { data: pendingDeletions } = usePendingCertificateActions(
-    ApprovalPolicyType.CertDeletion,
-    certificate?.applicationId
-  );
-  const { data: deletionPolicyProfileNames } = useCertificateActionPolicyProfileNames(
-    ApprovalPolicyType.CertDeletion,
-    certificate?.applicationId
-  );
+  const actionApprovalData = useCertificateActionApprovalData(certificate?.applicationId);
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
     certificateId: certificate?.id,
@@ -276,12 +254,9 @@ const Page = () => {
         PkiApplicationResourceSub.Certificates
       ))
   );
-  const getActionApproval = (
-    policyType: TCertificateActionPolicyType,
-    pendingRequests?: Map<string, TPendingCertificateAction>,
-    policyProfileNames?: Set<string>
-  ) => {
-    const pendingRequest = certificate ? pendingRequests?.get(certificate.id) : undefined;
+  const getActionApproval = (policyType: TCertificateActionPolicyType) => {
+    const { pending, policyProfileNames } = actionApprovalData[policyType];
+    const pendingRequest = certificate ? pending?.get(certificate.id) : undefined;
     const approval = getCertificateActionApproval({
       policyType,
       certificate: certificate ?? {},
@@ -299,16 +274,8 @@ const Page = () => {
           : undefined
     };
   };
-  const revocation = getActionApproval(
-    ApprovalPolicyType.CertRevocation,
-    pendingRevocations,
-    revocationPolicyProfileNames
-  );
-  const deletion = getActionApproval(
-    ApprovalPolicyType.CertDeletion,
-    pendingDeletions,
-    deletionPolicyProfileNames
-  );
+  const revocation = getActionApproval(ApprovalPolicyType.CertRevocation);
+  const deletion = getActionApproval(ApprovalPolicyType.CertDeletion);
   const shownPendingActions = [revocation, deletion].flatMap(({ requestLink, ...action }) =>
     requestLink ? [{ ...action, requestLink }] : []
   );

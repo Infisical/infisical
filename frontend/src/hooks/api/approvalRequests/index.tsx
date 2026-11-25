@@ -5,7 +5,11 @@ export {
   useRejectApprovalRequest
 } from "./mutations";
 export { type TPendingCertificateAction } from "./pending-certificate-actions";
-export { approvalRequestQuery, usePendingCertificateActions } from "./queries";
+export {
+  approvalRequestQuery,
+  useCertificateActionApprovalData,
+  usePendingCertificateActions
+} from "./queries";
 export {
   type ApprovalRequestApproval,
   ApprovalRequestApprovalDecision,

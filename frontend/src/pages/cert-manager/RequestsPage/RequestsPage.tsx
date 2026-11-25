@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
@@ -43,7 +43,8 @@ import { useDebounce } from "@app/hooks";
 import {
   APPLICATION_POLICY_TYPES,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  combineNewestFirst
 } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
@@ -108,13 +109,6 @@ const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
   return null;
 };
 
-const combineApplicationRequests = (results: UseQueryResult<TApprovalRequest[]>[]) => ({
-  requests: results
-    .flatMap(({ data = [] }) => data)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-  isPending: results.some((result) => result.isPending)
-});
-
 export const RequestsPage = () => {
   const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { currentProject } = useProject();
@@ -155,7 +149,7 @@ export const RequestsPage = () => {
   };
   const isSigningFiltered = signingStatusFilters.size > 0;
 
-  const { requests, isPending: isRequestsLoading } = useQueries({
+  const { data: requests, isPending: isRequestsLoading } = useQueries({
     queries: APPLICATION_POLICY_TYPES.map((policyType) =>
       approvalRequestQuery.list({
         policyType,
@@ -163,7 +157,7 @@ export const RequestsPage = () => {
         scopeId: projectId
       })
     ),
-    combine: combineApplicationRequests
+    combine: combineNewestFirst<TApprovalRequest>
   });
 
   const { data: signingRequests = [], isPending: isSigningRequestsLoading } = useQuery(
