@@ -1817,9 +1817,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      await certificateAuthorityDAL.updateById(ca.id, {
-        status: CaStatus.ACTIVE
-      });
+      await certificateAuthorityDAL.updateById(
+        ca.id,
+        {
+          status: CaStatus.ACTIVE
+        },
+        tx
+      );
 
       await internalCertificateAuthorityDAL.update(
         {
