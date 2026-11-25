@@ -57,6 +57,7 @@ export const DeleteKmipServerDialog = ({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
+            loading={remove.isPending}
             onClick={async () => {
               try {
                 await remove.mutateAsync(server.id);
@@ -100,6 +101,7 @@ export const RevokeKmipServerDialog = ({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
+            loading={revoke.isPending}
             onClick={async () => {
               try {
                 await revoke.mutateAsync({ kmipServerId: server.id });

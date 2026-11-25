@@ -312,6 +312,7 @@ export const KmipPage = () => {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
+                loading={remove.isPending}
                 onClick={async () => {
                   try {
                     await remove.mutateAsync({ id: overlay.client.id, projectId });

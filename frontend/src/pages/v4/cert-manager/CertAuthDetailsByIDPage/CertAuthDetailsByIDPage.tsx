@@ -93,7 +93,7 @@ const CaCertificateRow = ({
     actions={
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" icon="more" iconOnly>
+          <Button variant="ghost" size="icon-row" icon="more" iconOnly>
             {`CA certificate ${cert.version} options`}
           </Button>
         </DropdownMenuTrigger>

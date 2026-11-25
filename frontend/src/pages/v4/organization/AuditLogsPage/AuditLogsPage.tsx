@@ -255,7 +255,11 @@ const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => voi
 
 export type AuditLogsProject = { id: string; type: ProjectType };
 
-const productsWithoutSecrets = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+const productsWithoutSecrets = new Set<ProjectType>([
+  ProjectType.PAM,
+  ProjectType.AgentVault,
+  ProjectType.KMS
+]);
 
 const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?: string }) => {
   const { projects } = useV4Session();
