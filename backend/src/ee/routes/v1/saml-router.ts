@@ -37,8 +37,7 @@ import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SamlMfaSignalAttributeSchema = z.string().trim().min(1).max(512).nullable().optional();
-const SamlMfaAuthnContextsSchema = z.array(z.string().trim().min(1).max(512)).max(20).nullable().optional();
-const SamlMfaAttributeValuesSchema = z.array(z.string().trim().min(1).max(512)).max(20).nullable().optional();
+const SamlMfaValuesSchema = z.array(z.string().trim().min(1).max(512)).max(20).nullable().optional();
 
 type TSAMLConfig = {
   callbackUrl: string;
@@ -497,8 +496,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert),
         enableGroupSync: z.boolean().optional().describe(SamlSso.CREATE_CONFIG.enableGroupSync),
         mfaSignalAttribute: SamlMfaSignalAttributeSchema.describe(SamlSso.CREATE_CONFIG.mfaSignalAttribute),
-        mfaAuthnContexts: SamlMfaAuthnContextsSchema.describe(SamlSso.CREATE_CONFIG.mfaAuthnContexts),
-        mfaAttributeValues: SamlMfaAttributeValuesSchema.describe(SamlSso.CREATE_CONFIG.mfaAttributeValues)
+        mfaAuthnContexts: SamlMfaValuesSchema.describe(SamlSso.CREATE_CONFIG.mfaAuthnContexts),
+        mfaAttributeValues: SamlMfaValuesSchema.describe(SamlSso.CREATE_CONFIG.mfaAttributeValues)
       }),
       response: {
         200: SanitizedSamlConfigSchema
@@ -578,8 +577,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert),
           enableGroupSync: z.boolean().optional().describe(SamlSso.UPDATE_CONFIG.enableGroupSync),
           mfaSignalAttribute: SamlMfaSignalAttributeSchema.describe(SamlSso.UPDATE_CONFIG.mfaSignalAttribute),
-          mfaAuthnContexts: SamlMfaAuthnContextsSchema.describe(SamlSso.UPDATE_CONFIG.mfaAuthnContexts),
-          mfaAttributeValues: SamlMfaAttributeValuesSchema.describe(SamlSso.UPDATE_CONFIG.mfaAttributeValues)
+          mfaAuthnContexts: SamlMfaValuesSchema.describe(SamlSso.UPDATE_CONFIG.mfaAuthnContexts),
+          mfaAttributeValues: SamlMfaValuesSchema.describe(SamlSso.UPDATE_CONFIG.mfaAttributeValues)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
