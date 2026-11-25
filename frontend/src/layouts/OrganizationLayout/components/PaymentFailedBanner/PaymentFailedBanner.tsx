@@ -118,10 +118,6 @@ export const PaymentFailedBanner = () => {
     OrgPermissionBillingActions.Read,
     OrgPermissionSubjects.Billing
   );
-  // The billing page shows these with the invoice link and pay buttons, to anyone who can open it.
-  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
-  if (isBillingPage && isRootOrganization && canReadBilling) return null;
-
   const processingNotices = trialNotices.filter(
     (notice) => notice.cause === NoticeCause.PaymentProcessing
   );
@@ -131,6 +127,15 @@ export const PaymentFailedBanner = () => {
   const processingMessage = processingNotices.length
     ? `Your payment for ${listProducts(processingNotices)} is processing. Access continues meanwhile.`
     : null;
+
+  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
+  if (isBillingPage && isRootOrganization && canReadBilling) {
+    return (
+      processingMessage && (
+        <OrgAlertBanner role="status" isDismissible={false} text={processingMessage} />
+      )
+    );
+  }
 
   // Billing lives on the root organization, and a sub-org role grants nothing there.
   const canResolve =
