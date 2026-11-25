@@ -237,8 +237,7 @@ describe("certificateApprovalService issuing an approved request", () => {
           commonName: AD_NAME,
           altNames: [{ type: "dns_name", value: AD_NAME }],
           renewedFromCertificateId: "cert-old"
-        }),
-        "cert-old"
+        })
       );
 
       expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
@@ -246,6 +245,24 @@ describe("certificateApprovalService issuing an approved request", () => {
         expect.objectContaining({ renewedFromCertificateId: "cert-old" }),
         issuanceTx
       );
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-old",
+        { renewedByCertificateId: "cert-new" },
+        issuanceTx
+      );
+    });
+
+    test("links an approved re-enrollment to the certificate its approval request names", async () => {
+      await persistApproved(
+        storedRequest({
+          enrollmentType: EnrollmentType.EST,
+          csr: await buildCsrPem("device.example.com"),
+          renewedFromCertificateId: null
+        }),
+        "cert-old"
+      );
+
+      expect(deps.certificateDAL.findByIdForUpdate).toHaveBeenCalledWith("cert-old", issuanceTx);
       expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
         "cert-old",
         { renewedByCertificateId: "cert-new" },

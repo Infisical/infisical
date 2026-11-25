@@ -1132,7 +1132,7 @@ export const certificateApprovalServiceFactory = (
 
   const issueCertificate = async (
     certificateRequestId: string,
-    renewalOfCertificateId?: string
+    approvedRenewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse> => {
     // Approval sets the request PENDING just before this runs, and a lagging replica would still show it awaiting
     // approval.
@@ -1153,6 +1153,9 @@ export const certificateApprovalServiceFactory = (
     }
     const { ttl } = certRequest;
     const altNames = certRequest.altNames as TAltNameEntry[] | null;
+    // A Microsoft Autoenrollment renewal held before its approval request named the renewed certificate names it only
+    // on the certificate request.
+    const renewalOfCertificateId = approvedRenewalOfCertificateId ?? certRequest.renewedFromCertificateId ?? undefined;
 
     await certificateRequestDAL.updateById(certificateRequestId, {
       status: CertificateRequestStatus.PENDING
