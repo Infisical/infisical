@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import { parse } from "yaml";
 import { z } from "zod";
 
@@ -10,11 +13,9 @@ const MIGRATIONS_DIR = "backend/src/db/migrations/";
 export const FRAGMENTS_DIR = "upgrade-impact/changes";
 export const FRAGMENT_FILE_NAME = /^[a-z0-9][a-z0-9-]*\.yaml$/;
 
-export const FragmentCategorySchema = z.enum(["breaking", "config", "deployment", "database", "known-issue"]);
-
 export const FragmentSchema = z
   .object({
-    category: FragmentCategorySchema,
+    category: z.enum(["breaking", "config", "deployment", "database", "known-issue"]),
     impactLevel: ImpactLevelSchema.exclude(["none"]),
     title: z.string().trim().min(1),
     description: z.string().trim().min(1),
@@ -60,8 +61,6 @@ const SECTION_LABELS: [Section, string, string][] = [
   ["knownIssues", "known issue", "known issues"]
 ];
 
-const IMPACT_ORDER = ["none", "low", "medium", "high"] as const;
-
 export const isFragmentPath = (file: string) =>
   file.startsWith(`${FRAGMENTS_DIR}/`) && FRAGMENT_FILE_NAME.test(file.slice(FRAGMENTS_DIR.length + 1));
 
@@ -85,17 +84,16 @@ export const parseFragment = (content: string, file: string): Fragment => {
 
 const evidenceForFragment = (previousTag: string, tag: string, file: string): Evidence => {
   const commit = getAddingCommit(previousTag, tag, file);
-  const prNumber = commit?.subject.match(/\(#(\d+)\)\s*$/)?.[1];
 
-  if (prNumber) {
-    return { type: "pr", ref: `#${prNumber}`, url: `${REPO_URL}/pull/${prNumber}`, description: commit?.subject };
+  if (!commit) {
+    return { type: "file", ref: file, path: file };
   }
 
-  if (commit) {
-    return { type: "commit", ref: commit.sha, url: `${REPO_URL}/commit/${commit.sha}`, description: commit.subject };
-  }
+  const prNumber = commit.subject.match(/\(#(\d+)\)\s*$/)?.[1];
 
-  return { type: "file", ref: file, path: file };
+  return prNumber
+    ? { type: "pr", ref: `#${prNumber}`, url: `${REPO_URL}/pull/${prNumber}`, description: commit.subject }
+    : { type: "commit", ref: commit.sha, url: `${REPO_URL}/commit/${commit.sha}`, description: commit.subject };
 };
 
 export const draftFromFragments = (fragments: ReleaseFragment[], migrationFiles: string[]): ReleaseDraft => {
@@ -111,7 +109,7 @@ export const draftFromFragments = (fragments: ReleaseFragment[], migrationFiles:
   };
 
   const raiseImpact = (level: ReleaseDraft["impactLevel"]) => {
-    if (IMPACT_ORDER.indexOf(level) > IMPACT_ORDER.indexOf(draft.impactLevel)) {
+    if (ImpactLevelSchema.options.indexOf(level) > ImpactLevelSchema.options.indexOf(draft.impactLevel)) {
       draft.impactLevel = level;
     }
   };
@@ -170,8 +168,8 @@ export type FragmentRelease = {
   fragments: ReleaseFragment[];
 };
 
-// A release owns the fragments its range added, so the same tag always yields the same data and a
-// fragment is never counted twice. Fragments are therefore never deleted or moved after a release.
+// A release owns the fragments its range added and reads them from the tag itself, so the same tag
+// always yields the same data, also after the release pull request deletes them from main.
 export const collectFragmentRelease = (tag: string): FragmentRelease => {
   if (!hasGitRef(tag)) {
     throw new Error(`Could not find git tag "${tag}"`);
@@ -198,4 +196,13 @@ export const collectFragmentRelease = (tag: string): FragmentRelease => {
     ),
     fragments
   };
+};
+
+export const getReleaseFragmentFiles = (previousTag: string | null, tag: string) =>
+  getAddedFiles(previousTag, tag).filter(isFragmentPath);
+
+// Fragments a release collected leave main with its data, so the directory holds only unreleased
+// ones. A fragment already gone from this tree, such as one from an older release line, is skipped.
+export const removeFragmentFiles = async (repoRoot: string, files: string[]) => {
+  await Promise.all(files.map((file) => fs.rm(path.join(repoRoot, file), { force: true })));
 };

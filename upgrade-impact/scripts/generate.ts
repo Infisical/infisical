@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import { parse, stringify } from "yaml";
 
-import { collectFragmentRelease, ReleaseDraft } from "../src/fragments.js";
+import {
+  collectFragmentRelease,
+  FragmentRelease,
+  getReleaseFragmentFiles,
+  removeFragmentFiles
+} from "../src/fragments.js";
 import { compareVersions, isStableVersion } from "../src/git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "../src/schema.js";
 
@@ -14,6 +19,7 @@ const GENERATOR_VERSION = "2";
 const FRAGMENTS_SOURCE = "fragments";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.resolve(packageRoot, "..");
 const dataDir = path.join(packageRoot, "data");
 const releasesDir = path.join(dataDir, "releases");
 const indexPath = path.join(dataDir, "index.yaml");
@@ -32,30 +38,21 @@ const parseArgs = () => {
   };
 };
 
-type ReleaseRange = { tag: string; previousTag: string | null; releasedAt: string };
-
-export const assembleReleaseImpact = (bundle: ReleaseRange, draft: ReleaseDraft, model: string): ReleaseImpact =>
+const assembleReleaseImpact = ({ tag, previousTag, releasedAt, draft }: FragmentRelease): ReleaseImpact =>
   ReleaseImpactSchema.parse({
-    version: bundle.tag,
-    releasedAt: bundle.releasedAt,
-    sourceTag: bundle.tag,
-    previousTag: bundle.previousTag,
-    impactLevel: draft.impactLevel,
-    summary: draft.summary,
-    requiresDbMigration: draft.requiresDbMigration,
-    breakingChanges: draft.breakingChanges,
-    dbSchemaChanges: draft.dbSchemaChanges,
-    configChanges: draft.configChanges,
-    deploymentNotes: draft.deploymentNotes,
-    knownIssues: draft.knownIssues,
+    version: tag,
+    releasedAt,
+    sourceTag: tag,
+    previousTag,
+    ...draft,
     generatedBy: {
       generator: GENERATOR_NAME,
       generatorVersion: GENERATOR_VERSION,
-      model,
+      model: FRAGMENTS_SOURCE,
       generatedAt: new Date().toISOString(),
       sourceRange: {
-        from: bundle.previousTag,
-        to: bundle.tag
+        from: previousTag,
+        to: tag
       }
     }
   });
@@ -103,16 +100,18 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
 export const generateReleaseImpact = (tag: string) => {
   const release = collectFragmentRelease(tag);
 
-  return { fragments: release.fragments, releaseImpact: assembleReleaseImpact(release, release.draft, FRAGMENTS_SOURCE) };
+  return { fragments: release.fragments, releaseImpact: assembleReleaseImpact(release) };
 };
 
 const main = async () => {
   const { tag, dryRun, fromFile } = parseArgs();
 
-  // Writes data generated earlier, so a caller can add it to an index that changed since.
+  // Writes data generated earlier, so a caller can add it to an index that changed since, and
+  // removes the fragments that release collected from the tree it is run in.
   if (fromFile) {
     const releaseImpact = ReleaseImpactSchema.parse(parse(await fs.readFile(fromFile, "utf8")));
     await writeReleaseImpact(releaseImpact);
+    await removeFragmentFiles(repoRoot, getReleaseFragmentFiles(releaseImpact.previousTag, releaseImpact.version));
     process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version} from ${fromFile}\n`);
     return;
   }
@@ -129,6 +128,10 @@ const main = async () => {
   }
 
   await writeReleaseImpact(releaseImpact);
+  await removeFragmentFiles(
+    repoRoot,
+    fragments.map(({ file }) => file)
+  );
   process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version}\n`);
 };
 

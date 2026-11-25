@@ -81,6 +81,8 @@ const unclearActionPatterns = [
   /update any automation/i
 ];
 
+const isUnclearAction = (action: string) => unclearActionPatterns.some((pattern) => pattern.test(action));
+
 const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: string[]) => {
   const seenEntryTitles = new Map<string, string>();
   const sections = [
@@ -103,11 +105,8 @@ const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: 
         seenEntryTitles.set(titleKey, entryRef);
       }
 
-      for (const pattern of unclearActionPatterns) {
-        if (pattern.test(entry.action)) {
-          errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
-          break;
-        }
+      if (isUnclearAction(entry.action)) {
+        errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
       }
 
       const seenEvidence = new Set<string>();
@@ -204,7 +203,12 @@ const validateFragments = async (changesDir: string, errors: string[]) => {
     }
 
     try {
-      parseFragment(await fs.readFile(path.join(changesDir, file), "utf8"), `changes/${file}`);
+      const { action } = parseFragment(await fs.readFile(path.join(changesDir, file), "utf8"), `changes/${file}`);
+
+      // A release copies the action verbatim and fails on this same rule, after the fragment can no longer be edited.
+      if (isUnclearAction(action)) {
+        errors.push(`changes/${file} uses unclear operator action: ${action}`);
+      }
     } catch (error) {
       errors.push((error as Error).message);
     }

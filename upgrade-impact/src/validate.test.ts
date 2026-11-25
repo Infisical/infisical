@@ -312,12 +312,23 @@ describe("validateUpgradeImpactData", () => {
       stringify({ category: "config", impactLevel: "low", title: "T", description: "D", action: "A" })
     );
     await fs.writeFile(path.join(changesDir, "bad.yaml"), stringify({ category: "config", title: "T" }));
+    await fs.writeFile(
+      path.join(changesDir, "vague.yaml"),
+      stringify({
+        category: "breaking",
+        impactLevel: "low",
+        title: "T",
+        description: "D",
+        action: "Update any automation that calls the endpoint."
+      })
+    );
     await fs.writeFile(path.join(changesDir, "Bad_Name.yml"), "");
 
     const { errors } = await validateUpgradeImpactData({ dataDir, changesDir, skipGitChecks: true });
 
-    expect(errors).toHaveLength(2);
+    expect(errors).toHaveLength(3);
     expect(errors[0]).toContain("changes/Bad_Name.yml must be named");
     expect(errors[1]).toContain("changes/bad.yaml is not a valid upgrade impact fragment");
+    expect(errors[2]).toContain("changes/vague.yaml uses unclear operator action");
   });
 });

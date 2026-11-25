@@ -5,9 +5,9 @@ import { stringify } from "yaml";
 import { z } from "zod";
 
 import { FragmentSchema, FRAGMENTS_DIR, isFragmentPath } from "./fragments.js";
-import { runGit } from "./git.js";
+import { getFileAtRef, runGit } from "./git.js";
 
-export const MODEL = "gpt-5.4";
+const MODEL = "gpt-5.4";
 export const COMMENT_MARKER = "<!-- upgrade-impact-review -->";
 
 const limits = {
@@ -19,9 +19,9 @@ const limits = {
   maxTurns: 16
 };
 
-export type Declaration = "none" | "yes" | "unclear";
+type Declaration = "none" | "yes" | "unclear";
 
-export type PullRequestReviewInput = {
+type PullRequestReviewInput = {
   base: string;
   head: string;
   title: string;
@@ -162,7 +162,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
       file,
       addedByThisPullRequest: status === "A",
       validName: isFragmentPath(file),
-      content: runGit(["show", `${input.head}:${file}`])
+      content: getFileAtRef(input.head, file)
     }));
 
   const toolState = { calls: 0, resultChars: 0 };
@@ -172,15 +172,15 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
       return { error: `Tool call limit reached (${limits.maxToolCalls})` };
     }
 
-    toolState.calls += 1;
-
-    const result = produce();
     const remaining = limits.maxTotalToolResultChars - toolState.resultChars;
 
     if (remaining <= 0) {
       return { error: `Total tool result character limit reached (${limits.maxTotalToolResultChars})` };
     }
 
+    toolState.calls += 1;
+
+    const result = produce();
     const truncated = truncateText(JSON.stringify(result), remaining);
     toolState.resultChars += truncated.value.length;
 
@@ -190,7 +190,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
   const isSafeChangedPath = (file: string) =>
     !path.isAbsolute(file) && !file.split(/[\\/]/).includes("..") && changedFiles.has(file);
 
-  const getFileDiff = tool({
+  const fileDiffTool = tool({
     name: "get_file_diff",
     description: "Return a capped git diff for one file this pull request changes.",
     parameters: z.object({
@@ -211,7 +211,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
     }
   });
 
-  const getFileAtRef = tool({
+  const fileAtRefTool = tool({
     name: "get_file_at_ref",
     description: "Return capped contents of a file this pull request changes, before or after the change.",
     parameters: z.object({
@@ -225,7 +225,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
         }
 
         try {
-          const content = runGit(["show", `${ref === "before" ? mergeBase : input.head}:${file}`]);
+          const content = getFileAtRef(ref === "before" ? mergeBase : input.head, file);
           const truncated = truncateText(content, limits.maxFileChars);
 
           return { file, ref, truncated: truncated.truncated, content: truncated.value };
@@ -247,7 +247,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
       parallelToolCalls: false
     },
     outputType: ReviewSchema,
-    tools: [getFileDiff, getFileAtRef]
+    tools: [fileDiffTool, fileAtRefTool]
   });
 
   const request = {

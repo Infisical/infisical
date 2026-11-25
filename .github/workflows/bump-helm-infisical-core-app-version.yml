@@ -108,7 +108,8 @@ jobs:
         working-directory: upgrade-impact
 
       # The data was generated on main. It is set aside and written again on each attempt below,
-      # because index.yaml on the release branch may have gained other releases since.
+      # because index.yaml on the release branch may have gained other releases since. Writing it
+      # there also deletes the fragments this release collected, so main keeps only unreleased ones.
       - name: Set generated data aside
         if: steps.impact.outputs.generate == 'true'
         env:
@@ -158,7 +159,7 @@ jobs:
             : > "$BUMP_OUTPUT"
             GITHUB_OUTPUT="$BUMP_OUTPUT" ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
 
-            git add helm-charts/infisical-standalone-postgres upgrade-impact/data
+            git add helm-charts/infisical-standalone-postgres upgrade-impact/data upgrade-impact/changes
             if git diff --cached --quiet; then
               echo "Nothing to commit for ${TAG_NAME} on ${BASE}."
               PUSHED=false
@@ -229,7 +230,7 @@ jobs:
 
           Adds the generated upgrade impact data for each Infisical release below and points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. ${CHART_LINE} If a newer release ships before this merges, this PR is updated in place.
 
-          The upgrade impact data is aggregated from the fragments each pull request added under \`upgrade-impact/changes/\`, which were reviewed in those pull requests, so it needs no second review here.
+          The upgrade impact data is aggregated from the fragments each pull request added under \`upgrade-impact/changes/\`, which were reviewed in those pull requests, so it needs no second review here. This PR deletes the fragments it collected.
 
           ### Releases in this PR
 

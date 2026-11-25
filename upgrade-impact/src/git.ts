@@ -51,23 +51,14 @@ export const getPreviousStableTag = (tag: string) => {
 
 export const getTagDate = (tag: string) => runGit(["log", "-1", "--format=%cI", tag]);
 
-export const getChangedFiles = (fromTag: string | null, toTag: string) => {
-  if (!fromTag) {
-    return [];
-  }
-
-  return runGit(["diff", "--name-only", `${fromTag}..${toTag}`])
-    .split("\n")
-    .map((file) => file.trim())
-    .filter(Boolean);
-};
-
 export const getAddedFiles = (fromTag: string | null, toTag: string) => {
   if (!fromTag) {
     return [];
   }
 
-  return runGit(["diff", "--name-status", `${fromTag}..${toTag}`])
+  // Without --no-renames, git can pair a new file with a similar one deleted in the same range and
+  // report a rename, which would hide a new fragment next to the ones the last release removed.
+  return runGit(["diff", "--name-status", "--no-renames", `${fromTag}..${toTag}`])
     .split("\n")
     .map((line) => line.split("\t"))
     .filter(([status]) => status === "A")
@@ -75,22 +66,19 @@ export const getAddedFiles = (fromTag: string | null, toTag: string) => {
     .filter(Boolean);
 };
 
-export const getCommitSummaries = (fromTag: string | null, toTag: string) => {
-  const range = fromTag ? `${fromTag}..${toTag}` : toTag;
-
-  return runGit(["log", "--pretty=format:%H%x09%s", range])
-    .split("\n")
-    .map((line) => {
-      const [sha, ...subjectParts] = line.split("\t");
-      return { sha, subject: subjectParts.join("\t") };
-    })
-    .filter(({ sha }) => Boolean(sha));
-};
-
 export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${ref}:${file}`]);
 
 export const getAddingCommit = (fromTag: string, toTag: string, file: string) => {
-  const lines = runGit(["log", "--diff-filter=A", "--pretty=format:%H%x09%s", `${fromTag}..${toTag}`, "--", file])
+  const lines = runGit([
+    "log",
+    "--no-renames",
+    "--diff-filter=A",
+    "--pretty=format:%H%x09%s",
+    `${fromTag}..${toTag}`,
+    "--",
+    // Paths are relative to the repository root, but git reads a pathspec from the working directory.
+    `:(top)${file}`
+  ])
     .split("\n")
     .filter(Boolean);
   const oldest = lines[lines.length - 1];

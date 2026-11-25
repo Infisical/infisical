@@ -4,7 +4,8 @@ A fragment is a small YAML file that tells self-hosted operators what a change m
 upgrade. The pull request that makes the change adds the fragment, so the author who has the context
 writes it and it is reviewed with the code. Each release then collects the fragments added since the
 previous release into `upgrade-impact/data/releases/<version>.yaml`, which feeds the Helm chart
-upgrade notes.
+upgrade notes, and its release pull request deletes them from this directory. What is here is what
+has not been released yet.
 
 ## When a change needs one
 
@@ -116,9 +117,10 @@ When there is truly nothing to do, say so and say what to expect: "No action req
 
 ## Rules
 
-- Never edit, rename or delete a fragment after its pull request merges. A release owns the
-  fragments added in its range, so a moved file would be counted again and an edit would never ship.
-  To correct a released note, edit that release's file under `upgrade-impact/data/releases/`.
+- Never edit, rename or delete a fragment after its pull request merges. The release pull request
+  deletes the fragments it collected. Until it merges, a released fragment is still here, and a
+  moved one would be counted again while an edit would never ship. To correct a released note, edit
+  that release's file under `upgrade-impact/data/releases/`.
 - Tick **Yes** under "Self-hosted upgrade impact" in the pull request description. CI fails when the
   box and the files disagree.
 - On pull requests from this repository that touch backend, Docker or config paths, an automated
