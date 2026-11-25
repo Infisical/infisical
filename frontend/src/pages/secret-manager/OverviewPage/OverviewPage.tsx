@@ -843,7 +843,7 @@ const OverviewPageContent = () => {
 
   useEffect(() => {
     dropHeldDrafts();
-  }, [secretPath, dropHeldDrafts]);
+  }, [projectId, secretPath, dropHeldDrafts]);
   const isCommittingUnsavedEditsRef = useRef(false);
   const { mutateAsync: createCommits } = useCreateCommits();
   const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
@@ -2564,19 +2564,38 @@ const OverviewPageContent = () => {
       const sendableChanges = changes.filter(
         (change) => !folderFailures.some(({ environment }) => environment === change.environment)
       );
+      const updateEnvironments = [
+        ...new Set(
+          sendableChanges.filter((change) => !change.isCreate).map((change) => change.environment)
+        )
+      ];
+      const fetchedSecrets = await Promise.allSettled(
+        updateEnvironments.map((environment) =>
+          fetchProjectSecrets({ projectId, environment, secretPath, viewSecretValue: false })
+        )
+      );
+      const currentSecrets = new Map(
+        updateEnvironments.flatMap((environment, index) => {
+          const result = fetchedSecrets[index];
+          return result.status === "fulfilled"
+            ? [[environment, result.value.secrets] as const]
+            : [];
+        })
+      );
       const { commits: sentCommits } = sendableChanges.length
         ? await createCommits({
             projectId,
             secretPath,
             message,
             secrets: sendableChanges.map((change) => {
-              const current = change.isCreate
-                ? undefined
-                : getSecretByKey(change.environment, change.secretKey);
+              if (change.isCreate) return change;
+              const current = currentSecrets
+                .get(change.environment)
+                ?.find(({ secretKey }) => secretKey === change.secretKey);
               return current
                 ? {
                     ...change,
-                    secretComment: current.comment,
+                    secretComment: current.secretComment,
                     tagIds: current.tags?.map((tag) => tag.id)
                   }
                 : change;
