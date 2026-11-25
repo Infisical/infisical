@@ -47,6 +47,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "ocsp.cert_status",
   "ocsp.cache",
   "rate_limit.bucket",
+  // The license plan's slug: one value per plan, never one per organization.
+  "plan.slug",
   "provider",
   "destination",
   "type",

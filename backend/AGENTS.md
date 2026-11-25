@@ -1074,6 +1074,24 @@ only at some later merge, so read with `FINAL` when an exact count matters.
 rules for code elsewhere: a secret read route calls `recordRead` / `recordBulkRead` with `void` (it never
 throws and must not slow the read), and the table is pruned by dropping partitions, never with `DELETE`.
 
+### Secrets Org Budget
+
+A route that returns a list of secret values to API callers must charge the organization's read budget: take
+`const chargeOrgBudget = await server.secretsOrgBudget(req, reply)` before the service call and call
+`chargeOrgBudget(countReturnedSecrets({ secrets, imports }))` after it. A read costs one credit per
+`SECRETS_PER_BUDGET_CREDIT` secrets, rounded up, against `SECRET_READ_ORG_BUDGET` credits per root organization per minute, so
+the limit follows how much an organization reads rather than how often it asks. The check runs before the read and the
+charge after it, because the cost is unknown until the secrets are loaded: one read may overshoot the budget and it is the
+next one that is refused. Do not move the charge ahead of the read or skip it for a 304, which already costs nothing.
+`SECRET_READ_ORG_BUDGET_MODE` is `observe` by default (count and record `would_refuse`, refuse nothing), `enforce` to refuse
+with a 429 and `Retry-After`, or `off`; like the actor limit it runs only where the rate limiter is registered. A key store
+failure allows the read. Only the v3 and v4 routes that list secrets are charged. Routes that return a single secret are
+left out on purpose, since they cannot return a large number of secrets, and so are the dashboard and secret import routes.
+
+A read at or over budget records `infisical.secret.rate_limit.exceeded.count` (`recordSecretRateLimitExceededMetric`,
+bucket `org_budget`, outcome `refused` or `would_refuse`), and every charge records the window's running total in
+`infisical.secret.org_budget.usage`. Only the budget records these; the per-IP, per-actor and in-flight limits do not.
+
 ### Secret Read Concurrency Limit
 
 A route that lists secrets must run its secret load inside `server.secretReadSlot(req, reply)`, which
@@ -1189,7 +1207,8 @@ Key plugins in `src/server/plugins/`:
 - `audit-log.ts` — request audit logging to queue
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
-- `secrets-rate-limit.ts`: per-actor, then per-org limit on every route whose `config.rateLimit` is `secretsLimit`, on top of its per-IP limit, and only when `SECRETS_RATE_LIMIT_ENABLED` is on. The actor (`secretsActorLimit` from the plan, else `secretsLimit` plus `SECRETS_ACTOR_RATE_LIMIT_OFFSET`) is checked before the org (`secretsOrgLimit` from the plan, else `secretsLimit` plus `SECRETS_ORG_RATE_LIMIT_OFFSET`) because a check counts the request even when it refuses it, so the other order lets one actor's refused requests use up the org's limit
+- `secrets-rate-limit.ts`: per-actor limit (`secretsActorLimit` from the plan, else `secretsLimit` plus `SECRETS_ACTOR_RATE_LIMIT_OFFSET`) on every route whose `config.rateLimit` is `secretsLimit`, on top of its per-IP limit, and only when `SECRETS_RATE_LIMIT_ENABLED` is on
+- `secrets-org-budget.ts`: decorates `server.secretsOrgBudget(req, reply)`, the per-root-org budget for reading secrets; see Secrets Org Budget
 - `secret-read-concurrency-limit.ts`: decorates `server.secretReadSlot(req, reply)`, which returns a slot in a keyed concurrency limiter (per root org, then per instance) held until the wrapped work finishes even if the client disconnects, and refuses with a 429 and `Retry-After: 1`; see Secret Read Concurrency Limit
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving

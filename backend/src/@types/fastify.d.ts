@@ -90,6 +90,7 @@ import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TChargeSecretsOrgBudget } from "@app/server/plugins/secrets-org-budget";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TAiServiceFactory } from "@app/services/ai/ai-service";
@@ -286,6 +287,7 @@ declare module "fastify" {
       rootOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
+    rateLimitPlanSlug: string | null;
     passportUser: TProviderAuthCallback;
     passportMachineIdentity: {
       identityId: string;
@@ -317,6 +319,7 @@ declare module "fastify" {
     // everywhere else access using service layer
     store: FastifyStore;
     secretReadSlot: (req: FastifyRequest, reply: FastifyReply) => TConcurrencySlot;
+    secretsOrgBudget: (req: FastifyRequest, reply: FastifyReply) => Promise<TChargeSecretsOrgBudget>;
   }
 
   // Kept as named interfaces, not inline object types: an inline type in the generic FastifyInstance is copied per

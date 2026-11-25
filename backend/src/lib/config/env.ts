@@ -359,6 +359,20 @@ const envSchema = z
       .describe(
         "Most requests to list secrets an instance will accept at once, running or waiting, before it refuses further ones"
       ),
+    SECRET_READ_ORG_BUDGET_MODE: z
+      .enum(["off", "observe", "enforce"])
+      .default("off")
+      .describe(
+        "How the per-organization secret read budget is applied: off, observe (count and report what would be refused) or enforce (refuse reads once the budget is spent)"
+      ),
+    SECRET_READ_ORG_BUDGET: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1000)
+      .describe(
+        "Credits an organization may spend on reading secrets per minute. A read costs one credit per 100 secrets it returns, rounded up"
+      ),
     MAX_SECRETS_PER_BATCH_REQUEST: zpStr(
       z.coerce
         .number()
@@ -369,9 +383,7 @@ const envSchema = z
     ),
     SECRETS_RATE_LIMIT_ENABLED: zodStrBool
       .default("false")
-      .describe(
-        "Limit secret requests per machine identity or user and per organization, on top of the per-IP secrets rate limit"
-      ),
+      .describe("Limit secret requests per machine identity or user, on top of the per-IP secrets rate limit"),
     SECRETS_ACTOR_RATE_LIMIT_OFFSET: z.coerce
       .number()
       .int()
@@ -379,14 +391,6 @@ const envSchema = z
       .default(25)
       .describe(
         "When an organization's plan sets no secrets rate limit per machine identity or user, each one gets the per-IP secrets rate limit plus this many requests per minute"
-      ),
-    SECRETS_ORG_RATE_LIMIT_OFFSET: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .default(50)
-      .describe(
-        "When an organization's plan sets no organization-wide secrets rate limit, it gets its per-IP secrets rate limit plus this many requests per minute"
       ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),

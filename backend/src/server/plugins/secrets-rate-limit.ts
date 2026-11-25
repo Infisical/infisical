@@ -29,27 +29,12 @@ export const secretsRateLimit = fp(async (server) => {
     keyGenerator: (req) => `secrets-actor:${req.auth?.rootOrgId}:${req.permission.type}:${req.permission.id}`
   });
 
-  const checkOrgLimit = server.createRateLimit({
-    timeWindow: 60 * 1000,
-    max: (req) => req.rateLimits.secretsOrgLimit,
-    keyGenerator: (req) => `secrets-org:${req.auth?.rootOrgId}`
-  });
-
   server.addHook("preHandler", async (req, reply) => {
-    if (req.routeOptions.config.rateLimit !== secretsLimit || !req.auth?.rootOrgId) return;
+    if (req.routeOptions.config.rateLimit !== secretsLimit || !req.auth?.rootOrgId || !req.permission?.id) return;
 
-    // An allowed request counts toward both limits. The actor is checked first so that a request the
-    // actor limit refuses never reaches the organization check, which would count it there too.
-    if (req.permission?.id) {
-      const actorLimit = await checkActorLimit(req);
-      if (!actorLimit.isAllowed && actorLimit.isExceeded) {
-        refuse(reply, actorSubject(req.permission.type), actorLimit);
-      }
-    }
-
-    const orgLimit = await checkOrgLimit(req);
-    if (!orgLimit.isAllowed && orgLimit.isExceeded) {
-      refuse(reply, "Your organization has", orgLimit);
+    const actorLimit = await checkActorLimit(req);
+    if (!actorLimit.isAllowed && actorLimit.isExceeded) {
+      refuse(reply, actorSubject(req.permission.type), actorLimit);
     }
   });
 });

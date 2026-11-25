@@ -15,7 +15,6 @@ vi.mock("@app/lib/config/env", () => ({
 }));
 
 const IP_LIMIT = 1;
-const ORG_LIMIT = 3;
 const ACTOR_LIMIT = 2;
 
 const buildServer = async ({ withRateLimiter = true }: { withRateLimiter?: boolean } = {}) => {
@@ -49,7 +48,6 @@ const buildServer = async ({ withRateLimiter = true }: { withRateLimiter?: boole
       rateLimits: {
         ...DEFAULT_RATE_LIMITS,
         secretsLimit: IP_LIMIT,
-        secretsOrgLimit: ORG_LIMIT,
         secretsActorLimit: ACTOR_LIMIT
       }
     });
@@ -79,109 +77,13 @@ const statusesOf = async (count: number, send: (i: number) => ReturnType<typeof 
 
 const allOk = (count: number) => Array.from({ length: count }, () => 200);
 
-describe("secrets org rate limit", () => {
-  let app: FastifyInstance | undefined;
-
-  afterEach(async () => {
-    await app?.close();
-    app = undefined;
-    config.SECRETS_RATE_LIMIT_ENABLED = true;
-  });
-
-  test("refuses an organization past its limit even when each request comes from a different IP", async () => {
-    app = await buildServer();
-    const server = app;
-
-    expect(
-      await statusesOf(ORG_LIMIT, (i) => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}` }))
-    ).toEqual(allOk(ORG_LIMIT));
-
-    const refused = await get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-last" });
-    expect(refused.statusCode).toBe(429);
-    expect(
-      refused
-        .json<{ message: string }>()
-        .message.startsWith(`Your organization has made more than ${ORG_LIMIT} secret requests in the last minute`)
-    ).toBe(true);
-    expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
-  });
-
-  test("shares one count across every secret route of the organization", async () => {
-    app = await buildServer();
-    const server = app;
-
-    expect(
-      await statusesOf(ORG_LIMIT, (i) =>
-        get(server, i % 2 ? "/secrets" : "/secret-imports", { "x-org-id": "org-a", "x-ip": `ip-${i}` })
-      )
-    ).toEqual(allOk(ORG_LIMIT));
-    expect((await get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-last" })).statusCode).toBe(429);
-  });
-
-  test("counts each organization separately", async () => {
-    app = await buildServer();
-    const server = app;
-
-    await statusesOf(ORG_LIMIT, (i) => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}` }));
-    expect((await get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-last" })).statusCode).toBe(429);
-    expect((await get(server, "/secrets", { "x-org-id": "org-b", "x-ip": "ip-org-b" })).statusCode).toBe(200);
-  });
-
-  test("does not count requests the per-IP limit already refused", async () => {
-    app = await buildServer();
-    const server = app;
-
-    expect(await statusesOf(3, () => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-shared" }))).toEqual([
-      200, 429, 429
-    ]);
-
-    expect(
-      await statusesOf(ORG_LIMIT - 1, (i) => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}` }))
-    ).toEqual(allOk(ORG_LIMIT - 1));
-    expect((await get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-last" })).statusCode).toBe(429);
-  });
-
-  test("leaves routes outside the secrets limit and requests without an organization alone", async () => {
-    app = await buildServer();
-    const server = app;
-
-    await statusesOf(ORG_LIMIT, (i) => get(server, "/projects", { "x-org-id": "org-a", "x-ip": `ip-${i}` }));
-    expect(
-      await statusesOf(ORG_LIMIT, (i) => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}` }))
-    ).toEqual(allOk(ORG_LIMIT));
-    expect(await statusesOf(ORG_LIMIT + 1, (i) => get(server, "/secret-imports", { "x-ip": `ip-${i}` }))).toEqual(
-      allOk(ORG_LIMIT + 1)
-    );
-  });
-
-  test("does nothing when the rate limit plugin is not registered", async () => {
-    app = await buildServer({ withRateLimiter: false });
-    const server = app;
-
-    expect(
-      await statusesOf(ORG_LIMIT + 1, (i) => get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}` }))
-    ).toEqual(allOk(ORG_LIMIT + 1));
-  });
-
-  test("does nothing when SECRETS_RATE_LIMIT_ENABLED is off", async () => {
-    config.SECRETS_RATE_LIMIT_ENABLED = false;
-    app = await buildServer();
-    const server = app;
-
-    expect(
-      await statusesOf(ORG_LIMIT + 1, (i) =>
-        get(server, "/secrets", { "x-org-id": "org-a", "x-ip": `ip-${i}`, "x-actor-id": "actor-1" })
-      )
-    ).toEqual(allOk(ORG_LIMIT + 1));
-  });
-});
-
 describe("secrets actor rate limit", () => {
   let app: FastifyInstance | undefined;
 
   afterEach(async () => {
     await app?.close();
     app = undefined;
+    config.SECRETS_RATE_LIMIT_ENABLED = true;
   });
 
   const asActor = (i: number, actorId: string, extra: Record<string, string> = {}) => ({
@@ -241,22 +143,58 @@ describe("secrets actor rate limit", () => {
     );
   });
 
-  test("does not count requests the actor limit refused toward the organization limit", async () => {
+  test("does not count requests the per-IP limit already refused", async () => {
     app = await buildServer();
     const server = app;
 
-    expect(await statusesOf(ACTOR_LIMIT + 3, (i) => get(server, "/secrets", asActor(i, "actor-1")))).toEqual([
-      ...allOk(ACTOR_LIMIT),
-      429,
-      429,
-      429
+    expect(await statusesOf(3, () => get(server, "/secrets", asActor(0, "actor-1", { "x-ip": "ip-shared" })))).toEqual([
+      200, 429, 429
     ]);
 
-    expect(await statusesOf(ORG_LIMIT - ACTOR_LIMIT, (i) => get(server, "/secrets", asActor(i, `other-${i}`)))).toEqual(
-      allOk(ORG_LIMIT - ACTOR_LIMIT)
+    expect(await statusesOf(ACTOR_LIMIT - 1, (i) => get(server, "/secrets", asActor(i, "actor-1")))).toEqual(
+      allOk(ACTOR_LIMIT - 1)
     );
-    const refused = await get(server, "/secrets", asActor(0, "actor-last"));
-    expect(refused.statusCode).toBe(429);
-    expect(refused.json<{ message: string }>().message.startsWith("Your organization has")).toBe(true);
+    expect((await get(server, "/secrets", asActor(99, "actor-1"))).statusCode).toBe(429);
+  });
+
+  test("leaves routes outside the secrets limit and requests without an organization alone", async () => {
+    app = await buildServer();
+    const server = app;
+
+    await statusesOf(ACTOR_LIMIT + 1, (i) => get(server, "/projects", asActor(i, "actor-1")));
+    expect(await statusesOf(ACTOR_LIMIT, (i) => get(server, "/secrets", asActor(i + 10, "actor-1")))).toEqual(
+      allOk(ACTOR_LIMIT)
+    );
+    expect(
+      await statusesOf(ACTOR_LIMIT + 1, (i) =>
+        get(server, "/secret-imports", { "x-ip": `ip-no-org-${i}`, "x-actor-id": "actor-2" })
+      )
+    ).toEqual(allOk(ACTOR_LIMIT + 1));
+  });
+
+  test("does not limit an organization as a whole", async () => {
+    app = await buildServer();
+    const server = app;
+
+    expect(await statusesOf(10, (i) => get(server, "/secrets", asActor(0, `actor-${i}`)))).toEqual(allOk(10));
+  });
+
+  test("does nothing when the rate limit plugin is not registered", async () => {
+    app = await buildServer({ withRateLimiter: false });
+    const server = app;
+
+    expect(await statusesOf(ACTOR_LIMIT + 1, (i) => get(server, "/secrets", asActor(i, "actor-1")))).toEqual(
+      allOk(ACTOR_LIMIT + 1)
+    );
+  });
+
+  test("does nothing when SECRETS_RATE_LIMIT_ENABLED is off", async () => {
+    config.SECRETS_RATE_LIMIT_ENABLED = false;
+    app = await buildServer();
+    const server = app;
+
+    expect(await statusesOf(ACTOR_LIMIT + 1, (i) => get(server, "/secrets", asActor(i, "actor-1")))).toEqual(
+      allOk(ACTOR_LIMIT + 1)
+    );
   });
 });

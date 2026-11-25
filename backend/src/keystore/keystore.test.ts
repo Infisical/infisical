@@ -22,3 +22,11 @@ describe("claimLeastLoaded", () => {
     expect(await inMemoryKeyStore().claimLeastLoaded([], [], 60)).toBe(0);
   });
 });
+
+describe("incrementByWithFixedExpiry", () => {
+  test("adds to the running total", async () => {
+    const keyStore = inMemoryKeyStore();
+    expect(await keyStore.incrementByWithFixedExpiry("budget", 3, 60)).toBe(3);
+    expect(await keyStore.incrementByWithFixedExpiry("budget", 100, 60)).toBe(103);
+  });
+});

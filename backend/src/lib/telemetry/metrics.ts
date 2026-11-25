@@ -565,6 +565,50 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   unit: "{request}"
 });
 
+export enum SecretRateLimitBucket {
+  OrgBudget = "org_budget"
+}
+
+export enum SecretRateLimitOutcome {
+  Refused = "refused",
+  WouldRefuse = "would_refuse"
+}
+
+const planSlugAttribute = (planSlug?: string | null) => planSlug || "none";
+
+export const secretRateLimitExceededCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret.rate_limit.exceeded.count",
+  {
+    description:
+      "Secret requests a rate limit bucket refused, or would have refused while the bucket only observes, by bucket, plan and outcome.",
+    unit: "{request}"
+  }
+);
+
+export const recordSecretRateLimitExceededMetric = (params: {
+  bucket: SecretRateLimitBucket;
+  outcome: SecretRateLimitOutcome;
+  planSlug?: string | null;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretRateLimitExceededCounter.add(1, {
+    "rate_limit.bucket": params.bucket,
+    outcome: params.outcome,
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+};
+
+export const secretOrgBudgetUsageHistogram = infisicalCoreMeter.createHistogram("infisical.secret.org_budget.usage", {
+  description:
+    "Credits an organization has spent from its secret read budget in the current window, recorded after each read that costs credits, by plan.",
+  unit: "{credit}"
+});
+
+export const recordSecretOrgBudgetUsageMetric = (params: { usedCredits: number; planSlug?: string | null }) => {
+  if (!isTelemetryEnabled()) return;
+  secretOrgBudgetUsageHistogram.record(params.usedCredits, { "plan.slug": planSlugAttribute(params.planSlug) });
+};
+
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
   description:

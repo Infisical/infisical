@@ -14,6 +14,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
+import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { limitSecretBatchSize, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -203,6 +204,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
+      const chargeOrgBudget = await server.secretsOrgBudget(req, reply);
+
       // References expanded with the reader's own overrides are credited to the secrets they resolved to.
       const referencedSecretIds: string[] = [];
       const result = await server.services.secret.getSecretsRaw({
@@ -231,6 +234,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       const { secrets, imports, etag, notModified } = result;
+      chargeOrgBudget(countReturnedSecrets({ secrets, imports }));
 
       // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
       if (req.query.viewSecretValue) {
