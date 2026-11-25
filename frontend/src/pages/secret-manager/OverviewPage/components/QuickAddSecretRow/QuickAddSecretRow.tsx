@@ -392,7 +392,10 @@ export const QuickAddSecretRow = ({
       },
       discard: clearDraft,
       restore: (draft) => {
-        if (draft.length !== environments.length) {
+        if (
+          draft.length !== environments.length ||
+          draft.some(({ environment }) => !environments.includes(environment))
+        ) {
           holdDrafts(draft);
           return;
         }
