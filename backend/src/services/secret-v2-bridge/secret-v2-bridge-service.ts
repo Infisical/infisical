@@ -1855,7 +1855,8 @@ export const secretV2BridgeServiceFactory = ({
         actorOrgId,
         orgDAL,
         kmsDataKeyService,
-        abortSignal
+        abortSignal,
+        onSecretsLoaded: (importedSecretCount) => reportSize(decryptedSecrets.length + importedSecretCount)
       });
       reportSize(decryptedSecrets.length + importedSecrets.reduce((count, folder) => count + folder.secrets.length, 0));
 

@@ -1147,6 +1147,8 @@ service takes no slot. A route that does neither is outside the budget. The slot
   secret change. `getSecrets` in `secret-v2-bridge-service.ts` is the reference.
 - Call `reportSize` as soon as the count is known (after a cache hit is parsed, after the rows are fetched, after imports
   are expanded) and again whenever it changes, before the expensive work that follows (decryption, reference expansion).
+  `fnSecretsV2FromImports` takes an `onSecretsLoaded` callback that runs after each import level's rows load and
+  before they are decrypted; pass `reportSize` through it.
   A report that grows the read past the room other reads leave refuses it there, a 503 in enforce mode and
   `would_refuse` in observe mode, and the size is remembered so the next attempt is refused at admission. Admission
   runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the
