@@ -229,17 +229,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # already installs at the candidate version. Re-check each release; a stale
     # pin holds the vulnerable version, and a withdrawn one fails the build.
     && apt-get install -y --only-upgrade \
-    libgnutls30t64=3.8.9-3+deb13u4 \
-    libc6=2.41-12+deb13u4 \
-    libc-bin=2.41-12+deb13u4 \
-    libssl3t64=3.5.7-1~deb13u3 \
+    libc6=2.41-12+deb13u5 \
+    libc-bin=2.41-12+deb13u5 \
+    libssl3t64=3.5.9-1~deb13u1 \
     dpkg=1.22.22 \
     apt=3.0.4 \
     libapt-pkg7.0=3.0.4 \
     libcap2 \
-    libnghttp2-14=1.64.0-1.1+deb13u1 \
-    libngtcp2-16=1.11.0-1+deb13u1 \
-    libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
     libsqlite3-0=3.46.1-7+deb13u2 \
     util-linux=2.41.5-0+deb13u1 \
     mount=2.41.5-0+deb13u1 \
@@ -254,6 +250,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libudev1=257.13-1~deb13u1 \
     sed=4.9-2+deb13u1 \
     zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
+    libzstd1=1.5.7+dfsg-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
