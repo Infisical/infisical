@@ -12,6 +12,13 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
+const ImportEnvResponseSchema = z.object({
+  name: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.name),
+  slug: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.slug),
+  id: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.id),
+  projectId: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.projectId)
+});
+
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -56,7 +63,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
             z.object({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: ImportEnvResponseSchema
             })
           )
         })
@@ -437,12 +444,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
               slug: z.string()
             }),
             projectId: z.string(),
-            importEnv: z.object({
-              name: z.string().describe(SECRET_IMPORTS.GET.importEnv.name),
-              slug: z.string().describe(SECRET_IMPORTS.GET.importEnv.slug),
-              id: z.string().describe(SECRET_IMPORTS.GET.importEnv.id),
-              projectId: z.string().describe(SECRET_IMPORTS.GET.importEnv.projectId)
-            }),
+            importEnv: ImportEnvResponseSchema,
             secretPath: z.string()
           })
         })

@@ -1648,14 +1648,7 @@ export const SECRET_IMPORTS = {
     path: "The path to list secret imports from."
   },
   GET: {
-    secretImportId: "The ID of the secret import to fetch.",
-    importEnv: {
-      id: "The ID of the environment the secret import reads secrets from.",
-      name: "The name of the environment the secret import reads secrets from.",
-      slug: "The slug of the environment the secret import reads secrets from.",
-      projectId:
-        "The ID of the project the secret import reads secrets from. It differs from the top-level projectId, the project the import is in, when the import reads from another project."
-    }
+    secretImportId: "The ID of the secret import to fetch."
   },
   CREATE: {
     environment: "The slug of the environment to import into.",
@@ -1685,6 +1678,15 @@ export const SECRET_IMPORTS = {
     secretImportId: "The ID of the secret import to delete.",
     environment: "The slug of the environment where the secret import is located.",
     path: "The path of the secret import to delete."
+  },
+  RESPONSE: {
+    importEnv: {
+      id: "The ID of the environment the secret import reads secrets from.",
+      name: "The name of the environment the secret import reads secrets from.",
+      slug: "The slug of the environment the secret import reads secrets from.",
+      projectId:
+        "The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project."
+    }
   }
 } as const;
 
