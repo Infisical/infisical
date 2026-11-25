@@ -4,7 +4,15 @@ import path from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 
-import { getAddedFiles, getAddingCommit, getFileAtRef, getPreviousStableTag, getTagDate, hasGitRef } from "./git.js";
+import {
+  getAddedFiles,
+  getAddingCommit,
+  getFileAtRef,
+  getFilesAtRef,
+  getPreviousStableTag,
+  getTagDate,
+  hasGitRef
+} from "./git.js";
 import { Evidence, ImpactEntry, ImpactLevelSchema, ReleaseImpact } from "./schema.js";
 
 const REPO_URL = "https://github.com/Infisical/infisical";
@@ -198,10 +206,39 @@ export const collectFragmentRelease = (tag: string): FragmentRelease => {
   };
 };
 
-export const getReleaseFragmentFiles = (previousTag: string | null, tag: string) =>
-  getAddedFiles(previousTag, tag).filter(isFragmentPath);
+const readFileIfPresent = async (file: string) => {
+  try {
+    return await fs.readFile(file, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
 
-// force: a fragment may already be gone from this tree, e.g. one from an older release line.
-export const removeFragmentFiles = async (repoRoot: string, files: string[]) => {
-  await Promise.all(files.map((file) => fs.rm(path.join(repoRoot, file), { force: true })));
+    throw error;
+  }
+};
+
+// Removes every fragment the tag contains, not only the ones this release added: a release PR built
+// on a branch cut before a fragment reached main cannot delete it, so a later release has to. A
+// fragment in a tag was collected by that release or an earlier one. The content check spares a new
+// fragment that reuses the name of one an older release line still carries.
+export const removeReleasedFragmentFiles = async (repoRoot: string, tag: string) => {
+  // The first release collects nothing, so its fragments wait for the next one.
+  if (!getPreviousStableTag(tag)) {
+    return [];
+  }
+
+  const removed: string[] = [];
+
+  for (const file of getFilesAtRef(tag, FRAGMENTS_DIR).filter(isFragmentPath)) {
+    const fullPath = path.join(repoRoot, file);
+    const content = await readFileIfPresent(fullPath);
+
+    if (content !== null && content.trim() === getFileAtRef(tag, file)) {
+      await fs.rm(fullPath);
+      removed.push(file);
+    }
+  }
+
+  return removed;
 };

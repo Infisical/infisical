@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { collectFragmentRelease } from "./fragments.js";
+import { collectFragmentRelease, removeReleasedFragmentFiles } from "./fragments.js";
 import { getFileDiff } from "./git.js";
 
 const fragmentYaml = (title: string) =>
@@ -92,6 +92,18 @@ describe("collectFragmentRelease", () => {
     ]);
     expect(release.draft.impactLevel).toBe("medium");
     expect(release.draft.requiresDbMigration).toBe(true);
+  });
+
+  it("removes released fragments an earlier release left behind, and spares unreleased ones", async () => {
+    await commit("leftovers", {
+      "upgrade-impact/changes/from-commit.yaml": fragmentYaml("From a commit"),
+      "upgrade-impact/changes/from-pr.yaml": fragmentYaml("A new fragment reusing a released name"),
+      "upgrade-impact/changes/unreleased.yaml": fragmentYaml("Unreleased")
+    });
+
+    expect(await removeReleasedFragmentFiles(repo, "v1.0.1")).toEqual(["upgrade-impact/changes/from-commit.yaml"]);
+    expect(git("status", "--short").toString().trim()).toBe("D upgrade-impact/changes/from-commit.yaml");
+    expect(await removeReleasedFragmentFiles(repo, "v1.0.0")).toEqual([]);
   });
 
   it("collects nothing for the first release, which has no range to read", () => {

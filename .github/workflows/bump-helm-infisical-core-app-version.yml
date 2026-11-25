@@ -106,8 +106,8 @@ jobs:
         working-directory: upgrade-impact
 
       # Generated on main, but index.yaml on the release branch may have gained releases since, so
-      # stash it and rewrite it on each attempt below. The rewrite also drops the fragments this
-      # release collected.
+      # stash it and rewrite it on each attempt below. The rewrite also drops every fragment
+      # the tag contains: this release's, and any an earlier release PR was cut too early to delete.
       - name: Set generated data aside
         if: steps.impact.outputs.generate == 'true'
         env:

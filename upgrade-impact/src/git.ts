@@ -68,6 +68,9 @@ export const getAddedFiles = (fromTag: string | null, toTag: string) => {
 
 export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${ref}:${file}`]);
 
+export const getFilesAtRef = (ref: string, dir: string) =>
+  runGit(["ls-tree", "-r", "--name-only", "--full-tree", ref, dir]).split("\n").filter(Boolean);
+
 export const getFileDiff = (base: string, head: string, file: string, contextLines: number) =>
   // Paths are repo-root relative, but git reads pathspecs from the cwd.
   runGit(["diff", `--unified=${contextLines}`, base, head, "--", `:(top)${file}`]);

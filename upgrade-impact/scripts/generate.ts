@@ -5,12 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { parse, stringify } from "yaml";
 
-import {
-  collectFragmentRelease,
-  FragmentRelease,
-  getReleaseFragmentFiles,
-  removeFragmentFiles
-} from "../src/fragments.js";
+import { collectFragmentRelease, FragmentRelease, removeReleasedFragmentFiles } from "../src/fragments.js";
 import { compareVersions, isStableVersion } from "../src/git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "../src/schema.js";
 
@@ -108,7 +103,7 @@ const main = async () => {
   if (fromFile) {
     const releaseImpact = ReleaseImpactSchema.parse(parse(await fs.readFile(fromFile, "utf8")));
     await writeReleaseImpact(releaseImpact);
-    await removeFragmentFiles(repoRoot, getReleaseFragmentFiles(releaseImpact.previousTag, releaseImpact.version));
+    await removeReleasedFragmentFiles(repoRoot, releaseImpact.version);
     process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version} from ${fromFile}\n`);
     return;
   }
@@ -125,10 +120,7 @@ const main = async () => {
   }
 
   await writeReleaseImpact(releaseImpact);
-  await removeFragmentFiles(
-    repoRoot,
-    fragments.map(({ file }) => file)
-  );
+  await removeReleasedFragmentFiles(repoRoot, releaseImpact.version);
   process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version}\n`);
 };
 

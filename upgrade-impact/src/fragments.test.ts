@@ -1,7 +1,3 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,8 +5,7 @@ import {
   Fragment,
   isFragmentPath,
   parseFragment,
-  ReleaseFragment,
-  removeFragmentFiles
+  ReleaseFragment
 } from "./fragments.js";
 
 const makeFragment = (file: string, overrides: Partial<Fragment> = {}): ReleaseFragment => ({
@@ -97,18 +92,5 @@ describe("draftFromFragments", () => {
     const second = makeFragment("upgrade-impact/changes/b.yaml");
 
     expect(draftFromFragments([first, second], [])).toEqual(draftFromFragments([second, first], []));
-  });
-});
-
-describe("removeFragmentFiles", () => {
-  it("deletes the given fragments, keeps the others and ignores one already gone", async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "upgrade-impact-"));
-    const changesDir = path.join(repoRoot, "upgrade-impact/changes");
-    await fs.mkdir(changesDir, { recursive: true });
-    await Promise.all(["released.yaml", "unreleased.yaml", "README.md"].map((file) => fs.writeFile(path.join(changesDir, file), "")));
-
-    await removeFragmentFiles(repoRoot, ["upgrade-impact/changes/released.yaml", "upgrade-impact/changes/gone.yaml"]);
-
-    expect((await fs.readdir(changesDir)).sort()).toEqual(["README.md", "unreleased.yaml"]);
   });
 });
