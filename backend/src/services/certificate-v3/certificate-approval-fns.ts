@@ -21,12 +21,12 @@ import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-auth
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
-  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
 import {
   parseIssuedCustomExtensions,
+  readStoredCustomExtensions,
   toRequestCustomExtensions,
   TRequestCustomExtension,
   TResolvedCustomExtension
@@ -40,7 +40,11 @@ import {
   profileHasNoCaError,
   selfSignedProfileCannotSignCsrError
 } from "@app/services/certificate-profile/certificate-profile-errors";
-import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  EnrollmentType,
+  ISSUER_NAMED_ENROLLMENT_TYPES,
+  IssuerType
+} from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -48,6 +52,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -89,8 +94,17 @@ import { TCertificateRequestDALFactory } from "../certificate-request/certificat
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { prepareSelfSignedCertificate, TPreparedSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyProfileDefaults } from "./certificate-v3-fns";
-import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-types";
+import {
+  applyIssuerNameOverride,
+  applyProfileDefaults,
+  buildIssuanceSubject,
+  formatIssuerAltNames
+} from "./certificate-v3-fns";
+import { TAltNameEntry, TCertificateIssuanceResponse, TIssuerNameOverride } from "./certificate-v3-types";
+
+export type TCertificateRequestPreSignHook = (
+  certificateRequest: NonNullable<Awaited<ReturnType<TCertificateRequestDALFactory["findById"]>>>
+) => Promise<void>;
 
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
@@ -114,6 +128,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
+  enrollmentPreSignHooks?: Partial<Record<EnrollmentType, TCertificateRequestPreSignHook>>;
 };
 
 export type TCertificateApprovalService = {
@@ -238,7 +253,8 @@ export const certificateApprovalServiceFactory = (
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    enrollmentPreSignHooks
   } = deps;
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
@@ -396,10 +412,21 @@ export const certificateApprovalServiceFactory = (
     }
 
     const csrRequest = extractCertificateRequestFromCSR(csr || "");
+    const issuerNameOverride: TIssuerNameOverride | undefined =
+      certRequest.enrollmentType && ISSUER_NAMED_ENROLLMENT_TYPES.has(certRequest.enrollmentType)
+        ? {
+            commonName: certRequest.commonName ?? undefined,
+            altNames: (certRequest.altNames as TAltNameEntry[] | null) ?? []
+          }
+        : undefined;
     const reconstructedRequest = applyProfileDefaults(
-      csrRequest.commonName || !certRequest.commonName
-        ? csrRequest
-        : { ...csrRequest, commonName: certRequest.commonName },
+      applyIssuerNameOverride(
+        csrRequest.commonName || !certRequest.commonName
+          ? csrRequest
+          : { ...csrRequest, commonName: certRequest.commonName },
+        issuerNameOverride,
+        profile.defaults
+      ),
       profile.defaults
     );
     const { keyAlgorithm: reconstructedKeyAlg, signatureAlgorithm: reconstructedSigAlg } = extractAlgorithmsFromCSR(
@@ -415,7 +442,7 @@ export const certificateApprovalServiceFactory = (
       mappedReconstructedRequest.subjectAlternativeNames = altNameEntries;
     }
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
-    mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
+    mappedReconstructedRequest.signatureAlgorithm = certRequest.signatureAlgorithm ?? reconstructedSigAlg;
     if (certRequest.notAfter) {
       mappedReconstructedRequest.notBefore = certRequest.notBefore || undefined;
       mappedReconstructedRequest.notAfter = certRequest.notAfter;
@@ -446,23 +473,19 @@ export const certificateApprovalServiceFactory = (
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest
+      mappedReconstructedRequest,
+      {
+        issuerAddedExtensions: readStoredCustomExtensions(certRequest.customExtensions).filter(
+          (extension) => extension.issuerAdded
+        )
+      }
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
         message: describePolicyViolations(revalidationResult.errors)
       });
     }
-
-    const subjectOverride = buildSubjectOverrideForCsr(csr || "", {
-      commonName: reconstructedRequest.commonName,
-      organization: reconstructedRequest.organization,
-      organizationalUnit: reconstructedRequest.organizationalUnit,
-      country: reconstructedRequest.country,
-      state: reconstructedRequest.state,
-      locality: reconstructedRequest.locality,
-      domainComponents: reconstructedRequest.domainComponents
-    });
+    const subjectOverride = buildIssuanceSubject(csr || "", reconstructedRequest, issuerNameOverride);
 
     // This path is already intent-first: the certificate request exists (it was created when the
     // approval was requested), so it only needs the same treatment as direct issuance — no
@@ -482,7 +505,7 @@ export const certificateApprovalServiceFactory = (
       csr: csr || "",
       ttl,
       subjectOverride,
-      altNames: undefined,
+      altNames: formatIssuerAltNames(issuerNameOverride),
       altNameEntries,
       keyUsages: reconstructedRequest.keyUsages
         ? convertKeyUsageArrayToLegacy(reconstructedRequest.keyUsages)
@@ -505,14 +528,25 @@ export const certificateApprovalServiceFactory = (
           new Date(newCert.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
+        const updateData: {
+          profileId: string;
+          renewBeforeDays?: number;
+          applicationId?: string;
+          renewedFromCertificateId?: string;
+        } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
         }
         if (certRequest.applicationId) {
           updateData.applicationId = certRequest.applicationId;
         }
+        if (certRequest.renewedFromCertificateId) {
+          updateData.renewedFromCertificateId = certRequest.renewedFromCertificateId;
+        }
         await certificateDAL.updateById(newCert.id, updateData, tx);
+        if (certRequest.renewedFromCertificateId) {
+          await linkRenewedCertificate(certificateDAL, certRequest.renewedFromCertificateId, newCert.id, tx);
+        }
 
         await certificateRequestDAL.updateById(
           certificateRequestId,
@@ -1034,7 +1068,10 @@ export const certificateApprovalServiceFactory = (
     });
 
     try {
+      const enrollmentType = (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API;
       const targetProfile = await $getProfile(profileId);
+
+      await enrollmentPreSignHooks?.[enrollmentType]?.(certRequest);
 
       const externalCaResult = await $processExternalCARequest(
         certRequest,

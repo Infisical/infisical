@@ -67,6 +67,7 @@ import { registerIdentitySpiffeAuthRouter } from "./identity-spiffe-auth-router"
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
+import { registerInstanceRouter } from "./instance-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
@@ -145,6 +146,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
   await server.register(registerOrganizationMembershipsRouter, { prefix: "/organizations" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
+  await server.register(registerInstanceRouter, { prefix: "/instance" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerNotificationRouter, { prefix: "/notifications" });

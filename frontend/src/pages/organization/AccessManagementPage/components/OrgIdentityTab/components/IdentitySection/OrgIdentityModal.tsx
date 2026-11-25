@@ -23,26 +23,30 @@ import {
   Label,
   Toggle
 } from "@app/components/v3";
-import { useOrganization, useSubscription } from "@app/context";
-import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useSubscription
+} from "@app/context";
+import { findOrgMembershipRole, formatProjectRoleName, isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
-const schema = z
-  .object({
-    name: z.string().min(1, "Required"),
-    role: z.object({ slug: z.string(), name: z.string() }),
-    hasDeleteProtection: z.boolean(),
-    metadata: z
-      .object({
-        key: z.string().trim().min(1),
-        value: z.string().trim().min(1)
-      })
-      .array()
-      .default([])
-      .optional()
-  })
-  .required();
+const schema = z.object({
+  name: z.string().min(1, "Required"),
+  role: z.object({ slug: z.string(), name: z.string() }).optional(),
+  hasDeleteProtection: z.boolean(),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().min(1)
+    })
+    .array()
+    .default([])
+    .optional()
+});
 
 export type FormData = z.infer<typeof schema>;
 
@@ -61,7 +65,9 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     handlePopUpToggle: handleUpgradePlanPopUpToggle
   } = usePopUp(["upgradePlan"] as const);
 
-  const { data: roles } = useGetOrgRoles(orgId);
+  const { permission } = useOrgPermission();
+  const canReadRoles = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  const { data: roles } = useGetOrgRoles(orgId, canReadRoles);
   const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
   const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
@@ -96,42 +102,60 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       };
     };
 
-    if (!roles?.length) return;
+    if (canReadRoles && !roles) return;
 
     if (identity) {
       reset({
         name: identity.name,
-        role: identity.customRole ?? findOrgMembershipRole(roles, identity.role),
+        role:
+          identity.customRole ??
+          (roles
+            ? findOrgMembershipRole(roles, identity.role)
+            : { slug: identity.role, name: formatProjectRoleName(identity.role) }),
         hasDeleteProtection: identity.hasDeleteProtection,
         metadata: identity.metadata
       });
-    } else {
-      reset({
-        name: "",
-        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
-        hasDeleteProtection: true
-      });
-    }
-  }, [popUp?.identity?.data, roles]);
-
-  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
-    if (role?.slug && isCustomOrgRole(role.slug) && subscription && !subscription?.rbac) {
-      handleUpgradePlanPopUpOpen("upgradePlan");
       return;
     }
 
+    if (!roles?.length) return;
+
+    reset({
+      name: "",
+      role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
+      hasDeleteProtection: true
+    });
+  }, [popUp?.identity?.data, roles]);
+
+  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
     const identity = popUp?.identity?.data as {
       identityId: string;
       name: string;
       role: string;
+      customRole?: { slug: string };
       hasDeleteProtection: boolean;
       orgId: string;
     };
 
+    const changedRoleSlug =
+      role?.slug && role.slug !== (identity.customRole?.slug ?? identity.role)
+        ? role.slug
+        : undefined;
+
+    if (
+      changedRoleSlug &&
+      isCustomOrgRole(changedRoleSlug) &&
+      subscription &&
+      !subscription?.rbac
+    ) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
+
     await updateMutateAsync({
       identityId: identity.identityId,
       name,
-      role: role.slug || undefined,
+      role: changedRoleSlug,
       hasDeleteProtection,
       organizationId: orgId,
       metadata
@@ -190,8 +214,15 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                   getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
                   renderOption={(option) => <RoleOptionContent role={option} />}
+                  isDisabled={!canReadRoles}
                   isError={Boolean(error)}
                 />
+                {!canReadRoles && (
+                  <FieldDescription>
+                    You need the View permission under Role Management to change this role. Ask an
+                    organization admin to grant it.
+                  </FieldDescription>
+                )}
               </FieldContent>
               {error && <FieldError>{error.message}</FieldError>}
             </Field>

@@ -63,10 +63,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          enforceImportReplication: z
-            .boolean()
-            .default(false)
-            .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
@@ -103,7 +100,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             secretPath: req.body.secretPath,
             approvals: req.body.approvals,
             enforcementLevel: req.body.enforcementLevel,
-            enforceImportReplication: approval.enforceImportReplication,
+            enforceOnSecretImports: approval.enforceOnSecretImports,
             ...req.auditLogInfo
           }
         })
@@ -153,7 +150,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
-        enforceImportReplication: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
+        enforceOnSecretImports: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
         delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -182,7 +179,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { policyId: req.params.sapId, enforceImportReplication: approval.enforceImportReplication }
+          properties: { policyId: req.params.sapId, enforceOnSecretImports: approval.enforceOnSecretImports }
         })
         .catch(() => {});
 

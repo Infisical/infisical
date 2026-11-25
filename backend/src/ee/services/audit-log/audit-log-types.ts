@@ -1,6 +1,11 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import {
+  MicrosoftAutoenrollmentFailureReason,
+  MicrosoftAutoenrollmentIssuanceResult,
+  MicrosoftAutoenrollmentKeytabSource
+} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
 import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -34,6 +39,7 @@ import {
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
+import { KerberosFailureReason } from "@app/lib/kerberos";
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
@@ -122,6 +128,7 @@ export type TCreateAuditLogDTO = {
     | AcmeAccountActor
     | EstAccountActor
     | ScepAccountActor
+    | MicrosoftAutoenrollmentAccountActor
     | GatewayActor
     | RelayActor
     | KmipServerActor
@@ -537,6 +544,9 @@ export enum EventType {
   ROTATE_PKI_APPLICATION_ACME_EAB_SECRET = "rotate-pki-application-acme-eab-secret",
   SET_PKI_APPLICATION_SCEP_ENROLLMENT = "set-pki-application-scep-enrollment",
   CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT = "clear-pki-application-scep-enrollment",
+  SET_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT = "set-pki-application-microsoft-autoenrollment-enrollment",
+  CLEAR_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT = "clear-pki-application-microsoft-autoenrollment-enrollment",
+  REENROLL_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_COMPUTERS = "reenroll-pki-application-microsoft-autoenrollment-computers",
   GET_CERT_MANAGER_INSTANCE_STATE = "get-cert-manager-instance-state",
   SET_CERT_MANAGER_ACTIVE_PROJECT = "set-cert-manager-active-project",
   INVITE_CERT_MANAGER_USERS = "invite-cert-manager-users",
@@ -962,6 +972,7 @@ export enum EventType {
   RENEW_PKI_SIGNER_CERTIFICATE = "renew-pki-signer-certificate",
   REVOKE_PKI_SIGNER_CERTIFICATE = "revoke-pki-signer-certificate",
   PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED = "pki-signer-certificate-revocation-decided",
+  PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA = "pki-signer-certificate-revoked-by-ca",
   IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
@@ -974,6 +985,9 @@ export enum EventType {
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
   SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
+  MICROSOFT_AUTOENROLLMENT_ISSUANCE = "microsoft-autoenrollment-issuance",
+  MICROSOFT_AUTOENROLLMENT_RENEWAL = "microsoft-autoenrollment-renewal",
+  MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED = "microsoft-autoenrollment-request-refused",
 
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
@@ -1079,6 +1093,7 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
+  [ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
   [ActorType.RELAY]: "relayId",
   [ActorType.KMIP_SERVER]: "kmipServerId",
@@ -1143,6 +1158,10 @@ interface EstAccountActorMetadata {
 }
 
 interface ScepAccountActorMetadata {
+  profileId: string;
+}
+
+interface MicrosoftAutoenrollmentAccountActorMetadata {
   profileId: string;
 }
 
@@ -1218,6 +1237,11 @@ export interface ScepAccountActor {
   metadata: ScepAccountActorMetadata;
 }
 
+export interface MicrosoftAutoenrollmentAccountActor {
+  type: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT;
+  metadata: MicrosoftAutoenrollmentAccountActorMetadata;
+}
+
 export interface GatewayActor {
   type: ActorType.GATEWAY;
   metadata: GatewayActorMetadata;
@@ -1249,6 +1273,18 @@ export type Actor =
   | AcmeAccountActor
   | EstAccountActor
   | ScepAccountActor
+  | MicrosoftAutoenrollmentAccountActor
+  | GatewayActor
+  | RelayActor
+  | KmipServerActor
+  | AgentVaultProxyActor;
+
+export type RequestActor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | ScimClientActor
+  | UnknownUserActor
   | GatewayActor
   | RelayActor
   | KmipServerActor
@@ -4246,6 +4282,47 @@ interface ClearPkiApplicationScepEnrollment {
   };
 }
 
+interface SetPkiApplicationMicrosoftAutoenrollmentEnrollment {
+  type: EventType.SET_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    applicationName: string;
+    profileId: string;
+    profileName: string;
+    servicePrincipalName: string;
+    keyVersion: number;
+    connectionId: string;
+    connectionName: string;
+    allowedGroups: { sid: string; name: string }[];
+    renewBeforeDays: number;
+    allowAnyChannelBinding: boolean;
+    keytabSource: MicrosoftAutoenrollmentKeytabSource;
+    reusedFromProfileId?: string;
+    reusedFromProfileName?: string;
+  };
+}
+
+interface ClearPkiApplicationMicrosoftAutoenrollmentEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    applicationName: string;
+    profileId: string;
+    profileName: string;
+  };
+}
+
+interface ReenrollPkiApplicationMicrosoftAutoenrollmentComputers {
+  type: EventType.REENROLL_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_COMPUTERS;
+  metadata: {
+    applicationId: string;
+    applicationName: string;
+    profileId: string;
+    profileName: string;
+    templateMajorRevision: number;
+  };
+}
+
 interface GetCertManagerInstanceState {
   type: EventType.GET_CERT_MANAGER_INSTANCE_STATE;
   metadata: {
@@ -5363,6 +5440,19 @@ interface PkiSignerCertificateRevocationDecidedEvent {
     revocationReason: CrlReason;
     digicertRevocationRequestId?: number;
     decision: string;
+    status: string;
+  };
+}
+
+interface PkiSignerCertificateRevokedByCaEvent {
+  type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    previousStatus: string;
     status: string;
   };
 }
@@ -7604,6 +7694,7 @@ interface PamApprovalConfigUpdateEvent {
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
     autoApprovalRuleCount?: number;
+    emailApproversOnRequest?: boolean;
   };
 }
 
@@ -8314,6 +8405,39 @@ interface ScepRenewalEvent {
     issuedSerialNumber?: string;
     clientIp: string;
   };
+}
+
+interface MicrosoftAutoenrollmentIssuanceEvent {
+  type: EventType.MICROSOFT_AUTOENROLLMENT_ISSUANCE | EventType.MICROSOFT_AUTOENROLLMENT_RENEWAL;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+    profileId: string;
+    profileName: string;
+    computerName: string;
+    computerSid: string;
+    dnsHostName: string;
+    result: MicrosoftAutoenrollmentIssuanceResult;
+    certificateId?: string;
+    serialNumber?: string;
+    certificateRequestId: string;
+    requestNumber: string;
+  };
+}
+
+interface MicrosoftAutoenrollmentRequestRefusedEvent {
+  type: EventType.MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+    profileId: string;
+    profileName: string;
+    reason: KerberosFailureReason | MicrosoftAutoenrollmentFailureReason;
+    computerName?: string;
+    ticketServiceName?: string;
+    ticketKeyVersion?: number;
+    message?: string;
+  } & TAuditLogCollapseSummary;
 }
 
 interface ScepDynamicChallengeGeneratedEvent {
@@ -9187,6 +9311,9 @@ export type Event =
   | RotatePkiApplicationAcmeEabSecret
   | SetPkiApplicationScepEnrollment
   | ClearPkiApplicationScepEnrollment
+  | SetPkiApplicationMicrosoftAutoenrollmentEnrollment
+  | ClearPkiApplicationMicrosoftAutoenrollmentEnrollment
+  | ReenrollPkiApplicationMicrosoftAutoenrollmentComputers
   | GetCertManagerInstanceState
   | SetCertManagerActiveProject
   | InviteCertManagerUsers
@@ -9307,6 +9434,7 @@ export type Event =
   | RenewPkiSignerCertificateEvent
   | RevokePkiSignerCertificateEvent
   | PkiSignerCertificateRevocationDecidedEvent
+  | PkiSignerCertificateRevokedByCaEvent
   | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
@@ -9582,6 +9710,8 @@ export type Event =
   | ScepEnrollmentEvent
   | ScepRenewalEvent
   | ScepDynamicChallengeGeneratedEvent
+  | MicrosoftAutoenrollmentIssuanceEvent
+  | MicrosoftAutoenrollmentRequestRefusedEvent
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
   | SecretValidationRuleDeleteEvent

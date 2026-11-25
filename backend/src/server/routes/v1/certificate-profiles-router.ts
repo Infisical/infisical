@@ -26,7 +26,11 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { refineRequestReference } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  EnrollmentType,
+  IssuerType,
+  PROFILE_ENROLLMENT_TYPES
+} from "@app/services/certificate-profile/certificate-profile-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -143,7 +147,7 @@ export const registerCertificateProfilesRouter = async (
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
             .describe(CERTIFICATE_PROFILES.slug),
           description: pkiDescriptionSchema.optional().describe(CERTIFICATE_PROFILES.description),
-          enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
+          enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA).describe(CERTIFICATE_PROFILES.issuerType),
           estConfig: z
             .object({
@@ -346,7 +350,7 @@ export const registerCertificateProfilesRouter = async (
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
-        enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+        enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
         applicationId: z.string().uuid().optional(),
@@ -613,7 +617,7 @@ export const registerCertificateProfilesRouter = async (
             .optional()
             .describe(CERTIFICATE_PROFILES.slug),
           description: pkiDescriptionSchema.nullable().optional().describe(CERTIFICATE_PROFILES.description),
-          enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
+          enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).optional().describe(CERTIFICATE_PROFILES.issuerType),
           estConfig: z
             .object({

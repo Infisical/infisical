@@ -521,6 +521,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiMicrosoftAutoenrollmentConfigs,
+  TPkiMicrosoftAutoenrollmentConfigsInsert,
+  TPkiMicrosoftAutoenrollmentConfigsUpdate,
+  TPkiMicrosoftAutoenrollmentRequests,
+  TPkiMicrosoftAutoenrollmentRequestsInsert,
+  TPkiMicrosoftAutoenrollmentRequestsUpdate,
   TPkiScepDynamicChallenges,
   TPkiScepDynamicChallengesInsert,
   TPkiScepDynamicChallengesUpdate,
@@ -1002,6 +1008,16 @@ declare module "knex/types/tables" {
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
       TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiMicrosoftAutoenrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiMicrosoftAutoenrollmentConfigs,
+      TPkiMicrosoftAutoenrollmentConfigsInsert,
+      TPkiMicrosoftAutoenrollmentConfigsUpdate
+    >;
+    [TableName.PkiMicrosoftAutoenrollmentRequest]: KnexOriginal.CompositeTableType<
+      TPkiMicrosoftAutoenrollmentRequests,
+      TPkiMicrosoftAutoenrollmentRequestsInsert,
+      TPkiMicrosoftAutoenrollmentRequestsUpdate
     >;
     [TableName.PkiScepEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiScepEnrollmentConfigs,

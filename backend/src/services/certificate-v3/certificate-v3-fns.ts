@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
@@ -10,6 +11,7 @@ import {
   toAltNameMappings
 } from "@app/services/certificate/certificate-types";
 
+import { createDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import {
   ACME_SAN_TYPES,
   CertExtendedKeyUsageType,
@@ -17,7 +19,10 @@ import {
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
-import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
+import {
+  buildSubjectOverrideForCsr,
+  extractCertificateRequestFromCSR
+} from "../certificate-common/certificate-csr-utils";
 import {
   includesSan,
   isRequestReference,
@@ -25,8 +30,9 @@ import {
   parsePolicyTtl,
   RequestReference
 } from "../certificate-policy/certificate-policy-fns";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { TAltNameEntry } from "./certificate-v3-types";
+import { TAltNameEntry, TIssuerNameOverride } from "./certificate-v3-types";
 
 export const calculateRenewalThreshold = (
   profileRenewBeforeDays: number | undefined,
@@ -159,6 +165,43 @@ export const applyProfileDefaults = <
   };
 };
 
+export const applyIssuerNameOverride = (
+  csrRequest: TCertificateRequest,
+  issuerNameOverride: TIssuerNameOverride | undefined,
+  profileDefaults: Pick<TCertificateProfileDefaults, "keyUsages" | "extendedKeyUsages"> | null | undefined
+): TCertificateRequest =>
+  issuerNameOverride
+    ? {
+        ...pick(csrRequest, ["basicConstraints"]),
+        keyUsages: profileDefaults?.keyUsages?.length ? undefined : csrRequest.keyUsages,
+        extendedKeyUsages: profileDefaults?.extendedKeyUsages?.length ? undefined : csrRequest.extendedKeyUsages,
+        commonName: issuerNameOverride.commonName,
+        subjectAlternativeNames: issuerNameOverride.altNames
+      }
+    : csrRequest;
+
+export const formatIssuerAltNames = (issuerNameOverride: TIssuerNameOverride | undefined) =>
+  issuerNameOverride?.altNames.map((altName) => altName.value).join(",");
+
+export const buildIssuanceSubject = (
+  csr: string,
+  request: Pick<
+    TCertificateRequest,
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
+  >,
+  issuerNameOverride: TIssuerNameOverride | undefined
+) =>
+  issuerNameOverride
+    ? createDistinguishedName({
+        commonName: request.commonName,
+        organization: request.organization,
+        ou: request.organizationalUnit,
+        country: request.country,
+        province: request.state,
+        locality: request.locality,
+        domainComponents: request.domainComponents
+      })
+    : buildSubjectOverrideForCsr(csr, request);
 export const applyCommonNameDefaultSan = ({
   defaults,
   enrollmentType,
@@ -175,7 +218,10 @@ export const applyCommonNameDefaultSan = ({
   subjectAlternativeNames?: TAltNameEntry[];
   requestedSubjectAlternativeNames?: TAltNameEntry[];
   isCsrSignedAsSent?: boolean;
-}): { subjectAlternativeNames?: TAltNameEntry[]; altNameEntries?: TAltNameEntry[] } => {
+}): {
+  subjectAlternativeNames?: TAltNameEntry[];
+  altNameEntries?: TAltNameEntry[];
+} => {
   const isAcme = enrollmentType === EnrollmentType.ACME;
   const commonName = isAcme ? csrCommonName : requestedCommonName;
   if (!commonName || isCsrSignedAsSent || requestedSubjectAlternativeNames?.length) {
@@ -199,7 +245,10 @@ export const applyCommonNameDefaultSan = ({
 };
 
 export const toCommonNameDefaults = (types: CertSubjectAlternativeNameType[]): TCertificateProfileDefaults => ({
-  subjectAltNames: [...new Set(types)].map((type) => ({ type, value: RequestReference.CommonName }))
+  subjectAltNames: [...new Set(types)].map((type) => ({
+    type,
+    value: RequestReference.CommonName
+  }))
 });
 
 export const getSubjectAltNameTypes = (

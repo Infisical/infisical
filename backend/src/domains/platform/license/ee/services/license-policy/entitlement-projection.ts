@@ -1,28 +1,29 @@
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { TPlanNotice } from "../../../ce/models/plan";
-import {
-  TEntitlementsResponse,
-  trialPaymentFailedNoticeSchema
-} from "../../../ce/services/helpers/license-server-types";
+import { planNoticeSchema, TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
 // Keep this exact specifier: the e2e suite aliases "./default-features" to a permissive fake.
 import { getDefaultOnPremFeatures } from "./default-features";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
 
 // Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.
 const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
-  rawNotices.flatMap((rawNotice) => {
-    const parsed = trialPaymentFailedNoticeSchema.safeParse(rawNotice);
+  rawNotices.flatMap((rawNotice): TPlanNotice[] => {
+    const parsed = planNoticeSchema.safeParse(rawNotice);
     if (!parsed.success) {
       return [];
     }
+    const notice = parsed.data;
+    if (notice.type === "subscription_payment_failed") {
+      return [{ type: notice.type, cause: notice.cause ?? null, since: notice.since ?? null }];
+    }
     return [
       {
-        type: parsed.data.type,
-        productKey: parsed.data.product_key,
-        trialPlanKey: parsed.data.trial_plan_key ?? null,
-        accessEndsAt: parsed.data.access_ends_at,
-        nextAttemptAt: parsed.data.next_attempt_at ?? null,
-        cause: parsed.data.cause ?? null
+        type: notice.type,
+        productKey: notice.product_key,
+        trialPlanKey: notice.trial_plan_key ?? null,
+        accessEndsAt: notice.access_ends_at,
+        nextAttemptAt: notice.next_attempt_at ?? null,
+        cause: notice.cause ?? null
       }
     ];
   });

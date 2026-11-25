@@ -5,6 +5,7 @@ import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
+import { getEnrollmentTypeName } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
 import {
@@ -31,6 +32,31 @@ export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a de
 
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
+
+type TRenewNowCertificate = {
+  profileId?: string | null;
+  isRenewedByClient?: boolean;
+  enrollmentType?: string | null;
+};
+
+export const getRenewNowState = ({
+  certificate,
+  canRenew,
+  permissionBlockedReason
+}: {
+  certificate: TRenewNowCertificate;
+  canRenew: boolean;
+  permissionBlockedReason?: string;
+}): { isDisabled: boolean; reason?: string } => {
+  if (!certificate.profileId) return { isDisabled: true, reason: RENEWAL_UNAVAILABLE_NO_PROFILE };
+  if (certificate.isRenewedByClient && certificate.enrollmentType) {
+    return {
+      isDisabled: true,
+      reason: `${getEnrollmentTypeName(certificate.enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
+    };
+  }
+  return { isDisabled: !canRenew, reason: permissionBlockedReason };
+};
 
 type TApplicationAbility = {
   can: (action: string, subjectType: string) => boolean;

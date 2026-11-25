@@ -253,7 +253,8 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   kmsDataKeyService,
-  kmsKeyService
+  kmsKeyService,
+  shouldThrowLookupErrors = false
 }: {
   signerCertDer: Buffer;
   signerCert?: x509.X509Certificate;
@@ -263,7 +264,14 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
+  shouldThrowLookupErrors?: boolean;
 }): Promise<boolean> => {
+  let lookupError: Error | undefined;
+  const lookUp = <T>(lookup: Promise<T>) =>
+    lookup.catch((error: Error) => {
+      lookupError = error;
+      throw error;
+    });
   try {
     const signerCert = providedSignerCert ?? new x509.X509Certificate(asNonSharedBuffer(signerCertDer));
 
@@ -271,13 +279,15 @@ export const isSignerCertIssuedByCa = async ({
       return false;
     }
 
-    const caCertChains = await getCaCertChains({
-      caId,
-      certificateAuthorityCertDAL,
-      certificateAuthorityDAL,
-      kmsDataKeyService,
-      kmsKeyService
-    });
+    const caCertChains = await lookUp(
+      getCaCertChains({
+        caId,
+        certificateAuthorityCertDAL,
+        certificateAuthorityDAL,
+        kmsDataKeyService,
+        kmsKeyService
+      })
+    );
 
     const verifiedChains = await Promise.all(
       caCertChains.map(async (chain) => {
@@ -296,17 +306,19 @@ export const isSignerCertIssuedByCa = async ({
 
     // Check if the certificate has been revoked in the database
     // Use transaction to read from primary DB (not replica) since this is a security-critical check
-    const isRevoked = await certificateDAL.transaction(async (tx) => {
-      const revokedCert = await certificateDAL.findOneLiveFirst(
-        {
-          $in: { serialNumber: getSerialNumberSpellings(signerCert.serialNumber) },
-          caId,
-          status: CertStatus.REVOKED
-        },
-        tx
-      );
-      return Boolean(revokedCert);
-    });
+    const isRevoked = await lookUp(
+      certificateDAL.transaction(async (tx) => {
+        const revokedCert = await certificateDAL.findOneLiveFirst(
+          {
+            $in: { serialNumber: getSerialNumberSpellings(signerCert.serialNumber) },
+            caId,
+            status: CertStatus.REVOKED
+          },
+          tx
+        );
+        return Boolean(revokedCert);
+      })
+    );
 
     if (isRevoked) {
       return false;
@@ -314,6 +326,7 @@ export const isSignerCertIssuedByCa = async ({
 
     return true;
   } catch {
+    if (shouldThrowLookupErrors && lookupError) throw lookupError;
     return false;
   }
 };

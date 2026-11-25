@@ -89,7 +89,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
-    enforceImportReplication,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -166,7 +166,7 @@ export const secretChangePolicyServiceFactory = ({
           enforcementLevel,
           bypassForMachineIdentities,
           conditions: { version: 1, conditions: [] },
-          constraints: { version: 1, constraints: { allowedSelfApprovals, enforceImportReplication } },
+          constraints: { version: 1, constraints: { allowedSelfApprovals, enforceOnSecretImports } },
           scopeType: null,
           scopeId: null
         },
@@ -222,7 +222,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
-    enforceImportReplication,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -283,7 +283,7 @@ export const secretChangePolicyServiceFactory = ({
       secretPath,
       enforcementLevel,
       allowedSelfApprovals,
-      enforceImportReplication,
+      enforceOnSecretImports,
       bypassForMachineIdentities,
       requestedEnvs,
       approverCount: approvers.length,

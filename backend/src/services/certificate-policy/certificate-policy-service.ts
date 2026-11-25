@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,
@@ -21,12 +22,14 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   MAX_CUSTOM_EXTENSION_RULES_PER_POLICY,
+  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS,
   POLICY_KEY_ALGORITHM_TO_REQUEST,
   POLICY_SIGNATURE_ALGORITHM_TO_REQUEST
 } from "../certificate-common/certificate-constants";
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeReservedExtensionOid,
+  findMicrosoftAutoenrollmentRuleProblems,
   isReservedExtensionOid,
   resolveCustomExtensions,
   TCustomExtensionRule,
@@ -712,7 +715,8 @@ export const certificatePolicyServiceFactory = ({
       declarations: options?.profileCustomExtensions,
       rules: template.customExtensions,
       requestExtensions: request.customExtensions,
-      skipRequired: options?.skipRequired
+      skipRequired: options?.skipRequired,
+      issuerAddedExtensions: options?.issuerAddedExtensions
     });
     errors.push(...customExtensionErrors);
 
@@ -926,7 +930,35 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    const updatedTemplate = await certificatePolicyDAL.updateById(policyId, updateData);
+    const windowsRuleProblems = consolidatedData.customExtensions
+      ? findMicrosoftAutoenrollmentRuleProblems(consolidatedData.customExtensions)
+      : [];
+    const updatedTemplate = await certificatePolicyDAL.transaction(async (tx) => {
+      if (windowsRuleProblems.length || consolidatedData.algorithms !== undefined) {
+        await certificatePolicyDAL.lockById(policyId, tx);
+        const windowsProfiles = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
+        const [windowsProfile] = windowsProfiles;
+        if (windowsProfile && windowsRuleProblems.length) {
+          throw new BadRequestError({
+            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${windowsRuleProblems.join(" ")} You can also turn off Microsoft Autoenrollment for that profile.`
+          });
+        }
+        const updatedPolicy = { ...existingTemplate, ...updateData } as TCertificatePolicy;
+        for (const { profileName, profileDefaults, applicationName, caKeyAlgorithm, caKeySource } of windowsProfiles) {
+          const keyProblem = findTemplatePolicyProblem(
+            { slug: profileName, defaults: profileDefaults },
+            { keyAlgorithm: caKeyAlgorithm, keySource: caKeySource },
+            (request) => validateRequestAgainstPolicy(updatedPolicy, request, { skipRequired: true }).isValid
+          );
+          if (keyProblem) {
+            throw new BadRequestError({
+              message: `Certificate profile '${profileName}' uses this policy with Microsoft Autoenrollment in Application '${applicationName}'. ${keyProblem}`
+            });
+          }
+        }
+      }
+      return certificatePolicyDAL.updateById(policyId, updateData, tx);
+    });
     if (!updatedTemplate) {
       throw new NotFoundError({ message: "Failed to update certificate policy" });
     }

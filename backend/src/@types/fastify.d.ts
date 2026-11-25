@@ -26,7 +26,7 @@ import { TAgentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
-import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { RequestActor, TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
@@ -51,6 +51,7 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
+import { TMicrosoftAutoenrollmentServiceFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountHeartbeatServiceFactory } from "@app/ee/services/pam-account-heartbeat/pam-account-heartbeat-service";
@@ -302,7 +303,9 @@ declare module "fastify" {
       clientId: string;
       name: string;
     };
-    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
+    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "orgId"> & {
+      actor: RequestActor;
+    };
     internalCertManagerProjectId: string;
     internalPamProjectId: string;
     internalSecretScanningProjectId: string;
@@ -426,6 +429,7 @@ declare module "fastify" {
     certificateEst: TCertificateEstServiceFactory;
     pkiAcme: TPkiAcmeServiceFactory;
     pkiScep: TPkiScepServiceFactory;
+    microsoftAutoenrollment: TMicrosoftAutoenrollmentServiceFactory;
     certificateEstV3: TCertificateEstV3ServiceFactory;
     pkiCollection: TPkiCollectionServiceFactory;
     pkiSubscriber: TPkiSubscriberServiceFactory;

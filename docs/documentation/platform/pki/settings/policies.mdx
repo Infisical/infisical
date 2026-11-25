@@ -219,6 +219,13 @@ Patterns are matched against the value you enter rather than its encoded form, a
 
 If you configure Custom Extensions, only the OIDs you list are permitted. Any other OID in a request is rejected, including one carried in a signing request, so the patterns are what limit what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
 
+[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds two extensions: the computer's security identifier in the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and the **Certificate template information** (`1.3.6.1.4.1.311.21.7`). If the policy doesn't restrict custom extensions, both are added with no rule. If it does:
+
+- The policy must allow both OIDs, and their values are checked against its rules like any other extension
+- The rule for the template information must allow any value (`*`), because its value ends with a version that changes each time the method's settings are saved or computers are re-enrolled
+- The rule for the SID can't deny every value
+- Microsoft Autoenrollment can't be turned on for a profile until the policy meets these rules, and the policy can't be changed to break them while a profile uses it with Microsoft Autoenrollment
+
 Infisical manages some extensions itself, so you can't set any OID under `2.5.29.` or authority information access here.
 
 Custom extensions need a certificate authority that can emit them: an internal CA, Microsoft ADCS, or AWS Private CA. A [certificate profile](/documentation/platform/pki/settings/profiles) built on any other certificate authority can't declare them. AWS Private CA also caps a certificate at three custom extensions.
