@@ -394,6 +394,34 @@ describe("CertificatePolicyService", () => {
       expect(result).toEqual(updatedTemplate);
     });
 
+    it("keeps a long mixed-case name within the 255-character column, without a trailing hyphen", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findByNameAndProjectId.mockResolvedValue(null);
+
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { name: `x${"aB".repeat(127)}` } });
+
+      const storedName = mockCertificatePolicyDAL.updateById.mock.calls[0][1].name as string;
+      expect(storedName.length).toBeLessThanOrEqual(255);
+      expect(storedName.endsWith("-")).toBe(false);
+    });
+
+    it("keeps the collision suffix within 255 characters and avoids a double hyphen", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findByNameAndProjectId
+        .mockResolvedValueOnce({ ...sampleTemplate, id: "other-policy" })
+        .mockResolvedValueOnce(null);
+
+      const name = `${"a".repeat(245)}-${"b".repeat(9)}`;
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { name } });
+
+      const storedName = mockCertificatePolicyDAL.updateById.mock.calls[0][1].name as string;
+      expect(storedName.length).toBeLessThanOrEqual(255);
+      expect(storedName).not.toContain("--");
+      expect(storedName.startsWith(`${"a".repeat(245)}-`)).toBe(true);
+    });
+
     it("should throw NotFoundError when template does not exist", async () => {
       mockCertificatePolicyDAL.findById.mockResolvedValue(null);
 
@@ -633,7 +661,7 @@ describe("CertificatePolicyService", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "common_name value 'forbidden.com' does not match allowed patterns: *.example.com, example.com"
+        "common_name value 'forbidden.com' does not match allowed patterns: '*.example.com', 'example.com'"
       );
     });
 
@@ -656,7 +684,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by this policy");
+      expect(result.errors).toContain(
+        "organization value 'Forbidden Corp' is denied by the policy. Denied values: 'Forbidden Corp'"
+      );
     });
 
     it("should treat an empty subject policy as nothing allowed (reject request subject attributes)", async () => {
@@ -665,7 +695,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute common_name is not allowed by the policy. The policy allows no subject attributes"
+      );
     });
 
     it("should treat an undefined subject policy as allow all (no subject constraint)", async () => {
@@ -682,7 +714,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("dns_name SAN is not allowed by this policy");
+      expect(result.errors).toContain("SAN type dns_name is not allowed by the policy. The policy allows no SAN types");
     });
 
     it("should treat an undefined SAN policy as allow all (no SAN constraint)", async () => {
@@ -702,7 +734,9 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute domain_component is not allowed by the policy. The policy allows no subject attributes"
+      );
     });
 
     it("should detect missing required key usages", async () => {
@@ -711,7 +745,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Missing required key usages: key_encipherment");
+      expect(result.errors).toContain(
+        "The request is missing the required key usages: key_encipherment. Add them to the request's key usages"
+      );
     });
 
     it("should detect invalid key usages", async () => {
@@ -723,7 +759,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid key usages: invalid_usage");
+      expect(result.errors).toContain(
+        "The request includes key usages the policy does not allow: invalid_usage. Allowed key usages: digital_signature, key_encipherment, data_encipherment"
+      );
     });
 
     it("should detect missing required extended key usages", async () => {
@@ -732,7 +770,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Missing required extended key usages: server_auth");
+      expect(result.errors).toContain(
+        "The request is missing the required extended key usages: server_auth. Add them to the request's extended key usages"
+      );
     });
 
     it("should detect invalid extended key usages", async () => {
@@ -744,7 +784,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid extended key usages: invalid_eku");
+      expect(result.errors).toContain(
+        "The request includes extended key usages the policy does not allow: invalid_eku. Allowed extended key usages: server_auth, client_auth"
+      );
     });
 
     it("should detect missing required SAN entries", async () => {
@@ -756,7 +798,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Required email SAN matching pattern 'admin@example.com' not found in request");
+      expect(result.errors).toContain(
+        "The request has no email SAN matching the required pattern 'admin@example.com'. Add one to the request"
+      );
     });
 
     it("should validate SAN values against allowed patterns", async () => {
@@ -772,7 +816,7 @@ describe("CertificatePolicyService", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "dns_name SAN value 'forbidden.com' does not match allowed patterns: *.example.com, *.api.example.com"
+        "dns_name SAN value 'forbidden.com' does not match allowed patterns: 'api.example.com', '*.example.com', '*.api.example.com'"
       );
     });
 
@@ -801,7 +845,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("email SAN matching denied pattern 'forbidden@example.com' found in request");
+      expect(result.errors).toContain(
+        "email SAN 'forbidden@example.com' matches the denied pattern 'forbidden@example.com'. Remove it from the request, or from the profile's default SANs if a default added it"
+      );
     });
 
     it("should detect invalid signature algorithm", async () => {
@@ -810,7 +856,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Signature algorithm 'MD5-RSA' is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Signature algorithm 'MD5-RSA' is not allowed by the policy. Allowed signature algorithms: RSA-SHA256, ECDSA-SHA256"
+      );
     });
 
     it("should detect invalid key algorithm", async () => {
@@ -819,7 +867,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Key algorithm 'RSA-1024' is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Key algorithm 'RSA-1024' is not allowed by the policy. Allowed key algorithms: RSA_2048, RSA_4096, EC_prime256v1"
+      );
     });
 
     it("should detect TTL exceeding maximum duration", async () => {
@@ -828,7 +878,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
+      expect(result.errors).toContain(
+        "Requested validity '180d' exceeds the policy's maximum of '90d'. Request a TTL of 90d or less"
+      );
     });
 
     it("should detect TTL exceeding maximum duration", async () => {
@@ -846,7 +898,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
+      expect(result.errors).toContain(
+        "Requested validity '100d' exceeds the policy's maximum of '90d'. Request a TTL of 90d or less"
+      );
     });
 
     it("should handle various TTL formats", async () => {
@@ -865,7 +919,7 @@ describe("CertificatePolicyService", () => {
 
           if (testCase.shouldThrow) {
             await expect(service.validateCertificateRequest("template-123", request)).rejects.toThrow(
-              `Invalid TTL format: ${testCase.ttl}`
+              `TTL '${testCase.ttl}' is not in a supported format. Use a number followed by h, d, m or y, such as 90d or 1y.`
             );
           } else {
             const result = await service.validateCertificateRequest("template-123", request);
@@ -946,7 +1000,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", requestWithNonMatchingWildcard);
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "common_name value 'api.notexample.com' does not match allowed patterns: *.example.com, example.com"
+        "common_name value 'api.notexample.com' does not match allowed patterns: '*.example.com', 'example.com'"
       );
     });
 
@@ -1111,7 +1165,7 @@ describe("CertificatePolicyService", () => {
       });
       expect(missing.isValid).toBe(false);
       expect(missing.errors).toContain(
-        "Missing required domain_component attribute. This policy requires one of: 'DC=app,DC=example,DC=auth'"
+        "The request is missing the required domain_component attribute. This policy requires one of: 'DC=app,DC=example,DC=auth'"
       );
 
       const outOfOrder = await service.validateCertificateRequest("template-123", {
@@ -1163,7 +1217,9 @@ describe("CertificatePolicyService", () => {
 
       const result = await service.validateCertificateRequest("template-123", request);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute domain_component is not allowed by the policy. Allowed subject attributes: common_name"
+      );
     });
 
     it("should prevent certificates from including denied SANs", async () => {
@@ -1186,7 +1242,9 @@ describe("CertificatePolicyService", () => {
 
       const result = await service.validateCertificateRequest("template-123", requestWithProhibitedSan);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
+      expect(result.errors).toContain(
+        "email SAN 'test@example.com' matches the denied pattern '*@example.com'. Remove it from the request, or from the profile's default SANs if a default added it"
+      );
     });
 
     describe("comprehensive template validation scenarios", () => {
@@ -1300,8 +1358,12 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithProhibited);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
-        expect(result.errors).toContain("uri SAN matching denied pattern 'https://example.com' found in request");
+        expect(result.errors).toContain(
+          "email SAN 'test@example.com' matches the denied pattern '*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
+        expect(result.errors).toContain(
+          "uri SAN 'https://example.com' matches the denied pattern '*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
       });
 
       it("should validate complex attribute value constraints", async () => {
@@ -1341,7 +1403,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidResult = await service.validateCertificateRequest("template-123", invalidConstrainedRequest);
         expect(invalidResult.isValid).toBe(false);
-        expect(invalidResult.errors).toContain("common_name value 'forbidden.com' is not in allowed values list");
+        expect(invalidResult.errors).toContain(
+          "common_name value 'forbidden.com' is not in the allowed values: 'example.com', 'test.com'"
+        );
       });
 
       it("should validate SAN value constraints with multiple types", async () => {
@@ -1392,7 +1456,7 @@ describe("CertificatePolicyService", () => {
         const missingResult = await service.validateCertificateRequest("template-123", missingSanRequest);
         expect(missingResult.isValid).toBe(false);
         expect(missingResult.errors).toContain(
-          "Required email SAN matching pattern '*@example.com' not found in request"
+          "The request has no email SAN matching the required pattern '*@example.com'. Add one to the request"
         );
       });
 
@@ -1458,7 +1522,9 @@ describe("CertificatePolicyService", () => {
 
         const forbiddenResult = await service.validateCertificateRequest("template-123", forbiddenUsageRequest);
         expect(forbiddenResult.isValid).toBe(false);
-        expect(forbiddenResult.errors).toContain("Invalid key usages: crl_sign");
+        expect(forbiddenResult.errors).toContain(
+          "The request includes key usages the policy does not allow: crl_sign. Allowed key usages: digital_signature, key_encipherment, data_encipherment, key_agreement"
+        );
       });
 
       it("should validate algorithm constraints thoroughly", async () => {
@@ -1500,7 +1566,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidSigResult = await service.validateCertificateRequest("template-123", invalidSigRequest);
         expect(invalidSigResult.isValid).toBe(false);
-        expect(invalidSigResult.errors).toContain("Signature algorithm 'ECDSA-SHA256' is not allowed by this policy");
+        expect(invalidSigResult.errors).toContain(
+          "Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA256, RSA-SHA512"
+        );
 
         const invalidKeyRequest = {
           commonName: "example.com",
@@ -1513,7 +1581,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidKeyResult = await service.validateCertificateRequest("template-123", invalidKeyRequest);
         expect(invalidKeyResult.isValid).toBe(false);
-        expect(invalidKeyResult.errors).toContain("Key algorithm 'EC_prime256v1' is not allowed by this policy");
+        expect(invalidKeyResult.errors).toContain(
+          "Key algorithm 'EC_prime256v1' is not allowed by the policy. Allowed key algorithms: RSA_2048, RSA_4096"
+        );
       });
 
       it("should validate validity period edge cases", async () => {
@@ -1584,7 +1654,9 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithUnlistedKeyUsage);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("Invalid key usages: encipher_only");
+        expect(result.errors).toContain(
+          "The request includes key usages the policy does not allow: encipher_only. Allowed key usages: digital_signature, key_encipherment, data_encipherment"
+        );
       });
 
       it("should reject requests with unlisted SAN types", async () => {
@@ -1611,7 +1683,7 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithUnlistedSan);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN is not allowed by this policy");
+        expect(result.errors).toContain("SAN type email is not allowed by the policy. Allowed SAN types: dns_name");
       });
 
       it("should allow any key usages when template does not define key-usage rules", async () => {
@@ -1648,8 +1720,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
-        expect(result.errors).not.toContain("Key algorithm 'RSA-2048' is not allowed by this policy");
+        expect(result.errors.some((error) => error.startsWith("Signature algorithm 'RSA-SHA256'"))).toBe(false);
+        expect(result.errors.some((error) => error.startsWith("Key algorithm 'RSA-2048'"))).toBe(false);
       });
     });
 
@@ -1693,7 +1765,9 @@ describe("CertificatePolicyService", () => {
           missingCommonNameRequest
         );
         expect(missingCommonNameResult.isValid).toBe(false);
-        expect(missingCommonNameResult.errors).toContain("Missing required common_name attribute");
+        expect(missingCommonNameResult.errors).toContain(
+          "The request is missing the required common_name attribute. The policy requires a value matching: '*'"
+        );
       });
     });
 
@@ -1736,7 +1810,8 @@ describe("CertificatePolicyService", () => {
           if (!testCase.shouldBeValid) {
             expect(
               result.errors.some(
-                (error) => error.includes("does not match allowed patterns") || error.includes("not in allowed values")
+                (error) =>
+                  error.includes("does not match allowed patterns") || error.includes("is not in the allowed values")
               )
             ).toBe(true);
           }
@@ -1897,8 +1972,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
-        expect(result.errors).not.toContain("Key algorithm 'RSA_2048' is not allowed by this policy");
+        expect(result.errors.some((error) => error.startsWith("Signature algorithm 'RSA-SHA256'"))).toBe(false);
+        expect(result.errors.some((error) => error.startsWith("Key algorithm 'RSA_2048'"))).toBe(false);
       });
 
       it("should allow requests that match any of multiple attribute policies of same type", async () => {
@@ -1961,7 +2036,7 @@ describe("CertificatePolicyService", () => {
         const result3 = await service.validateCertificateRequest("template-123", requestMatchingNeitherPolicy);
         expect(result3.isValid).toBe(false);
         expect(result3.errors).toContain(
-          "common_name value 'test.example.com' does not match allowed patterns: *.infisical.com, *.infisical2.com"
+          "common_name value 'test.example.com' does not match allowed patterns: '*.infisical.com', '*.infisical2.com'"
         );
       });
     });
@@ -2004,12 +2079,12 @@ describe("CertificatePolicyService", () => {
         const invalidCountryRequest = { ...validComplexRequest, country: "XX" };
         const result2 = await service.validateCertificateRequest("template-123", invalidCountryRequest);
         expect(result2.isValid).toBe(false);
-        expect(result2.errors).toContain("country value 'XX' is denied by this policy");
+        expect(result2.errors).toContain("country value 'XX' is denied by the policy. Denied values: 'XX'");
         const invalidOrgRequest = { ...validComplexRequest, organization: "Different Corp" };
         const result3 = await service.validateCertificateRequest("template-123", invalidOrgRequest);
         expect(result3.isValid).toBe(false);
         expect(result3.errors).toContain(
-          "organization value 'Different Corp' does not match allowed patterns: Example*"
+          "organization value 'Different Corp' does not match allowed patterns: 'Example*'"
         );
       });
 
@@ -2055,7 +2130,9 @@ describe("CertificatePolicyService", () => {
 
         const result2 = await service.validateCertificateRequest("template-123", missingEmailRequest);
         expect(result2.isValid).toBe(false);
-        expect(result2.errors).toContain("Required email SAN matching pattern '*@example.com' not found in request");
+        expect(result2.errors).toContain(
+          "The request has no email SAN matching the required pattern '*@example.com'. Add one to the request"
+        );
 
         const deniedIpRequest = {
           ...validSanRequest,
@@ -2067,7 +2144,9 @@ describe("CertificatePolicyService", () => {
 
         const result3 = await service.validateCertificateRequest("template-123", deniedIpRequest);
         expect(result3.isValid).toBe(false);
-        expect(result3.errors).toContain("ip_address SAN matching denied pattern '192.168.1.100' found in request");
+        expect(result3.errors).toContain(
+          "ip_address SAN '192.168.1.100' matches the denied pattern '192.168.1.*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
       });
 
       it("should validate wildcard patterns correctly", async () => {
@@ -2158,7 +2237,7 @@ describe("CertificatePolicyService", () => {
         const result2 = await service.validateCertificateRequest("template-123", incompleteRequest);
         expect(result2.isValid).toBe(false);
         expect(result2.errors).toContain(
-          "Required uri SAN matching pattern 'https://*.example.com/*' not found in request"
+          "The request has no uri SAN matching the required pattern 'https://*.example.com/*'. Add one to the request"
         );
       });
     });

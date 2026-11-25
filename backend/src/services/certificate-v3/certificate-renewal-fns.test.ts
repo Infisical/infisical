@@ -29,6 +29,7 @@ import {
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages,
+  validateRenewalEligibility,
   withIssuedRenewalNames
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -810,6 +811,30 @@ describe("withIssuedRenewalNames", () => {
 
     expect(withIssuedRenewalNames(csrRequest, { commonName: "stored.example.com", altNames: null })).toEqual(
       csrRequest
+    );
+  });
+});
+
+describe("validateRenewalEligibility", () => {
+  const certificate = {
+    id: "cert-1",
+    status: "active",
+    notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    notAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    profileId: "profile-1"
+  };
+
+  it("tells an internal pending-certificate CA to get its CA certificate", () => {
+    const ca = { status: "pending-certificate", internalCa: { id: "internal-1" } } as never;
+    expect(validateRenewalEligibility(certificate, ca).errors).toContain(
+      "The issuing certificate authority is pending-certificate. Generate its CA certificate (a root CA) or install a signed one (an intermediate CA) before renewing"
+    );
+  });
+
+  it("tells an external pending-certificate CA to be enabled, since it has no CA certificate to install", () => {
+    const ca = { status: "pending-certificate", externalCa: { id: "external-1", type: "aws-pca" } } as never;
+    expect(validateRenewalEligibility(certificate, ca).errors).toContain(
+      "The issuing certificate authority is pending-certificate. Enable it before renewing"
     );
   });
 });

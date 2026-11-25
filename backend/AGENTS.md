@@ -905,6 +905,19 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
   issued one until it expires or is revoked, and a deleted certificate is never renewed
   (`assertCertificateNotDeleted`).
 
+### PKI error messages
+
+Certificate Manager errors are written for an agent fixing its own request: quote the value sent, give the allowed
+values or limit, and say the next step in product words (no API paths, projects, templates or subscribers).
+- Throw the shared constructors instead of writing a new message for a case they cover:
+  `certificate-authority/certificate-authority-errors.ts`, `certificate-common/certificate-errors.ts` and
+  `certificate-profile/certificate-profile-errors.ts`.
+- Join policy violations with `joinPolicyViolations` or `describePolicyViolations` (`certificate-policy-fns.ts`), so
+  every path that runs the policy check returns the same text, and quote literal policy values with
+  `quotePolicyValues`.
+- A profile, or a CA or policy named in profile setup, that belongs to another organization answers the same 404 as a
+  missing one: check the org before the permission call, so the error never says whether the ID exists.
+
 ### Certificate revocation: CRL and OCSP
 
 **Before touching `certificate-authority-ocsp` or `certificate-authority-crl`, read

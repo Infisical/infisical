@@ -70,7 +70,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get CA CSR",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
       }),
       querystring: z.object({
         maxPathLength: z.coerce
@@ -129,7 +129,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Perform CA certificate renewal",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
       }),
       body: z.object({
         type: z.nativeEnum(CaRenewalType).describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.type),
@@ -200,7 +200,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Generate certificate for a Certificate Authority",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.caId)
       }),
       body: z.object({
         notBefore: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.notBefore),
@@ -210,7 +210,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           .min(-1)
           .default(-1)
           .describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.maxPathLength),
-        parentCaId: z.string().trim().optional().describe("Parent CA ID for intermediate certificate generation")
+        parentCaId: z.string().trim().uuid().optional().describe("Parent CA ID for intermediate certificate generation")
       }),
       response: {
         200: z.object({
@@ -436,7 +436,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create intermediate CA certificate from parent CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.caId)
       }),
       body: z.object({
         csr: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.csr),
@@ -502,7 +502,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Import certificate and chain to CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.caId)
       }),
       body: z.object({
         certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.certificate),
@@ -712,7 +712,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of CRLs of the CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.caId)
       }),
       response: {
         200: z.array(
@@ -804,8 +804,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get DER-encoded certificate of CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caId),
-        caCertId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caCertId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caId),
+        caCertId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caCertId)
       }),
       response: {
         200: z.instanceof(Buffer)
@@ -833,7 +833,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Install a CA certificate via Venafi TLS Protect Cloud",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_VENAFI.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_VENAFI.caId)
       }),
       body: z.object({
         maxPathLength: z.number().min(-1).default(-1)
@@ -887,7 +887,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Install a CA certificate via Azure AD CS (Web Enrollment)",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS.caId)
       }),
       body: z.object({
         maxPathLength: z.number().min(-1).default(-1)
@@ -941,7 +941,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Install a CA certificate via ADCS",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS_NATIVE.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS_NATIVE.caId)
       }),
       body: z.object({
         maxPathLength: z.number().min(-1).default(-1)
@@ -995,7 +995,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create a signing configuration for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE_SIGNING_CONFIG.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.CREATE_SIGNING_CONFIG.caId)
       }),
       body: z.discriminatedUnion("type", [
         z.object({
@@ -1066,7 +1066,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get the signing configuration for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_SIGNING_CONFIG.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_SIGNING_CONFIG.caId)
       }),
       response: {
         200: CaSigningConfigsSchema.nullable()
@@ -1110,7 +1110,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Update the signing configuration for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_SIGNING_CONFIG.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.UPDATE_SIGNING_CONFIG.caId)
       }),
       body: z.object({
         parentCaId: z.string().uuid().optional(),
@@ -1164,7 +1164,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get auto-renewal configuration for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_AUTO_RENEWAL.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_AUTO_RENEWAL.caId)
       }),
       response: {
         200: CaAutoRenewalResponseSchema
@@ -1208,7 +1208,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Update auto-renewal configuration for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_AUTO_RENEWAL.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.UPDATE_AUTO_RENEWAL.caId)
       }),
       body: z.object({
         autoRenewalEnabled: z.boolean().optional(),

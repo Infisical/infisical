@@ -145,7 +145,7 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Certificate request validation failed: common_name value 'x.denied.test' does not match allowed patterns: *.allowed.test", apierr.Message(res.Body))
+		require.Equal(t, "Certificate request does not meet the certificate policy: common_name value 'x.denied.test' does not match allowed patterns: '*.allowed.test'.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, proj, profile))
 	})
 }

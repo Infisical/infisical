@@ -3,11 +3,37 @@ import { isIPv6 } from "node:net";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { isFQDN } from "@app/lib/validator/validate-url";
 
 import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import { TCertificatePolicy, TSubjectRule } from "./certificate-policy-types";
+
+// Policy durations read m as months of 30 days, unlike ms(), where m means minutes.
+export const parsePolicyTtl = (ttl: string): number => {
+  const match = new RE2("^(\\d+)([dmyh])$").exec(ttl);
+  if (!match) {
+    throw new BadRequestError({
+      message: `TTL '${ttl}' is not in a supported format. Use a number followed by h, d, m or y, such as 90d or 1y.`
+    });
+  }
+
+  const unitMs = {
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    m: 30 * 24 * 60 * 60 * 1000,
+    y: 365 * 24 * 60 * 60 * 1000
+  };
+  return parseInt(match[1], 10) * unitMs[match[2] as keyof typeof unitMs];
+};
+
+const TTL_EXCEEDS_MAX_PREFIX = "Requested validity '";
+
+export const describeTtlExceedsMax = (ttl: string, maxWithDays: string, requestableMax: string | undefined) =>
+  `${TTL_EXCEEDS_MAX_PREFIX}${ttl}' exceeds the policy's maximum of ${maxWithDays}. Request a TTL of ${requestableMax} or less`;
+
+export const isTtlExceedsMaxViolation = (violation: string) => violation.startsWith(TTL_EXCEEDS_MAX_PREFIX);
 
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 
@@ -125,7 +151,7 @@ export const validateDomainComponentsAgainstRule = ({
     errors.push(
       hasDomainComponents
         ? `Domain components '${requestSequence}' do not match any required sequence: ${formatDomainComponentSequences(required)}. ${ORDER_NOTE}${reversalHint(requestDomainComponents, required)}`
-        : `Missing required ${CertSubjectAttributeType.DOMAIN_COMPONENT} attribute. This policy requires one of: ${formatDomainComponentSequences(required)}`
+        : `The request is missing the required ${CertSubjectAttributeType.DOMAIN_COMPONENT} attribute. This policy requires one of: ${formatDomainComponentSequences(required)}`
     );
   }
 
@@ -241,8 +267,13 @@ export const matchesSanRuleValue = ({
   return commonName ? isSameSanValue(sanType, sanValue, commonName) : false;
 };
 
+// Literal policy values are quoted so a value's own trailing period survives joinPolicyViolations.
+const quotePolicyValue = (value: string): string => `'${value}'`;
+
+export const quotePolicyValues = (values: string[]): string => values.map(quotePolicyValue).join(", ");
+
 const formatSanRuleValue = (ruleValue: string, commonName?: string | null): string => {
-  if (ruleValue !== RequestReference.CommonName) return ruleValue;
+  if (ruleValue !== RequestReference.CommonName) return quotePolicyValue(ruleValue);
   return commonName
     ? `the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}'`
     : `the ${COMMON_NAME_REFERENCE_LABEL} (the request has none)`;
@@ -250,32 +281,36 @@ const formatSanRuleValue = (ruleValue: string, commonName?: string | null): stri
 
 export const describeMissingRequiredSan = (sanType: string, ruleValue: string, commonName?: string | null): string => {
   if (ruleValue !== RequestReference.CommonName) {
-    return `Required ${sanType} SAN matching pattern '${ruleValue}' not found in request`;
+    return `The request has no ${sanType} SAN matching the required pattern '${ruleValue}'. Add one to the request`;
   }
   return commonName
-    ? `Required ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}' not found in request`
+    ? `The request has no ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}'. Add one to the request`
     : `This policy requires a ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL}, but the request has no ${COMMON_NAME_REFERENCE_LABEL}`;
 };
 
 export const describeDeniedSan = (sanType: string, sanValue: string, ruleValue: string): string =>
   ruleValue !== RequestReference.CommonName
-    ? `${sanType} SAN matching denied pattern '${sanValue}' found in request`
+    ? `${sanType} SAN '${sanValue}' matches the denied pattern '${ruleValue}'. Remove it from the request, or from the profile's default SANs if a default added it`
     : `${sanType} SAN '${sanValue}' is denied by this policy because it equals the ${COMMON_NAME_REFERENCE_LABEL}. Remove it from the request, or from the profile's default SANs if a default added it.`;
 
 export const describeValueNotAllowed = ({
   fieldName,
   value,
   allowedValues,
-  hasPatterns
+  hasPatterns,
+  formatValue = quotePolicyValue
 }: {
   fieldName: string;
   value: string;
   allowedValues: string[];
   hasPatterns: boolean;
-}): string =>
-  hasPatterns
-    ? `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
-    : `${fieldName} value '${value}' is not in allowed values list`;
+  formatValue?: (allowedValue: string) => string;
+}): string => {
+  const allowed = allowedValues.map(formatValue).join(", ");
+  return hasPatterns
+    ? `${fieldName} value '${value}' does not match allowed patterns: ${allowed}`
+    : `${fieldName} value '${value}' is not in the allowed values: ${allowed}`;
+};
 
 export const describeDisallowedSan = (
   sanType: string,
@@ -286,7 +321,8 @@ export const describeDisallowedSan = (
   describeValueNotAllowed({
     fieldName: `${sanType} SAN`,
     value: sanValue,
-    allowedValues: allowed.map((ruleValue) => formatSanRuleValue(ruleValue, commonName)),
+    allowedValues: allowed,
+    formatValue: (ruleValue) => formatSanRuleValue(ruleValue, commonName),
     hasPatterns: allowed.some((ruleValue) => isRequestReference(ruleValue) || isWildcardPattern(ruleValue))
   });
 
@@ -333,3 +369,15 @@ export const describeUnsupportedCommonNameDefaultSans = (
 
   return undefined;
 };
+
+// Violations are joined into one sentence, so a violation's own closing period is dropped.
+export const joinPolicyViolations = (errors: string[]): string =>
+  `${errors.map((error) => error.replace(/\.$/, "")).join("; ")}.`;
+
+export const describePolicyViolations = (errors: string[]): string =>
+  `Certificate request does not meet the certificate policy: ${joinPolicyViolations(errors)}`;
+
+export const certificatePolicyNotFoundError = (policyId: string) =>
+  new NotFoundError({
+    message: `Certificate policy with ID '${policyId}' not found. List your organization's certificate policies to find the right ID.`
+  });

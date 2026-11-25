@@ -56,6 +56,7 @@ import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
+import { certificateNotFoundError } from "@app/services/certificate-common/certificate-errors";
 import {
   assertCertificateQuotaForProject,
   recordNewCertificateQuotaKey
@@ -66,6 +67,7 @@ import {
   TDigiCertExternalMetadata,
   TImportExternalMetadata
 } from "@app/services/certificate-common/external-metadata-schemas";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -282,6 +284,18 @@ export const certificateServiceFactory = ({
   approvalRequestDAL,
   telemetryService
 }: TCertificateServiceFactoryDep) => {
+  const $assertCertInActorOrg = (
+    cert: { projectId: string },
+    actorOrgId: string,
+    lookup: { id?: string; serialNumber?: string; thumbprint?: string }
+  ) =>
+    assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: cert.projectId,
+      actorOrgId,
+      notFoundError: () => certificateNotFoundError(lookup)
+    });
+
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
     action: ResourcePermissionCertificateActions,
@@ -399,8 +413,9 @@ export const certificateServiceFactory = ({
     );
 
     if (!certWithDetails) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(certWithDetails, actorOrgId, { id, serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -550,8 +565,9 @@ export const certificateServiceFactory = ({
       ? await certificateDAL.findById(id)
       : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id, serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -619,12 +635,9 @@ export const certificateServiceFactory = ({
       ? await certificateDAL.findById(id)
       : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
     if (!cert) {
-      throw new NotFoundError({
-        message: id
-          ? `Certificate with id '${id}' not found`
-          : `Certificate with serial number '${serialNumber}' not found`
-      });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id, serialNumber });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
@@ -793,7 +806,7 @@ export const certificateServiceFactory = ({
     }
 
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber, thumbprint });
     }
 
     return cert;
@@ -1139,7 +1152,7 @@ export const certificateServiceFactory = ({
   const $findOwnedCertificateWithCa = async (certificateId: string) => {
     const cert = await certificateDAL.findById(certificateId);
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
     return { cert, ca: await $loadRevocationCa(cert) };
   };
@@ -1210,6 +1223,7 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TRevokeCertDTO) => {
     const requestedCert = await $findCertificateToRevoke({ id, serialNumber, thumbprint, actorOrgId });
+    await $assertCertInActorOrg(requestedCert, actorOrgId, { id, serialNumber, thumbprint });
     const cert = await $resolveActiveRecord(requestedCert);
     const ca = await $loadRevocationCa(cert);
 
@@ -1693,8 +1707,9 @@ export const certificateServiceFactory = ({
       ? await certificateDAL.findById(id)
       : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id, serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2511,8 +2526,9 @@ export const certificateServiceFactory = ({
       ? await certificateDAL.findById(id)
       : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id, serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2656,8 +2672,9 @@ export const certificateServiceFactory = ({
       ? await certificateDAL.findById(id)
       : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
     if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id, serialNumber });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id, serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2734,8 +2751,9 @@ export const certificateServiceFactory = ({
   }: TAssignCertToApplicationDTO) => {
     const cert = await certificateDAL.findById(certificateId);
     if (!cert) {
-      throw new NotFoundError({ message: `Certificate with id '${certificateId}' not found.` });
+      throw certificateNotFoundError({ id: certificateId });
     }
+    await $assertCertInActorOrg(cert, actorOrgId, { id: certificateId });
 
     if (cert.applicationId) {
       throw new BadRequestError({
@@ -2745,7 +2763,7 @@ export const certificateServiceFactory = ({
 
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== cert.projectId) {
-      throw new NotFoundError({ message: `Application with id '${applicationId}' not found in this project.` });
+      throw new NotFoundError({ message: `Application with ID '${applicationId}' not found in this organization.` });
     }
 
     const { hasRole } = await permissionService.getProjectPermission({

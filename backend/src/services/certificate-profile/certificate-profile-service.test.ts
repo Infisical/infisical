@@ -15,7 +15,7 @@ import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
-import { RequestReference } from "../certificate-policy/certificate-policy-fns";
+import { describeTtlExceedsMax, RequestReference } from "../certificate-policy/certificate-policy-fns";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
@@ -24,6 +24,7 @@ import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-en
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
+import { profileDefaultsViolationError } from "./certificate-profile-errors";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import {
   EnrollmentType,
@@ -53,6 +54,7 @@ describe("CertificateProfileService", () => {
   const mockCertificateProfileDAL = {
     create: vi.fn(),
     findById: vi.fn(),
+    findByIdWithOwnerOrgId: vi.fn(),
     updateById: vi.fn(),
     deleteById: vi.fn(),
     findBySlugAndProjectId: vi.fn(),
@@ -491,7 +493,7 @@ describe("CertificateProfileService", () => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    it("should throw ForbiddenRequestError when template belongs to different project", async () => {
+    it("should answer a policy in another scope with the same NotFoundError as a missing one", async () => {
       (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
         ...samplePolicy,
         projectId: "different-project"
@@ -503,7 +505,12 @@ describe("CertificateProfileService", () => {
           projectId: "project-123",
           data: validProfileData
         })
-      ).rejects.toThrow(ForbiddenRequestError);
+      ).rejects.toThrow(
+        new NotFoundError({
+          message:
+            "Certificate policy with ID 'policy-123' not found. List your organization's certificate policies to find the right ID."
+        })
+      );
     });
 
     it("should throw ConflictError when profile slug already exists", async () => {
@@ -649,19 +656,34 @@ describe("CertificateProfileService", () => {
 
   describe("getProfileById", () => {
     it("should return profile successfully", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue({
+        ...sampleProfile,
+        ownerOrgId: mockActor.actorOrgId
+      });
 
       const result = await service.getProfileById({
         ...mockActor,
         profileId: "profile-123"
       });
 
-      expect(result).toEqual(sampleProfile);
-      expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
+      expect(result).toMatchObject(sampleProfile);
+      expect(mockCertificateProfileDAL.findByIdWithOwnerOrgId).toHaveBeenCalledWith("profile-123");
+    });
+
+    it("should answer a profile in another organization like a missing one", async () => {
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue({
+        ...sampleProfile,
+        ownerOrgId: "other-org"
+      });
+
+      await expect(service.getProfileById({ ...mockActor, profileId: "profile-123" })).rejects.toThrow(
+        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID."
+      );
+      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when profile not found", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(null);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(null);
 
       await expect(
         service.getProfileById({
@@ -1102,7 +1124,9 @@ describe("CertificateProfileService", () => {
 
     describe("error scenarios", () => {
       it("should handle database connection errors gracefully", async () => {
-        (mockCertificateProfileDAL.findById as any).mockRejectedValue(new Error("Database connection failed"));
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockRejectedValue(
+          new Error("Database connection failed")
+        );
 
         await expect(
           service.getProfileById({
@@ -1194,7 +1218,7 @@ describe("CertificateProfileService", () => {
             projectId: "project-123",
             data: crossProjectData
           })
-        ).rejects.toThrow(ForbiddenRequestError);
+        ).rejects.toThrow(NotFoundError);
       });
 
       it("should validate slug format constraints", async () => {
@@ -1285,7 +1309,7 @@ describe("CertificateProfileService", () => {
         ForbiddenRequestError
       );
       await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(
-        "Profile is not configured for EST enrollment"
+        "This certificate profile uses API enrollment, not EST. Use a profile configured for EST enrollment, or request the certificate over API."
       );
     });
 
@@ -1305,5 +1329,22 @@ describe("CertificateProfileService", () => {
         "EST configuration not found for this profile"
       );
     });
+  });
+});
+
+describe("profileDefaultsViolationError", () => {
+  it("adds the ttlDays advice only when a violation is about the TTL", () => {
+    const ttlError = profileDefaultsViolationError([
+      describeTtlExceedsMax("30d", "'12h'", "12h"),
+      "Key usage 'crl_sign' is denied by this policy"
+    ]);
+    expect(ttlError.message).toContain("set defaults.ttlDays to a whole number of days");
+    expect(ttlError.message).toContain("Otherwise, and for EST, SCEP and ACME, raise the policy's maximum.");
+
+    const keyUsageError = profileDefaultsViolationError(["Key usage 'crl_sign' is denied by this policy"]);
+    expect(keyUsageError.message).not.toContain("ttlDays");
+    expect(keyUsageError.message).toContain(
+      "do not meet the certificate policy: Key usage 'crl_sign' is denied by this policy."
+    );
   });
 });

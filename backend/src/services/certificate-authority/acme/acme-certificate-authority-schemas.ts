@@ -13,10 +13,12 @@ import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   dnsAppConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
-  dnsProviderConfig: z.object({
-    provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
-    hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
-  }),
+  dnsProviderConfig: z
+    .object({
+      provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
+      hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
+    })
+    .describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsProviderConfig),
   directoryUrl: z.string().url().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
   accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail),
   eabKid: z.string().trim().max(64).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabKid),
@@ -43,9 +45,11 @@ export const SanitizedAcmeCertificateAuthoritySchema = BaseCertificateAuthorityS
 });
 
 export const CreateAcmeCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.ACME).extend({
-  configuration: AcmeCertificateAuthorityConfigurationSchema
+  configuration: AcmeCertificateAuthorityConfigurationSchema.describe(CertificateAuthorities.CONFIGURATION(CaType.ACME))
 });
 
 export const UpdateAcmeCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(CaType.ACME).extend({
-  configuration: AcmeCertificateAuthorityConfigurationSchema.optional()
+  configuration: AcmeCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_CONFIGURATION(CaType.ACME)
+  )
 });

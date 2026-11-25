@@ -12,10 +12,13 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { caNotFoundError } from "../certificate-authority-errors";
 import { assertPathLengthMatchesCa } from "../certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-certificate-authority-dal";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
@@ -48,6 +51,7 @@ type TCaSigningConfigServiceFactoryDep = {
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -63,6 +67,7 @@ export const caSigningConfigServiceFactory = ({
   caSigningConfigDAL,
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
+  projectDAL,
   permissionService,
   licenseService,
   appConnectionService,
@@ -108,6 +113,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -218,6 +229,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -265,6 +282,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -358,6 +381,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -405,6 +434,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -519,6 +554,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -580,6 +621,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -643,6 +690,12 @@ export const caSigningConfigServiceFactory = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

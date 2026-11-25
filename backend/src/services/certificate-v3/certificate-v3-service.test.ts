@@ -375,7 +375,14 @@ describe("CertificateV3Service", () => {
       certificateDAL: mockCertificateDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
-      certificateProfileDAL: mockCertificateProfileDAL,
+      certificateProfileDAL: {
+        ...mockCertificateProfileDAL,
+        // Profiles in these tests belong to the actor's organization unless a test sets project itself.
+        findByIdWithConfigs: async (id: string) => {
+          const profile = await mockCertificateProfileDAL.findByIdWithConfigs(id);
+          return profile && { project: { id: profile.projectId, orgId: "org-123" }, ...profile };
+        }
+      },
       certificatePolicyService: mockCertificatePolicyService,
       acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
@@ -1258,7 +1265,35 @@ describe("CertificateV3Service", () => {
           certificateRequest: mockCertificateRequest,
           ...mockActor
         })
-      ).rejects.toThrow("Profile is not configured for api enrollment");
+      ).rejects.toThrow(
+        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+      );
+    });
+
+    it("answers a profile in another organization like a missing one, without its enrollment type", async () => {
+      const profileId = "profile-123";
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: profileId,
+        projectId: "project-other",
+        project: { id: "project-other", orgId: "other-org" },
+        enrollmentType: EnrollmentType.EST,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "foreign-profile"
+      } as any);
+
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        })
+      ).rejects.toThrow(
+        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID."
+      );
     });
 
     it("should throw NotFoundError when profile doesn't exist", async () => {
@@ -1509,7 +1544,9 @@ describe("CertificateV3Service", () => {
           enrollmentType: EnrollmentType.API,
           ...mockActor
         })
-      ).rejects.toThrow("Profile is not configured for api enrollment");
+      ).rejects.toThrow(
+        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+      );
     });
   });
 
@@ -1675,7 +1712,9 @@ describe("CertificateV3Service", () => {
           certificateOrder: mockCertificateOrder,
           ...mockActor
         })
-      ).rejects.toThrow("Profile is not configured for api enrollment");
+      ).rejects.toThrow(
+        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+      );
     });
 
     describe("common name default SAN on an order with a CSR", () => {
@@ -3865,10 +3904,12 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
+      ).rejects.toThrow(
+        "Certificate request does not meet the certificate policy: Subject alternative name not allowed."
+      );
 
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewalError: "Certificate renewal failed. Errors: Subject alternative name not allowed"
+        renewalError: "Certificate request does not meet the certificate policy: Subject alternative name not allowed."
       });
     });
 
@@ -4084,7 +4125,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Certificate is already expired");
+      ).rejects.toThrow("Certificate has already expired. Issue a new certificate instead");
     });
 
     it("should reject renewal if certificate is revoked", async () => {
@@ -4171,7 +4212,9 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Certificate is not eligible for renewal: Certificate Authority is disabled, must be active");
+      ).rejects.toThrow(
+        "Certificate is not eligible for renewal: The issuing certificate authority is disabled. Enable it before renewing"
+      );
     });
 
     it("should reject renewal if new certificate would outlive CA", async () => {

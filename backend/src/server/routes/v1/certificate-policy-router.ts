@@ -13,7 +13,9 @@ import {
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  pkiDescriptionSchema
+  pkiDescriptionSchema,
+  POLICY_KEY_ALGORITHM_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_VALUES
 } from "@app/services/certificate-common/certificate-constants";
 import {
   certificatePolicyResponseSchema,
@@ -27,9 +29,9 @@ const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 
 const policyKeyUsagesSchema = z
   .object({
-    allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-    required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-    denied: z.array(z.nativeEnum(CertKeyUsageType)).optional()
+    allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageAllowed),
+    required: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageRequired),
+    denied: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageDenied)
   })
   .refine(
     (data) => {
@@ -68,9 +70,9 @@ const policyKeyUsagesSchema = z
 
 const policyExtendedKeyUsagesSchema = z
   .object({
-    allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-    required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-    denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional()
+    allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageAllowed),
+    required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageRequired),
+    denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageDenied)
   })
   .refine(
     (data) => {
@@ -111,7 +113,7 @@ const sanRuleValueSchema = z.string().superRefine(refineRequestReference);
 
 const policySanSchema = z
   .object({
-    type: sanTypeSchema,
+    type: sanTypeSchema.describe(CERTIFICATE_POLICIES.sanType),
     allowed: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.allowed),
     required: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.required),
     denied: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.denied)
@@ -145,49 +147,65 @@ const policyValiditySchema = z.object({
       }
     )
     .optional()
+    .describe(CERTIFICATE_POLICIES.validityMax)
 });
 
+const policyAlgorithmValueSchema = (kind: string, values: string[]) =>
+  z.string().superRefine((value, ctx) => {
+    if (!values.includes(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Unsupported ${kind} algorithm '${value.length > 64 ? `${value.slice(0, 64)}...` : value}'. Use one of: ${values.join(", ")}.`
+      });
+    }
+  });
+
 const policyAlgorithmsSchema = z.object({
-  signature: z.array(z.string()).min(1, "At least one signature algorithm must be provided").optional(),
-  keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
+  signature: z
+    .array(policyAlgorithmValueSchema("signature", POLICY_SIGNATURE_ALGORITHM_VALUES))
+    .min(1, "At least one signature algorithm must be provided")
+    .optional()
+    .describe(CERTIFICATE_POLICIES.signatureAlgorithms),
+  keyAlgorithm: z
+    .array(policyAlgorithmValueSchema("key", POLICY_KEY_ALGORITHM_VALUES))
+    .min(1, "At least one key algorithm must be provided")
+    .optional()
+    .describe(CERTIFICATE_POLICIES.keyAlgorithms)
 });
 
 const policyBasicConstraintsSchema = z
   .object({
-    isCA: z.nativeEnum(CertPolicyState).optional(),
+    isCA: z.nativeEnum(CertPolicyState).optional().describe(CERTIFICATE_POLICIES.isCA),
     maxPathLength: z
       .number()
       .int("Path length must be an integer")
       .min(-1, "Path length must be -1 (unlimited) or a non-negative integer")
       .optional()
+      .describe(CERTIFICATE_POLICIES.maxPathLength)
   })
   .nullable();
 
 const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
-  name: slugSchema({ min: 1, max: 255, field: "Name" }),
-  description: pkiDescriptionSchema.optional(),
-  subject: z.array(policySubjectSchema).nullish(),
-  sans: z.array(policySanSchema).nullish(),
-  keyUsages: policyKeyUsagesSchema.nullish(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
-  algorithms: policyAlgorithmsSchema.nullish(),
-  validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional(),
+  name: slugSchema({ min: 1, max: 255, field: "Name" }).describe(CERTIFICATE_POLICIES.name),
+  description: pkiDescriptionSchema.optional().describe(CERTIFICATE_POLICIES.description),
+  subject: z.array(policySubjectSchema).nullish().describe(CERTIFICATE_POLICIES.subject),
+  sans: z.array(policySanSchema).nullish().describe(CERTIFICATE_POLICIES.sans),
+  keyUsages: policyKeyUsagesSchema.nullish().describe(CERTIFICATE_POLICIES.keyUsages),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish().describe(CERTIFICATE_POLICIES.extendedKeyUsages),
+  algorithms: policyAlgorithmsSchema.nullish().describe(CERTIFICATE_POLICIES.algorithms),
+  validity: policyValiditySchema.nullish().describe(CERTIFICATE_POLICIES.validity),
+  basicConstraints: policyBasicConstraintsSchema.optional().describe(CERTIFICATE_POLICIES.basicConstraints),
   customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
 });
 
-const updateCertificatePolicySchema = z.object({
-  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
-  description: pkiDescriptionSchema.optional(),
-  subject: z.array(policySubjectSchema).nullish(),
-  sans: z.array(policySanSchema).nullish(),
-  keyUsages: policyKeyUsagesSchema.nullish(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
-  algorithms: policyAlgorithmsSchema.nullish(),
-  validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional(),
-  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
+const updateCertificatePolicySchema = createCertificatePolicySchema.omit({ projectId: true }).extend({
+  name: z
+    .string()
+    .min(1)
+    .max(255, "Name must be between 1 and 255 characters")
+    .optional()
+    .describe(CERTIFICATE_POLICIES.updateName)
 });
 
 export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {
@@ -201,6 +219,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "createCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
+      description: CERTIFICATE_POLICIES.CREATE_DESCRIPTION,
       body: createCertificatePolicySchema,
       response: {
         200: z.object({
@@ -358,8 +377,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "updateCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
+      description: CERTIFICATE_POLICIES.UPDATE_DESCRIPTION,
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().uuid().describe(CERTIFICATE_POLICIES.id)
       }),
       body: updateCertificatePolicySchema,
       response: {

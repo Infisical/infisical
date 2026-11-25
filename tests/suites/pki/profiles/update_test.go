@@ -90,4 +90,34 @@ func TestCertificateProfile_Update(t *testing.T) {
 		leaf := pki.ParseLeaf(t, cert.Certificate)
 		require.Equal(t, 7*24*time.Hour, leaf.NotAfter.Sub(leaf.NotBefore).Round(time.Hour))
 	})
+
+	t.Run("should refuse switching a self-signed profile to a CA issuer without naming the CA", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		created, err := tn.Admin.API.CreateCertificateProfileWithResponse(t.Context(), api.CreateCertificateProfileJSONRequestBody{
+			ProjectId:           new(proj.ID.String()),
+			Slug:                "profile-" + id.Short(),
+			IssuerType:          new(api.CreateCertificateProfileJSONBodyIssuerTypeSelfSigned),
+			CertificatePolicyId: pki.NewPolicy(t, proj, pki.AllowAll(t)).ID,
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating the profile returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+
+		// Action
+		res, err := tn.Admin.API.UpdateCertificateProfileWithResponse(t.Context(), created.JSON200.CertificateProfile.Id, api.UpdateCertificateProfileJSONRequestBody{
+			IssuerType: new(api.UpdateCertificateProfileJSONBodyIssuerTypeCa),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "Issuer type 'ca' requires a certificate authority, and this profile has none. A certificate authority can't be added on update, so keep issuer type 'self-signed', or create a new profile with issuer type 'ca'.", apierr.Message(res.Body))
+		got, err := tn.Admin.API.GetCertificateProfileWithResponse(t.Context(), created.JSON200.CertificateProfile.Id)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, got.StatusCode(), "reading the profile: %s", apierr.Body(got.Body))
+		require.Contains(t, string(got.Body), `"issuerType":"self-signed"`)
+	})
 }

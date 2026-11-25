@@ -25,6 +25,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
@@ -94,6 +95,7 @@ import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { caNotFoundError, caTypeMismatchError, unsupportedCaTypeError } from "./certificate-authority-errors";
 import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
@@ -404,7 +406,7 @@ export const certificateAuthorityServiceFactory = ({
 
       if (!ca.internalCa) {
         throw new BadRequestError({
-          message: "Failed to create internal certificate authority"
+          message: `Internal certificate authority '${name}' was saved without its CA configuration. Delete it and create it again.`
         });
       }
 
@@ -503,16 +505,17 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    throw new BadRequestError({ message: "Invalid certificate authority type" });
+    throw unsupportedCaTypeError(type);
   };
 
   const findCertificateAuthorityById = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
-
-    if (!certificateAuthority)
-      throw new NotFoundError({
-        message: `Could not find certificate authority with id "${id}"`
-      });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificateAuthority.projectId,
+      actorOrgId: actor.orgId,
+      notFoundError: () => caNotFoundError(id)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -530,9 +533,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
-        throw new NotFoundError({
-          message: `Internal certificate authority with id "${id}" not found`
-        });
+        throw caTypeMismatchError(id, CaType.INTERNAL);
       }
 
       const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: id });
@@ -550,9 +551,7 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (certificateAuthority.externalCa?.type !== type) {
-      throw new NotFoundError({
-        message: `Could not find external certificate authority with id ${id} and type "${type}"`
-      });
+      throw caTypeMismatchError(id, type);
     }
 
     if (type === CaType.ACME) {
@@ -587,7 +586,7 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
     }
 
-    throw new BadRequestError({ message: "Invalid certificate authority type" });
+    throw unsupportedCaTypeError(type);
   };
 
   const findCertificateAuthorityByNameAndProjectId = async (
@@ -790,7 +789,7 @@ export const certificateAuthorityServiceFactory = ({
       return venafiTppFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
-    throw new BadRequestError({ message: "Invalid certificate authority type" });
+    throw unsupportedCaTypeError(type);
   };
 
   const updateCertificateAuthority = async (
@@ -798,11 +797,12 @@ export const certificateAuthorityServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
-
-    if (!certificateAuthority)
-      throw new NotFoundError({
-        message: `Could not find certificate authority with id "${id}"`
-      });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificateAuthority.projectId,
+      actorOrgId: actor.orgId,
+      notFoundError: () => caNotFoundError(id)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -820,9 +820,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
-        throw new NotFoundError({
-          message: `Internal certificate authority with id "${id}" not found`
-        });
+        throw caTypeMismatchError(id, CaType.INTERNAL);
       }
 
       const internalConfig = configuration as
@@ -847,7 +845,8 @@ export const certificateAuthorityServiceFactory = ({
 
       if (!updatedCa.internalCa) {
         throw new BadRequestError({
-          message: "Failed to update internal certificate authority"
+          message:
+            "This internal certificate authority has no CA configuration, so it cannot be updated. Delete it and create it again."
         });
       }
 
@@ -945,16 +944,17 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    throw new BadRequestError({ message: "Invalid certificate authority type" });
+    throw unsupportedCaTypeError(type);
   };
 
   const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
-
-    if (!certificateAuthority)
-      throw new NotFoundError({
-        message: `Could not find certificate authority with id "${id}"`
-      });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificateAuthority.projectId,
+      actorOrgId: actor.orgId,
+      notFoundError: () => caNotFoundError(id)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -1036,7 +1036,7 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
     }
 
-    throw new BadRequestError({ message: "Invalid certificate authority type" });
+    throw unsupportedCaTypeError(type);
   };
 
   const deprecatedUpdateCertificateAuthority = async (
@@ -1294,11 +1294,7 @@ export const certificateAuthorityServiceFactory = ({
     actorOrgId?: string;
   }) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-
-    if (!certificateAuthority)
-      throw new NotFoundError({
-        message: `Could not find certificate authority with id "${caId}"`
-      });
+    if (certificateAuthority.projectId !== projectId) throw caNotFoundError(caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1338,11 +1334,7 @@ export const certificateAuthorityServiceFactory = ({
     actorOrgId?: string;
   }) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-
-    if (!certificateAuthority)
-      throw new NotFoundError({
-        message: `Could not find certificate authority with id "${caId}"`
-      });
+    if (certificateAuthority.projectId !== projectId) throw caNotFoundError(caId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1417,9 +1409,6 @@ export const certificateAuthorityServiceFactory = ({
     reason: CrlReason;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) {
-      throw new NotFoundError({ message: `Could not find certificate authority with id "${caId}"` });
-    }
 
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 

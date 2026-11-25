@@ -14,7 +14,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
-import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, CryptographyError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
@@ -55,6 +55,12 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -816,7 +822,7 @@ export const AcmeCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(dnsAppConnectionId);
     }
 
     validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
@@ -871,16 +877,14 @@ export const AcmeCertificateAuthorityFns = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAcmeCertificateAuthority(caEntity);
@@ -905,7 +909,7 @@ export const AcmeCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(dnsAppConnectionId);
       }
 
       validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
@@ -921,7 +925,7 @@ export const AcmeCertificateAuthorityFns = ({
       const ca = await certificateAuthorityDAL.findById(id);
 
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       // validates permission to connect

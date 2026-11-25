@@ -128,11 +128,17 @@ In both cases the renewed certificate is stored as a new entry linked to the ori
 
 ## Troubleshooting
 
-**`Failed to reach AWS Certificate Manager`** — the ACM connection credentials are invalid or missing the IAM permissions above.
+**`AWS refused to let Infisical assume the AWS connection's role`**: the ACM connection's credentials are invalid, or the role's trust policy doesn't let Infisical assume it.
 
-**`Failed to access Route 53 hosted zone`** — the Route 53 connection can't read the hosted zone, or the Hosted Zone ID is wrong. Check `route53:GetHostedZone` and that the zone is public.
+**`Could not reach AWS Certificate Manager`**: the ACM connection's credentials are invalid, it's missing the IAM permissions above, or the region is wrong.
 
-**Request stays pending** — DNS validation can take several minutes. Infisical retries automatically. Verify the CNAME records exist in Route 53 and that the hosted zone is authoritative for the requested domain.
+**`AWS refused to let Infisical assume the Route 53 connection's role`**: the Route 53 connection's credentials are invalid, or the role's trust policy doesn't let Infisical assume it.
+
+**`Route 53 has no hosted zone`**: the Hosted Zone ID is wrong, or the zone belongs to an AWS account the Route 53 connection can't see.
+
+**`Could not access Route 53 hosted zone`**: the Route 53 connection's credentials are invalid, it's missing `route53:GetHostedZone`, or the Hosted Zone ID is malformed.
+
+**Request stays pending** — DNS validation can take several minutes. Infisical retries automatically. Verify the CNAME records exist in Route 53 and that the hosted zone is public and authoritative for the requested domain.
 
 **Renewal appears stuck** — immediately after renewal is triggered, ACM may not yet have the new certificate available. Infisical treats this as transient and retries until a new serial number appears on the ARN.
 

@@ -16,7 +16,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaCrlRegenerationTrigger } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { caNotFoundError, caTypeMismatchError } from "@app/services/certificate-authority/certificate-authority-errors";
 import {
   buildCaCrlPem,
   expandInternalCa,
@@ -26,6 +27,7 @@ import {
   rebuildCaCrl
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -103,7 +105,13 @@ export const certificateAuthorityCrlServiceFactory = ({
     actorOrgId
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -159,7 +167,7 @@ export const certificateAuthorityCrlServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     const project = ca?.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
     if (!ca?.internalCa?.id || !project || project.orgId !== actorOrgId) {
-      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+      throw caNotFoundError(caId);
     }
 
     const { permission } = await permissionService.getProjectPermission({
