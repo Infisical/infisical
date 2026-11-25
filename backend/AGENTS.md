@@ -108,7 +108,7 @@ copy drifts on its own.
   orphaned by a cascade), and say why in a comment.
 - **Wait with `pollUntil`** (`poll.ts`) for anything asynchronous, never a fixed sleep.
 - **Run background jobs on demand** through a pass-through wrapper in `e2e-test/fakes/` (eg
-  `reminder-queue.ts` and `event-outbox-queue.ts`, driven by `runDailyReminders` in `reminders.ts`).
+  `reminder-queue.ts` and `events-module.ts`, driven by `runDailyReminders` in `reminders.ts`).
 
 #### Faking a third-party provider
 
@@ -250,7 +250,7 @@ New backend code goes in domain modules under `src/domains/` (one folder per cap
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as they start), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The domains and the cron job are built in `main()` (`src/server/app.ts`) before the routes plugin, with `domains.license.start()` and `domains.kmsCore.start(cronJob)` right after the awaited `createDomains` (legacy services depend on domains, never the reverse, and queue workers read the license as soon as a factory starts them), and passed to `registerRoutes`, so plugins registered beside it (serve-ui) can use them too. The rest of the dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 
@@ -493,11 +493,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 - **Membership and role changes need no explicit invalidation call.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed. Folder grants are the one exception: they are covered by a version counter that writers must bump (see Folder RBAC below).
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
 
-**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` in `folder-roles.ts`) ride in the same cached permission blob, covered by a per-project folder-permission version counter appended to the fingerprint (`getProjectPermissionFingerprint`). A grant's path comes from the folder tree, so a rename changes what it allows without touching its row. Therefore:
-
-- **Call `permissionService.invalidateProjectFolderPermissionCache`** from folder-access grant create/update/delete and from every folder rename, move or delete path.
-- **Membership teardowns must not call it**: the membership row they delete is already in the fingerprint. This holds only while a teardown reaps grants in exactly the projects the actor is losing.
-- `buildFolderScopedPrivilegeRules` emits a deny of every secretPath-capable subject at the granted path followed by the folder role's allows. Adding a secretPath-scoped subject or action fails `folder-scoped-privilege-rules.test.ts` until you extend `FOLDER_SCOPED_DENY_RULES`.
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles) for a non-recursive grant, or on `{ environment, secretPath: { $glob: "<folder path>/**" } }` (`recursiveFolderPathGlob`) for a recursive one, followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. `getProjectPermission` and the project-wide `getProjectPermissions` evaluate folder grants (the latter loads every grant in the project in one query and skips admins the same way); audits do not yet. A grant row also carries `appliesToSubfolders` (nullable; a CHECK allows it only alongside `folderId`), exposed on the folder access API as `isPermissionRecursive`. A grant on any folder may be recursive, and creating a recursive grant, updating one that is or becomes recursive, or deleting one requires `ManageAccess` over the folder's whole subtree (`assertManageFolderSubtree` in `folder-permission-fns.ts`). `buildFolderScopedPrivilegeRules` emits the recursive grants first, shallowest first, then the non-recursive ones, so the deepest recursive grant above a folder decides it and an exact grant overrides every recursive grant at its own folder only (the exact grant's own subfolders fall back to the recursive grant). Each grant's denies go right before its own allows; do not group every deny ahead of every allow, because a shallow grant's allows would then override a deeper recursive grant's denies. The recursive Edit, Manage and FullAccess tiers (`RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS` in `folder-roles.ts`) additionally allow `SecretFolders` Create and Edit across the subtree, and an exact grant keeps them only when the nearest recursive grant above it gives them. The folder access sheet lists the active recursive grant on the nearest folder above the queried one as `inheritedFolderRBACAccess` (`pickInheritedGrants` in `folder-access-roles-fns.ts`, which must pick the same grant the rule order lets decide; the grant on the queried folder stays `folderRBACAccess`, and an actor whose only access is the inherited grant counts as having access; `$listFolderAccessActors` loads the grants of every folder above beside the folder's own, live, so the roster cache is untouched). Unused-access dating lets a recursive grant reach its folder and every folder below it, and an edited grant restart that same subtree because it may have been recursive before the edit (`reach` and `restartsReach` on `TAccessSource`); an expired recursive grant still floors every secret of its environment (`environmentReopenedAt` from `findAccessSourceDates`). The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request. The marker cannot see a membership that was created or deleted inside its window, so the marker key carries a per-project roster version (`ProjectFolderAccessRosterVersion`, a seeded Redis counter read from the primary), and every project-scope membership write bumps it after it commits (`invalidateFolderAccessCache` in `folder-permission-fns.ts`). The bump moves readers to a marker that does not exist yet, so they fall through to the fingerprint check, which sees the new membership; the data key is not versioned because the fingerprint already guards it. Do not go back to deleting keys by pattern: that SCANs the whole keyspace inside the request and does not work on Redis Cluster. The writes that bump it: `createMembership` and `deleteMembership` in both `membershipUserService` and `membershipIdentityService`, plus `projectMembershipService.deleteProjectMemberships` (the endpoint the UI removes users through) and `leaveProject`. That is what lets the folder access sheet show a member right after they are added to the project and drop them right after they are removed. Group removals and org-level removals do not clear it yet and still wait for the marker.
 
 ### Request-Scoped Memoization
 
@@ -559,11 +555,13 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 ### Scheduled Jobs (Cron Manager)
 
-Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
+Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, `stop`, and `runNow`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers. Routes reach it as `server.services.cronJob`.
 
 **Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, env overrides), not fleet work.
 
 **Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`. It records `infisical.local_refresh.*` on the `InfisicalCore` meter, labelled by `name` as `job.name`, so a new refresh needs no metric code; keep `name` a fixed string. A failing refresh keeps retrying on every tick rather than giving up after N failures, because stopping would freeze the pod's state at whatever it last loaded. The `consecutive_failures` gauge (reset on success) is the alerting signal.
+
+**`runNow(name)` runs a registered handler once, immediately, for tests.** It skips the schedule, slots, leases and run-hash dedupe, so it can run beside a scheduled fire of the same job or another `runNow`. It answers a handler timeout with `GatewayTimeoutError` (the handler may still be running) and an unknown name with `NotFoundError`; only pods that schedule work (`general-workers`) hold registered jobs. Its only caller is `POST /api/v1/admin/cron-jobs/:jobName/trigger` (`admin-router.ts`), which is instance-admin only, hidden from the public docs, and refused unless `ALLOW_CRON_JOB_TRIGGER=true`; only the isolated blackbox suite `tests/suitesisolated/pki/scheduled/` sets it. Do not call `runNow` from product code.
 
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
@@ -600,7 +598,7 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 **Handler contract**:
 
-- Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods.
+- Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods. This covers scheduled fires only: a `runNow` trigger can overlap one.
 - Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
 - Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
 - Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
@@ -650,10 +648,12 @@ Invariants worth knowing before extending it:
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
 - **One alert per `(scope, resource, event)` for resource-bound alerts**, enforced by the partial `alert_unique_scope_resource_event_bound` index. A provider that sets `supportsScopeWideAlerts` also accepts alerts with no `resourceId`: such an alert watches every resource of its type in scope, several can watch the same event because they differ by condition, and `assertConditionInScope` is where the provider checks the IDs inside a condition, on create and on update (newly added IDs only). `findEnabledForEvent` matches exactly: the bound alerts for a `resourceId`, or the resource-less ones when it is null. To let a scope-wide provider hear another provider's events without a second outbox write, an event definition can declare `sourceEvent: { resourceType, eventKey }`; the consumer then runs the source resource's alerts plus the resource-less alerts of every event sourced from it (`alertProviderRegistry.findEventsBySource`), each under its own `eventType`. Certificate Manager-wide (`cert-manager`) and signer (`cert-manager.signer`) alerts are scope-wide providers, and creating or editing either requires the project Admin role, since PKI permissions are admin or member, not granular. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`, and `filters` (read-only `{ id, name }` lists for the IDs inside a condition, keyed by kind, such as `applications` and `profiles` on a Certificate Manager-wide alert, with a null name for deleted IDs, matching how approval policies return approvers) only by providers that implement `getFilters`. Resolve such names there rather than adding ID filters to another domain's list endpoint. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new, retyped, or re-enabled channels only, so a downgraded org can still edit the alert). `getResourceNames` (batched) supplies the resource's display name for alert responses. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-provider-registry.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. Audit logs are not a provider hook: every alert, whatever its resource type, logs the generic `create-alert`, `update-alert`, `delete-alert` and `test-alert-channel` events (`getAuditEvent` in `alert-service.ts`), which carry `resourceType`, `resourceId` and `resourceName` (from `getResourceNames`, so a provider with resource-bound alerts must implement it) so admins can tell them apart. Do not add per-provider audit event types. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
 - **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`), and again at send time, so an address on a domain the org has since removed stops receiving alerts. The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
-- **Two recipients name a whole project rather than a principal**, both with the project id as `principalId` and only on project alerts: `project-members` (everyone in the project, directly or through a group) and `project-admins` (direct project members with an unexpired admin role, the audience the rotation failure email had; `findProjectAdminUserIds`, which the in-app rotation notification uses too). Only providers that set `recipientPolicy.allowProjectAdmins` accept `project-admins`, and today those are the secret rotation, secret sync, secret reminder and honey token providers. Both resolve at send time, so the audience follows membership changes. Instead of the resolver's direct-org-membership check, which would drop everyone in a sub-org, they use `findUsersWithOrgAccess`: an active, accepted org membership of the user's own, or without one, a finished signup (`users.isAccepted`) and a group linked into the org. A group row's `isPending` is not trusted either way, since nothing clears it after signup. Project memberships outlive a lost org path until the org access reconcile runs, so the member listings alone would still email those users. Users and groups picked by name keep the direct check. `PROJECT_WIDE_PRINCIPAL_TYPES` (`alert-types.ts`) lists them for validation and scope filtering; a new one goes there and gets its own case in `alert-recipient-resolver.ts`.
+- **Two recipients name a whole project rather than a principal**, both with the project id as `principalId` and only on project alerts: `project-members` (everyone in the project, directly or through a group) and `project-admins` (direct project members with an unexpired admin role, the audience the rotation failure email had; `findProjectAdminUserIds`, which the in-app rotation notification uses too). Only providers that set `recipientPolicy.allowProjectAdmins` accept `project-admins`, and today those are the secret rotation, secret sync, secret reminder, honey token and secret scanning providers. Both resolve at send time, so the audience follows membership changes. Instead of the resolver's direct-org-membership check, which would drop everyone in a sub-org, they use `findUsersWithOrgAccess`: an active, accepted org membership of the user's own, or without one, a finished signup (`users.isAccepted`) and a group linked into the org. A group row's `isPending` is not trusted either way, since nothing clears it after signup. Project memberships outlive a lost org path until the org access reconcile runs, so the member listings alone would still email those users. Users and groups picked by name keep the direct check. `PROJECT_WIDE_PRINCIPAL_TYPES` (`alert-types.ts`) lists them for validation and scope filtering; a new one goes there and gets its own case in `alert-recipient-resolver.ts`.
 - **Secret rotation failures go only through this module.** The `secret.rotation` provider's single event, `secret.rotation.failed`, is emitted by `rotateGeneratedCredentials` in the transaction that marks a rotation Failed, and only on the final attempt of a scheduled rotation (the same trigger the removed admin email had). Admins still get the in-app notification from the `SecretRotationV2SendNotification` job, and the project webhook still fires. Existing rotations were given a "Rotation failure alert" emailing `project-admins` by migration `20261104120000`; new ones get theirs from the frontend, which creates the alert with a second call after the rotation is saved, so a rotation created through the API has no alert unless the caller creates one. Deleting a rotation reaps its alerts in the delete transaction, and `reapOrphanedRotationAlerts` on the daily rotation cron catches rotations removed by folder, environment or project cascades.
+- **Secret scanning notifications go only through this module**, with no in-app notification and no notification to the commit author. Its rules live in `src/ee/services/secret-scanning-v2/AGENTS.md`. A product that gives a new resource alerts nobody created (each secret scanning data source's defaults) builds them with `alertService.prepareDefaultAlert`, which skips the permission and recipient checks a user's create runs, and writes them with `applyPreparedAlert` in its own transaction; prepare before that transaction, since preparing calls KMS.
 - **Secret sync failures go only through this module.** The `secret.sync` provider's single event, `secret.sync.failed` (`services/secret-sync/secret-sync-events.ts`), is emitted by `secret-sync-queue.ts` in the transaction that marks a sync, import or remove Failed, on its final attempt or when it gives up on lock contention (the same triggers the removed admin email had), and carries the action and the failure message. Project admins still get the in-app notification, and the project's Slack and Microsoft Teams integrations still fire, from the `SecretSyncSendActionFailedNotifications` job. Existing syncs were given a "Sync failure alert" emailing `project-admins` by migration `20261113120000`; new ones get theirs from the frontend, which creates the alert with a second call after the sync is saved, so a sync created through the API has no alert unless the caller creates one. A sync whose source folder was deleted keeps its alert (`folderId` is SET NULL and the sync keeps failing), and the provider checks permissions on it without an environment or path, as the sync service does. Deleting a sync, directly or after removing its secrets, reaps its alerts in the delete transaction, and `$reapOrphanedSyncAlerts` on the daily sync retry job catches syncs removed by project cascades.
 - **Honey token triggers go only through this module.** `handleTrigger` emits `secret.honey-token.triggered` in the transaction where `tryMarkTriggered` wins the 24-hour cooldown; don't emit outside it, since event alerts are never deduped. The same win sends project admins an in-app notification (`HONEY_TOKEN_TRIGGERED`); keep it, because it is the only notice a token without an alert gets. Every path that marks a token revoked (`revokeHoneyToken`, `honey-token-cleanup-service.ts`) deletes its alerts in the same transaction, because a revoked token can never fire or be edited. Keep tokens whose environment is awaiting deletion (`includePendingDeletion` on path lookups), since deleting an environment doesn't revoke them; filter out projects awaiting deletion, whose key no longer resolves and would fail migration `20261112190000`.
+- **Gateway outages go only through this module.** Emit `networking.gateway.offline` only inside the `gatewayV2DAL.markOfflineAlerted` claim in `healthcheckNotify`, since event alerts are never deduped. Alerts are org-wide only (no `resourceId`), so deleting a gateway has nothing to reap. Read `src/ee/services/gateway-v2/AGENTS.md` before changing when a gateway counts as offline or how reconnects re-arm the alert.
 - **`findScheduledTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
 - **A `findScheduledTargets` that caps its own row count must honour `alreadyAlerted`.** The engine passes `{ alertId, channelIds, since }` (the alert's enabled channels and its dedup cutoff), and the provider drops targets every one of those channels already delivered since then, in SQL before the limit. Dedup otherwise runs after the fetch, so once more targets are due than the cap, the same head of the list comes back every run, is deduped, and nothing past it is ever alerted. For dedup windows shorter than the scan interval (daily reminders), also order least-recently-notified first. `scanExpiringCertificates` (`cert-manager-expiring-certificates-fns.ts`) does both.
 - **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findScheduledTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
@@ -665,20 +665,24 @@ Invariants worth knowing before extending it:
 
 ### Event Outbox (transactional and generic; alerting is its first consumer)
 
-`src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
-an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
+The Events domain (`src/domains/platform/events/`) writes "this happened" as a row inside the caller's own
+transaction, so an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
 at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
 (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
 approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
-**Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
-CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
-in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
-mechanism and stay inside the module and its wiring. A dependency field for the emitter is
-`eventEmitter`, not `eventOutboxService`.
+**Naming:** the outbox is an implementation detail to both sides of it. Emitters pass a `TEventInput`;
+consumers implement `TEventConsumer`, receive `TEvent[]` (the CloudEvents envelope) and return
+`TEventConsumerResult` with an `EventResultStatus`. Everything comes from
+`@app/domains/platform/events/ce/module`. Names with "outbox" in them (the store, queue, cron jobs, metrics,
+`EventOutboxStatus`) describe the mechanism and stay inside the domain.
+
+**Who takes what:** code under `src/services/` and `src/ee/services/` takes `eventEmitter: TEventEmitter`
+(`@app/lib/knex/event-emitter`) and calls `eventEmitter.emit(events, tx)` with its Knex transaction. A domain
+takes `eventEmitterService: TEventEmitterService` and calls `eventEmitterService.within(tx).emit(events)` inside its
+`run`, or `eventEmitterService.emit(events)` outside one.
 
 #### How to implement an event
 
@@ -688,11 +692,11 @@ an event about something being created, updated or deleted, the
 [CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
 summarise them.
 
-1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+1. **Define it with `EventDefinition.define`, in the domain that emits it.** It goes in that domain's `*-events.ts`
    (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
    the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
    segments, a singular entity, a past-tense action, and words a customer recognises rather than
-   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   implementation detail. `EventDefinition.define` throws on boot for a name that breaks this. Start at `v1` and
    bump only for a breaking change to `data`; adding an optional field is not one.
 2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
    thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
@@ -707,9 +711,9 @@ summarise them.
    (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
    `secret-import/secret-import-events.ts`) are the reference.
 4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
-   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
-   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
-   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   write: `eventEmitter.emit([SomeEventV1.build(data)], tx)`, with as many built events as the write
+   produced in the one call. Omit `tx` only when there is no such write left to be atomic with (eg after it
+   already committed); the insert then runs on its own. Nothing around the emit
    is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
    statement). When several services emit the same event, give it one helper in the domain's events
    file rather than repeating the call.
@@ -717,15 +721,22 @@ summarise them.
    ```ts
    await folderDAL.transaction(async (tx) => {
      const folder = await folderDAL.create({ ... }, tx);
-     await FolderModifiedEventV1.emit(
-       eventEmitter,
-       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+     await eventEmitter.emit(
+       [
+         FolderModifiedEventV1.build({
+           folderId: folder.id,
+           projectId,
+           environment,
+           secretPath,
+           modificationType: EventModificationType.Created
+         })
+       ],
        tx
      );
    });
    ```
 
-5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+5. **Consume it with a `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
    whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
    subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
    anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
@@ -736,8 +747,9 @@ Events named before the ADR (eg `identity.authentication.auth-method-changed`) k
 they move to it.
 
 **Before writing a consumer or changing the outbox itself, read
-[`src/services/event-outbox/AGENTS.md`](src/services/event-outbox/AGENTS.md)** (retry ownership,
-`isFinalAttempt`, fenced claims, ordering). In short: delivery is at-least-once with best-effort ordering,
+[`src/domains/platform/events/AGENTS.md`](src/domains/platform/events/AGENTS.md)** (retry ownership,
+`isFinalAttempt`, fenced claims, ordering). Register a consumer with `domains.events.registerConsumer(...)` in
+`server/routes/index.ts`, before `domains.events.start()`: a registration after it throws. In short: delivery is at-least-once with best-effort ordering,
 and one event's failure must never escape `handle` (use `runEventsSerially` / `runEventsConcurrentlyByKey`).
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
@@ -905,7 +917,8 @@ outside system, where the CA hasn't revoked yet, calls `certificateService.revok
 upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
 audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
 `revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
-DigiCert revocation sync) keeps writing `status` directly.
+DigiCert revocation sync) writes `status` through `signerService.revokeWithCertificate`, never directly, so every
+signer on the certificate is revoked, its open requests canceled and its revocation settled in the same transaction.
 
 **A revoke someone asks for goes through `certificateService.revokeCert`**, never straight to
 `$performRevocation` or a CA's revoke call, because `revokeCert` is where an Application's revocation
@@ -971,6 +984,14 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
   caches the provider's access token in the credentials like the secret-based methods do.
+- **A project connection's token also carries `project_id`**, taken from the connection row like the subject, so
+  a provider can trust every connection in one project (GCP binds `principalSet://.../attribute.project_id/<id>`).
+  Org-level connections send no `project_id`. GCP `workload-identity-federation` is the second consumer; it signs
+  a new token for every exchange, because GCP rejects a token by when it was issued.
+- **Tokens last 5 minutes unless the consumer passes `ttlSeconds`** (capped at 1 hour). Raise it only for a
+  provider that gives its access token the signed token's expiry: GCP does, so it asks for 15 minutes, which is
+  how long one operation can run without a service account. Azure exchanges the token once for its own access
+  token, so it keeps the short default, as Microsoft recommends for assertions.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.

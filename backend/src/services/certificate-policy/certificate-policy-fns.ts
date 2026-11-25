@@ -1,7 +1,13 @@
-import RE2 from "re2";
+import { isIPv6 } from "node:net";
 
-import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
-import { TSubjectRule } from "./certificate-policy-types";
+import RE2 from "re2";
+import { z } from "zod";
+
+import { isValidIp } from "@app/lib/ip";
+import { isFQDN } from "@app/lib/validator/validate-url";
+
+import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import { TCertificatePolicy, TSubjectRule } from "./certificate-policy-types";
 
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 
@@ -131,4 +137,223 @@ export const validateDomainComponentsAgainstRule = ({
   }
 
   return errors;
+};
+
+export const parsePolicyTtlMs = (ttl: string): number => {
+  const regex = new RE2("^(\\d+)([dmyh])$");
+  const match = regex.exec(ttl);
+  if (!match) {
+    throw new Error(`Invalid TTL format: ${ttl}`);
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  switch (unit) {
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * 24 * 60 * 60 * 1000;
+    case "m":
+      return value * 30 * 24 * 60 * 60 * 1000;
+    case "y":
+      return value * 365 * 24 * 60 * 60 * 1000;
+    default:
+      throw new Error(`Unsupported TTL unit: ${unit}`);
+  }
+};
+
+const ASCII_ONLY_REGEX = new RE2("^[\\x21-\\x7E]+$");
+const MAX_DNS_NAME_LENGTH = 253;
+
+const isDnsHostname = (value: string): boolean =>
+  ASCII_ONLY_REGEX.test(value) &&
+  !isValidIp(value) &&
+  value.length <= MAX_DNS_NAME_LENGTH &&
+  isFQDN(value, {
+    allow_wildcard: true,
+    require_tld: false,
+    allow_underscores: true,
+    allow_trailing_dot: true,
+    allow_numeric_tld: true
+  });
+
+const isEmailAddress = (value: string): boolean => z.string().email().safeParse(value).success;
+
+const SAN_VALUE_VALIDATORS: Record<CertSubjectAlternativeNameType, (value: string) => boolean> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: isDnsHostname,
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: isValidIp,
+  [CertSubjectAlternativeNameType.EMAIL]: isEmailAddress,
+  [CertSubjectAlternativeNameType.UPN]: isEmailAddress,
+  [CertSubjectAlternativeNameType.URI]: (value) => z.string().url().safeParse(value).success
+};
+
+export const isValidSanValue = (type: CertSubjectAlternativeNameType, value: string): boolean =>
+  SAN_VALUE_VALIDATORS[type](value);
+
+export const normalizeUriForComparison = (value: string): string => {
+  const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
+  if (!match) {
+    return value;
+  }
+  return `${match[1].toLowerCase()}${match[2] ?? ""}`;
+};
+
+const TRAILING_DOT_REGEX = new RE2("\\.$");
+
+const canonicalIp = (value: string): string => {
+  if (!isIPv6(value)) return value.toLowerCase();
+  try {
+    return new URL(`http://[${value}]`).hostname;
+  } catch {
+    return value.toLowerCase();
+  }
+};
+
+const normalizeSanValue = (sanType: string, value: string): string => {
+  if (sanType === CertSubjectAlternativeNameType.URI) return normalizeUriForComparison(value);
+  if (sanType === CertSubjectAlternativeNameType.IP_ADDRESS) return canonicalIp(value);
+  if (sanType === CertSubjectAlternativeNameType.DNS_NAME) return value.toLowerCase().replace(TRAILING_DOT_REGEX, "");
+  return value.toLowerCase();
+};
+
+const isSameSanValue = (sanType: string, value: string, other: string): boolean =>
+  normalizeSanValue(sanType, value) === normalizeSanValue(sanType, other);
+
+type TSubjectAlternativeName = { type: CertSubjectAlternativeNameType; value: string };
+
+export const includesSan = (
+  subjectAlternativeNames: TSubjectAlternativeName[] | null | undefined,
+  san: TSubjectAlternativeName
+): boolean =>
+  Boolean(
+    subjectAlternativeNames?.some(
+      (existing) => existing.type === san.type && isSameSanValue(san.type, existing.value, san.value)
+    )
+  );
+
+export enum RequestReference {
+  CommonName = "{{request.commonName}}"
+}
+
+const COMMON_NAME_REFERENCE_LABEL = "common name";
+
+const REQUEST_REFERENCE_OPENING = "{{";
+
+export const isRequestReference = (value: string): value is RequestReference =>
+  (Object.values(RequestReference) as string[]).includes(value);
+
+const hasRequestReferenceSyntax = (value: string): boolean => value.includes(REQUEST_REFERENCE_OPENING);
+
+export const isUnknownRequestReference = (value: string): boolean =>
+  hasRequestReferenceSyntax(value) && !isRequestReference(value);
+
+export const matchesSanRuleValue = ({
+  sanType,
+  sanValue,
+  ruleValue,
+  commonName,
+  matchesPattern
+}: {
+  sanType: string;
+  sanValue: string;
+  ruleValue: string;
+  commonName?: string | null;
+  matchesPattern: (sanValue: string, pattern: string) => boolean;
+}): boolean => {
+  if (ruleValue !== RequestReference.CommonName) return matchesPattern(sanValue, ruleValue);
+  return commonName ? isSameSanValue(sanType, sanValue, commonName) : false;
+};
+
+const formatSanRuleValue = (ruleValue: string, commonName?: string | null): string => {
+  if (ruleValue !== RequestReference.CommonName) return ruleValue;
+  return commonName
+    ? `the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}'`
+    : `the ${COMMON_NAME_REFERENCE_LABEL} (the request has none)`;
+};
+
+export const describeMissingRequiredSan = (sanType: string, ruleValue: string, commonName?: string | null): string => {
+  if (ruleValue !== RequestReference.CommonName) {
+    return `Required ${sanType} SAN matching pattern '${ruleValue}' not found in request`;
+  }
+  return commonName
+    ? `Required ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}' not found in request`
+    : `This policy requires a ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL}, but the request has no ${COMMON_NAME_REFERENCE_LABEL}`;
+};
+
+export const describeDeniedSan = (sanType: string, sanValue: string, ruleValue: string): string =>
+  ruleValue !== RequestReference.CommonName
+    ? `${sanType} SAN matching denied pattern '${sanValue}' found in request`
+    : `${sanType} SAN '${sanValue}' is denied by this policy because it equals the ${COMMON_NAME_REFERENCE_LABEL}. Remove it from the request, or from the profile's default SANs if a default added it.`;
+
+export const describeValueNotAllowed = ({
+  fieldName,
+  value,
+  allowedValues,
+  hasPatterns
+}: {
+  fieldName: string;
+  value: string;
+  allowedValues: string[];
+  hasPatterns: boolean;
+}): string =>
+  hasPatterns
+    ? `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
+    : `${fieldName} value '${value}' is not in allowed values list`;
+
+export const describeDisallowedSan = (
+  sanType: string,
+  sanValue: string,
+  allowed: string[],
+  commonName?: string | null
+): string =>
+  describeValueNotAllowed({
+    fieldName: `${sanType} SAN`,
+    value: sanValue,
+    allowedValues: allowed.map((ruleValue) => formatSanRuleValue(ruleValue, commonName)),
+    hasPatterns: allowed.some((ruleValue) => isRequestReference(ruleValue) || isWildcardPattern(ruleValue))
+  });
+
+const allowsCommonName = (policy: Pick<TCertificatePolicy, "subject">): boolean => {
+  if (!policy.subject) return true;
+  const commonNameRule = policy.subject.find((rule) => rule.type === CertSubjectAttributeType.COMMON_NAME);
+  return Boolean(commonNameRule?.allowed || commonNameRule?.required);
+};
+
+export const describeCommonNameSanRuleWithoutCommonName = (
+  policy: Pick<TCertificatePolicy, "subject" | "sans">
+): string | undefined => {
+  const referencesCommonName = policy.sans?.some((rule) =>
+    [rule.allowed, rule.required, rule.denied].some((ruleValues) => ruleValues?.includes(RequestReference.CommonName))
+  );
+  if (!referencesCommonName || allowsCommonName(policy)) return undefined;
+  return `To use "Same as common name" (${RequestReference.CommonName}) in a SAN rule, allow a common name in the policy's subject rules.`;
+};
+
+export const describeUnsupportedCommonNameDefaultSans = (
+  policy: Pick<TCertificatePolicy, "subject" | "sans">,
+  defaultSans: TSubjectAlternativeName[]
+): string | undefined => {
+  const referenceTypes = defaultSans.filter((san) => san.value === RequestReference.CommonName).map((san) => san.type);
+  if (!referenceTypes.length) return undefined;
+
+  if (!allowsCommonName(policy)) {
+    return `The default SAN "Same as common name" (${RequestReference.CommonName}) needs a common name, but this profile's policy does not allow one. Allow a common name in the policy, or remove that default SAN.`;
+  }
+
+  const refusedTypes = [...new Set(referenceTypes)].filter(
+    (type) => policy.sans && !policy.sans.some((rule) => rule.type === type)
+  );
+  if (refusedTypes.length) {
+    return `The default SAN "Same as common name" (${RequestReference.CommonName}) is set for ${refusedTypes.join(", ")}, but this profile's policy does not allow that SAN type. Add a rule for it to the policy, or remove that default SAN.`;
+  }
+
+  const deniedTypes = [...new Set(referenceTypes)].filter((type) =>
+    policy.sans?.some((rule) => rule.type === type && rule.denied?.includes(RequestReference.CommonName))
+  );
+  if (deniedTypes.length) {
+    return `The default SAN "Same as common name" (${RequestReference.CommonName}) is set for ${deniedTypes.join(", ")}, but this profile's policy denies a SAN equal to the common name for that type. Remove the default SAN, or the denied value from the policy.`;
+  }
+
+  return undefined;
 };

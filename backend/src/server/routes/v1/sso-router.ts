@@ -15,9 +15,9 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { z } from "zod";
 
+import type { TOverridableEnvConfig } from "@app/domains/platform/instance-config-core/ce/module";
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -33,12 +33,23 @@ import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
-let serverInstance: FastifyZodProvider | null = null;
+type TOauthLoginConfig = Pick<
+  TOverridableEnvConfig,
+  | "CLIENT_ID_GOOGLE_LOGIN"
+  | "CLIENT_SECRET_GOOGLE_LOGIN"
+  | "CLIENT_ID_GITHUB_LOGIN"
+  | "CLIENT_SECRET_GITHUB_LOGIN"
+  | "CLIENT_ID_GITLAB_LOGIN"
+  | "CLIENT_SECRET_GITLAB_LOGIN"
+  | "CLIENT_GITLAB_LOGIN_URL"
+>;
+
+let registeredOauthConfig: TOauthLoginConfig | null = null;
+let registeredOauthServer: FastifyZodProvider | null = null;
 
 // Build a set of trusted hosts from SITE_URL and CORS_ALLOWED_ORIGINS to prevent
 // open-redirect attacks via Host header injection on OAuth callback endpoints.
@@ -76,19 +87,26 @@ const getOAuthCallbackUrl = (req: { protocol: string; host: string }, path: stri
   return `${req.protocol}://${req.host}${path}`;
 };
 
-export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
-  serverInstance = server;
+const registerOauthMiddlewares = (server: FastifyZodProvider, oauthCfg: TOauthLoginConfig) => {
   const appCfg = getConfig();
+  if (registeredOauthServer !== server) {
+    ["google", "github", "gitlab"].forEach((strategy) => passport.unuse(strategy));
+    registeredOauthConfig = null;
+  }
+  const previous = registeredOauthConfig;
 
   // passport oauth strategy for Google
-  const isGoogleOauthActive = Boolean(appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN);
-  if (isGoogleOauthActive) {
+  const isGoogleOauthActive = Boolean(oauthCfg.CLIENT_ID_GOOGLE_LOGIN && oauthCfg.CLIENT_SECRET_GOOGLE_LOGIN);
+  const isGoogleChanged =
+    previous?.CLIENT_ID_GOOGLE_LOGIN !== oauthCfg.CLIENT_ID_GOOGLE_LOGIN ||
+    previous?.CLIENT_SECRET_GOOGLE_LOGIN !== oauthCfg.CLIENT_SECRET_GOOGLE_LOGIN;
+  if (isGoogleOauthActive && isGoogleChanged) {
     passport.use(
       new GoogleStrategy(
         {
           passReqToCallback: true,
-          clientID: appCfg.CLIENT_ID_GOOGLE_LOGIN as string,
-          clientSecret: appCfg.CLIENT_SECRET_GOOGLE_LOGIN as string,
+          clientID: oauthCfg.CLIENT_ID_GOOGLE_LOGIN as string,
+          clientSecret: oauthCfg.CLIENT_SECRET_GOOGLE_LOGIN as string,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
           scope: ["profile", "email"],
           state: true,
@@ -187,19 +205,24 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         }
       )
     );
+  } else if (!isGoogleOauthActive && isGoogleChanged) {
+    passport.unuse("google");
   }
 
   // Passport strategy for Github
-  const isGithubOauthActive = Boolean(appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN);
-  if (isGithubOauthActive) {
+  const isGithubOauthActive = Boolean(oauthCfg.CLIENT_SECRET_GITHUB_LOGIN && oauthCfg.CLIENT_ID_GITHUB_LOGIN);
+  const isGithubChanged =
+    previous?.CLIENT_ID_GITHUB_LOGIN !== oauthCfg.CLIENT_ID_GITHUB_LOGIN ||
+    previous?.CLIENT_SECRET_GITHUB_LOGIN !== oauthCfg.CLIENT_SECRET_GITHUB_LOGIN;
+  if (isGithubOauthActive && isGithubChanged) {
     passport.use(
       "github",
       new OAuth2Strategy(
         {
           authorizationURL: "https://github.com/login/oauth/authorize",
           tokenURL: "https://github.com/login/oauth/access_token",
-          clientID: appCfg.CLIENT_ID_GITHUB_LOGIN!,
-          clientSecret: appCfg.CLIENT_SECRET_GITHUB_LOGIN!,
+          clientID: oauthCfg.CLIENT_ID_GITHUB_LOGIN!,
+          clientSecret: oauthCfg.CLIENT_SECRET_GITHUB_LOGIN!,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
           scope: ["user:email", "read:org"],
           state: true,
@@ -300,21 +323,27 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         }
       )
     );
+  } else if (!isGithubOauthActive && isGithubChanged) {
+    passport.unuse("github");
   }
 
   // passport strategy for gitlab
   const isGitlabOauthActive = Boolean(
-    appCfg.CLIENT_ID_GITLAB_LOGIN && appCfg.CLIENT_SECRET_GITLAB_LOGIN && appCfg.CLIENT_GITLAB_LOGIN_URL
+    oauthCfg.CLIENT_ID_GITLAB_LOGIN && oauthCfg.CLIENT_SECRET_GITLAB_LOGIN && oauthCfg.CLIENT_GITLAB_LOGIN_URL
   );
-  if (isGitlabOauthActive) {
+  const isGitlabChanged =
+    previous?.CLIENT_ID_GITLAB_LOGIN !== oauthCfg.CLIENT_ID_GITLAB_LOGIN ||
+    previous?.CLIENT_SECRET_GITLAB_LOGIN !== oauthCfg.CLIENT_SECRET_GITLAB_LOGIN ||
+    previous?.CLIENT_GITLAB_LOGIN_URL !== oauthCfg.CLIENT_GITLAB_LOGIN_URL;
+  if (isGitlabOauthActive && isGitlabChanged) {
     passport.use(
       new GitLabStrategy(
         {
           passReqToCallback: true,
-          clientID: appCfg.CLIENT_ID_GITLAB_LOGIN,
-          clientSecret: appCfg.CLIENT_SECRET_GITLAB_LOGIN,
+          clientID: oauthCfg.CLIENT_ID_GITLAB_LOGIN,
+          clientSecret: oauthCfg.CLIENT_SECRET_GITLAB_LOGIN,
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
-          baseURL: appCfg.CLIENT_GITLAB_LOGIN_URL,
+          baseURL: oauthCfg.CLIENT_GITLAB_LOGIN_URL,
           state: true,
           pkce: true
         },
@@ -407,26 +436,33 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         }
       )
     );
-  }
-};
-
-export const refreshOauthConfig = () => {
-  if (!serverInstance) {
-    logger.warn("Cannot refresh OAuth config: server instance not available");
-    return;
+  } else if (!isGitlabOauthActive && isGitlabChanged) {
+    passport.unuse("gitlab");
   }
 
-  logger.info("Refreshing OAuth configuration...");
-  registerOauthMiddlewares(serverInstance);
+  registeredOauthConfig = oauthCfg;
+  registeredOauthServer = server;
 };
 
-export const initializeOauthConfigSync = async () => {
-  logger.info("Setting up background sync process for oauth configuration");
+const ensureOauthStrategies = async (server: FastifyZodProvider) => {
+  const {
+    CLIENT_ID_GOOGLE_LOGIN,
+    CLIENT_SECRET_GOOGLE_LOGIN,
+    CLIENT_ID_GITHUB_LOGIN,
+    CLIENT_SECRET_GITHUB_LOGIN,
+    CLIENT_ID_GITLAB_LOGIN,
+    CLIENT_SECRET_GITLAB_LOGIN,
+    CLIENT_GITLAB_LOGIN_URL
+  } = await server.services.instanceConfigService.getOverridableEnv();
 
-  return startLocalRefresh({
-    name: "oauth-config-sync",
-    intervalMs: 5 * 60 * 1000,
-    task: refreshOauthConfig
+  registerOauthMiddlewares(server, {
+    CLIENT_ID_GOOGLE_LOGIN,
+    CLIENT_SECRET_GOOGLE_LOGIN,
+    CLIENT_ID_GITHUB_LOGIN,
+    CLIENT_SECRET_GITHUB_LOGIN,
+    CLIENT_ID_GITLAB_LOGIN,
+    CLIENT_SECRET_GITLAB_LOGIN,
+    CLIENT_GITLAB_LOGIN_URL
   });
 };
 
@@ -467,7 +503,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
-  registerOauthMiddlewares(server);
+  await ensureOauthStrategies(server);
 
   server.route({
     url: "/redirect/google",
@@ -485,6 +521,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        await ensureOauthStrategies(server);
         const {
           callback_port: callbackPort,
           is_admin_login: isAdminLogin,
@@ -578,10 +615,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-      const serverCfg = await getServerCfg();
+      const { defaultAuthOrgId } = await server.services.instanceConfigService.getSettings();
       const signupUrl = new URL("/signup/sso", reqOrigin);
       signupUrl.searchParams.set("token", passportResult.signupToken);
-      if (serverCfg.defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");
+      if (defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");
       if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
       return res.redirect(signupUrl.toString());
     }
@@ -605,6 +642,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       withOAuthTokenErrorAsBadRequest("Google", async (req: any, res: any) => {
+        await ensureOauthStrategies(server);
         return (
           passport.authenticate("google", {
             session: false,
@@ -633,6 +671,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        await ensureOauthStrategies(server);
         const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
           callback_port?: string;
           is_admin_login?: boolean;
@@ -715,6 +754,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       withOAuthTokenErrorAsBadRequest("GitHub", async (req: any, res: any) => {
+        await ensureOauthStrategies(server);
         return (
           passport.authenticate("github", {
             session: false,
@@ -754,6 +794,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        await ensureOauthStrategies(server);
         const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
           callback_port?: string;
           is_admin_login?: boolean;
@@ -798,6 +839,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       withOAuthTokenErrorAsBadRequest("GitLab", async (req: any, res: any) => {
+        await ensureOauthStrategies(server);
         return (
           passport.authenticate("gitlab", {
             session: false,

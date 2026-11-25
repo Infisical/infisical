@@ -1,5 +1,3 @@
-import { TEnvConfig } from "@app/lib/config/env";
-
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -8,12 +6,14 @@ export type TAdminSignUpDTO = {
   organizationName?: string;
   ip: string;
   userAgent: string;
+  setupToken?: string;
 };
 
 export type TAdminBootstrapInstanceDTO = {
   email: string;
   password: string;
   organizationName: string;
+  setupToken?: string;
 };
 
 export type TAdminGetUsersDTO = {
@@ -60,47 +60,13 @@ export type TResendOrgInviteDTO = {
   membershipId: string;
 };
 
-export enum LoginMethod {
-  EMAIL = "email",
-  GOOGLE = "google",
-  GITHUB = "github",
-  GITLAB = "gitlab",
-  SAML = "saml",
-  LDAP = "ldap",
-  OIDC = "oidc"
-}
-
 export enum SuperAdminErrorCode {
-  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT",
+  InvalidSetupToken = "SUPER_ADMIN_INVALID_SETUP_TOKEN",
+  InstanceAlreadySetUp = "SUPER_ADMIN_INSTANCE_ALREADY_SET_UP"
 }
 
 export enum CacheType {
   ALL = "all",
   SECRETS = "secrets"
-}
-
-export type TAdminIntegrationConfig = {
-  slack: {
-    clientSecret: string;
-    clientId: string;
-  };
-  microsoftTeams: {
-    appId: string;
-    clientSecret: string;
-    botId: string;
-  };
-  gitHubAppConnection: {
-    clientId: string;
-    clientSecret: string;
-    appSlug: string;
-    appId: string;
-    privateKey: string;
-  };
-};
-
-export interface EnvOverrides {
-  [key: string]: {
-    name: string;
-    fields: { key: keyof TEnvConfig; value: string; hasEnvEntry: boolean; description?: string }[];
-  };
 }

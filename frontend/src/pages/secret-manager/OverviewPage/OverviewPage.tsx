@@ -239,7 +239,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
@@ -1058,6 +1058,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1174,7 +1175,8 @@ const OverviewPageContent = () => {
     folderPath: string;
     environmentSlug: string;
   } | null>(null);
-  const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
+  const [currentFolderAccessSource, setCurrentFolderAccessSource] =
+    useState<FolderAccessSheetSource | null>(null);
 
   const canManageFolderAccessAt = useCallback(
     (environment: string, folderPath: string) =>
@@ -1583,6 +1585,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -1774,7 +1787,7 @@ const OverviewPageContent = () => {
           environmentSlug: singleEnvSlug
         });
         analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-          source: "folder_row",
+          source: "overview_folder_row",
           projectId
         });
       };
@@ -1799,11 +1812,23 @@ const OverviewPageContent = () => {
     ]
   );
 
+  // an inherited grant is managed on the folder that set it, so the nested sheet hands off to that one
+  const handleManageInheritedAccess = useCallback(
+    (inheritedPath: string, source: FolderAccessSheetSource) => {
+      setFolderAccessTarget(null);
+      setCurrentFolderAccessSource(null);
+      navigate({ search: (prev) => ({ ...prev, secretPath: inheritedPath }) }).then(() =>
+        setCurrentFolderAccessSource(source)
+      );
+    },
+    [navigate]
+  );
+
   const handleCurrentFolderAccessOpen = useCallback(() => {
     const openCurrentFolderAccess = () => {
-      setIsCurrentFolderAccessOpen(true);
+      setCurrentFolderAccessSource("overview_breadcrumb");
       analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "breadcrumb",
+        source: "overview_breadcrumb",
         projectId
       });
     };
@@ -2318,6 +2343,31 @@ const OverviewPageContent = () => {
     }
   };
 
+  const createSecretInEnvironment = async (
+    env: string,
+    key: string,
+    value: string,
+    type: SecretType,
+    comment: string,
+    source: "row" | "quick-add"
+  ) => {
+    await ensureSecretFolder(env);
+    return observeOverviewRequest(
+      overviewTelemetry,
+      { action: "create", resourceType: "secret", source, countBucket: "1" },
+      () =>
+        createSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue: value,
+          secretComment: comment,
+          type
+        })
+    );
+  };
+
   const handleSecretCreate = async (
     env: string,
     key: string,
@@ -2350,21 +2400,7 @@ const OverviewPageContent = () => {
       return;
     }
 
-    await ensureSecretFolder(env);
-    const result = await observeOverviewRequest(
-      overviewTelemetry,
-      { action: "create", resourceType: "secret", source, countBucket: "1" },
-      () =>
-        createSecretV3({
-          environment: env,
-          projectId,
-          secretPath,
-          secretKey: key,
-          secretValue: value,
-          secretComment: comment,
-          type
-        })
-    );
+    const result = await createSecretInEnvironment(env, key, value, type, comment, source);
 
     if ("approval" in result) {
       createNotification({
@@ -2377,6 +2413,66 @@ const OverviewPageContent = () => {
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
     }
+  };
+
+  const handleQuickAddSecretCreate = async (
+    environments: string[],
+    key: string,
+    value: string,
+    comment: string,
+    isDirectSave: boolean
+  ) => {
+    if (isSingleEnvView) {
+      setRecentQuickAddKeys((prev) => [key, ...prev.filter((recentKey) => recentKey !== key)]);
+      if (!isDirectSave)
+        return Promise.allSettled([
+          handleSecretCreate(
+            environments[0],
+            key,
+            value,
+            SecretType.Shared,
+            comment,
+            "quick-add",
+            isDirectSave
+          )
+        ]);
+    }
+
+    const results = await Promise.allSettled(
+      environments.map((env) =>
+        createSecretInEnvironment(env, key, value, SecretType.Shared, comment, "quick-add")
+      )
+    );
+    const envsWithOutcome = (isApproval: boolean) =>
+      environments.filter((_, index) => {
+        const result = results[index];
+        return result.status === "fulfilled" && "approval" in result.value === isApproval;
+      });
+    const approvalEnvs = envsWithOutcome(true);
+    const createdEnvs = envsWithOutcome(false);
+
+    if (approvalEnvs.length) {
+      createNotification({
+        type: "info",
+        text:
+          environments.length === 1
+            ? "Requested change has been sent for review"
+            : `Change request submitted for ${
+                approvalEnvs.length > 1 ? "environments" : "environment"
+              }: ${approvalEnvs.join(", ")}`
+      });
+    }
+
+    if (createdEnvs.length) {
+      notifySecretsCreated(
+        1,
+        createdEnvs.map((environment) => ({ environment, key, value })),
+        createdEnvs.length > 1 ? `Added to ${createdEnvs.length} environments` : undefined
+      );
+      checkSecretsActivation();
+    }
+
+    return results;
   };
 
   const handleSecretUpdate = async ({
@@ -4832,22 +4928,7 @@ const OverviewPageContent = () => {
                               existingSecretKeys={quickAddReservedKeys}
                               onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
-                              onCreateSecret={(environment, key, value, comment, isDirectSave) => {
-                                if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) => [
-                                    key,
-                                    ...prev.filter((recentKey) => recentKey !== key)
-                                  ]);
-                                return handleSecretCreate(
-                                  environment,
-                                  key,
-                                  value,
-                                  SecretType.Shared,
-                                  comment,
-                                  "quick-add",
-                                  isDirectSave
-                                );
-                              }}
+                              onCreateSecret={handleQuickAddSecretCreate}
                               onQueuedSecretConflict={(draft) => {
                                 const pendingCreate = batchStoreApi
                                   .getState()
@@ -4914,7 +4995,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4946,7 +5027,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",
@@ -5712,16 +5793,26 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, "overview_folder_row")
+          }
+          source="overview_folder_row"
         />
       )}
-      {isCurrentFolderAccessOpen && (
+      {currentFolderAccessSource && (
         <FolderAccessSheet
           isOpen
-          onOpenChange={setIsCurrentFolderAccessOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCurrentFolderAccessSource(null);
+          }}
           projectId={projectId}
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, currentFolderAccessSource)
+          }
+          source={currentFolderAccessSource}
         />
       )}
       <ConfirmationAlertDialog

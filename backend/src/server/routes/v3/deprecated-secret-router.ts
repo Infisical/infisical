@@ -379,8 +379,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }
 
       if (notModified) {
-        void reply.code(304).send();
-        return;
+        return reply.code(304).send();
       }
 
       await server.services.auditLog.createAuditLog({

@@ -14,7 +14,8 @@
 // endpoint on github.com.
 //
 // www.googleapis.com also serves GCP service account certificates for machine identity
-// GCP auth, scoped by the service account's email.
+// GCP auth, scoped by the service account's email, and redeems the instance's own
+// service account JWT for GCP App Connections (see gcp.go).
 package oauth
 
 import (
@@ -73,6 +74,9 @@ func (s service) Scope(r *http.Request) (string, bool) {
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
 			return "", false
+		}
+		if s.provider == providerGoogle && isJWTBearerGrant(r) {
+			return gcpInstanceScope, true
 		}
 		code := r.PostForm.Get("code")
 		return code, code != ""
@@ -142,7 +146,7 @@ func (g *Grant) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	switch g.provider {
 	case providerGoogle:
-		mux.HandleFunc("POST /oauth2/v4/token", g.token(GoogleClientID, GoogleClientSecret))
+		mux.HandleFunc("POST /oauth2/v4/token", g.googleToken)
 		mux.HandleFunc("POST /token", g.token(GoogleClientID, GoogleClientSecret))
 		mux.HandleFunc("GET /oauth2/v3/userinfo", g.googleUserinfo)
 		mux.HandleFunc("GET /service_accounts/v1/metadata/x509/{sa}", g.certs)

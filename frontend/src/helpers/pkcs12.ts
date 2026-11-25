@@ -1,6 +1,8 @@
 import * as x509 from "@peculiar/x509";
 import forge from "node-forge";
 
+import { bytesToBinaryString } from "@app/helpers/string";
+
 const Pkcs12ErrorCode = {
   NotAKeystore: "not_a_keystore",
   BadPassword: "bad_password",
@@ -383,14 +385,6 @@ const declaredKdfRounds = (node: forge.asn1.Asn1, depth = 0): number => {
   return total;
 };
 
-const binaryString = (bytes: Uint8Array) => {
-  let out = "";
-  for (let i = 0; i < bytes.length; i += 8192) {
-    out += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return out;
-};
-
 const extractPkcs12Entries = async ({
   pkcs12,
   password
@@ -400,7 +394,7 @@ const extractPkcs12Entries = async ({
 }): Promise<{ entries: TPkcs12Entry[] }> => {
   let asn1;
   try {
-    asn1 = forge.asn1.fromDer(forge.util.createBuffer(binaryString(pkcs12)));
+    asn1 = forge.asn1.fromDer(forge.util.createBuffer(bytesToBinaryString(pkcs12)));
   } catch {
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NotAKeystore);
   }

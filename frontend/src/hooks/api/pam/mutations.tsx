@@ -934,11 +934,12 @@ export const useSetPamApprovalConfig = () => {
       steps,
       notificationConfigs,
       breakGlassUsers,
-      autoApproval
+      autoApproval,
+      emailApproversOnRequest
     }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps, notificationConfigs, breakGlassUsers, autoApproval }
+        { steps, notificationConfigs, breakGlassUsers, autoApproval, emailApproversOnRequest }
       );
       return data;
     },

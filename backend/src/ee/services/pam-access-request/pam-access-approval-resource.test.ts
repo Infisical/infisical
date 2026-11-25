@@ -1,8 +1,13 @@
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 
 import { pamAccessApprovalResourceFactory } from "./pam-access-approval-resource";
 import { TPamAccessRequestData } from "./pam-access-request-types";
+
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => ({ SITE_URL: "https://app.example.com" })
+}));
 
 const ACCOUNT_ID = "6cb4b2fa-1a9f-4b31-9f2d-6f3f5f9d4a11";
 const FOLDER_ID = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e33";
@@ -56,5 +61,46 @@ describe("pam access resource: matchPolicy", () => {
     const resource = buildResource({ findByProjectId: vi.fn().mockResolvedValue([]) });
 
     await expect(resource.matchPolicy("project", { accountId: ACCOUNT_ID, folderId: FOLDER_ID })).resolves.toBeNull();
+  });
+});
+
+describe("pam access resource: buildNotification email", () => {
+  const buildWithFolder = (folder: { name: string; emailApproversOnRequest: boolean } | null) =>
+    pamAccessApprovalResourceFactory({
+      pamAccountDAL: { findByIdWithDetails: vi.fn().mockResolvedValue({ name: "prod-db" }) },
+      pamFolderDAL: { findById: vi.fn().mockResolvedValue(folder) },
+      pamFolderNotificationConfigDAL: { findByFolderIdWithIntegration: vi.fn().mockResolvedValue([]) }
+    } as never);
+
+  const request = {
+    id: "request",
+    organizationId: "org",
+    requesterName: "Jane",
+    requesterEmail: "jane@example.com",
+    requestData: { version: 1, requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration: "1h" } }
+  } as never;
+
+  test.each([
+    ["off", { name: "prod", emailApproversOnRequest: false }, false],
+    ["on", { name: "prod", emailApproversOnRequest: true }, true],
+    ["unknown for a deleted folder", null, true]
+  ])("emails approvers about a new request when the folder setting is %s", async (_label, folder, emailed) => {
+    const content = await buildWithFolder(folder).buildNotification!({
+      event: ApprovalNotificationEvent.Requested,
+      request
+    });
+
+    expect(Boolean(content?.email)).toBe(emailed);
+    expect(content?.inApp).toBeDefined();
+  });
+
+  test("still emails approvers about break-glass use when request emails are off", async () => {
+    const content = await buildWithFolder({ name: "prod", emailApproversOnRequest: false }).buildNotification!({
+      event: ApprovalNotificationEvent.Bypassed,
+      request,
+      bypassReason: "outage"
+    });
+
+    expect(content?.email).toBeDefined();
   });
 });

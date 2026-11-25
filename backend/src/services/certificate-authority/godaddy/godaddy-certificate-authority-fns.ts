@@ -51,7 +51,10 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "transaction" | "updateById" | "findOne" | "findOneLiveFirst"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -615,7 +618,7 @@ export const GoDaddyCertificateAuthorityFns = ({
       throw new BadRequestError({ message: `CA is not a GoDaddy certificate authority [caId=${caId}]` });
     }
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`

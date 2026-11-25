@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -255,8 +254,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const appCfg = getConfig();
-      if (appCfg.DISABLE_PUBLIC_SECRET_SHARING) {
+      const { DISABLE_PUBLIC_SECRET_SHARING } = await req.server.services.instanceConfigService.getOverridableEnv();
+      if (DISABLE_PUBLIC_SECRET_SHARING) {
         throw new BadRequestError({ message: "Public secret sharing is disabled on this instance" });
       }
 

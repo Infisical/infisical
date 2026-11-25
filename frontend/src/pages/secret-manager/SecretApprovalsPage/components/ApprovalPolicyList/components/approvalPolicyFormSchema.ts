@@ -90,6 +90,7 @@ export const approvalPolicyFormSchema = z
     enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
     allowedSelfApprovals: z.boolean().default(true),
     bypassForMachineIdentities: z.boolean().optional().default(false),
+    enforceOnSecretImports: z.boolean().default(false),
     sequenceApprovers: z
       .object({
         user: userApproverSchema.array().default([]),

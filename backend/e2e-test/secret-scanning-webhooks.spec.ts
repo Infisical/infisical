@@ -9,11 +9,11 @@ describe("secret scanning v2 webhooks without a GitHub Radar app", () => {
     expect(testServer.hasRoute({ method: "POST", url })).toBe(true);
   });
 
-  test("does not register the github webhook", async () => {
-    expect(testServer.hasRoute({ method: "POST", url: "/secret-scanning/webhooks/github" })).toBe(false);
-
-    // 404 rather than 401: the route is absent, not merely refusing the caller.
+  // The route is registered so an admin's Radar override applies without a restart; while the app is not configured it
+  // answers exactly as an absent route does (404 rather than 401: nothing is there, not refusing the caller).
+  test("answers the github webhook as an absent route", async () => {
     const res = await testServer.inject({ method: "POST", url: "/secret-scanning/webhooks/github" });
     expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ message: "Route POST:/secret-scanning/webhooks/github not found" });
   });
 });

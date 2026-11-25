@@ -11,7 +11,7 @@ export const AnalyticsEvent = {
   PaywallUpgradeClicked: "Paywall Upgrade Clicked",
   FolderAccessSheetOpened: "Folder Access Sheet Opened",
   FolderAccessAddSheetOpened: "Folder Access Add Sheet Opened",
-  FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened",
+  FolderAccessChanged: "Folder Access Changed",
   SecretsAddResourceMenuOpened: "Secrets Add Resource Menu Opened",
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
   ThemePreferenceChanged: "Theme Preference Changed",
@@ -145,21 +145,29 @@ type PaywallProperties = {
   plan: string;
 };
 
-export type FolderAccessSheetSource = "breadcrumb" | "folder_row";
+export type FolderAccessSheetSource = "overview_breadcrumb" | "overview_folder_row";
 
 type FolderAccessSheetOpenedProperties = {
   source: FolderAccessSheetSource;
   projectId: string;
 };
 
+export type FolderAccessAddSheetSource = "card_header" | "empty_state";
+
 type FolderAccessAddSheetOpenedProperties = {
+  source: FolderAccessAddSheetSource;
+  actorType: "user" | "identity";
   projectId: string;
 };
 
-export type FolderAccessGrantSheetSource = "card_header" | "empty_state";
+export type FolderAccessChangeSource =
+  | FolderAccessSheetSource
+  | "access_control_member"
+  | "access_control_identity";
 
-type FolderAccessGrantSheetOpenedProperties = {
-  source: FolderAccessGrantSheetSource;
+type FolderAccessChangedProperties = {
+  source: FolderAccessChangeSource;
+  action: "added" | "updated" | "removed";
   actorType: "user" | "identity";
   projectId: string;
 };
@@ -254,7 +262,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.PaywallUpgradeClicked]: PaywallProperties;
   [AnalyticsEvent.FolderAccessSheetOpened]: FolderAccessSheetOpenedProperties;
   [AnalyticsEvent.FolderAccessAddSheetOpened]: FolderAccessAddSheetOpenedProperties;
-  [AnalyticsEvent.FolderAccessGrantSheetOpened]: FolderAccessGrantSheetOpenedProperties;
+  [AnalyticsEvent.FolderAccessChanged]: FolderAccessChangedProperties;
   [AnalyticsEvent.SecretsAddResourceMenuOpened]: SecretsAddResourceMenuOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;

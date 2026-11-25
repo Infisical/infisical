@@ -1,14 +1,15 @@
+import {
+  EventModificationType,
+  EventResultStatus,
+  parseEventPayload,
+  runEventsConcurrentlyByKey,
+  TEvent,
+  TEventConsumer,
+  TEventConsumerResult
+} from "@app/domains/platform/events/ce/module";
 import type { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
-import {
-  EventResultStatus,
-  IEventConsumer,
-  TEvent,
-  TEventConsumerResult
-} from "@app/services/event-outbox/event-outbox-types";
 
 import { OrganizationModifiedEventV1, TOrganizationModifiedEventData } from "./org-events";
 
@@ -24,7 +25,7 @@ type TLicenseOrgDeletedConsumerDep = {
 export const licenseOrgDeletedConsumerFactory = ({
   envConfig,
   licenseService
-}: TLicenseOrgDeletedConsumerDep): IEventConsumer<TOrganizationModifiedEventData> => {
+}: TLicenseOrgDeletedConsumerDep): TEventConsumer<TOrganizationModifiedEventData> => {
   const subscribesTo = (eventType: string) => envConfig.isCloud && eventType === OrganizationModifiedEventV1.type;
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {

@@ -55,6 +55,7 @@ type TDefaultOnPremFeatures = TInstanceFeatures & {
   pkiAcme: true;
   pkiEst: false;
   pkiScep: false;
+  pkiMicrosoftAutoenrollment: false;
   pkiPqc: false;
   caCrl: true;
   pkiOcsp: false;
@@ -154,6 +155,7 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
+  pkiMicrosoftAutoenrollment: false,
   pkiPqc: false,
   caCrl: true,
   pkiOcsp: false,

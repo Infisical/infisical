@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
+import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -21,25 +22,29 @@ import {
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
 import {
-  SecretFolderRole,
   TFolderAccess,
   useCreateIdentityFolderAccess,
-  useCreateUserFolderAccess
+  useCreateUserFolderAccess,
+  useUpdateIdentityFolderAccess,
+  useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
-import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
-  isValidTemporaryRange,
+  findInheritedGrant,
+  isRootFolderPath,
   normalizeFolderPath
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
-import { FolderTierRadioGroup } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderTierRadioGroup";
-import { TemporaryAccessPopover } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/TemporaryAccessPopover";
 
-import { TFolderAccessSectionActor } from "./types";
+import { ActorSummary } from "./ActorSummary";
+import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
+import { folderAccessChangeSourceOf, TFolderAccessSectionActor } from "./types";
 
 type Props = {
   isOpen: boolean;
@@ -54,26 +59,20 @@ type FormProps = {
   onClose: () => void;
 };
 
-const actorNameOf = (actor: TFolderAccessSectionActor) => {
-  if (actor.type === "identity") return actor.name;
-  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim();
-  return fullName || actor.username;
-};
-
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
   const { projectId, currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
 
   const environments = currentProject?.environments ?? [];
 
   const [environmentSlug, setEnvironmentSlug] = useState(environments[0]?.slug ?? "");
   const [secretPath, setSecretPath] = useState("/");
-  const [tier, setTier] = useState(SecretFolderRole.Read);
-  const [isTemporary, setIsTemporary] = useState(false);
-  const [range, setRange] = useState(DEFAULT_TEMPORARY_RANGE);
 
   const createUserAccess = useCreateUserFolderAccess();
   const createIdentityAccess = useCreateIdentityFolderAccess();
+  const updateUserAccess = useUpdateUserFolderAccess();
+  const updateIdentityAccess = useUpdateIdentityFolderAccess();
 
   const normalizedPath = normalizeFolderPath(secretPath);
   const isRoot = normalizedPath === "/";
@@ -89,19 +88,19 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
   const folderExists = isRoot || siblingFolders.some((folder) => folder.name === folderName);
-  const isDuplicate = existingAccess.some(
-    (row) =>
-      row.environment === environmentSlug && normalizeFolderPath(row.secretPath) === normalizedPath
-  );
-  const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
-  const isRangeValid = !isTemporary || isValidTemporaryRange(range);
+  // picking a folder this actor already has a grant on edits that grant instead of creating one
+  const existingGrant =
+    existingAccess.find(
+      (row) =>
+        row.environment === environmentSlug &&
+        normalizeFolderPath(row.secretPath) === normalizedPath
+    ) ?? null;
+  const grant = useFolderGrantDraft(existingGrant, normalizedPath);
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
     if (isCheckingFolder) return null;
     if (!folderExists) return `No folder at ${normalizedPath} in this environment.`;
-    if (isDuplicate)
-      return `This ${actorNoun} already has access to ${normalizedPath}. Edit the existing access from the table instead.`;
     // the backend authorizes a grant against the target folder's own path, not its parent
     if (
       !permission.can(
@@ -116,33 +115,60 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     return null;
   })();
 
+  const editNote =
+    existingGrant && !targetError && !isCheckingFolder
+      ? `This ${actorNoun} already has access to ${normalizedPath}. Saving updates that access.`
+      : null;
+
+  const inheritedGrant = findInheritedGrant(existingAccess, environmentSlug, normalizedPath);
+  const inheritedNote = (() => {
+    if (!inheritedGrant || targetError || isCheckingFolder) return null;
+    const source = isRootFolderPath(inheritedGrant.secretPath)
+      ? "the environment from /"
+      : `the subfolders of ${inheritedGrant.secretPath}`;
+    return `This ${actorNoun} has ${FOLDER_ROLE_TIER_LABELS[inheritedGrant.permission]} on ${normalizedPath} through access applied to ${source}. ${existingGrant ? "The access set on this folder overrides it here." : "Access you set here overrides it on this folder."}`;
+  })();
+
   const isSubmitDisabled =
-    isCheckingFolder || Boolean(targetError) || isFullAccessTemporary || !isRangeValid;
+    isCheckingFolder ||
+    Boolean(targetError) ||
+    grant.isInvalid ||
+    (Boolean(existingGrant) && !grant.hasChanges);
 
   const handleSubmit = async () => {
-    const type = isTemporary
-      ? ({
-          isTemporary: true,
-          temporaryMode: "relative",
-          temporaryRange: range,
-          temporaryAccessStartTime: new Date().toISOString()
-        } as const)
-      : undefined;
+    const target = { projectId, environmentSlug, secretPath: normalizedPath };
 
-    const payload = {
-      projectId,
-      environmentSlug,
-      secretPath: normalizedPath,
-      permission: tier,
-      type
-    };
+    if (existingGrant) {
+      const payload = { ...target, ...grant.updateFields() };
+      if (actor.type === "user") {
+        await updateUserAccess.mutateAsync({ ...payload, userId: actor.id });
+      } else {
+        await updateIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
+      }
+      createNotification({ type: "success", text: "Folder access updated" });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+        source: folderAccessChangeSourceOf(actor),
+        action: "updated",
+        actorType: actor.type,
+        projectId
+      });
+      onClose();
+      return;
+    }
 
+    const payload = { ...target, ...grant.createFields() };
     if (actor.type === "user") {
       await createUserAccess.mutateAsync({ ...payload, userId: actor.id });
     } else {
       await createIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
     }
     createNotification({ type: "success", text: "Folder access granted" });
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source: folderAccessChangeSourceOf(actor),
+      action: "added",
+      actorType: actor.type,
+      projectId
+    });
     onClose();
   };
 
@@ -150,12 +176,10 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     <>
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2">
-          Grant Folder Access
+          Manage Folder Access
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
-        <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
-          <span className="truncate text-accent">{actorNameOf(actor)}</span>
-        </div>
+        <ActorSummary actor={actor} />
       </SheetHeader>
 
       <div className="thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4">
@@ -192,32 +216,21 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             />
           </div>
           {targetError && <p className="text-xs text-danger">{targetError}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Permission</Label>
-          <FolderTierRadioGroup value={tier} onValueChange={setTier} />
-          {isFullAccessTemporary && (
-            <p className="text-xs text-danger">
-              Full Access cannot be temporary. Remove the expiration or choose a lower tier.
+          {editNote && (
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+              {editNote}
+            </p>
+          )}
+          {inheritedNote && (
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+              {inheritedNote}
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>Temporary access</Label>
-          <TemporaryAccessPopover
-            isTemporary={isTemporary}
-            range={range}
-            label={isTemporary ? `Expires in ${range}` : "No expiration"}
-            description="Access is revoked automatically once the duration elapses."
-            onApply={(nextRange) => {
-              setRange(nextRange);
-              setIsTemporary(true);
-            }}
-            onRemove={() => setIsTemporary(false)}
-          />
-        </div>
+        <FolderGrantFields grant={grant} />
       </div>
 
       <SheetFooter className="border-t">
@@ -225,10 +238,15 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           variant="project"
           isFullWidth
           isDisabled={isSubmitDisabled}
-          isPending={createUserAccess.isPending || createIdentityAccess.isPending}
+          isPending={
+            createUserAccess.isPending ||
+            createIdentityAccess.isPending ||
+            updateUserAccess.isPending ||
+            updateIdentityAccess.isPending
+          }
           onClick={() => handleSubmit().catch(() => undefined)}
         >
-          Grant Access
+          {existingGrant ? "Save Changes" : "Save Access"}
         </Button>
       </SheetFooter>
     </>

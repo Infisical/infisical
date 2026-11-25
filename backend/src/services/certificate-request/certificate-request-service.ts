@@ -34,7 +34,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, PROTOCOL_ENROLLMENT_ACTORS } from "../auth/auth-type";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -190,8 +190,7 @@ export const certificateRequestServiceFactory = ({
       !internal &&
       actor !== ActorType.ACME_ACCOUNT &&
       actor !== ActorType.PLATFORM &&
-      actor !== ActorType.EST_ACCOUNT &&
-      actor !== ActorType.SCEP_ACCOUNT
+      !PROTOCOL_ENROLLMENT_ACTORS.has(actor)
     ) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
