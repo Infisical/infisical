@@ -220,6 +220,7 @@ export const CertificatesTab = ({
             <InventoryViewsMenu
               projectId={projectId}
               applicationId={application.id}
+              applicationPermission={access.permission}
               activeViewId={activeViewId}
               current={{ filters, includeDeleted, scope: viewScope }}
               onSelect={applyView}

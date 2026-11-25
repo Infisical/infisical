@@ -41,11 +41,16 @@ import type {
   TSystemView,
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub
+} from "@app/hooks/api/pkiApplications/types";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
+import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { useV4Session } from "../../data/session/contract";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
@@ -279,15 +284,24 @@ const saveBlock = (canCreate: boolean, current: InventoryView) => {
   return undefined;
 };
 
+const APPLICATION_VIEW_ACTIONS: Record<ProjectPermissionActions, PkiApplicationResourceActions> = {
+  [ProjectPermissionActions.Read]: PkiApplicationResourceActions.Read,
+  [ProjectPermissionActions.Create]: PkiApplicationResourceActions.Create,
+  [ProjectPermissionActions.Edit]: PkiApplicationResourceActions.Edit,
+  [ProjectPermissionActions.Delete]: PkiApplicationResourceActions.Delete
+};
+
 export const InventoryViewsMenu = ({
   projectId,
   applicationId,
+  applicationPermission,
   activeViewId,
   current,
   onSelect
 }: {
   projectId: string;
   applicationId?: string;
+  applicationPermission?: PkiApplicationPermission["permission"];
   activeViewId: string | null;
   current: InventoryView;
   onSelect: (viewId: string | null, view: InventoryView) => void;
@@ -300,7 +314,12 @@ export const InventoryViewsMenu = ({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<TCertificateInventoryView>();
   const can = (action: ProjectPermissionActions) =>
-    permission.can(action, ProjectPermissionSub.CertificateInventoryViews);
+    applicationPermission
+      ? applicationPermission.can(
+          APPLICATION_VIEW_ACTIONS[action],
+          PkiApplicationResourceSub.CertificateInventoryViews
+        )
+      : permission.can(action, ProjectPermissionSub.CertificateInventoryViews);
 
   if (!can(ProjectPermissionActions.Read)) return null;
 

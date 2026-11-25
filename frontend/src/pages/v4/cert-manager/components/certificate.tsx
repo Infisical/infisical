@@ -231,7 +231,10 @@ export const useHasProjectCertificateSyncs = (orgId: string, enabled: boolean) =
 export const usePendingRequestCount = (orgId: string, enabled: boolean) => {
   const { projectId } = useCertManagerProjectId(orgId, { enabled });
   const approvals = useV4Adapter("approvalRequests");
-  const scope = { scope: ApprovalPolicyScope.Project, scopeId: projectId ?? "" };
+  const scope = {
+    scope: ApprovalPolicyScope.Project,
+    scopeId: enabled ? (projectId ?? "") : ""
+  };
   const requests = [
     approvals.useRequests({ policyType: ApprovalPolicyType.CertRequest, ...scope }).data,
     approvals.useRequests({ policyType: ApprovalPolicyType.CertRevocation, ...scope }).data,

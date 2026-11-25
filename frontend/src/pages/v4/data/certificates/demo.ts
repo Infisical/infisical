@@ -652,7 +652,7 @@ const savedView = (
   updatedAt: day(-12)
 });
 
-const views = createFixtureStore<TCertificateInventoryView[]>([
+const views = createFixtureStore<(TCertificateInventoryView & { applicationId?: string })[]>([
   savedView(
     "6e1f3a92-4c7b-4d08-8a5e-2b9c0d7f1e34",
     "Production TLS on RSA",
@@ -1020,8 +1020,8 @@ export const certificatesDemo: CertificatesAdapter = {
   useAssignToApplication: fixtureMutation(({ certificateId, applicationId }) =>
     change(certificateId, { applicationId, applicationName: applicationName(applicationId) })
   ),
-  useInventoryViews: () => {
-    const saved = views.use();
+  useInventoryViews: (applicationId) => {
+    const saved = views.use().filter((view) => view.applicationId === applicationId);
     const data: TListInventoryViewsResponse = {
       systemViews,
       sharedViews: saved
@@ -1033,9 +1033,9 @@ export const certificatesDemo: CertificatesAdapter = {
     };
     return result(data);
   },
-  useCreateInventoryView: fixtureMutation(({ name, filters, isShared }) => {
+  useCreateInventoryView: fixtureMutation(({ name, filters, isShared, applicationId }) => {
     const created = savedView(crypto.randomUUID(), name, filters, "u-sarah", Boolean(isShared));
-    views.update((current) => [...current, created]);
+    views.update((current) => [...current, { ...created, applicationId }]);
     return created;
   }),
   useUpdateInventoryView: fixtureMutation(({ viewId, ...patch }) => viewChange(viewId, patch)),
