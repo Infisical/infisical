@@ -53,7 +53,11 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted, findEndOfRenewalChain } from "@app/services/certificate/certificate-fns";
+import {
+  assertCertificateNotDeleted,
+  findEndOfRenewalChain,
+  getRenewedCertificateName
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -220,9 +224,6 @@ type TCertificateRenewalServiceFactoryDep = {
 // An imported or discovered certificate was never reviewed by Infisical, so every renewal of it is held.
 const isSourcedOutsideInfisical = (certificate: TCertificates) =>
   Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
-
-const getRenewedCertificateName = (certificate: TCertificates) =>
-  certificate.commonName || certificate.altNames?.split(",")[0]?.trim() || undefined;
 
 const isEveryRenewalHeldForApproval = (certificate: TCertificates, policyOperation: CertRequestPolicyOperation) =>
   policyOperation === CertRequestPolicyOperation.Renewal || isSourcedOutsideInfisical(certificate);

@@ -93,7 +93,9 @@ export const CertRequestPolicyRequestDataSchema = z.object({
     .optional(),
   // The certificate an EST or SCEP re-enrollment replaces. These issue from the client's CSR like a new certificate,
   // then link to it, so they don't go through `renewal`.
-  renewalOfCertificateId: z.string().uuid().optional()
+  renewalOfCertificateId: z.string().uuid().optional(),
+  // How the re-enrollment names the certificate it replaces. Absent on requests raised before it existed.
+  renewalOfCertificateName: z.string().optional()
 });
 
 // The certificate a request renews: a renewal's, or the one an EST or SCEP re-enrollment replaces.

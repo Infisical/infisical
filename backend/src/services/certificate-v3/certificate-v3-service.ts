@@ -55,7 +55,11 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  assertCertificateNotDeleted,
+  getRenewedCertificateName,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -1538,12 +1542,14 @@ export const certificateV3ServiceFactory = ({
         approvalRequestId,
         notifyApprovers
       } = await certificateRequestDAL.transaction(async (tx) => {
+        let renewedCertificateName: string | undefined;
         if (isRenewal && originalCertificateId) {
-          await assertNoRenewalAwaitingApproval(
+          const original = await assertNoRenewalAwaitingApproval(
             certificateDAL,
             { certificateId: originalCertificateId, projectId: profile.projectId },
             tx
           );
+          renewedCertificateName = original ? getRenewedCertificateName(original) : undefined;
         }
         return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
@@ -1624,7 +1630,11 @@ export const certificateV3ServiceFactory = ({
                 basicConstraints: resolvedBasicConstraints,
                 customExtensions: resolvedCustomExtensions
               },
-              ...(isRenewal && originalCertificateId && { renewalOfCertificateId: originalCertificateId })
+              ...(isRenewal &&
+                originalCertificateId && {
+                  renewalOfCertificateId: originalCertificateId,
+                  ...(renewedCertificateName && { renewalOfCertificateName: renewedCertificateName })
+                })
             },
             justification: `Certificate signing request for ${mappedCertificateRequest.commonName || profile.slug}`,
             requester: { actor, actorId, name: requesterName, email: requesterEmail },

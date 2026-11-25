@@ -581,6 +581,10 @@ type TDeletableCertificate = {
 export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
   certificate.friendlyName || certificate.commonName || certificate.serialNumber;
 
+// How a renewal names the certificate it replaces, which can differ from the common name the renewal requests.
+export const getRenewedCertificateName = (certificate: { commonName?: string | null; altNames?: string | null }) =>
+  certificate.commonName || certificate.altNames?.split(",")[0]?.trim() || undefined;
+
 export const assertCertificateNotDeleted = (
   certificate: TDeletableCertificate,
   consequence = "It can no longer be renewed or changed."

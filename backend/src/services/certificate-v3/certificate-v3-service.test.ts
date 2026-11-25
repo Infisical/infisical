@@ -1632,6 +1632,74 @@ describe("CertificateV3Service", () => {
     });
   });
 
+  describe("an EST re-enrollment held for approval", () => {
+    it("records the name of the certificate it replaces, for the approval's audit events", async () => {
+      vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
+        permission: {
+          throwUnlessCan: vi.fn(),
+          can: vi.fn().mockReturnValue(true),
+          cannot: vi.fn().mockReturnValue(false)
+        }
+      } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "devices",
+        enrollmentType: EnrollmentType.EST,
+        estConfigId: "est-config-123"
+      } as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        externalCa: undefined,
+        internalCa: { id: "internal-ca-123", type: "ROOT", keyAlgorithm: "RSA_2048" }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        id: "policy-123",
+        projectId: "project-123"
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      } as any);
+      vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({ commonName: "device-renamed.example.com" } as any);
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
+        id: "cert-old",
+        commonName: "device.example.com",
+        altNames: "device.example.com"
+      } as any);
+      vi.mocked(mockCertificateDAL.hasRenewalAwaitingApproval).mockResolvedValue(false);
+      vi.mocked(mockCertificateRequestDAL.transaction).mockImplementation(
+        async (callback: (tx: any) => Promise<unknown>) => callback({})
+      );
+      mockApprovalPolicyService.matchPolicy.mockResolvedValue({ id: "approval-policy-1", isActive: true } as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.EST,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestData: expect.objectContaining({
+            renewalOfCertificateId: "cert-old",
+            renewalOfCertificateName: "device.example.com"
+          })
+        })
+      );
+    });
+  });
+
   describe("orderCertificate", () => {
     const mockCertificateOrder = {
       altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "example.com" }],

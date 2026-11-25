@@ -114,6 +114,20 @@ describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
     });
   });
 
+  test("labels the certificate an EST or SCEP re-enrollment replaces", () => {
+    expect(
+      getApprovalRequestSubjectMetadata(
+        certRequest({ renewalOfCertificateId: "cert-2", renewalOfCertificateName: "device.example.com" })
+      )
+    ).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-2",
+      certificateName: "device.example.com",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
   test("labels the renewed certificate apart from the name the renewal requests", () => {
     expect(
       getApprovalRequestSubjectMetadata(

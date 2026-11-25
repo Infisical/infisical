@@ -21,10 +21,11 @@ export const assertNoRenewalAwaitingApproval = async (
   certificate: { certificateId: string; projectId: string },
   tx: Knex
 ) => {
-  await certificateDAL.findByIdForUpdate(certificate.certificateId, tx);
+  const lockedCertificate = await certificateDAL.findByIdForUpdate(certificate.certificateId, tx);
   if (await certificateDAL.hasRenewalAwaitingApproval(certificate, tx)) {
     throw new BadRequestError({ message: "A renewal of this certificate is already waiting for approval." });
   }
+  return lockedCertificate;
 };
 
 export const matchCertificateRequestApprovalPolicy = async (
