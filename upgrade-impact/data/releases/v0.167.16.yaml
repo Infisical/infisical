@@ -1,0 +1,67 @@
+version: v0.167.16
+releasedAt: 2026-11-25T19:12:58-03:00
+sourceTag: v0.167.16
+previousTag: v0.167.15
+impactLevel: low
+summary: Startup runs several database migrations, including dropping unused
+  snapshot tables and backfilling secret-scanning alerts. No required config or
+  deployment changes were added.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Snapshot tables removal
+    description: Startup drops the unused secret snapshot tables if they still
+      exist. Existing data in those tables is removed.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261123190000_drop-secret-snapshot-tables.ts
+        path: backend/src/db/migrations/20261123190000_drop-secret-snapshot-tables.ts
+  - title: Secret scanning default alerts
+    description: Startup backfills shared alert records and email channels for
+      existing secret-scanning data sources so prior email behavior continues
+      under the new alerting module.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        path: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        description: Backfills alerts and channels in batches
+  - title: Event outbox eventId migration
+    description: Startup backfills null event IDs, makes eventId non-null, and drops
+      the old idempotencyKey column and index from the event outbox table.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261119230000_event-outbox-require-event-id.ts
+        path: backend/src/db/migrations/20261119230000_event-outbox-require-event-id.ts
+  - title: Secret import policy constraint rename
+    description: Startup renames approval policy JSON constraint keys from
+      enforceImportReplication to enforceOnSecretImports for secret-change
+      policies.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261124180000_rename-enforce-on-secret-imports-constraint.ts
+        path: backend/src/db/migrations/20261124180000_rename-enforce-on-secret-imports-constraint.ts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-25T22:50:55.777Z
+  sourceRange:
+    from: v0.167.15
+    to: v0.167.16
