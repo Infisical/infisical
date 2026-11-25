@@ -17,12 +17,16 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Code,
   CodeBlock,
   DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
   Input,
   Select,
   SelectContent,
@@ -457,83 +461,95 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
 
               <FormSection
                 title="MFA Signal"
-                description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
+                description="When Trust IdP MFA is on, Infisical skips its MFA prompt if either the attribute or the authentication context shows the user completed MFA."
                 badge={isMfaSignalInUse ? <Badge variant="success">In Use</Badge> : undefined}
               >
-                <Controller
-                  control={control}
-                  name="mfaSignalAttribute"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="sso-mfa-signal-attribute">
-                        MFA Attribute Name (Optional)
-                      </FieldLabel>
-                      <Input
-                        id="sso-mfa-signal-attribute"
-                        className="font-mono"
-                        placeholder={providerMfaSignalAttribute(authProvider)}
-                        autoComplete="off"
-                        isError={Boolean(error)}
-                        {...field}
-                      />
-                      <FieldDescription>
-                        Attribute in the {providerName} SAML assertion that lists the authentication
-                        methods the user completed. Leave empty to use the {providerName} default.
-                      </FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="mfaAttributeValues"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="sso-mfa-attribute-values">
-                        Additional MFA Attribute Values (Optional)
-                      </FieldLabel>
-                      <TagsInput
-                        id="sso-mfa-attribute-values"
-                        placeholder="swk"
-                        value={value}
-                        onValueChange={onChange}
-                        validateTag={rejectDuplicateTag}
-                        onValidationError={setAttributeValueTagError}
-                        isError={Boolean(attributeValueTagError || error)}
-                      />
-                      <FieldDescription>
-                        Values of the MFA attribute counted as MFA, in addition to mfa and
-                        multipleauthn. Press Enter to add.
-                      </FieldDescription>
-                      <FieldError>{attributeValueTagError ?? error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="mfaAuthnContexts"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="sso-mfa-authn-contexts">
-                        Additional MFA Authentication Contexts (Optional)
-                      </FieldLabel>
-                      <TagsInput
-                        id="sso-mfa-authn-contexts"
-                        placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
-                        value={value}
-                        onValueChange={onChange}
-                        validateTag={rejectDuplicateTag}
-                        onValidationError={setAuthnContextTagError}
-                        isError={Boolean(authnContextTagError || error)}
-                      />
-                      <FieldDescription>
-                        AuthnContextClassRef values counted as MFA, in addition to the standard
-                        two-factor classes. Press Enter to add.
-                      </FieldDescription>
-                      <FieldError>{authnContextTagError ?? error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+                <FieldSet>
+                  <FieldLegend variant="label">Attribute</FieldLegend>
+                  <FieldDescription>
+                    An attribute in the {providerName} assertion that lists the authentication
+                    methods the user completed.
+                  </FieldDescription>
+                  <Controller
+                    control={control}
+                    name="mfaSignalAttribute"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor="sso-mfa-signal-attribute">
+                          Attribute Name (Optional)
+                        </FieldLabel>
+                        <Input
+                          id="sso-mfa-signal-attribute"
+                          className="font-mono"
+                          placeholder={providerMfaSignalAttribute(authProvider)}
+                          autoComplete="off"
+                          isError={Boolean(error)}
+                          {...field}
+                        />
+                        <FieldDescription>
+                          Leave empty to use the {providerName} default.
+                        </FieldDescription>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="mfaAttributeValues"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor="sso-mfa-attribute-values">
+                          Additional Values (Optional)
+                        </FieldLabel>
+                        <TagsInput
+                          id="sso-mfa-attribute-values"
+                          placeholder="Type a value, press Enter"
+                          value={value}
+                          onValueChange={onChange}
+                          validateTag={rejectDuplicateTag}
+                          onValidationError={setAttributeValueTagError}
+                          isError={Boolean(attributeValueTagError || error)}
+                        />
+                        <FieldDescription>
+                          Counted as MFA in addition to the standard <Code>mfa</Code> and{" "}
+                          <Code>multipleauthn</Code> values.
+                        </FieldDescription>
+                        <FieldError>{attributeValueTagError ?? error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                </FieldSet>
+                <FieldSeparator>or</FieldSeparator>
+                <FieldSet>
+                  <FieldLegend variant="label">Authentication Context</FieldLegend>
+                  <FieldDescription>
+                    The <Code>AuthnContextClassRef</Code> {providerName} sets on the assertion.
+                  </FieldDescription>
+                  <Controller
+                    control={control}
+                    name="mfaAuthnContexts"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor="sso-mfa-authn-contexts">
+                          Additional Contexts (Optional)
+                        </FieldLabel>
+                        <TagsInput
+                          id="sso-mfa-authn-contexts"
+                          placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
+                          value={value}
+                          onValueChange={onChange}
+                          validateTag={rejectDuplicateTag}
+                          onValidationError={setAuthnContextTagError}
+                          isError={Boolean(authnContextTagError || error)}
+                        />
+                        <FieldDescription>
+                          Counted as MFA in addition to the standard two-factor classes.
+                        </FieldDescription>
+                        <FieldError>{authnContextTagError ?? error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                </FieldSet>
               </FormSection>
             </div>
             <SheetFooter className="justify-between border-t">
