@@ -38,12 +38,10 @@ enum NoticeCause {
   PaymentProcessing = "payment_processing"
 }
 
-const RENEWAL_FAILURE_MESSAGE: Record<"approval" | "declined", string> = {
-  approval:
-    "Your bank needs to approve the latest subscription payment. Approve it to keep this organization's paid features.",
-  declined:
-    "We couldn't collect the latest subscription payment. Update the payment method to keep this organization's paid features."
-};
+const buildRenewalFailureMessage = (cause: string | null) =>
+  cause === NoticeCause.PaymentActionRequired
+    ? "Your bank needs to approve the latest subscription payment. Approve it to keep this organization's paid features."
+    : "We couldn't collect the latest subscription payment. Update the payment method to keep this organization's paid features.";
 
 const listFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
@@ -117,11 +115,7 @@ export const PaymentFailedBanner = () => {
 
   const failureMessages: string[] = [];
   if (renewalNotice) {
-    failureMessages.push(
-      RENEWAL_FAILURE_MESSAGE[
-        renewalNotice.cause === NoticeCause.PaymentActionRequired ? "approval" : "declined"
-      ]
-    );
+    failureMessages.push(buildRenewalFailureMessage(renewalNotice.cause));
   }
   if (failedTrialNotices.length) {
     failureMessages.push(buildFailureMessage(failedTrialNotices));

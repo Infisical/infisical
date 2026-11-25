@@ -185,13 +185,11 @@ export const Navbar = () => {
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
-    isSubOrganization: targetIsSubOrganization = false,
-    onSuccess
+    isSubOrganization: targetIsSubOrganization = false
   }: {
     organizationId?: string;
     navigateTo?: string;
     isSubOrganization?: boolean;
-    onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
 
@@ -209,8 +207,7 @@ export const Navbar = () => {
         await handleOrgSelection({
           organizationId,
           navigateTo,
-          isSubOrganization: targetIsSubOrganization,
-          onSuccess
+          isSubOrganization: targetIsSubOrganization
         });
       });
       return;
@@ -230,10 +227,6 @@ export const Navbar = () => {
       switchFrom: location,
       isSubOrganization: targetIsSubOrganization
     });
-
-    if (onSuccess) {
-      await onSuccess();
-    }
   };
 
   const handleNavigateToAdminConsole = async () => {
