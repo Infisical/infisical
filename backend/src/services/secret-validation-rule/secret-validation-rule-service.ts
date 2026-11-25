@@ -270,6 +270,33 @@ export const secretValidationRuleServiceFactory = ({
     return $toRecord(rule, config);
   };
 
+  // Rules without an environment apply to every environment, so they share one bucket of their own.
+  const $assertEnvironmentRuleCapacity = async ({
+    projectId,
+    envId,
+    environment,
+    wayOut
+  }: {
+    projectId: string;
+    envId: string | null;
+    environment?: string | null;
+    wayOut: string;
+  }) => {
+    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerEnvironment) === null) return;
+    const envRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
+      const [{ count }] = await secretValidationRuleDAL.find({ projectId, envId }, { countDistinct: "id", tx });
+      return Number(count);
+    });
+    assertWithinResourceLimit({
+      limit: ResourceLimit.SecretValidationRulesPerEnvironment,
+      used: envRuleCount,
+      describe: (max) =>
+        environment
+          ? `Environment '${environment}' already has the maximum of ${max} secret validation rules. ${wayOut}`
+          : `Project already has the maximum of ${max} secret validation rules that apply to all environments. ${wayOut}`
+    });
+  };
+
   const createSecretValidationRule = async (
     {
       type,
@@ -300,21 +327,12 @@ export const secretValidationRuleServiceFactory = ({
     const { encryptor } = await $getCipher(projectId);
     const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
 
-    // Rules without an environment apply to every environment, so they share one bucket of their own.
-    if (getResourceLimit(ResourceLimit.SecretValidationRulesPerEnvironment) !== null) {
-      const envRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
-        const [{ count }] = await secretValidationRuleDAL.find({ projectId, envId }, { countDistinct: "id", tx });
-        return Number(count);
-      });
-      assertWithinResourceLimit({
-        limit: ResourceLimit.SecretValidationRulesPerEnvironment,
-        used: envRuleCount,
-        describe: (max) =>
-          environment
-            ? `Environment '${environment}' already has the maximum of ${max} secret validation rules. Delete rules you no longer use before creating another.`
-            : `Project already has the maximum of ${max} secret validation rules that apply to all environments. Delete rules you no longer use before creating another.`
-      });
-    }
+    await $assertEnvironmentRuleCapacity({
+      projectId,
+      envId,
+      environment,
+      wayOut: "Delete rules you no longer use before creating another."
+    });
 
     const rule = await secretValidationRuleDAL.createWithEnv({
       name,
@@ -378,6 +396,14 @@ export const secretValidationRuleServiceFactory = ({
     $assertGeneratorCanSatisfy(type, config);
     await $assertBlindIndexingAvailable(projectId, config);
     await $assertNoOverlap({ projectId, type, envId, secretPath: finalSecretPath, config, excludeRuleId: ruleId });
+    if (envId !== (existingRule.envId ?? null)) {
+      await $assertEnvironmentRuleCapacity({
+        projectId,
+        envId,
+        environment,
+        wayOut: "Delete rules you no longer use there before moving this rule to it."
+      });
+    }
 
     const rule = await secretValidationRuleDAL.updateByIdWithEnv(ruleId, {
       ...(name !== undefined && { name }),

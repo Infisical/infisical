@@ -6,8 +6,8 @@ import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { assertPolicyTypeSupportsDelegatedApproval } from "@app/services/delegated-approval/delegated-approval-fns";
 
 import { RequestState } from "../secret-change-request/secret-change-request-types";
@@ -158,20 +158,15 @@ export const secretChangePolicyServiceFactory = ({
     });
 
     return approvalPolicyDAL.transaction(async (tx) => {
-      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerEnvironment) !== null) {
-        const policiesByEnv = await approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds(
-          envs.map((env) => env.id),
-          tx
-        );
-        envs.forEach((env) =>
-          assertWithinResourceLimit({
-            limit: ResourceLimit.ApprovalPoliciesPerEnvironment,
-            used: policiesByEnv[env.id] ?? 0,
-            describe: (max) =>
-              `Environment '${env.slug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
-          })
-        );
-      }
+      await assertApprovalPolicyEnvironmentCapacity(
+        {
+          approvalPolicySecretEnvironmentDAL,
+          envs,
+          describe: (envSlug, max) =>
+            `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+        },
+        tx
+      );
 
       const doc = await approvalPolicyDAL.create(
         {

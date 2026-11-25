@@ -13,6 +13,7 @@ import {
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
+import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -34,7 +35,7 @@ type TSecretChangePolicyFnsFactoryDep = {
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete"
+    "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete" | "countPoliciesByEnvIds"
   >;
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
@@ -430,6 +431,16 @@ export const secretChangePolicyFnsFactory = ({
       );
 
       if (requestedEnvs || secretPath !== undefined) {
+        await assertApprovalPolicyEnvironmentCapacity(
+          {
+            approvalPolicySecretEnvironmentDAL,
+            envs,
+            currentEnvIds: current.envs.map((env) => env.id),
+            describe: (envSlug, max) =>
+              `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use there before adding this policy to it.`
+          },
+          tx
+        );
         await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
         await approvalPolicySecretEnvironmentDAL.insertMany(
           envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),

@@ -6,8 +6,8 @@ import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { assertWithinResourceLimit, getResourceLimit, ResourceLimit } from "@app/lib/resource-limits";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
@@ -512,20 +512,15 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     await $assertNoConflictingPolicy({ envs, secretPath });
 
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
-      if (getResourceLimit(ResourceLimit.ApprovalPoliciesPerEnvironment) !== null) {
-        const policiesByEnv = await approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds(
-          envs.map((env) => env.id),
-          tx
-        );
-        envs.forEach((env) =>
-          assertWithinResourceLimit({
-            limit: ResourceLimit.ApprovalPoliciesPerEnvironment,
-            used: policiesByEnv[env.id] ?? 0,
-            describe: (max) =>
-              `Environment '${env.slug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
-          })
-        );
-      }
+      await assertApprovalPolicyEnvironmentCapacity(
+        {
+          approvalPolicySecretEnvironmentDAL,
+          envs,
+          describe: (envSlug, max) =>
+            `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+        },
+        tx
+      );
 
       const doc = await approvalPolicyDAL.create(
         {
@@ -711,6 +706,16 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       if (!delegatedApprovalAfterUpdate) await $insertStepsAndBypassers({ policyId: policy.id, ...reviewers }, tx);
 
       if (scopeChanged) {
+        await assertApprovalPolicyEnvironmentCapacity(
+          {
+            approvalPolicySecretEnvironmentDAL,
+            envs,
+            currentEnvIds: current.environments.map((env) => env.id),
+            describe: (envSlug, max) =>
+              `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use there before adding this policy to it.`
+          },
+          tx
+        );
         await $replacePolicyScope(
           { policyId: policy.id, envs, secretPath: nextSecretPath, steps: reviewers.steps },
           tx

@@ -580,7 +580,10 @@ export const projectTemplateServiceFactory = ({
         message: `Failed to update project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
-    if (environments) {
+    const currentEnvironmentCount = Array.isArray(projectTemplate.environments)
+      ? projectTemplate.environments.length
+      : 0;
+    if (environments && environments.length > currentEnvironmentCount) {
       assertWithinResourceLimit({
         limit: ResourceLimit.EnvironmentsPerProject,
         used: 0,

@@ -734,6 +734,44 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
     );
   });
 
+  test("refuses moving a policy into an environment at the Infisical Cloud cap", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      const { service, deps } = buildService({
+        permission: allowEdit,
+        envPolicyCounts: { "env-prod": 50 }
+      });
+
+      const result = update(service, { environments: ["prod"], secretPath: "/other" });
+      await expect(result).rejects.toBeInstanceOf(BadRequestError);
+      await expect(result).rejects.toThrow("Environment 'prod' already has the maximum of 50 approval policies");
+      expect(deps.approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds).toHaveBeenCalledWith(["env-prod"], TX);
+      expect(deps.approvalPolicySecretEnvironmentDAL.delete).not.toHaveBeenCalled();
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
+  });
+
+  test("keeps a policy editable in an environment already over the Infisical Cloud cap", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      const { service, deps } = buildService({
+        permission: allowEdit,
+        envPolicyCounts: { "env-dev": 80 }
+      });
+
+      await update(service, { environments: ["dev"], secretPath: "/moved" });
+
+      expect(deps.approvalPolicySecretEnvironmentDAL.countPoliciesByEnvIds).not.toHaveBeenCalled();
+      expect(deps.approvalPolicySecretEnvironmentDAL.insertMany).toHaveBeenCalledWith(
+        [{ policyId: "policy-1", envId: ENV_DEV.id, secretPath: "/moved" }],
+        TX
+      );
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
+  });
+
   test("recreates the approval step when the policy has none", async () => {
     const { service, deps } = buildService({ permission: allowEdit, rows: [buildRow({ steps: [] })] });
 
