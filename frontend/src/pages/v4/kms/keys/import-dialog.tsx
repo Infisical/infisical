@@ -36,8 +36,6 @@ import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { algorithmLabel, base64ByteLength, isBase64, usageLabel } from "./shared";
 
-import styles from "./import-dialog.module.css";
-
 type ParsedKey = {
   name: string;
   keyType: KmsKeyUsage;
@@ -178,7 +176,7 @@ const REVIEW_COLUMNS: DataTableColumn<ReviewRow>[] = [
         {row.error && (
           <InlineItem shrink={false}>
             <Tooltip content={row.error} side="top">
-              <span aria-label={row.error} role="img" className={styles.invalid}>
+              <span aria-label={row.error} role="img">
                 <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
               </span>
             </Tooltip>
