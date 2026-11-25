@@ -9,7 +9,10 @@ type TConcurrencyLimiterOptions = {
   maxQueueDepth: number;
 };
 
-export type TConcurrencySlot = <T>(work: () => Promise<T>) => Promise<T>;
+export type TConcurrencySlot = <T>(
+  work: (reportSize: (secretCount: number) => void) => Promise<T>,
+  opts?: { sizeKey?: string }
+) => Promise<T>;
 
 type TAdmission<T, TRefusal> = { admitted: true; value: T } | ({ admitted: false } & TRefusal);
 

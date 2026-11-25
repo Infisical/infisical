@@ -1113,17 +1113,50 @@ left out on purpose, since they cannot return a large number of secrets, and so 
 
 A read at or over budget records `infisical.secret.rate_limit.exceeded.count` (`recordSecretRateLimitExceededMetric`,
 bucket `org_budget`, outcome `refused` or `would_refuse`), and every charge records the window's running total in
-`infisical.secret.org_budget.usage`. Only the budget records these; the per-IP and in-flight limits do not.
+`infisical.secret.org_budget.usage`. The per-IP limit records neither; the per-instance read budget records the first
+under its own bucket (see Secret Read Concurrency Limit).
 
 ### Secret Read Concurrency Limit
 
 A route that lists secrets must run its secret load inside `server.secretReadSlot(req, reply)`, which
-`server/plugins/secret-read-concurrency-limit.ts` decorates, so at most a fixed number run at once per root organization and
-per instance when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is on (off, the slot runs the work unlimited). A per-minute rate
-limit lets a burst through in its first second, and a few large lists in flight hold the event loop for every other
-organization on the instance. Prefer passing the slot to the service as `secretReadSlot` (`TConcurrencySlot`), which wraps
-only the database load, so permission checks and cache hits never queue; wrap the whole service call in it
-(`readSlot(() => ...)`) only when the service takes no slot. A route that does neither is outside both caps.
+`server/plugins/secret-read-concurrency-limit.ts` decorates. It keeps one number per instance: the secrets that list
+requests hold in memory right now, checked against a budget so a few very large lists cannot exhaust the heap for every
+organization. The budget is computed once at boot as `(heap_size_limit - SECRET_READ_HEAP_BASELINE_BYTES -
+SECRET_READ_HEAP_RESERVE_BYTES) / SECRET_READ_PEAK_BYTES_PER_SECRET`. A per-minute rate limit cannot do this job, because
+it lets a burst through in its first second.
+
+`SECRET_READ_CONCURRENCY_LIMIT_MODE` picks the behaviour:
+
+- `off` (default): the slot runs the work and counts nothing.
+- `observe`: counts, never refuses, and records `outcome=would_refuse` for each request that arrives with no room.
+  Boot never fails; with no room for a budget it warns and reports every request.
+- `enforce`: a request that arrives with no room gets a 503 (`ServerBusyError`) with `Retry-After: 1` at once. Nothing
+  waits in a queue and there is no per-organization limit. Boot fails if the budget is less than one secret.
+
+Observe and enforce share one code path that differs only in the throw, so the observe counter is exactly what enforce
+would refuse. Keep it that way.
+
+Prefer passing the slot to the service as `secretReadSlot` (`TConcurrencySlot`), which wraps only the secret load, so
+permission checks and 304s are never counted; wrap the whole service call in it (`readSlot(() => ...)`) only when the
+service takes no slot. A route that does neither is outside the budget. The slot hands the work a
+`reportSize(secretCount)` callback and takes an optional `sizeKey`:
+
+- A read is admitted on an estimate, because its size is unknown until it runs: the size the same `sizeKey` had last
+  time on this instance, else `SECRET_READ_DEFAULT_SECRET_WEIGHT`. Build the `sizeKey` from what decides the result's
+  size (project and request parameters) and leave out the actor and the cache version, or the estimate is lost on every
+  secret change. `getSecrets` in `secret-v2-bridge-service.ts` is the reference.
+- Call `reportSize` as soon as the count is known (after a cache hit is parsed, after the rows are fetched, after imports
+  are expanded) and again whenever it changes. The held count moves to it at once and never refuses the running read,
+  since the memory is already in use; the total may pass the budget, and new reads are refused until it drops.
+- Work that never calls `reportSize` holds its estimate until it finishes. The legacy V1 project and secret import
+  paths do this today.
+- A read larger than the whole budget is admitted only when the instance holds nothing, so it runs alone.
+
+A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`. The instance also reports
+`infisical.secret.read_budget.capacity` and `.used` (gauges), and once per read `infisical.secret.read.size` (by
+`plan.slug`) and `infisical.secret.read.estimate.error`. Do not label any of them with the organization: a histogram per
+organization is one set of bucket series per customer per instance, which the `InfisicalCore` rules below forbid. The
+throttled warning the plugin logs carries the `orgId` instead.
 
 ### Free Text in Audit Events
 
@@ -1231,7 +1264,7 @@ Key plugins in `src/server/plugins/`:
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
 - `secrets-org-budget.ts`: decorates `server.secretsOrgBudget(req, reply)`, the per-root-org budget for reading secrets; see Secrets Org Budget
-- `secret-read-concurrency-limit.ts`: decorates `server.secretReadSlot(req, reply)`, which returns a slot in a keyed concurrency limiter (per root org, then per instance) held until the wrapped work finishes even if the client disconnects, and refuses with a 429 and `Retry-After: 1`; see Secret Read Concurrency Limit
+- `secret-read-concurrency-limit.ts`: decorates `server.secretReadSlot(req, reply)`, which counts the secrets list requests hold in memory on the instance, held until the wrapped work finishes even if the client disconnects, and in enforce mode refuses a request the instance has no room for with a 503 and `Retry-After: 1`; see Secret Read Concurrency Limit
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
 - `swagger.ts` — Swagger/OpenAPI UI

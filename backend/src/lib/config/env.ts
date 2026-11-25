@@ -308,52 +308,41 @@ const envSchema = z
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
-    SECRET_READ_CONCURRENCY_LIMIT_ENABLED: zodStrBool
-      .default("false")
+    SECRET_READ_CONCURRENCY_LIMIT_MODE: z
+      .enum(["off", "observe", "enforce"])
+      .default("off")
       .describe(
-        "Limit how many API requests to list secrets run at once, per organization and per instance, and refuse those that wait longer than SECRET_READ_MAX_QUEUE_WAIT_MS"
+        "How the limit on the secrets that API requests to list secrets hold in memory at once per instance is applied: off, observe (count them and report the requests that would be refused) or enforce (refuse a request when the instance has no room for it)"
       ),
-    SECRET_READ_MAX_IN_FLIGHT_PER_ORG: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(1)
-      .describe("Most requests to list secrets one organization may have running at once on an instance"),
-    SECRET_READ_MAX_IN_FLIGHT: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(8)
-      .describe("Most requests to list secrets that may run at once on an instance, across all organizations"),
-    SECRET_READ_MAX_QUEUE_WAIT_MS: z.coerce
+    SECRET_READ_HEAP_BASELINE_BYTES: z.coerce
       .number()
       .int()
       .min(0)
-      .default(5000)
-      .describe("How long, in milliseconds, a request to list secrets may wait for its turn before it is refused"),
-    SECRET_READ_MAX_QUEUE_DEPTH: z.coerce
+      .default(536_870_912)
+      .describe("Heap an idle, warmed-up instance uses, in bytes. Requests to list secrets can't use it"),
+    SECRET_READ_HEAP_RESERVE_BYTES: z.coerce
       .number()
       .int()
       .min(0)
-      .default(500)
+      .default(536_870_912)
       .describe(
-        "Most requests to list secrets that may wait for their turn per organization, and most organizations that may wait for a free slot on an instance"
+        "Heap, in bytes, kept free for other requests and garbage collection while requests to list secrets are at their limit"
       ),
-    SECRET_READ_MAX_TRACKED_ORGS: z.coerce
+    SECRET_READ_PEAK_BYTES_PER_SECRET: z.coerce
       .number()
       .int()
       .min(1)
-      .default(10000)
+      .default(16_384)
       .describe(
-        "Most organizations whose secret list limiters an instance keeps. Idle organizations are dropped once this count is passed"
+        "Peak heap one secret takes during a request to list secrets, including decryption and the response, in bytes"
       ),
-    SECRET_READ_MAX_TOTAL_IN_FLIGHT: z.coerce
+    SECRET_READ_DEFAULT_SECRET_WEIGHT: z.coerce
       .number()
       .int()
       .min(1)
-      .default(10000)
+      .default(100)
       .describe(
-        "Most requests to list secrets an instance will accept at once, running or waiting, before it refuses further ones"
+        "Secrets a request to list secrets is assumed to return when this instance hasn't seen that request before"
       ),
     SECRET_READ_ORG_BUDGET_MODE: z
       .enum(["off", "observe", "enforce"])

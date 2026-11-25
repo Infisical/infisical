@@ -137,7 +137,7 @@ describe("getRawSecretsFromImports read slot", () => {
     const slotTaken = vi.fn();
     const secretReadSlot: TConcurrencySlot = (work) => {
       slotTaken();
-      return work();
+      return work(() => {});
     };
     const read = (ifNoneMatch?: string) =>
       service.getRawSecretsFromImports({

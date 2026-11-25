@@ -220,32 +220,34 @@ Example values:
   </Warning>
 </ParamField>
 
-<ParamField query="SECRET_READ_CONCURRENCY_LIMIT_ENABLED" type="bool" default="false" optional>
-  Limits how many API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, run at the same time on each Infisical instance. A request doesn't count toward the limit if Infisical answers it with a `304` response. A request over the limit waits for its turn. If it waits longer than `SECRET_READ_MAX_QUEUE_WAIT_MS`, or too many requests are already waiting, it fails with a `429` response. Retry the request a few seconds later.
+<ParamField query="SECRET_READ_CONCURRENCY_LIMIT_MODE" type="string" default="off" optional>
+  Controls a limit on API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, on each Infisical instance. The requests running on an instance, across all organizations, can hold only as many secrets in memory as the instance's heap has room for. The limit keeps a few very large requests from using up the memory of an instance.
+
+  Set it to one of these values:
+
+  - `off`: Infisical doesn't apply or measure the limit
+  - `observe`: Infisical measures every request against the limit and records the [secret list limit metrics](/self-hosting/guides/monitoring-telemetry), but doesn't refuse any request. Use this mode to tune the settings that follow before you enforce the limit
+  - `enforce`: A request that arrives when the instance has no room for it fails with a `503` response. Retry the request a few seconds later
+
+  A request doesn't count toward the limit if Infisical answers it with a `304` response.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_IN_FLIGHT_PER_ORG" type="int" default="1" optional>
-  Maximum number of requests to list secrets that one organization can run at the same time on each instance. Sub-organizations count toward their root organization. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
+<ParamField query="SECRET_READ_HEAP_BASELINE_BYTES" type="int" default="536870912" optional>
+  Heap memory, in bytes, that an Infisical instance uses when it handles no requests. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_IN_FLIGHT" type="int" default="8" optional>
-  Maximum number of requests to list secrets that each instance runs at the same time, across all organizations. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
+<ParamField query="SECRET_READ_HEAP_RESERVE_BYTES" type="int" default="536870912" optional>
+  Heap memory, in bytes, that Infisical keeps free for every other kind of request and for garbage collection. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_QUEUE_WAIT_MS" type="int" default="5000" optional>
-  How long, in milliseconds, a request to list secrets can wait for its turn before it fails. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
+<ParamField query="SECRET_READ_PEAK_BYTES_PER_SECRET" type="int" default="16384" optional>
+  Heap memory, in bytes, that one secret takes up while Infisical handles a request to list secrets. When Infisical starts, it takes the Node.js heap limit, subtracts `SECRET_READ_HEAP_BASELINE_BYTES` and `SECRET_READ_HEAP_RESERVE_BYTES`, and divides the rest by this value. The result is the number of secrets that requests to list secrets can hold in memory at the same time on that instance.
+
+  If the result is less than one secret, Infisical doesn't start in `enforce` mode. In `observe` mode, Infisical starts, logs a warning, and counts every request to list secrets as over the limit. To fix this, raise the Node.js heap limit (`--max-old-space-size`) or lower the other two values. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_QUEUE_DEPTH" type="int" default="500" optional>
-  Maximum number of requests to list secrets that can wait for their turn in one organization. It also caps how many organizations can wait for a free slot on each instance. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
-</ParamField>
-
-<ParamField query="SECRET_READ_MAX_TRACKED_ORGS" type="int" default="10000" optional>
-  Maximum number of organizations each instance holds in memory while it limits requests to list secrets. If more organizations send those requests, Infisical drops its record of organizations that have no requests running or waiting. It keeps dropping those records until each instance holds no more than this number of organizations. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
-</ParamField>
-
-<ParamField query="SECRET_READ_MAX_TOTAL_IN_FLIGHT" type="int" default="10000" optional>
-  Each instance holds at most this many requests to list secrets at the same time. The count includes requests that are running and requests that are waiting for a turn. A request past this number fails with a `429` response. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
+<ParamField query="SECRET_READ_DEFAULT_SECRET_WEIGHT" type="int" default="100" optional>
+  Number of secrets that an instance assumes a request to list secrets returns, the first time the instance handles a request with that project and those parameters. After the first time, the instance assumes the number of secrets the request returned last time. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
 <ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" optional>

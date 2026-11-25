@@ -344,7 +344,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, local refresh, audit log, product analytics aggregation, alert dispatch, event outbox, permission cache, secret cache, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, secret sync, rotation, and dynamic secret outcomes, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, local refresh, audit log, product analytics aggregation, alert dispatch, event outbox, permission cache, secret cache, secret list limits, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, secret sync, rotation, and dynamic secret outcomes, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you're a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -1269,6 +1269,74 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
     **Unit**: `{skip}`
 
     **Description**: Secret cache writes skipped because the entry exceeded the max byte cap. A high rate means large payloads are never being cached and will always incur a full read.
+  </Accordion>
+</AccordionGroup>
+
+### Secret list limit metrics (InfisicalCore)
+
+Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-hosting/configuration/envars) is `observe` or `enforce`. They show how close each instance is to the number of secrets it can hold in memory for requests to list secrets, and how many of those requests Infisical refuses. In `observe` mode, Infisical refuses no request, and the metrics show how many requests `enforce` mode would refuse.
+
+<AccordionGroup>
+  <Accordion title="Secret Read Budget Capacity">
+    **Metric Name**: `infisical.secret.read_budget.capacity`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{secret}`
+
+    **Description**: Number of secrets that requests to list secrets can hold in memory at the same time on this instance. Infisical calculates the value once, at startup, from the Node.js heap limit, `SECRET_READ_HEAP_BASELINE_BYTES`, `SECRET_READ_HEAP_RESERVE_BYTES`, and `SECRET_READ_PEAK_BYTES_PER_SECRET`. Check this value after you change the heap limit or any of those settings.
+  </Accordion>
+
+  <Accordion title="Secret Read Budget Used">
+    **Metric Name**: `infisical.secret.read_budget.used`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{secret}`
+
+    **Description**: Number of secrets that the requests to list secrets running on this instance hold in memory. Divide it by `infisical.secret.read_budget.capacity` to get how full the instance is. The value can pass the capacity if a request returns more secrets than Infisical estimated. In `observe` mode, the value can stay above the capacity, because Infisical refuses no request.
+  </Accordion>
+
+  <Accordion title="Secret Read Size">
+    **Metric Name**: `infisical.secret.read.size`
+
+    **Type**: Histogram
+
+    **Unit**: `{secret}`
+
+    **Description**: Number of secrets a request to list secrets held in memory, including imported secrets, recorded once per request. Use the p75 of this metric as the value of `SECRET_READ_DEFAULT_SECRET_WEIGHT`. Group it by `plan.slug` to see how many secrets the organizations on each license plan hold.
+
+    **Attributes**:
+      - `estimate.source` (string): `last_known` (the instance had handled the same request before) or `default` (the instance used `SECRET_READ_DEFAULT_SECRET_WEIGHT`)
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
+  </Accordion>
+
+  <Accordion title="Secret Read Estimate Error">
+    **Metric Name**: `infisical.secret.read.estimate.error`
+
+    **Type**: Histogram
+
+    **Unit**: `{secret}`
+
+    **Description**: Number of secrets a request to list secrets held in memory beyond the number Infisical estimated for it. The value is 0 if the estimate was high enough. If requests with the `default` source often record large values, raise `SECRET_READ_DEFAULT_SECRET_WEIGHT`.
+
+    **Attributes**:
+      - `estimate.source` (string): `last_known` or `default`
+  </Accordion>
+
+  <Accordion title="Secret Rate Limit Exceeded">
+    **Metric Name**: `infisical.secret.rate_limit.exceeded.count`
+
+    **Type**: Counter
+
+    **Unit**: `{request}`
+
+    **Description**: Requests to list secrets that arrived when the instance had no room for them. If this count keeps growing, the instances need more heap, or you need more instances.
+
+    **Attributes**:
+      - `rate_limit.bucket` (string): `read_budget`
+      - `outcome` (string): `refused` (Infisical answered with a `503` response) or `would_refuse` (`observe` mode: the request ran, but `enforce` mode would have refused it)
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
   </Accordion>
 </AccordionGroup>
 

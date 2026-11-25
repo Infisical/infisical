@@ -1477,7 +1477,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    const loadSecrets = async () => {
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
       const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
       if (encryptedCachedSecrets) {
         try {
@@ -1497,6 +1497,7 @@ export const secretV2BridgeServiceFactory = ({
             imports: typeof importedSecrets;
             referencedSecretIds?: string[];
           };
+          reportSize(secrets.length + imports.reduce((count, folder) => count + folder.secrets.length, 0));
           cachedReferencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
           // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
           for (const secret of secrets) {
@@ -1553,6 +1554,7 @@ export const secretV2BridgeServiceFactory = ({
         tx: undefined,
         filters: params
       });
+      reportSize(unfilteredSecrets.length);
 
       throwIfClientDisconnected(abortSignal);
 
@@ -1842,6 +1844,7 @@ export const secretV2BridgeServiceFactory = ({
         kmsDataKeyService,
         abortSignal
       });
+      reportSize(decryptedSecrets.length + importedSecrets.reduce((count, folder) => count + folder.secrets.length, 0));
 
       const payload = { secrets: decryptedSecrets, imports: importedSecrets };
       const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
@@ -1869,7 +1872,9 @@ export const secretV2BridgeServiceFactory = ({
       return { ...payload, etag: computedEtag };
     };
 
-    return secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets();
+    return secretReadSlot
+      ? secretReadSlot(loadSecrets, { sizeKey: `${projectId}:${requestParamsHash}` })
+      : loadSecrets();
   };
 
   const getSecretById = async ({

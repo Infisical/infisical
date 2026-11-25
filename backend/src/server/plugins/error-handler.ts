@@ -23,6 +23,7 @@ import {
   PolicyViolationError,
   RateLimitError,
   ScimRequestError,
+  ServerBusyError,
   UnauthorizedError
 } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
@@ -53,6 +54,7 @@ enum HttpStatusCodes {
   UnprocessableContent = 422,
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
+  ServiceUnavailable = 503,
   GatewayTimeout = 504,
   TooManyRequests = 429,
   // Non-standard (nginx convention). The client is gone, so this only reaches logs and metrics.
@@ -115,6 +117,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof DailyQuotaExceededError ||
+      error instanceof ServerBusyError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
@@ -350,6 +353,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,
+        message: error.message,
+        error: error.name
+      });
+    } else if (error instanceof ServerBusyError) {
+      void res.status(HttpStatusCodes.ServiceUnavailable).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.ServiceUnavailable,
         message: error.message,
         error: error.name
       });
