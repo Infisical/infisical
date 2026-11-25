@@ -31,7 +31,7 @@ const useNotificationMutation = <TVariables extends { orgId: string }>(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: run,
-    onSuccess: (_, { orgId }) =>
+    onSettled: (_, __, { orgId }) =>
       queryClient.invalidateQueries({ queryKey: notificationKeys.list(orgId) })
   });
 };
