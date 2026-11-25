@@ -265,7 +265,7 @@ func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationJ
 	tt.Helper()
 	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
 		EnforceMfa:        new(true),
-		SelectedMfaMethod: new(api.UpdateOrganizationJSONBodySelectedMfaMethodEmail),
+		AllowedMfaMethods: &[]api.UpdateOrganizationJSONBodyAllowedMfaMethods{api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail},
 		SsoMfaTrust:       &trust,
 	})
 	require.NoError(tt, err)

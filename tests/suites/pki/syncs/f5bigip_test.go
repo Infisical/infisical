@@ -58,17 +58,6 @@ func f5Path(certID string) string {
 	return "/Common/Infisical-" + strings.ReplaceAll(certID, "-", "")
 }
 
-// privateKeyOf is the private key Infisical holds for a certificate, which a renewal
-// response does not return.
-func privateKeyOf(t *testing.T, as *harness.Principal, certID string) string {
-	t.Helper()
-	bundle, err := as.API.GetCertificateBundleWithResponse(t.Context(), uuid.MustParse(certID))
-	require.NoError(t, err)
-	require.NotNilf(t, bundle.JSON200, "reading the bundle returned %d: %s", bundle.StatusCode(), apierr.Body(bundle.Body))
-	require.NotNil(t, bundle.JSON200.PrivateKey)
-	return strings.TrimSpace(*bundle.JSON200.PrivateKey)
-}
-
 func TestF5BigIpPkiSync_Sync(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)

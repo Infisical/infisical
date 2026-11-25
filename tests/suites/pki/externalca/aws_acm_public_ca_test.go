@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
@@ -32,7 +33,7 @@ func TestAwsAcmPublicCA_Issue(t *testing.T) {
 		r := newAcmRig(t, tn)
 
 		// Action
-		got := r.o.Settled(t, r.o.order(t, r.request("www."+r.zoneName)).JSON200.CertificateRequestId)
+		got := r.o.Settled(t, r.o.order(t, pki.AcmCertificate("www."+r.zoneName)).JSON200.CertificateRequestId)
 
 		// Assert
 		require.Equalf(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
@@ -52,5 +53,36 @@ func TestAwsAcmPublicCA_Issue(t *testing.T) {
 		parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 		require.NoError(t, err)
 		require.True(t, leaf.PublicKey.(interface{ Equal(crypto.PublicKey) bool }).Equal(parsed.(crypto.Signer).Public()))
+	})
+
+	t.Run("should issue a certificate held pending validation on ACM's next check after validation completes", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The fake holds the certificate in PENDING_VALIDATION until the test releases it.
+			Infisical checks again only on ACM's fixed 60 second retry, which nothing can trigger,
+			so the wait after release is orderWait: that retry plus the issuance queue the
+			instance shares.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		r := newAcmRig(t, tn)
+		r.acct.Seed(t, aws.HoldACMValidation())
+		name := "www." + r.zoneName
+		requestID := r.o.order(t, pki.AcmCertificate(name)).JSON200.CertificateRequestId
+		r.acct.ACM.ExpectEvent[aws.CertificateDescribed](t, func(e aws.CertificateDescribed) bool {
+			return e.DomainName == name && e.Status == "PENDING_VALIDATION"
+		}, fakenet.Within(orderWait))
+		held := r.o.Settled(t, requestID, api.GetCertificateRequest200JSONResponseBodyStatusPending)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPending, held.JSON200.Status)
+		require.Nil(t, held.JSON200.Certificate)
+
+		// Action
+		r.acct.Seed(t, aws.ReleaseACMValidation())
+
+		// Assert
+		got := r.o.Settled(t, requestID)
+		require.Equalf(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
+		issued := r.onlyCertificate(t)
+		leaf := pki.ParseLeaf(t, *got.JSON200.Certificate)
+		require.Equal(t, pki.ParseLeaf(t, issued.Certificate).Raw, leaf.Raw)
 	})
 }

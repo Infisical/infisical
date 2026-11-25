@@ -2,6 +2,7 @@ package approvals_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -38,14 +39,38 @@ const (
 func newGated(t *testing.T, tn *harness.Tenant, set approverSet) gated {
 	t.Helper()
 	g := pki.NewGraph(t, tn)
-	approver := tn.NewUser(t, harness.WithName("approver"))
-	g.Project.Grant(t, approver)
-	pki.AddMember(t, g.App, approver, "admin")
+	approver := pki.NewMember(t, g.App, "approver", "admin")
 	approvers := []pki.Approver{pki.UserApprover(approver.ID)}
 	if set == requesterAlsoApproves {
 		approvers = append(approvers, pki.UserApprover(g.Operator.ID))
 	}
 	return gated{Graph: g, tn: tn, approver: approver, policyID: pki.NewApprovalPolicy(t, g.App, g.Profile, approvers...)}
+}
+
+// twoStep is a gated graph whose policy needs the approver's approval and then the
+// second approver's.
+type twoStep struct {
+	gated
+	second *harness.Principal
+}
+
+func newTwoStep(t *testing.T, tn *harness.Tenant) twoStep {
+	t.Helper()
+	g := pki.NewGraph(t, tn)
+	first, second := pki.NewMember(t, g.App, "first", "admin"), pki.NewMember(t, g.App, "second", "admin")
+	var body api.CreateCertRequestApprovalPolicyJSONRequestBody
+	require.NoError(t, json.Unmarshal(fmt.Appendf(nil, `{
+		"name": "policy-%s", "scope": "pki-application", "scopeId": %q,
+		"conditions": [{"profileNames": [%q]}],
+		"steps": [
+			{"requiredApprovals": 1, "approvers": [{"type": "user", "id": %q}]},
+			{"requiredApprovals": 1, "approvers": [{"type": "user", "id": %q}]}
+		]
+	}`, id.Short(), g.App.ID, g.Profile.Slug, first.ID, second.ID), &body))
+	res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithResponse(t.Context(), body)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "creating the approval policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return twoStep{gated: gated{Graph: g, tn: tn, approver: first, policyID: res.JSON200.Policy.Id}, second: second}
 }
 
 // request asks for a certificate as the operator and returns the certificate request.
@@ -56,42 +81,13 @@ func (g gated) request(t *testing.T) *api.CreateCertificateResponse {
 	return res
 }
 
-// approvalFor is the approval request holding a certificate request.
-func (g gated) approvalFor(t *testing.T, certificateRequestID string) uuid.UUID {
-	t.Helper()
-	res, err := g.tn.Admin.API.ListCertRequestApprovalRequestsWithResponse(t.Context(), &api.ListCertRequestApprovalRequestsParams{
-		Scope: api.ListCertRequestApprovalRequestsParamsScopePkiApplication,
-		Id:    g.App.ID,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing approval requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	var out struct {
-		Requests []struct {
-			ID          uuid.UUID `json:"id"`
-			RequestData struct {
-				RequestData struct {
-					CertificateRequestID string `json:"certificateRequestId"`
-				} `json:"requestData"`
-			} `json:"requestData"`
-		} `json:"requests"`
-	}
-	require.NoError(t, json.Unmarshal(res.Body, &out))
-	for _, r := range out.Requests {
-		if r.RequestData.RequestData.CertificateRequestID == certificateRequestID {
-			return r.ID
-		}
-	}
-	require.Failf(t, "no approval request", "none holds certificate request %s: %s", certificateRequestID, apierr.Body(res.Body))
-	return uuid.Nil
-}
-
-// approvalStatus is the approval request's own status, as the tenant admin reads it.
-func (g gated) approvalStatus(t *testing.T, approvalID uuid.UUID) string {
+// approvalRequest is the approval request as the tenant admin reads it.
+func (g gated) approvalRequest(t *testing.T, approvalID uuid.UUID) *api.GetCertRequestApprovalRequestResponse {
 	t.Helper()
 	res, err := g.tn.Admin.API.GetCertRequestApprovalRequestWithResponse(t.Context(), approvalID)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "reading the approval request returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Request.Status
+	return res
 }
 
 // certificateRequest is the certificate request as the tenant admin reads it.

@@ -18,6 +18,12 @@ import (
 type PrivateCAs struct {
 	Policy
 	Authorities map[string]*PrivateCA `json:"authorities"`
+	// NextValidityDays, when set, replaces the validity the next IssueCertificate asks
+	// for, so a test can get a certificate that is already inside its renewal window.
+	NextValidityDays int `json:"nextValidityDays,omitempty"`
+	// HoldIssued keeps every certificate issued from now on in progress, answering
+	// GetCertificate with RequestInProgressException, until a seed releases them.
+	HoldIssued bool `json:"holdIssued,omitempty"`
 
 	mu     sync.Mutex
 	events fakenet.Emitter
@@ -44,6 +50,7 @@ type PCAIssuance struct {
 	ValidityDays     int    `json:"validityDays"`
 	// Serial is the leaf's serial in lowercase hex without leading zeros.
 	Serial           string     `json:"serial"`
+	InProgress       bool       `json:"inProgress,omitempty"`
 	RevokedAt        *time.Time `json:"revokedAt,omitempty"`
 	RevocationReason string     `json:"revocationReason,omitempty"`
 }
@@ -71,11 +78,15 @@ func (p *PrivateCAs) Snapshot() ([]byte, error) {
 	}{p.Policy, p.Authorities})
 }
 
-// Seed merges CAs by ARN, minting a keypair and certificate for any that lacks one.
+// Seed merges CAs by ARN, minting a keypair and certificate for any that lacks one. It
+// also sets the validity of the next issued certificate and holds or releases issuance.
 func (p *PrivateCAs) Seed(raw []byte) error {
 	var in struct {
 		Policy
-		Authorities map[string]*PrivateCA `json:"authorities"`
+		Authorities      map[string]*PrivateCA `json:"authorities"`
+		NextValidityDays int                   `json:"nextValidityDays"`
+		HoldIssued       bool                  `json:"holdIssued"`
+		ReleaseIssued    bool                  `json:"releaseIssued"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -83,6 +94,20 @@ func (p *PrivateCAs) Seed(raw []byte) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.merge(in.Policy)
+	if in.NextValidityDays > 0 {
+		p.NextValidityDays = in.NextValidityDays
+	}
+	if in.HoldIssued {
+		p.HoldIssued = true
+	}
+	if in.ReleaseIssued {
+		p.HoldIssued = false
+		for _, ca := range p.Authorities {
+			for _, issued := range ca.Issued {
+				issued.InProgress = false
+			}
+		}
+	}
 	for arn, ca := range in.Authorities {
 		ca.ARN = arn
 		if ca.KeyAlgorithm == "" {
@@ -238,8 +263,12 @@ func (p *PrivateCAs) issue(c call) (any, *apiError) {
 	if strings.HasSuffix(in.TemplateArn, "APICSRPassthrough/V1") {
 		eku = csrExtKeyUsage(csr)
 	}
+	days := in.Validity.Value
+	if p.NextValidityDays > 0 {
+		days, p.NextValidityDays = p.NextValidityDays, 0
+	}
 	signer := &issuer{Certificate: ca.Certificate, PrivateKey: ca.PrivateKey}
-	leaf, leafPEM, err := signer.sign(csr.PublicKey, subject, dnsNames, in.Validity.Value, eku...)
+	leaf, leafPEM, err := signer.sign(csr.PublicKey, subject, dnsNames, days, eku...)
 	if err != nil {
 		return nil, errf(http.StatusInternalServerError, "InternalFailure", "%v", err)
 	}
@@ -247,7 +276,7 @@ func (p *PrivateCAs) issue(c call) (any, *apiError) {
 	if ca.Issued == nil {
 		ca.Issued = map[string]*PCAIssuance{}
 	}
-	ca.Issued[certARN] = &PCAIssuance{Certificate: leafPEM, SigningAlgorithm: in.SigningAlgorithm, TemplateArn: in.TemplateArn, ValidityDays: in.Validity.Value, Serial: leaf.SerialNumber.Text(16)}
+	ca.Issued[certARN] = &PCAIssuance{Certificate: leafPEM, SigningAlgorithm: in.SigningAlgorithm, TemplateArn: in.TemplateArn, ValidityDays: days, Serial: leaf.SerialNumber.Text(16), InProgress: p.HoldIssued}
 	p.events.Publish(PrivateCertificateIssued{CertificateAuthorityArn: ca.ARN, CertificateArn: certARN})
 	return map[string]any{"CertificateArn": certARN}, nil
 }
@@ -267,6 +296,10 @@ func (p *PrivateCAs) getCertificate(c call) (any, *apiError) {
 	issued, ok := ca.Issued[in.CertificateArn]
 	if !ok {
 		return nil, errf(http.StatusBadRequest, "ResourceNotFoundException", "Could not find certificate %s.", in.CertificateArn)
+	}
+	p.events.Publish(PrivateCertificateFetched{CertificateAuthorityArn: ca.ARN, CertificateArn: in.CertificateArn, InProgress: issued.InProgress})
+	if issued.InProgress {
+		return nil, errf(http.StatusBadRequest, "RequestInProgressException", "Your request is already in progress.")
 	}
 	return map[string]any{"Certificate": issued.Certificate, "CertificateChain": ca.Certificate}, nil
 }

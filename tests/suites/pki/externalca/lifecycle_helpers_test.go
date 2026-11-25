@@ -6,7 +6,9 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/pki"
+	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -48,4 +50,20 @@ func jsonBody(t *testing.T, v any) []byte {
 	raw, err := json.Marshal(v)
 	require.NoError(t, err)
 	return raw
+}
+
+// orderWithoutApplication orders a certificate as the tenant admin from a profile with
+// enrollment of its own, outside any application, and returns it once issued.
+func orderWithoutApplication(t *testing.T, tn *harness.Tenant, profile pki.Profile, body api.CreateCertificateJSONRequestBody) uuid.UUID {
+	t.Helper()
+	body.ProfileId = profile.ID
+	res, err := tn.Admin.API.CreateCertificateWithResponse(t.Context(), body)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "ordering a certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	got := pki.WaitRequest(t, tn.Admin, res.JSON200.CertificateRequestId, []api.GetCertificateRequest200JSONResponseBodyStatus{
+		api.GetCertificateRequest200JSONResponseBodyStatusIssued,
+	}, wait.Timeout(orderWait))
+	certID, err := uuid.Parse(*got.JSON200.CertificateId)
+	require.NoError(t, err)
+	return certID
 }

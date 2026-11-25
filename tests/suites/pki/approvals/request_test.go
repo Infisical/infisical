@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -38,7 +39,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
@@ -57,7 +58,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.approver.API.RejectCertRequestApprovalRequestWithResponse(t.Context(), approval, api.RejectCertRequestApprovalRequestJSONRequestBody{})
@@ -76,7 +77,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
@@ -98,7 +99,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, requesterAlsoApproves)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})

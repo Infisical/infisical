@@ -34,9 +34,10 @@ func TestEstCaCerts_Get(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "cacerts: %s", apierr.Body(res.Body))
 		certs := certsOf(t, res.Body)
 		require.Len(t, certs, 2)
-		require.True(t, certs[0].IsCA)
-		require.Equal(t, certs[1].Subject.String(), certs[0].Issuer.String())
-		require.Equal(t, certs[1].Subject.String(), certs[1].Issuer.String())
+		require.Equal(t, pki.CACertificate(t, tn.Admin, p.CA.ID).Raw, certs[0].Raw, "the first certificate is not the profile's issuing CA")
+		require.Equal(t, pki.CACertificate(t, tn.Admin, p.Root.ID).Raw, certs[1].Raw, "the second certificate is not the profile's root CA")
+		require.NoError(t, certs[0].CheckSignatureFrom(certs[1]))
+		require.NoError(t, certs[1].CheckSignatureFrom(certs[1]))
 	})
 }
 
@@ -159,6 +160,27 @@ func TestEstEnrollment_SimpleEnroll(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, res.StatusCode())
 		require.Equal(t, "EST configuration not found for this Application/Profile pair.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, p.Project, p.Profile))
+	})
+
+	t.Run("should issue a leaf for the CSR's key when the client certificate chains to the bootstrap CA", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		trusted, trustedKey := selfSignedCA(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{CaChain: new(certPEM(trusted)), DisableBootstrapCaValidation: new(false)}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		bootstrap := leafFrom(t, trusted, trustedKey, newKey(t), name)
+
+		// Action
+		res := p.enroll(t, newCSR(t, key, name), enrollOpts{clientCert: bootstrap})
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "enrolling: %s", apierr.Body(res.Body))
+		leaf := certsOf(t, res.Body)[0]
+		require.Equal(t, name, leaf.Subject.CommonName)
+		require.True(t, key.PublicKey.Equal(leaf.PublicKey))
+		require.NoError(t, leaf.CheckSignatureFrom(pki.CACertificate(t, tn.Admin, p.CA.ID)))
 	})
 
 	t.Run("should refuse a client certificate outside the bootstrap CA chain when validation is on", func(t *testing.T) {

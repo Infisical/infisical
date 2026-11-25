@@ -82,4 +82,51 @@ func TestCertificate_AuditLog(t *testing.T) {
 		spec.Why(t, "the refused revocation came first, so once the admin's is logged a recorded refusal would be too")
 		fixture.RequireAuditedBy(t, tn, tn.Admin, "revoke-cert", "certId", issued.ID.String())
 	})
+
+	t.Run("should record a private key read once, naming the operator and not the outsider refused before", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".audit.test"))
+		outsider := tn.NewUser(t, harness.WithName("outsider"))
+		g.Project.Grant(t, outsider)
+		refused, err := outsider.API.GetCertificatePrivateKeyWithResponse(t.Context(), issued.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, refused.StatusCode(), "%s", apierr.Body(refused.Body))
+
+		// Action
+		res, err := g.Operator.API.GetCertificatePrivateKeyWithResponse(t.Context(), issued.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "reading the private key answered: %s", apierr.Body(res.Body))
+
+		// Assert
+		got := fixture.RequireAuditedBy(t, tn, g.Operator, "get-cert-private-key", "certId", issued.ID.String())
+		require.Equal(t, issued.SerialNumber, got["serialNumber"])
+	})
+
+	t.Run("should record a PKCS#12 export once, naming the operator and not the outsider refused before", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".audit.test"))
+		outsider := tn.NewUser(t, harness.WithName("outsider"))
+		g.Project.Grant(t, outsider)
+		body := api.ExportCertificatePkcs12JSONRequestBody{Alias: "server", Password: "correct-horse-battery-9"}
+		refused, err := outsider.API.ExportCertificatePkcs12WithResponse(t.Context(), issued.ID, body)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, refused.StatusCode(), "%s", apierr.Body(refused.Body))
+
+		// Action
+		res, err := g.Operator.API.ExportCertificatePkcs12WithResponse(t.Context(), issued.ID, body)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "exporting answered: %s", apierr.Body(res.Body))
+
+		// Assert
+		got := fixture.RequireAuditedBy(t, tn, g.Operator, "export-cert-pkcs12", "certId", issued.ID.String())
+		require.Equal(t, issued.SerialNumber, got["serialNumber"])
+	})
 }

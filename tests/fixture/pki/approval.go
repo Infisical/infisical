@@ -1,6 +1,7 @@
 package pki
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -58,4 +59,34 @@ func NewApprovalPolicy(tt *testing.T, app Application, profile Profile, approver
 	require.NoError(tt, err)
 	require.NotNilf(tt, res.JSON200, "creating the approval policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Policy.Id
+}
+
+// ApprovalFor is the approval request holding a certificate request made through the
+// application, as the tenant admin lists them.
+func ApprovalFor(tt *testing.T, app Application, certificateRequestID string) uuid.UUID {
+	tt.Helper()
+	res, err := app.project.tn.Admin.API.ListCertRequestApprovalRequestsWithResponse(tt.Context(), &api.ListCertRequestApprovalRequestsParams{
+		Scope: api.ListCertRequestApprovalRequestsParamsScopePkiApplication,
+		Id:    app.ID,
+	})
+	require.NoError(tt, err)
+	require.NotNilf(tt, res.JSON200, "listing approval requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	var out struct {
+		Requests []struct {
+			ID          uuid.UUID `json:"id"`
+			RequestData struct {
+				RequestData struct {
+					CertificateRequestID string `json:"certificateRequestId"`
+				} `json:"requestData"`
+			} `json:"requestData"`
+		} `json:"requests"`
+	}
+	require.NoError(tt, json.Unmarshal(res.Body, &out))
+	for _, r := range out.Requests {
+		if r.RequestData.RequestData.CertificateRequestID == certificateRequestID {
+			return r.ID
+		}
+	}
+	require.Failf(tt, "no approval request", "none holds certificate request %s: %s", certificateRequestID, apierr.Body(res.Body))
+	return uuid.Nil
 }

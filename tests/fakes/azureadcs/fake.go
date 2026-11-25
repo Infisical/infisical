@@ -11,6 +11,7 @@
 package azureadcs
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -65,6 +66,10 @@ type Server struct {
 	Templates []string `json:"templates"`
 	// CATemplates are the published templates that issue CA certificates.
 	CATemplates []string `json:"caTemplates"`
+	// TemplateUsages are the application policies (extended key usages) a template puts
+	// on the certificates it issues. A template without an entry issues for server
+	// authentication, as AD CS's WebServer template does by default.
+	TemplateUsages map[string][]x509.ExtKeyUsage `json:"templateUsages,omitempty"`
 	// Requests by request id.
 	Requests map[int]*Request `json:"requests"`
 	// Root is the CA that signs every certificate, in PEM.
@@ -98,14 +103,22 @@ func (s *Server) Snapshot() ([]byte, error) {
 
 func (s *Server) Seed(raw []byte) error {
 	var in struct {
-		Templates   []string `json:"templates"`
-		CATemplates []string `json:"caTemplates"`
+		Templates      []string                      `json:"templates"`
+		CATemplates    []string                      `json:"caTemplates"`
+		TemplateUsages map[string][]x509.ExtKeyUsage `json:"templateUsages"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for t, usages := range in.TemplateUsages {
+		if s.TemplateUsages == nil {
+			s.TemplateUsages = map[string][]x509.ExtKeyUsage{}
+		}
+		s.TemplateUsages[t] = usages
+		in.Templates = append(in.Templates, t)
+	}
 	for _, t := range append(in.Templates, in.CATemplates...) {
 		if !slices.Contains(s.Templates, t) {
 			s.Templates = append(s.Templates, t)
@@ -211,7 +224,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		pemCert, err = s.ca.SignCA(csr, time.Now().AddDate(5, 0, 0))
 	} else {
 		var leaf issuer.Leaf
-		leaf, err = s.ca.Sign(csr, 365)
+		leaf, err = s.ca.Sign(csr, 365, s.TemplateUsages[template]...)
 		pemCert = leaf.PEM
 	}
 	if err != nil {

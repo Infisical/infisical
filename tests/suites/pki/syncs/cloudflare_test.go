@@ -132,6 +132,7 @@ func TestCloudflareCustomCertificatePkiSync_Sync(t *testing.T) {
 		require.Len(t, uploaded, 1)
 		require.Equal(t, original, uploaded[0].ID)
 		require.Contains(t, uploaded[0].Certificate, strings.TrimSpace(renewed.JSON200.Certificate))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, uploaded[0].Certificate, uploaded[0].PrivateKey)
 		s.cf.ExpectNoEvent[cloudflare.CustomCertificateCreated](t, nil, fakenet.Since(mark))
 	})
 

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -391,12 +392,17 @@ type Order struct {
 	orderBody
 }
 
-// NewOrder orders a certificate for DNS names.
+// NewOrder orders a certificate for names: an IP address is an ip identifier (RFC
+// 8738), anything else a dns one.
 func (c *acmeClient) NewOrder(t *testing.T, names ...string) Order {
 	t.Helper()
 	ids := make([]identifier, 0, len(names))
 	for _, n := range names {
-		ids = append(ids, identifier{Type: "dns", Value: n})
+		kind := "dns"
+		if net.ParseIP(n) != nil {
+			kind = "ip"
+		}
+		ids = append(ids, identifier{Type: kind, Value: n})
 	}
 	res := c.Post(t, c.NewOrderURL(), map[string]any{"identifiers": ids})
 	var o orderBody
