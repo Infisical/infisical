@@ -247,6 +247,46 @@ export type TDnsMessageLayout = {
   lastAdditionalStart?: number;
 };
 
+// A reply to one of our requests carries a handful of records
+const MAX_REPLY_RECORDS = 100;
+
+// Where the names sit in the data of every record type dns-packet decodes names for: bytes to skip, then how many
+// names follow. dns-packet does not cap pointer chains, so each of these names goes through readDnsName first.
+const RDATA_NAMES: Record<number, { skip: number; names: number }> = {
+  2: { skip: 0, names: 1 }, // NS
+  5: { skip: 0, names: 1 }, // CNAME
+  6: { skip: 0, names: 2 }, // SOA
+  12: { skip: 0, names: 1 }, // PTR
+  15: { skip: 2, names: 1 }, // MX
+  17: { skip: 0, names: 2 }, // RP
+  33: { skip: 6, names: 1 }, // SRV
+  39: { skip: 0, names: 1 }, // DNAME
+  46: { skip: 18, names: 1 }, // RRSIG
+  47: { skip: 0, names: 1 } // NSEC
+};
+const NAPTR_TYPE = 35;
+
+const checkRdataNames = (buf: Buffer, type: number, start: number) => {
+  let offset = start;
+  if (type === NAPTR_TYPE) {
+    // order and preference, then flags, services and regexp as length-prefixed strings, then the replacement name
+    offset += 4;
+    for (let i = 0; i < 3; i += 1) {
+      ensureAvailable(buf, offset, 1);
+      offset += 1 + buf[offset];
+    }
+    readDnsName(buf, offset);
+    return;
+  }
+
+  const layout = RDATA_NAMES[type];
+  if (!layout) return;
+  offset += layout.skip;
+  for (let i = 0; i < layout.names; i += 1) {
+    offset = readDnsName(buf, offset).next;
+  }
+};
+
 export const scanDnsMessage = (buf: Buffer): TDnsMessageLayout => {
   ensureAvailable(buf, 0, DNS_HEADER_LENGTH);
   const id = buf.readUInt16BE(0);
@@ -256,6 +296,9 @@ export const scanDnsMessage = (buf: Buffer): TDnsMessageLayout => {
   const additionalCount = buf.readUInt16BE(10);
   // Every request we send carries exactly one question, so a reply with more is not an answer to it
   if (questionCount > 1) throw new DnsWireError("DNS reply has more than one question");
+  if (recordCount + additionalCount > MAX_REPLY_RECORDS) {
+    throw new DnsWireError(`DNS reply has more than ${MAX_REPLY_RECORDS} records`);
+  }
 
   let offset = DNS_HEADER_LENGTH;
   for (let i = 0; i < questionCount; i += 1) {
@@ -267,8 +310,11 @@ export const scanDnsMessage = (buf: Buffer): TDnsMessageLayout => {
     if (i >= recordCount) lastAdditionalStart = offset;
     offset = readDnsName(buf, offset).next;
     ensureAvailable(buf, offset, 10);
-    offset += 10 + buf.readUInt16BE(offset + 8);
+    const type = buf.readUInt16BE(offset);
+    const rdataStart = offset + 10;
+    offset = rdataStart + buf.readUInt16BE(offset + 8);
     ensureAvailable(buf, offset, 0);
+    checkRdataNames(buf, type, rdataStart);
   }
 
   return { id, flags, additionalCount, lastAdditionalStart };

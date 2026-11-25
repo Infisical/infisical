@@ -212,6 +212,32 @@ describe("dns-update wire format", () => {
     expect(() => scanDnsMessage(Buffer.from([...header, ...questions]))).toThrow(/more than one question/);
   });
 
+  it("caps pointer chains in record data that dns-packet would follow", () => {
+    // an opaque record holding a pointer chain, then CNAMEs whose targets point at the end of it (one more hop)
+    const buildReply = (hops: number, cnames: number) => {
+      const chainStart = 12 + 11;
+      const chain = [0];
+      for (let k = 0; k < hops; k += 1) {
+        const target = k === 0 ? chainStart : chainStart + 1 + (k - 1) * 2;
+        // eslint-disable-next-line no-bitwise
+        chain.push(0xc0 | (target >> 8), target & 0xff);
+      }
+      const chainEnd = chainStart + 1 + (hops - 1) * 2;
+      const opaque = [0, 0, 10, 0, 1, 0, 0, 0, 0, ...uint16(chain.length), ...chain];
+      const cnameRecords: number[] = [];
+      for (let c = 0; c < cnames; c += 1) {
+        // eslint-disable-next-line no-bitwise
+        cnameRecords.push(0, 0, 5, 0, 1, 0, 0, 0, 0, 0, 2, 0xc0 | (chainEnd >> 8), chainEnd & 0xff);
+      }
+      const header = [0, 1, 0x80, 0, 0, 0, ...uint16(1 + cnames), 0, 0, 0, 0];
+      return Buffer.from([...header, ...opaque, ...cnameRecords]);
+    };
+
+    expect(() => scanDnsMessage(buildReply(126, 50))).not.toThrow();
+    expect(() => scanDnsMessage(buildReply(500, 50))).toThrow(/too many compression pointers/);
+    expect(() => scanDnsMessage(buildReply(10, 100))).toThrow(/more than 100 records/);
+  });
+
   it("splits TXT values longer than 255 bytes into several strings", () => {
     const rdata = encodeTxtRdata("a".repeat(300));
     expect(rdata.length).toBe(302);
