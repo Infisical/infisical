@@ -590,7 +590,97 @@ Below you'll find a list of the attributes each key will be created with.
         </Steps>
         After following these steps, your Docker setup will be ready to use HSM encryption.
       </Tab>
-    
+      <Tab title="Securosys Primus HSM">
+
+        <Note>
+          The Securosys PKCS#11 provider is installed on the Docker host and mounted into the container.
+          See the [Securosys PKCS#11 documentation](https://docs.securosys.com/pkcs/overview)
+          for installing and configuring the provider.
+        </Note>
+
+        <Steps>
+          <Step title="Install the Securosys PKCS#11 provider">
+            Install the provider on the Docker host and configure it to reach your Partition.
+            You need the Partition name, its Setup Password and its PKCS#11 password.
+
+            The provider reads two files: `primus.cfg`, which maps slots to Partitions, and
+            `.secrets.cfg`, which holds the secret authenticating the provider's transport to the HSM.
+            Both default to `/etc/primus`.
+          </Step>
+
+          <Step title="Prepare group membership">
+            The Infisical image runs as `non-root-user` (UID `1001`, group `nodejs`).
+            It needs to be added to the `primus` group to be able to access the provider.
+            However, the `primus` group does not exist inside the container image by name, so you need its numeric group ID.
+
+            On the container host, run the following:
+
+            ```bash
+            getent group primus
+            ```
+
+            ```text
+            primus:x:989:alice,bob
+            ```
+
+            Note down the group ID (here: `989`). Without it, `dlopen` fails with `EACCES` and the
+            HSM appears unreachable.
+          </Step>
+
+          <Step title="Run Docker">
+            `HSM_SLOT` is the slot ID of your Partition, as listed by `ppin -l`. With a single
+            Partition it is `0`.
+
+            ```bash
+            docker run -p 80:8080 \
+              -v /usr/local/primus/lib:/usr/local/primus/lib:ro \
+              -v /etc/primus:/etc/primus:ro \
+              --group-add 989 \
+              -e HSM_LIB_PATH="/usr/local/primus/lib/libprimusP11.so" \
+              -e HSM_PIN="<partition-pkcs11-password>" \
+              -e HSM_SLOT=0 \
+              -e HSM_KEY_LABEL="infisical-kms-root" \
+              -e SECUROSYS_PKCS11_CONF="/etc/primus/primus.cfg" \
+              -e SECUROSYS_SECRETS_CONF="/etc/primus/.secrets.cfg" \
+              infisical/infisical:<version>
+            ```
+
+            | Variable | Value |
+            | --- | --- |
+            | `HSM_LIB_PATH` | Absolute path to the provider inside the container |
+            | `HSM_SLOT` | Slot ID of your Partition, as per `ppin -l`, usually `0` |
+            | `HSM_KEY_LABEL` | Label for the key Infisical creates in the HSM |
+            | `HSM_PIN` | The PKCS#11 password for your Partition |
+            | `SECUROSYS_PKCS11_CONF` | Path to `primus.cfg` inside the container |
+            | `SECUROSYS_SECRETS_CONF` | Path to `.secrets.cfg` inside the container |
+
+            Both mounts are read-only.
+            The two `SECUROSYS_*` variables are optional if the files sit at their default locations,
+            but setting them explicitly keeps a provider upgrade on the host from silently repointing the container.
+
+            With Docker Compose the same values go in your `.env` file, 
+            and the group is granted with `group_add` on the service rather than `--group-add`.
+          </Step>
+
+          <Step title="Verify the integration">
+            The root key is used when the instance starts, and the HSM reports key usage once the PKCS#11 session closes.
+            Restart the container to produce both:
+
+            ```bash
+            docker restart <container>
+            docker logs <container> | grep -E 'PKCS#11|HSM:|ROOT Key'
+            ```
+
+            ```text
+            "msg":"PKCS#11 module initialized"
+            "msg":"HSM: Successfully authenticated"
+            "msg":"HSM: Terminated session successfully"
+            "msg":"KMS: Loading ROOT Key into Memory."
+            ```
+          </Step>
+        </Steps>
+        After following these steps, your Docker setup will be ready to use Securosys Primus HSM encryption.
+      </Tab>
     </Tabs>
   </Tab>
   <Tab title="Kubernetes">
@@ -1557,6 +1647,227 @@ Below you'll find a list of the attributes each key will be created with.
           </Step>
         </Steps>
         After following these steps, your Kubernetes setup will be ready to use AWS CloudHSM encryption.
+      </Tab>
+      <Tab title="Securosys Primus HSM">
+
+        <Note>
+          Verified against helm chart version `1.12.2`, where `extraEnv`, `extraVolumes` and
+          `extraVolumeMounts` are nested under the `infisical` key.
+          On earlier chart versions they are top-level keys.
+        </Note>
+
+        <Steps>
+          <Step title="Install the Securosys PKCS#11 provider">
+            The provider is staged into a volume that the Infisical pods mount, so no cluster node needs it installed.
+            Install it on any host that can reach your Partition, such as a workstation or a jump host,
+            and configure it as described in the [Securosys PKCS#11 documentation](https://docs.securosys.com/pkcs/overview).
+            You need the Partition name, its Setup Password and its PKCS#11 password.
+
+            Every node that can run the Infisical pods does need outbound network access to the HSM.
+          </Step>
+
+          <Step title="Creating a Persistent Volume Claim (PVC)">
+            Create a Persistent Volume Claim to store the provider files:
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: primus-provider-pvc
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 128Mi
+            EOF
+            ```
+
+            Create a temporary pod to upload the files:
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: primus-setup-pod
+            spec:
+              securityContext:
+                fsGroup: 1001
+              containers:
+              - name: setup
+                image: busybox
+                command: ["/bin/sh", "-c", "sleep 3600"]
+                volumeMounts:
+                - name: primus-data
+                  mountPath: /data
+              volumes:
+              - name: primus-data
+                persistentVolumeClaim:
+                  claimName: primus-provider-pvc
+            EOF
+            ```
+
+            Ensure the pod is running:
+
+            ```bash
+            kubectl wait --for=condition=Ready pod/primus-setup-pod --timeout=60s
+            ```
+
+            Copy the provider and `primus.cfg` to the PVC.
+            The installed library is a symlink chain (`libprimusP11.so` to `.so.2` to `.so.2.8.2`),
+            so dereference it with `cp -L` first; `kubectl cp` does not follow symlinks out of the source tree.
+
+            ```bash
+            mkdir -p stage/lib stage/etc
+            cp -L /usr/local/primus/lib/libprimusP11.so stage/lib/
+            cp -L /etc/primus/primus.cfg stage/etc/
+
+            kubectl exec primus-setup-pod -- mkdir -p /data/lib /data/etc
+            kubectl cp stage/lib/. primus-setup-pod:/data/lib/
+            kubectl cp stage/etc/. primus-setup-pod:/data/etc/
+            kubectl exec primus-setup-pod -- chmod -R a+rX /data
+            ```
+
+            Confirm the library arrived intact, then delete the temporary pod:
+
+            ```bash
+            kubectl exec primus-setup-pod -- sha256sum /data/lib/libprimusP11.so
+            sha256sum /usr/local/primus/lib/libprimusP11.so
+
+            kubectl delete pod primus-setup-pod
+            ```
+
+            <Warning>
+              Do not copy `.secrets.cfg` into the PVC.
+              A PVC is not encrypted at rest by the cluster, and its contents are readable by anything that can mount it.
+              The connection secret is delivered as a Kubernetes Secret in the next step.
+            </Warning>
+
+            <Note>
+              A `ReadWriteOnce` volume can only be mounted by pods on one node, so it supports a single Infisical replica.
+              To run two or more replicas across nodes, request the volume from a `ReadWriteMany` storage class instead.
+            </Note>
+          </Step>
+
+          <Step title="Store the connection secret in a Kubernetes Secret">
+            ```bash
+            kubectl create secret generic primus-secrets-cfg \
+              --from-file=.secrets.cfg=/etc/primus/.secrets.cfg
+            ```
+          </Step>
+
+          <Step title="Updating your environment variables">
+            Next we need to update the environment variables used for the deployment.
+            If you followed the [setup instructions for Kubernetes deployments](/self-hosting/deployment-options/kubernetes-helm),
+            you should have a Kubernetes secret called `infisical-secrets`.
+            We need to update the secret with the following environment variables:
+
+            - `HSM_LIB_PATH` - The path to the provider inside the container _(mapped to `/usr/local/primus/lib/libprimusP11.so`)_
+            - `HSM_PIN` - The PKCS#11 password for your Partition
+            - `HSM_SLOT` - The slot ID of your Partition, as per `ppin -l`, usually `0`
+            - `HSM_KEY_LABEL` - The label for the HSM key. If no key is found with the provided key label,
+            the HSM will create a new key with the provided label.
+            - `SECUROSYS_PKCS11_CONF` - The path to `primus.cfg` inside the container
+            - `SECUROSYS_SECRETS_CONF` - The path to `.secrets.cfg` inside the container
+
+            The following is an example of the secret that you should update:
+
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: infisical-secrets
+            type: Opaque
+            stringData:
+              # ... Other environment variables ...
+              HSM_LIB_PATH: "/usr/local/primus/lib/libprimusP11.so"
+              HSM_PIN: "<partition-pkcs11-password>"
+              HSM_SLOT: "0"
+              HSM_KEY_LABEL: "infisical-kms-root"
+              SECUROSYS_PKCS11_CONF: "/usr/local/primus/etc/primus.cfg"
+              SECUROSYS_SECRETS_CONF: "/etc/primus-secret/.secrets.cfg"
+            ```
+
+            Save the file after updating the environment variables, and apply the secret changes
+
+            ```bash
+            kubectl apply -f ./secret-file-name.yaml
+            ```
+
+            Setting the two `SECUROSYS_*` variables explicitly, rather than relying on the provider's default search order,
+            keeps a provider upgrade from silently repointing the pods at a different Partition.
+          </Step>
+
+          <Step title="Updating the Deployment">
+            After we've successfully configured the PVC and updated our environment variables,
+            we are ready to update the deployment configuration so that the pods it creates can access the provider files.
+
+            ```yaml
+            # ... The rest of the values.yaml file ...
+
+            infisical:
+              # The provider volume is ReadWriteOnce; see the PVC step before raising this.
+              replicaCount: 1
+
+              extraVolumeMounts:
+                - name: primus-data
+                  mountPath: /usr/local/primus # The path we will mount the provider files to
+                  readOnly: true
+                - name: primus-secrets-cfg
+                  mountPath: /etc/primus-secret
+                  readOnly: true
+
+              extraVolumes:
+                - name: primus-data
+                  persistentVolumeClaim:
+                    claimName: primus-provider-pvc # The PVC we created in a previous step
+                - name: primus-secrets-cfg
+                  secret:
+                    secretName: primus-secrets-cfg
+                    defaultMode: 0440
+
+            # ... The rest of the values.yaml file ...
+            ```
+
+          </Step>
+
+          <Step title="Upgrading the Helm Chart">
+            After updating the values.yaml file, you need to upgrade the Helm chart in order for the changes to take effect.
+
+            ```bash
+            helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+            ```
+          </Step>
+
+          <Step title="Restarting the Deployment">
+            After upgrading the Helm chart, you need to restart the deployment in order for the changes to take effect.
+
+            ```bash
+            kubectl rollout restart deployment/infisical-infisical-standalone-infisical
+            ```
+
+            The root key is used when the instance starts,
+            and the HSM reports key usage once the PKCS#11 session closes, so replacing the pod produces both:
+
+            ```bash
+            kubectl logs deployment/infisical-infisical-standalone-infisical | grep -E 'PKCS#11|HSM:|ROOT Key'
+            ```
+
+            ```text
+            "msg":"PKCS#11 module initialized"
+            "msg":"HSM: Successfully authenticated"
+            "msg":"HSM: Terminated session successfully"
+            "msg":"KMS: Loading ROOT Key into Memory."
+            ```
+
+            If a new pod cannot reach the Partition it fails its readiness probe,
+            and the deployment keeps the previous pod serving traffic rather than completing the rollout.
+            A misconfigured upgrade shows up as a stalled rollout, not an outage.
+          </Step>
+        </Steps>
+        After following these steps, your Kubernetes setup will be ready to use Securosys Primus HSM encryption.
       </Tab>
     </Tabs>
   </Tab>
