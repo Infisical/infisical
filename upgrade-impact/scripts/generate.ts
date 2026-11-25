@@ -5,10 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { parse, stringify } from "yaml";
 
-import { collectEvidence } from "../src/evidence.js";
 import { collectFragmentRelease, ReleaseDraft } from "../src/fragments.js";
-import { generateWithOpenAiAgentic, MODEL } from "../src/generate-ai.js";
-import { loadPackageEnv } from "../src/env.js";
 import { compareVersions, isStableVersion } from "../src/git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "../src/schema.js";
 
@@ -31,7 +28,6 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag") ?? process.env.GITHUB_REF_NAME,
     dryRun: args.includes("--dry-run"),
-    ai: args.includes("--ai"),
     fromFile: getValue("--from-file")
   };
 };
@@ -102,37 +98,16 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
   );
 };
 
-type GenerateReleaseImpactOptions = {
-  tag: string;
-  ai?: boolean;
-};
+// Release data is only ever aggregated from the fragments pull requests added under
+// upgrade-impact/changes, so the same tag always produces the same file.
+export const generateReleaseImpact = (tag: string) => {
+  const release = collectFragmentRelease(tag);
 
-// Release data is aggregated from the fragments each pull request added under
-// upgrade-impact/changes. The AI path infers impact from the whole release range instead and is
-// kept only to cross-check the fragments, never to write release data in CI.
-export const generateReleaseImpact = async ({ tag, ai = false }: GenerateReleaseImpactOptions) => {
-  if (!ai) {
-    const release = collectFragmentRelease(tag);
-
-    return { evidence: release.fragments, releaseImpact: assembleReleaseImpact(release, release.draft, FRAGMENTS_SOURCE) };
-  }
-
-  const bundle = await collectEvidence(tag);
-  const draft = await generateWithOpenAiAgentic(bundle);
-
-  return {
-    evidence: bundle,
-    releaseImpact: assembleReleaseImpact(
-      bundle,
-      { ...draft, requiresDbMigration: draft.requiresDbMigration || bundle.migrationFiles.length > 0 },
-      MODEL
-    )
-  };
+  return { fragments: release.fragments, releaseImpact: assembleReleaseImpact(release, release.draft, FRAGMENTS_SOURCE) };
 };
 
 const main = async () => {
-  loadPackageEnv(packageRoot);
-  const { tag, dryRun, ai, fromFile } = parseArgs();
+  const { tag, dryRun, fromFile } = parseArgs();
 
   // Writes data generated earlier, so a caller can add it to an index that changed since.
   if (fromFile) {
@@ -146,10 +121,10 @@ const main = async () => {
     throw new Error(`Expected a stable vX.Y.Z tag. Received: ${tag ?? "<missing>"}`);
   }
 
-  const { evidence, releaseImpact } = await generateReleaseImpact({ tag, ai });
+  const { fragments, releaseImpact } = generateReleaseImpact(tag);
 
   if (dryRun) {
-    process.stdout.write(`${JSON.stringify({ evidence, releaseImpact }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ fragments, releaseImpact }, null, 2)}\n`);
     return;
   }
 

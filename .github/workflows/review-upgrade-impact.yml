@@ -1,0 +1,103 @@
+name: Review upgrade impact
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    paths:
+      - "backend/**"
+      - "backend-go/**"
+      - "Dockerfile*"
+      - "docker-compose*.yml"
+      - "docker-swarm/**"
+      - "nginx/**"
+      - "standalone-entrypoint.sh"
+      - ".env.example"
+      - "build-versions.env"
+      - "upgrade-impact/changes/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: review-upgrade-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Review upgrade impact
+    runs-on: ubuntu-latest
+    # A pull request from a fork gets no secrets, so there is no model to ask. Automated pull
+    # requests are skipped the way validate-pr-description.yml skips them; Snyk opens under a real
+    # user's account, so it is matched on its branch prefix. An edit that left the description
+    # alone (a retitle, a base change) cannot change the answer.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && !endsWith(github.event.pull_request.user.login, '[bot]')
+      && !startsWith(github.event.pull_request.head.ref, 'snyk-fix-')
+      && !startsWith(github.event.pull_request.head.ref, 'snyk-upgrade-')
+      && (github.event.action != 'edited' || github.event.changes.body)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upgrade-impact/package-lock.json
+
+      # Every step below is allowed to fail: this review is advice, so a model outage or a bad
+      # answer must never turn the pull request red. validate-pr-description.yml owns the rules
+      # that do fail a pull request.
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: npm ci
+        working-directory: upgrade-impact
+
+      - name: Review declared impact against the changes
+        id: review
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: upgrade-impact
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npm run --silent review:pr -- --base "$BASE_SHA" --head "$HEAD_SHA" --output "$RUNNER_TEMP/review.md"
+
+      # One comment per pull request: updated while the review disagrees, deleted once the
+      # fragments match, and left alone when the review itself could not run.
+      - name: Update review comment
+        if: steps.review.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          COMMENT_ID="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- upgrade-impact-review -->"))) | .id' | head -n 1)"
+
+          if [ ! -s "$RUNNER_TEMP/review.md" ]; then
+            if [ -n "$COMMENT_ID" ]; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}"
+              echo "The declared upgrade impact now matches the changes. Removed the earlier comment."
+            else
+              echo "The declared upgrade impact matches the changes."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}" -F body=@"$RUNNER_TEMP/review.md" --silent
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -F body=@"$RUNNER_TEMP/review.md" --silent
+          fi

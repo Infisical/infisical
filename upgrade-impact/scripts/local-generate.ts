@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 
 import { generateReleaseImpact } from "./generate.js";
-import { loadPackageEnv } from "../src/env.js";
 import { compareVersions, hasGitRef, isStableVersion, runGit } from "../src/git.js";
 import { ReleaseImpactSchema } from "../src/schema.js";
 
@@ -31,7 +30,6 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag"),
     output: getValue("--output"),
-    ai: args.includes("--ai"),
     skipFetch: args.includes("--skip-fetch")
   };
 };
@@ -82,8 +80,7 @@ const ensureTag = (tag: string, skipFetch: boolean) => {
 };
 
 const main = async () => {
-  loadPackageEnv(packageRoot);
-  const { tag: requestedTag, output, ai, skipFetch } = parseArgs();
+  const { tag: requestedTag, output, skipFetch } = parseArgs();
   let tag: string;
   let previousTag: string | null;
 
@@ -107,7 +104,7 @@ const main = async () => {
     ensureTag(previousTag, skipFetch);
   }
 
-  const { releaseImpact } = await generateReleaseImpact({ tag, ai });
+  const { releaseImpact } = generateReleaseImpact(tag);
   const parsedReleaseImpact = ReleaseImpactSchema.parse(releaseImpact);
   const yaml = stringify(parsedReleaseImpact);
   const outputPath = path.resolve(output ?? path.join(defaultOutputDir, `${tag}.yaml`));
