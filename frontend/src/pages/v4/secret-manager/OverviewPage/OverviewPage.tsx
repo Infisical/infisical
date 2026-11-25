@@ -2429,6 +2429,7 @@ export const OverviewPage = () => {
               <ConfirmDependentsDialog
                 open={saveAllHold === "confirm" && saveAllDependents.length > 0}
                 dependents={saveAllDependents}
+                plural={unsavedEdits.count > 1}
                 onOpenChange={(open) => {
                   if (!open) setSaveAllHold(undefined);
                 }}
