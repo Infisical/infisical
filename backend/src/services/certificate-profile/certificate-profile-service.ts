@@ -837,8 +837,8 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
     data: TCertificateProfileUpdate;
   }): Promise<TCertificateProfile> => {
-    const existingProfile = await certificateProfileDAL.findById(profileId);
-    if (!existingProfile) {
+    const existingProfile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!existingProfile || existingProfile.ownerOrgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 
@@ -1193,7 +1193,8 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
   }): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
+    // A profile in another organization answers like a missing one, so the ID's existence is not confirmed.
+    if (!profile || profile.project?.orgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 
@@ -1518,8 +1519,8 @@ export const certificateProfileServiceFactory = ({
     actorOrgId: string;
     profileId: string;
   }): Promise<TCertificateProfile> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 
@@ -1581,8 +1582,8 @@ export const certificateProfileServiceFactory = ({
     status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 
@@ -1624,8 +1625,8 @@ export const certificateProfileServiceFactory = ({
     actorOrgId: string;
     profileId: string;
   }) => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 
@@ -1761,6 +1762,9 @@ export const certificateProfileServiceFactory = ({
         actorAuthMethod: ActorAuthMethod;
         actorOrgId: string | undefined;
       };
+      if (profile.project?.orgId !== actorOrgId) {
+        throw certificateProfileNotFoundError(profileId);
+      }
 
       const { permission } = await permissionService.getProjectPermission({
         actor,
@@ -1835,7 +1839,7 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
+    if (!profile || profile.project?.orgId !== actorOrgId) {
       throw certificateProfileNotFoundError(profileId);
     }
 

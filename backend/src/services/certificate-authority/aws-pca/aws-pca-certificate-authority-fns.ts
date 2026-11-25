@@ -345,6 +345,10 @@ const assertPrivateCaActiveForSetup = async ({
     );
   } catch (error) {
     if (!(error instanceof Error) || !("$metadata" in error)) throw error;
+    logger.warn(
+      error,
+      `AWS Private CA setup check failed [region=${region}] [certificateAuthorityArn=${certificateAuthorityArn}]`
+    );
     if (error.name === "ResourceNotFoundException") {
       throw new BadRequestError({
         message: `AWS Private CA has no certificate authority '${certificateAuthorityArn}' in region '${region}'. Check the ARN and the region.`

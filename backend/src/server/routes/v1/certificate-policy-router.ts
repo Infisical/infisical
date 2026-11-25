@@ -151,14 +151,19 @@ const policyValiditySchema = z.object({
 });
 
 const policyAlgorithmValueSchema = (kind: string, values: string[]) =>
-  z.string().superRefine((value, ctx) => {
-    if (!values.includes(value)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Unsupported ${kind} algorithm '${value.length > 64 ? `${value.slice(0, 64)}...` : value}'. Use one of: ${values.join(", ")}.`
-      });
-    }
-  });
+  // Zod copies the rejected value into the issue's `received`, which the 422 response and the logs include, so a long
+  // value is clipped before the enum check. No allowed value is that long, so clipping never turns a value valid.
+  z.preprocess(
+    (value) => (typeof value === "string" && value.length > 64 ? `${value.slice(0, 64)}...` : value),
+    z.enum(values as [string, ...string[]], {
+      errorMap: (issue, ctx) => {
+        if (issue.code !== z.ZodIssueCode.invalid_enum_value) return { message: ctx.defaultError };
+        return {
+          message: `Unsupported ${kind} algorithm '${String(issue.received)}'. Use one of: ${values.join(", ")}.`
+        };
+      }
+    })
+  );
 
 const policyAlgorithmsSchema = z.object({
   signature: z

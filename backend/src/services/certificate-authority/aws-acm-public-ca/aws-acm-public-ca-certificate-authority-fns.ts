@@ -215,6 +215,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // decrypts the connection and reads instance config too; only errors AWS returned become a 400.
       const isAwsError = error instanceof Error && "$metadata" in error;
       if (!acmClient && !isAwsError) throw error;
+      logger.warn(error, `AWS ACM setup check failed [region=${region}] [appConnectionId=${appConnectionId}]`);
       // AWS denial text names the calling principal and the role ARN, so only the error name is returned.
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
       if (!acmClient) {
@@ -230,6 +231,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
   const assertHostedZoneReachableForSetup = async (
     dnsConnection: Parameters<typeof buildRoute53Client>[0],
+    dnsAppConnectionId: string,
     hostedZoneId: string
   ) => {
     let route53Client: Awaited<ReturnType<typeof buildRoute53Client>> | undefined;
@@ -240,22 +242,25 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // Same as the ACM check: building the client assumes the connection's role, and AWS denial text names the
       // calling principal and the role ARN.
       const isAwsError = error instanceof Error && "$metadata" in error;
+      const shownZoneId = hostedZoneId.length > 64 ? `${hostedZoneId.slice(0, 64)}...` : hostedZoneId;
+      const logMessage = `Route 53 hosted zone setup check failed [hostedZoneId=${shownZoneId}] [dnsAppConnectionId=${dnsAppConnectionId}]`;
       // The SDK's default credential chain fails with no metadata when the instance has no AWS credentials to assume
       // the role with.
       if (!route53Client && error instanceof Error && error.name === "CredentialsProviderError") {
+        logger.warn(error, logMessage);
         throw new BadRequestError({
           message:
             "Infisical has no AWS credentials of its own to assume the Route 53 connection's role. Ask your instance administrator to set INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY, or to run Infisical with an AWS role, then try again."
         });
       }
       if (!route53Client && !isAwsError) throw error;
+      logger.warn(error, logMessage);
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
       if (!route53Client) {
         throw new BadRequestError({
           message: `AWS refused to let Infisical assume the Route 53 connection's role (${errorName}). Check the connection's credentials and the role's trust policy, then try again.`
         });
       }
-      const shownZoneId = hostedZoneId.length > 64 ? `${hostedZoneId.slice(0, 64)}...` : hostedZoneId;
       if (errorName === "NoSuchHostedZone") {
         throw new BadRequestError({
           message: `Route 53 has no hosted zone '${shownZoneId}' that the Route 53 connection can see. Check the hosted zone ID, then try again.`
@@ -294,7 +299,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       appConnectionDAL,
       kmsDataKeyService
     });
-    await assertHostedZoneReachableForSetup(dnsConnection, hostedZoneId);
+    await assertHostedZoneReachableForSetup(dnsConnection, dnsAppConnectionId, hostedZoneId);
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -369,7 +374,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         appConnectionDAL,
         kmsDataKeyService
       });
-      await assertHostedZoneReachableForSetup(dnsConnection, hostedZoneId);
+      await assertHostedZoneReachableForSetup(dnsConnection, dnsAppConnectionId, hostedZoneId);
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {

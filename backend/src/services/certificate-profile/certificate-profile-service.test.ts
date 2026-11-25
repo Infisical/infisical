@@ -94,6 +94,7 @@ describe("CertificateProfileService", () => {
     actorAuthMethod: AuthMethod.EMAIL,
     actorOrgId: "org-123"
   };
+  const inActorOrg = <T extends object>(profile: T) => ({ ...profile, ownerOrgId: mockActor.actorOrgId });
 
   const sampleProfile: TCertificateProfile = {
     id: "profile-123",
@@ -114,6 +115,10 @@ describe("CertificateProfileService", () => {
 
   const sampleProfileWithConfigs: TCertificateProfileWithConfigs = {
     ...sampleProfile,
+    project: {
+      id: "project-123",
+      orgId: "org-123"
+    },
     certificateAuthority: {
       id: "ca-123",
       projectId: "project-123",
@@ -599,7 +604,7 @@ describe("CertificateProfileService", () => {
   describe("updateProfile", () => {
     describe("on a profile with Microsoft Autoenrollment turned on", () => {
       beforeEach(() => {
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
         (mockCertificateProfileDAL.updateById as any).mockResolvedValue(sampleProfile);
         mockPkiApplicationProfileDAL.findAllByProfileId.mockResolvedValue([
           {
@@ -628,10 +633,12 @@ describe("CertificateProfileService", () => {
       });
 
       it("refuses clearing the defaults when the policy does not allow the RSA 2048 key Windows then asks for", async () => {
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue({
-          ...sampleProfile,
-          defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
-        });
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(
+          inActorOrg({
+            ...sampleProfile,
+            defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
+          })
+        );
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ id: "policy-123" });
         mockCertificatePolicyService.validateRequestAgainstPolicy.mockImplementationOnce(
           (_policy: unknown, request: { keyAlgorithm?: string }) => ({
@@ -650,10 +657,12 @@ describe("CertificateProfileService", () => {
       });
 
       it("re-checks under a lock on the policy, reading inside the transaction", async () => {
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue({
-          ...sampleProfile,
-          defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
-        });
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(
+          inActorOrg({
+            ...sampleProfile,
+            defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
+          })
+        );
         (mockCertificateProfileDAL.transaction as any).mockImplementationOnce(
           async (fn: (tx: string) => Promise<unknown>) => fn("tx")
         );
@@ -717,7 +726,7 @@ describe("CertificateProfileService", () => {
     };
 
     beforeEach(() => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
       (mockCertificateProfileDAL.updateById as any).mockResolvedValue({
         ...sampleProfile,
         ...updateData,
@@ -733,12 +742,12 @@ describe("CertificateProfileService", () => {
       });
 
       expect(result.slug).toBe("updated-profile");
-      expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
+      expect(mockCertificateProfileDAL.findByIdWithOwnerOrgId).toHaveBeenCalledWith("profile-123");
       expect(mockCertificateProfileDAL.updateById).toHaveBeenCalledWith("profile-123", updateData, undefined);
     });
 
     it("should throw NotFoundError when profile not found", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(null);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(null);
 
       await expect(
         service.updateProfile({
@@ -750,10 +759,12 @@ describe("CertificateProfileService", () => {
     });
 
     it("refuses moving a profile whose default SAN copies the common name to a policy that allows no DNS SANs", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue({
-        ...sampleProfile,
-        defaults: commonNameDefaultSans
-      });
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(
+        inActorOrg({
+          ...sampleProfile,
+          defaults: commonNameDefaultSans
+        })
+      );
       (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ ...samplePolicy, id: "policy-456", sans: [] });
 
       await expect(
@@ -929,7 +940,7 @@ describe("CertificateProfileService", () => {
 
   describe("deleteProfile", () => {
     beforeEach(() => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
       (mockCertificateProfileDAL.isProfileInUse as any).mockResolvedValue(false);
       (mockCertificateProfileDAL.deleteById as any).mockResolvedValue(sampleProfile);
     });
@@ -941,12 +952,12 @@ describe("CertificateProfileService", () => {
       });
 
       expect(result).toEqual(sampleProfile);
-      expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
+      expect(mockCertificateProfileDAL.findByIdWithOwnerOrgId).toHaveBeenCalledWith("profile-123");
       expect(mockCertificateProfileDAL.deleteById).toHaveBeenCalledWith("profile-123");
     });
 
     it("should throw NotFoundError when profile not found", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(null);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(null);
 
       await expect(
         service.deleteProfile({
@@ -972,7 +983,7 @@ describe("CertificateProfileService", () => {
     ];
 
     beforeEach(() => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
       (mockCertificateProfileDAL.getCertificatesByProfile as any).mockResolvedValue(mockCertificates);
     });
 
@@ -983,7 +994,7 @@ describe("CertificateProfileService", () => {
       });
 
       expect(result).toEqual(mockCertificates);
-      expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
+      expect(mockCertificateProfileDAL.findByIdWithOwnerOrgId).toHaveBeenCalledWith("profile-123");
       expect(mockCertificateProfileDAL.getCertificatesByProfile).toHaveBeenCalledWith("profile-123", {
         offset: 0,
         limit: 20,
@@ -1011,7 +1022,7 @@ describe("CertificateProfileService", () => {
     });
 
     it("should throw NotFoundError when profile not found", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(null);
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(null);
 
       await expect(
         service.getProfileCertificates({
@@ -1149,7 +1160,7 @@ describe("CertificateProfileService", () => {
           apiConfigId: null
         };
 
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(currentProfile);
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(currentProfile));
         (mockCertificateProfileDAL.updateById as any).mockResolvedValue({
           ...currentProfile,
           enrollmentType: EnrollmentType.EST,
@@ -1168,7 +1179,7 @@ describe("CertificateProfileService", () => {
       });
 
       it("should allow deletion of profiles", async () => {
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
         (mockCertificateProfileDAL.deleteById as any).mockResolvedValue(sampleProfile);
 
         const result = await service.deleteProfile({
@@ -1196,7 +1207,7 @@ describe("CertificateProfileService", () => {
           }
         ];
 
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
         (mockCertificateProfileDAL.getCertificatesByProfile as any).mockResolvedValue(activeCerts);
 
         const result = await service.getProfileCertificates({
@@ -1228,7 +1239,7 @@ describe("CertificateProfileService", () => {
           }
         ];
 
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue(inActorOrg(sampleProfile));
         (mockCertificateProfileDAL.getCertificatesByProfile as any).mockResolvedValue(searchResults);
 
         const result = await service.getProfileCertificates({
@@ -1376,6 +1387,48 @@ describe("CertificateProfileService", () => {
 
         expect(result.slug).toBe(invalidSlugData.slug);
       });
+    });
+  });
+
+  describe("a profile in another organization", () => {
+    const notFoundMessage =
+      "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID.";
+
+    it.each([
+      [
+        "updateProfile",
+        () => service.updateProfile({ ...mockActor, profileId: "profile-123", data: { description: "x" } })
+      ],
+      ["deleteProfile", () => service.deleteProfile({ ...mockActor, profileId: "profile-123" })],
+      ["getProfileCertificates", () => service.getProfileCertificates({ ...mockActor, profileId: "profile-123" })],
+      [
+        "getLatestActiveCertificateBundle",
+        () => service.getLatestActiveCertificateBundle({ ...mockActor, profileId: "profile-123" })
+      ]
+    ])("%s answers like a missing profile", async (_name, call) => {
+      (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue({
+        ...sampleProfile,
+        ownerOrgId: "other-org"
+      });
+
+      await expect(call()).rejects.toThrow(notFoundMessage);
+      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        "getEstConfigurationByProfile",
+        () => service.getEstConfigurationByProfile({ ...mockActor, profileId: "profile-123" })
+      ],
+      ["revealAcmeEabSecret", () => service.revealAcmeEabSecret({ ...mockActor, profileId: "profile-123" })]
+    ])("%s answers like a missing profile", async (_name, call) => {
+      (mockCertificateProfileDAL.findByIdWithConfigs as any).mockResolvedValue({
+        ...sampleProfileWithConfigs,
+        project: { ...sampleProfileWithConfigs.project, orgId: "other-org" }
+      });
+
+      await expect(call()).rejects.toThrow(notFoundMessage);
+      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
     });
   });
 
