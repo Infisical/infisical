@@ -11,7 +11,7 @@ import { RequestContextKey } from "./request-context-keys";
  * as narrowed rather than promoted.
  *
  * Use it to guard a path that grants access *without* evaluating a CASL ability. Scopes are
- * intersected inside `permission-service`, so any shortcut that skips the ability check also skips
+ * intersected where the org and project permissions are built, so any shortcut that skips the ability check also skips
  * the narrowing, and a restricted token would act with the authorizing user's full authority.
  */
 export const isScopeNarrowedRequest = () => requestContext.get(RequestContextKey.OauthScopes) !== undefined;

@@ -54,8 +54,6 @@ import {
   TUpdateAwsAuthDTO
 } from "./identity-aws-auth-types";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 type TIdentityAwsAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;

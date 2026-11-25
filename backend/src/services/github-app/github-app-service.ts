@@ -57,7 +57,7 @@ type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
-  actorContextService: Pick<TActorContextService, "forPrincipal" | "forSession">;
+  actorContextService: Pick<TActorContextService, "forSession">;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: TLicenseService;

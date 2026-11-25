@@ -491,8 +491,6 @@ export const secretSharingServiceFactory = ({
   };
 
   const getSharedSecrets = async ({ actor, offset, limit, type }: TGetSharedSecretsDTO) => {
-    if (!actor.org.id) throw new ForbiddenRequestError();
-
     const permission = await orgPermissionService.getOrgPermission({ actor });
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 

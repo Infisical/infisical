@@ -93,7 +93,7 @@ describe("billing v2 cross-org read shortcut", () => {
       })
     ).rejects.toThrow(PermissionDeniedError);
 
-    // The check is the point: it is where permission-service intersects the granted scopes.
+    // The check is the point: it is where the org permission intersects the granted scopes.
     expect(getOrgPermission).toHaveBeenCalledTimes(1);
   });
 

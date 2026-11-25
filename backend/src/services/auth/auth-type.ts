@@ -60,7 +60,7 @@ export type AuthModeJwtTokenPayload = {
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
   // Granted OAuth delegation scopes (see OauthScope). The delegated ability is intersected with
-  // these in permission-service; an empty/absent list denies all scope-guarded resource access.
+  // these when the org and project permissions are built; an empty/absent list denies all scope-guarded resource access.
   scopes?: string[];
   // Set instead of `scopes` on RFC 8693 token exchange tokens, which carry the user's authorization
   // unnarrowed. Never both. See OauthDelegationMode.

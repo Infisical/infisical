@@ -33,7 +33,7 @@ export type TAccessControlDeps = {
 };
 
 // Who holds what: memberships at every scope, roles, privileges, groups and attributes. A base domain: it depends on
-// no other domain, knows what no role means (scope owners do), and does no permission checks.
+// no other domain, does not know what any role means (scope owners do), and does no permission checks.
 export class AccessControlModule {
   readonly actorGrantsService: TActorGrantsService;
 

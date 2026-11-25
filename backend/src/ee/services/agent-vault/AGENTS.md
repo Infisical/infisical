@@ -281,8 +281,8 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   group never holds a session. The list leaves it out, because it reads every covered user's access. The write works
   it out after its transaction commits and after the router writes the audit event, so a failure there can't leave a
   committed save unaudited.
-- **Mint checks the user's access, then the caller's once more.** The permission functions, wrapped by
-  `withProjectAuditContext` in `server/routes/index.ts`, leave the last actor they ran for in the request context,
+- **Mint checks the user's access, then the caller's once more.** The permission functions, through
+  `recordProjectAccess` in `server/lib/project-audit-context.ts`, leave the last actor they ran for in the request context,
   where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
 - **The user's Read on sessions is checked with `can()`, not thrown through CASL**, at mint as on every resolve: the

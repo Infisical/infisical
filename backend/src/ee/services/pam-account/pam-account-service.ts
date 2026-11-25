@@ -1,5 +1,3 @@
-import { packRules } from "@casl/ability/extra";
-
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
@@ -1436,7 +1434,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     });
 
     return {
-      permissions: packRules(permission.rules),
+      permissions: permission.pack(),
       memberships: canManageMembers ? permission.memberships.map((membership) => membership.toJSON()) : []
     };
   };

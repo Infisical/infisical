@@ -79,8 +79,7 @@ export const resolveOnBehalfOfUser = async (
 
   if (!(await agentVaultDelegationDAL.coversUser({ delegation, userId: user.id }))) throw notCovered();
 
-  // The user's own role and grants decide what they reach. actorAuthMethod is null as in resolve: the session row
-  // stores no auth method.
+  // The user's own role and grants decide what they reach, not the delegate's.
   let reachability: Awaited<ReturnType<TAccessBundlePermissionService["getAccessBundlePermission"]>>;
   try {
     const userCtx = await actorContextService.forPrincipal({

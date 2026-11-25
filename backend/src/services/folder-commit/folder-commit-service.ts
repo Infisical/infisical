@@ -258,9 +258,6 @@ export const folderCommitServiceFactory = ({
     environment: string;
     secretPath: string;
   }) => {
-    if (!secretsPermissionService) {
-      throw new Error("Permission service not initialized");
-    }
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     permission.assert({
@@ -2281,10 +2278,6 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     message?: string;
   }) => {
-    if (!secretsPermissionService) {
-      throw new Error("Permission service not initialized");
-    }
-
     // Get the commit to revert first to get folder info for permission check
     const commitToRevert = await folderCommitDAL.findById(commitId, undefined, projectId);
     if (!commitToRevert) {

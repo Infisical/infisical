@@ -38,10 +38,7 @@ export class ActorGrants {
   // Every role and privilege in force now: each membership's roles, then the privileges.
   active(now: Date = new Date()): Grant[] {
     const roles = this.memberships.flatMap((membership) => membership.activeRoles(now).map((role) => role.toGrant()));
-    const privileges = this.privileges
-      .filter((privilege) => privilege.isActive(now))
-      .map((privilege) => privilege.toGrant());
-    return roles.concat(privileges);
+    return roles.concat(this.activePrivileges(now).map((privilege) => privilege.toGrant()));
   }
 
   // What a privilege boundary compares an actor against: each distinct role it holds now (by the slug it is known

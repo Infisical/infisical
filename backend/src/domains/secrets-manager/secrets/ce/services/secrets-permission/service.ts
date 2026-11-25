@@ -1,5 +1,6 @@
 import { ProjectType } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TTransaction } from "@app/domains/lib/transactions";
 import {
@@ -236,11 +237,14 @@ export class SecretsPermissionService implements TSecretsPermissionService {
   }
 
   // Each folder grant at its folder's location. A grant whose folder is gone, or that holds no role, grants nothing.
+  // From the primary, like the grants themselves: a replica still holding a renamed folder's old path would be cached
+  // under the newer folder version.
   private async locateFolderGrants(projectId: string, privileges: Privilege[]): Promise<FolderGrant[]> {
     const withFolder = privileges.filter((privilege) => privilege.folderId && privilege.folderRole);
     const locations = await this.folderLocationStore.findLocations(
       projectId,
-      withFolder.map((privilege) => privilege.folderId as string)
+      withFolder.map((privilege) => privilege.folderId as string),
+      { readFrom: ReadFrom.Primary }
     );
     return withFolder.flatMap((privilege, index) => {
       const location = locations[index];

@@ -132,7 +132,7 @@ export const pkiApplicationServiceFactory = ({
           );
         }
 
-        if (actor.org.id && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
+        if (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY) {
           const newMembership = await membershipDAL.create(
             {
               scope: RESOURCE_SCOPE,

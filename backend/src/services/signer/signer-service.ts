@@ -999,12 +999,6 @@ export const signerServiceFactory = ({
         const pendingMembers = (dto.members ?? []).filter(
           (m) => !(m.kind === "user" && dto.actor.principal.type === ActorType.USER && m.id === dto.actor.principal.id)
         );
-        if (pendingMembers.length > 0 && !dto.actor.org.id) {
-          throw new BadRequestError({
-            message: "Cannot add members during signer creation without an organization context."
-          });
-        }
-
         if (pendingMembers.length > 0) {
           const pendingUserIds = pendingMembers.filter((m) => m.kind === "user").map((m) => m.id);
           const pendingIdentityIds = pendingMembers.filter((m) => m.kind === "identity").map((m) => m.id);

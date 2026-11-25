@@ -1,9 +1,9 @@
 # Access Control domain
 
 Who holds what: memberships at the org, project and resource scopes with their role assignments, custom roles,
-additional privileges (folder grants included), groups and their members, and identity attributes. It knows what
-no role means: every scope owner (Organizations, Projects, each product) decides that, and builds its permission
-from what Access Control returns.
+additional privileges (folder grants included), groups and their members, and identity attributes. It does not
+know what any role means: every scope owner (Organizations, Projects, each product) decides that, and builds its
+permission from what Access Control returns.
 
 - **Read side only, for now.** One read-only `GrantStore` reads `memberships`, `membership_roles`, `roles`,
   `additional_privileges`, `groups`, `user_group_membership`, `identity_group_membership` and `identity_metadata`,

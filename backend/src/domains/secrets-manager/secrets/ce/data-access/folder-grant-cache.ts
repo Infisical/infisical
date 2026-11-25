@@ -10,7 +10,6 @@ import { TFolderGrantCache } from "../services/dependencies";
 // then checked again against their fingerprint.
 const MARKER_TTL_SECONDS = 10;
 const DATA_TTL_SECONDS = 600;
-const LEGACY_MARKER = "1";
 
 // Must comfortably exceed DATA_TTL_SECONDS: an expired row reads as 0 and the next bump re-inserts at 1, so a short
 // expiry lets a live cached value's fingerprint collide with the resurrected counter.
@@ -58,9 +57,7 @@ export class FolderGrantCache implements TFolderGrantCache {
 
   async findLiveFingerprint({ actor, projectId }: { actor: TGrantActor; projectId: string }): Promise<string | null> {
     if (this.markerTtlSeconds <= 0) return null;
-    const marker = await this.keyStore.getItem(FolderGrantKeys.marker(projectId, actor));
-    // A marker written before markers carried the fingerprint says nothing about which data is live.
-    return marker && marker !== LEGACY_MARKER ? marker : null;
+    return (await this.keyStore.getItem(FolderGrantKeys.marker(projectId, actor))) || null;
   }
 
   async getFolderVersion(projectId: string): Promise<number> {

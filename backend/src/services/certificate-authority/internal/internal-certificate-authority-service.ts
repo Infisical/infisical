@@ -1,3 +1,5 @@
+/* eslint-disable no-nested-ternary */
+/* eslint-disable no-bitwise */
 import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
@@ -121,9 +123,6 @@ import {
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./internal-certificate-authority-types";
-
-/* eslint-disable no-nested-ternary */
-/* eslint-disable no-bitwise */
 
 type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<

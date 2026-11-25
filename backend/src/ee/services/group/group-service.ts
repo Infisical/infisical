@@ -92,7 +92,7 @@ type TGroupServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   pamPermissionService: Pick<TPamPermissionService, "within">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById" | "lockActorsForOrgAccess">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "lockActorsForOrgAccess">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "findOne" | "delete" | "filterProjectsByUserMembership" | "transaction" | "insertMany" | "find"

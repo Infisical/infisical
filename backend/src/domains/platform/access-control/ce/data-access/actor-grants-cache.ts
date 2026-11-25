@@ -45,8 +45,8 @@ export class ActorGrantsCache implements TActorGrantsCache {
       dataFetcher: async () => (await load()).toJSON()
     });
     const grants = ActorGrants.restore(record);
-    // A refusal is never kept, as the legacy engine never cached one: a member added moments later (a SCIM group
-    // push, an invite accepted) must count on their very next request, not after the marker expires.
+    // A refusal is never kept: a member added moments later (a SCIM group push, an invite accepted) must count on
+    // their very next request, not after the marker expires.
     if (!grants.hasMembership) {
       await Promise.all([
         this.keyStore.deleteItem(GrantKeys.data(projectId, actor)),

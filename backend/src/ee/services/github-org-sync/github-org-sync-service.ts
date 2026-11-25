@@ -384,7 +384,7 @@ type TGithubOrgSyncServiceFactoryDep = {
     "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find" | "findGroupOrgIds">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];

@@ -34,7 +34,7 @@ abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionS
 
   // PAM issues no custom role, so "custom" is refused like any other slug it does not define.
   rulesFor(grant: Grant): TPamResourceRule[] {
-    const slug = grant.builtInSlug() ?? grant.toJSON().slug;
+    const { slug } = grant.toJSON();
     const rules = this.builtInRoles.get(slug);
     if (!rules) throw new EntityNotFoundError({ name: "PamRoleInvalid", message: `PAM role '${slug}' not found` });
     return rules;
@@ -46,7 +46,7 @@ abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionS
 
   // The rules of a role a membership holds, or none for a slug PAM does not define.
   rulesOrNoneFor(grant: Grant): TPamResourceRule[] {
-    return this.builtInRoles.get(grant.builtInSlug() ?? grant.toJSON().slug) ?? [];
+    return this.builtInRoles.get(grant.toJSON().slug) ?? [];
   }
 
   allows(grant: Grant, action: PamResourcePermissionActions): boolean {

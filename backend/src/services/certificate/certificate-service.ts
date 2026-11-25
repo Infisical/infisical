@@ -334,8 +334,8 @@ export const certificateServiceFactory = ({
         resourceMetadataDAL
       });
     } catch (error) {
-      // A rule refusal carries its denial; "not a member of this application" carries none and, like the legacy
-      // ForbiddenRequestError, must not name the certificate or the Application.
+      // A rule refusal carries its denial; "not a member of this application" carries none and must not
+      // name the certificate or the Application.
       if (permissionMessages && error instanceof PermissionDeniedError) {
         throw $buildRevokePermissionError(
           error.denial ? permissionMessages.member : permissionMessages.nonMember,

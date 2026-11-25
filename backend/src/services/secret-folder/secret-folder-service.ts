@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -6,7 +7,6 @@ import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
-/* eslint-disable no-await-in-loop */
 import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {

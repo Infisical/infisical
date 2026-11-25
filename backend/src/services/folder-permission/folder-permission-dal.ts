@@ -418,7 +418,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
   };
 
   // Built-in admin role only: a custom role slugged "admin" stores role='custom' and is a regular
-  // grantee. Mirrors isActiveRole (permission-fns.ts) so an expired temporary admin does not count.
+  // grantee. Mirrors TemporaryAccess.isActive (Access Control) so an expired temporary admin does not count.
   // Folder grants replace base permissions at the granted path, so for an admin they could only
   // remove privileges; admins are therefore never accepted as grant targets.
   const isProjectAdmin = async ({ projectId, orgId, actorId, actorType }: TProjectScope & TProjectActor, tx?: Knex) => {

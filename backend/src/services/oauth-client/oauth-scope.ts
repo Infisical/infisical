@@ -5,7 +5,7 @@ import { OauthScope } from "@app/lib/auth/oauth-scopes";
 // Coarse, named OAuth delegation scopes. A delegated OAuth access token can never do more than the
 // underlying user; scopes only *narrow* that ability (effective = userPermissions ∩ grantedScopes).
 // Each scope maps to a set of (level, subject, actions) rules that are intersected against the user's
-// CASL rules in permission-service. Keep this list curated — it is a public contract.
+// CASL rules where the org and project permissions are built. Keep this list curated — it is a public contract.
 //
 // Only secrets:read is exposed for now: the sole delegated use case is `infisical run` fetching
 // secrets at runtime (e.g. via Coder External Auth). Add further scopes only when a route is opted
