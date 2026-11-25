@@ -301,6 +301,62 @@ func TestSecretReplication_Resync(t *testing.T) {
 	})
 }
 
+func TestSecretReplication_FolderRename(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should keep serving a replicated import after its folder is renamed", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		secretmanager.CreateSecret(t, proj, "staging", "KEY", "value", secretmanager.WithPath(stagingApp.Path))
+		legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
+		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.IntoPath("/legacy"), secretmanager.Replicated())
+		waitReplicated(t, proj, "prod", "/legacy", prodImport, time.Time{})
+
+		// Action
+		res := renameFolder(t, tn.Admin, proj, "prod", "/", legacyID, "renamed")
+
+		// Assert
+		require.NotNilf(t, res.JSON200, "renaming returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, map[string][]string{"KEY": {"value"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/renamed")))
+	})
+
+	t.Run("should keep serving a replicated import in a subfolder after its ancestor is renamed through the batch endpoint", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		secretmanager.CreateSecret(t, proj, "staging", "KEY", "value", secretmanager.WithPath(stagingApp.Path))
+		legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
+		secretmanager.CreateFolder(t, proj, "prod", "/legacy/api")
+		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.IntoPath("/legacy/api"), secretmanager.Replicated())
+		waitReplicated(t, proj, "prod", "/legacy/api", prodImport, time.Time{})
+
+		// Action
+		var body api.UpdateSecretFoldersBatchJSONRequestBody
+		body.ProjectId = proj.ID
+		body.Folders = append(body.Folders, struct {
+			Description *string `json:"description,omitempty"`
+			Environment string  `json:"environment"`
+			Id          string  `json:"id"`
+			Name        string  `json:"name"`
+			Path        *string `json:"path,omitempty"`
+		}{Environment: "prod", Id: legacyID, Name: "renamed", Path: new("/")})
+		res, err := tn.Admin.API.UpdateSecretFoldersBatchWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "renaming returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, map[string][]string{"KEY": {"value"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/renamed/api")))
+	})
+}
+
 func TestSecretReplication_License(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
