@@ -1,4 +1,5 @@
 import { type ChangeEvent, useId, useState } from "react";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -9,7 +10,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
-import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
@@ -874,7 +874,13 @@ const ProviderFields = (props: FieldsProps & { csRequiresContact: boolean }) => 
           <Field
             label="CA name"
             optional
-            description="The AD CS CA common name. Leave blank only if the Gateway can reach the CA host over SMB (TCP 445) to discover it. Run certutil -dump on the AD CS server to find it."
+            description={
+              <>
+                The common name of the AD CS CA. Leave blank only if the Gateway can reach the CA
+                host over SMB (TCP 445) to discover it. To find it, run{" "}
+                <code>certutil -getreg CA\CommonName</code> on the AD CS server.
+              </>
+            }
             wide
           >
             <Input
@@ -1001,51 +1007,28 @@ const ProviderPicker = ({
 }: {
   locked: (type: CaType) => boolean;
   onPick: (type: ExternalCaType) => void;
-}) => {
-  const [search, setSearch] = useState("");
-  const query = search.trim().toLowerCase();
-  const matches = PROVIDERS.filter(
-    (entry) =>
-      !query ||
-      entry.name.toLowerCase().includes(query) ||
-      entry.description.toLowerCase().includes(query)
-  );
-  return (
-    <Stack gap={16}>
-      <Input
-        icon="search"
-        aria-label="Search providers"
-        placeholder="Search certificate authorities"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
-      <RadioGroup
-        aria-label="Certificate authority provider"
-        value=""
-        onValueChange={(next) => onPick(next as ExternalCaType)}
-      >
-        {matches.map((entry) => (
-          <RadioGroupCard
-            key={entry.type}
-            value={entry.type}
-            media={entry.image ? <ProviderIcon icon={entry.image} alt="" /> : <Icon name="lock" />}
-            title={
-              <Inline gap={8} align="center">
-                {entry.name}
-                {locked(entry.type) && (
-                  <Badge size="sm" tone="info">
-                    Enterprise
-                  </Badge>
-                )}
-              </Inline>
-            }
-            description={entry.description}
-          />
-        ))}
-      </RadioGroup>
-    </Stack>
-  );
-};
+}) => (
+  <TilePicker
+    items={PROVIDERS.map((entry) => ({
+      value: entry.type,
+      title: entry.name,
+      description: entry.description,
+      ...(entry.image
+        ? { media: <ProviderIcon icon={entry.image} alt="" size="md" /> }
+        : { icon: "lock" as const }),
+      badge: locked(entry.type) && (
+        <Badge size="sm" tone="info">
+          Enterprise
+        </Badge>
+      ),
+      keywords: [entry.description]
+    }))}
+    onSelect={(type) => onPick(type as ExternalCaType)}
+    searchLabel="Search providers"
+    searchPlaceholder="Search certificate authorities"
+    noun="certificate authorities"
+  />
+);
 
 const ProviderHeading = ({
   type,

@@ -206,7 +206,7 @@ const PrimaryStepButton = ({
 }) => {
   if (step === "form")
     return (
-      <Button variant="primary" type="submit" form={formId} loading={pending}>
+      <Button key="install" variant="primary" type="submit" form={formId} loading={pending}>
         Install
       </Button>
     );

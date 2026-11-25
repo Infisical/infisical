@@ -161,15 +161,23 @@ export const RenewalCard = ({
             })
           }
         />
-        {renewal.autoRenewalEnabled && (
-          <RenewalDaysField
-            savedDays={savedDays}
-            disabled={Boolean(editBlock)}
-            onSave={(days) => save({ autoRenewalEnabled: true, autoRenewalDaysBeforeExpiry: days })}
-          />
+        {(renewal.autoRenewalEnabled ||
+          history.length > 0 ||
+          renewal.lastRenewalStatus === CaRenewalStatus.PENDING) && (
+          <Stack gap={16}>
+            {renewal.autoRenewalEnabled && (
+              <RenewalDaysField
+                savedDays={savedDays}
+                disabled={Boolean(editBlock)}
+                onSave={(days) =>
+                  save({ autoRenewalEnabled: true, autoRenewalDaysBeforeExpiry: days })
+                }
+              />
+            )}
+            {history.length > 0 && <DataList variant="props" density="compact" items={history} />}
+            <RenewalAlert ca={ca} renewal={renewal} />
+          </Stack>
         )}
-        {history.length > 0 && <DataList variant="props" density="compact" items={history} />}
-        <RenewalAlert ca={ca} renewal={renewal} />
       </Stack>
     </Card>
   );
