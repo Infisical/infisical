@@ -302,16 +302,16 @@ func createPolicy(t *testing.T, proj *fixture.Project, env, secretPath string, a
 		Id:   new(approver.ID.String()),
 	}))
 	res, err := proj.Tenant().Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
-		ProjectId:                proj.ID,
-		Environment:              &env,
-		SecretPath:               secretPath,
-		Approvals:                new(float32(1)),
-		Approvers:                []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{item},
-		EnforceImportReplication: &enforce,
+		ProjectId:              proj.ID,
+		Environment:            &env,
+		SecretPath:             secretPath,
+		Approvals:              new(float32(1)),
+		Approvers:              []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{item},
+		EnforceOnSecretImports: &enforce,
 	})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	require.Equal(t, enforce, res.JSON200.Approval.EnforceImportReplication)
+	require.Equal(t, enforce, res.JSON200.Approval.EnforceOnSecretImports)
 	return res.JSON200.Approval.Id
 }
 

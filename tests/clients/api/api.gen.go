@@ -205098,14 +205098,14 @@ type CreateSecretApprovalPolicyJSONBody struct {
 		Type CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
 	} `json:"delegatedApproval,omitempty"`
 
-	// EnforceImportReplication When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
-	EnforceImportReplication *bool                                               `json:"enforceImportReplication,omitempty"`
-	EnforcementLevel         *CreateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
-	Environment              *string                                             `json:"environment,omitempty"`
-	Environments             *[]string                                           `json:"environments,omitempty"`
-	Name                     *string                                             `json:"name,omitempty"`
-	ProjectId                string                                              `json:"projectId"`
-	SecretPath               string                                              `json:"secretPath"`
+	// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+	EnforceOnSecretImports *bool                                               `json:"enforceOnSecretImports,omitempty"`
+	EnforcementLevel       *CreateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environment            *string                                             `json:"environment,omitempty"`
+	Environments           *[]string                                           `json:"environments,omitempty"`
+	Name                   *string                                             `json:"name,omitempty"`
+	ProjectId              string                                              `json:"projectId"`
+	SecretPath             string                                              `json:"secretPath"`
 }
 
 // CreateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for CreateSecretApprovalPolicy.
@@ -205264,12 +205264,12 @@ type UpdateSecretApprovalPolicyJSONBody struct {
 		Type UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
 	} `json:"delegatedApproval,omitempty"`
 
-	// EnforceImportReplication When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
-	EnforceImportReplication *bool                                               `json:"enforceImportReplication,omitempty"`
-	EnforcementLevel         *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
-	Environments             *[]string                                           `json:"environments,omitempty"`
-	Name                     *string                                             `json:"name,omitempty"`
-	SecretPath               *string                                             `json:"secretPath,omitempty"`
+	// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+	EnforceOnSecretImports *bool                                               `json:"enforceOnSecretImports,omitempty"`
+	EnforcementLevel       *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environments           *[]string                                           `json:"environments,omitempty"`
+	Name                   *string                                             `json:"name,omitempty"`
+	SecretPath             *string                                             `json:"secretPath,omitempty"`
 }
 
 // UpdateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for UpdateSecretApprovalPolicy.
@@ -512110,12 +512110,12 @@ type ListSecretApprovalPoliciesResponse struct {
 				Id   *string                                                             `json:"id,omitempty"`
 				Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 			} `json:"bypassers"`
-			CreatedAt                time.Time          `json:"createdAt"`
-			DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication bool               `json:"enforceImportReplication"`
-			EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-			EnvId                    openapi_types.UUID `json:"envId"`
-			Environment              struct {
+			CreatedAt              time.Time          `json:"createdAt"`
+			DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -512192,12 +512192,12 @@ func (r ListSecretApprovalPoliciesResponse) GetJSON200() *struct {
 			Id   *string                                                             `json:"id,omitempty"`
 			Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 		} `json:"bypassers"`
-		CreatedAt                time.Time          `json:"createdAt"`
-		DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication bool               `json:"enforceImportReplication"`
-		EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-		EnvId                    openapi_types.UUID `json:"envId"`
-		Environment              struct {
+		CreatedAt              time.Time          `json:"createdAt"`
+		DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -512319,7 +512319,7 @@ type CreateSecretApprovalPolicyResponse struct {
 			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 			CreatedAt                  time.Time          `json:"createdAt"`
 			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication   bool               `json:"enforceImportReplication"`
+			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 			EnvId                      openapi_types.UUID `json:"envId"`
 			Environment                struct {
@@ -512393,7 +512393,7 @@ func (r CreateSecretApprovalPolicyResponse) GetJSON200() *struct {
 		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 		CreatedAt                  time.Time          `json:"createdAt"`
 		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication   bool               `json:"enforceImportReplication"`
+		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 		EnvId                      openapi_types.UUID `json:"envId"`
 		Environment                struct {
@@ -512518,7 +512518,7 @@ type GetSecretApprovalPolicyBoardResponse struct {
 			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 			CreatedAt                  time.Time          `json:"createdAt"`
 			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication   bool               `json:"enforceImportReplication"`
+			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 			EnvId                      openapi_types.UUID `json:"envId"`
 			Environment                struct {
@@ -512595,7 +512595,7 @@ func (r GetSecretApprovalPolicyBoardResponse) GetJSON200() *struct {
 		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 		CreatedAt                  time.Time          `json:"createdAt"`
 		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication   bool               `json:"enforceImportReplication"`
+		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 		EnvId                      openapi_types.UUID `json:"envId"`
 		Environment                struct {
@@ -512723,7 +512723,7 @@ type DeleteSecretApprovalPolicyResponse struct {
 			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 			CreatedAt                  time.Time          `json:"createdAt"`
 			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication   bool               `json:"enforceImportReplication"`
+			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 			EnvId                      openapi_types.UUID `json:"envId"`
 			Environment                struct {
@@ -512797,7 +512797,7 @@ func (r DeleteSecretApprovalPolicyResponse) GetJSON200() *struct {
 		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 		CreatedAt                  time.Time          `json:"createdAt"`
 		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication   bool               `json:"enforceImportReplication"`
+		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 		EnvId                      openapi_types.UUID `json:"envId"`
 		Environment                struct {
@@ -512930,12 +512930,12 @@ type GetSecretApprovalPolicyResponse struct {
 				Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 				Username *string                                                         `json:"username,omitempty"`
 			} `json:"bypassers"`
-			CreatedAt                time.Time          `json:"createdAt"`
-			DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication bool               `json:"enforceImportReplication"`
-			EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-			EnvId                    openapi_types.UUID `json:"envId"`
-			Environment              struct {
+			CreatedAt              time.Time          `json:"createdAt"`
+			DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -513014,12 +513014,12 @@ func (r GetSecretApprovalPolicyResponse) GetJSON200() *struct {
 			Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 			Username *string                                                         `json:"username,omitempty"`
 		} `json:"bypassers"`
-		CreatedAt                time.Time          `json:"createdAt"`
-		DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication bool               `json:"enforceImportReplication"`
-		EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-		EnvId                    openapi_types.UUID `json:"envId"`
-		Environment              struct {
+		CreatedAt              time.Time          `json:"createdAt"`
+		DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -513141,7 +513141,7 @@ type UpdateSecretApprovalPolicyResponse struct {
 			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 			CreatedAt                  time.Time          `json:"createdAt"`
 			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceImportReplication   bool               `json:"enforceImportReplication"`
+			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 			EnvId                      openapi_types.UUID `json:"envId"`
 			Environment                struct {
@@ -513215,7 +513215,7 @@ func (r UpdateSecretApprovalPolicyResponse) GetJSON200() *struct {
 		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 		CreatedAt                  time.Time          `json:"createdAt"`
 		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceImportReplication   bool               `json:"enforceImportReplication"`
+		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 		EnvId                      openapi_types.UUID `json:"envId"`
 		Environment                struct {
@@ -658926,12 +658926,12 @@ func ParseListSecretApprovalPoliciesResponse(rsp *http.Response) (*ListSecretApp
 					Id   *string                                                             `json:"id,omitempty"`
 					Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 				} `json:"bypassers"`
-				CreatedAt                time.Time          `json:"createdAt"`
-				DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication bool               `json:"enforceImportReplication"`
-				EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-				EnvId                    openapi_types.UUID `json:"envId"`
-				Environment              struct {
+				CreatedAt              time.Time          `json:"createdAt"`
+				DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659054,7 +659054,7 @@ func ParseCreateSecretApprovalPolicyResponse(rsp *http.Response) (*CreateSecretA
 				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 				CreatedAt                  time.Time          `json:"createdAt"`
 				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication   bool               `json:"enforceImportReplication"`
+				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 				EnvId                      openapi_types.UUID `json:"envId"`
 				Environment                struct {
@@ -659180,7 +659180,7 @@ func ParseGetSecretApprovalPolicyBoardResponse(rsp *http.Response) (*GetSecretAp
 				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 				CreatedAt                  time.Time          `json:"createdAt"`
 				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication   bool               `json:"enforceImportReplication"`
+				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 				EnvId                      openapi_types.UUID `json:"envId"`
 				Environment                struct {
@@ -659309,7 +659309,7 @@ func ParseDeleteSecretApprovalPolicyResponse(rsp *http.Response) (*DeleteSecretA
 				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 				CreatedAt                  time.Time          `json:"createdAt"`
 				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication   bool               `json:"enforceImportReplication"`
+				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 				EnvId                      openapi_types.UUID `json:"envId"`
 				Environment                struct {
@@ -659443,12 +659443,12 @@ func ParseGetSecretApprovalPolicyResponse(rsp *http.Response) (*GetSecretApprova
 					Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 					Username *string                                                         `json:"username,omitempty"`
 				} `json:"bypassers"`
-				CreatedAt                time.Time          `json:"createdAt"`
-				DeletedAt                *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication bool               `json:"enforceImportReplication"`
-				EnforcementLevel         *string            `json:"enforcementLevel,omitempty"`
-				EnvId                    openapi_types.UUID `json:"envId"`
-				Environment              struct {
+				CreatedAt              time.Time          `json:"createdAt"`
+				DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659571,7 +659571,7 @@ func ParseUpdateSecretApprovalPolicyResponse(rsp *http.Response) (*UpdateSecretA
 				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
 				CreatedAt                  time.Time          `json:"createdAt"`
 				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceImportReplication   bool               `json:"enforceImportReplication"`
+				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
 				EnvId                      openapi_types.UUID `json:"envId"`
 				Environment                struct {

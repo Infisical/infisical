@@ -15,7 +15,7 @@ Infisical checks the following before it starts a session:
 3. The person completes MFA, if the template requires it
 4. An approver has approved the person's [access request](/documentation/platform/pam/access-requests/overview), if the template requires approval
 
-AI agents go through the same checks. An agent can't answer a prompt, so you pass the reason with `--reason` when you start the agent, and the agent can't use accounts that require MFA. To learn more, see [Run an agent](/documentation/platform/pam/ai-agents/run).
+[AI agents](/documentation/platform/pam/ai-agents/overview) go through the same checks. The CLI never prompts an agent. Instead, it exits with an error that names the next step, such as passing `--reason` or completing MFA at a link.
 
 ## Connecting
 

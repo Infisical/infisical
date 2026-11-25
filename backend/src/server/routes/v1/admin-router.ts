@@ -66,7 +66,7 @@ const SanitizedSuperAdminSchema = z.object({
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
   isClickhouseAuditLogEnabled: z.boolean().optional(),
-  isInitialSetupActivationTokenRequired: z.boolean().optional(),
+  isInstanceSetupTokenRequired: z.boolean().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
   defaultAuthOrgAuthMethod: z.string().nullish(),
@@ -122,7 +122,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
       );
 
-      const isInitialSetupActivationTokenRequired = !initialized && Boolean(serverEnvs.INITIAL_SETUP_ACTIVATION_TOKEN);
+      const isInstanceSetupTokenRequired = !initialized && Boolean(serverEnvs.INSTANCE_SETUP_TOKEN);
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -144,7 +144,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             allowedStorageHostnames,
             isPublicSecretSharingDisabled: DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
-            isInitialSetupActivationTokenRequired,
+            isInstanceSetupTokenRequired,
             latestAvailableVersion
           }
         };
@@ -179,7 +179,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isClickhouseAuditLogEnabled,
-          isInitialSetupActivationTokenRequired,
+          isInstanceSetupTokenRequired,
           latestAvailableVersion
         }
       };
@@ -881,7 +881,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         firstName: z.string().trim().min(1),
         lastName: z.string().trim().optional(),
         organizationName: GenericResourceNameSchema.optional(),
-        activationToken: z.string().trim().max(256).optional()
+        setupToken: z.string().trim().max(32).optional()
       }),
       response: {
         200: z.object({
@@ -1051,7 +1051,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
         organization: z.string().trim().min(1),
-        activationToken: z.string().trim().max(256).optional()
+        setupToken: z.string().trim().max(32).optional()
       }),
       response: {
         200: z.object({

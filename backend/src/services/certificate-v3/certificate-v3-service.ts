@@ -26,7 +26,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType, PROTOCOL_ENROLLMENT_ACTORS } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -47,7 +47,13 @@ import {
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  ENROLLMENT_TYPE_NAME_MAP,
+  EnrollmentType,
+  ISSUER_NAMED_ENROLLMENT_TYPES,
+  IssuerType,
+  RENEWAL_LINKED_ENROLLMENT_TYPES
+} from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -78,7 +84,6 @@ import {
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
 } from "../certificate-common/certificate-constants";
 import {
-  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
@@ -134,7 +139,10 @@ import { certificateRenewalServiceFactory } from "./certificate-renewal-service"
 import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
 import {
   applyCommonNameDefaultSan,
+  applyIssuerNameOverride,
   applyProfileDefaults,
+  buildIssuanceSubject,
+  formatIssuerAltNames,
   getFixedDefaultSubjectAltNames,
   resolveEffectiveTtl,
   toCommonNameDefaults
@@ -482,12 +490,15 @@ export const certificateV3ServiceFactory = ({
           case EnrollmentType.SCEP:
             junctionConfigId = junction.scepConfigId;
             break;
+          case EnrollmentType.MICROSOFT_AUTOENROLLMENT:
+            junctionConfigId = junction.microsoftAutoenrollmentConfigId;
+            break;
           default:
             junctionConfigId = null;
         }
         if (!junctionConfigId) {
           throw new BadRequestError({
-            message: `${requiredEnrollmentType.toUpperCase()} enrollment is not configured for this profile on the Application.`
+            message: `${ENROLLMENT_TYPE_NAME_MAP[requiredEnrollmentType]} enrollment is not configured for this profile on the Application.`
           });
         }
       }
@@ -496,8 +507,7 @@ export const certificateV3ServiceFactory = ({
         actorContext?.actor &&
         actorContext.actor !== ActorType.ACME_ACCOUNT &&
         actorContext.actor !== ActorType.ACME_PROFILE &&
-        actorContext.actor !== ActorType.EST_ACCOUNT &&
-        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
+        !PROTOCOL_ENROLLMENT_ACTORS.has(actorContext.actor) &&
         actorContext.actorId &&
         actorContext.actorOrgId
       ) {
@@ -561,6 +571,8 @@ export const certificateV3ServiceFactory = ({
       return { requesterName: "EST Client", requesterEmail: "" };
     } else if (actor === ActorType.SCEP_ACCOUNT) {
       return { requesterName: "SCEP Client", requesterEmail: "" };
+    } else if (actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT) {
+      return { requesterName: "Microsoft Autoenrollment", requesterEmail: "" };
     } else if (actor === ActorType.PLATFORM) {
       return { requesterName: "Automatic Renewal", requesterEmail: "" };
     }
@@ -650,7 +662,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
 
@@ -1378,9 +1390,18 @@ export const certificateV3ServiceFactory = ({
     applicationId: explicitApplicationId,
     acmeOrderId,
     issuanceOperation,
+    issuerNameOverride,
+    additionalExtensions,
     originalCertificateId,
+    onCertificateRequestPersisted,
     renewalCommonNameSanTypes
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    if (issuerNameOverride && !ISSUER_NAMED_ENROLLMENT_TYPES.has(enrollmentType)) {
+      throw new BadRequestError({
+        message: `${ENROLLMENT_TYPE_NAME_MAP[enrollmentType]} enrollment cannot replace the names in the certificate request.`
+      });
+    }
+
     const isRenewal = issuanceOperation === CertificateIssuanceOperation.RENEW;
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1392,7 +1413,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
@@ -1432,7 +1453,16 @@ export const certificateV3ServiceFactory = ({
     }
 
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
-    const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
+    const additionalExtensionOids = (additionalExtensions ?? []).map((extension) => extension.oid);
+    const requestedCertificate: TCertificateRequest = {
+      ...applyIssuerNameOverride(csrCertificateRequest, issuerNameOverride, profile.defaults),
+      ...(csrCertificateRequest.customExtensions && {
+        customExtensions: csrCertificateRequest.customExtensions.filter(
+          (extension) => !additionalExtensionOids.includes(extension.oid)
+        )
+      })
+    };
+    const certificateRequest = applyProfileDefaults(requestedCertificate, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
     const {
       subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
@@ -1500,7 +1530,15 @@ export const certificateV3ServiceFactory = ({
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions }
+      {
+        profileCustomExtensions: profile.defaults?.customExtensions,
+        issuerAddedExtensions: additionalExtensions?.map((extension) => ({
+          oid: extension.oid,
+          critical: extension.critical,
+          value: extension.value.toString("base64"),
+          issuerAdded: true
+        }))
+      }
     );
 
     if (!validationResult.isValid) {
@@ -1522,6 +1560,10 @@ export const certificateV3ServiceFactory = ({
           "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
+
+    const renewedFromCertificateId = RENEWAL_LINKED_ENROLLMENT_TYPES.has(enrollmentType)
+      ? originalCertificateId
+      : undefined;
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
@@ -1591,6 +1633,7 @@ export const certificateV3ServiceFactory = ({
                   status: CertificateRequestStatus.PENDING_APPROVAL,
                   basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
                   customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
+                  renewedFromCertificateId: renewedFromCertificateId ?? null,
                   createdAt: certRequestCreatedAt
                 } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
                 tx
@@ -1605,6 +1648,8 @@ export const certificateV3ServiceFactory = ({
                   tx
                 });
               }
+
+              await onCertificateRequestPersisted?.(certRequest, tx);
 
               return certRequest;
             },
@@ -1682,15 +1727,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const subjectOverride = buildSubjectOverrideForCsr(csr, {
-      commonName: certificateRequest.commonName,
-      organization: certificateRequest.organization,
-      organizationalUnit: certificateRequest.organizationalUnit,
-      country: certificateRequest.country,
-      state: certificateRequest.state,
-      locality: certificateRequest.locality,
-      domainComponents: certificateRequest.domainComponents
-    });
+    const subjectOverride = buildIssuanceSubject(csr, certificateRequest, issuerNameOverride);
 
     // Record intent before the irreversible act. Signing is an external side effect that no database
     // rollback can undo, so the only way to stay accountable for it is to have a row on disk that
@@ -1751,7 +1788,7 @@ export const certificateV3ServiceFactory = ({
         basicConstraints: caBasicConstraints,
         pathLength: effectiveBasicConstraints?.pathLength,
         ttl: effectiveTtl,
-        altNames: undefined,
+        altNames: formatIssuerAltNames(issuerNameOverride),
         altNameEntries: altNameEntriesWithCommonName,
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
@@ -1800,6 +1837,7 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
+          await onCertificateRequestPersisted?.(pendingRequest, tx);
 
           if (isRenewal && originalCertificateId) {
             // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
@@ -1917,7 +1955,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
@@ -2480,7 +2518,7 @@ export const certificateV3ServiceFactory = ({
           operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
           enrollmentType: dto.enrollmentType,
           originalCertificateId: dto.originalCertificateId,
-          commonName: $commonNameFromCsr(dto.csr),
+          commonName: dto.issuerNameOverride?.commonName ?? $commonNameFromCsr(dto.csr),
           applicationId: dto.applicationId
         }
       });

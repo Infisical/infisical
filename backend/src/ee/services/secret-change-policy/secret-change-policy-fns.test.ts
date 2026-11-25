@@ -61,9 +61,9 @@ describe("readSecretChangePolicyConstraints", () => {
     expect(
       readSecretChangePolicyConstraints({
         version: 1,
-        constraints: { allowedSelfApprovals: "yes", enforceImportReplication: true }
+        constraints: { allowedSelfApprovals: "yes", enforceOnSecretImports: true }
       })
-    ).toEqual({ enforceImportReplication: true });
+    ).toEqual({ enforceOnSecretImports: true });
   });
 });
 
@@ -83,7 +83,7 @@ describe("toSecretChangePolicy", () => {
       secretPath: "/app",
       approvals: 2,
       allowedSelfApprovals: false,
-      enforceImportReplication: false,
+      enforceOnSecretImports: false,
       envId: ENV_DEV.id,
       environment: ENV_DEV,
       environments: [ENV_DEV, ENV_PROD],
@@ -116,10 +116,10 @@ describe("toSecretChangePolicy", () => {
 
   test("reads the import replication flag and defaults it to off", () => {
     expect(
-      toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: { enforceImportReplication: true } } }))
-        .enforceImportReplication
+      toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: { enforceOnSecretImports: true } } }))
+        .enforceOnSecretImports
     ).toBe(true);
-    expect(toSecretChangePolicy(buildRow({ constraints: "corrupt" })).enforceImportReplication).toBe(false);
+    expect(toSecretChangePolicy(buildRow({ constraints: "corrupt" })).enforceOnSecretImports).toBe(false);
   });
 
   test("treats a missing machine identity bypass flag as disabled", () => {
