@@ -198,8 +198,11 @@ const DOUBLE_ENCODED_HINT =
 export const getRfc2136ErrorMessage = (error: unknown, tsigSecret?: string): string => {
   if (!(error instanceof DnsUpdateError)) return (error as Error)?.message || "unknown error";
 
-  // PowerDNS reports a wrong secret as REFUSED rather than BADSIG
-  const isKeyRejection = error.tsigError === TsigError.BadSig || error.rcode === DnsRcode.Refused;
+  // PowerDNS reports a wrong secret as REFUSED to an update and a bare NOTAUTH to a query, rather than BADSIG
+  const isKeyRejection =
+    error.tsigError === TsigError.BadSig ||
+    error.rcode === DnsRcode.Refused ||
+    (error.reason === DnsUpdateErrorReason.TsigRejected && error.tsigError === undefined);
   if (isKeyRejection && tsigSecret && looksDoubleEncoded(tsigSecret)) {
     return `${getRfc2136ErrorMessage(error)}${DOUBLE_ENCODED_HINT}`;
   }
@@ -210,6 +213,9 @@ export const getRfc2136ErrorMessage = (error: unknown, tsigSecret?: string): str
         return `the DNS server rejected the request because its clock differs from Infisical's by more than 5 minutes${
           error.serverTime ? ` (server time ${new Date(error.serverTime * 1000).toISOString()})` : ""
         }`;
+      }
+      if (error.tsigError === undefined) {
+        return "the DNS server rejected the TSIG key. Check the key name, the secret and the algorithm";
       }
       return TSIG_ERROR_MESSAGES[error.tsigError as TsigError] ?? error.message;
     case DnsUpdateErrorReason.Rcode:

@@ -153,10 +153,10 @@ Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts H
         Allow the key to update the zone:
 
         ```bash
-        pdnsutil metadata set example.com TSIG-ALLOW-DNSUPDATE infisical-acme
+        pdnsutil metadata add example.com TSIG-ALLOW-DNSUPDATE infisical-acme
         ```
 
-        On older PowerDNS versions, run `pdnsutil set-meta example.com TSIG-ALLOW-DNSUPDATE infisical-acme` instead.
+        On older PowerDNS versions, run `pdnsutil add-meta example.com TSIG-ALLOW-DNSUPDATE infisical-acme` instead. Both add the key to the zone's list, so keys that other systems already use to update the zone keep working.
       </Step>
     </Steps>
 
@@ -277,7 +277,7 @@ Next, create the connection in Infisical with the key from [Step 1](#step-1-crea
   </Tab>
 </Tabs>
 
-When you save the connection, Infisical sends a signed test query to the DNS server to check that it can reach the server and that the server accepts the key. If the check fails, find the error message in [Troubleshooting](#troubleshooting).
+When you save the connection, Infisical sends a signed test query to the DNS server to check that it can reach the server and that the server accepts the key. Some servers, such as Knot DNS, don't sign their answer to this query, so Infisical can only check that they're reachable. On those servers, a wrong key shows up when the first certificate is requested. If the check fails, find the error message in [Troubleshooting](#troubleshooting).
 
 <Check>
   Your DNS Server (RFC 2136) connection is ready to use.
@@ -299,6 +299,7 @@ If Infisical can't save the connection or add a challenge record, the error mess
 | The error message contains | Fix |
 | --- | --- |
 | `the TSIG secret or algorithm does not match the key configured on the DNS server` | Copy the secret from the key file again, and check that **Algorithm** matches the key's algorithm |
+| `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server |
 | `does not recognize the TSIG key name or its algorithm` | Check **Key Name** for typos, and check that the DNS server has loaded the key |
 | `its clock differs from Infisical's by more than 5 minutes` | Sync the DNS server's clock with NTP |
 | `refused the update` | Copy the secret from the key file again (PowerDNS refuses updates signed with a wrong secret). Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE` and `allow-dnsupdate-from`), and that **Host** is the zone's primary server |

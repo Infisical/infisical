@@ -16,7 +16,7 @@ export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   dnsProviderConfig: z
     .object({
       provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
-      hostedZoneId: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
+      hostedZoneId: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
     })
     // RFC 2136 can detect the zone from the DNS server; every other provider needs it
     .superRefine(({ provider, hostedZoneId }, ctx) => {

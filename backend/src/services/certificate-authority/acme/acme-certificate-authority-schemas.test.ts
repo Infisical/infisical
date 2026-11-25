@@ -21,6 +21,21 @@ describe("AcmeCertificateAuthorityConfigurationSchema", () => {
     }
   });
 
+  it("lets RFC 2136 leave the zone out entirely, and still requires it for other providers", () => {
+    expect(
+      AcmeCertificateAuthorityConfigurationSchema.safeParse({
+        ...baseConfiguration,
+        dnsProviderConfig: { provider: AcmeDnsProvider.Rfc2136 }
+      }).success
+    ).toBe(true);
+    expect(
+      AcmeCertificateAuthorityConfigurationSchema.safeParse({
+        ...baseConfiguration,
+        dnsProviderConfig: { provider: AcmeDnsProvider.Cloudflare }
+      }).success
+    ).toBe(false);
+  });
+
   it("lets RFC 2136 leave the zone empty for detection", () => {
     const result = AcmeCertificateAuthorityConfigurationSchema.safeParse({
       ...baseConfiguration,

@@ -87,9 +87,14 @@ export const createDnsUpdateClient = ({
   key: TTsigKey;
   now?: () => number;
 }) => {
-  const exchange = async (buildMessage: (id: number) => Buffer): Promise<TExchangeResult> => {
+  const exchange = async (
+    buildMessage: (id: number) => Buffer,
+    { sign = true }: { sign?: boolean } = {}
+  ): Promise<TExchangeResult> => {
     const id = crypto.randomInt(0, 0x10000);
-    const { message, mac } = signDnsMessage(buildMessage(id), key, now());
+    const { message, mac } = sign
+      ? signDnsMessage(buildMessage(id), key, now())
+      : { message: buildMessage(id), mac: Buffer.alloc(0) };
     const reply = await transport(message);
 
     let layout: ReturnType<typeof scanDnsMessage>;
@@ -98,7 +103,7 @@ export const createDnsUpdateClient = ({
     try {
       layout = scanDnsMessage(reply);
       packet = dnsPacket.decode(reply);
-      verification = verifyDnsReply(reply, { key, requestMac: mac, now: now() });
+      verification = sign ? verifyDnsReply(reply, { key, requestMac: mac, now: now() }) : { status: "unsigned" };
     } catch (error) {
       throw new DnsUpdateError({
         reason: DnsUpdateErrorReason.MalformedReply,
@@ -158,6 +163,19 @@ export const createDnsUpdateClient = ({
     }
   };
 
+  // PowerDNS answers a signed question with a bad key with a bare, unsigned NOTAUTH. Asking the same question
+  // unsigned tells that apart from a server that answers NOTAUTH whatever the key.
+  const assertKeyNotRejected = async (result: TExchangeResult, buildMessage: (id: number) => Buffer) => {
+    if (result.rcode !== DnsRcode.NotAuth || result.verification.status !== "unsigned") return;
+    const unsigned = await exchange(buildMessage, { sign: false });
+    if (unsigned.rcode !== DnsRcode.NotAuth) {
+      throw new DnsUpdateError({
+        reason: DnsUpdateErrorReason.TsigRejected,
+        message: "the DNS server rejected the TSIG key"
+      });
+    }
+  };
+
   const updateTxtRecord = async ({
     zone,
     name,
@@ -176,21 +194,31 @@ export const createDnsUpdateClient = ({
     assertVerified(result);
   };
 
-  // RFC 2308: an authoritative answer about any name in a zone carries the zone's SOA, whose owner is the apex
-  const findZone = async (name: string): Promise<string | undefined> => {
-    const result = await exchange((id) => buildQueryMessage({ id, name, type: DnsRecordType.SOA }));
-    if (result.rcode === DnsRcode.Refused || result.rcode === DnsRcode.NotAuth) return undefined;
+  // RFC 2308: an authoritative answer about any name in a zone carries the zone's SOA, whose owner is the apex.
+  // A CNAME at the name is reported instead: the update would be ignored there, and the SOA belongs to the target.
+  const findZone = async (name: string): Promise<{ zone?: string; cnameTarget?: string }> => {
+    const buildMessage = (id: number) => buildQueryMessage({ id, name, type: DnsRecordType.SOA });
+    const result = await exchange(buildMessage);
+    await assertKeyNotRejected(result, buildMessage);
+    if (result.rcode === DnsRcode.Refused || result.rcode === DnsRcode.NotAuth) return {};
     assertRcode(result, [DnsRcode.NoError, DnsRcode.NxDomain]);
     assertVerified(result);
-    if (!result.authoritative) return undefined;
+    if (!result.authoritative) return {};
+
+    const normalizedName = normalizeDnsName(name);
+    const cname = (result.packet.answers ?? []).find(
+      (record): record is dnsPacket.StringAnswer =>
+        record.type === "CNAME" && normalizeDnsName(record.name) === normalizedName
+    );
+    if (cname) return { cnameTarget: normalizeDnsName(cname.data) };
 
     const soa = [...(result.packet.answers ?? []), ...(result.packet.authorities ?? [])].find(
       (record) => record.type === "SOA"
     );
-    if (!soa) return undefined;
+    if (!soa) return {};
 
     const zone = normalizeDnsName(soa.name);
-    return isDnsNameInZone(name, zone) ? zone : undefined;
+    return isDnsNameInZone(name, zone) ? { zone } : {};
   };
 
   const queryTxtRecord = async (name: string) => {
@@ -216,7 +244,9 @@ export const createDnsUpdateClient = ({
   // with no TSIG error only proves the server is reachable, because some servers do not sign replies for names
   // they are not authoritative for.
   const checkKey = async (): Promise<"verified" | "unverified"> => {
-    const result = await exchange((id) => buildQueryMessage({ id, name: ".", type: DnsRecordType.SOA }));
+    const buildMessage = (id: number) => buildQueryMessage({ id, name: ".", type: DnsRecordType.SOA });
+    const result = await exchange(buildMessage);
+    await assertKeyNotRejected(result, buildMessage);
     if (result.verification.status === "invalid") {
       throw new DnsUpdateError({
         reason: DnsUpdateErrorReason.UntrustedReply,

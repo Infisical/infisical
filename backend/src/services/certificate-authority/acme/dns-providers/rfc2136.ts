@@ -29,6 +29,13 @@ export const validateRfc2136Zone = (zone: string) => {
   }
 };
 
+// Infisical follows CNAMEs through public DNS only, so one that exists just on this server leaves the record name
+// pointing at a CNAME, where the server ignores a TXT update.
+const cnameError = (name: string, target: string, host: string) =>
+  new Error(
+    `'${name}' is an alias (CNAME) for '${target}' on DNS server '${host}', so the server can't add the TXT record there. Publish the CNAME in public DNS so Infisical follows it, or remove it.`
+  );
+
 // An empty zone means the CA leaves zone detection to the server (RFC 2308 SOA in the reply).
 const resolveZone = async (client: TDnsUpdateClient, zone: string, name: string, host: string) => {
   if (zone) {
@@ -40,7 +47,8 @@ const resolveZone = async (client: TDnsUpdateClient, zone: string, name: string,
     return normalizeDnsName(zone);
   }
 
-  const detected = await client.findZone(name);
+  const { zone: detected, cnameTarget } = await client.findZone(name);
+  if (cnameTarget) throw cnameError(name, cnameTarget, host);
   if (!detected) {
     throw new Error(
       `DNS server '${host}' is not authoritative for any zone containing '${name}'. Check that the connection points at the zone's primary server, or enter the zone on the certificate authority.`
@@ -63,11 +71,7 @@ const confirmTxtRecord = async (client: TDnsUpdateClient, name: string, value: s
 
   if (result.values.includes(value)) return;
 
-  if (result.cnameTarget) {
-    throw new Error(
-      `'${name}' is an alias (CNAME) for '${result.cnameTarget}' on DNS server '${host}', so the server did not add the TXT record. Publish the CNAME in public DNS so Infisical follows it, or remove it.`
-    );
-  }
+  if (result.cnameTarget) throw cnameError(name, result.cnameTarget, host);
   throw new Error(
     `DNS server '${host}' accepted the TXT record for '${name}' but does not serve it. Check that '${host}' is the zone's primary server and that the key's update policy allows TXT records at this name.`
   );

@@ -5,6 +5,7 @@ import {
   DnsRecordType,
   DnsWireError,
   encodeDnsName,
+  encodeResourceRecord,
   normalizeDnsName,
   readDnsName,
   scanDnsMessage,
@@ -95,12 +96,7 @@ export const signDnsMessage = (message: Buffer, key: TTsigKey, timeSigned: numbe
 
   const signed = Buffer.concat([
     message,
-    encodeDnsName(key.name),
-    uint16(DnsRecordType.TSIG),
-    uint16(DnsClass.ANY),
-    uint32(0),
-    uint16(rdata.length),
-    rdata
+    encodeResourceRecord({ name: key.name, type: DnsRecordType.TSIG, klass: DnsClass.ANY, ttl: 0, rdata })
   ]);
   signed.writeUInt16BE(message.readUInt16BE(10) + 1, 10);
 

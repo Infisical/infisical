@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 // Encoding and scanning of the DNS wire format for RFC 2136 updates. dns-packet cannot encode class NONE, which
 // deleting a single record needs, so outgoing messages are built here and dns-packet only decodes replies.
 
@@ -25,7 +27,8 @@ export enum DnsClass {
 const MAX_LABEL_LENGTH = 63;
 const MAX_NAME_WIRE_LENGTH = 255;
 const MAX_TXT_STRING_LENGTH = 255;
-const MAX_POINTER_JUMPS = 64;
+// Hostname-style labels only: anything else (spaces, CR/LF) would reach a non-DNS service raw if one is configured.
+const LABEL_REGEX = new RE2("^[A-Za-z0-9_-]+$");
 
 export class DnsWireError extends Error {
   constructor(message: string) {
@@ -46,7 +49,7 @@ export const encodeDnsName = (name: string): Buffer => {
 
   for (const label of labels) {
     const bytes = Buffer.from(label, "ascii");
-    if (!bytes.length || bytes.length > MAX_LABEL_LENGTH || bytes.toString("ascii") !== label) {
+    if (bytes.length > MAX_LABEL_LENGTH || !LABEL_REGEX.test(label)) {
       throw new DnsWireError(`'${name}' is not a valid DNS name`);
     }
     parts.push(Buffer.from([bytes.length]), bytes);
@@ -190,11 +193,13 @@ const ensureAvailable = (buf: Buffer, offset: number, length: number) => {
   if (offset + length > buf.length) throw new DnsWireError("DNS message is truncated");
 };
 
+// Bounded by RFC 1035 rules a hostile server could otherwise break to make us expand huge names: a name is at most
+// 255 bytes, and a compression pointer only points to an earlier position (which also rules out loops).
 export const readDnsName = (buf: Buffer, start: number): { name: string; next: number } => {
   const labels: string[] = [];
   let offset = start;
   let next = -1;
-  let jumps = 0;
+  let wireLength = 1;
 
   for (;;) {
     ensureAvailable(buf, offset, 1);
@@ -209,13 +214,15 @@ export const readDnsName = (buf: Buffer, start: number): { name: string; next: n
     if ((length & 0xc0) === 0xc0) {
       ensureAvailable(buf, offset, 2);
       if (next === -1) next = offset + 2;
-      jumps += 1;
-      if (jumps > MAX_POINTER_JUMPS) throw new DnsWireError("DNS message has a name compression loop");
       // eslint-disable-next-line no-bitwise
-      offset = buf.readUInt16BE(offset) & 0x3fff;
+      const target = buf.readUInt16BE(offset) & 0x3fff;
+      if (target >= offset) throw new DnsWireError("DNS message has a name pointer that does not point backwards");
+      offset = target;
     } else {
       // eslint-disable-next-line no-bitwise
       if (length & 0xc0) throw new DnsWireError("DNS message has an unsupported label type");
+      wireLength += 1 + length;
+      if (wireLength > MAX_NAME_WIRE_LENGTH) throw new DnsWireError("DNS message has a name longer than 255 bytes");
       ensureAvailable(buf, offset + 1, length);
       labels.push(buf.toString("ascii", offset + 1, offset + 1 + length));
       offset += 1 + length;

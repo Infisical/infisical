@@ -28,16 +28,24 @@ export const registerCertificateAuthorityEndpoints = <
 }: {
   caType: CaType;
   server: FastifyZodProvider;
-  createSchema: z.ZodType<{
-    name: string;
-    projectId?: string;
-    status: CaStatus;
-    configuration: I["configuration"];
-  }>;
-  updateSchema: z.ZodType<{
-    status?: CaStatus;
-    configuration?: I["configuration"];
-  }>;
+  createSchema: z.ZodType<
+    {
+      name: string;
+      projectId?: string;
+      status: CaStatus;
+      configuration: I["configuration"];
+    },
+    z.ZodTypeDef,
+    unknown
+  >;
+  updateSchema: z.ZodType<
+    {
+      status?: CaStatus;
+      configuration?: I["configuration"];
+    },
+    z.ZodTypeDef,
+    unknown
+  >;
   responseSchema: z.ZodTypeAny;
   updateResponseSchema?: z.ZodTypeAny;
 }) => {

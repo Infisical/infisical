@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 
-import { createDnsUpdateClient, DnsUpdateError, DnsUpdateErrorReason } from "./dns-update-client";
+import { createDnsUpdateClient, DnsUpdateErrorReason } from "./dns-update-client";
 import { signDnsMessage, TsigAlgorithm, TsigError, verifyDnsReply } from "./dns-update-tsig";
 import {
   buildQueryMessage,
@@ -12,6 +12,7 @@ import {
   encodeTxtRdata,
   isDnsNameInZone,
   isValidDnsName,
+  readDnsName,
   uint16
 } from "./dns-update-wire";
 
@@ -59,6 +60,11 @@ const FIXTURES = {
     response:
       "1a2f840000010001000000010f5f61636d652d6368616c6c656e67650361706904636f727003636f6d0000100001c00c000500010000003c000b036170690461636d65c0200e696e6669736963616c2d61636d650000fa00ff00000000003d0b686d61632d7368613235360000006553f100012c0020312028f45f9201a1520467ad232bc2dbb869f72ff801bd1e5203296a009857521a2f00000000"
   },
+  soaCname: {
+    id: 0x1a31,
+    response:
+      "1a31840000010001000000010f5f61636d652d6368616c6c656e67650361706904636f727003636f6d0000060001c00c000500010000003c0013036170690961636d652d7a6f6e65036e6574000e696e6669736963616c2d61636d650000fa00ff00000000003d0b686d61632d7368613235360000006553f100012c00208513b3f734bf85df9260d7f8d5baed0e6dbbc4affbd3ff8f0c18e6e62c76192a1a3100000000"
+  },
   refusedRoot: {
     id: 0x1a30,
     response:
@@ -95,6 +101,16 @@ const buildRejectedReply = (request: Buffer, error: TsigError) => {
     uint16(0)
   ]);
   reply.writeUInt16BE(0xa809, 2);
+  return reply;
+};
+
+// A bare reply to any request: its sections echoed, no TSIG, flagged as a response with the given RCODE.
+const bareReply = (request: Buffer, rcode: number) => {
+  const tsigStart = request.indexOf(encodeDnsName(KEY.name), 12);
+  const reply = Buffer.from(tsigStart === -1 ? request : request.subarray(0, tsigStart));
+  // eslint-disable-next-line no-bitwise
+  reply.writeUInt16BE(0x8000 | rcode, 2);
+  reply.writeUInt16BE(0, 10);
   return reply;
 };
 
@@ -135,10 +151,32 @@ describe("dns-update wire format", () => {
 
   it("rejects names that cannot be encoded", () => {
     expect(isValidDnsName("corp.com")).toBe(true);
+    expect(isValidDnsName("key_1.example-zone.com")).toBe(true);
+    expect(isValidDnsName("infisical-acme\r\nset injected 0 0 1")).toBe(false);
+    expect(isValidDnsName("infisical acme")).toBe(false);
     expect(isValidDnsName("corp..com")).toBe(false);
     expect(isValidDnsName(`${"a".repeat(64)}.com`)).toBe(false);
     expect(isValidDnsName("bücher.de")).toBe(false);
     expect(isValidDnsName("")).toBe(false);
+  });
+
+  it("refuses names longer than 255 bytes, however they are compressed", () => {
+    // 64-byte labels chained by pointers, each pointing back at the previous one
+    const parts: number[] = [];
+    const starts: number[] = [];
+    for (let k = 0; k < 8; k += 1) {
+      starts.push(parts.length);
+      parts.push(63, ...new Array<number>(63).fill(0x61));
+      if (k === 0) parts.push(0);
+      // eslint-disable-next-line no-bitwise
+      else parts.push(0xc0 | (starts[k - 1] >> 8), starts[k - 1] & 0xff);
+    }
+    expect(() => readDnsName(Buffer.from(parts), starts[7])).toThrow(/longer than 255 bytes/);
+  });
+
+  it("refuses name pointers that do not point backwards", () => {
+    expect(() => readDnsName(Buffer.from([0xc0, 0x00]), 0)).toThrow(/does not point backwards/);
+    expect(() => readDnsName(Buffer.from([0xc0, 0x02, 1, 0x61, 0]), 0)).toThrow(/does not point backwards/);
   });
 
   it("splits TXT values longer than 255 bytes into several strings", () => {
@@ -243,18 +281,49 @@ describe("dns-update client", () => {
     const { client } = createClient(FIXTURES.add.id + 1, hex(FIXTURES.add.response));
     await expect(
       client.updateTxtRecord({ zone: "corp.com", name: NAME, value: "X7f9kQ", ttl: 60, action: "add" })
-    ).rejects.toBeInstanceOf(DnsUpdateError);
+    ).rejects.toMatchObject({
+      reason: DnsUpdateErrorReason.MalformedReply,
+      message: "the DNS server sent a reply that does not match the request"
+    });
   });
 
   it("finds the zone from the SOA in an authoritative reply", async () => {
     const { client, transport } = createClient(FIXTURES.soa.id, hex(FIXTURES.soa.response));
-    await expect(client.findZone(NAME)).resolves.toBe("corp.com");
+    await expect(client.findZone(NAME)).resolves.toEqual({ zone: "corp.com" });
     expect(transport.mock.calls[0][0].toString("hex")).toBe(FIXTURES.soa.request);
   });
 
   it("finds no zone when the server refuses", async () => {
     const { client } = createClient(FIXTURES.soa.id, withRcode(stripTsig(hex(FIXTURES.soa.response)), 5));
-    await expect(client.findZone(NAME)).resolves.toBeUndefined();
+    await expect(client.findZone(NAME)).resolves.toEqual({});
+  });
+
+  it("reports a CNAME at the name instead of a zone", async () => {
+    const { client } = createClient(FIXTURES.soaCname.id, hex(FIXTURES.soaCname.response));
+    await expect(client.findZone(NAME)).resolves.toEqual({ cnameTarget: "api.acme-zone.net" });
+  });
+
+  // PowerDNS answers a bad key with a bare NOTAUTH; an unsigned retry tells that apart from a server that always does
+  it("treats a bare NOTAUTH as a rejected key only when the unsigned question is answered normally", async () => {
+    const rejected = createClient(FIXTURES.refusedRoot.id, (request) =>
+      bareReply(request, request.readUInt16BE(10) ? 9 : 5)
+    );
+    await expect(rejected.client.checkKey()).rejects.toMatchObject({ reason: DnsUpdateErrorReason.TsigRejected });
+    expect(rejected.transport).toHaveBeenCalledTimes(2);
+    expect(rejected.transport.mock.calls[1][0].readUInt16BE(10)).toBe(0);
+
+    const alwaysNotAuth = createClient(FIXTURES.refusedRoot.id, (request) => bareReply(request, 9));
+    await expect(alwaysNotAuth.client.checkKey()).resolves.toBe("unverified");
+
+    const zoneRejected = createClient(FIXTURES.soa.id, (request) =>
+      bareReply(request, request.readUInt16BE(10) ? 9 : 3)
+    );
+    await expect(zoneRejected.client.findZone(NAME)).rejects.toMatchObject({
+      reason: DnsUpdateErrorReason.TsigRejected
+    });
+
+    const zoneNotAuth = createClient(FIXTURES.soa.id, (request) => bareReply(request, 9));
+    await expect(zoneNotAuth.client.findZone(NAME)).resolves.toEqual({});
   });
 
   it("reads back TXT values and CNAMEs", async () => {

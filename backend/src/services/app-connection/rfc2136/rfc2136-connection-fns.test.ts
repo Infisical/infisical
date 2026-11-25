@@ -195,6 +195,12 @@ describe("getRfc2136ErrorMessage", () => {
   const refused = new DnsUpdateError({ reason: DnsUpdateErrorReason.Rcode, message: "x", rcode: DnsRcode.Refused });
   const doubleEncoded = Buffer.from("c2VjcmV0LWtleS1mb3ItdGVzdHMtMTIzNDU2Nzg5MDEy").toString("base64");
 
+  it("explains a key rejected without a TSIG error", () => {
+    const bareRejection = new DnsUpdateError({ reason: DnsUpdateErrorReason.TsigRejected, message: "x" });
+    expect(getRfc2136ErrorMessage(bareRejection)).toMatch(/rejected the TSIG key/);
+    expect(getRfc2136ErrorMessage(bareRejection, doubleEncoded)).toMatch(/base64-encoded twice/);
+  });
+
   it("adds the double-encoding hint only when the server rejected the key", () => {
     expect(getRfc2136ErrorMessage(badSig, doubleEncoded)).toMatch(/base64-encoded twice/);
     expect(getRfc2136ErrorMessage(refused, doubleEncoded)).toMatch(/base64-encoded twice/);
