@@ -21,7 +21,7 @@ import {
   addApplicationIdentity,
   addApplicationUsers,
   attachApiProfile,
-  cancelRevocationRequest,
+  cancelApprovalRequest,
   createActiveCertManagerProject,
   createApplicationWithApiProfile,
   createApprovalPolicy,
@@ -31,13 +31,13 @@ import {
   deleteCertificateProfile,
   deleteInternalCa,
   detachApplicationProfile,
-  getRevocationApprovalPolicy,
-  getRevocationRequest,
+  getApprovalPolicy,
+  getApprovalRequest,
   issueApplicationCertificate,
   listApplicationApprovalRequests,
-  listProjectRevocationRequests,
+  listProjectApprovalRequests,
   revokeCertificate,
-  updateRevocationApprovalPolicy
+  updateApprovalPolicy
 } from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createProjectGroup, deleteGroups } from "../../testUtils/groups";
@@ -362,13 +362,18 @@ describe("Certificate revocation lifecycle per actor", () => {
           actor.nameable ? policiesBefore + 1 : policiesBefore,
           await policyCount()
         );
-        const updated = await updateRevocationApprovalPolicy({
+        const updated = await updateApprovalPolicy({
+          policyType: ApprovalPolicyType.CertRevocation,
           policyId: configPolicy.id,
           steps: [{ requiredApprovals: 1, approvers: [actor.entry] }],
           authToken: adminToken
         }).raw();
         check(cell("1 update policy to name them"), actor.nameable ? 200 : 400, updated.statusCode);
-        const { steps } = await getRevocationApprovalPolicy({ policyId: configPolicy.id, authToken: adminToken });
+        const { steps } = await getApprovalPolicy({
+          policyType: ApprovalPolicyType.CertRevocation,
+          policyId: configPolicy.id,
+          authToken: adminToken
+        });
         check(
           cell("1 policy names them after the update"),
           actor.nameable,
@@ -414,7 +419,11 @@ describe("Certificate revocation lifecycle per actor", () => {
           appList.statusCode === 200 &&
             (appList.json().requests as { id: string }[]).some((r) => r.id === toApprove.requestId)
         );
-        const projectList = await listProjectRevocationRequests({ projectId, authToken: token }).raw();
+        const projectList = await listProjectApprovalRequests({
+          policyType: ApprovalPolicyType.CertRevocation,
+          projectId,
+          authToken: token
+        }).raw();
         check(
           cell("3 Project-scope list (and nav pending count) shows it pending"),
           actor.sees,
@@ -423,7 +432,11 @@ describe("Certificate revocation lifecycle per actor", () => {
               (r) => r.id === toApprove.requestId && r.status === "pending"
             )
         );
-        const detail = await getRevocationRequest({ requestId: toApprove.requestId, authToken: token }).raw();
+        const detail = await getApprovalRequest({
+          policyType: ApprovalPolicyType.CertRevocation,
+          requestId: toApprove.requestId,
+          authToken: token
+        }).raw();
         check(cell("3 GET detail status"), actor.sees ? 200 : 403, detail.statusCode);
         if (detail.statusCode === 200) {
           check(cell("3 GET detail canReview"), actor.named, detail.json().request.canReview);
@@ -462,7 +475,11 @@ describe("Certificate revocation lifecycle per actor", () => {
         );
 
         // Stage 5: cancel.
-        const cancelRes = await cancelRevocationRequest({ requestId: toCancel.requestId, authToken: token }).raw();
+        const cancelRes = await cancelApprovalRequest({
+          policyType: ApprovalPolicyType.CertRevocation,
+          requestId: toCancel.requestId,
+          authToken: token
+        }).raw();
         check(cell("5 cancel"), actor.raises ? 200 : 403, cancelRes.statusCode);
         check(
           cell("5 request after cancel"),
