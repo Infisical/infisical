@@ -131,6 +131,7 @@ const columns: DataTableColumn<Row>[] = [
     grow: true,
     wrap: true,
     text: (row) => row.label,
+    render: (row) => row.label,
     secondary: (row) => row.description
   },
   { id: "access", header: "Access", width: 140, render: (row) => <AccessBadge audit={row} /> },
