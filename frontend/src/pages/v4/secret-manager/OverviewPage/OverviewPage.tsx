@@ -131,7 +131,11 @@ import {
   withPending
 } from "./secrets/batch/pending";
 import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
-import { UnsavedEditsContext, useUnsavedEdits } from "./secrets/batch/unsaved-edits";
+import {
+  type UnsavedEdit,
+  UnsavedEditsContext,
+  useUnsavedEdits
+} from "./secrets/batch/unsaved-edits";
 import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
 import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
@@ -161,6 +165,7 @@ import { PendingApprovalsLine } from "./secrets/pending-approvals-line";
 import { usePlanGateHost } from "./secrets/plan-gates";
 import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
+import { ConfirmDependentsDialog } from "./secrets/row-actions/confirm-dependents-dialog";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
 import { FolderActions } from "./secrets/row-actions/folder-actions";
@@ -345,6 +350,7 @@ export const OverviewPage = () => {
   const [discardingPending, setDiscardingPending] = useState(false);
   const unsavedEdits = useUnsavedEdits();
   const [savingAll, setSavingAll] = useState(false);
+  const [saveAllHold, setSaveAllHold] = useState<"lookup" | "confirm">();
   const saveAllOutcome = useRef<{ saved: number; held: string[]; errors: string[] }>(undefined);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
@@ -990,12 +996,11 @@ export const OverviewPage = () => {
       );
   };
   const changeCount = (count: number) => `${count} ${count === 1 ? "change" : "changes"}`;
-  const saveAllEdits = () => {
-    const edits = unsavedEdits.list();
-    if (savingAll || !edits.length) return;
+  const saveEdits = (edits: UnsavedEdit[]) => {
+    if (!edits.length) return;
     const outcome = { saved: 0, held: [] as string[], errors: [] as string[] };
     saveAllOutcome.current = outcome;
-    const saves = edits.map((edit) => edit.save());
+    const saves = edits.map((edit) => edit.save(true));
     saveAllOutcome.current = undefined;
     setSavingAll(true);
     Promise.all(saves).then((results) => {
@@ -1022,6 +1027,29 @@ export const OverviewPage = () => {
       else toast({ tone: "ok", title: `Saved ${changeCount(results.length)}`, description });
     });
   };
+  const continueSaveAll = () => {
+    const edits = unsavedEdits.list();
+    if (edits.some((edit) => !edit.dependents)) {
+      setSaveAllHold("lookup");
+      return;
+    }
+    if (edits.some((edit) => edit.dependents?.length)) {
+      setSaveAllHold("confirm");
+      return;
+    }
+    setSaveAllHold(undefined);
+    saveEdits(edits);
+  };
+  useEffect(() => {
+    if (saveAllHold === "lookup") continueSaveAll();
+  }, [saveAllHold, unsavedEdits.version]);
+  const saveAllDependents = [
+    ...new Map(
+      (saveAllHold === "confirm" ? unsavedEdits.list() : [])
+        .flatMap((edit) => edit.dependents ?? [])
+        .map((dependent) => [dependent.id, dependent])
+    ).values()
+  ];
   const discardAllEdits = () => {
     if (savingAll) return;
     unsavedEdits.list().forEach((edit) => edit.discard());
@@ -2392,11 +2420,22 @@ export const OverviewPage = () => {
                   {
                     label: "Save all",
                     icon: "check",
-                    disabled: savingAll,
-                    loading: savingAll,
-                    onClick: saveAllEdits
+                    disabled: savingAll || Boolean(saveAllHold),
+                    loading: savingAll || saveAllHold === "lookup",
+                    onClick: continueSaveAll
                   }
                 ]}
+              />
+              <ConfirmDependentsDialog
+                open={saveAllHold === "confirm" && saveAllDependents.length > 0}
+                dependents={saveAllDependents}
+                onOpenChange={(open) => {
+                  if (!open) setSaveAllHold(undefined);
+                }}
+                onConfirm={() => {
+                  setSaveAllHold(undefined);
+                  saveEdits(unsavedEdits.list());
+                }}
               />
               {pendingHere.length ? (
                 <FloatingActionBar

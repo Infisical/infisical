@@ -109,7 +109,7 @@ import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { ConfirmDependentsDialog } from "./row-actions/confirm-dependents-dialog";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
-import { ReferencesDialog, useDependents } from "./row-actions/references-dialog";
+import { type Dependent, ReferencesDialog, useDependents } from "./row-actions/references-dialog";
 import { RenameSecretDialog } from "./row-actions/rename-secret-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
@@ -207,6 +207,8 @@ function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean })
   );
 }
 
+type InlineSave = (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
+
 function InlineEditor({
   label,
   scope,
@@ -216,6 +218,7 @@ function InlineEditor({
   undoLabel,
   dirtyFromStart,
   multiline,
+  confirmable,
   onSave,
   onCancel,
   idle
@@ -228,7 +231,8 @@ function InlineEditor({
   undoLabel: string;
   dirtyFromStart?: boolean;
   multiline?: boolean;
-  onSave: (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
+  confirmable?: { dependents?: Dependent[]; save: InlineSave };
+  onSave: InlineSave;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
@@ -238,12 +242,17 @@ function InlineEditor({
   const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
-  const save = () => {
+  const save = (confirmed = false) => {
     if (saving) return Promise.resolve(false);
     setSaving(true);
-    return onSave(draft, setError).finally(() => setSaving(false));
+    const run = confirmed && confirmable ? confirmable.save : onSave;
+    return run(draft, setError).finally(() => setSaving(false));
   };
-  useRegisterUnsavedEdit(dirty, { save, discard: onCancel });
+  useRegisterUnsavedEdit(dirty, {
+    save,
+    discard: onCancel,
+    dependents: confirmable ? confirmable.dependents : []
+  });
   const control = {
     autoFocus: true,
     readOnly: saving,
@@ -292,7 +301,7 @@ function InlineEditor({
           <Button variant="ghost" size="xs" onClick={onCancel}>
             {undoLabel}
           </Button>
-          <Button size="xs" loading={saving} onClick={save}>
+          <Button size="xs" loading={saving} onClick={() => save()}>
             {saveLabel}
           </Button>
         </span>
@@ -1206,6 +1215,72 @@ function SecretActionsRow({
   );
 }
 
+function EnvironmentValueEditor({
+  secret,
+  label,
+  initial,
+  onUpdate,
+  onDone
+}: {
+  secret: Secret;
+  label: string;
+  initial: string;
+  onUpdate: SecretUpdate;
+  onDone: () => void;
+}) {
+  const { dependents, isPending } = useDependents(secret);
+  const [held, setHeld] = useState<{
+    value: string;
+    onFieldError: (message: string) => void;
+    resolve: (ok: boolean | Promise<boolean>) => void;
+  }>();
+  const commit: InlineSave = (value, onFieldError) =>
+    onUpdate(secret, { value }, { title: `Updated ${secret.name} in ${label}` }, onFieldError).then(
+      (ok) => {
+        if (ok) onDone();
+        return ok;
+      }
+    );
+  const release = (confirmed: boolean) => {
+    if (!held) return;
+    setHeld(undefined);
+    held.resolve(confirmed ? commit(held.value, held.onFieldError) : false);
+  };
+  useEffect(() => {
+    if (held && !isPending && !dependents.length) release(true);
+  }, [held, isPending, dependents.length]);
+  return (
+    <>
+      <InlineEditor
+        multiline
+        label={`Value of ${secret.name} in ${label}`}
+        scope={secret}
+        initial={initial}
+        placeholder={secret.value.status === "unreadable" ? "Enter a new value" : "Secret value"}
+        saveLabel="Save"
+        undoLabel="Discard"
+        confirmable={{ dependents: isPending ? undefined : dependents, save: commit }}
+        onCancel={onDone}
+        onSave={(value, onFieldError) =>
+          !isPending && !dependents.length
+            ? commit(value, onFieldError)
+            : new Promise((resolve) => {
+                setHeld({ value, onFieldError, resolve });
+              })
+        }
+      />
+      <ConfirmDependentsDialog
+        open={Boolean(held) && !isPending && dependents.length > 0}
+        dependents={dependents}
+        onOpenChange={(open) => {
+          if (!open) release(false);
+        }}
+        onConfirm={() => release(true)}
+      />
+    </>
+  );
+}
+
 function EnvironmentValueCell({
   secret,
   label,
@@ -1256,28 +1331,12 @@ function EnvironmentValueCell({
             <Indicators secret={secret} />
           </>
         ) : (
-          <InlineEditor
-            multiline
-            label={`Value of ${secret.name} in ${label}`}
-            scope={secret}
+          <EnvironmentValueEditor
+            secret={secret}
+            label={label}
             initial={initial}
-            placeholder={
-              secret.value.status === "unreadable" ? "Enter a new value" : "Secret value"
-            }
-            saveLabel="Save"
-            undoLabel="Discard"
-            onCancel={() => setInitial(undefined)}
-            onSave={(value, onFieldError) =>
-              onUpdate(
-                secret,
-                { value },
-                { title: `Updated ${secret.name} in ${label}` },
-                onFieldError
-              ).then((ok) => {
-                if (ok) setInitial(undefined);
-                return ok;
-              })
-            }
+            onUpdate={onUpdate}
+            onDone={() => setInitial(undefined)}
           />
         )}
       </div>
