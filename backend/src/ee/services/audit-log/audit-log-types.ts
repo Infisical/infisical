@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType, TOidcConfigs } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
@@ -6,6 +6,7 @@ import {
   MicrosoftAutoenrollmentIssuanceResult,
   MicrosoftAutoenrollmentKeytabSource
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
+import { OIDC_CONFIG_AUDIT_FIELDS } from "@app/ee/services/oidc/oidc-config-types";
 import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -6195,45 +6196,30 @@ interface OrgSsoSettingsUpdateEvent {
   };
 }
 
+type TOidcConfigAuditFields = Pick<TOidcConfigs, (typeof OIDC_CONFIG_AUDIT_FIELDS)[number]>;
+
 interface CreateOidcConfigEvent {
   type: EventType.CREATE_OIDC_CONFIG;
   metadata: {
     oidcConfigId: string;
-    configurationType: string;
-    discoveryURL?: string | null;
-    issuer?: string | null;
-    allowedEmailDomains?: string | null;
-    isActive: boolean;
-    manageGroupMemberships: boolean;
-    jwtSignatureAlgorithm: string;
-  };
+    organizationName: string;
+  } & TOidcConfigAuditFields;
 }
 
 interface UpdateOidcConfigEvent {
   type: EventType.UPDATE_OIDC_CONFIG;
   metadata: {
     oidcConfigId: string;
-    configurationType?: string;
-    discoveryURL?: string;
-    issuer?: string;
-    authorizationEndpoint?: string;
-    jwksUri?: string;
-    tokenEndpoint?: string;
-    userinfoEndpoint?: string;
-    allowedEmailDomains?: string;
-    isActive?: boolean;
-    manageGroupMemberships?: boolean;
-    jwtSignatureAlgorithm?: string;
-    mfaClaimName?: string;
-    mfaAmrValues?: string[] | null;
+    organizationName: string;
     clientCredentialsUpdated: boolean;
-  };
+  } & Partial<TOidcConfigAuditFields>;
 }
 
 interface DeleteOidcConfigEvent {
   type: EventType.DELETE_OIDC_CONFIG;
   metadata: {
     oidcConfigId: string;
+    organizationName: string;
   };
 }
 

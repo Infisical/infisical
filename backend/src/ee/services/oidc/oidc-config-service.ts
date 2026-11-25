@@ -778,7 +778,7 @@ export const oidcConfigServiceFactory = ({
       await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
     }
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
-    return ssoConfig;
+    return { ...ssoConfig, organizationName: org.name };
   };
 
   const createOidcCfg = async ({
@@ -880,7 +880,7 @@ export const oidcConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
-    return oidcCfg;
+    return { ...oidcCfg, organizationName: org.name };
   };
 
   const deleteOidcCfg = async ({ organizationId, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteOidcCfgDTO) => {
@@ -904,8 +904,8 @@ export const oidcConfigServiceFactory = ({
     const deletedCfg = await oidcConfigDAL.transaction(async (tx) => {
       const deleted = await oidcConfigDAL.deleteById(oidcCfg.id, tx);
       // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
-      await orgDAL.updateById(organizationId, { authEnforced: false, scimEnabled: false }, tx);
-      return deleted;
+      const org = await orgDAL.updateById(organizationId, { authEnforced: false, scimEnabled: false }, tx);
+      return { ...deleted, organizationName: org.name };
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Delete, orgId: organizationId });

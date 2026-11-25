@@ -13,10 +13,16 @@ import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
+import { sanitizeOidcConfigAuditUrls } from "@app/ee/services/oidc/oidc-config-fns";
+import {
+  OIDC_CONFIG_AUDIT_FIELDS,
+  OIDCConfigurationType,
+  OIDCJWTSignatureAlgorithm
+} from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -227,7 +233,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        organizationId: z.string().trim().optional().describe(OidcSSo.GET_CONFIG.organizationId)
+        organizationId: z.string().trim().uuid().optional().describe(OidcSSo.GET_CONFIG.organizationId)
       }),
       response: {
         200: SanitizedOidcConfigSchema.pick({
@@ -316,7 +322,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
             .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm),
-          organizationId: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.organizationId)
+          organizationId: z.string().trim().uuid().describe(OidcSSo.UPDATE_CONFIG.organizationId)
         })
         .partial(),
       response: {
@@ -356,19 +362,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           type: EventType.UPDATE_OIDC_CONFIG,
           metadata: {
             oidcConfigId: oidc.id,
-            configurationType: req.body.configurationType,
-            discoveryURL: req.body.discoveryURL,
-            issuer: req.body.issuer,
-            authorizationEndpoint: req.body.authorizationEndpoint,
-            jwksUri: req.body.jwksUri,
-            tokenEndpoint: req.body.tokenEndpoint,
-            userinfoEndpoint: req.body.userinfoEndpoint,
-            allowedEmailDomains: req.body.allowedEmailDomains,
-            isActive: req.body.isActive,
-            manageGroupMemberships: req.body.manageGroupMemberships,
-            jwtSignatureAlgorithm: req.body.jwtSignatureAlgorithm,
-            mfaClaimName: req.body.mfaClaimName,
-            mfaAmrValues: req.body.mfaAmrValues,
+            organizationName: oidc.organizationName,
+            ...sanitizeOidcConfigAuditUrls(pick(req.body, [...OIDC_CONFIG_AUDIT_FIELDS])),
             clientCredentialsUpdated: req.body.clientId !== undefined || req.body.clientSecret !== undefined
           }
         }
@@ -439,7 +434,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
-          organizationId: z.string().trim().optional().describe(OidcSSo.CREATE_CONFIG.organizationId),
+          organizationId: z.string().trim().uuid().optional().describe(OidcSSo.CREATE_CONFIG.organizationId),
           mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.CREATE_CONFIG.mfaClaimName),
           mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.CREATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z
@@ -524,13 +519,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           type: EventType.CREATE_OIDC_CONFIG,
           metadata: {
             oidcConfigId: oidc.id,
-            configurationType: oidc.configurationType,
-            discoveryURL: oidc.discoveryURL,
-            issuer: oidc.issuer,
-            allowedEmailDomains: oidc.allowedEmailDomains,
-            isActive: oidc.isActive,
-            manageGroupMemberships: oidc.manageGroupMemberships,
-            jwtSignatureAlgorithm: oidc.jwtSignatureAlgorithm
+            organizationName: oidc.organizationName,
+            ...sanitizeOidcConfigAuditUrls(pick(oidc, [...OIDC_CONFIG_AUDIT_FIELDS]))
           }
         }
       });
@@ -570,7 +560,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        organizationId: z.string().trim().optional().describe(OidcSSo.DELETE_CONFIG.organizationId)
+        organizationId: z.string().trim().uuid().optional().describe(OidcSSo.DELETE_CONFIG.organizationId)
       }),
       response: {
         200: SanitizedOidcConfigSchema
@@ -592,7 +582,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.DELETE_OIDC_CONFIG,
           metadata: {
-            oidcConfigId: oidc.id
+            oidcConfigId: oidc.id,
+            organizationName: oidc.organizationName
           }
         }
       });
