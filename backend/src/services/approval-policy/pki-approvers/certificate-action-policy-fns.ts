@@ -3,11 +3,13 @@ import { approverKey, TApproverEntry, TApprovingPeople } from "./application-app
 
 export type TCertificateActionPolicyType = ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion;
 
-export const CERTIFICATE_ACTIONS: Record<TCertificateActionPolicyType, { label: string; noun: string; verb: string }> =
-  {
-    [ApprovalPolicyType.CertRevocation]: { label: "Revocation", noun: "revocation", verb: "revoke" },
-    [ApprovalPolicyType.CertDeletion]: { label: "Deletion", noun: "deletion", verb: "delete" }
-  };
+export const CERTIFICATE_ACTIONS: Record<
+  TCertificateActionPolicyType,
+  { label: string; noun: string; verb: string; gerund: string }
+> = {
+  [ApprovalPolicyType.CertRevocation]: { label: "Revocation", noun: "revocation", verb: "revoke", gerund: "revoking" },
+  [ApprovalPolicyType.CertDeletion]: { label: "Deletion", noun: "deletion", verb: "delete", gerund: "deleting" }
+};
 
 export enum ApprovalStepShortfallKind {
   NoApprovers = "no-approvers",

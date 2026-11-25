@@ -89,5 +89,5 @@ export const buildApproversCanNoLongerApproveSchema = (policyType: TCertificateA
     .boolean()
     .default(false)
     .describe(
-      `Whether too few of the approvers this pending request was raised with can still approve it for it ever to pass. Checked only when requests are listed or one is fetched by ID, and only for a pending request that hasn't expired. Every other request, and every other response, returns false. Once the policy has approvers who can approve, requesting the ${CERTIFICATE_ACTIONS[policyType].noun} again replaces such a request.`
+      `Whether too few of the approvers this pending request was raised with can still approve it for it ever to pass. Checked only when requests are listed or one is fetched by ID, and only for a pending request that hasn't expired. Every other request, and every other response, returns false. Once the policy has approvers who can approve, ${CERTIFICATE_ACTIONS[policyType].gerund} the certificate again replaces such a request.`
     );

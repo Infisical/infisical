@@ -26,7 +26,8 @@ describe("getCertPolicyTypeLabel", () => {
     [ApprovalPolicyType.CertRequest, CertRequestPolicyOperation.Issuance, "Issuance"],
     [ApprovalPolicyType.CertRequest, CertRequestPolicyOperation.Renewal, "Renewal"],
     [ApprovalPolicyType.CertRequest, undefined, "Issuance"],
-    [ApprovalPolicyType.CertRevocation, undefined, "Revocation"]
+    [ApprovalPolicyType.CertRevocation, undefined, "Revocation"],
+    [ApprovalPolicyType.CertDeletion, undefined, "Deletion"]
   ])("labels a %s policy with operation %s as %s", (type, operation, label) => {
     expect(getCertPolicyTypeLabel(type, operation)).toBe(label);
   });

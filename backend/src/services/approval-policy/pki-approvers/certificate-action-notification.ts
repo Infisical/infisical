@@ -7,14 +7,14 @@ import { ApprovalNotificationEvent } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import { CERTIFICATE_ACTIONS, TCertificateActionPolicyType } from "./certificate-action-policy-fns";
 
-type TCertificateActionRequestData = Parameters<typeof getCertificateDisplayName>[0];
+type TNamedCertificate = Parameters<typeof getCertificateDisplayName>[0];
 
 export const buildCertificateActionNotification =
   (policyType: TCertificateActionPolicyType): NonNullable<TApprovalResource["buildNotification"]> =>
   async ({ event, request, failureReason }) => {
     const { label, noun, verb } = CERTIFICATE_ACTIONS[policyType];
     const certificateName = getCertificateDisplayName(
-      (request.requestData as { requestData: TCertificateActionRequestData }).requestData
+      (request.requestData as { requestData: TNamedCertificate }).requestData
     );
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
