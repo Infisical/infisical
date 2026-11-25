@@ -254,7 +254,6 @@ const CaCertificatesList = ({
     <List
       label="CA certificates"
       title="CA certificates"
-      size="sm"
       loading={isPending}
       loadingRows={2}
       empty={<EmptyState size="sm" media="bare" icon="cert" title="No CA certificates installed" />}
