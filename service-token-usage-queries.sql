@@ -13,6 +13,8 @@
 --     are counted as their own org.
 --   * Expired tokens are deleted the next time someone presents them, so counts of older
 --     tokens are slightly low.
+--   * identity_access_tokens is not in the analytics schema, so identities are counted by
+--     existence, not by recent use. Active service tokens are compared with all identities.
 
 
 -- =====================================================================================
@@ -319,44 +321,3 @@ FROM analytics.service_tokens s
 GROUP BY 1
 ORDER BY 1;
 
-
--- =====================================================================================
--- ST8. Active service tokens vs active identities (identities that authenticated recently)
--- =====================================================================================
--- Needs identity_access_tokens in the analytics schema. Access token rows are removed after
--- they expire, so this undercounts identities that authenticate rarely.
-SET statement_timeout = 0;
-WITH
-active_idn AS (
-  SELECT i."orgId" AS org_id, count(DISTINCT t."identityId") AS active_identities
-  FROM analytics.identity_access_tokens t
-  JOIN analytics.identities i ON i.id = t."identityId"
-  WHERE t."accessTokenLastUsedAt" > now() - interval '30 days'
-  GROUP BY i."orgId"
-),
-active_st AS (
-  SELECT p."orgId" AS org_id, count(*) AS active_tokens
-  FROM analytics.service_tokens s
-  JOIN analytics.projects p ON p.id = s."projectId"
-  WHERE s."lastUsed" > now() - interval '30 days'
-    AND (s."expiresAt" IS NULL OR s."expiresAt" > now())
-  GROUP BY p."orgId"
-),
-idn AS (
-  SELECT i."orgId" AS org_id, count(*) AS identities FROM analytics.identities i GROUP BY i."orgId"
-)
-SELECT
-  CASE WHEN COALESCE(idn.identities, 0) > 5 THEN 'paying (>5 identities)' ELSE 'free (<=5 identities)' END AS segment,
-  count(*) FILTER (WHERE COALESCE(s.active_tokens, 0) > 0)        AS orgs_with_active_tokens,
-  count(*) FILTER (WHERE COALESCE(a.active_identities, 0) > 0)    AS orgs_with_active_identities,
-  sum(COALESCE(s.active_tokens, 0))                               AS active_tokens,
-  sum(COALESCE(a.active_identities, 0))                           AS active_identities,
-  round(100.0 * sum(COALESCE(s.active_tokens, 0))
-        / NULLIF(sum(COALESCE(s.active_tokens, 0)) + sum(COALESCE(a.active_identities, 0)), 0), 1)
-                                                                  AS service_token_share_of_active_machine_auth
-FROM (SELECT org_id FROM active_idn UNION SELECT org_id FROM active_st) o
-LEFT JOIN active_idn a ON a.org_id = o.org_id
-LEFT JOIN active_st s ON s.org_id = o.org_id
-LEFT JOIN idn ON idn.org_id = o.org_id
-GROUP BY 1
-ORDER BY 1;
