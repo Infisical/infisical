@@ -1,5 +1,6 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { ActorGrants, Grant, RuleIdentity, RuleSet } from "@app/domains/platform/access-control/ce/module";
 import type { TPrincipal } from "@app/lib/auth/principal";
 
@@ -89,9 +90,10 @@ export class ProjectAccess {
     return RuleSet.merge(grants.map((grant) => roles.rulesFor(grant).map((rule) => expandLegacyForbid(rule))));
   }
 
-  // A built-in admin of the project. A custom role slugged "admin" is not.
-  get isAdmin(): boolean {
-    return this.grants.hasActiveBuiltInRole("admin");
+  // Holds the built-in admin role, whatever a delegated OAuth token's scopes cut from its permission. A custom role
+  // slugged "admin" does not count.
+  get holdsBuiltInAdmin(): boolean {
+    return this.grants.hasActiveBuiltInRole(ProjectMembershipRole.Admin);
   }
 
   roleRules(): RuleSet<TProjectRule> {

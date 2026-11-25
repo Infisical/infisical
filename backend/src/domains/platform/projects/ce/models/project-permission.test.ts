@@ -179,10 +179,8 @@ describe("ProjectPermission.hasRole", () => {
     const narrowed = build({ rules: projectAdminPermissions, grants, principal: delegated });
 
     // Assert
-    expect([full.hasRole({ slug: "admin" }), full.isAdmin]).toEqual([true, true]);
-    expect([narrowed.hasRole({ slug: "admin" }), narrowed.hasBuiltInRole({ slug: "admin" }), narrowed.isAdmin]).toEqual(
-      [false, false, false]
-    );
+    expect([full.hasRole({ slug: "admin" }), full.hasBuiltInRole({ slug: "admin" })]).toEqual([true, true]);
+    expect([narrowed.hasRole({ slug: "admin" }), narrowed.hasBuiltInRole({ slug: "admin" })]).toEqual([false, false]);
   });
 });
 

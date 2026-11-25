@@ -80,22 +80,22 @@ const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<str
 
 // An ordered list of CASL rules. CASL lets the last matching rule decide, so the order is the precedence: merge keeps
 // a deny from one role from being undone by another's allow, and then lets a later layer decide where it matches.
-export class RuleSet<TRule extends object = TRuleLike> {
+export class RuleSet<TRule extends TRuleLike = TRuleLike> {
   private constructor(private readonly list: TRule[]) {}
 
-  static of<T extends object>(rules: T[]): RuleSet<T> {
+  static of<T extends TRuleLike>(rules: T[]): RuleSet<T> {
     return new RuleSet<T>([...rules]);
   }
 
-  static empty<T extends object>(): RuleSet<T> {
+  static empty<T extends TRuleLike>(): RuleSet<T> {
     return new RuleSet<T>([]);
   }
 
   // Rules held together (several roles): everything any of them allows, and any of them can deny. Cannot rules go
   // last, keeping each run in its order.
-  static merge<T extends object>(sets: T[][]): RuleSet<T> {
+  static merge<T extends TRuleLike>(sets: T[][]): RuleSet<T> {
     const flat = sets.flat();
-    const isDeny = (rule: T) => Boolean((rule as TRuleLike).inverted);
+    const isDeny = (rule: T) => Boolean(rule.inverted);
     return new RuleSet<T>([...flat.filter((rule) => !isDeny(rule)), ...flat.filter(isDeny)]);
   }
 
@@ -143,9 +143,8 @@ export class RuleSet<TRule extends object = TRuleLike> {
   // and cannot rules kept, since they only restrict.
   narrowTo(allowed: Map<string, Set<string>>): RuleSet<TRule> {
     return new RuleSet<TRule>(
-      this.list.flatMap((listed) => {
-        const rule = listed as TRuleLike;
-        if (rule.inverted) return [listed];
+      this.list.flatMap((rule) => {
+        if (rule.inverted) return [rule];
         const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
         const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
         const grantsManage = ruleActions.includes(CASL_MANAGE_ACTION);
@@ -155,7 +154,7 @@ export class RuleSet<TRule extends object = TRuleLike> {
             const actions = grantsManage
               ? [...allowedActions]
               : ruleActions.filter((action) => allowedActions.has(action));
-            return actions.length ? [{ ...listed, subject, action: actions } as TRule] : [];
+            return actions.length ? [{ ...rule, subject, action: actions }] : [];
           })
         );
       })

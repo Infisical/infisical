@@ -255,7 +255,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     access: ProjectAccess;
   }): Promise<TSecretsPermission> {
     // A folder grant can predate a promotion to admin; it must never restrict an admin.
-    const folderGrants = access.isAdmin
+    const folderGrants = access.holdsBuiltInAdmin
       ? FolderGrants.none()
       : await this.cachedFolderGrants({
           actor: roleHolderOf(actor.principal, { projectId: access.project.id }),

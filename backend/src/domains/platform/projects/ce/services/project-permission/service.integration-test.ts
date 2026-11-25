@@ -66,7 +66,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
 
     // Assert
     expect(permission.can(createMember)).toBe(true);
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
   });
 
   test("should apply a custom role held through a group, with the user's name filled in", async () => {
@@ -126,7 +126,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     const permission = await service.getProjectPermission({ actor: await actor(), projectId: tenant.project.id });
 
     // Assert
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.can({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Tags })).toBe(true);
     expect(permission.can(createMember)).toBe(false);
   });

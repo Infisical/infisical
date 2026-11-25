@@ -251,7 +251,7 @@ describe("ProjectAccess.rulesOf", () => {
   });
 });
 
-describe("ProjectAccess.isAdmin", () => {
+describe("ProjectAccess.holdsBuiltInAdmin", () => {
   test("should be true for the built-in admin role only", async () => {
     // Setup
     const [admin, lookalike, expired] = await Promise.all([
@@ -261,7 +261,7 @@ describe("ProjectAccess.isAdmin", () => {
     ]);
 
     // Action
-    const isAdmin = [admin, lookalike, expired].map((access) => access.isAdmin);
+    const isAdmin = [admin, lookalike, expired].map((access) => access.holdsBuiltInAdmin);
 
     // Assert
     expect(isAdmin).toEqual([true, false, false]);

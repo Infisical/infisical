@@ -274,7 +274,7 @@ describe("AccessBundlePermissionService.getAgentVaultPermission", () => {
     const { permission } = await service.getAgentVaultPermission({ actor, projectId: PROJECT_ID });
 
     // Assert
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.hasRole({ slug: ProjectMembershipRole.Member })).toBe(true);
   });
 });

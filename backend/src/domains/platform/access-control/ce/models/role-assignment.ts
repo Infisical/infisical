@@ -86,8 +86,19 @@ export class RoleAssignment {
     return this.access.isActive(now);
   }
 
+  // Decided by the stored slug, as Grant decides it, so the answer always matches the rules the role grants.
+  get isCustom(): boolean {
+    return this.toGrant().isCustom();
+  }
+
   isBuiltIn(slug: string): boolean {
-    return !this.record.customRoleId && this.record.role === slug;
+    return this.toGrant().isBuiltIn(slug);
+  }
+
+  // What a listing calls the role: a custom role's own name (or slug), otherwise the built-in slug.
+  get displayName(): string {
+    if (!this.isCustom) return this.record.role;
+    return this.record.customRoleName || this.record.customRoleSlug || "Custom";
   }
 
   toGrant(): Grant {

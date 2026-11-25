@@ -86,10 +86,6 @@ export class ProjectPermission extends ActorPermission<ProjectPermissionSet> {
     return !this.isDelegated && this.grants.hasActiveBuiltInRole(slug);
   }
 
-  get isAdmin(): boolean {
-    return this.hasBuiltInRole({ slug: "admin" });
-  }
-
   hasProjectEnforcement({ name }: { name: "enforceEncryptedSecretManagerSecretMetadata" }): boolean {
     return name === "enforceEncryptedSecretManagerSecretMetadata" && this.project.enforcesEncryptedSecretMetadata;
   }

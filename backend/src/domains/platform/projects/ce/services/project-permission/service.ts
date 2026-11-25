@@ -257,12 +257,11 @@ export class ProjectPermissionService implements TProjectPermissionService {
     const sources: TProjectPermissionAuditSource[] = grants.memberships.flatMap((membership) => {
       const groupId = membership.viaGroupId ?? undefined;
       return membership.activeRoles(now).map((role): TProjectPermissionAuditSource => {
-        const isCustom = role.role === ProjectMembershipRole.Custom;
         return {
           id: role.id,
           type: groupId ? "group_role" : "role",
-          name: isCustom ? role.customRoleName || role.customRoleSlug || "Custom" : role.role,
-          slug: isCustom ? ProjectMembershipRole.Custom : role.role,
+          name: role.displayName,
+          slug: role.role,
           groupId,
           groupName: groupId ? groupNameById.get(groupId) : undefined,
           isTemporary: role.isTemporary,

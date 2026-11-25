@@ -7,7 +7,8 @@ import {
   Permission,
   RuleSet,
   TRuleSource,
-  TPermissionRule
+  TPermissionRule,
+  TRuleLike
 } from "@app/domains/platform/access-control/ce/module";
 
 import { Project } from "./project";
@@ -21,6 +22,9 @@ export type TResourceRoles<TSet extends AbilityTuple> = {
   // What a project admin gets on a resource it holds no role on, and on top of its roles where it holds some.
   projectAdminRules(): TPermissionRule<TSet>[];
 };
+
+// TypeScript cannot resolve a CASL raw rule over a generic ability set, so it cannot see it is a rule like any other.
+const asRules = <T extends AbilityTuple>(rules: TPermissionRule<T>[]) => rules as TRuleLike[];
 
 // What an actor may do on resources inside a project, from its memberships on them.
 export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permission<TSet> {
@@ -49,8 +53,8 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
     isProjectAdmin: boolean;
     project?: Project | null;
   }): ProjectResourcePermission<T> {
-    const held = RuleSet.merge(grants.active().map((grant) => roles.rulesFor(grant)));
-    const rules = isProjectAdmin ? held.then(RuleSet.of(roles.projectAdminRules())) : held;
+    const held = RuleSet.merge(grants.active().map((grant) => asRules(roles.rulesFor(grant))));
+    const rules = isProjectAdmin ? held.then(RuleSet.of(asRules(roles.projectAdminRules()))) : held;
     return new ProjectResourcePermission<T>(rules, grants, false, isProjectAdmin, project);
   }
 
@@ -63,7 +67,7 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
     project?: Project | null;
   }): ProjectResourcePermission<T> {
     return new ProjectResourcePermission<T>(
-      RuleSet.of(roles.projectAdminRules()),
+      RuleSet.of(asRules(roles.projectAdminRules())),
       ActorGrants.empty(),
       true,
       true,

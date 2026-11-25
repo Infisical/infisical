@@ -27,7 +27,7 @@ import { StandardProjectRoles, TProjectRoles, TProjectRule } from "../../models/
 import { buildProjects } from "../../testing/build-projects";
 import { InMemoryProjectCache } from "../../testing/in-memory-project-cache";
 import { InMemoryProjectStore } from "../../testing/in-memory-project-store";
-import { ProjectPermissionService } from "./service";
+import { ProjectPermissionService, TProjectPermissionService } from "./service";
 
 const createMember = { action: ProjectPermissionMemberActions.Create, subject: ProjectPermissionSub.Member } as const;
 const readMember = { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member } as const;
@@ -92,7 +92,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
 
     // Assert
     expect(permission.can(createMember)).toBe(true);
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.project.id).toBe(projectId);
   });
 
@@ -160,7 +160,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     const permission = await service.getProjectPermission({ actor: actor(), projectId });
 
     // Assert
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.can(readMember)).toBe(true);
     expect(permission.can(createMember)).toBe(false);
   });
@@ -250,7 +250,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     expect(permission.can(readValueAt("/"))).toBe(true);
     expect(permission.can(createMember)).toBe(false);
     expect(permission.hasRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
   });
 
   test("should narrow an identity's permission built during a delegated OAuth request to the request's scopes", async () => {
@@ -299,7 +299,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     });
 
     // Assert
-    expect(permission.isAdmin).toBe(false);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
     expect(permission.can(readValueAt("/deployer"))).toBe(true);
     expect(permission.can(readValueAt("/ada"))).toBe(false);
   });
@@ -318,7 +318,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     });
 
     // Assert
-    expect(permission.isAdmin).toBe(true);
+    expect(permission.hasBuiltInRole({ slug: ProjectMembershipRole.Admin })).toBe(true);
   });
 
   test("should refuse a project that belongs to another org with the legacy 403 message", async () => {
@@ -784,5 +784,29 @@ describe("ProjectPermissionService.getPermissionAuditSources", () => {
     // Assert
     expect(sources.find(({ id }) => id === member.id)?.permissions).toEqual(packRules(genericProjectRoles.member));
     expect(sources.find(({ id }) => id === privilege.id)?.permissions).toEqual(packRules([editTags]));
+  });
+});
+
+describe("ProjectPermissionService for a project that does not exist", () => {
+  test.each([
+    {
+      method: "getProjectPermissionByRoles",
+      call: (service: TProjectPermissionService, projectId: string) =>
+        service.getProjectPermissionByRoles({ projectId, roles: [ProjectMembershipRole.Admin] })
+    },
+    {
+      method: "getGrantPermissions",
+      call: (service: TProjectPermissionService, projectId: string, orgId: string, userId: string) =>
+        service.getGrantPermissions({ actor: { type: ActorType.USER, id: userId, name: "ada" }, orgId, projectId })
+    }
+  ])("should read roles with the generic tables in $method, as the legacy engine did", async ({ call }) => {
+    // Setup
+    const { service, orgId, userId } = arrange();
+
+    // Action
+    const result = call(service, randomUUID(), orgId, userId);
+
+    // Assert
+    await expect(result).resolves.toBeDefined();
   });
 });
