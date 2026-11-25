@@ -216,6 +216,20 @@ describe("audit-log-queue pushToLog", () => {
     expect(ttl).toBe(5 * MS_IN_DAY);
   });
 
+  // Routes spread req.auditLogInfo, which carries orgId, so a project event arrives with both ids.
+  test("applies the project-level retention and names the project when the entry carries both orgId and projectId", async () => {
+    const { service, keyStore, projectDAL, licenseService } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
+    licenseService.setPlan("org-1", { auditLogsRetentionDays: 30 });
+
+    await service.pushToLog(dto({ orgId: "org-1", projectId: "p1" }) as never);
+
+    const parsed = pushedEntry(keyStore);
+    const ttl = new Date(parsed.expiresAt as string).getTime() - new Date(parsed.createdAt as string).getTime();
+    expect(ttl).toBe(5 * MS_IN_DAY);
+    expect(parsed.projectName).toBe("proj");
+  });
+
   test("drops (no streamAdd) an entry with neither orgId nor projectId", async () => {
     const { service, keyStore } = await createHarness();
 

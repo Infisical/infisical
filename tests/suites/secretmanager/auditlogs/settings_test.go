@@ -3,6 +3,7 @@ package auditlogs_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
@@ -134,6 +135,28 @@ func TestAuditLog_Retention(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, got.JSON200)
 		require.Nil(t, got.JSON200.Project.AuditLogsRetentionDays)
+	})
+
+	t.Run("should expire events after the project's retention when it is within the plan", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().With(license.AuditRetentionDays, 30)))
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		res, err := tn.Admin.API.UpdateProjectAuditLogsRetentionWithResponse(t.Context(), proj.ID,
+			api.UpdateProjectAuditLogsRetentionJSONRequestBody{AuditLogsRetentionDays: 7})
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode())
+
+		// Action
+		secretmanager.CreateSecret(t, proj, "dev", "RETAINED", "v")
+
+		// Assert
+		evs := waitForEvents(t, proj, filter{EventType: new("create-secret"), SecretKey: new("RETAINED")}, 1)
+		require.NotNil(t, evs[0].ExpiresAt)
+		require.WithinDuration(t, evs[0].CreatedAt.Add(7*24*time.Hour), *evs[0].ExpiresAt, time.Minute)
+		require.NotNil(t, evs[0].ProjectName)
+		require.Equal(t, proj.Name, *evs[0].ProjectName)
 	})
 
 	t.Run("should keep a retention within the plan", func(t *testing.T) {
