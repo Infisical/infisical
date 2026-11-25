@@ -506,7 +506,8 @@
                           "documentation/platform/pki/guides/applications/jamf-pro-scep",
                           "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
-                      }
+                      },
+                      "documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment"
                     ]
                   },
                   "documentation/platform/pki/applications/certificates",
@@ -2296,7 +2297,8 @@
                           "api-reference/endpoints/app-connections/ldap/get-by-name",
                           "api-reference/endpoints/app-connections/ldap/create",
                           "api-reference/endpoints/app-connections/ldap/update",
-                          "api-reference/endpoints/app-connections/ldap/delete"
+                          "api-reference/endpoints/app-connections/ldap/delete",
+                          "api-reference/endpoints/app-connections/ldap/list-groups"
                         ]
                       },
                       {
@@ -4296,6 +4298,15 @@
                             "pages": [
                               "api-reference/endpoints/pki/applications/enrollment/set-scep",
                               "api-reference/endpoints/pki/applications/enrollment/clear-scep"
+                            ]
+                          },
+                          {
+                            "group": "Microsoft Autoenrollment",
+                            "pages": [
+                              "api-reference/endpoints/pki/applications/enrollment/set-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/clear-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/reenroll-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/get-microsoft-autoenrollment-service-principal"
                             ]
                           }
                         ]

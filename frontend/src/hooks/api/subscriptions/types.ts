@@ -81,6 +81,7 @@ export type SubscriptionPlan = {
   pkiAcme: boolean;
   pkiEst: boolean;
   pkiScep: boolean;
+  pkiMicrosoftAutoenrollment: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
   pkiOcsp: boolean;
