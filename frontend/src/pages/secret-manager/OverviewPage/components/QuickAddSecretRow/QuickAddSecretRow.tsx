@@ -630,7 +630,7 @@ export const QuickAddSecretRow = ({
           {isDraftActive && (
             <SecretInputActions
               className={
-                isMultiEnvironmentView ? "absolute top-1.5 right-3" : "absolute top-0 -right-1.5"
+                isMultiEnvironmentView ? "absolute top-1.5 right-2" : "absolute top-0 -right-1.5"
               }
               isSaveDisabled={isSubmitting || isCommittingEdits || Boolean(duplicateError)}
               isUndoDisabled={isSubmitting || isCommittingEdits}
