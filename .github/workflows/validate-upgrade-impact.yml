@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "upgrade-impact/**"
+      - "helm-charts/bump-infisical-core-app-version.sh"
       - ".github/workflows/validate-upgrade-impact.yml"
       - ".github/workflows/bump-helm-infisical-core-app-version.yml"
 
