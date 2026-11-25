@@ -174,6 +174,10 @@ const schema = z
     mfaAuthnContexts: z
       .array(z.string().trim().min(1).max(512, "Context value is too long"))
       .max(20, "At most 20 contexts")
+      .default([]),
+    mfaAttributeValues: z
+      .array(z.string().trim().min(1).max(512, "Value is too long"))
+      .max(20, "At most 20 values")
       .default([])
   })
   .required();
@@ -196,13 +200,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateSSOConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
   const [authnContextTagError, setAuthnContextTagError] = useState<string | null>(null);
+  const [attributeValueTagError, setAttributeValueTagError] = useState<string | null>(null);
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML,
       mfaSignalAttribute: "",
-      mfaAuthnContexts: []
+      mfaAuthnContexts: [],
+      mfaAttributeValues: []
     },
     resolver: zodResolver(schema)
   });
@@ -215,7 +221,8 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         issuer: data?.issuer ?? "",
         cert: data?.cert ?? "",
         mfaSignalAttribute: data?.mfaSignalAttribute ?? "",
-        mfaAuthnContexts: data?.mfaAuthnContexts ?? []
+        mfaAuthnContexts: data?.mfaAuthnContexts ?? [],
+        mfaAttributeValues: data?.mfaAttributeValues ?? []
       });
     }
   }, [data]);
@@ -231,7 +238,8 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
       issuer: "",
       cert: "",
       mfaSignalAttribute: null,
-      mfaAuthnContexts: null
+      mfaAuthnContexts: null,
+      mfaAttributeValues: null
     });
 
     createNotification({
@@ -246,13 +254,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     issuer,
     cert,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }: AddSSOFormData) => {
     if (!currentOrg) return;
 
     const mfaSignal = {
       mfaSignalAttribute: mfaSignalAttribute || null,
-      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
+      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null,
+      mfaAttributeValues: mfaAttributeValues.length > 0 ? mfaAttributeValues : null
     };
     const payload = {
       organizationId: currentOrg.id,
@@ -460,6 +470,31 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                         methods the user completed. Leave empty to use the {providerName} default.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="mfaAttributeValues"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="sso-mfa-attribute-values">
+                        Additional MFA Attribute Values (Optional)
+                      </FieldLabel>
+                      <TagsInput
+                        id="sso-mfa-attribute-values"
+                        placeholder="swk"
+                        value={value}
+                        onValueChange={onChange}
+                        validateTag={rejectDuplicateTag}
+                        onValidationError={setAttributeValueTagError}
+                        isError={Boolean(attributeValueTagError || error)}
+                      />
+                      <FieldDescription>
+                        Values of the MFA attribute counted as MFA, in addition to mfa and
+                        multipleauthn. Press Enter to add.
+                      </FieldDescription>
+                      <FieldError>{attributeValueTagError ?? error?.message}</FieldError>
                     </Field>
                   )}
                 />
