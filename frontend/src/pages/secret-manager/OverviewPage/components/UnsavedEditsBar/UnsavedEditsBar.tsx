@@ -63,6 +63,7 @@ type TUnsavedEditsRegistry = {
   takeDraft: (key: string) => TUnsavedChange[] | undefined;
   holdDrafts: (changes: TUnsavedChange[]) => void;
   dropHeldDrafts: () => void;
+  renameHeldDraft: (environment: string, secretPath: string, from: string, to: string) => void;
   setCommitting: (isCommitting: boolean) => void;
 };
 
@@ -152,6 +153,17 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
         );
         sync();
       },
+      renameHeldDraft: (environment, secretPath, from, to) => {
+        const key = getUnsavedDraftKey(environment, secretPath, from);
+        const edit = edits.get(key);
+        if (!edit?.isHeld) return;
+        edits.delete(key);
+        hold(
+          getUnsavedDraftKey(environment, secretPath, to),
+          edit.getChanges().map((change) => ({ ...change, secretKey: to }))
+        );
+        sync();
+      },
       dropHeldDrafts: () => {
         edits.forEach((edit, key) => {
           if (edit.isHeld) edits.delete(key);
@@ -187,6 +199,15 @@ export const useUnsavedEdits = () => {
 
 export const useUnsavedDraftKeys = () => useContext(UnsavedEditsKeysContext);
 
+export const useRenameHeldDraft = () => {
+  const registry = useContext(UnsavedEditsRegistryContext);
+  return useCallback(
+    (environment: string, secretPath: string, from: string, to: string) =>
+      registry?.renameHeldDraft(environment, secretPath, from, to),
+    [registry]
+  );
+};
+
 export const useUnsavedEdit = (
   key: string,
   isDirty: boolean,
@@ -196,10 +217,12 @@ export const useUnsavedEdit = (
   const registry = useContext(UnsavedEditsRegistryContext);
   const editRef = useRef(edit);
   const isDirtyRef = useRef(isDirty);
+  const keyRef = useRef(key);
 
   useLayoutEffect(() => {
     editRef.current = edit;
     isDirtyRef.current = isDirty;
+    keyRef.current = key;
   });
 
   useEffect(() => {
@@ -215,7 +238,7 @@ export const useUnsavedEdit = (
         editRef.current.settle(committed, reviewEnvironments),
       discard: () => editRef.current.discard()
     });
-    return () => unregister(isDirtyRef.current);
+    return () => unregister(isDirtyRef.current && keyRef.current === key);
   }, [registry, isDirty, key, size]);
 
   return {

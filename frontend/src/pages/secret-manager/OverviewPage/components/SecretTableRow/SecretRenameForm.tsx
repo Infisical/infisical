@@ -29,6 +29,8 @@ import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
+import { useRenameHeldDraft } from "../UnsavedEditsBar";
+
 enum SecretActionType {
   Created = "created",
   Modified = "modified",
@@ -82,6 +84,7 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
   );
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
+  const renameHeldDraft = useRenameHeldDraft();
 
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
     options: { meta: { skipErrorToast: true } }
@@ -121,6 +124,11 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
         })
       )
     );
+
+    secretsToRename.forEach((secret, index) => {
+      if (results[index].status === "fulfilled")
+        renameHeldDraft(secret.env, secretPath, secret.key, data.key);
+    });
 
     if (results.every((result) => result.status === "fulfilled")) {
       createNotification({

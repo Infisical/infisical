@@ -2565,7 +2565,23 @@ const OverviewPageContent = () => {
         (change) => !folderFailures.some(({ environment }) => environment === change.environment)
       );
       const { commits: sentCommits } = sendableChanges.length
-        ? await createCommits({ projectId, secretPath, message, secrets: sendableChanges })
+        ? await createCommits({
+            projectId,
+            secretPath,
+            message,
+            secrets: sendableChanges.map((change) => {
+              const current = change.isCreate
+                ? undefined
+                : getSecretByKey(change.environment, change.secretKey);
+              return current
+                ? {
+                    ...change,
+                    secretComment: current.comment,
+                    tagIds: current.tags?.map((tag) => tag.id)
+                  }
+                : change;
+            })
+          })
         : { commits: [] };
       const commits = [...sentCommits, ...folderFailures];
       const failedEnvironments = commits
