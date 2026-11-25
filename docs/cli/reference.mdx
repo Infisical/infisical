@@ -1061,7 +1061,7 @@ Connect to databases, servers, Kubernetes clusters, and cloud accounts managed b
   ]}
   flags={[
     { name: "--duration", value: "<string>", type: "string", default: "1h", description: "How long the session lasts, in Go duration format such as `30m`, `1h`, or `2h30m`." },
-    { name: "--port", value: "<int>", type: "int", default: "0", description: "The port the local proxy listens on at `127.0.0.1`. `0` picks a free port. For SSH accounts, it applies only when a proxy runs. Has no effect on AWS IAM accounts." },
+    { name: "--port", value: "<int>", type: "int", default: "0", description: "The port the local proxy listens on at `127.0.0.1`. `0` picks a free port. For SSH accounts, it applies only when a proxy runs. Has no effect on AWS IAM accounts without a Gateway." },
     { name: "--proxy", type: "bool", description: "Start a local proxy for your own SSH, SCP, or SFTP client instead of opening a shell. It changes only SSH accounts, and you can't combine it with a command after `--`." },
     { name: "--reason", value: "<string>", type: "string", description: "Why you're accessing the account, recorded for audit. If the account requires a reason and you don't pass one, the CLI prompts for it in an interactive terminal and fails otherwise." },
     { name: "--target", value: "<string>", type: "string", description: "The host to connect to, for accounts that allow several hosts, such as Windows AD accounts." },
@@ -1078,7 +1078,7 @@ Open a session for one PAM account. The command runs as the user you logged in a
 
 SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. If no terminal is attached, the CLI starts the proxy instead of a shell.
 
-For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
+For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, and AWS IAM accounts with a Gateway, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts without a Gateway, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig. In a terminal, Azure accounts and AWS IAM accounts with a Gateway also open a shell that uses the proxy. `Ctrl+C` in that shell stops only the running command, so type `exit` to end the session.
 
 If the account requires approval, the CLI offers to submit an access request in an interactive terminal. If it requires MFA, the CLI has you complete MFA in your browser before it continues.
 

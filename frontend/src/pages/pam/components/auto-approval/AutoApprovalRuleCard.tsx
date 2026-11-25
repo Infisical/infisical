@@ -1,5 +1,13 @@
 import { Fragment, ReactNode, useId } from "react";
-import { Pencil, Plus, ShieldAlert, Sparkles, X } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  User as UserIcon,
+  Users as UsersIcon,
+  X
+} from "lucide-react";
 
 import {
   Alert,
@@ -7,6 +15,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,6 +28,7 @@ import { cn } from "@app/components/v3/utils";
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
+  ApproverType,
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
@@ -38,10 +48,15 @@ import {
   getSubjectDisplayLabel,
   getSubjectsMissingCheck,
   isAiCondition,
+  isRequesterCheck,
   newKey,
+  REQUESTER_CHECKS,
   TAutoApprovalDraft,
   TDraftCondition,
   TDraftRule,
+  toRequesterCheckValue,
+  TRequesterCheckOption,
+  TRequesterCheckOptions,
   UNUSED_CONSTRAINT
 } from "./autoApprovalDraft";
 import { ConnectionIcon, DisabledReason, SectionLabel } from "./AutoApprovalLabels";
@@ -60,6 +75,7 @@ type Props = {
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
   ai: TAutoApprovalCatalog["ai"];
+  requesterOptions: TRequesterCheckOptions;
   policyType: ApprovalPolicyType;
   scope: ApprovalPolicyScope;
   scopeId: string;
@@ -103,6 +119,34 @@ const getSubjectChoices = (
   return [...fromInputs, ...fromRequester];
 };
 
+const getRequesterIcon = (option: TRequesterCheckOption) =>
+  option.kind === ApproverType.Group ? UsersIcon : UserIcon;
+
+const renderRequesterOption = (option: TRequesterCheckOption) => {
+  const Icon = getRequesterIcon(option);
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <div className="min-w-0">
+        <p className="truncate">{option.label}</p>
+        {option.subtitle && (
+          <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const renderRequesterValue = (option: TRequesterCheckOption) => {
+  const Icon = getRequesterIcon(option);
+  return (
+    <span className="flex items-center gap-1">
+      <Icon className="size-3 shrink-0 text-muted" />
+      <span className="truncate">{option.label}</span>
+    </span>
+  );
+};
+
 const ConditionRow = ({
   showConnector,
   condition,
@@ -110,6 +154,7 @@ const ConditionRow = ({
   inputs,
   catalog,
   ai,
+  requesterOptions,
   policyType,
   scope,
   scopeId,
@@ -123,6 +168,7 @@ const ConditionRow = ({
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
   ai: TAutoApprovalCatalog["ai"];
+  requesterOptions: TRequesterCheckOptions;
   policyType: ApprovalPolicyType;
   scope: ApprovalPolicyScope;
   scopeId: string;
@@ -174,6 +220,55 @@ const ConditionRow = ({
         isError={Boolean(error)}
         onChange={onChange}
       />
+    );
+  }
+
+  if (isRequesterCheck(condition)) {
+    const label =
+      REQUESTER_CHECKS.find((candidate) => candidate.id === condition.constraint)?.label ??
+      condition.constraint;
+
+    return renderRow(
+      <>
+        <Badge variant="neutral">
+          <UserIcon className="size-3.5 text-muted" />
+          Requester
+        </Badge>
+        <span className="text-sm text-foreground">{label}</span>
+        <span className="text-xs text-muted">one of</span>
+      </>,
+      <div className="pb-1">
+        <Combobox
+          multiple
+          singleLine
+          isClearable={false}
+          aria-label={`Requester ${label}`}
+          options={requesterOptions}
+          value={condition.values.map(
+            (value) =>
+              requesterOptions.find((option) => option.value === value) ?? {
+                value,
+                label: value,
+                kind: value.startsWith(toRequesterCheckValue(ApproverType.Group, ""))
+                  ? ApproverType.Group
+                  : ApproverType.User
+              }
+          )}
+          onValueChange={(next) =>
+            onChange({ ...condition, values: next.map((option) => option.value) })
+          }
+          getOptionValue={(option) => option.value}
+          getOptionLabel={(option) => option.label}
+          getOptionKeywords={(option) => (option.subtitle ? [option.subtitle] : [])}
+          renderOption={renderRequesterOption}
+          renderValue={renderRequesterValue}
+          includeMissingSelectedOptions
+          isError={Boolean(error)}
+          size="sm"
+          placeholder="Choose users or groups..."
+          emptyMessage="No users or groups match. Add them under Access Control first."
+        />
+      </div>
     );
   }
 
@@ -236,6 +331,7 @@ export const AutoApprovalRuleCard = ({
   inputs,
   catalog,
   ai,
+  requesterOptions,
   policyType,
   scope,
   scopeId,
@@ -295,15 +391,21 @@ export const AutoApprovalRuleCard = ({
     .filter((group) => group.constraints.length > 0);
 
   const canAddAi = !rule.conditions.some(isAiCondition);
+  const requesterChecks = REQUESTER_CHECKS.filter(
+    (constraint) =>
+      !rule.conditions.some(
+        (condition) => isRequesterCheck(condition) && condition.constraint === constraint.id
+      )
+  );
 
   let addConditionBlocker: string | undefined;
   if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions) {
     addConditionBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions.`;
   } else if (onCreateConnection) {
     addConditionBlocker = undefined;
-  } else if (choices.length === 0 && !canAddAi) {
+  } else if (choices.length === 0 && !canAddAi && requesterChecks.length === 0) {
     addConditionBlocker = "Add a field under Request Form Fields first.";
-  } else if (menuGroups.length === 0 && !canAddAi) {
+  } else if (menuGroups.length === 0 && !canAddAi && requesterChecks.length === 0) {
     addConditionBlocker = "Every available check is already in this rule.";
   }
 
@@ -371,6 +473,7 @@ export const AutoApprovalRuleCard = ({
                   inputs={inputs}
                   catalog={catalog}
                   ai={ai}
+                  requesterOptions={requesterOptions}
                   policyType={policyType}
                   scope={scope}
                   scopeId={scopeId}
@@ -461,9 +564,31 @@ export const AutoApprovalRuleCard = ({
                     ))}
                   </Fragment>
                 ))}
-                {canAddAi && (
+                {requesterChecks.length > 0 && (
                   <>
                     {menuGroups.length > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel>Requester · Infisical</DropdownMenuLabel>
+                    {requesterChecks.map((constraint) => (
+                      <DropdownMenuItem
+                        key={constraint.id}
+                        onClick={() =>
+                          addCondition({
+                            connectionId: "",
+                            subject: AUTO_APPROVAL_REQUESTER_SUBJECT,
+                            constraint: constraint.id
+                          })
+                        }
+                      >
+                        Requester {constraint.label}...
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+                {canAddAi && (
+                  <>
+                    {(menuGroups.length > 0 || requesterChecks.length > 0) && (
+                      <DropdownMenuSeparator />
+                    )}
                     <DropdownMenuLabel>AI</DropdownMenuLabel>
                     <DropdownMenuItem
                       isDisabled={!ai.model}
@@ -497,7 +622,9 @@ export const AutoApprovalRuleCard = ({
                 )}
                 {onCreateConnection && (
                   <>
-                    {(menuGroups.length > 0 || canAddAi) && <DropdownMenuSeparator />}
+                    {(menuGroups.length > 0 || requesterChecks.length > 0 || canAddAi) && (
+                      <DropdownMenuSeparator />
+                    )}
                     <DropdownMenuItem onClick={onCreateConnection}>
                       <Plus />
                       Create App Connection

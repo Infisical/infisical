@@ -7,8 +7,10 @@ import { z } from "zod";
 
 import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import {
+  createPasswordSchema,
+  doesPasswordMeetPolicy
+} from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -29,6 +31,7 @@ import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { submitSignupOnboarding, useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
@@ -93,18 +96,13 @@ export default function UserInfoStep({
   });
 
   const passwordValue = watch("password");
-  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
-    password: passwordValue,
-    policy: config.passwordPolicy
-  });
   const confirmPasswordValue = watch("confirmPassword");
   const showDangerState = submitCount > 0;
   const showOrganizationNameError =
     (showDangerState || Boolean(dirtyFields.organizationName)) && Boolean(errors.organizationName);
   const doPasswordsMatch =
     confirmPasswordValue.length > 0 && passwordValue === confirmPasswordValue;
-  const isPasswordValidated =
-    passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(passwordValue, config.passwordPolicy);
   const canSubmit = isPasswordValidated && !isLoading;
   const normalizedInviteOrganizationName = inviteOrganizationName?.trim();
   const inviteOrganizationLabel = normalizedInviteOrganizationName || "an organization";
@@ -113,15 +111,6 @@ export default function UserInfoStep({
 
   const onSubmit = async (formData: UserInfoFormData) => {
     const telemetry = new Telemetry().getInstance();
-
-    const latestBreachStatus = await validatePassword(formData.password);
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
-    }
 
     const attributionSource = isInvite ? undefined : formData.attributionSource || undefined;
     const response = await completeSignup({
@@ -133,7 +122,13 @@ export default function UserInfoStep({
       organizationName: formData.organizationName || undefined,
       attributionSource,
       hubspotUtk: getHubSpotUtk()
+    }).catch((error: unknown) => {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (!breachedPasswordMessage) throw error;
+      setError("password", { type: "server", message: breachedPasswordMessage });
+      return undefined;
     });
+    if (!response) return;
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
@@ -289,7 +284,6 @@ export default function UserInfoStep({
             id="new-password"
             value={passwordValue}
             policy={config.passwordPolicy}
-            breachStatus={passwordBreachStatus}
             placeholder="••••••••"
             registration={register("password")}
             error={showDangerState ? errors.password : undefined}

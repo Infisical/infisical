@@ -1,5 +1,7 @@
 import RE2 from "re2";
 
+import { TPamSessions } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -20,9 +22,9 @@ import { checkAccountAccess, TActorContext, verifyProductMembership } from "../p
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
-import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
+import { PAM_RECORDING_MAX_CHUNK_BYTES, PAM_RECORDING_MAX_SERVER_READ_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
-import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
+import { decryptRecordingChunk, decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "./pam-recording-storage-factory";
 import { buildExternalChunkObjectKey, TPamRecordingResolvedConfig } from "./pam-recording-storage-types";
 
@@ -32,6 +34,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -49,6 +52,7 @@ export const pamSessionChunkServiceFactory = ({
   pamAccountDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   appConnectionDAL
 }: TPamSessionChunkServiceFactoryDep) => {
   const resolveRecordingConfig = async (accountId: string): Promise<TPamRecordingResolvedConfig | null> => {
@@ -83,7 +87,7 @@ export const pamSessionChunkServiceFactory = ({
         backend: PamRecordingStorageBackend.AwsS3,
         bucket: s3Config.bucket,
         keyPrefix: s3Config.keyPrefix ?? null,
-        ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
+        ...(await resolveS3RecordingAccess(appConnection, s3Config.region, instanceConfigService))
       };
     }
 
@@ -379,5 +383,80 @@ export const pamSessionChunkServiceFactory = ({
     return { ciphertext: chunk.encryptedEventsBlob };
   };
 
-  return { requestPresignedPut, recordChunk, getSessionPlayback, getChunkCiphertext };
+  // Server-side only, so no actor check. Null means a retry won't help.
+  const readChunkEvents = async ({
+    session,
+    chunkIndex
+  }: {
+    session: Pick<TPamSessions, "id" | "projectId" | "accountId" | "encryptedSessionKey">;
+    chunkIndex: number;
+  }): Promise<{ events: unknown[] } | { tooLarge: true } | null> => {
+    if (!session.encryptedSessionKey) return null;
+
+    const chunk = await pamSessionEventChunkDAL.findByChunkIndex(session.id, chunkIndex);
+    if (!chunk) {
+      // Likely replica lag behind the insert, so let the caller retry.
+      throw new NotFoundError({ message: `Recording chunk ${chunkIndex} of session ${session.id} not found` });
+    }
+
+    const declaredBytes = Number(chunk.ciphertextBytes);
+    if (declaredBytes > PAM_RECORDING_MAX_SERVER_READ_BYTES) return { tooLarge: true };
+
+    let ciphertext: Buffer;
+    if (chunk.storageBackend === PamRecordingStorageBackend.Postgres) {
+      if (!chunk.encryptedEventsBlob) return null;
+      ciphertext = chunk.encryptedEventsBlob;
+    } else {
+      const config = session.accountId ? await resolveRecordingConfig(session.accountId) : null;
+      if (config?.backend !== PamRecordingStorageBackend.AwsS3 || !chunk.externalChunkObjectKey) {
+        logger.warn(
+          `Recording chunk is in external storage the account no longer points to [sessionId=${session.id}] [chunkIndex=${chunkIndex}]`
+        );
+        return null;
+      }
+      // The extra byte reveals an object larger than declared.
+      ciphertext = await PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]().readObject({
+        config,
+        objectKey: chunk.externalChunkObjectKey,
+        maxBytes: declaredBytes + 1
+      });
+    }
+
+    if (ciphertext.length !== declaredBytes) {
+      logger.warn(
+        `Recording chunk doesn't match its declared size [sessionId=${session.id}] [chunkIndex=${chunkIndex}] [declared=${declaredBytes}] [read=${ciphertext.length}]`
+      );
+      return null;
+    }
+
+    const sessionKey = await decryptSessionKey({
+      projectId: session.projectId,
+      sessionId: session.id,
+      encryptedSessionKey: session.encryptedSessionKey,
+      kmsDataKeyService
+    });
+
+    try {
+      const plaintext = decryptRecordingChunk({
+        sessionKey,
+        projectId: session.projectId,
+        sessionId: session.id,
+        chunkIndex,
+        storageBackend: chunk.storageBackend,
+        iv: chunk.iv,
+        ciphertext
+      });
+      const events: unknown = JSON.parse(plaintext.toString("utf8"));
+      if (!Array.isArray(events)) throw new Error("Chunk plaintext is not a JSON array");
+      return { events: events as unknown[] };
+    } catch (error) {
+      logger.error(
+        error,
+        `Recording chunk could not be decrypted [sessionId=${session.id}] [chunkIndex=${chunkIndex}]`
+      );
+      return null;
+    }
+  };
+
+  return { requestPresignedPut, recordChunk, getSessionPlayback, getChunkCiphertext, readChunkEvents };
 };

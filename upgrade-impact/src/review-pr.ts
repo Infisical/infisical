@@ -14,7 +14,9 @@ const limits = {
   maxFileChars: 20000,
   maxTotalToolResultChars: 160000,
   maxCompletionTokens: 4000,
-  maxTurns: 16
+  // parallelToolCalls is off, so each tool call takes a turn. maxTurns must exceed maxToolCalls,
+  // or the run ends before the tool budget can tell the model to stop and answer.
+  maxTurns: 35
 };
 
 type Declaration = "none" | "yes" | "unclear";

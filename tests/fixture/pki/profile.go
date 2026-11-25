@@ -11,7 +11,10 @@ import (
 )
 
 // Profile is a certificate profile: a CA and the policy it issues under.
-type Profile struct{ ID uuid.UUID }
+type Profile struct {
+	ID   uuid.UUID
+	Slug string
+}
 
 func NewProfile(tt *testing.T, p *Project, ca CA, policy Policy) Profile {
 	tt.Helper()
@@ -23,5 +26,5 @@ func NewProfile(tt *testing.T, p *Project, ca CA, policy Policy) Profile {
 	})
 	require.NoError(tt, err, "creating a certificate profile")
 	require.NotNilf(tt, res.JSON200, "creating a certificate profile returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return Profile{ID: res.JSON200.CertificateProfile.Id}
+	return Profile{ID: res.JSON200.CertificateProfile.Id, Slug: res.JSON200.CertificateProfile.Slug}
 }

@@ -2,20 +2,20 @@
 import { Knex } from "knex";
 import { createTransport } from "nodemailer";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { formatSmtpConfig, getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 type BootstrapOpt = {
   db: Knex;
 };
 
-const bootstrapCb = async () => {
+const bootstrapCb = async (db: Knex) => {
   const appCfg = getConfig();
-  const serverCfg = await getServerCfg();
+  const initialized = await InstanceConfigCoreModule.readInitialized(db);
   const baseUrl = appCfg.SITE_URL || `http://localhost:${appCfg.PORT}`;
-  if (!serverCfg.initialized) {
+  if (!initialized) {
     console.info(`Welcome to Infisical
 
 Create your Infisical administrator account at:
@@ -37,7 +37,7 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode) {
     console.log("Development mode. Skipping initial check");
-    return bootstrapCb;
+    return () => bootstrapCb(db);
   }
 
   console.info("Checking configurations...");
@@ -78,5 +78,5 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
     redis.disconnect();
   }
 
-  return bootstrapCb;
+  return () => bootstrapCb(db);
 };

@@ -17,6 +17,7 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { buildHookNarrowing, describeHookNarrowing } from "../hooks/hookSchema";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
   credentialLabel,
@@ -64,6 +65,8 @@ const alignColumns = (rows: string[][]) => {
 };
 
 type Props = {
+  /** Off for a caller who can't read hooks, who never sees the Hook step either. */
+  showHooks?: boolean;
   isUpdate: boolean;
   service?: TAgentVaultService | null;
   storedType?: AgentVaultCredentialType;
@@ -71,7 +74,13 @@ type Props = {
   storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields = [] }: Props) => {
+export const ReviewFields = ({
+  showHooks = false,
+  isUpdate,
+  service,
+  storedType,
+  storedMemberFields = []
+}: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
@@ -105,13 +114,6 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
     hasStoredKey &&
     service?.credential.type === AgentVaultCredentialType.SshKey &&
     service.credential.hasCertificate;
-  const hasStoredHook = isUpdate && Boolean(service?.hook);
-  const hookSecretOutcome = () => {
-    if (!hasStoredHook) return "Set";
-    if (form.hookSigningSecret === UNCHANGED_SECRET || !form.hookSigningSecret) return "Unchanged";
-    return "Replaced";
-  };
-
   const headerRows = form.customHeaders
     .filter((header) => header.name)
     .map((header) => [`${header.name}:`, header.prefix ? `${header.prefix} ${MASK}` : MASK]);
@@ -328,27 +330,28 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
         </DetailGroup>
       )}
 
-      <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-2">Hook</DetailGroupHeader>
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <Detail>
-            <DetailLabel>Hook</DetailLabel>
-            <DetailValue>{form.hookEnabled ? "On" : "Off"}</DetailValue>
-          </Detail>
-          {form.hookEnabled && (
-            <>
+      {showHooks && (
+        <DetailGroup>
+          <DetailGroupHeader className="border-b border-border pb-2">Hook</DetailGroupHeader>
+          {form.hook.hookId ? (
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
               <Detail>
-                <DetailLabel>URL</DetailLabel>
-                <DetailValue className="break-all">{form.hookUrl.trim()}</DetailValue>
+                <DetailLabel>Name</DetailLabel>
+                <DetailValue>{form.hook.hookName}</DetailValue>
               </Detail>
               <Detail>
-                <DetailLabel>Signing Secret</DetailLabel>
-                <DetailValue>{hookSecretOutcome()}</DetailValue>
+                <DetailLabel>Checks</DetailLabel>
+                <DetailValue className="break-all">
+                  {describeHookNarrowing(buildHookNarrowing(form.hook, form.serviceType)) ??
+                    (isNative ? "Every connection" : "Every request")}
+                </DetailValue>
               </Detail>
-            </>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">No hook</p>
           )}
-        </div>
-      </DetailGroup>
+        </DetailGroup>
+      )}
     </div>
   );
 };

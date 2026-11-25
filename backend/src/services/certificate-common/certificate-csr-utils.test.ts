@@ -1,7 +1,12 @@
 import * as x509 from "@peculiar/x509";
 import { describe, expect, it } from "vitest";
 
-import { assertCsrMatchesCertificate, extractCertificateRequestFromCSR } from "./certificate-csr-utils";
+import { CertSubjectAlternativeNameType } from "./certificate-constants";
+import {
+  assertCsrMatchesCertificate,
+  extractCertificateRequestFromCSR,
+  extractSubjectAltNames
+} from "./certificate-csr-utils";
 
 // the extraction every CSR-based enrollment shares; fixtures produced with openssl
 const WINDOWS_ORDER_CSR = `-----BEGIN CERTIFICATE REQUEST-----
@@ -206,5 +211,21 @@ describe("assertCsrMatchesCertificate", () => {
     const certificate = await buildCertificate(await generateKeys());
 
     await expect(assertCsrMatchesCertificate("not a csr", certificate)).rejects.toThrow(/could not be parsed/);
+  });
+});
+
+describe("extractSubjectAltNames", () => {
+  it("keeps a compressed IPv6 address as an IP and a comma inside a URI", () => {
+    const extension = new x509.SubjectAlternativeNameExtension([
+      { type: "ip", value: "::1" },
+      { type: "url", value: "https://app.example.com/a,b" },
+      { type: "dns", value: "app.example.com" }
+    ]);
+
+    expect(extractSubjectAltNames(extension.value)).toEqual([
+      { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "::1" },
+      { type: CertSubjectAlternativeNameType.URI, value: "https://app.example.com/a,b" },
+      { type: CertSubjectAlternativeNameType.DNS_NAME, value: "app.example.com" }
+    ]);
   });
 });

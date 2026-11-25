@@ -24,12 +24,13 @@ func (service) Scope(r *http.Request) (string, bool) {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	a := &Account{Zones: map[string][]DNSRecord{}, events: events}
+	a := &Account{Zones: map[string][]DNSRecord{}, CustomCertificates: map[string][]CustomCertificate{}, events: events}
 	a.mux = http.NewServeMux()
 	a.mux.HandleFunc("GET /client/v4/accounts/{account}", a.getAccount)
 	a.mux.HandleFunc("POST /client/v4/zones/{zone}/dns_records", a.createRecord)
 	a.mux.HandleFunc("GET /client/v4/zones/{zone}/dns_records", a.listRecords)
 	a.mux.HandleFunc("DELETE /client/v4/zones/{zone}/dns_records/{id}", a.deleteRecord)
+	a.customCertificateRoutes(a.mux)
 	return a
 }
 

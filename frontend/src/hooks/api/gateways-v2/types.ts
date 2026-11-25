@@ -9,6 +9,8 @@ export type TGatewayV2 = {
   heartbeatTTL: number | null;
   directAddress: string | null;
   directHeartbeat: string | null;
+  cliVersion: string | null;
+  cliVersionReportedAt: string | null;
   canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {

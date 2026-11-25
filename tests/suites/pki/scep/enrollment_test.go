@@ -1,10 +1,15 @@
 package scep_test
 
 import (
+	"bytes"
 	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/smallstep/scep"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +24,6 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
-		ca := p.caCerts(t)[1]
 
 		// Action
 		got, _ := p.enroll(t, newDevice(t, "test-device.example.com"), "test-device.example.com", "testpassword123")
@@ -27,7 +31,7 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Assert
 		require.Equal(t, scep.SUCCESS, got.status)
 		require.Equal(t, "test-device.example.com", got.cert.Subject.CommonName)
-		require.Equal(t, ca.Subject.String(), got.cert.Issuer.String())
+		require.NoError(t, got.cert.CheckSignatureFrom(p.ca))
 	})
 
 	t.Run("should issue for a name in another domain under another challenge password", func(t *testing.T) {
@@ -109,5 +113,39 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		// Assert
 		require.Equal(t, scep.FAILURE, got.status)
 		require.Equal(t, scep.BadRequest, got.failInfo)
+	})
+
+	t.Run("should refuse with 400 naming the name and issue nothing when the profile's policy does not allow it", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `[BUG?] A wrong challenge password gets a failure CertRep, as RFC 8894 expects
+			for a request the server decoded, but a policy refusal escapes as an HTTP 400 JSON body
+			that no SCEP client reads.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		policy := pki.AllowAll(t)
+		var cn api.CreateCertificatePolicyJSONBody_Subject_Item
+		require.NoError(t, cn.FromCreateCertificatePolicyJSONBodySubject0(api.CreateCertificatePolicyJSONBodySubject0{
+			Type:    api.CreateCertificatePolicyJSONBodySubject0TypeCommonName,
+			Allowed: &[]string{"*.allowed.test"},
+		}))
+		policy.Subject = &[]api.CreateCertificatePolicyJSONBody_Subject_Item{cn}
+		profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, policy))
+		app := pki.NewApplication(t, proj, profile)
+		pki.EnableSCEP(t, app, profile, staticChallenge("testpassword123"))
+		p := scepProfile{api: tn.Anonymous(t), project: proj, app: app, profile: profile}
+
+		req := p.pkcsReq(t, newDevice(t, "x.denied.test"), "x.denied.test", "testpassword123")
+
+		// Action
+		res, err := p.api.PostScepApplicationOperationWithBodyWithResponse(t.Context(), app.ID, profile.ID,
+			&api.PostScepApplicationOperationParams{Operation: new("PKIOperation")}, "application/x-pki-message", bytes.NewReader(req.msg.Raw))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Certificate request validation failed: common_name value 'x.denied.test' does not match allowed patterns: *.allowed.test", apierr.Message(res.Body))
+		require.Zero(t, pki.Requests(t, proj, profile))
 	})
 }

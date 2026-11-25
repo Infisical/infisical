@@ -1,5 +1,3 @@
-import { TAuditLogs } from "@app/db/schemas";
-
 import { LogProvider, StreamMode } from "./audit-log-stream-enums";
 import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
 import { TAzureProvider, TAzureProviderCredentials } from "./azure/azure-provider-types";
@@ -8,6 +6,8 @@ import { TCustomProvider, TCustomProviderCredentials } from "./custom/custom-pro
 import { TDatadogProvider, TDatadogProviderCredentials } from "./datadog/datadog-provider-types";
 import { TSplunkProvider, TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
 import { TSumoLogicProvider, TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
+
+export type TAuditLogStreamEvent = Record<string, unknown> & { id: string; createdAt: Date | string };
 
 export type TAuditLogStream =
   | TDatadogProvider
@@ -28,7 +28,8 @@ export type TAuditLogStreamCredentials =
 export type TCreateAuditLogStreamDTO = {
   provider: LogProvider;
   credentials: TAuditLogStreamCredentials;
-  // Products the stream is scoped to. Omitted/empty -> stream all products.
+  // Products the stream is scoped to and whether it also receives PAM session activity. Omitted ->
+  // every product's audit logs and no session activity.
   filters?: TAuditLogStreamFilters | null;
 };
 
@@ -38,8 +39,8 @@ export type TUpdateAuditLogStreamDTO = {
   credentials: TAuditLogStreamCredentials;
   // Optional one-way upgrade from "single" to "batch". Downgrades are rejected.
   streamMode?: StreamMode;
-  // Products the stream is scoped to. Omitted leaves the existing filter unchanged; pass null or an
-  // empty product list to clear it (stream all products).
+  // Products the stream is scoped to and whether it also receives PAM session activity. Omitted leaves
+  // the existing filter unchanged; null clears it (every product's audit logs and no session activity).
   filters?: TAuditLogStreamFilters | null;
 };
 
@@ -49,14 +50,14 @@ export type TLogStreamFactoryValidateCredentials<C extends TAuditLogStreamCreden
 
 export type TLogStreamFactoryBatchStreamLog<C extends TAuditLogStreamCredentials> = (input: {
   credentials: C;
-  auditLogs: TAuditLogs[];
+  auditLogs: TAuditLogStreamEvent[];
 }) => Promise<void>;
 
 // Single-event delivery: one log POSTed per request. Only providers that support
 // the legacy "single" stream mode (custom, cribl) implement this.
 export type TLogStreamFactoryStreamLog<C extends TAuditLogStreamCredentials> = (input: {
   credentials: C;
-  auditLog: TAuditLogs;
+  auditLog: TAuditLogStreamEvent;
 }) => Promise<void>;
 
 export type TLogStreamFactoryProviderBatchLimit = {

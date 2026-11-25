@@ -7,6 +7,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { escapeXml } from "@app/lib/xml";
 import {
   describePanOsError,
   getConfigRoot,
@@ -72,14 +73,6 @@ const MAX_COMMIT_DESCRIPTION_LENGTH = 255;
 
 const hasSyncMetadataFlag = (record: TCertificateSyncs, flag: string) =>
   Boolean((record.syncMetadata as Record<string, unknown> | null)?.[flag]);
-
-const escapeXml = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
 
 const getFingerprint = (pem: string) => {
   try {

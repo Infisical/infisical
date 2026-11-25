@@ -16,11 +16,14 @@ import {
 type TFolderAccessScope = { projectId: string; environmentSlug: string; secretPath: string };
 
 // a grant changes what the actor may read, so the roster and anything rendering the project's
-// secrets both go stale. the roster is invalidated across every page/search variant.
+// secrets both go stale. the roster is invalidated across every page/search variant, and a grant
+// can reach every folder below its own, so it refreshes every roster there too: removing it or
+// turning subfolder access off changes what those folders inherit.
 const invalidateFolderAccess = (
   queryClient: ReturnType<typeof useQueryClient>,
   { projectId, environmentSlug, secretPath }: TFolderAccessScope
 ) => {
+  const subfolderPrefix = `${secretPath.replace(/\/+$/, "")}/`;
   queryClient.invalidateQueries({
     predicate: (query) => {
       const label = query.queryKey[1];
@@ -36,7 +39,8 @@ const invalidateFolderAccess = (
       return (
         params?.projectId === projectId &&
         params?.environmentSlug === environmentSlug &&
-        params?.secretPath === secretPath
+        (params?.secretPath === secretPath ||
+          Boolean(params?.secretPath?.startsWith(subfolderPrefix)))
       );
     }
   });
@@ -79,11 +83,18 @@ export const useCreateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TCreateUserFolderAccessDTO) => {
       const { data } = await apiRequest.post<{ folderAccess: TFolderAccess & { userId: string } }>(
         userFolderAccessUrl({ projectId, userId }),
-        { environmentSlug, secretPath, permission, ...(type ? { type } : {}) }
+        {
+          environmentSlug,
+          secretPath,
+          permission,
+          ...(type ? { type } : {}),
+          ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
+        }
       );
       return data.folderAccess;
     },
@@ -101,7 +112,8 @@ export const useUpdateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TUpdateUserFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{ folderAccess: TFolderAccess & { userId: string } }>(
         userFolderAccessUrl({ projectId, userId }),
@@ -109,7 +121,8 @@ export const useUpdateUserFolderAccess = () => {
           environmentSlug,
           secretPath,
           ...(permission ? { permission } : {}),
-          ...(type ? { type } : {})
+          ...(type ? { type } : {}),
+          ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
         }
       );
       return data.folderAccess;
@@ -149,7 +162,8 @@ export const useCreateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TCreateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.post<{
         folderAccess: TFolderAccess & { identityId: string };
@@ -157,7 +171,8 @@ export const useCreateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         permission,
-        ...(type ? { type } : {})
+        ...(type ? { type } : {}),
+        ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
       });
       return data.folderAccess;
     },
@@ -175,7 +190,8 @@ export const useUpdateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TUpdateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{
         folderAccess: TFolderAccess & { identityId: string };
@@ -183,7 +199,8 @@ export const useUpdateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         ...(permission ? { permission } : {}),
-        ...(type ? { type } : {})
+        ...(type ? { type } : {}),
+        ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
       });
       return data.folderAccess;
     },

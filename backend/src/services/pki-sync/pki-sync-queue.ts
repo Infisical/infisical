@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -101,6 +102,7 @@ type TPkiSyncQueueFactoryDep = {
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 type PkiSyncActionJob = Job<
@@ -140,7 +142,8 @@ export const pkiSyncQueueFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -294,7 +297,8 @@ export const pkiSyncQueueFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       });
 
       logger.info(
@@ -668,7 +672,8 @@ export const pkiSyncQueueFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        oidcIssuerService
+        oidcIssuerService,
+        instanceConfigService
       });
 
       isSuccess = true;

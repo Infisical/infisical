@@ -39,6 +39,12 @@ export type TPamRecordingMintPresignedGet = (input: {
   objectKey: string;
 }) => Promise<{ url: string; expiresInSeconds: number }>;
 
+export type TPamRecordingReadObject = (input: {
+  config: TPamRecordingResolvedConfig;
+  objectKey: string;
+  maxBytes: number;
+}) => Promise<Buffer>;
+
 export type TPamRecordingDeleteSession = (input: {
   config: TPamRecordingResolvedConfig;
   projectId: string;
@@ -49,6 +55,7 @@ export type TPamRecordingStorageProvider = () => {
   validateConfig: TPamRecordingValidateConfig;
   mintPresignedPut: TPamRecordingMintPresignedPut;
   mintPresignedGet: TPamRecordingMintPresignedGet;
+  readObject: TPamRecordingReadObject;
   deleteSession: TPamRecordingDeleteSession;
 };
 

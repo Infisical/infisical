@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 
 const { getMock, postMock, authorizeMock } = vi.hoisted(() => ({
@@ -10,9 +11,6 @@ const { getMock, postMock, authorizeMock } = vi.hoisted(() => ({
   authorizeMock: vi.fn<(connectionId: string) => Promise<void>>()
 }));
 
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
-}));
 vi.mock("@app/lib/config/request", () => ({
   request: { get: getMock, post: postMock }
 }));
@@ -65,8 +63,12 @@ const rotation = (activeIndex: number, keyName?: string) =>
     activeIndex
   }) as unknown as TStripeApiKeyRotationWithConnection;
 
+const instanceConfigService = new FakeInstanceConfigService({
+  env: { INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" }
+});
+
 const makeFactory = ({ activeIndex = 0, keyName }: { activeIndex?: number; keyName?: string } = {}) =>
-  stripeApiKeyRotationFactory(rotation(activeIndex, keyName), ...UNUSED_DEPENDENCIES);
+  stripeApiKeyRotationFactory(rotation(activeIndex, keyName), ...UNUSED_DEPENDENCIES, instanceConfigService);
 
 const isCreate = (url: string) => url.endsWith("/v2/iam/api_keys");
 const isExpire = (url: string) => url.endsWith("/expire");
@@ -192,7 +194,8 @@ describe("stripeApiKeyRotationFactory", () => {
       expect(authorizeMock).toHaveBeenCalledWith("connection-id", {
         appConnectionDAL: {},
         kmsDataKeyService: {},
-        keyStore: {}
+        keyStore: {},
+        instanceConfigService
       });
       expect(authorizeMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
       expect(headers.Authorization).toBe("Bearer sk_test_app");

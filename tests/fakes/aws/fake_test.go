@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
@@ -15,11 +16,13 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,11 +55,15 @@ type account struct {
 	r      *rig
 	id     string
 	secret string
+	token  string
 }
+
+// accounts keeps ids distinct when several are made within one tick of a coarse clock.
+var accounts atomic.Uint64
 
 func (r *rig) account(t *testing.T) *account {
 	t.Helper()
-	id := fmt.Sprintf("%s%d", keyPrefix, time.Now().UnixNano())
+	id := fmt.Sprintf("%s%d%d", keyPrefix, time.Now().UnixNano(), accounts.Add(1))
 	return &account{r: r, id: id, secret: aws.SecretAccessKey(id)}
 }
 
@@ -65,11 +72,20 @@ func (a *account) as(id, secret string) *account { return &account{r: a.r, id: i
 // send signs the way the SDK does: every header it sends, and the payload hash.
 func (a *account) send(t *testing.T, host, svc, region string, headers map[string]string, body []byte) (int, []byte) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, a.r.fakes.URL+"/", bytes.NewReader(body))
+	return a.sendAt(t, http.MethodPost, "/", host, svc, region, headers, body)
+}
+
+// sendAt is send for a REST service, which puts the operation in the method and path.
+func (a *account) sendAt(t *testing.T, method, path, host, svc, region string, headers map[string]string, body []byte) (int, []byte) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), method, a.r.fakes.URL+path, bytes.NewReader(body))
 	require.NoError(t, err)
 	req.Host = host
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	req.Header.Set("X-Amz-Date", stamp)
+	if a.token != "" {
+		req.Header.Set("X-Amz-Security-Token", a.token)
+	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
@@ -87,7 +103,7 @@ func (a *account) send(t *testing.T, host, svc, region string, headers map[strin
 		canon.WriteString(h + ":" + v + "\n")
 	}
 	payload := sha256.Sum256(body)
-	canonical := strings.Join([]string{"POST", "/", "", canon.String(), strings.Join(signed, ";"), hex.EncodeToString(payload[:])}, "\n")
+	canonical := strings.Join([]string{method, path, "", canon.String(), strings.Join(signed, ";"), hex.EncodeToString(payload[:])}, "\n")
 	scope := stamp[:8] + "/" + region + "/" + svc + "/aws4_request"
 	sum := sha256.Sum256([]byte(canonical))
 	toSign := "AWS4-HMAC-SHA256\n" + stamp + "\n" + scope + "\n" + hex.EncodeToString(sum[:])
@@ -156,6 +172,36 @@ func (a *account) iam(t *testing.T, action string, params ...string) (int, strin
 func (a *account) callerIdentity(t *testing.T) (int, string) {
 	t.Helper()
 	return a.query(t, aws.STS.Host(), "sts", url.Values{"Action": {"GetCallerIdentity"}, "Version": {"2011-06-15"}})
+}
+
+func (a *account) kms(t *testing.T, action string, in any) (int, map[string]any) {
+	t.Helper()
+	return a.json1(t, aws.KMS.Host(), "kms", "TrentService."+action, in)
+}
+
+// assumeRole returns the session STS granted, or nil and the refusal's error code.
+func (a *account) assumeRole(t *testing.T, roleArn, externalID string) (*account, string) {
+	t.Helper()
+	form := url.Values{"Action": {"AssumeRole"}, "Version": {"2011-06-15"}, "RoleArn": {roleArn}, "RoleSessionName": {"s"}}
+	if externalID != "" {
+		form.Set("ExternalId", externalID)
+	}
+	status, body := a.query(t, aws.STS.Host(), "sts", form)
+	if status != http.StatusOK {
+		return nil, errorCode(t, body)
+	}
+	var res struct {
+		Result struct {
+			Credentials struct {
+				AccessKeyID     string `xml:"AccessKeyId"`
+				SecretAccessKey string `xml:"SecretAccessKey"`
+				SessionToken    string `xml:"SessionToken"`
+			} `xml:"Credentials"`
+		} `xml:"AssumeRoleResult"`
+	}
+	require.NoError(t, xml.Unmarshal([]byte(body), &res))
+	c := res.Result.Credentials
+	return &account{r: a.r, id: c.AccessKeyID, secret: c.SecretAccessKey, token: c.SessionToken}, ""
 }
 
 func (a *account) cp(t *testing.T) *aws.ControlPlane {
@@ -405,6 +451,189 @@ func TestAWSFake_IAM(t *testing.T) {
 		require.Equal(t, http.StatusConflict, status)
 		require.Equal(t, "DeleteConflict", errorCode(t, body))
 		require.NotNil(t, cp.User(t, "app"))
+	})
+}
+
+func TestAWSFake_AssumeRole(t *testing.T) {
+	// trustedRole seeds a KMS key and a role in customer's account that trusts caller's
+	// account with the given external ID.
+	trustedRole := func(t *testing.T, customer, caller *account, externalID string) (roleArn, keyID string) {
+		t.Helper()
+		keyID = uuid.NewString()
+		customer.cp(t).Seed(t,
+			aws.SeedRole(customer.id, "infisical-kms", aws.TrustPolicy(aws.AccountID(caller.id), externalID)),
+			aws.SeedKey(keyID))
+		return aws.RoleArn(customer.id, "infisical-kms"), keyID
+	}
+
+	t.Run("should grant a session that acts in the role's account when the external ID matches", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn, keyID := trustedRole(t, customer, caller, "org-1")
+		callerCP := caller.cp(t)
+
+		// Action
+		session, refused := caller.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Empty(t, refused)
+		status, out := session.kms(t, "DescribeKey", map[string]any{"KeyId": keyID})
+		require.Equalf(t, http.StatusOK, status, "%v", out)
+		callerCP.STS.ExpectEvent[aws.RoleAssumed](t, func(e aws.RoleAssumed) bool {
+			return e.RoleArn == roleArn && e.ExternalID == "org-1"
+		})
+	})
+
+	t.Run("should refuse with AccessDenied and grant nothing when the external ID differs or is missing", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn, _ := trustedRole(t, customer, caller, "org-1")
+		callerCP := caller.cp(t)
+
+		// Action
+		_, wrong := caller.assumeRole(t, roleArn, "org-2")
+		_, missing := caller.assumeRole(t, roleArn, "")
+
+		// Assert
+		require.Equal(t, "AccessDenied", wrong)
+		require.Equal(t, "AccessDenied", missing)
+		callerCP.STS.ExpectNoEvent[aws.RoleAssumed](t, nil)
+	})
+
+	t.Run("should refuse an account the trust policy does not name even with the right external ID", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller, stranger := r.account(t), r.account(t), r.account(t)
+		roleArn, _ := trustedRole(t, customer, caller, "org-1")
+
+		// Action
+		_, refused := stranger.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Equal(t, "AccessDenied", refused)
+	})
+
+	t.Run("should refuse a session key presented without its session token", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn, keyID := trustedRole(t, customer, caller, "org-1")
+		session, _ := caller.assumeRole(t, roleArn, "org-1")
+
+		// Action
+		status, out := session.as(session.id, session.secret).kms(t, "DescribeKey", map[string]any{"KeyId": keyID})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "UnrecognizedClientException", out["__type"])
+	})
+
+	// trustStatement is one statement of a trust policy letting caller's account assume a
+	// role with the given external ID.
+	trustStatement := func(effect string, caller *account, externalID string) map[string]any {
+		return map[string]any{
+			"Effect":    effect,
+			"Principal": map[string]any{"AWS": "arn:aws:iam::" + aws.AccountID(caller.id) + ":root"},
+			"Action":    "sts:AssumeRole",
+			"Condition": map[string]any{"StringEquals": map[string]any{"sts:ExternalId": externalID}},
+		}
+	}
+	roleWithPolicy := func(t *testing.T, customer *account, statement any) string {
+		t.Helper()
+		doc, err := json.Marshal(map[string]any{"Version": "2012-10-17", "Statement": statement})
+		require.NoError(t, err)
+		customer.cp(t).Seed(t, aws.SeedRole(customer.id, "infisical-kms", string(doc)))
+		return aws.RoleArn(customer.id, "infisical-kms")
+	}
+
+	t.Run("should grant a session when the trust policy's Statement is a single object", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn := roleWithPolicy(t, customer, trustStatement("Allow", caller, "org-1"))
+
+		// Action
+		_, refused := caller.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Empty(t, refused)
+	})
+
+	t.Run("should refuse with AccessDenied when a Deny accompanies a matching Allow", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn := roleWithPolicy(t, customer, []any{
+			trustStatement("Allow", caller, "org-1"),
+			trustStatement("Deny", caller, "org-1"),
+		})
+		callerCP := caller.cp(t)
+
+		// Action
+		_, refused := caller.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Equal(t, "AccessDenied", refused)
+		callerCP.STS.ExpectNoEvent[aws.RoleAssumed](t, nil)
+	})
+}
+
+func TestAWSFake_KMS(t *testing.T) {
+	t.Run("should decrypt what it encrypted only in the account that holds the key", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		owner, other := r.account(t), r.account(t)
+		keyID := uuid.NewString()
+		owner.cp(t).Seed(t, aws.SeedKey(keyID))
+		status, enc := owner.kms(t, "Encrypt", map[string]any{"KeyId": keyID, "Plaintext": []byte("data key")})
+		require.Equalf(t, http.StatusOK, status, "%v", enc)
+
+		// Action
+		okStatus, dec := owner.kms(t, "Decrypt", map[string]any{"KeyId": keyID, "CiphertextBlob": enc["CiphertextBlob"]})
+		otherStatus, refused := other.kms(t, "Decrypt", map[string]any{"CiphertextBlob": enc["CiphertextBlob"]})
+
+		// Assert
+		require.Equalf(t, http.StatusOK, okStatus, "%v", dec)
+		plaintext, err := base64.StdEncoding.DecodeString(dec["Plaintext"].(string))
+		require.NoError(t, err)
+		require.Equal(t, "data key", string(plaintext))
+		require.Equal(t, http.StatusBadRequest, otherStatus)
+		require.Equal(t, "InvalidCiphertextException", refused["__type"])
+	})
+
+	t.Run("should refuse an encryption context it cannot bind to the ciphertext", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		a := r.account(t)
+		keyID := uuid.NewString()
+		a.cp(t).Seed(t, aws.SeedKey(keyID))
+		status, enc := a.kms(t, "Encrypt", map[string]any{"KeyId": keyID, "Plaintext": []byte("data key")})
+		require.Equalf(t, http.StatusOK, status, "%v", enc)
+		ctx := map[string]string{"org": "A"}
+
+		// Action
+		encStatus, encOut := a.kms(t, "Encrypt", map[string]any{"KeyId": keyID, "Plaintext": []byte("data key"), "EncryptionContext": ctx})
+		decStatus, decOut := a.kms(t, "Decrypt", map[string]any{"CiphertextBlob": enc["CiphertextBlob"], "EncryptionContext": ctx})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, encStatus)
+		require.Equal(t, "UnsupportedOperationException", encOut["__type"])
+		require.Equal(t, http.StatusBadRequest, decStatus)
+		require.Equal(t, "UnsupportedOperationException", decOut["__type"])
+	})
+
+	t.Run("should refuse a key the account does not hold with NotFoundException", func(t *testing.T) {
+		// Setup
+		a := newRig(t).account(t)
+
+		// Action
+		status, out := a.kms(t, "DescribeKey", map[string]any{"KeyId": uuid.NewString()})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "NotFoundException", out["__type"])
 	})
 }
 

@@ -9,21 +9,18 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ConflictError } from "@app/lib/errors";
+import { ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
-import {
-  AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE,
-  AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
-  AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
-} from "../agent-vault/agent-vault-hook-fns";
 import {
   agentVaultAccessBundleServiceFactory,
   HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE
@@ -39,6 +36,7 @@ vi.mock("./agent-vault-mcp-tool-list-fns", async (importOriginal) => ({
 const PROJECT_ID = "project-1";
 const BUNDLE_ID = "bundle-1";
 const SERVICE_ID = "service-1";
+const SAVED_HOOK = { id: "00000000-0000-4000-8000-0000000000aa", name: "approvals" };
 
 type TUpdateServiceInput = Parameters<ReturnType<typeof agentVaultAccessBundleServiceFactory>["updateService"]>[0];
 
@@ -71,16 +69,16 @@ const sshService = ({ hasCertificate, secret }: { hasCertificate: boolean; secre
 const buildService = ({
   firstRead,
   locked,
-  hooksOnPlan = true,
   member = false,
   rules,
   variableKeys = [],
   oauthVariableKeys = [],
-  oauthVariableTokens = {}
+  oauthVariableTokens = {},
+  hooksOnPlan = true,
+  savedHooks = [SAVED_HOOK]
 }: {
   firstRead: TAgentVaultServices;
   locked: TAgentVaultServices;
-  hooksOnPlan?: boolean;
   // A member reads the bundle's services but can't edit them.
   member?: boolean;
   // A role of its own, in place of admin or member.
@@ -89,6 +87,9 @@ const buildService = ({
   oauthVariableKeys?: string[];
   // The access token each connected OAuth variable holds, by key. One left out isn't connected.
   oauthVariableTokens?: Record<string, string>;
+  hooksOnPlan?: boolean;
+  // The project's saved hooks.
+  savedHooks?: { id: string; name: string }[];
 }) => {
   const tx = {};
   const agentVaultServiceDAL = {
@@ -129,6 +130,15 @@ const buildService = ({
   };
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
+  const hookNamed = async ({ name }: { name: string }) => savedHooks.find((hook) => hook.name === name);
+  const agentVaultHookDAL = {
+    findByNameInProject: vi.fn(hookNamed),
+    findByNameForService: vi.fn(hookNamed),
+    findNamesByIds: vi.fn(
+      async ({ ids }: { ids: string[] }) =>
+        new Map(savedHooks.filter((hook) => ids.includes(hook.id)).map((hook) => [hook.id, hook.name]))
+    )
   };
   const agentVaultVariableDAL = {
     findKeys: vi
@@ -209,7 +219,8 @@ const buildService = ({
     },
     agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
     kmsDataKeyService,
-    licenseService
+    licenseService,
+    agentVaultHookDAL
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
   return {
     service,
@@ -218,7 +229,8 @@ const buildService = ({
     agentVaultServiceVariableReferenceDAL,
     agentVaultOauthService,
     kmsDataKeyService,
-    licenseService
+    licenseService,
+    agentVaultHookDAL
   };
 };
 
@@ -368,156 +380,134 @@ describe("updateService, what the audit is told changed", () => {
   });
 });
 
-const HOOK_URL = "https://hooks.example.com/agent-vault";
-const SECRET = "s".repeat(32);
-const sealedSecret = (secret: string) =>
-  Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: secret }))]);
-const hookedService = (hookUrl: string | null = HOOK_URL, secret = "old-secret"): TAgentVaultServices => ({
+const plainService = () => sshService({ hasCertificate: false, secret: "key" });
+
+// Rows written before hooks were their own resource still carry these columns until a later release drops them.
+const legacyHookedService = (): TAgentVaultServices => ({
   ...sshService({ hasCertificate: false, secret: "key" }),
-  hookUrl,
-  encryptedHookSecret: hookUrl ? sealedSecret(secret) : null
+  hookUrl: "https://hooks.example.com/agent-vault",
+  encryptedHookSecret: Buffer.from("sealed")
 });
-const plainService = () => hookedService(null);
 
-describe("updateService, hooks", () => {
-  test("sets a hook on a service with none", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+const withSavedHook = (): TAgentVaultServices => ({
+  ...sshService({ hasCertificate: false, secret: "key" }),
+  hookId: SAVED_HOOK.id,
+  hookMethods: null,
+  hookPaths: null,
+  hookTools: null
+});
 
-    const result = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } });
+const noHooksRead = [
+  { action: "manage", subject: "all" },
+  { action: "read", subject: ProjectPermissionSub.AgentVaultHooks, inverted: true }
+];
 
-    const columns = writtenColumns(agentVaultServiceDAL);
-    expect(columns.hookUrl).toBe(HOOK_URL);
-    expect(columns.encryptedHookSecret).toEqual(sealedSecret(SECRET));
-    expect(result.update).toMatchObject({ hookChanged: "set", hookUrl: HOOK_URL, hookSecretReplaced: true });
-    expect(result.service.hook).toEqual({ url: HOOK_URL });
-    expect(JSON.stringify(result)).not.toContain(SECRET);
-  });
-
-  test("a URL-only change keeps the stored secret", async () => {
-    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({
-      firstRead: hookedService(),
-      locked: hookedService()
+describe("a service's hook", () => {
+  test("setting one writes the hook and its narrowing, checks the plan and tells the audit", async () => {
+    const { service, agentVaultServiceDAL, licenseService } = buildService({
+      firstRead: plainService(),
+      locked: plainService()
     });
 
-    const result = await updateSsh(service, { hook: { url: "https://hooks.example.com/other" } });
+    const result = await updateSsh(service, { hook: { name: "approvals" } });
 
-    const columns = writtenColumns(agentVaultServiceDAL);
-    expect(columns.hookUrl).toBe("https://hooks.example.com/other");
-    expect(columns).not.toHaveProperty("encryptedHookSecret");
-    expect(result.update).toMatchObject({
-      hookChanged: "updated",
-      hookUrl: "https://hooks.example.com/other",
-      hookSecretReplaced: false
+    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({
+      hookId: SAVED_HOOK.id,
+      hookMethods: null,
+      hookPaths: null,
+      hookTools: null
     });
-    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(licenseService.getPlan).toHaveBeenCalled();
+    expect(result.update.hookChange).toEqual({ previous: null, current: { id: SAVED_HOOK.id, name: "approvals" } });
+    expect(result.service.hook).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
   });
 
-  test("a secret-only change writes the secret and reports no URL", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+  test("sending the hook it already has checks no plan and isn't a change", async () => {
+    const { service, licenseService } = buildService({
+      firstRead: withSavedHook(),
+      locked: withSavedHook(),
+      hooksOnPlan: false
+    });
 
-    const result = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } });
+    const result = await updateSsh(service, { hook: { name: "approvals" }, port: 2222 });
 
-    expect(writtenColumns(agentVaultServiceDAL).encryptedHookSecret).toEqual(sealedSecret(SECRET));
-    expect(result.update.hookUrl).toBeUndefined();
-    expect(result.update).toMatchObject({ hookChanged: "updated", hookSecretReplaced: true });
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(result.update.hookChange).toBeUndefined();
   });
 
-  test("null removes the hook and its secret", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+  test("removing it works off-plan, clears every hook column and names the hook it had", async () => {
+    const { service, agentVaultServiceDAL, licenseService } = buildService({
+      firstRead: withSavedHook(),
+      locked: withSavedHook(),
+      hooksOnPlan: false
+    });
 
     const result = await updateSsh(service, { hook: null });
 
-    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({ hookUrl: null, encryptedHookSecret: null });
-    expect(result.update).toMatchObject({ hookChanged: "removed", hookSecretReplaced: false });
-    expect(result.service.hook).toBeNull();
+    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({
+      hookId: null,
+      hookMethods: null,
+      hookPaths: null,
+      hookTools: null
+    });
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(result.update.hookChange).toEqual({ previous: { id: SAVED_HOOK.id, name: "approvals" }, current: null });
   });
 
-  test("an echo of the stored hook is not an update on its own, and checks no plan", async () => {
-    const { service, agentVaultServiceDAL, licenseService } = buildService({
-      firstRead: hookedService(),
-      locked: hookedService()
+  test("setting one off-plan is refused before the transaction", async () => {
+    const { service, agentVaultServiceDAL } = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      hooksOnPlan: false
     });
 
-    await expect(updateSsh(service, { hook: { url: HOOK_URL } })).rejects.toThrow(
-      "Provide at least one field besides 'type' to update"
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
+    );
+    expect(agentVaultServiceDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("a name the project has no hook for is a 404 naming it", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService(), savedHooks: [] });
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      "There's no hook called 'approvals' in this project."
+    );
+  });
+
+  test("a hook deleted before the save's transaction is a 404 rather than a failed key", async () => {
+    const { service, agentVaultHookDAL, agentVaultServiceDAL } = buildService({
+      firstRead: plainService(),
+      locked: plainService()
+    });
+    agentVaultHookDAL.findByNameForService.mockResolvedValue(undefined);
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      "There's no hook called 'approvals' in this project."
     );
     expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
-    expect(licenseService.getPlan).not.toHaveBeenCalled();
   });
 
-  test("null on a service with no hook writes no hook columns and reports nothing", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
-
-    const result = await updateSsh(service, { port: 2222, hook: null });
-
-    const columns = writtenColumns(agentVaultServiceDAL);
-    expect(columns).not.toHaveProperty("hookUrl");
-    expect(columns).not.toHaveProperty("encryptedHookSecret");
-    expect(result.update).not.toHaveProperty("hookChanged");
-    expect(result.update).not.toHaveProperty("hookSecretReplaced");
-  });
-
-  test("setting a hook without a secret is refused", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
-
-    const error = await updateSsh(service, { hook: { url: HOOK_URL } }).catch((err: unknown) => err);
-
-    expect(error).toBeInstanceOf(BadRequestError);
-    expect((error as Error).message).toBe(AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
-    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
-  });
-
-  test("with hooks off the plan, setting or changing one is refused and removing one is allowed", async () => {
-    const off = (stored: TAgentVaultServices) =>
-      buildService({ firstRead: stored, locked: stored, hooksOnPlan: false });
+  test("a narrowing an SSH service can't use is refused", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService() });
 
     await expect(
-      updateSsh(off(plainService()).service, { hook: { url: HOOK_URL, signingSecret: SECRET } })
-    ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
-    await expect(
-      updateSsh(off(hookedService()).service, { hook: { url: "https://hooks.example.com/other" } })
-    ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
-
-    const removal = off(hookedService());
-    const result = await updateSsh(removal.service, { hook: null });
-    expect(result.update.hookChanged).toBe("removed");
-    expect(removal.licenseService.getPlan).not.toHaveBeenCalled();
-  });
-
-  test("refuses to set a hook another save set while this one was in progress", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: hookedService() });
-
-    const error = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } }).catch(
-      (err: unknown) => err
+      updateSsh(service, { hook: { name: "approvals", methods: [AgentVaultHttpMethod.Post] } })
+    ).rejects.toThrow(
+      "'bastion' is an SSH service, and only an HTTP service can be narrowed by methods or paths. Leave them out to check every request to it."
     );
-
-    expect(error).toBeInstanceOf(ConflictError);
-    expect((error as Error).message).toBe(AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE);
-    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
   });
 
-  test.each([
-    { why: "change", hook: { url: "https://hooks.example.com/other" } },
-    { why: "remove", hook: null }
-  ])("refuses to $why a hook another save removed while this one was in progress", async ({ hook }) => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: plainService() });
+  test("naming one takes read on hooks", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService(), rules: noHooksRead });
 
-    await expect(updateSsh(service, { hook })).rejects.toThrow(AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE);
-    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  test("a hook-only update reaches the row", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+  test("create writes the hook it names", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
 
-    await updateSsh(service, { hook: { url: "https://hooks.example.com/other" } });
-
-    expect(agentVaultServiceDAL.updateById).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("createService, hooks", () => {
-  const create = (service: ReturnType<typeof buildService>["service"]) =>
-    service.createService({
+    const result = await service.createService({
       projectId: PROJECT_ID,
       ctx,
       type: AgentVaultServiceType.Ssh,
@@ -525,51 +515,27 @@ describe("createService, hooks", () => {
       host: "bastion.internal",
       port: 22,
       credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" },
-      hook: { url: HOOK_URL, signingSecret: SECRET }
+      hook: { name: "approvals" }
     });
 
-  test("stores the URL and the sealed secret, and returns only the URL", async () => {
-    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
-
-    const result = await create(service);
-
-    const columns = agentVaultServiceDAL.create.mock.calls[0][0];
-    expect(columns.hookUrl).toBe(HOOK_URL);
-    expect(columns.encryptedHookSecret).toEqual(sealedSecret(SECRET));
-    expect(result.service.hook).toEqual({ url: HOOK_URL });
-    expect(JSON.stringify(result)).not.toContain(SECRET);
+    expect(agentVaultServiceDAL.create.mock.calls[0][0]).toMatchObject({ hookId: SAVED_HOOK.id });
+    expect(result.service.hook).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
   });
 
-  test("is refused with hooks off the plan", async () => {
-    const { service, agentVaultServiceDAL } = buildService({
-      firstRead: plainService(),
-      locked: plainService(),
-      hooksOnPlan: false
-    });
-
-    await expect(create(service)).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
-    expect(agentVaultServiceDAL.create).not.toHaveBeenCalled();
-  });
-});
-
-describe("service reads, hooks", () => {
-  test("an admin sees the hook's URL and a member doesn't see the hook", async () => {
-    const admin = buildService({ firstRead: hookedService(), locked: hookedService() });
+  test("reads show the hook only to callers who can read hooks, and never a legacy row's old one", async () => {
+    const admin = buildService({ firstRead: withSavedHook(), locked: withSavedHook() });
     expect(
       (await admin.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).service.hook
-    ).toEqual({ url: HOOK_URL });
-    expect(
-      (await admin.service.listServices({ projectId: PROJECT_ID, ctx, limit: 50, offset: 0 })).services[0].hook
-    ).toEqual({
-      url: HOOK_URL
-    });
+    ).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
 
-    const member = buildService({ firstRead: hookedService(), locked: hookedService(), member: true });
-    const read = await member.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
-    expect(read.service.hook).toBeUndefined();
-    expect(JSON.parse(JSON.stringify(read.service))).not.toHaveProperty("hook");
-    const list = await member.service.listServices({ projectId: PROJECT_ID, ctx, limit: 50, offset: 0 });
-    expect(list.services[0].hook).toBeUndefined();
+    const noHooks = buildService({ firstRead: withSavedHook(), locked: withSavedHook(), rules: noHooksRead });
+    const hidden = await noHooks.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+    expect(hidden.service).not.toHaveProperty("hook");
+
+    const legacy = buildService({ firstRead: legacyHookedService(), locked: legacyHookedService() });
+    const read = await legacy.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+    expect(read.service.hook).toBeNull();
+    expect(JSON.stringify(read)).not.toContain("hooks.example.com");
   });
 });
 
