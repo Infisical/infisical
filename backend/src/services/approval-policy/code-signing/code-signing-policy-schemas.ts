@@ -31,6 +31,8 @@ export const SigningWindowDurationSchema = z.string().refine(
 
 export const MAX_SIGNING_COMMAND_LENGTH = 32767;
 
+export const MAX_SIGNING_JUSTIFICATION_LENGTH = 2048;
+
 const SHA256_HEX_RE = new RE2("^[a-fA-F0-9]{64}$");
 
 const scopeText = (max: number) =>
@@ -90,7 +92,7 @@ export const CodeSigningPolicyRequestDataSchema = z.object({
   signerId: z.string().uuid(),
   approvalPolicyId: z.string().uuid(),
   signerName: z.string(),
-  justification: z.string().max(512).optional(),
+  justification: z.string().max(MAX_SIGNING_JUSTIFICATION_LENGTH).optional(),
   requestedWindowDuration: SigningWindowDurationSchema.optional(),
   requestedSignings: z.number().int().positive().optional(),
   scope: CodeSigningScopeSchema.optional()
