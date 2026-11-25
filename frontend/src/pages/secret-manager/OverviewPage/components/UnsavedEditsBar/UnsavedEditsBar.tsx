@@ -91,18 +91,22 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       const held: TRegisteredEdit = {
         getChanges: () => changes,
         settle: (committed) => {
-          const remaining = changes.filter(
-            (change) =>
-              !committed.some(
-                (done) =>
-                  done.environment === change.environment &&
-                  done.secretKey === change.secretKey &&
-                  done.secretValue === change.secretValue
-              )
-          );
+          const remaining = changes.flatMap((change) => {
+            const done = committed.find(
+              ({ environment, secretKey }) =>
+                environment === change.environment && secretKey === change.secretKey
+            );
+            if (!done) return [change];
+            if (done.secretValue === change.secretValue) return [];
+            return [{ ...change, isCreate: false, originalValue: done.secretValue }];
+          });
           if (edits.get(key) === held) {
             edits.delete(key);
-            hold(key, remaining);
+            remaining.forEach((change) =>
+              hold(getUnsavedDraftKey(change.environment, change.secretPath, change.secretKey), [
+                change
+              ])
+            );
           }
           sync();
         },
@@ -128,7 +132,7 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       getEdits: () =>
         [...edits.entries()].map(([key, edit]) => ({
           getChanges: () => edit.getChanges(),
-          settle: (committed: TUnsavedChange[]) => edits.get(key)?.settle(committed),
+          settle: (committed: TUnsavedChange[]) => (edits.get(key) ?? edit).settle(committed),
           discard: () => edits.get(key)?.discard()
         })),
       takeDraft: (key) => {
@@ -184,7 +188,8 @@ export const useUnsavedDraftKeys = () => useContext(UnsavedEditsKeysContext);
 export const useUnsavedEdit = (
   key: string,
   isDirty: boolean,
-  edit: TUnsavedEdit & { restore: (draft: TUnsavedChange[]) => void }
+  edit: TUnsavedEdit & { restore: (draft: TUnsavedChange[]) => void },
+  size = 1
 ) => {
   const registry = useContext(UnsavedEditsRegistryContext);
   const editRef = useRef(edit);
@@ -208,7 +213,7 @@ export const useUnsavedEdit = (
       discard: () => editRef.current.discard()
     });
     return () => unregister(isDirtyRef.current);
-  }, [registry, isDirty, key]);
+  }, [registry, isDirty, key, size]);
 
   return {
     isCommitting: useContext(UnsavedEditsCommittingContext),
@@ -403,7 +408,7 @@ export const UnsavedEditsBar = ({
             <AlertDialogMedia>
               <SaveIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Update referenced secrets?</AlertDialogTitle>
+            <AlertDialogTitle>Update Referenced Secrets?</AlertDialogTitle>
             <AlertDialogDescription>
               Other secrets in your project reference{" "}
               {referencedChanges?.length === 1 ? "this secret" : "these secrets"}. Committing

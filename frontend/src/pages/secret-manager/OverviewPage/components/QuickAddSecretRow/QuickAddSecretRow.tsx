@@ -389,12 +389,17 @@ export const QuickAddSecretRow = ({
         clearDraft();
       },
       discard: clearDraft,
-      restore: ([draft]) => {
-        setKey(draft.secretKey);
-        setValue(draft.secretValue);
-        setComment(draft.secretComment ?? "");
+      restore: (draft) => {
+        if (draft.length !== environments.length) {
+          holdDrafts(draft);
+          return;
+        }
+        setKey(draft[0].secretKey);
+        setValue(draft[0].secretValue);
+        setComment(draft[0].secretComment ?? "");
       }
-    }
+    },
+    environments.length
   );
   const requestSave = () => formRef.current?.requestSubmit();
   const handleActionShortcut = useSecretInputActionShortcuts({
