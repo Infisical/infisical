@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { Button } from "@app/components/v3";
@@ -38,6 +38,13 @@ enum NoticeCause {
   PaymentProcessing = "payment_processing"
 }
 
+const RENEWAL_FAILURE_MESSAGE: Record<"approval" | "declined", string> = {
+  approval:
+    "Your bank needs to approve the latest subscription payment. Approve it to keep this organization's paid features.",
+  declined:
+    "We couldn't collect the latest subscription payment. Update the payment method to keep this organization's paid features."
+};
+
 const listFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
 const listProducts = (notices: TrialPaymentFailedNotice[]) =>
@@ -72,38 +79,66 @@ const buildFailureMessage = (notices: TrialPaymentFailedNotice[]) => {
   return `We're having trouble completing your ${products} subscription. ${deadline}`;
 };
 
-export const TrialPaymentFailedBanner = () => {
+// One banner for every payment the organization has to act on: a failed renewal and trials whose conversion
+// charge failed. It reaches every member, since the billing contact Stripe emails may have left.
+export const PaymentFailedBanner = () => {
   const { subscription } = useSubscription();
   const { currentOrg, isRootOrganization } = useOrganization();
   const { permission } = useOrgPermission();
+  const location = useLocation();
 
+  const allNotices = subscription.notices ?? [];
   const now = Date.now();
   // The plan is cached server-side, so a notice can outlive its deadline by a few minutes.
-  const notices = (subscription.notices ?? []).filter(
+  const trialNotices = allNotices.filter(
     (notice): notice is TrialPaymentFailedNotice =>
       notice.type === "trial_payment_failed" && new Date(notice.accessEndsAt).getTime() > now
   );
-  if (!notices.length) return null;
+  const renewalNotice = allNotices.find((notice) => notice.type === "subscription_payment_failed");
+  if (!trialNotices.length && !renewalNotice) return null;
 
-  const processingNotices = notices.filter(
+  const canReadBilling = permission.can(
+    OrgPermissionBillingActions.Read,
+    OrgPermissionSubjects.Billing
+  );
+  // The billing page shows these with the invoice link and pay buttons, to anyone who can open it.
+  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
+  if (isBillingPage && isRootOrganization && canReadBilling) return null;
+
+  const processingNotices = trialNotices.filter(
     (notice) => notice.cause === NoticeCause.PaymentProcessing
   );
-  const failedNotices = notices.filter((notice) => notice.cause !== NoticeCause.PaymentProcessing);
+  const failedTrialNotices = trialNotices.filter(
+    (notice) => notice.cause !== NoticeCause.PaymentProcessing
+  );
   const processingMessage = processingNotices.length
     ? `Your payment for ${listProducts(processingNotices)} is processing. Access continues meanwhile.`
     : null;
 
+  const failureMessages: string[] = [];
+  if (renewalNotice) {
+    failureMessages.push(
+      RENEWAL_FAILURE_MESSAGE[
+        renewalNotice.cause === NoticeCause.PaymentActionRequired ? "approval" : "declined"
+      ]
+    );
+  }
+  if (failedTrialNotices.length) {
+    failureMessages.push(buildFailureMessage(failedTrialNotices));
+  }
+
+  if (!failureMessages.length) {
+    return <OrgAlertBanner role="status" isDismissible={false} text={processingMessage} />;
+  }
+
   // Billing lives on the root organization, and a sub-org role grants nothing there.
   const canResolve =
     isRootOrganization &&
-    permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing) &&
+    canReadBilling &&
     permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
-  // Paying again while a payment settles could charge twice.
-  const showPayButton = canResolve && failedNotices.length > 0 && !processingNotices.length;
-
-  if (!failedNotices.length) {
-    return <OrgAlertBanner role="status" isDismissible={false} text={processingMessage} />;
-  }
+  // Paying a trial again while its payment settles could charge twice.
+  const canPayTrial = failedTrialNotices.length > 0 && !processingNotices.length;
+  const showAction = canResolve && (Boolean(renewalNotice) || canPayTrial);
 
   return (
     <OrgAlertBanner
@@ -111,16 +146,16 @@ export const TrialPaymentFailedBanner = () => {
       isDismissible={false}
       text={
         <>
-          <span className="font-medium">Action needed:</span> {buildFailureMessage(failedNotices)}
+          <span className="font-medium">Action needed:</span> {failureMessages.join(" ")}
           {processingMessage && ` ${processingMessage}`}
           {!canResolve && " Ask an organization admin to update payment."}
         </>
       }
       action={
-        showPayButton && (
+        showAction && (
           <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
             <Button variant="outline" size="xs">
-              Complete Payment
+              {renewalNotice ? "Review Billing" : "Complete Payment"}
             </Button>
           </Link>
         )

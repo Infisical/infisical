@@ -118,9 +118,6 @@ export type SubscriptionPlan = {
   secretScanning: boolean;
   enterpriseSecretSyncs: boolean;
   enterpriseAppConnections: boolean;
-  cardDeclined?: boolean;
-  cardDeclinedReason?: string;
-  cardDeclinedDays?: number;
   machineIdentityAuthTemplates: boolean;
   secretShareExternalBranding: boolean;
   emailDomainVerification: boolean;

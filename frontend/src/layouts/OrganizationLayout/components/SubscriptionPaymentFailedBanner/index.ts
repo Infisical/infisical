@@ -1,1 +1,0 @@
-export { SubscriptionPaymentFailedBanner } from "./SubscriptionPaymentFailedBanner";
