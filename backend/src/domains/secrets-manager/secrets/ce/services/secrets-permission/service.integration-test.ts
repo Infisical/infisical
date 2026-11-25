@@ -108,7 +108,7 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
         projectId: tenant.project.id
       })
       .returning("*");
-    const principal: TPrincipal = { type: ActorType.SERVICE, id: token.id, projectId: tenant.project.id };
+    const principal: TPrincipal = { type: ActorType.SERVICE, id: token.id, name: "token", projectId: tenant.project.id };
 
     // Action
     const { permission } = await build().getSecretsPermission({

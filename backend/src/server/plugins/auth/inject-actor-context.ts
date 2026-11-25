@@ -61,7 +61,12 @@ const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: s
     case ActorType.SERVICE:
       return {
         actorId: auth.serviceTokenId,
-        principal: { type: ActorType.SERVICE, id: auth.serviceTokenId, projectId: auth.serviceToken.projectId }
+        principal: {
+          type: ActorType.SERVICE,
+          id: auth.serviceTokenId,
+          name: auth.serviceToken.name,
+          projectId: auth.serviceToken.projectId
+        }
       };
     case ActorType.SCIM_CLIENT:
       return { actorId: auth.scimTokenId, principal: { type: ActorType.SCIM_CLIENT, id: auth.scimTokenId } };

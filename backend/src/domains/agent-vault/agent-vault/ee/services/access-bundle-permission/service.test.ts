@@ -211,7 +211,7 @@ describe("AccessBundlePermissionService.getAccessBundlePermission", () => {
   test("should let an actor that is not a user or identity reach no bundle", async () => {
     // Setup
     const { service, actor } = setup();
-    const serviceActor: TActorContext = { ...actor, principal: { type: ActorType.SERVICE, id: "st", projectId: "p" } };
+    const serviceActor: TActorContext = { ...actor, principal: { type: ActorType.SERVICE, id: "st", name: "st", projectId: "p" } };
 
     // Action
     const reach = await service.getAccessBundlePermission({ actor: serviceActor, projectId: PROJECT_ID });
