@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -225,7 +226,7 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 			identity := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
 			secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
 			legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
-			createBypassPolicy(t, proj, "prod", "/gov", true)
+			policyID := createBypassPolicy(t, proj, "prod", "/gov", true)
 
 			// Action
 			renamed, imported := raceRename(t, identity, proj, legacyID, func() (int, error) {
@@ -240,8 +241,7 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 			})
 
 			// Assert
-			require.Falsef(t, renamed == http.StatusOK && imported == http.StatusOK,
-				"both the rename and the import succeeded, leaving a direct import in /gov")
+			requireOneRaceWinner(t, proj, policyID, renamed, imported, "import")
 		}
 	})
 
@@ -260,7 +260,7 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 			legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
 			crossImport := secretmanager.CreateImport(t, proj, "prod", secretmanager.Location{Env: "dev", Path: "/"},
 				secretmanager.FromProject(source), secretmanager.IntoPath("/legacy"))
-			createBypassPolicy(t, proj, "prod", "/gov", true)
+			policyID := createBypassPolicy(t, proj, "prod", "/gov", true)
 
 			// Action
 			renamed, repointed := raceRename(t, identity, proj, legacyID, func() (int, error) {
@@ -275,8 +275,7 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 			})
 
 			// Assert
-			require.Falsef(t, renamed == http.StatusOK && repointed == http.StatusOK,
-				"both the rename and the repoint succeeded, leaving a direct import in /gov")
+			requireOneRaceWinner(t, proj, policyID, renamed, repointed, "repoint")
 		}
 	})
 
@@ -301,8 +300,8 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 }
 
 // createBypassPolicy puts a secret change policy that machine identities bypass on env's folder at secretPath, with
-// the tenant admin as its only approver.
-func createBypassPolicy(t *testing.T, proj *fixture.Project, env, secretPath string, enforce bool) {
+// the tenant admin as its only approver, and returns its id.
+func createBypassPolicy(t *testing.T, proj *fixture.Project, env, secretPath string, enforce bool) uuid.UUID {
 	t.Helper()
 	var item api.CreateSecretApprovalPolicyJSONBody_Approvers_Item
 	require.NoError(t, item.FromCreateSecretApprovalPolicyJSONBodyApprovers1(api.CreateSecretApprovalPolicyJSONBodyApprovers1{
@@ -320,6 +319,7 @@ func createBypassPolicy(t *testing.T, proj *fixture.Project, env, secretPath str
 	})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return res.JSON200.Approval.Id
 }
 
 // raceAttempts is how many times each race runs. one run cannot force the interleaving, but the property checked has
@@ -353,6 +353,25 @@ func raceRename(t *testing.T, actor *harness.Principal, proj *fixture.Project, f
 	require.NoError(t, renameErr)
 	require.NoError(t, otherErr)
 	return renamed, otherStatus
+}
+
+// requireOneRaceWinner checks a race between renaming /legacy to /gov and a request that puts a direct import in
+// /legacy. exactly one of them may win. when the rename wins, the other request is refused by the policy (400) or, if
+// it looked /legacy up after the rename, finds no folder (404). when the import wins, the rename is refused (400). any
+// other status, a 500 included, fails, and either way the policy on /gov must govern no direct import.
+func requireOneRaceWinner(t *testing.T, proj *fixture.Project, policyID uuid.UUID, renamed, other int, otherName string) {
+	t.Helper()
+	switch {
+	case renamed == http.StatusOK:
+		require.Containsf(t, []int{http.StatusBadRequest, http.StatusNotFound}, other,
+			"the rename succeeded and the %s returned %d", otherName, other)
+	case other == http.StatusOK:
+		require.Equalf(t, http.StatusBadRequest, renamed, "the %s succeeded and the rename returned %d", otherName, renamed)
+	default:
+		require.Failf(t, "neither request succeeded", "the rename returned %d and the %s returned %d", renamed, otherName, other)
+	}
+	require.Empty(t, listPolicyImports(t, proj, policyID, api.ListSecretApprovalPolicyImportsParamsIsReplicationFalse),
+		"a direct import ended up in a folder the policy on /gov governs")
 }
 
 func renameFolder(t *testing.T, actor *harness.Principal, proj *fixture.Project, env, parentPath, folderID, name string) *api.UpdateSecretFolderResponse {
