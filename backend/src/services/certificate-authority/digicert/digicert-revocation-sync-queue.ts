@@ -113,19 +113,23 @@ export const digicertRevocationSyncQueueFactory = ({
       });
     }
 
-    await auditLogService.createAuditLog({
-      projectId: cert.projectId,
-      actor: { type: ActorType.PLATFORM, metadata: {} },
-      event: {
-        type: EventType.REVOKE_CERT,
-        metadata: {
-          certId: cert.id,
-          cn: cert.commonName,
-          serialNumber: cert.serialNumber,
-          revocationReason: CrlReason.UNSPECIFIED
+    try {
+      await auditLogService.createAuditLog({
+        projectId: cert.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.REVOKE_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber,
+            revocationReason: CrlReason.UNSPECIFIED
+          }
         }
-      }
-    });
+      });
+    } catch (err) {
+      logger.error(err, `digicert-revocation-sync: failed to audit the revoked certificate [certId=${cert.id}]`);
+    }
 
     for (const signer of revocation.revokedSigners) {
       try {
@@ -299,7 +303,7 @@ export const digicertRevocationSyncQueueFactory = ({
 
         const digicertCertificateAuthorities = await certificateAuthorityDAL.findWithAssociatedCa({
           [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.DIGICERT,
-          [`${TableName.CertificateAuthority}.status` as "status"]: CaStatus.ACTIVE
+          $in: { [`${TableName.CertificateAuthority}.status` as "status"]: [CaStatus.ACTIVE, CaStatus.DISABLED] }
         });
 
         let succeededCaCount = 0;

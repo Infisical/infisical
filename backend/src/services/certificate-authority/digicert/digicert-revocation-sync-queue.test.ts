@@ -2,11 +2,13 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { TableName } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OcspCertStatus } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
+import { CaStatus } from "../certificate-authority-enums";
 import { digicertRevocationSyncQueueFactory } from "./digicert-revocation-sync-queue";
 
 const getCertificateOcspStatus = vi.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -84,7 +86,8 @@ const runSync = async ({
   storedBody = certificateBody,
   lockedCertificateStatus = CertStatus.ACTIVE,
   revokedSigners = [],
-  isSignerLockHeld = false
+  isSignerLockHeld = false,
+  failCertificateAudit = false
 }: {
   active: (ReturnType<typeof activeCertificate> & { externalMetadata?: unknown })[];
   revokedOrderCertificates?: ReturnType<typeof activeCertificate>[];
@@ -92,6 +95,7 @@ const runSync = async ({
   lockedCertificateStatus?: CertStatus;
   revokedSigners?: TRevokedSigner[];
   isSignerLockHeld?: boolean;
+  failCertificateAudit?: boolean;
 }) => {
   let handler: (() => Promise<void>) | undefined;
   const certificateDAL = {
@@ -100,8 +104,14 @@ const runSync = async ({
     findByIdForUpdate: vi.fn().mockResolvedValue({ status: lockedCertificateStatus }),
     updateById: vi.fn()
   };
-  const auditLogService = { createAuditLog: vi.fn() };
+  const auditLogService = {
+    createAuditLog: vi.fn(async (log: { event: { type: string } }) => {
+      if (failCertificateAudit && log.event.type === EventType.REVOKE_CERT) throw new Error("audit stream down");
+    })
+  };
   const certificateAlertEventEmitter = { notify: vi.fn() };
+  const certificateAuthorityDAL = { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) };
+  const pkiAlertV2Queue = { queueCertificateEvent: vi.fn() };
   const signerService = {
     revokeWithCertificate: vi.fn(
       async (_certificateId: string, revokeCertificate: (tx: unknown) => Promise<boolean>) => {
@@ -121,7 +131,8 @@ const runSync = async ({
         handler = registered;
       }
     },
-    certificateAuthorityDAL: { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) },
+    certificateAuthorityDAL,
+    pkiAlertV2Queue,
     certificateDAL,
     certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
     appConnectionDAL: {},
@@ -135,7 +146,7 @@ const runSync = async ({
   } as unknown as Parameters<typeof digicertRevocationSyncQueueFactory>[0]).init();
 
   await handler!();
-  return { ...certificateDAL, auditLogService, certificateAlertEventEmitter };
+  return { ...certificateDAL, auditLogService, certificateAlertEventEmitter, certificateAuthorityDAL, pkiAlertV2Queue };
 };
 
 describe("DigiCert revocation sync, OCSP check of active certificates", () => {
@@ -239,6 +250,34 @@ describe("DigiCert revocation sync, signers of a revoked certificate", () => {
       ],
       [ActorType.PLATFORM, expect.objectContaining({ signerId: "signer-2", previousStatus: "active" })]
     ]);
+  });
+
+  test("audits the signers even when the certificate audit fails", async () => {
+    const certificateDAL = await runSync({
+      active: [],
+      revokedOrderCertificates: [activeCertificate("cert-1")],
+      revokedSigners: [{ id: "signer-1", name: "release-signer", previousStatus: "active", status: "revoked" }],
+      failCertificateAudit: true
+    });
+
+    expect(certificateDAL.auditLogService.createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({ type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA }) as unknown
+      })
+    );
+    expect(certificateDAL.pkiAlertV2Queue.queueCertificateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: "cert-1" })
+    );
+  });
+
+  test("checks disabled DigiCert CAs too, since their certificates stay valid upstream", async () => {
+    const certificateDAL = await runSync({ active: [] });
+
+    expect(certificateDAL.certificateAuthorityDAL.findWithAssociatedCa).toHaveBeenCalledWith(
+      expect.objectContaining({
+        $in: { [`${TableName.CertificateAuthority}.status`]: [CaStatus.ACTIVE, CaStatus.DISABLED] }
+      })
+    );
   });
 
   test("leaves the certificate for the next run while a signer of it is being changed", async () => {
