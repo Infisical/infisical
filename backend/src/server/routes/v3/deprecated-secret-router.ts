@@ -1858,24 +1858,26 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        secrets: z
-          .object({
-            secretName: z.string().trim(),
-            type: z.nativeEnum(SecretType).default(SecretType.Shared),
-            secretValueCiphertext: z.string().trim(),
-            secretValueIV: z.string().trim(),
-            secretValueTag: z.string().trim(),
-            secretKeyCiphertext: z.string().trim(),
-            secretKeyIV: z.string().trim(),
-            secretKeyTag: z.string().trim(),
-            secretCommentCiphertext: z.string().trim().optional(),
-            secretCommentIV: z.string().trim().optional(),
-            secretCommentTag: z.string().trim().optional(),
-            skipMultilineEncoding: z.boolean().optional(),
-            tags: z.string().array().optional()
-          })
-          .array()
-          .min(1)
+        secrets: limitSecretBatchSize(
+          z
+            .object({
+              secretName: z.string().trim(),
+              type: z.nativeEnum(SecretType).default(SecretType.Shared),
+              secretValueCiphertext: z.string().trim(),
+              secretValueIV: z.string().trim(),
+              secretValueTag: z.string().trim(),
+              secretKeyCiphertext: z.string().trim(),
+              secretKeyIV: z.string().trim(),
+              secretKeyTag: z.string().trim(),
+              secretCommentCiphertext: z.string().trim().optional(),
+              secretCommentIV: z.string().trim().optional(),
+              secretCommentTag: z.string().trim().optional(),
+              skipMultilineEncoding: z.boolean().optional(),
+              tags: z.string().array().optional()
+            })
+            .array()
+            .min(1)
+        )
       }),
       response: {
         200: z.union([

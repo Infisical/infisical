@@ -603,8 +603,8 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                 })
               )
             ).optional(),
-            update: z
-              .array(
+            update: limitSecretBatchSize(
+              z.array(
                 z.object({
                   secretKey: SecretNameSchema,
                   newSecretName: SecretNameSchema.optional(),
@@ -622,7 +622,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   tagIds: z.string().array().optional()
                 })
               )
-              .optional(),
+            ).optional(),
             delete: z
               .array(
                 z.object({
