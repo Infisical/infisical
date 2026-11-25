@@ -113,6 +113,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
     <Stack gap={24}>
       <PageHeader
         title="Certificate policies"
+        description="Rules every issued certificate must meet, such as allowed names, key algorithms, and validity periods."
         badges={<DocumentationLink href={POLICY_DOCS} subject="Certificate policies" />}
         actions={
           <Button
