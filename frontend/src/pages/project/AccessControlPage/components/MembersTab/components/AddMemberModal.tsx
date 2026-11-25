@@ -23,7 +23,11 @@ import {
   Field,
   FieldContent,
   FieldError,
-  FieldLabel
+  FieldLabel,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionMemberActions,
@@ -107,6 +111,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const {
     data: roles,
     isPending: isRolesLoading,
+    isFetching: isRolesFetching,
     isError: isRolesError,
     refetch: refetchRoles
   } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
@@ -145,7 +150,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     setValue,
-    getValues,
     watch,
     formState: { isSubmitting, errors }
   } = useForm<TAddMemberForm>({
@@ -155,22 +159,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  const { creation: roleCreation, upgradeGate: roleUpgradeGate } = useProjectRoleCreation<
-    TAddMemberForm["projectRoleSlugs"][number]
-  >((role) => {
-    const isAssignable =
-      filterByGrantConditions([role], {
-        getKey: (el) => el.slug,
-        allowed: assignRoleConditions?.roles,
-        forbidden: assignRoleConditions?.forbiddenRoles
-      }).length > 0;
-    if (!isAssignable) return;
-    setValue(
-      "projectRoleSlugs",
-      [...getValues("projectRoleSlugs"), { slug: role.slug, name: role.name }],
-      { shouldValidate: true }
-    );
-  });
+  const { creation: roleCreation, upgradeGate: roleUpgradeGate } =
+    useProjectRoleCreation<TAddMemberForm["projectRoleSlugs"][number]>();
 
   useEffect(() => {
     if (requesterEmail) {
@@ -365,7 +355,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel className="sr-only">Select roles</FieldLabel>
-                <FieldContent>
+                <FieldContent className="flex-row items-center gap-2">
                   <Combobox
                     options={filteredRoles}
                     renderOption={(option) => <RoleOptionContent role={option} />}
@@ -382,6 +372,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isLoading={isReferenceDataLoading}
                     isDisabled={!canAddMembers || hasReferenceDataError}
                   />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        variant="outline"
+                        aria-label="Refresh roles"
+                        isDisabled={isRolesFetching}
+                        onClick={() => refetchRoles()}
+                      >
+                        <RefreshCwIcon className={isRolesFetching ? "animate-spin" : undefined} />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh Roles</TooltipContent>
+                  </Tooltip>
                 </FieldContent>
                 <FieldError>{error?.message}</FieldError>
               </Field>
