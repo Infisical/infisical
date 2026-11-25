@@ -310,21 +310,14 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     }),
   useApplicationCertificates: (dto) => {
     const name = demoApplications.use().find((entry) => entry.id === dto.applicationId)?.name;
-    const rows = (
-      certificatesDemo.useCertificates({ projectId: DEMO_PROJECT_ID, offset: 0, limit: 10_000 })
-        .data?.certificates ?? []
+    const matched = (
+      certificatesDemo.useCertificates({
+        ...dto,
+        projectId: DEMO_PROJECT_ID,
+        offset: 0,
+        limit: 10_000
+      }).data?.certificates ?? []
     ).filter((cert) => Boolean(name) && cert.applicationName === name);
-    const needle = dto.search?.trim().toLowerCase();
-    const statuses = new Set(typeof dto.status === "string" ? dto.status.split(",") : []);
-    const matched = rows
-      .filter(
-        (cert) =>
-          !needle ||
-          [cert.commonName, cert.serialNumber, cert.altNames ?? ""].some((value) =>
-            value.toLowerCase().includes(needle)
-          )
-      )
-      .filter((cert) => !statuses.size || statuses.has(cert.status));
     return ready({
       certificates: matched.slice(dto.offset, dto.offset + dto.limit),
       totalCount: matched.length

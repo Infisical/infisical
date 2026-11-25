@@ -127,10 +127,12 @@ const filtersToView = ({
 };
 
 const SaveViewDialog = ({
+  applicationId,
   current,
   onClose,
   onSaved
 }: {
+  applicationId?: string;
   current: InventoryView;
   onClose: () => void;
   onSaved: (viewId: string) => void;
@@ -146,7 +148,7 @@ const SaveViewDialog = ({
   const submit = async () => {
     const trimmed = name.trim();
     const view = await create
-      .mutateAsync({ name: trimmed, filters: filtersToView(current), isShared })
+      .mutateAsync({ name: trimmed, filters: filtersToView(current), isShared, applicationId })
       .catch(readableFailure("Couldn't save the view"));
     saved(`View ${trimmed} saved`);
     onSaved(view.id);
@@ -279,17 +281,19 @@ const saveBlock = (canCreate: boolean, current: InventoryView) => {
 
 export const InventoryViewsMenu = ({
   projectId,
+  applicationId,
   activeViewId,
   current,
   onSelect
 }: {
   projectId: string;
+  applicationId?: string;
   activeViewId: string | null;
   current: InventoryView;
   onSelect: (viewId: string | null, view: InventoryView) => void;
 }) => {
   const certificates = useV4Adapter("certificates");
-  const { data } = certificates.useInventoryViews();
+  const { data } = certificates.useInventoryViews(applicationId);
   const update = certificates.useUpdateInventoryView();
   const { user } = useV4Session();
   const { permission } = useProjectPermission(projectId);
@@ -381,6 +385,7 @@ export const InventoryViewsMenu = ({
       </DropdownMenu>
       {saving && (
         <SaveViewDialog
+          applicationId={applicationId}
           current={current}
           onClose={() => setSaving(false)}
           onSaved={(viewId) => onSelect(viewId, current)}

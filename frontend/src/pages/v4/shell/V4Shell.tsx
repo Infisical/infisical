@@ -20,7 +20,10 @@ import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
-import { useHasProjectCertificateSyncs } from "../cert-manager/components/certificate";
+import {
+  useHasProjectCertificateSyncs,
+  usePendingRequestCount
+} from "../cert-manager/components/certificate";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -207,6 +210,7 @@ export const V4Shell = ({
   const approvals = usePendingApprovals(
     at.product === ProjectType.SecretManager ? (at.projectId ?? "") : ""
   );
+  const pendingCertRequests = usePendingRequestCount(orgId, at.level === "pki");
   const trail = shellTrail({
     at,
     projectName: projectName.name,
@@ -214,7 +218,8 @@ export const V4Shell = ({
     blocked,
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
-    projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview }
+    projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview },
+    productCounts: { requests: pendingCertRequests }
   });
   const shown = trail[trail.length - 1];
   const parent = trail[trail.length - 2];

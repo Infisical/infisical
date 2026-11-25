@@ -115,7 +115,7 @@ export type CertificatesAdapter = {
     { certificateId: string; applicationId: string },
     TCertificate
   >;
-  useInventoryViews: () => V4QueryResult<TListInventoryViewsResponse>;
+  useInventoryViews: (applicationId?: string) => V4QueryResult<TListInventoryViewsResponse>;
   useCreateInventoryView: V4Mutation<TCreateInventoryViewDTO, TCertificateInventoryView>;
   useUpdateInventoryView: V4Mutation<TUpdateInventoryViewDTO, TCertificateInventoryView>;
   useDeleteInventoryView: V4Mutation<TDeleteInventoryViewDTO, TCertificateInventoryView>;

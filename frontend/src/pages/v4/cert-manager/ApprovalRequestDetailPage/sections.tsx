@@ -171,7 +171,7 @@ export const CertificateSections = ({
         </Card>
       )}
       {extensions.length > 0 && (
-        <List label="Custom extensions" title="Custom extensions" size="sm">
+        <List label="Custom extensions" title="Custom extensions">
           {extensions.map((extension) => (
             <ListRow
               key={extension.oid}

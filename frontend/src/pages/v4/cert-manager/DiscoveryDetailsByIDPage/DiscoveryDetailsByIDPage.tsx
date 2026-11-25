@@ -172,28 +172,28 @@ const ScanRuns = ({
     {
       id: "targets",
       header: "Targets",
-      width: 88,
+      width: 104,
       align: "end",
       render: (scan) => scan.targetsScannedCount
     },
     {
       id: "certs",
       header: "Certs found",
-      width: 104,
+      width: 136,
       align: "end",
       render: (scan) => scan.certificatesFoundCount
     },
     {
       id: "installations",
       header: "Installations",
-      width: 112,
+      width: 144,
       align: "end",
       render: (scan) => scan.installationsFoundCount
     },
     {
       id: "duration",
       header: "Duration",
-      width: 96,
+      width: 112,
       align: "end",
       render: (scan) =>
         scan.completedAt
