@@ -19,7 +19,11 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Select } from "@infisical/cipher/ui/select";
-import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
+import {
+  SettingsCard,
+  type SettingsCardSaveStatus,
+  useAutosave
+} from "@infisical/cipher/ui/settings-card";
 import { SheetBody, SheetFooter, useSheetView } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -160,38 +164,27 @@ const ApproverCard = ({
 };
 
 const EmailApproversCard = ({
-  folderId,
-  approvers,
-  enabled
+  checked,
+  status,
+  disabled,
+  onChange
 }: {
-  folderId: string;
-  approvers: Approver[];
-  enabled: boolean;
-}) => {
-  const setConfig = useV4Adapter("pamAccess").useSetApprovalConfig();
-  const { value, save, status, pending } = useAutosave({
-    value: enabled,
-    errorMessage: "Couldn't update approver emails. Try again.",
-    onSave: (next) =>
-      setConfig.mutateAsync({
-        folderId,
-        steps: [{ approvers }],
-        emailApproversOnRequest: next
-      })
-  });
-  return (
-    <SettingsCard title="Approver emails" saveStatus={status}>
-      <Switch
-        layout="row"
-        label="Email approvers on new requests"
-        description="Approvers always get an in-app notification."
-        checked={value}
-        disabled={pending}
-        onCheckedChange={(checked) => save(checked)}
-      />
-    </SettingsCard>
-  );
-};
+  checked: boolean;
+  status: SettingsCardSaveStatus;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) => (
+  <SettingsCard title="Approver emails" saveStatus={status}>
+    <Switch
+      layout="row"
+      label="Email approvers on new requests"
+      description="Approvers always get an in-app notification."
+      checked={checked}
+      disabled={disabled}
+      onCheckedChange={onChange}
+    />
+  </SettingsCard>
+);
 
 const LegacyNotifications = ({
   configs,
@@ -518,6 +511,16 @@ const ApprovalsEditor = ({
   const bodyRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string>();
+  const emailSetting = useAutosave({
+    value: emailApprovers,
+    errorMessage: "Couldn't update approver emails. Try again.",
+    onSave: (next) =>
+      setConfig.mutateAsync({
+        folderId,
+        steps: [{ approvers: savedState.approvers }],
+        emailApproversOnRequest: next
+      })
+  });
   const { approvers, breakGlass, notifications, autoApproval } = draft;
   const changes = draftChanges(draft, savedState);
   const dirty = changes.any;
@@ -565,6 +568,10 @@ const ApprovalsEditor = ({
     });
   const without = (list: Approver[], target: Approver) =>
     list.filter((entry) => approverKey(entry) !== approverKey(target));
+
+  let saveBlockedReason: string | undefined;
+  if (emailSetting.pending) saveBlockedReason = "Saving approver emails";
+  else if (!dirty) saveBlockedReason = "No changes to save";
 
   const save = async () => {
     if (breakGlass.length > 0 && approvers.length === 0 && autoApproval.rules.length === 0) {
@@ -629,9 +636,10 @@ const ApprovalsEditor = ({
             }
           />
           <EmailApproversCard
-            folderId={folderId}
-            approvers={savedState.approvers}
-            enabled={emailApprovers}
+            checked={emailSetting.value}
+            status={emailSetting.status}
+            disabled={emailSetting.pending || saving}
+            onChange={(checked) => emailSetting.save(checked)}
           />
           <ApproverCard
             title="Break-glass users"
@@ -675,7 +683,7 @@ const ApprovalsEditor = ({
                 <Button
                   variant="primary"
                   loading={saving}
-                  disabledReason={dirty ? undefined : "No changes to save"}
+                  disabledReason={saveBlockedReason}
                   onClick={save}
                 >
                   Save
