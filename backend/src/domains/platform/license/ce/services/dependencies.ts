@@ -13,7 +13,6 @@ export type TPlanCache = {
   read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean; stale: boolean }>;
   write(rootOrgId: string, plan: Plan): Promise<void>;
   markForRevalidation(rootOrgId: string, checkout: boolean): Promise<void>;
-  invalidate(rootOrgId: string): Promise<void>;
   delete(rootOrgId: string): Promise<void>;
   acquireRevalidateLock(rootOrgId: string): Promise<string | null>;
 };

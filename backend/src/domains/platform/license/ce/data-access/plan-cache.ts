@@ -26,7 +26,7 @@ const PlanKeyTtls = {
 };
 
 // A top-level field beside the features, not a wrapper, so old pods still read the value as a plan. A value without
-// it (written by an old pod, or invalidated) is stale.
+// it (written by an old pod) is stale.
 type TCachedPlan = TPlanFeatures & { refreshAt?: number };
 
 export class PlanCache implements TPlanCache {
@@ -62,14 +62,6 @@ export class PlanCache implements TPlanCache {
       checkout ? PlanKeyTtls.passThroughCheckoutInSeconds : PlanKeyTtls.passThroughInSeconds,
       "1"
     );
-  }
-
-  // Keeps the plan but marks it stale: the next read serves it and refreshes it in the background.
-  async invalidate(rootOrgId: string) {
-    const raw = await this.keyStore.getItem(PlanKeys.plan(rootOrgId));
-    if (!raw) return;
-    const { refreshAt: _, ...features } = JSON.parse(raw) as TCachedPlan;
-    await this.writeValue(rootOrgId, features);
   }
 
   async delete(rootOrgId: string) {

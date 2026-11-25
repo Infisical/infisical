@@ -49,20 +49,6 @@ describe("PlanCache read and write", () => {
     expect(expired.plan).toBeNull();
   });
 
-  test("should keep the plan but mark it stale on invalidate, and leave the refresh time out of the plan", async () => {
-    // Setup
-    const { cache } = build();
-    await cache.write(ROOT_ID, plan);
-
-    // Action
-    await cache.invalidate(ROOT_ID);
-    const { plan: read, stale } = await cache.read(ROOT_ID);
-
-    // Assert
-    expect([read?.slug, stale]).toEqual(["pro", true]);
-    expect(read?.toJSON()).toEqual(plan.toJSON());
-  });
-
   test("should read a plan an old pod wrote, with no refresh time, as stale", async () => {
     // Setup
     const { keyStore, cache } = build();
@@ -73,16 +59,5 @@ describe("PlanCache read and write", () => {
 
     // Assert
     expect([read?.slug, stale]).toEqual(["pro", true]);
-  });
-
-  test("should do nothing when invalidating a plan that isn't cached", async () => {
-    // Setup
-    const { cache } = build();
-
-    // Action
-    await cache.invalidate(ROOT_ID);
-
-    // Assert
-    expect((await cache.read(ROOT_ID)).plan).toBeNull();
   });
 });

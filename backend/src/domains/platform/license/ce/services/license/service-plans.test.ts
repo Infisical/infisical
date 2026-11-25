@@ -98,27 +98,6 @@ describe("LicenseService.getPlan", () => {
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
   });
 
-  test("should keep serving the plan after it is invalidated and refresh it once in the background", async () => {
-    // Setup
-    const licenseServer = new FakeLicenseServer();
-    licenseServer.plans.set(ROOT.id, limitedPlan());
-    const { licenseService } = await buildLicense({ licenseServer });
-    await licenseService.getPlan(ROOT.id);
-    licenseServer.plans.set(ROOT.id, enterprisePlan());
-    await licenseService.invalidatePlan(SUB_ORG_ID);
-
-    // Action
-    const plans = await Promise.all([licenseService.getPlan(ROOT.id), licenseService.getPlan(SUB_ORG_ID)]);
-    await new Promise((resolve) => {
-      setImmediate(resolve);
-    });
-
-    // Assert
-    expect(plans.map((plan) => plan.slug)).toEqual(["pro", "pro"]);
-    expect((await licenseService.getPlan(ROOT.id)).slug).toBe("enterprise");
-    expect(licenseServer.fetches).toHaveLength(2);
-  });
-
   test("should keep serving the cached plan when a background refresh fails", async () => {
     // Setup
     let now = 1_000_000;

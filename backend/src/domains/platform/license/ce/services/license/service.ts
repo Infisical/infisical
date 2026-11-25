@@ -22,8 +22,6 @@ export type TLicenseService = {
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
-  // Marks the cached plan stale: the next read still serves it and refreshes it in the background.
-  invalidatePlan(orgId: string): Promise<void>;
   // Cloud only. Safe to repeat; throws so the caller can retry.
   closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
   // Root org's tree on cloud, whole instance on self-hosted or for null. To enforce a limit when adding a member,
@@ -119,10 +117,6 @@ export class LicenseService implements TLicenseService {
   async refreshInstanceEntitlements(): Promise<void> {
     const refreshed = await this.licensePolicyService.refreshInstanceEntitlements();
     if (refreshed) this.instanceEntitlementsCache.set(refreshed);
-  }
-
-  async invalidatePlan(orgId: string): Promise<void> {
-    await this.planCache.invalidate(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
   async closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult> {

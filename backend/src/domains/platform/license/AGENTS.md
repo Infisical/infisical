@@ -39,8 +39,8 @@ Rules:
   minutes; past the `refreshAt` stored in it (about 10 minutes before expiry, jittered) `getPlan` still returns it
   and refreshes it in the background
   (`revalidateInBackground`, one caller per root org under the revalidate lock). A failed refresh leaves the
-  cached plan in place until it expires. `invalidatePlan` and a
-  billing change (`refreshPlan` with `afterBillingChange`) only mark the plan stale; only `closeDeletedOrg` removes
+  cached plan in place until it expires. A billing change
+  (`refreshPlan` with `afterBillingChange`) only marks the plan for a background refresh; only `closeDeletedOrg` removes
   it. Do not add a second copy of the plan or a "last known plan" read beside it.
 - **The free plan is served only when nothing is cached and nothing can be fetched** (unknown org, License Server,
   database or key store failure), and it is never cached, so the next read fetches again. `refreshPlan` throws on
