@@ -309,10 +309,7 @@ export const DashboardPage = () => {
   return (
     <TooltipProvider>
       <Stack gap={24}>
-        <PageHeader
-          title="Dashboard"
-          description="Track certificate health, expiry, and compliance readiness."
-        />
+        <PageHeader title="Dashboard" />
         {body}
       </Stack>
     </TooltipProvider>
