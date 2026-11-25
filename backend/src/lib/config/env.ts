@@ -308,6 +308,56 @@ const envSchema = z
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
+    SECRET_READ_CONCURRENCY_LIMIT_MODE: z
+      .enum(["off", "observe", "enforce"])
+      .default("off")
+      .describe(
+        "How the limit on the secrets that API requests to list secrets hold in memory at once per instance is applied: off, observe (count them and report the requests that would be refused) or enforce (refuse a request when the instance has no room for it)"
+      ),
+    SECRET_READ_HEAP_BASELINE_BYTES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(536_870_912)
+      .describe("Heap an idle, warmed-up instance uses, in bytes. Requests to list secrets can't use it"),
+    SECRET_READ_HEAP_RESERVE_BYTES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(536_870_912)
+      .describe(
+        "Heap, in bytes, kept free for other requests and garbage collection while requests to list secrets are at their limit"
+      ),
+    SECRET_READ_PEAK_BYTES_PER_SECRET: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(16_384)
+      .describe(
+        "Peak heap one secret takes during a request to list secrets, including decryption and the response, in bytes"
+      ),
+    SECRET_READ_DEFAULT_SECRET_WEIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(100)
+      .describe(
+        "Secrets a request to list secrets is assumed to return when this instance hasn't seen that request before"
+      ),
+    SECRET_READ_ORG_BUDGET_MODE: z
+      .enum(["off", "observe", "enforce"])
+      .default("off")
+      .describe(
+        "How the per-organization secret read budget is applied: off, observe (count and report what would be refused) or enforce (refuse reads once the budget is spent)"
+      ),
+    SECRET_READ_ORG_BUDGET: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1000)
+      .describe(
+        "Credits an organization may spend on reading secrets per minute. A read costs one credit per 100 secrets it returns, rounded up"
+      ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),

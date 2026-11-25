@@ -1476,6 +1476,7 @@ export const secretServiceFactory = ({
     ifNoneMatch,
     abortSignal,
     onSecretReferenced,
+    secretReadSlot,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -1483,6 +1484,7 @@ export const secretServiceFactory = ({
       const result = await secretV2BridgeService.getSecrets({
         abortSignal,
         onSecretReferenced,
+        secretReadSlot,
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,
@@ -1503,7 +1505,7 @@ export const secretServiceFactory = ({
         ...paramsV2
       });
 
-      if (result.notModified) {
+      if ("notModified" in result && result.notModified) {
         return {
           notModified: true,
           etag: result.etag,
@@ -1532,128 +1534,133 @@ export const secretServiceFactory = ({
       });
     }
 
-    const { secrets, imports } = await getSecrets({
-      actorId,
-      projectId,
-      environment,
-      actor,
-      actorOrgId,
-      actorAuthMethod,
-      path,
-      includeImports,
-      recursive,
-      abortSignal
-    });
+    const loadSecrets = async () => {
+      const { secrets, imports } = await getSecrets({
+        actorId,
+        projectId,
+        environment,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        path,
+        includeImports,
+        recursive,
+        abortSignal
+      });
 
-    throwIfClientDisconnected(abortSignal);
+      throwIfClientDisconnected(abortSignal);
 
-    const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
-    const filteredSecrets = tagSlugs.length
-      ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
-      : decryptedSecrets;
-    const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
-      const decryptedImportSecrets = importedSecrets.map((sec) =>
-        decryptSecretRaw(
-          {
-            ...sec,
-            environment: el.environment,
-            workspace: projectId,
-            secretPath: el.secretPath,
-            secretValueHidden: false
+      const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
+      const filteredSecrets = tagSlugs.length
+        ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
+        : decryptedSecrets;
+      const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
+        const decryptedImportSecrets = importedSecrets.map((sec) =>
+          decryptSecretRaw(
+            {
+              ...sec,
+              environment: el.environment,
+              workspace: projectId,
+              secretPath: el.secretPath,
+              secretValueHidden: false
+            },
+            botKey
+          )
+        );
+
+        // secret-override to handle duplicate keys from different import levels
+        // this prioritizes secret values from direct imports
+        const importedKeys = new Set<string>();
+        const importedEntries = decryptedImportSecrets.reduce(
+          (
+            accum: {
+              secretValueHidden: boolean;
+              secretKey: string;
+              secretPath: string;
+              workspace: string;
+              environment: string;
+              secretValue: string;
+              secretComment: string;
+              version: number;
+              type: string;
+              _id: string;
+              id: string;
+              user: string | null | undefined;
+              skipMultilineEncoding: boolean | null | undefined;
+            }[],
+            sec
+          ) => {
+            if (!importedKeys.has(sec.secretKey)) {
+              importedKeys.add(sec.secretKey);
+              return [...accum, sec];
+            }
+            return accum;
           },
-          botKey
-        )
-      );
+          []
+        );
 
-      // secret-override to handle duplicate keys from different import levels
-      // this prioritizes secret values from direct imports
-      const importedKeys = new Set<string>();
-      const importedEntries = decryptedImportSecrets.reduce(
-        (
-          accum: {
-            secretValueHidden: boolean;
-            secretKey: string;
-            secretPath: string;
-            workspace: string;
-            environment: string;
-            secretValue: string;
-            secretComment: string;
-            version: number;
-            type: string;
-            _id: string;
-            id: string;
-            user: string | null | undefined;
-            skipMultilineEncoding: boolean | null | undefined;
-          }[],
-          sec
-        ) => {
-          if (!importedKeys.has(sec.secretKey)) {
-            importedKeys.add(sec.secretKey);
-            return [...accum, sec];
-          }
-          return accum;
-        },
-        []
-      );
+        return {
+          ...el,
+          secrets: importedEntries
+        };
+      });
+
+      const expandSecret = interpolateSecrets({
+        folderDAL,
+        projectId,
+        secretDAL,
+        secretEncKey: botKey,
+        abortSignal
+      });
+
+      if (expandSecretReferences) {
+        throwIfClientDisconnected(abortSignal);
+        const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
+        await Promise.allSettled(
+          Object.keys(secretsGroupByPath).map((groupedPath) =>
+            Promise.allSettled(
+              secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
+                if (decryptedSecret.secretValueHidden) return;
+                const expandedSecretValue = await expandSecret({
+                  value: decryptedSecret.secretValue,
+                  secretPath: groupedPath,
+                  environment,
+                  skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                });
+                // eslint-disable-next-line no-param-reassign
+                secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
+              })
+            )
+          )
+        );
+        await Promise.allSettled(
+          processedImports.map((processedImport) =>
+            Promise.allSettled(
+              processedImport.secrets.map(async (decryptedSecret, index) => {
+                if (decryptedSecret.secretValueHidden) return;
+                const expandedSecretValue = await expandSecret({
+                  value: decryptedSecret.secretValue,
+                  secretPath: path,
+                  environment,
+                  skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                });
+                // eslint-disable-next-line no-param-reassign
+                processedImport.secrets[index].secretValue = expandedSecretValue || "";
+              })
+            )
+          )
+        );
+        throwIfClientDisconnected(abortSignal);
+      }
 
       return {
-        ...el,
-        secrets: importedEntries
+        secrets: filteredSecrets,
+        imports: processedImports
       };
-    });
-
-    const expandSecret = interpolateSecrets({
-      folderDAL,
-      projectId,
-      secretDAL,
-      secretEncKey: botKey,
-      abortSignal
-    });
-
-    if (expandSecretReferences) {
-      throwIfClientDisconnected(abortSignal);
-      const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
-      await Promise.allSettled(
-        Object.keys(secretsGroupByPath).map((groupedPath) =>
-          Promise.allSettled(
-            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
-              const expandedSecretValue = await expandSecret({
-                value: decryptedSecret.secretValue,
-                secretPath: groupedPath,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
-              });
-              // eslint-disable-next-line no-param-reassign
-              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      await Promise.allSettled(
-        processedImports.map((processedImport) =>
-          Promise.allSettled(
-            processedImport.secrets.map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
-              const expandedSecretValue = await expandSecret({
-                value: decryptedSecret.secretValue,
-                secretPath: path,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
-              });
-              // eslint-disable-next-line no-param-reassign
-              processedImport.secrets[index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      throwIfClientDisconnected(abortSignal);
-    }
-
-    return {
-      secrets: filteredSecrets,
-      imports: processedImports
     };
+
+    const legacySecrets = await (secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets());
+    return { secrets: legacySecrets.secrets, imports: legacySecrets.imports };
   };
 
   const getSecretByIdRaw = async ({

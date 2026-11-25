@@ -177,6 +177,13 @@ export class DailyQuotaExceededError extends Error {
   }
 }
 
+export class ServerBusyError extends Error {
+  constructor({ message }: { message?: string }) {
+    super(message || "Infisical is handling too many requests right now. Please try again in a second");
+    this.name = "ServerBusy";
+  }
+}
+
 export class NotFoundError extends Error {
   name: string;
 

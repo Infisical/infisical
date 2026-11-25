@@ -11,6 +11,7 @@ import {
   ForbiddenRequestError,
   NotFoundError,
   RateLimitError,
+  ServerBusyError,
   UnauthorizedError
 } from "./index";
 
@@ -19,6 +20,7 @@ describe("classifyError", () => {
     expect(classifyError(new UnauthorizedError({ message: "x" }))).toBe("auth");
     expect(classifyError(new ForbiddenRequestError({ message: "x" }))).toBe("permission");
     expect(classifyError(new RateLimitError({ message: "x" }))).toBe("rate_limit");
+    expect(classifyError(new ServerBusyError({ message: "x" }))).toBe("rate_limit");
     expect(classifyError(new NotFoundError({ message: "x" }))).toBe("not_found");
     expect(classifyError(new BadRequestError({ message: "x" }))).toBe("validation");
     expect(classifyError(new ClientClosedRequestError())).toBe("client_closed");

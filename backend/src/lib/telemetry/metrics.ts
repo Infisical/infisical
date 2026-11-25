@@ -565,6 +565,115 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   unit: "{request}"
 });
 
+export enum SecretRateLimitBucket {
+  OrgBudget = "org_budget",
+  ReadBudget = "read_budget"
+}
+
+export enum SecretRateLimitOutcome {
+  Refused = "refused",
+  WouldRefuse = "would_refuse"
+}
+
+const planSlugAttribute = (planSlug?: string | null) => planSlug || "none";
+
+export const secretRateLimitExceededCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret.rate_limit.exceeded.count",
+  {
+    description:
+      "Secret requests a rate limit bucket refused, or would have refused while the bucket only observes, by bucket, plan and outcome.",
+    unit: "{request}"
+  }
+);
+
+export const recordSecretRateLimitExceededMetric = (params: {
+  bucket: SecretRateLimitBucket;
+  outcome: SecretRateLimitOutcome;
+  planSlug?: string | null;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretRateLimitExceededCounter.add(1, {
+    "rate_limit.bucket": params.bucket,
+    outcome: params.outcome,
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+};
+
+export const secretOrgBudgetUsageHistogram = infisicalCoreMeter.createHistogram("infisical.secret.org_budget.usage", {
+  description:
+    "Credits an organization has spent from its secret read budget in the current window, recorded after each read that costs credits, by plan.",
+  unit: "{credit}"
+});
+
+export const recordSecretOrgBudgetUsageMetric = (params: { usedCredits: number; planSlug?: string | null }) => {
+  if (!isTelemetryEnabled()) return;
+  secretOrgBudgetUsageHistogram.record(params.usedCredits, { "plan.slug": planSlugAttribute(params.planSlug) });
+};
+
+export const registerSecretReadBudgetGauges = (budget: { getCapacity: () => number; getUsed: () => number }) => {
+  const meter = resolveCoreMeter();
+  const gauges = [
+    {
+      name: "infisical.secret.read_budget.capacity",
+      description:
+        "Secrets this instance lets list requests hold in memory at once, computed from the heap limit at boot.",
+      read: budget.getCapacity
+    },
+    {
+      name: "infisical.secret.read_budget.used",
+      description:
+        "Secrets held by list requests running on this instance. Above the capacity when a request turned out larger than its estimate, or while the limit only observes and refuses nothing.",
+      read: budget.getUsed
+    }
+  ];
+
+  gauges.forEach(({ name, description, read }) => {
+    meter.createObservableGauge(name, { description, unit: "{secret}" }).addCallback((observableResult) => {
+      if (!isTelemetryEnabled()) return;
+      observableResult.observe(read());
+    });
+  });
+};
+
+export enum SecretReadEstimateSource {
+  LastKnown = "last_known",
+  Default = "default"
+}
+
+const SECRET_COUNT_BUCKET_BOUNDARIES = [0, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10_000, 25_000, 50_000, 100_000];
+
+export const secretReadSizeHistogram = infisicalCoreMeter.createHistogram("infisical.secret.read.size", {
+  description:
+    "Secrets a list request held in memory, recorded once per request from its last known count, by plan and by where its admission estimate came from.",
+  unit: "{secret}",
+  advice: { explicitBucketBoundaries: SECRET_COUNT_BUCKET_BOUNDARIES }
+});
+
+export const secretReadEstimateErrorHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.read.estimate.error",
+  {
+    description:
+      "Secrets a list request held beyond the estimate it was admitted on, 0 when the estimate covered it, by where the estimate came from.",
+    unit: "{secret}",
+    advice: { explicitBucketBoundaries: SECRET_COUNT_BUCKET_BOUNDARIES }
+  }
+);
+
+export const recordSecretReadSizeMetric = (params: {
+  secretCount: number;
+  estimate: number;
+  estimateSource: SecretReadEstimateSource;
+  planSlug?: string | null;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  const attributes = { "estimate.source": params.estimateSource };
+  secretReadSizeHistogram.record(params.secretCount, {
+    ...attributes,
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+  secretReadEstimateErrorHistogram.record(Math.max(0, params.secretCount - params.estimate), attributes);
+};
+
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
   description:

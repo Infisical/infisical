@@ -10,6 +10,7 @@ import {
   TSecretsUpdate
 } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -249,6 +250,7 @@ export type TGetSecretsRawDTO = {
   abortSignal?: AbortSignal;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {

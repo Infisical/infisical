@@ -465,14 +465,19 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query,
-        projectId: req.query.workspaceId
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const importedSecrets = await readSlot(async (reportSize) => {
+        const secrets = await server.services.secretImport.getSecretsFromImports({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query,
+          projectId: req.query.workspaceId
+        });
+        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
+        return secrets;
       });
       return { secrets: importedSecrets };
     }
@@ -517,14 +522,19 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query,
-        projectId: req.query.workspaceId
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const importedSecrets = await readSlot(async (reportSize) => {
+        const secrets = await server.services.secretImport.getRawSecretsFromImports({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query,
+          projectId: req.query.workspaceId
+        });
+        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
+        return secrets;
       });
       return { secrets: importedSecrets };
     }

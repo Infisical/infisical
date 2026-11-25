@@ -516,13 +516,18 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const importedSecrets = await readSlot(async (reportSize) => {
+        const secrets = await server.services.secretImport.getRawSecretsFromImports({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query
+        });
+        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
+        return secrets;
       });
       return { secrets: importedSecrets };
     }

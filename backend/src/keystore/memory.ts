@@ -143,6 +143,11 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = String(current + value);
       return current + value;
     },
+    incrementByWithFixedExpiry: async (key, value) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      store[key] = String(current + value);
+      return current + value;
+    },
     claimLeastLoaded: async (keys, baseOccupancies) => {
       if (keys.length === 0) return 0;
       if (keys.length !== baseOccupancies.length) {

@@ -220,6 +220,36 @@ Example values:
   </Warning>
 </ParamField>
 
+<ParamField query="SECRET_READ_CONCURRENCY_LIMIT_MODE" type="string" default="off" optional>
+  Controls a limit on API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, on each Infisical instance. The requests running on an instance, across all organizations, can hold only as many secrets in memory as the instance's heap has room for. The limit keeps a few very large requests from using up the memory of an instance.
+
+  Set it to one of these values:
+
+  - `off`: Infisical doesn't apply or measure the limit
+  - `observe`: Infisical measures every request against the limit and records the [secret list limit metrics](/self-hosting/guides/monitoring-telemetry), but doesn't refuse any request. Use this mode to tune the settings that follow before you enforce the limit
+  - `enforce`: A request that arrives when the instance has no room for it fails with a `503` response. Retry the request a few seconds later
+
+  A request doesn't count toward the limit if Infisical answers it with a `304` response.
+</ParamField>
+
+<ParamField query="SECRET_READ_HEAP_BASELINE_BYTES" type="int" default="536870912" optional>
+  Heap memory, in bytes, that an Infisical instance uses when it handles no requests. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+</ParamField>
+
+<ParamField query="SECRET_READ_HEAP_RESERVE_BYTES" type="int" default="536870912" optional>
+  Heap memory, in bytes, that Infisical keeps free for every other kind of request and for garbage collection. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+</ParamField>
+
+<ParamField query="SECRET_READ_PEAK_BYTES_PER_SECRET" type="int" default="16384" optional>
+  Heap memory, in bytes, that one secret takes up while Infisical handles a request to list secrets. When Infisical starts, it takes the Node.js heap limit, subtracts `SECRET_READ_HEAP_BASELINE_BYTES` and `SECRET_READ_HEAP_RESERVE_BYTES`, and divides the rest by this value. The result is the number of secrets that requests to list secrets can hold in memory at the same time on that instance.
+
+  If the result is less than one secret, Infisical doesn't start in `enforce` mode. In `observe` mode, Infisical starts, logs a warning, and counts every request to list secrets as over the limit. To fix this, raise the Node.js heap limit (`--max-old-space-size`) or lower the other two values. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+</ParamField>
+
+<ParamField query="SECRET_READ_DEFAULT_SECRET_WEIGHT" type="int" default="100" optional>
+  Number of secrets that an instance assumes a request to list secrets returns, the first time the instance handles a request with that project and those parameters. After the first time, the instance assumes the number of secrets the request returned last time. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
