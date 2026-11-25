@@ -10,6 +10,7 @@ import {
   BillingConfirmTrialPaymentResult,
   BillingErrorCode,
   BillingMutationResult,
+  BillingOverview,
   BillingPreview,
   BillingTrialCancelResult,
   BillingTrialResult,
@@ -24,6 +25,7 @@ import {
   TPreviewBillingChangeDTO,
   TRemoveBillingProductDTO,
   TStartBillingTrialDTO,
+  TUpdateBillingEmailDTO,
   TUpgradeBillingProductDTO
 } from "./types";
 
@@ -249,6 +251,22 @@ export const useCancelBillingTrial = () => {
     },
     onSuccess: (_data, { orgId }) => {
       invalidateBilling(queryClient, orgId);
+    }
+  });
+};
+
+export const useUpdateBillingEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, email }: TUpdateBillingEmailDTO) => {
+      const { data } = await apiRequest.patch<
+        Pick<BillingOverview, "billingDetails" | "billingContactLeft">
+      >(`/api/v1/organizations/${orgId}/billing/v2/billing-details`, { email });
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.overview(orgId) });
     }
   });
 };

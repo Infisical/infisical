@@ -24,7 +24,7 @@ const entitlementProductSchema = z
   })
   .passthrough();
 
-export const trialPaymentFailedNoticeSchema = z.object({
+const trialPaymentFailedNoticeSchema = z.object({
   type: z.literal("trial_payment_failed"),
   product_key: z.string(),
   trial_plan_key: z.string().nullish(),
@@ -32,6 +32,18 @@ export const trialPaymentFailedNoticeSchema = z.object({
   next_attempt_at: z.string().datetime({ offset: true }).nullish(),
   cause: z.string().nullish()
 });
+
+// A renewal Stripe could not collect. It carries no payment link: every member of the org reads the plan.
+const subscriptionPaymentFailedNoticeSchema = z.object({
+  type: z.literal("subscription_payment_failed"),
+  cause: z.string().nullish(),
+  since: z.string().datetime({ offset: true }).nullish()
+});
+
+export const planNoticeSchema = z.discriminatedUnion("type", [
+  trialPaymentFailedNoticeSchema,
+  subscriptionPaymentFailedNoticeSchema
+]);
 
 // `features` and `products` are load-bearing; passthrough tolerates the rest of the payload so
 // cloud/self-hosted version skew doesn't break reads. Notices stay unknown here and are validated one
@@ -458,6 +470,31 @@ export const billingProfileResponseSchema = z
   })
   .passthrough();
 
+// Not org-scoped: one page lists every org whose renewal Stripe could not collect.
+export const paymentFailuresResponseSchema = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          org_id: z.string(),
+          invoice_id: z.string().nullish(),
+          state: z.string().nullish(),
+          since: z.string().nullish()
+        })
+        .passthrough()
+    ),
+    next_after: z.string().nullish()
+  })
+  .passthrough();
+
+// invoiceId is null when the License Server missed the invoice event and only knows the subscription is unpaid.
+export type TPaymentFailure = {
+  orgId: string;
+  invoiceId: string | null;
+  needsAction: boolean;
+  since: string | null;
+};
+
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
@@ -632,6 +669,8 @@ export type TLicenseServerBilling = {
   getSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   getCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   getBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
+  updateBillingEmail: (orgId: string, email: string) => Promise<TBillingProfileResponse>;
+  listPaymentFailures: () => Promise<TPaymentFailure[]>;
   createPortal: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
   buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;

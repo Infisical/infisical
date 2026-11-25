@@ -9,7 +9,7 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { SubscriptionPlanNotice } from "@app/hooks/api/subscriptions/types";
+import { TrialPaymentFailedNotice } from "@app/hooks/api/subscriptions/types";
 
 import { OrgAlertBanner } from "../OrgAlertBanner";
 
@@ -27,7 +27,7 @@ const humanizeKey = (key: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
-const productLabel = (notice: SubscriptionPlanNotice) => {
+const productLabel = (notice: TrialPaymentFailedNotice) => {
   const product = PRODUCT_LABELS[notice.productKey] ?? humanizeKey(notice.productKey);
   return notice.trialPlanKey ? `${product} ${humanizeKey(notice.trialPlanKey)}` : product;
 };
@@ -40,10 +40,10 @@ enum NoticeCause {
 
 const listFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
-const listProducts = (notices: SubscriptionPlanNotice[]) =>
+const listProducts = (notices: TrialPaymentFailedNotice[]) =>
   listFormatter.format(notices.map(productLabel));
 
-const buildFailureMessage = (notices: SubscriptionPlanNotice[]) => {
+const buildFailureMessage = (notices: TrialPaymentFailedNotice[]) => {
   const products = listProducts(notices);
   const accessEndsAt = format(
     Math.min(...notices.map((notice) => new Date(notice.accessEndsAt).getTime())),
@@ -80,7 +80,7 @@ export const TrialPaymentFailedBanner = () => {
   const now = Date.now();
   // The plan is cached server-side, so a notice can outlive its deadline by a few minutes.
   const notices = (subscription.notices ?? []).filter(
-    (notice) =>
+    (notice): notice is TrialPaymentFailedNotice =>
       notice.type === "trial_payment_failed" && new Date(notice.accessEndsAt).getTime() > now
   );
   if (!notices.length) return null;

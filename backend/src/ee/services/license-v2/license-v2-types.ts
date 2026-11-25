@@ -248,6 +248,8 @@ export type BillingV2Overview = {
     } | null;
     taxIds: { type: string; value: string }[];
   } | null;
+  // The billing email's owner has an Infisical account but no longer has access to this organization.
+  billingContactLeft: boolean;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
   trialedProductKeys: string[];
@@ -286,6 +288,12 @@ export type TCreateBillingV2PortalSessionDTO = {
   orgId: string;
   actor: OrgServiceActor;
   returnPath?: string;
+};
+
+export type TUpdateBillingV2EmailDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  email: string;
 };
 
 export type TBuyBillingV2ProductDTO = {

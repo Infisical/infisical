@@ -10,7 +10,7 @@ export enum SubscriptionPlanTypes {
   OnPremEnterprise = "one-prem-enterprise"
 }
 
-export type SubscriptionPlanNotice = {
+export type TrialPaymentFailedNotice = {
   type: "trial_payment_failed";
   productKey: string;
   trialPlanKey: string | null;
@@ -18,6 +18,14 @@ export type SubscriptionPlanNotice = {
   nextAttemptAt: string | null;
   cause: string | null;
 };
+
+export type SubscriptionPaymentFailedNotice = {
+  type: "subscription_payment_failed";
+  cause: string | null;
+  since: string | null;
+};
+
+export type SubscriptionPlanNotice = TrialPaymentFailedNotice | SubscriptionPaymentFailedNotice;
 
 export type SubscriptionPlan = {
   productPlans?: {

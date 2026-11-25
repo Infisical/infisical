@@ -97,6 +97,11 @@ Rules:
   final answer goes in the client, not as a status check in `UsageReportService`.
 - **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
   `licenseBilling` and passed only to subscription code.
+- **A failed renewal reaches the org two ways, both pulled from the License Server**, which never calls us. The
+  `subscription_payment_failed` plan notice drives the org-wide banner; it carries no payment link because every
+  member reads the plan. The hourly `billing-payment-failure-notice` cron
+  (`src/ee/services/billing-payment-notice/`) emails the root org's admins from `listPaymentFailures`, because
+  Stripe emails only the billing contact, who may have left. Don't add a second payment mailer.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).
 - **Only `license-policy/entitlement-projection.ts` imports `./default-features`, by that exact specifier.** The e2e
   suite aliases it to `e2e-test/fakes/default-features.ts`, so a free tier read anywhere else escapes the

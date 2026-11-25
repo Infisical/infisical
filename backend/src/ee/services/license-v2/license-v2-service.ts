@@ -18,7 +18,9 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -54,12 +56,14 @@ import {
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
   TStartBillingV2TrialDTO,
+  TUpdateBillingV2EmailDTO,
   TUpgradeBillingV2ProductDTO
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMemberships">;
+  userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   organizationsProjectsService: TOrganizationsProjectsService;
   certManagerService: TCertManagerService;
@@ -406,6 +410,7 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
+  userDAL,
   permissionService,
   licenseService,
   usageMeteringService,
@@ -790,6 +795,19 @@ export const licenseV2ServiceFactory = ({
     return entitlements;
   };
 
+  // True when Stripe's billing email belongs to an Infisical user who can no longer reach this org, so its payment
+  // emails go to someone who has left. An address with no account (a shared finance inbox) is never flagged.
+  const hasBillingContactLeft = async (orgId: string, billingEmail: string) => {
+    const email = billingEmail.trim().toLowerCase();
+    if (!email) return false;
+    const users = await userDAL.find({ email, isGhost: false });
+    if (!users.length) return false;
+    const memberships = await Promise.all(
+      users.map((user) => orgDAL.findEffectiveOrgMemberships({ actorType: ActorType.USER, actorId: user.id, orgId }))
+    );
+    return !memberships.some((rows) => rows.some((membership) => membership.isActive));
+  };
+
   const getOverview = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
@@ -826,6 +844,7 @@ export const licenseV2ServiceFactory = ({
     let payment: BillingV2Overview["payment"] = null;
     let billingDetails: BillingV2Overview["billingDetails"] = null;
     let invoices: BillingV2Overview["invoices"] = [];
+    let billingContactLeft = false;
     // Self-hosted has no Stripe customer (no billing profile endpoint); leave payment/invoices empty.
     try {
       const profile = isSelfHostedLicense ? null : await licenseBilling.getBillingProfile(orgId);
@@ -845,6 +864,9 @@ export const licenseV2ServiceFactory = ({
           paid: invoice.paid,
           pdfUrl: invoice.pdfUrl ?? ""
         }));
+        if (billingDetails?.email) {
+          billingContactLeft = await hasBillingContactLeft(orgId, billingDetails.email);
+        }
       }
     } catch (error) {
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
@@ -944,6 +966,7 @@ export const licenseV2ServiceFactory = ({
       billing,
       payment,
       billingDetails,
+      billingContactLeft,
       invoices,
       entitlements,
       trialedProductKeys: [...new Set(trialHistory.map((trial) => trial.productKey))],
@@ -1257,6 +1280,21 @@ export const licenseV2ServiceFactory = ({
     return openPortal(orgId, returnPath);
   };
 
+  const updateBillingEmail = async ({ orgId, actor, email }: TUpdateBillingV2EmailDTO) => {
+    await ensureManageBilling(orgId, actor);
+    if (isSelfHostedLicense) {
+      throw new BadRequestError({
+        message: "The billing email can only be changed on Infisical Cloud. Contact your account team to update it."
+      });
+    }
+
+    const { billingDetails } = await licenseBilling.updateBillingEmail(orgId, email);
+    return {
+      billingDetails: billingDetails ? { ...billingDetails, address: billingDetails.address ?? null } : null,
+      billingContactLeft: await hasBillingContactLeft(orgId, email)
+    };
+  };
+
   const buyProduct = async ({
     orgId,
     actor,
@@ -1554,6 +1592,7 @@ export const licenseV2ServiceFactory = ({
     refreshEntitlements,
     getCatalog,
     portalSession,
+    updateBillingEmail,
     buyProduct,
     addPaymentMethod,
     previewChange,

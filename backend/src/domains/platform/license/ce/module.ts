@@ -24,6 +24,7 @@ export type {
   TCatalogProduct,
   TEntitlementOrg,
   TLicenseServerBilling,
+  TPaymentFailure,
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse

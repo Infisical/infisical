@@ -350,6 +350,54 @@ describe("LicenseServerClient rejected billing requests", () => {
   });
 });
 
+describe("LicenseServerClient.listPaymentFailures", () => {
+  test("follows the cursor to the last page", async () => {
+    const pages = [
+      {
+        items: [{ org_id: "org-1", invoice_id: "in_1", state: "failed", since: "2026-11-20T10:00:00Z" }],
+        next_after: "org-1"
+      },
+      { items: [{ org_id: "org-2", invoice_id: "", state: "needs_action", since: null }], next_after: null }
+    ];
+    const fetchMock = vi.fn(async () => respond(200, pages.shift()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new LicenseServerClient(cloud()).listPaymentFailures()).resolves.toEqual([
+      { orgId: "org-1", invoiceId: "in_1", needsAction: false, since: "2026-11-20T10:00:00Z" },
+      { orgId: "org-2", invoiceId: null, needsAction: true, since: null }
+    ]);
+    expect(sent(fetchMock, 0).url.pathname).toBe("/v1/billing/payment-failures");
+    expect(sent(fetchMock, 0).url.searchParams.get("after")).toBeNull();
+    expect(sent(fetchMock, 1).url.searchParams.get("after")).toBe("org-1");
+  });
+
+  test("a License Server without the endpoint lists nothing", async () => {
+    stubFetch(404, { message: "not found" });
+    await expect(new LicenseServerClient(cloud()).listPaymentFailures()).resolves.toEqual([]);
+  });
+
+  test("a self-hosted license has no billing to list", async () => {
+    await expect(selfHosted().listPaymentFailures()).rejects.toThrow("billing isn't available");
+  });
+});
+
+describe("LicenseServerClient.updateBillingEmail", () => {
+  test("patches the org's billing profile and returns it", async () => {
+    const profile = {
+      payment: null,
+      billingDetails: { name: "Acme", email: "finance@acme.com", address: null, taxIds: [] },
+      invoices: []
+    };
+    const fetchMock = stubFetch(200, profile);
+
+    const updated = await new LicenseServerClient(cloud()).updateBillingEmail(ORG_ID, "finance@acme.com");
+
+    expect(updated.billingDetails?.email).toBe("finance@acme.com");
+    expect(sent(fetchMock)).toMatchObject({ method: "PATCH", body: { email: "finance@acme.com" } });
+    expect(sent(fetchMock).url.pathname).toBe(`/v1/organizations/${ORG_ID}/billing/profile`);
+  });
+});
+
 describe("LicenseServerClient.deleteOrganization", () => {
   test("calls DELETE on the org and returns what the license server closed", async () => {
     const fetchMock = stubFetch(200, {
