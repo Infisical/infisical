@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import { format } from "date-fns";
 
@@ -9,9 +10,12 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { TrialPaymentFailedNotice } from "@app/hooks/api/subscriptions/types";
 
 import { OrgAlertBanner } from "../OrgAlertBanner";
+
+const PLAN_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const PRODUCT_LABELS: Record<string, string> = {
   secrets_management: "Secrets Management",
@@ -92,6 +96,13 @@ export const PaymentFailedBanner = () => {
   const { currentOrg, isRootOrganization } = useOrganization();
   const { permission } = useOrgPermission();
   const location = useLocation();
+
+  useQuery({
+    queryKey: subscriptionQueryKeys.getOrgSubsription(currentOrg.id),
+    queryFn: () => fetchOrgSubscription(currentOrg.id),
+    refetchInterval: PLAN_REFRESH_INTERVAL_MS,
+    refetchOnWindowFocus: true
+  });
 
   const allNotices = subscription.notices ?? [];
   const now = Date.now();
