@@ -638,6 +638,35 @@ describe("rebuildCaCrl", () => {
     expect(signed.entries.map((entry) => entry.serialNumber)).toEqual([REVOKED_SERIAL]);
   });
 
+  it("should list a serial once, with its earliest revocation, when a deleted certificate and its re-import are both revoked", async () => {
+    const { deps, certificateDAL, certificateAuthorityCrlDAL } = await buildRebuildDeps({ storedCrlNumber: 41 });
+    const firstRevokedAt = new Date("2026-10-01T00:00:00.000Z");
+    certificateDAL.find.mockResolvedValue([
+      {
+        serialNumber: `00${REVOKED_SERIAL}`,
+        status: CertStatus.REVOKED,
+        revokedAt: firstRevokedAt,
+        revocationReason: 1
+      },
+      {
+        serialNumber: REVOKED_SERIAL,
+        status: CertStatus.REVOKED,
+        revokedAt: new Date("2026-11-01T00:00:00.000Z"),
+        revocationReason: 4
+      }
+    ]);
+
+    await rebuildCaCrl(deps);
+
+    const [, stored] = certificateAuthorityCrlDAL.update.mock.calls[0] as unknown as [
+      unknown,
+      { encryptedCrl: Buffer }
+    ];
+    const signed = new x509.X509Crl(new Uint8Array(stored.encryptedCrl));
+    expect(signed.entries).toHaveLength(1);
+    expect(signed.entries[0].revocationDate.getTime()).toBe(firstRevokedAt.getTime());
+  });
+
   it("should still increase the CRL number when the stored one is ahead of the clock", async () => {
     const { deps } = await buildRebuildDeps({ storedCrlNumber: 9_999_999_999 });
 
@@ -710,7 +739,10 @@ describe("rebuildCaCrl", () => {
 
     await rebuildCaCrl(deps);
 
-    expect(certificateDAL.find).toHaveBeenCalledWith({ caId: CA_ID, status: CertStatus.REVOKED }, { tx: PRIMARY });
+    expect(certificateDAL.find).toHaveBeenCalledWith(
+      { caId: CA_ID, status: CertStatus.REVOKED },
+      { tx: PRIMARY, sort: [["revokedAt", "asc"]] }
+    );
   });
 
   it("should refuse instead of overwriting a CRL another writer stored meanwhile", async () => {

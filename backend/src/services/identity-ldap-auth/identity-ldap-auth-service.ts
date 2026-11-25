@@ -4,6 +4,7 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
@@ -26,6 +27,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -37,7 +39,6 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -79,6 +80,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: TLicenseService;
+  instanceConfigService: TInstanceConfigService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -111,6 +113,7 @@ export const identityLdapAuthServiceFactory = ({
   identityLdapAuthDAL,
   membershipIdentityDAL,
   licenseService,
+  instanceConfigService,
   permissionService,
   kmsDataKeyService,
   identityAuthTemplateDAL,
@@ -400,7 +403,7 @@ export const identityLdapAuthServiceFactory = ({
       );
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
@@ -631,7 +634,7 @@ export const identityLdapAuthServiceFactory = ({
       );
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
@@ -903,7 +906,7 @@ export const identityLdapAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     const revokedIdentityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);

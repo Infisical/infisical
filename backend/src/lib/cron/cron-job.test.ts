@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { GatewayTimeoutError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { cronJobFactory } from "./cron-job";
@@ -998,5 +999,53 @@ describe("derived jitter", () => {
     expect(redis.zrem).toHaveBeenCalledWith("{cron}:pending", "x:1704067200000");
 
     await stop();
+  });
+});
+
+describe("runNow", () => {
+  test("runs a registered handler every time it is called, without touching the schedule", async () => {
+    const { register, runNow, redis } = makeFactory();
+    const handler = vi.fn().mockResolvedValue(undefined);
+    register({ name: "x", pattern: "0 0 * * *", handler, runHashTtlS: 3600 });
+
+    await runNow("x");
+    await runNow("x");
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(redis.eval).not.toHaveBeenCalled();
+    expect(redis.hset).not.toHaveBeenCalled();
+  });
+
+  test("propagates the handler's error", async () => {
+    const { register, runNow } = makeFactory();
+    register({
+      name: "x",
+      pattern: "0 0 * * *",
+      handler: vi.fn().mockRejectedValue(new Error("boom")),
+      runHashTtlS: 3600
+    });
+
+    await expect(runNow("x")).rejects.toThrow("boom");
+  });
+
+  test("answers a timeout with a named gateway timeout", async () => {
+    const { register, runNow } = makeFactory();
+    register({
+      name: "x",
+      pattern: "0 0 * * *",
+      handler: () => new Promise<void>(() => {}),
+      runHashTtlS: 3600,
+      handlerTimeoutMs: 50
+    });
+
+    const run = expect(runNow("x")).rejects.toThrow(GatewayTimeoutError);
+    await vi.advanceTimersByTimeAsync(50);
+    await run;
+  });
+
+  test("refuses a job that is not registered", async () => {
+    const { runNow } = makeFactory();
+
+    await expect(runNow("missing")).rejects.toThrow("Cron job 'missing' is not registered on this instance");
   });
 });

@@ -23,3 +23,8 @@ func (ChallengeRejected) EventName() string { return "acmeca.challenge-rejected"
 type CertificateIssued struct{ Issued }
 
 func (CertificateIssued) EventName() string { return "acmeca.certificate-issued" }
+
+// CertificateRevoked is published when an account revokes a certificate it was issued.
+type CertificateRevoked struct{ Issued }
+
+func (CertificateRevoked) EventName() string { return "acmeca.certificate-revoked" }

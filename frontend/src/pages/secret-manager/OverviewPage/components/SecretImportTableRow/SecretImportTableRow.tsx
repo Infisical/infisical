@@ -67,6 +67,8 @@ import { SecretImportSecretRow } from "./SecretImportSecretRow";
 type ImportedSecretData = {
   environment: string;
   secretPath: string;
+  importId?: string;
+  isReplication?: boolean;
   sourceEnv: string;
   secrets: Pick<SecretV3RawSanitized, "id" | "key" | "env" | "isEmpty" | "version">[];
 };
@@ -145,12 +147,20 @@ export const SecretImportTableRow = ({
 
   const allEnvImportedSecrets = useMemo(() => {
     if (isSingleEnvView) {
-      const match = importedSecrets?.find(
-        (imp) =>
-          imp.environment === importEnvSlug &&
-          imp.secretPath === importPath &&
-          imp.sourceEnv === singleEnvSlug
-      );
+      // A replication import and a regular import of the same source both report the source's environment and
+      // path, so a replication import matches only by its own ID. A regular import falls back to the source,
+      // because the backend returns one group for several regular imports of the same source.
+      const envGroups = importedSecrets?.filter((imp) => imp.sourceEnv === singleEnvSlug) ?? [];
+      const match =
+        envGroups.find((imp) => imp.importId && imp.importId === singleEnvImport?.id) ??
+        (singleEnvImport?.isReplication
+          ? undefined
+          : envGroups.find(
+              (imp) =>
+                !imp.isReplication &&
+                imp.environment === importEnvSlug &&
+                imp.secretPath === importPath
+            ));
       return match ? [match] : [];
     }
     return (
@@ -158,7 +168,15 @@ export const SecretImportTableRow = ({
         (imp) => imp.environment === importEnvSlug && imp.secretPath === importPath
       ) ?? []
     );
-  }, [importedSecrets, importEnvSlug, importPath, isSingleEnvView, singleEnvSlug]);
+  }, [
+    importedSecrets,
+    importEnvSlug,
+    importPath,
+    isSingleEnvView,
+    singleEnvSlug,
+    singleEnvImport?.id,
+    singleEnvImport?.isReplication
+  ]);
 
   // Union of unique secret keys across all environments (preserves search/expand behavior)
   const matchingImportedSecrets = useMemo(() => {

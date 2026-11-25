@@ -13,6 +13,7 @@ import {
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
@@ -42,6 +43,7 @@ import { getMissingGatewayMessage, getRetiredGatewayMessage } from "@app/lib/gat
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -54,7 +56,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -117,6 +118,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   >;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
@@ -153,6 +155,7 @@ export const identityKubernetesAuthServiceFactory = ({
   identityAccessTokenDAL,
   permissionService,
   licenseService,
+  instanceConfigService,
   gatewayV2Service,
   gatewayV2DAL,
   kmsDataKeyService,
@@ -1081,7 +1084,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     let resolvedGatewayV2Id: string | null | undefined = null;
     if (!gatewayPoolId && gatewayId) {
@@ -1402,7 +1405,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
@@ -1733,7 +1736,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, identityId, isActorSuperAdmin);
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);

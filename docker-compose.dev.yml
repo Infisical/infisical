@@ -174,29 +174,6 @@ services:
       - frontend_vite_cache:/app/node_modules/.vite
     env_file: .env
 
-  backend-go:
-    container_name: infisical-dev-api-go
-    build:
-      context: ./backend-go
-      dockerfile: Dockerfile.dev.fips
-    depends_on:
-      db:
-        condition: service_started
-      redis:
-        condition: service_started
-      backend:
-        condition: service_healthy
-    ports:
-      - 4040:4040
-    volumes:
-      - ./backend-go:/app
-    environment:
-      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
-      - REDIS_URL=redis://redis:6379
-    env_file:
-      - .env
-    profiles: [go]
-
   pgadmin:
     image: dpage/pgadmin4
     restart: always

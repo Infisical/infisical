@@ -153,7 +153,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "GCP",
     image: "Google Cloud Platform.png",
     category: "GOOGLE CLOUD",
-    description: "Authenticate via service account impersonation."
+    description: "Authenticate via workload identity federation or service account impersonation."
   },
   [AppConnection.AzureKeyVault]: {
     name: "Azure Key Vault",
@@ -802,6 +802,11 @@ export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
   AppConnection.Vercel
 ];
 
+export const isFederatedAppConnection = ({ app, method }: Pick<TAppConnection, "app" | "method">) =>
+  (app === AppConnection.AzureKeyVault &&
+    method === AzureKeyVaultConnectionMethod.ManagedIdentity) ||
+  (app === AppConnection.GCP && method === GcpConnectionMethod.WorkloadIdentityFederation);
+
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
@@ -829,6 +834,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Assume Role", icon: UserIcon };
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return { name: "Service Account Impersonation", icon: UserIcon };
+    case GcpConnectionMethod.WorkloadIdentityFederation:
+      return { name: "Workload Identity Federation", icon: IdCardIcon };
     case DatabricksConnectionMethod.ServicePrincipal:
       return { name: "Service Principal", icon: UserIcon };
     case CamundaConnectionMethod.ClientCredentials:

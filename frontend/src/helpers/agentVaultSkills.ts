@@ -2,6 +2,7 @@ import { diffLines } from "diff";
 import { strFromU8, unzipSync, zipSync } from "fflate";
 import { JSON_SCHEMA, load, YAMLException } from "js-yaml";
 
+import { bytesToBase64 } from "@app/helpers/string";
 import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
 
 export const SKILL_NAME_MAX_LENGTH = 64;
@@ -27,14 +28,6 @@ export const formatSkillBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-export const bytesToBase64 = (bytes: Uint8Array) => {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 8192) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return btoa(binary);
 };
 
 export const base64ToBytes = (value: string) =>

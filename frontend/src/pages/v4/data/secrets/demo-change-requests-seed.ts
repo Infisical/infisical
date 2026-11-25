@@ -54,6 +54,7 @@ const policy = (
   enforcementLevel: EnforcementLevel.Hard,
   allowedSelfApprovals: false,
   bypassForMachineIdentities: false,
+  enforceOnSecretImports: false,
   approvers: [approver(CHANGE_REQUEST_SELF), approver(marcus)],
   bypassers: [],
   ...extra

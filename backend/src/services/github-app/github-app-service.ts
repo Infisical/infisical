@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -65,6 +66,7 @@ type TGitHubAppServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory>;
@@ -79,7 +81,8 @@ export const gitHubAppServiceFactory = ({
   gatewayPoolService,
   gatewayV2DAL,
   auditLogService,
-  userDAL
+  userDAL,
+  instanceConfigService
 }: TGitHubAppServiceFactoryDep) => {
   const checkAppConnectionPermission = async ({
     actor,
@@ -217,7 +220,7 @@ export const gitHubAppServiceFactory = ({
       INF_APP_CONNECTION_GITHUB_APP_SLUG,
       INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
       INF_APP_CONNECTION_GITHUB_APP_HOST
-    } = getConfig();
+    } = await instanceConfigService.getOverridableEnv();
 
     const sharedApp: TSanitizedGitHubApp | null =
       INF_APP_CONNECTION_GITHUB_APP_ID && INF_APP_CONNECTION_GITHUB_APP_SLUG
@@ -317,7 +320,7 @@ export const gitHubAppServiceFactory = ({
     try {
       credentials = await resolveGitHubAppCredentials(
         { gitHubAppId: id, orgId: orgPermission.orgId },
-        { gitHubAppDAL, kmsDataKeyService }
+        { gitHubAppDAL, kmsDataKeyService, instanceConfigService }
       );
     } catch {
       // App missing or credentials unreadable — the transaction below still performs (or rejects)

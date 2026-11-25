@@ -521,6 +521,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiMicrosoftAutoenrollmentConfigs,
+  TPkiMicrosoftAutoenrollmentConfigsInsert,
+  TPkiMicrosoftAutoenrollmentConfigsUpdate,
+  TPkiMicrosoftAutoenrollmentRequests,
+  TPkiMicrosoftAutoenrollmentRequestsInsert,
+  TPkiMicrosoftAutoenrollmentRequestsUpdate,
   TPkiScepDynamicChallenges,
   TPkiScepDynamicChallengesInsert,
   TPkiScepDynamicChallengesUpdate,
@@ -709,18 +715,6 @@ import {
   TSecretSharingInsert,
   TSecretSharingUpdate,
   TSecretsInsert,
-  TSecretSnapshotFolders,
-  TSecretSnapshotFoldersInsert,
-  TSecretSnapshotFoldersUpdate,
-  TSecretSnapshots,
-  TSecretSnapshotSecrets,
-  TSecretSnapshotSecretsInsert,
-  TSecretSnapshotSecretsUpdate,
-  TSecretSnapshotSecretsV2,
-  TSecretSnapshotSecretsV2Insert,
-  TSecretSnapshotSecretsV2Update,
-  TSecretSnapshotsInsert,
-  TSecretSnapshotsUpdate,
   TSecretsUpdate,
   TSecretsV2,
   TSecretsV2Insert,
@@ -1014,6 +1008,16 @@ declare module "knex/types/tables" {
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
       TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiMicrosoftAutoenrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiMicrosoftAutoenrollmentConfigs,
+      TPkiMicrosoftAutoenrollmentConfigsInsert,
+      TPkiMicrosoftAutoenrollmentConfigsUpdate
+    >;
+    [TableName.PkiMicrosoftAutoenrollmentRequest]: KnexOriginal.CompositeTableType<
+      TPkiMicrosoftAutoenrollmentRequests,
+      TPkiMicrosoftAutoenrollmentRequestsInsert,
+      TPkiMicrosoftAutoenrollmentRequestsUpdate
     >;
     [TableName.PkiScepEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiScepEnrollmentConfigs,
@@ -1431,21 +1435,6 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesEnvironmentsInsert,
       TSecretApprovalPoliciesEnvironmentsUpdate
     >;
-    [TableName.Snapshot]: KnexOriginal.CompositeTableType<
-      TSecretSnapshots,
-      TSecretSnapshotsInsert,
-      TSecretSnapshotsUpdate
-    >;
-    [TableName.SnapshotSecret]: KnexOriginal.CompositeTableType<
-      TSecretSnapshotSecrets,
-      TSecretSnapshotSecretsInsert,
-      TSecretSnapshotSecretsUpdate
-    >;
-    [TableName.SnapshotFolder]: KnexOriginal.CompositeTableType<
-      TSecretSnapshotFolders,
-      TSecretSnapshotFoldersInsert,
-      TSecretSnapshotFoldersUpdate
-    >;
     [TableName.DynamicSecret]: KnexOriginal.CompositeTableType<
       TDynamicSecrets,
       TDynamicSecretsInsert,
@@ -1527,11 +1516,6 @@ declare module "knex/types/tables" {
       TSecretVersionV2TagJunction,
       TSecretVersionV2TagJunctionInsert,
       TSecretVersionV2TagJunctionUpdate
-    >;
-    [TableName.SnapshotSecretV2]: KnexOriginal.CompositeTableType<
-      TSecretSnapshotSecretsV2,
-      TSecretSnapshotSecretsV2Insert,
-      TSecretSnapshotSecretsV2Update
     >;
     [TableName.SecretApprovalRequestSecretV2]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequestsSecretsV2,

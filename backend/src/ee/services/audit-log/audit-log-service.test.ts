@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -82,6 +83,7 @@ const createHarness = ({
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
     licenseService,
+    instanceConfigService: new FakeInstanceConfigService(),
     queueService: queueService as never,
     keyStore: keyStore as never,
     smtpService: {} as never,

@@ -5,8 +5,8 @@ import tweetnaclUtil from "tweetnacl-util";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../../project-env/project-env-dal";

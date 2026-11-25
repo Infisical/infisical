@@ -1,4 +1,17 @@
+import { EnrollmentType } from "../certificateProfiles/types";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage, CrlReason } from "./enums";
+
+export const enrollmentTypeToNameMap: Record<`${EnrollmentType}`, string> = {
+  [EnrollmentType.API]: "API",
+  [EnrollmentType.EST]: "EST",
+  [EnrollmentType.ACME]: "ACME",
+  [EnrollmentType.SCEP]: "SCEP",
+  [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
+};
+
+export const getEnrollmentTypeName = (enrollmentType: string) =>
+  Object.entries(enrollmentTypeToNameMap).find(([type]) => type === enrollmentType)?.[1] ??
+  enrollmentType.toUpperCase();
 
 export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_2048]: "RSA 2048",

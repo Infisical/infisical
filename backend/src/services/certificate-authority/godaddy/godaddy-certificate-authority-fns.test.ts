@@ -50,7 +50,7 @@ const buildFns = (renewedByCertificateId: string | null = null) =>
       })
     },
     certificateDAL: {
-      findOne: vi.fn().mockResolvedValue({
+      findOneLiveFirst: vi.fn().mockResolvedValue({
         id: "cert-1",
         serialNumber: SERIAL_NUMBER,
         renewedByCertificateId,

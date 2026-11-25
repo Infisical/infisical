@@ -4,15 +4,23 @@ import { AwsClient, ExternalAccountClient, gaxios, Impersonated, JWT } from "goo
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, GatewayTimeoutError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
+import {
+  decryptAppConnectionCredentials,
+  encryptAppConnectionCredentials,
+  getAppConnectionMethodName
+} from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { getAppConnectionOidcSubject, getOidcIssuerUrl } from "@app/services/oidc-issuer/oidc-issuer-fns";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
 import { AppConnection } from "../app-connection-enums";
-import { GCP_GLOBAL_LOCATION } from "./gcp-connection-constants";
+import { GCP_GLOBAL_LOCATION, GCP_IAM_CREDENTIALS_URL, GCP_STS_TOKEN_URL } from "./gcp-connection-constants";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 import { isGcpServiceDisabledError, TGoogleApiError } from "./gcp-connection-errors";
 import {
@@ -25,14 +33,21 @@ import {
   GCPGetServiceRes,
   GCPLocation,
   TGcpConnection,
-  TGcpConnectionConfig
+  TGcpConnectionAuthDeps,
+  TGcpConnectionConfig,
+  TGcpConnectionFederatedCredential,
+  TGcpConnectionForAuth,
+  TGcpConnectionWorkloadIdentityFederationCredentials
 } from "./gcp-connection-types";
 
 export const getGcpConnectionListItem = () => {
   return {
     name: "GCP" as const,
     app: AppConnection.GCP as const,
-    methods: Object.values(GcpConnectionMethod) as [GcpConnectionMethod.ServiceAccountImpersonation]
+    methods: Object.values(GcpConnectionMethod) as [
+      GcpConnectionMethod.ServiceAccountImpersonation,
+      GcpConnectionMethod.WorkloadIdentityFederation
+    ]
   };
 };
 
@@ -131,9 +146,12 @@ export const buildGcpSourceCredential = (credentialJson: string) => {
   });
 };
 
-export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionConfig) => {
-  const appCfg = getConfig();
-  if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+const getGcpImpersonationAccessToken = async (
+  serviceAccountEmail: string,
+  instanceConfigService: Pick<TInstanceConfigService, "getOverridableEnv">
+) => {
+  const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getOverridableEnv();
+  if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
       message: `Environment variables have not been configured for GCP ${getAppConnectionMethodName(
         GcpConnectionMethod.ServiceAccountImpersonation
@@ -141,11 +159,11 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
     });
   }
 
-  const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+  const sourceClient = buildGcpSourceCredential(INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
   const impersonatedCredentials = new Impersonated({
     sourceClient,
-    targetPrincipal: appConnection.credentials.serviceAccountEmail,
+    targetPrincipal: serviceAccountEmail,
     lifetime: 3600,
     delegates: [],
     targetScopes: ["https://www.googleapis.com/auth/cloud-platform"]
@@ -157,7 +175,7 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
   } catch (error) {
     logger.error(
       { err: error },
-      `Failed to obtain GCP impersonated access token [serviceAccountEmail=${appConnection.credentials.serviceAccountEmail}]`
+      `Failed to obtain GCP impersonated access token [serviceAccountEmail=${serviceAccountEmail}]`
     );
 
     throw new BadRequestError({
@@ -174,8 +192,249 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
   return tokenResponse.token;
 };
 
-export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+const GCP_SERVICE_ACCOUNT_TOKEN_LIFETIME_SECONDS = 3600;
+const GCP_TOKEN_REQUEST_TIMEOUT_MS = 30_000;
+// GCP gives a federated token the expiry of the token Infisical signed, so this is also the federated token's
+// lifetime. Without a service account it bounds how long one operation can run; longer runs need a service account.
+const GCP_WORKLOAD_IDENTITY_TOKEN_TTL_SECONDS = 15 * 60;
+
+type TGcpStsTokenResponse = { access_token: string; expires_in: number };
+type TGcpStsErrorResponse = { error?: string; error_description?: string };
+type TGcpGenerateAccessTokenResponse = { accessToken: string; expireTime: string };
+
+const getGcpWorkloadIdentityAudience = (workloadIdentityProvider: string) =>
+  `https://iam.googleapis.com/${workloadIdentityProvider}`;
+
+const withoutTrailingPeriod = (text: string) => (text.endsWith(".") ? text.slice(0, -1) : text);
+
+// Only a 4xx is GCP refusing the request. A timeout, network error or 5xx is GCP failing
+const isGcpRefusal = (error: unknown) => {
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return status !== undefined && status >= 400 && status < 500;
+};
+
+const toGcpUpstreamError = (error: unknown, service: string, detail: string) => {
+  if (error instanceof AxiosError && (error.code === AxiosError.ECONNABORTED || error.code === AxiosError.ETIMEDOUT)) {
+    return new GatewayTimeoutError({
+      message: `${service} did not respond within ${GCP_TOKEN_REQUEST_TIMEOUT_MS / 1000} seconds. Try again later.`
+    });
+  }
+
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return new BadRequestError({
+    message: `${service} could not complete the request${status ? ` (HTTP ${status})` : ""}: ${withoutTrailingPeriod(detail)}. Try again later.`
+  });
+};
+
+export const getGcpConnectionFederatedCredential = ({
+  id,
+  orgId,
+  workloadIdentityProvider
+}: {
+  id: string;
+  orgId: string;
+  workloadIdentityProvider: string;
+}): TGcpConnectionFederatedCredential => {
+  const { SITE_URL } = getConfig();
+
+  return {
+    issuerUrl: SITE_URL ? getOidcIssuerUrl(SITE_URL, orgId) : null,
+    subjectIdentifier: getAppConnectionOidcSubject(id),
+    audience: getGcpWorkloadIdentityAudience(workloadIdentityProvider)
+  };
+};
+
+const exchangeGcpWorkloadIdentityToken = async (
+  {
+    appConnection,
+    workloadIdentityProvider,
+    serviceAccountEmail
+  }: {
+    appConnection: TSignOidcIssuerTokenDTO["appConnection"];
+    workloadIdentityProvider: string;
+    serviceAccountEmail?: string;
+  },
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+): Promise<{ accessToken: string; expiresAt: number }> => {
+  // GCP judges a token by when it was issued, so each exchange gets a freshly signed one
+  const subjectToken = await oidcIssuerService.signToken({
+    appConnection,
+    audience: getGcpWorkloadIdentityAudience(workloadIdentityProvider),
+    ttlSeconds: GCP_WORKLOAD_IDENTITY_TOKEN_TTL_SECONDS
+  });
+
+  let federatedToken: TGcpStsTokenResponse;
+  try {
+    const { data } = await request.post<TGcpStsTokenResponse>(
+      GCP_STS_TOKEN_URL,
+      {
+        grantType: "urn:ietf:params:oauth:grant-type:token-exchange",
+        audience: `//iam.googleapis.com/${workloadIdentityProvider}`,
+        scope: IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE,
+        requestedTokenType: "urn:ietf:params:oauth:token-type:access_token",
+        subjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+        subjectToken
+      },
+      { timeout: GCP_TOKEN_REQUEST_TIMEOUT_MS }
+    );
+    federatedToken = data;
+  } catch (error) {
+    const body = error instanceof AxiosError ? (error.response?.data as TGcpStsErrorResponse | undefined) : undefined;
+    const detail = body?.error_description || body?.error || (error instanceof Error ? error.message : "Unknown error");
+
+    // Not the error itself: its request config holds the signed token
+    logger.warn(
+      {
+        connectionId: appConnection.id,
+        workloadIdentityProvider,
+        status: error instanceof AxiosError ? error.response?.status : undefined,
+        detail
+      },
+      `GCP Security Token Service token exchange failed [connectionId=${appConnection.id}] [workloadIdentityProvider=${workloadIdentityProvider}]`
+    );
+    if (!isGcpRefusal(error)) throw toGcpUpstreamError(error, "GCP's Security Token Service", detail);
+
+    const { SITE_URL } = getConfig();
+    const issuerUrl = SITE_URL ? getOidcIssuerUrl(SITE_URL, appConnection.orgId) : "this organization's issuer URL";
+
+    throw new BadRequestError({
+      message: `GCP workload identity provider '${workloadIdentityProvider}' rejected the connection's token: ${withoutTrailingPeriod(detail)}. Check that the provider exists and trusts the issuer '${issuerUrl}'.`
+    });
+  }
+
+  if (!serviceAccountEmail) {
+    return {
+      accessToken: federatedToken.access_token,
+      expiresAt: Date.now() + federatedToken.expires_in * 1000
+    };
+  }
+
+  try {
+    const { data } = await request.post<TGcpGenerateAccessTokenResponse>(
+      `${GCP_IAM_CREDENTIALS_URL}/v1/projects/-/serviceAccounts/${encodeURIComponent(serviceAccountEmail)}:generateAccessToken`,
+      {
+        scope: [IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE],
+        lifetime: `${GCP_SERVICE_ACCOUNT_TOKEN_LIFETIME_SECONDS}s`
+      },
+      { headers: { Authorization: `Bearer ${federatedToken.access_token}` }, timeout: GCP_TOKEN_REQUEST_TIMEOUT_MS }
+    );
+
+    return { accessToken: data.accessToken, expiresAt: new Date(data.expireTime).getTime() };
+  } catch (error) {
+    const status = error instanceof AxiosError ? error.response?.status : undefined;
+    const body = error instanceof AxiosError ? (error.response?.data as TGoogleApiError | undefined) : undefined;
+    const googleMessage = body?.error?.message;
+
+    // Not the error itself: its request config holds the federated token
+    logger.warn(
+      { connectionId: appConnection.id, serviceAccountEmail, status, googleMessage },
+      `GCP service account access token request failed [connectionId=${appConnection.id}] [serviceAccountEmail=${serviceAccountEmail}]`
+    );
+
+    if (!isGcpRefusal(error)) {
+      throw toGcpUpstreamError(
+        error,
+        "GCP's IAM Service Account Credentials API",
+        googleMessage ?? (error instanceof Error ? error.message : "Unknown error")
+      );
+    }
+
+    if (isGcpServiceDisabledError(body, googleMessage ?? "")) {
+      throw new BadRequestError({
+        message: `GCP could not issue an access token for service account '${serviceAccountEmail}' because the IAM Service Account Credentials API (iamcredentials.googleapis.com) is not enabled: ${
+          googleMessage ?? "service disabled"
+        }`
+      });
+    }
+
+    if (status === 403 || status === 404) {
+      throw new BadRequestError({
+        message: `GCP denied the connection access to service account '${serviceAccountEmail}'. Grant the Workload Identity User role (roles/iam.workloadIdentityUser) on the service account to the connection's principal, subject '${getAppConnectionOidcSubject(appConnection.id)}'.`
+      });
+    }
+
+    throw new BadRequestError({
+      message: `GCP could not issue an access token for service account '${serviceAccountEmail}': ${
+        googleMessage ?? (error instanceof Error ? error.message : "Unknown error")
+      }`
+    });
+  }
+};
+
+// Callers fetch one token per operation, so this is the least time an operation gets
+const GCP_TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+
+const getGcpWorkloadIdentityAccessToken = async (
+  connectionId: string,
+  { appConnectionDAL, kmsDataKeyService, oidcIssuerService }: TGcpConnectionAuthDeps
+) => {
+  const appConnection = await appConnectionDAL.findById(connectionId);
+  if (!appConnection) {
+    throw new NotFoundError({ message: `GCP Connection with ID '${connectionId}' not found` });
+  }
+
+  const credentials = (await decryptAppConnectionCredentials({
+    orgId: appConnection.orgId,
+    kmsDataKeyService,
+    encryptedCredentials: appConnection.encryptedCredentials,
+    projectId: appConnection.projectId
+  })) as TGcpConnectionWorkloadIdentityFederationCredentials;
+
+  if (
+    credentials.accessToken &&
+    credentials.expiresAt &&
+    credentials.expiresAt > Date.now() + GCP_TOKEN_REFRESH_MARGIN_MS
+  ) {
+    return credentials.accessToken;
+  }
+
+  const token = await exchangeGcpWorkloadIdentityToken(
+    {
+      appConnection: {
+        id: appConnection.id,
+        name: appConnection.name,
+        orgId: appConnection.orgId,
+        projectId: appConnection.projectId
+      },
+      workloadIdentityProvider: credentials.workloadIdentityProvider,
+      serviceAccountEmail: credentials.serviceAccountEmail
+    },
+    oidcIssuerService
+  );
+
+  const encryptedCredentials = await encryptAppConnectionCredentials({
+    credentials: { ...credentials, ...token },
+    orgId: appConnection.orgId,
+    kmsDataKeyService,
+    projectId: appConnection.projectId
+  });
+
+  await appConnectionDAL.update(
+    { id: appConnection.id, encryptedCredentials: appConnection.encryptedCredentials },
+    { encryptedCredentials }
+  );
+
+  return token.accessToken;
+};
+
+export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionForAuth, deps: TGcpConnectionAuthDeps) => {
+  switch (appConnection.method) {
+    case GcpConnectionMethod.ServiceAccountImpersonation:
+      return getGcpImpersonationAccessToken(
+        (appConnection.credentials as { serviceAccountEmail: string }).serviceAccountEmail,
+        deps.instanceConfigService
+      );
+    case GcpConnectionMethod.WorkloadIdentityFederation:
+      return getGcpWorkloadIdentityAccessToken(appConnection.id, deps);
+    default:
+      throw new InternalServerError({
+        message: `Unhandled GCP connection method: ${appConnection.method as GcpConnectionMethod}`
+      });
+  }
+};
+
+export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection, deps: TGcpConnectionAuthDeps) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   let gcpApps: GCPApp[] = [];
 
@@ -242,8 +501,12 @@ export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection)
   return projects;
 };
 
-export const getGcpSecretManagerProjectLocations = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpSecretManagerProjectLocations = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  deps: TGcpConnectionAuthDeps
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   let gcpLocations: GCPLocation[] = [];
 
@@ -281,22 +544,66 @@ export const getGcpSecretManagerProjectLocations = async (projectId: string, app
   return gcpLocations.sort((a, b) => a.displayName.localeCompare(b.displayName));
 };
 
-export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
-  // Check if provided service account email suffix matches organization ID.
-  // We do this to mitigate confused deputy attacks in multi-tenant instances
-  if (appConnection.credentials.serviceAccountEmail) {
-    const expectedAccountIdSuffix = appConnection.orgId.split("-").slice(0, 2).join("-");
-    const serviceAccountId = appConnection.credentials.serviceAccountEmail.split("@")[0];
-    if (!serviceAccountId.endsWith(expectedAccountIdSuffix)) {
-      throw new BadRequestError({
-        message: `GCP service account ID must have a suffix of "${expectedAccountIdSuffix}" e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com"`
-      });
+export const validateGcpConnectionCredentials = async (
+  appConnection: TGcpConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  instanceConfigService: Pick<TInstanceConfigService, "getOverridableEnv">
+) => {
+  switch (appConnection.method) {
+    case GcpConnectionMethod.ServiceAccountImpersonation: {
+      const { serviceAccountEmail } = appConnection.credentials;
+      // Check if provided service account email suffix matches organization ID.
+      // We do this to mitigate confused deputy attacks in multi-tenant instances
+      if (serviceAccountEmail) {
+        const expectedAccountIdSuffix = appConnection.orgId.split("-").slice(0, 2).join("-");
+        const serviceAccountId = serviceAccountEmail.split("@")[0];
+        if (!serviceAccountId.endsWith(expectedAccountIdSuffix)) {
+          throw new BadRequestError({
+            message: `GCP service account ID must have a suffix of "${expectedAccountIdSuffix}" e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com"`
+          });
+        }
+      }
+
+      await getGcpImpersonationAccessToken(serviceAccountEmail, instanceConfigService);
+
+      return appConnection.credentials;
     }
+    case GcpConnectionMethod.WorkloadIdentityFederation: {
+      const { workloadIdentityProvider, serviceAccountEmail } = appConnection.credentials;
+
+      // GCP fetches the issuer's keys over the internet and only accepts an https issuer
+      const { SITE_URL } = getConfig();
+      if (!SITE_URL?.startsWith("https://")) {
+        throw new BadRequestError({
+          message:
+            "Workload Identity Federation requires SITE_URL to be this instance's public https URL, because GCP fetches the signing keys from it. Set SITE_URL and try again."
+        });
+      }
+
+      // A new connection has no ID yet, so GCP cannot trust its subject. Reconnecting runs the exchange once the
+      // customer has granted the connection's principal access.
+      if (!appConnection.connection) return { workloadIdentityProvider, serviceAccountEmail };
+
+      const token = await exchangeGcpWorkloadIdentityToken(
+        {
+          appConnection: {
+            ...appConnection.connection,
+            orgId: appConnection.orgId,
+            projectId: appConnection.projectId
+          },
+          workloadIdentityProvider,
+          serviceAccountEmail
+        },
+        oidcIssuerService
+      );
+
+      return { workloadIdentityProvider, serviceAccountEmail, ...token };
+    }
+    default:
+      throw new InternalServerError({
+        message: `Unhandled GCP connection method: ${(appConnection as { method: string }).method}`
+      });
   }
-
-  await getGcpConnectionAuthToken(appConnection);
-
-  return appConnection.credentials;
 };
 
 const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectId?: string }) => {
@@ -408,8 +715,12 @@ const isGcpServiceEnabled = async (accessToken: string, projectId: string, servi
   }
 };
 
-const getGcpProjectsWithServiceEnabled = async (appConnection: TGcpConnection, serviceName: string) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+const getGcpProjectsWithServiceEnabled = async (
+  appConnection: TGcpConnection,
+  serviceName: string,
+  deps: TGcpConnectionAuthDeps
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   const apps = await fetchGcpPages<GCPGetProjectsRes, GCPApp>({
     url: `${IntegrationUrls.GCP_API_URL}/v1/projects`,
@@ -434,14 +745,18 @@ const getGcpProjectsWithServiceEnabled = async (appConnection: TGcpConnection, s
   return projects.sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnection) =>
-  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME);
+export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnection, deps: TGcpConnectionAuthDeps) =>
+  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME, deps);
 
-export const getGcpCloudDnsProjects = async (appConnection: TGcpConnection) =>
-  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CLOUD_DNS_SERVICE_NAME);
+export const getGcpCloudDnsProjects = async (appConnection: TGcpConnection, deps: TGcpConnectionAuthDeps) =>
+  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CLOUD_DNS_SERVICE_NAME, deps);
 
-export const getGcpCloudDnsZones = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCloudDnsZones = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  deps: TGcpConnectionAuthDeps
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   const zones = await fetchGcpPages<GCPGetCloudDnsManagedZonesRes, GCPCloudDnsManagedZone>({
     url: `${IntegrationUrls.GCP_CLOUD_DNS_URL}/dns/v1/projects/${projectId}/managedZones`,
@@ -463,8 +778,12 @@ export const getGcpCloudDnsZones = async (projectId: string, appConnection: TGcp
     .sort((a, b) => a.dnsName.localeCompare(b.dnsName));
 };
 
-export const getGcpCertificateManagerLocations = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCertificateManagerLocations = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  deps: TGcpConnectionAuthDeps
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   const locations = await fetchGcpPages<GCPGetProjectLocationsRes, GCPLocation>({
     url: `${IntegrationUrls.GCP_CERTIFICATE_MANAGER_URL}/v1/projects/${projectId}/locations`,
@@ -488,8 +807,12 @@ export const getGcpCertificateManagerLocations = async (projectId: string, appCo
   }));
 };
 
-export const getGcpCertificateMaps = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCertificateMaps = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  deps: TGcpConnectionAuthDeps
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, deps);
 
   const certificateMaps = await fetchGcpPages<GCPGetCertificateMapsRes, { name: string; description?: string }>({
     url: `${IntegrationUrls.GCP_CERTIFICATE_MANAGER_URL}/v1/projects/${projectId}/locations/${GCP_GLOBAL_LOCATION}/certificateMaps`,

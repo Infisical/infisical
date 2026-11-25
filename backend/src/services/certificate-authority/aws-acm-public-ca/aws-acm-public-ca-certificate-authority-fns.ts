@@ -16,6 +16,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -81,12 +82,16 @@ type TAwsAcmPublicCaCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export const castDbEntryToAwsAcmPublicCaCertificateAuthority = (
@@ -140,7 +145,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsDataKeyService,
   kmsKeyService,
-  certificateProfileDAL
+  certificateProfileDAL,
+  instanceConfigService
 }: TAwsAcmPublicCaCertificateAuthorityFnsDeps) => {
   const validateAwsConnection = async ({
     appConnectionId,
@@ -206,7 +212,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     // Smoke-test both connections up front — ACM via ListCertificates (no single "get CA" resource),
     // and Route 53 via GetHostedZone so a misconfigured DNS connection / wrong zone ID fails
     // synchronously here instead of mid-issuance.
-    const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsDataKeyService });
+    const acmClient = await createAcmClient({
+      appConnectionId,
+      region,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     try {
       await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
     } catch (error) {
@@ -217,7 +229,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
     const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
     try {
-      await route53GetHostedZone(dnsConnection, hostedZoneId);
+      await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -292,7 +304,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
 
-      const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsDataKeyService });
+      const acmClient = await createAcmClient({
+        appConnectionId,
+        region,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      });
       try {
         await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
       } catch (error) {
@@ -303,7 +321,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
       try {
-        await route53GetHostedZone(dnsConnection, hostedZoneId);
+        await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
       } catch (error) {
         throw new BadRequestError({
           message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -482,7 +500,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         appConnectionId,
         region: issuanceRegion,
         appConnectionDAL,
-        kmsDataKeyService
+        kmsDataKeyService,
+        instanceConfigService
       });
 
       const describe = await acmClient.send(new DescribeCertificateCommand({ CertificateArn: certificateArn }));
@@ -506,11 +525,16 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           });
           for (const dv of detail.DomainValidationOptions) {
             if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-              await route53UpsertRecord(dnsConnection, hostedZoneId, {
-                name: dv.ResourceRecord.Name,
-                type: "CNAME",
-                value: dv.ResourceRecord.Value
-              });
+              await route53UpsertRecord(
+                dnsConnection,
+                hostedZoneId,
+                {
+                  name: dv.ResourceRecord.Name,
+                  type: "CNAME",
+                  value: dv.ResourceRecord.Value
+                },
+                instanceConfigService
+              );
             }
           }
         }
@@ -538,7 +562,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
     } else {
       // New issuance — use the CA's configured region.
-      acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsDataKeyService });
+      acmClient = await createAcmClient({
+        appConnectionId,
+        region,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      });
 
       const domainName = commonName || (altNames.length > 0 ? altNames[0].value : "");
       if (!domainName) {
@@ -578,11 +608,16 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         });
         for (const dv of detail.DomainValidationOptions) {
           if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-            await route53UpsertRecord(dnsConnection, hostedZoneId, {
-              name: dv.ResourceRecord.Name,
-              type: "CNAME",
-              value: dv.ResourceRecord.Value
-            });
+            await route53UpsertRecord(
+              dnsConnection,
+              hostedZoneId,
+              {
+                name: dv.ResourceRecord.Name,
+                type: "CNAME",
+                value: dv.ResourceRecord.Value
+              },
+              instanceConfigService
+            );
           }
         }
       }
@@ -751,7 +786,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     const { appConnectionId } = acmCa.configuration;
 
     // ACM revokes by ARN, not serial number. Look up the ARN from the cert's externalMetadata.
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate with serial number '${serialNumber}' not found under CA '${caId}'`
@@ -781,7 +816,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       appConnectionId,
       region: parsedMetadata.data.region,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      instanceConfigService
     });
     const revocationReason = CRL_REASON_TO_ACM_REVOCATION_REASON_MAP[reason];
 

@@ -23,12 +23,47 @@ import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stri
 
 import { genericAppConnectionFieldsSchema } from "./base";
 
+const GCP_PROJECT_NUMBER_PATTERN = /^[0-9]{1,20}$/;
+const GCP_POOL_OR_PROVIDER_ID_PATTERN = /^[a-z0-9-]{4,32}$/;
+const GCP_POOL_OR_PROVIDER_ID_RULE = "Use 4 to 32 lowercase letters, digits, and hyphens";
+
 export const gcpConnectionFormSchema = z.discriminatedUnion("method", [
   genericAppConnectionFieldsSchema.extend({
     app: z.literal(AppConnection.GCP),
     method: z.literal(GcpConnectionMethod.ServiceAccountImpersonation),
     credentials: z.object({
       serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
+    })
+  }),
+  genericAppConnectionFieldsSchema.extend({
+    app: z.literal(AppConnection.GCP),
+    method: z.literal(GcpConnectionMethod.WorkloadIdentityFederation),
+    credentials: z.object({
+      projectNumber: z
+        .string()
+        .trim()
+        .min(1, "Project number is required")
+        .regex(GCP_PROJECT_NUMBER_PATTERN, "Use the project number, which is digits only"),
+      poolId: z
+        .string()
+        .trim()
+        .min(1, "Pool ID is required")
+        .regex(GCP_POOL_OR_PROVIDER_ID_PATTERN, GCP_POOL_OR_PROVIDER_ID_RULE),
+      providerId: z
+        .string()
+        .trim()
+        .min(1, "Provider ID is required")
+        .regex(GCP_POOL_OR_PROVIDER_ID_PATTERN, GCP_POOL_OR_PROVIDER_ID_RULE),
+      serviceAccountEmail: z
+        .union([
+          z.literal(""),
+          z
+            .string()
+            .trim()
+            .email("Enter a valid service account email")
+            .max(254, "Service account email cannot exceed 254 characters")
+        ])
+        .optional()
     })
   })
 ]);

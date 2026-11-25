@@ -92,6 +92,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .string()
             .trim()
             .min(1, { message: "Secret path cannot be empty" })
+            .max(1024)
             .transform(removeTrailingSlash),
           environment: z.string().optional(),
           environments: z.string().array().optional(),
@@ -297,6 +298,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1024)
           .optional()
           .transform((val) => (val ? removeTrailingSlash(val) : val)),
         approvers: z

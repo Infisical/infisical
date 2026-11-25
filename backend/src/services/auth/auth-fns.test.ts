@@ -1,4 +1,5 @@
-import { LoginMethod } from "../super-admin/super-admin-types";
+import { LoginMethod, LoginPolicy } from "@app/domains/platform/instance-config-core/ce/module";
+
 import {
   assertOAuthLoginMethodEnabled,
   getOrgAllowedMfaMethods,
@@ -14,23 +15,25 @@ import {
 } from "./auth-fns";
 import { AuthMethod, MfaMethod, SsoMfaTrust } from "./auth-type";
 
+const loginPolicy = (enabledLoginMethods: LoginMethod[] | null) => LoginPolicy.restore({ enabledLoginMethods });
+
 describe("OAuth login method policy", () => {
   test.each([
     [AuthMethod.GOOGLE, LoginMethod.GOOGLE],
     [AuthMethod.GITHUB, LoginMethod.GITHUB],
     [AuthMethod.GITLAB, LoginMethod.GITLAB]
   ] as const)("allows %s when it is enabled", (authMethod, loginMethod) => {
-    expect(isOAuthLoginMethodDisabled(authMethod, [loginMethod])).toBe(false);
-    expect(() => assertOAuthLoginMethodEnabled({ authMethod, enabledLoginMethods: [loginMethod] })).not.toThrow();
+    expect(isOAuthLoginMethodDisabled(authMethod, loginPolicy([loginMethod]))).toBe(false);
+    expect(() => assertOAuthLoginMethodEnabled({ authMethod, loginPolicy: loginPolicy([loginMethod]) })).not.toThrow();
   });
 
   test.each([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB] as const)(
     "rejects disabled %s login before a user exists",
     (authMethod) => {
-      expect(isOAuthLoginMethodDisabled(authMethod, [LoginMethod.EMAIL])).toBe(true);
-      expect(() => assertOAuthLoginMethodEnabled({ authMethod, enabledLoginMethods: [LoginMethod.EMAIL] })).toThrow(
-        /disabled by administrator/
-      );
+      expect(isOAuthLoginMethodDisabled(authMethod, loginPolicy([LoginMethod.EMAIL]))).toBe(true);
+      expect(() =>
+        assertOAuthLoginMethodEnabled({ authMethod, loginPolicy: loginPolicy([LoginMethod.EMAIL]) })
+      ).toThrow(/disabled by administrator/);
     }
   );
 
@@ -38,7 +41,7 @@ describe("OAuth login method policy", () => {
     expect(() =>
       assertOAuthLoginMethodEnabled({
         authMethod: AuthMethod.GOOGLE,
-        enabledLoginMethods: [LoginMethod.EMAIL],
+        loginPolicy: loginPolicy([LoginMethod.EMAIL]),
         canBypass: true
       })
     ).not.toThrow();
@@ -46,7 +49,7 @@ describe("OAuth login method policy", () => {
 
   test("treats an unset allowlist as all methods enabled", () => {
     expect(() =>
-      assertOAuthLoginMethodEnabled({ authMethod: AuthMethod.GOOGLE, enabledLoginMethods: null })
+      assertOAuthLoginMethodEnabled({ authMethod: AuthMethod.GOOGLE, loginPolicy: loginPolicy(null) })
     ).not.toThrow();
   });
 });

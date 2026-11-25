@@ -28,7 +28,7 @@ func TestSubOrganization_Membership(t *testing.T) {
 		addToSubOrg(t, first, member, "member")
 		addToSubOrg(t, second, member, "member")
 		groupID := first.NewGroup(t, "native")
-		added, err := first.Admin.API.AddUserToGroupWithResponse(t.Context(), groupID.String(), member.Email)
+		added, err := first.Admin.API.AddUserToGroupWithResponse(t.Context(), groupID, member.Email)
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, added.StatusCode(), added.Body)
 		membership := fixture.MembershipOf(t, tn, member.Email)
@@ -92,7 +92,7 @@ func TestSubOrganization_Membership(t *testing.T) {
 			ua := newUniversalAuth(t, tn)
 			sub.LinkIdentity(t, ua.IdentityID, "no-access")
 			ownGroupID := sub.NewGroup(t, "native")
-			added, err := sub.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), ownGroupID.String(), ua.IdentityID.String())
+			added, err := sub.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), ownGroupID, ua.IdentityID)
 			require.NoError(t, err)
 			requireStatus(t, http.StatusOK, added.StatusCode(), added.Body)
 

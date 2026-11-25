@@ -13,8 +13,10 @@ src/domains/
 ├── domains.ts                  # the only wiring file, builds every module in dependency order
 ├── lib/                        # shared building blocks, no business logic
 ├── platform/                   # domains other products depend on
+│   ├── events/
 │   ├── license/
 │   ├── kms-core/
+│   ├── instance-config-core/
 │   └── organizations-projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
@@ -25,7 +27,8 @@ src/domains/
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md).
+[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
+[events](platform/events/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
@@ -114,8 +117,8 @@ rule about it shows up.
 - If a module needs to read something before it can answer (the instance license), give it a private
   constructor and `static async create(deps)` (`LicenseModule.create`). Never a holder that throws until
   something fills it later.
-- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `routes/index.ts` calls
-  once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
+- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `main()` (`server/app.ts`)
+  calls once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
   gets its own method returning a handle that `routes/index.ts` stops on shutdown (`LicenseModule.startBackgroundSync`).
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.
@@ -207,13 +210,14 @@ Calling another domain is a last resort. Before adding one:
 1. If you keep needing another domain's data for your own decisions, the boundary is wrong. Move the data
    or rule and raise it in review.
 2. If the other domain should react to your change (keys for a new project, cleanup after a delete), emit an
-   outbox event in your transaction. Until that event exists, call it after your commit.
+   event in your transaction (`eventEmitterService.within(tx).emit(...)`, see "Events joins transactions"). Until that
+   event exists, call it after your commit.
 3. If you need a value to write your own data (a cipher, a key id, a plan), call it before your `run`.
 
 Domains don't share a transaction by default. A shared one keeps one domain's row locks held while another
 works, and with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a
-sequence of short, repeatable calls; the exceptions are in "Sharing a transaction" and "KMS Core joins
-transactions" below.
+sequence of short, repeatable calls; the exceptions are in "Sharing a transaction", "KMS Core joins
+transactions" and "Events joins transactions" below.
 
 ```ts
 async createSecret(input: TCreateSecretInput) {
@@ -284,6 +288,23 @@ cannot see a project the transaction has just created.
 - Outside a transaction, call the service directly.
 
 See `platform/kms-core/AGENTS.md` for how the domain does this inside.
+
+### Events joins transactions
+
+Events is the other domain any caller may bring into its transaction, because that is the whole point of an outbox:
+the event has to commit or roll back with the write it describes. Emitting after the commit loses the event
+whenever the pod dies in between.
+
+- `eventEmitterService.within(tx)` returns `TEventEmitterTransaction`, which can only `emit`. Call it inside your `run` with
+  the `tx` you were handed. This is the one case where `tx` goes to another domain and a method of another domain
+  runs inside `run`.
+- It costs one insert on your connection: no lock, no read, no network call, and nothing waits on another
+  domain's rows. Validation runs in memory before it.
+- A malformed event throws and fails your transaction, on purpose. So does a failed insert: don't catch either,
+  the transaction is unusable afterwards.
+- Outside a transaction, call `eventEmitterService.emit(events)`.
+- Take `eventEmitterService: TEventEmitterService` in your module deps; `domains.ts` builds Events first. Define your events
+  with `EventDefinition.define` in your own domain.
 
 ## Errors
 
@@ -388,7 +409,11 @@ sets the pattern from the rules above, and its PR names it here.
 | --- | --- |
 | Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
 | Stores bundle passed to `TransactionRunner` | `platform/organizations-projects/ce/module.ts` |
-| Entity, in-memory store, contract suite, router | none yet |
+| Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
+| In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
+| Router | none yet |
+| A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
+| Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
 | Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
@@ -434,8 +459,7 @@ Where each legacy piece lands:
    every API change.
 7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
 8. Fix every path that named the old files: `vitest.e2e.config.mts` aliases, `.github/workflows/*` that `sed`
-   a source file, `backend-go/tests/infra/builder.go` (it patches the compiled file inside the published
-   image), docs, and test failure messages. `git grep` the old file names before calling it done.
+   a source file, docs, and test failure messages. `git grep` the old file names before calling it done.
 9. Run `make reviewable-api`, `npm run test:unit -- src/domains`, `npm run test:integration`, and the e2e specs
    for the routes you touched (`make test-api-e2e SPEC=<pattern>`).
 

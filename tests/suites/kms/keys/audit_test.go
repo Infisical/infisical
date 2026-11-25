@@ -12,12 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// keyEvents waits for at least n audit events of the type about the key.
-func keyEvents(t *testing.T, tn *harness.Tenant, eventType, keyID string, n int) []fixture.AuditEvent {
-	t.Helper()
-	return fixture.WaitForAuditEvents(t, tn, eventType, n, func(e fixture.AuditEvent) bool { return e.Metadata["keyId"] == keyID })
-}
-
 func TestKmsKey_AuditLog(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -38,10 +32,7 @@ func TestKmsKey_AuditLog(t *testing.T) {
 
 		// Assert
 		for _, eventType := range []string{"create-cmek", "cmek-get-private-key", "delete-cmek"} {
-			events := keyEvents(t, tn, eventType, key.ID.String(), 1)
-			require.Lenf(t, events, 1, "%s", eventType)
-			require.Equalf(t, "user", events[0].ActorType, "%s", eventType)
-			require.Equalf(t, tn.Admin.ID.String(), events[0].Actor["userId"], "%s", eventType)
+			fixture.RequireAuditedBy(t, tn, tn.Admin, eventType, "keyId", key.ID.String())
 		}
 	})
 
@@ -64,8 +55,6 @@ func TestKmsKey_AuditLog(t *testing.T) {
 
 		// Assert
 		spec.Why(t, "the refused delete came first, so once the admin's delete is logged a recorded refusal would be too")
-		events := keyEvents(t, tn, "delete-cmek", key.ID.String(), 1)
-		require.Len(t, events, 1)
-		require.Equal(t, "user", events[0].ActorType)
+		fixture.RequireAuditedBy(t, tn, tn.Admin, "delete-cmek", "keyId", key.ID.String())
 	})
 }

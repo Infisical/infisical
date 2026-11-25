@@ -700,6 +700,53 @@ describe("alert service", () => {
     });
   });
 
+  describe("an alert chosen for a resource that is still being created", () => {
+    const newResourceAlert = {
+      resourceType: RESOURCE_TYPE,
+      resourceId: "new-resource",
+      projectId: "proj-1",
+      eventType: "test.resource.opened",
+      name: "New resource alert",
+      channels: [emailChannel, webhookChannel],
+      ...actor
+    };
+    const tx = {} as never;
+
+    test("is written only when applied, as the actor who chose it", async () => {
+      const { service, alerts, channels } = buildService();
+      const prepared = await service.prepareAlertForNewResource(newResourceAlert);
+      expect(alerts.size).toBe(0);
+
+      await service.applyPreparedAlert(prepared, tx);
+      expect([...alerts.values()]).toEqual([
+        expect.objectContaining({
+          resourceId: "new-resource",
+          projectId: "proj-1",
+          createdByActorId: "user-1",
+          enabled: true
+        })
+      ]);
+      expect([...channels.values()].map((c) => c.name)).toEqual(["email-ch", "webhook-ch"]);
+    });
+
+    test("leaves the resource checks to the caller, since the resource doesn't exist yet", async () => {
+      const { service, permissionCalls } = buildService({ resourceScopeThrows: true });
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(permissionCalls).toHaveLength(0);
+    });
+
+    test("still checks its channels", async () => {
+      const { service, gatedChannelTypeCalls, recipientProjectIds } = buildService();
+      await expect(service.prepareAlertForNewResource({ ...newResourceAlert, channels: [] })).rejects.toThrow(
+        "At least one channel is required"
+      );
+
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.EMAIL, AlertChannelType.WEBHOOK]);
+      expect(recipientProjectIds).toEqual(["proj-1", "proj-1"]);
+    });
+  });
+
   test("update rejects an empty channel list", async () => {
     const { service } = buildService();
     await service.createAlert(validCreate);
