@@ -4,14 +4,18 @@ import {
   joinPolicyViolations
 } from "@app/services/certificate-policy/certificate-policy-fns";
 
+import { ENROLLMENT_TYPE_NAME_MAP, EnrollmentType } from "./certificate-profile-types";
+
 export const certificateProfileNotFoundError = (profileId: string) =>
   new NotFoundError({
     message: `Certificate profile with ID '${profileId}' not found. List your organization's certificate profiles to find the right ID.`
   });
 
 export const enrollmentTypeMismatchError = (profileEnrollmentType: string, requiredEnrollmentType: string) => {
-  const actual = profileEnrollmentType.toUpperCase();
-  const required = requiredEnrollmentType.toUpperCase();
+  const actual =
+    ENROLLMENT_TYPE_NAME_MAP[profileEnrollmentType as EnrollmentType] ?? profileEnrollmentType.toUpperCase();
+  const required =
+    ENROLLMENT_TYPE_NAME_MAP[requiredEnrollmentType as EnrollmentType] ?? requiredEnrollmentType.toUpperCase();
   return new ForbiddenRequestError({
     message: `This certificate profile uses ${actual} enrollment, not ${required}. Use a profile configured for ${required} enrollment, or request the certificate over ${actual}.`
   });

@@ -24,7 +24,7 @@ import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-en
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
-import { profileDefaultsViolationError } from "./certificate-profile-errors";
+import { enrollmentTypeMismatchError, profileDefaultsViolationError } from "./certificate-profile-errors";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import {
   EnrollmentType,
@@ -1470,6 +1470,14 @@ describe("profileDefaultsViolationError", () => {
     expect(keyUsageError.message).not.toContain("ttlDays");
     expect(keyUsageError.message).toContain(
       "do not meet the certificate policy: Key usage 'crl_sign' is denied by this policy."
+    );
+  });
+});
+
+describe("enrollmentTypeMismatchError", () => {
+  it("names enrollment types by their display names", () => {
+    expect(enrollmentTypeMismatchError("microsoft-autoenrollment", "api").message).toBe(
+      "This certificate profile uses Microsoft Autoenrollment enrollment, not API. Use a profile configured for API enrollment, or request the certificate over Microsoft Autoenrollment."
     );
   });
 });
