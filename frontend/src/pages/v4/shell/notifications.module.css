@@ -1,0 +1,108 @@
+.popover {
+  width: 420px;
+  max-height: min(560px, var(--radix-popover-content-available-height));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet.sheet[data-side="bottom"] {
+  max-height: 85dvh;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sheet .head {
+  padding-top: var(--cipher-space-16);
+  padding-right: calc(var(--cipher-space-16) + var(--cipher-size-control-sm));
+}
+
+.inbox {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-8);
+  padding: var(--cipher-space-12) var(--cipher-space-12) var(--cipher-space-8)
+    var(--cipher-space-16);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--cipher-type-title-sm-font-family);
+  font-size: var(--cipher-type-title-sm-font-size);
+  line-height: var(--cipher-type-title-sm-line-height);
+  font-weight: var(--cipher-type-title-sm-font-weight);
+  letter-spacing: var(--cipher-type-title-sm-letter-spacing);
+}
+
+.filters {
+  padding: 0 var(--cipher-space-12) var(--cipher-space-8);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+
+.body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: var(--cipher-space-24);
+}
+
+.rowMenu {
+  position: absolute;
+  right: calc(-1 * var(--cipher-space-4));
+  top: 50%;
+  translate: 0 -50%;
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  [data-list-row]:hover .meta time,
+  .meta:focus-within time,
+  .rowMenu[data-state="open"] + time {
+    visibility: hidden;
+  }
+  [data-list-row]:hover .rowMenu,
+  .rowMenu:focus-visible,
+  .rowMenu[data-state="open"] {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .meta {
+    gap: var(--cipher-space-4);
+  }
+  .rowMenu {
+    order: 1;
+    position: static;
+    translate: none;
+    opacity: 1;
+    margin-right: calc(-1 * var(--cipher-space-4));
+  }
+}
