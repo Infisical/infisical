@@ -83,7 +83,7 @@ export const KeySheet = ({
     const next = {
       name: parsedName.success ? undefined : parsedName.error.issues[0]?.message,
       description:
-        description.length > 255 ? "Description must be at most 255 characters" : undefined
+        description.trim().length > 255 ? "Description must be at most 255 characters" : undefined
     };
     setErrors(next);
     if (next.name || next.description) return;
