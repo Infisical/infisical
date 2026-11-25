@@ -27,6 +27,8 @@ import {
   WorkflowIntegrationStatus
 } from "@app/hooks/api/workflowIntegrations/types";
 
+import { getChannelErrors, useChannelPath } from "./channelPath";
+
 type Props = {
   index: number;
 };
@@ -36,8 +38,9 @@ const SlackChannelsWithoutAccess = ({ index }: Props) => {
     control,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
-  const savedChannels = useWatch({ control, name: `channels.${index}.slackChannels` }) ?? [];
-  const channelErrors = errors.channels?.[index];
+  const channelPath = useChannelPath(index);
+  const savedChannels = useWatch({ control, name: `${channelPath}.slackChannels` }) ?? [];
+  const channelErrors = getChannelErrors(errors, channelPath);
 
   return (
     <Field>
@@ -70,12 +73,13 @@ const SlackChannelPickers = ({ index }: Props) => {
     setValue,
     formState: { errors }
   } = useFormContext<TChannelsForm>();
-  const channelErrors = errors.channels?.[index];
+  const channelPath = useChannelPath(index);
+  const channelErrors = getChannelErrors(errors, channelPath);
   const [isSavedIntegrationDeleted, setIsSavedIntegrationDeleted] = useState(false);
 
   const workflowIntegrationId = useWatch({
     control,
-    name: `channels.${index}.workflowIntegrationId`
+    name: `${channelPath}.workflowIntegrationId`
   });
 
   const integrationsQuery = useGetWorkflowIntegrations(currentOrg.id);
@@ -98,7 +102,7 @@ const SlackChannelPickers = ({ index }: Props) => {
       return;
     }
     setIsSavedIntegrationDeleted(true);
-    setValue(`channels.${index}.workflowIntegrationId`, "", { shouldDirty: true });
+    setValue(`${channelPath}.workflowIntegrationId`, "", { shouldDirty: true });
   }, [
     isSuccess,
     isFetching,
@@ -132,16 +136,16 @@ const SlackChannelPickers = ({ index }: Props) => {
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={`channel-${index}-slackIntegration`}>Slack integration</FieldLabel>
+        <FieldLabel htmlFor={`${channelPath}-slackIntegration`}>Slack integration</FieldLabel>
         <FieldContent>
           <Controller
             control={control}
-            name={`channels.${index}.workflowIntegrationId`}
+            name={`${channelPath}.workflowIntegrationId`}
             render={({ field }) => {
               const selected = integrations.find((integration) => integration.id === field.value);
               return (
                 <Combobox
-                  id={`channel-${index}-slackIntegration`}
+                  id={`${channelPath}-slackIntegration`}
                   placeholder="Select a Slack integration..."
                   searchAriaLabel="Search Slack integrations"
                   options={integrations}
@@ -168,7 +172,7 @@ const SlackChannelPickers = ({ index }: Props) => {
                     if ((integration?.id ?? "") === field.value) return;
                     setIsSavedIntegrationDeleted(false);
                     field.onChange(integration?.id ?? "");
-                    setValue(`channels.${index}.slackChannels`, [], { shouldDirty: true });
+                    setValue(`${channelPath}.slackChannels`, [], { shouldDirty: true });
                   }}
                 />
               );
@@ -190,18 +194,18 @@ const SlackChannelPickers = ({ index }: Props) => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`channel-${index}-slackChannels`}>Slack channels</FieldLabel>
+        <FieldLabel htmlFor={`${channelPath}-slackChannels`}>Slack channels</FieldLabel>
         <FieldContent>
           <Controller
             control={control}
-            name={`channels.${index}.slackChannels`}
+            name={`${channelPath}.slackChannels`}
             render={({ field }) => {
               const value = field.value ?? [];
               const isAtLimit = value.length >= MAX_SLACK_APP_CHANNELS;
               return (
                 <Combobox
                   multiple
-                  id={`channel-${index}-slackChannels`}
+                  id={`${channelPath}-slackChannels`}
                   placeholder={
                     workflowIntegrationId ? "Add Slack channels..." : "Select an integration first"
                   }

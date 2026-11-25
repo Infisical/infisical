@@ -129,6 +129,16 @@ Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to 
 
 Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
+To match a request's own common name, select **Same as common name** in the value field of a SAN rule. The API stores it as `{{request.commonName}}`, the whole value. It matches a SAN of the rule's type that equals the common name. DNS names and email addresses ignore case, and a DNS name may end in a dot. IP addresses match by value, so `::1` matches `0:0:0:0:0:0:0:1`. In a URI with `://`, only the scheme and authority ignore case, and other URIs must match exactly. Any other value that contains `{{` is refused.
+
+- If the value is required, the request must include a SAN equal to its common name, so a request without a common name is refused
+- If the value is allowed, a SAN equal to the common name is accepted unless a denied value matches it, so the rule accepts any name that the policy's common name rule accepts
+- If the value is denied, a SAN equal to the common name is refused
+
+To use **Same as common name**, the policy's subject rules must allow or require a common name.
+
+To add the common name to the SANs without asking requesters to enter it, set a [default SAN](/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san) on the certificate profile.
+
 ### Key & signature algorithms
 
 Restrict which cryptographic algorithms are permitted:
@@ -208,6 +218,13 @@ Add several rules for the same OID to accept more than one value. An Active Dire
 Patterns are matched against the value you enter rather than its encoded form, and matching is case sensitive. Use `*` for any value, or a wildcard such as `S-1-5-21-1004336348-1177238915-682003330-*` to accept only identifiers from one domain. A rule can also pin criticality, except where an extension's specification already fixes it.
 
 If you configure Custom Extensions, only the OIDs you list are permitted. Any other OID in a request is rejected, including one carried in a signing request, so the patterns are what limit what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
+
+[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds two extensions: the computer's security identifier in the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and the **Certificate template information** (`1.3.6.1.4.1.311.21.7`). If the policy doesn't restrict custom extensions, both are added with no rule. If it does:
+
+- The policy must allow both OIDs, and their values are checked against its rules like any other extension
+- The rule for the template information must allow any value (`*`), because its value ends with a version that changes each time the method's settings are saved or computers are re-enrolled
+- The rule for the SID can't deny every value
+- Microsoft Autoenrollment can't be turned on for a profile until the policy meets these rules, and the policy can't be changed to break them while a profile uses it with Microsoft Autoenrollment
 
 Infisical manages some extensions itself, so you can't set any OID under `2.5.29.` or authority information access here.
 

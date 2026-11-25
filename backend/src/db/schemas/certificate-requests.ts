@@ -43,7 +43,8 @@ export const CertificateRequestsSchema = z.object({
   pendingMessage: z.string().nullable().optional(),
   applicationId: z.string().uuid().nullable().optional(),
   domainComponents: z.string().nullable().optional(),
-  customExtensions: z.unknown().nullable().optional()
+  customExtensions: z.unknown().nullable().optional(),
+  renewedFromCertificateId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

@@ -37,6 +37,10 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     }
     ```
 
+    If you set [`INITIAL_SETUP_ACTIVATION_TOKEN`](/self-hosting/configuration/envars#param-initial-setup-activation-token)
+    on the instance, add the token to the request body as `activationToken`. Without it, the
+    request fails with a `403` response.
+
     Example using curl:
 
     ```bash

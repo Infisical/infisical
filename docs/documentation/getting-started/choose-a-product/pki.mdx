@@ -16,7 +16,7 @@ Infisical Certificate Management manages the lifecycle of X.509 certificates for
   <Card title="Issue TLS and mTLS certificates" icon="award" href="/documentation/platform/pki/applications/overview">
     Issue certificates for web servers, service-to-service authentication, and device identity.
   </Card>
-  <Card title="Enroll devices with ACME, EST, or SCEP" icon="smartphone" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enroll devices with ACME, EST, SCEP, or Microsoft Autoenrollment" icon="smartphone" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Issue certificates to devices using an enrollment protocol supported by the device or its management system.
   </Card>
   <Card title="Sync certificates to cloud destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
@@ -47,7 +47,7 @@ A certificate management system maintains a single record of every certificate t
 
 Infisical Certificate Management supports three stages of the certificate lifecycle.
 
-- **Issuance.** Certificates can be issued from private [CA hierarchies](/documentation/platform/pki/ca/overview) managed within Infisical, or from external providers such as DigiCert, AWS Private CA, and Let's Encrypt. Requests can be submitted through the API or through the [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), and [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) enrollment protocols.
+- **Issuance.** Certificates can be issued from private [CA hierarchies](/documentation/platform/pki/ca/overview) managed within Infisical, or from external providers such as DigiCert, AWS Private CA, and Let's Encrypt. Requests can be submitted through the API or through the [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep), and [Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) enrollment methods.
 - **Delivery.** Certificates can be [synchronized](/documentation/platform/pki/applications/certificate-syncs/overview) to destinations such as AWS ACM, Azure Key Vault, and Cloudflare. The [discovery](/documentation/platform/pki/discovery/overview) feature scans infrastructure to identify certificates that were issued outside of Infisical so they can be added to the inventory.
 - **Renewal and alerting.** Certificates can be renewed automatically before they expire, and [alerts](/documentation/platform/pki/applications/alerting/overview) can be sent through Slack, PagerDuty, or webhooks when a certificate requires attention. [Approval workflows](/documentation/platform/pki/applications/approvals) can be configured so that certain certificates require review before they're issued.
 

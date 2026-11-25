@@ -39,14 +39,17 @@ import {
   formatExpirationTime,
   formatExpiryFull,
   grantStateOf,
+  isRootFolderPath,
   isValidTemporaryRange,
+  subfolderToggleLabelOf,
   TFolderAccessActor
 } from "./folder-access.utils";
 import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-const RECURSIVE_NOTE = "The selected tier applies to / and all of its subfolders.";
+const recursiveNoteOf = (folderPath: string) =>
+  `The selected tier applies to ${folderPath} and all of its subfolders.`;
 
 const remainingTimeOf = (grant: TFolderAccess | null) =>
   grant?.isTemporary && grant.temporaryAccessEndTime
@@ -93,7 +96,7 @@ const RowNote = ({ icon, text, tone = "muted", tooltip }: Omit<TRowNote, "key">)
       className={`flex items-center gap-1 text-xs whitespace-nowrap ${NOTE_TONE_CLASS_NAMES[tone]} [&>svg]:size-3.5 [&>svg]:shrink-0`}
     >
       {icon}
-      <span className="hidden sm:inline">{text}</span>
+      <span className="hidden max-w-48 truncate sm:inline">{text}</span>
     </span>
   );
   if (!tooltip) return content;
@@ -132,33 +135,36 @@ export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
 
 type Props = {
   actor: TFolderAccessActor;
+  isSelf?: boolean;
   isDisabled?: boolean;
   isPending?: boolean;
-  // only the root folder's grants may apply to subfolders, so the control is hidden elsewhere
-  canApplyToSubfolders?: boolean;
+  folderPath: string;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
   onSetRecursive: (isRecursive: boolean) => void;
   onSetTemporaryRange: (range: string) => void;
   onMakePermanent: () => void;
   onRemove: () => void;
-  onManageInheritedAccess?: () => void;
+  onManageInheritedAccess?: (secretPath: string) => void;
 };
 
-type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "isPending" | "canApplyToSubfolders"> & {
+type GrantRowProps = Pick<Props, "actor" | "isSelf" | "isDisabled" | "isPending" | "folderPath"> & {
   footerNote?: string;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
 };
 
 export const FolderAccessGrantRow = ({
   actor,
+  isSelf,
   isDisabled,
   isPending,
-  canApplyToSubfolders,
+  folderPath,
   footerNote,
   onSetTier
 }: GrantRowProps) => {
   const [isRecursive, setIsRecursive] = useState(false);
-  const note = [footerNote, isRecursive ? RECURSIVE_NOTE : undefined].filter(Boolean).join(" ");
+  const note = [footerNote, isRecursive ? recursiveNoteOf(folderPath) : undefined]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={ROW_CLASS_NAME}>
@@ -177,11 +183,12 @@ export const FolderAccessGrantRow = ({
         <TierDropdown
           footerNote={note || undefined}
           isPending={isPending}
-          recursive={
-            canApplyToSubfolders
-              ? { checked: isRecursive, onCheckedChange: setIsRecursive }
-              : undefined
-          }
+          closeOnSelect={isSelf}
+          recursive={{
+            label: subfolderToggleLabelOf(folderPath),
+            checked: isRecursive,
+            onCheckedChange: setIsRecursive
+          }}
           onSelectTier={(tier) => onSetTier(tier, isRecursive)}
         />
       </DropdownMenu>
@@ -191,9 +198,10 @@ export const FolderAccessGrantRow = ({
 
 export const FolderAccessRow = ({
   actor,
+  isSelf,
   isDisabled,
   isPending,
-  canApplyToSubfolders,
+  folderPath,
   onSetTier,
   onSetRecursive,
   onSetTemporaryRange,
@@ -253,7 +261,7 @@ export const FolderAccessRow = ({
     if (!access)
       return [
         `Choosing a tier overrides ${firstName}'s project role in this folder.`,
-        isRecursive ? RECURSIVE_NOTE : undefined
+        isRecursive ? recursiveNoteOf(folderPath) : undefined
       ]
         .filter(Boolean)
         .join(" ");
@@ -277,15 +285,20 @@ export const FolderAccessRow = ({
       return [source, ...expiryNoteFor(remainingTime)];
     }
     if (inheritedAccess) {
-      return [
-        {
-          key: "source",
-          icon: <CornerLeftUpIcon />,
-          text: `Via environment permissions`,
-          tooltip: "Applies to all folders in the environment"
-        },
-        ...expiryNoteFor(inheritedRemainingTime)
-      ];
+      const source: TRowNote = isRootFolderPath(inheritedAccess.secretPath)
+        ? {
+            key: "source",
+            icon: <CornerLeftUpIcon />,
+            text: "Via environment permissions",
+            tooltip: "Applies to all folders in the environment"
+          }
+        : {
+            key: "source",
+            icon: <CornerLeftUpIcon />,
+            text: `Via ${inheritedAccess.secretPath}`,
+            tooltip: `Applies to ${inheritedAccess.secretPath} and all of its subfolders`
+          };
+      return [source, ...expiryNoteFor(inheritedRemainingTime)];
     }
     return [
       {
@@ -300,7 +313,7 @@ export const FolderAccessRow = ({
   const triggerLabel = (() => {
     if (access) return FOLDER_ROLE_TIER_LABELS[access.permission];
     if (inheritedTierLabel) return inheritedTierLabel;
-    return "Set Access";
+    return "Override Access";
   })();
 
   return (
@@ -318,7 +331,9 @@ export const FolderAccessRow = ({
             title={`Applies to ${access.secretPath} and all of its subfolders`}
           >
             <FolderTreeIcon />
-            <span className="hidden sm:inline">Full Environment</span>
+            <span className="hidden sm:inline">
+              {isRootFolderPath(access.secretPath) ? "Full Environment" : "Subfolders"}
+            </span>
           </Badge>
         )}
         <DropdownMenu
@@ -336,6 +351,7 @@ export const FolderAccessRow = ({
             activeTier={access?.permission ?? null}
             footerNote={grantedFooterNote}
             isPending={isPending}
+            closeOnSelect={isSelf}
             inherited={
               !access && inheritedAccess
                 ? {
@@ -343,15 +359,17 @@ export const FolderAccessRow = ({
                     sourcePath: inheritedAccess.secretPath,
                     expiryLabel: inheritedExpiryLabel,
                     onManage: onManageInheritedAccess
+                      ? () => onManageInheritedAccess(inheritedAccess.secretPath)
+                      : undefined
                   }
                 : undefined
             }
-            recursive={(() => {
-              if (!canApplyToSubfolders) return undefined;
-              if (access)
-                return { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive };
-              return { checked: isRecursive, onCheckedChange: setIsRecursive };
-            })()}
+            recursive={{
+              label: subfolderToggleLabelOf(folderPath),
+              ...(access
+                ? { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive }
+                : { checked: isRecursive, onCheckedChange: setIsRecursive })
+            }}
             temporaryLabel={
               remainingTime && remainingTime?.expiresAt ? (
                 <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">

@@ -14,6 +14,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
+import { followCnameChain } from "@app/lib/dns";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -232,30 +233,9 @@ export const castDbEntryToAcmeCertificateAuthority = (
 
 const DNS_PROPAGATION_MAX_RETRIES = 5;
 const DNS_PROPAGATION_INTERVAL_MS = 2000;
-const CNAME_MAX_DEPTH = 10;
 
-const resolveAcmeChallengeCname = async (recordName: string): Promise<string> => {
-  let current = recordName;
-  let depth = 0;
-  let resolved = true;
-
-  while (depth < CNAME_MAX_DEPTH && resolved) {
-    depth += 1;
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const [target] = await dns.promises.resolveCname(current);
-      if (!target) {
-        resolved = false;
-      } else {
-        current = target;
-      }
-    } catch {
-      resolved = false;
-    }
-  }
-
-  return current;
-};
+const resolveAcmeChallengeCname = (recordName: string): Promise<string> =>
+  followCnameChain(recordName, () => undefined);
 
 const waitForDnsPropagation = async (
   lookupName: string,

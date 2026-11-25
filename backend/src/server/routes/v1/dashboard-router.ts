@@ -2102,6 +2102,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 slug: z.string()
               }),
               folderId: z.string().optional(),
+              importId: z.string().optional().describe(DASHBOARD.IMPORTED_SECRETS.importId),
               secrets: secretRawSchema
                 .omit({ secretValue: true })
                 .extend({ isEmpty: z.boolean(), isHoneyTokenSecret: z.boolean().optional() })

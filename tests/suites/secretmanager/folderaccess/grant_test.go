@@ -435,8 +435,6 @@ func TestFolderAccess_GrantRules(t *testing.T) {
 	})
 }
 
-const onlyRootRecursive = "Only folder access on the root folder '/' can apply to subfolders"
-
 func TestFolderAccess_Recursive(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -469,33 +467,33 @@ func TestFolderAccess_Recursive(t *testing.T) {
 			require.False(t, grants[0].IsPermissionRecursive)
 		})
 
-		t.Run(fmt.Sprintf("should refuse recursion for a %s on a folder other than root and keep the grant unchanged", k.name), func(t *testing.T) {
+		t.Run(fmt.Sprintf("should make a %s's grant on a folder other than root recursive on create and on update, and stop when recursion is turned off", k.name), func(t *testing.T) {
 			t.Parallel()
 
 			// Setup
 			proj := newProject(t, h.NewTenant(t))
 			secretmanager.CreateFolder(t, proj, "dev", "/app")
+			secretmanager.CreateFolder(t, proj, "dev", "/svc")
 			member := k.member(t, proj, "no-access")
 			admin := proj.Tenant().Admin
+			secretmanager.GrantFolderAccess(t, proj, member, at("/svc"), secretmanager.FolderRead)
 
 			// Action
 			recursiveCreate := grantAs(t, admin, proj, member, at("/app"), secretmanager.FolderRead, map[string]any{"isPermissionRecursive": true})
-			afterCreate := grantsOf(t, proj, member)
-			secretmanager.GrantFolderAccess(t, proj, member, at("/app"), secretmanager.FolderRead)
-			turnOn := updateGrant(t, admin, proj, member, at("/app"), map[string]any{"isPermissionRecursive": true})
+			turnOn := updateGrant(t, admin, proj, member, at("/svc"), map[string]any{"isPermissionRecursive": true})
 			turnOff := updateGrant(t, admin, proj, member, at("/app"), map[string]any{"isPermissionRecursive": false})
 
 			// Assert
-			require.Equalf(t, http.StatusBadRequest, recursiveCreate.status, "granting: %s", recursiveCreate.body)
-			require.Contains(t, recursiveCreate.message, onlyRootRecursive)
-			require.Empty(t, afterCreate)
-			require.Equalf(t, http.StatusBadRequest, turnOn.status, "turning recursion on: %s", turnOn.body)
-			require.Contains(t, turnOn.message, onlyRootRecursive)
+			require.Equalf(t, http.StatusOK, recursiveCreate.status, "granting: %s", recursiveCreate.body)
+			require.True(t, recursiveCreate.grant.IsPermissionRecursive)
+			require.Equalf(t, http.StatusOK, turnOn.status, "turning recursion on: %s", turnOn.body)
 			require.Equalf(t, http.StatusOK, turnOff.status, "turning recursion off: %s", turnOff.body)
 			grants := grantsOf(t, proj, member)
-			require.Len(t, grants, 1)
+			require.Len(t, grants, 2)
+			require.Equal(t, "/app", grants[0].SecretPath)
 			require.False(t, grants[0].IsPermissionRecursive)
-			require.Equal(t, "read", grants[0].Permission)
+			require.Equal(t, "/svc", grants[1].SecretPath)
+			require.True(t, grants[1].IsPermissionRecursive)
 		})
 	}
 
@@ -627,7 +625,7 @@ func TestFolderAccess_Recursive(t *testing.T) {
 
 func addIdentityToGroup(t *testing.T, tn *harness.Tenant, g *fixture.Group, pr *harness.Principal) {
 	t.Helper()
-	res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), g.ID.String(), pr.ID.String())
+	res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), g.ID, pr.ID)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "adding %s to group %s: %s", pr.Name, g.Name, apierr.Body(res.Body))
 }

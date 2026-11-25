@@ -85,6 +85,11 @@ export enum CertSubjectAlternativeNameType {
   UPN = "upn"
 }
 
+export const ACME_SAN_TYPES: CertSubjectAlternativeNameType[] = [
+  CertSubjectAlternativeNameType.DNS_NAME,
+  CertSubjectAlternativeNameType.IP_ADDRESS
+];
+
 export enum TAltNameType {
   EMAIL = "email",
   DNS = "dns",
@@ -390,6 +395,11 @@ export const CUSTOM_EXTENSION_PRESET_OIDS = {
   MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",
   MS_CERTIFICATE_TEMPLATE_INFORMATION: "1.3.6.1.4.1.311.21.7"
 } as const;
+
+export const MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS = [
+  CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID,
+  CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION
+];
 
 export const MAX_CUSTOM_EXTENSIONS_PER_PROFILE = 10;
 

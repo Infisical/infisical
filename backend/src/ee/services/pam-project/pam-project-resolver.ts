@@ -91,6 +91,8 @@ export const pamProjectResolverFactory = ({
   };
 
   return {
+    // For checks that must not bootstrap PAM as a side effect.
+    findDefaultProjectId,
     resolve: (actorOrgId: string): Promise<string> =>
       withCache({
         keyStore,

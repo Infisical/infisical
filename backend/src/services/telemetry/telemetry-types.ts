@@ -877,6 +877,7 @@ export type TSecretApprovalPolicyCreatedEvent = {
     secretPath: string;
     approvals: number;
     enforcementLevel: EnforcementLevel;
+    enforceOnSecretImports?: boolean;
   };
 };
 
@@ -2397,6 +2398,7 @@ export type TSecretApprovalPolicyUpdatedEvent = {
   properties: {
     policyId: string;
     projectId?: string;
+    enforceOnSecretImports?: boolean;
   };
 };
 

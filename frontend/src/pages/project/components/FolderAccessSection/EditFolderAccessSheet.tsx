@@ -13,7 +13,6 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import { isRootFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderPathBreadcrumb";
 
 import { ActorSummary } from "./ActorSummary";
@@ -35,7 +34,7 @@ type FormProps = {
 };
 
 const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormProps) => {
-  const grant = useFolderGrantDraft(access, isRootFolderPath(access.secretPath));
+  const grant = useFolderGrantDraft(access, access.secretPath);
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
