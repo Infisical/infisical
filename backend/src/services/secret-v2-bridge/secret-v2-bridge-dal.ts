@@ -812,7 +812,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        // Always order by key (name) to match the Go sidecar's ordering.
         // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
         .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
         .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")

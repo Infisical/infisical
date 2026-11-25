@@ -49,11 +49,13 @@ var (
 	PKIACME                      = Feature{V2: "pki_acme", V1: "pkiAcme"}
 	PKIApprovals                 = Feature{V2: "pki_approvals", V1: "pkiApprovals"}
 	PKICodeSigning               = Feature{V2: "pki_code_signing", V1: "pkiCodeSigning"}
+	PKICrossSignedCA             = Feature{V2: "pki_cross_signed_ca", V1: "pkiCrossSignedCa"}
 	PKIDiscovery                 = Feature{V2: "pki_discovery", V1: "pkiDiscovery"}
 	PKIEST                       = Feature{V2: "pki_est", V1: "pkiEst"}
 	PKIEnterpriseAlerting        = Feature{V2: "pki_enterprise_alerting", V1: "pkiEnterpriseAlerting"}
 	PKIEnterpriseCAIntegrations  = Feature{V2: "pki_enterprise_ca_integrations", V1: "pkiEnterpriseCaIntegrations"}
 	PKIExternalIntermediateCA    = Feature{V2: "pki_external_intermediate_ca", V1: "pkiExternalIntermediateCa"}
+	PKIOCSP                      = Feature{V2: "pki_ocsp", V1: "pkiOcsp"}
 	PKIPQC                       = Feature{V2: "pki_pqc", V1: "pkiPqc"}
 	PKISCEP                      = Feature{V2: "pki_scep", V1: "pkiScep"}
 	PKISyncs                     = Feature{V2: "pki_syncs", V1: "pkiSyncs"}
@@ -131,11 +133,13 @@ var All = []Feature{
 	PKIACME,
 	PKIApprovals,
 	PKICodeSigning,
+	PKICrossSignedCA,
 	PKIDiscovery,
 	PKIEST,
 	PKIEnterpriseAlerting,
 	PKIEnterpriseCAIntegrations,
 	PKIExternalIntermediateCA,
+	PKIOCSP,
 	PKIPQC,
 	PKISCEP,
 	PKISyncs,

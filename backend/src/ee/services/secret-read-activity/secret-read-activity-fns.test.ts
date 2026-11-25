@@ -7,11 +7,13 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { ActorType } from "@app/services/auth/auth-type";
 import { LEVEL_BREAK } from "@app/services/secret-import/secret-import-fns";
 import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import {
+  buildFolderGrantSourceRules,
   classifySecretReads,
   computeSecretReach,
   coversWholeWindow,
@@ -283,7 +285,7 @@ describe("createAccessDating", () => {
     activity({ secret: { key: "DB_PASS", tags: [], folderId } as unknown as TSecretActivity["secret"], environment });
   const noneReopened = () => ({
     folderReopenedAt: new Map<string, Date>(),
-    environmentReopenedAt: new Map<string, Date>(),
+    subtreesReopenedByActorId: {} as Record<string, { environment: string; secretPath: string; date: Date }[]>,
     accessReopenedAt: new Map<string, Date>()
   });
   const dating = (sources: TAccessSource[], reopened: Partial<ReturnType<typeof noneReopened>> = {}) =>
@@ -316,10 +318,84 @@ describe("createAccessDating", () => {
   test("lets a recursive folder grant reach every secret of its environment", () => {
     const { accessSinceOf } = dating([
       { date: oct, permission: () => readsProd },
-      { date: sept, reach: { environment: "dev" }, permission: () => readsAll }
+      { date: sept, reach: { environment: "dev", secretPath: "/" }, permission: () => readsAll }
     ]);
     expect(accessSinceOf(actor, secretIn("dev", "deep"))).toEqual(sept);
     expect(accessSinceOf(actor, secretIn("prod", "deep"))).toEqual(oct);
+  });
+
+  test("lets a recursive grant on a nested folder reach and restart only its folder and the folders below it", () => {
+    const secretAt = (secretPath: string) => activity({ secretPath });
+    const { accessSinceOf } = dating([
+      { date: oct, permission: () => readsAll },
+      { date: sept, reach: { environment: "prod", secretPath: "/apps" }, permission: () => readsAll }
+    ]);
+    expect(accessSinceOf(actor, secretAt("/apps"))).toEqual(sept);
+    expect(accessSinceOf(actor, secretAt("/apps/payments"))).toEqual(sept);
+    expect(accessSinceOf(actor, secretAt("/"))).toEqual(oct);
+    expect(accessSinceOf(actor, secretAt("/apps-internal"))).toEqual(oct);
+    expect(accessSinceOf(actor, activity({ environment: "dev", secretPath: "/apps" }))).toEqual(oct);
+
+    const recursionTurnedOff = dating([
+      { date: sept, permission: () => readsAll },
+      {
+        date: oct,
+        reach: { folderId: "apps" },
+        restartsReach: { environment: "prod", secretPath: "/apps" },
+        permission: () => readsAll
+      }
+    ]);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretAt("/apps/payments"))).toEqual(oct);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretAt("/infra"))).toEqual(sept);
+  });
+
+  test("does not let a recursive grant date access below a deeper recursive grant that restricts it", () => {
+    const grants = [
+      { id: "read-apps", date: day("2026-01-05"), role: SecretFolderRole.Read, path: "/apps", recursive: true },
+      {
+        id: "list-payments",
+        date: day("2026-03-05"),
+        role: SecretFolderRole.List,
+        path: "/apps/payments",
+        recursive: true
+      },
+      {
+        id: "read-keys",
+        date: day("2026-05-05"),
+        role: SecretFolderRole.Read,
+        path: "/apps/payments/keys",
+        recursive: false
+      }
+    ].map(({ id, date, role, path, recursive }) => ({
+      date,
+      privilege: {
+        id,
+        folderId: path,
+        role,
+        environmentSlug: "prod",
+        secretPath: path,
+        appliesToSubfolders: recursive
+      }
+    }));
+    const rulesByGrantId = buildFolderGrantSourceRules(grants.map(({ privilege }) => privilege));
+    const { accessSinceOf } = dating(
+      grants.map(({ date, privilege }) => ({
+        date,
+        reach: privilege.appliesToSubfolders
+          ? { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
+          : { folderId: privilege.folderId },
+        permission: () =>
+          createMongoAbility<ProjectPermissionSet>(rulesByGrantId.get(privilege.id) ?? [], { conditionsMatcher })
+      }))
+    );
+    const secretAt = (secretPath: string) =>
+      activity({
+        secret: { key: "DB_PASS", tags: [], folderId: secretPath } as unknown as TSecretActivity["secret"],
+        secretPath
+      });
+
+    expect(accessSinceOf(actor, secretAt("/apps/payments/keys"))).toEqual(day("2026-05-05"));
+    expect(accessSinceOf(actor, secretAt("/apps/other"))).toEqual(day("2026-01-05"));
   });
 
   test("restarts the whole environment for an edited recursive grant and floors it for an expired one", () => {
@@ -327,8 +403,8 @@ describe("createAccessDating", () => {
       { date: sept, permission: () => readsAll },
       {
         date: oct,
-        reach: { environment: "prod" },
-        restartsReach: { environment: "prod" },
+        reach: { environment: "prod", secretPath: "/" },
+        restartsReach: { environment: "prod", secretPath: "/" },
         permission: () => readsAll
       }
     ]);
@@ -337,11 +413,31 @@ describe("createAccessDating", () => {
     expect(edited.accessSinceOf(actor, secretIn("dev", "f1"))).toEqual(sept);
 
     const expired = dating([{ date: sept, permission: () => readsAll }], {
-      environmentReopenedAt: new Map([["actor:prod", oct]])
+      subtreesReopenedByActorId: { actor: [{ environment: "prod", secretPath: "/", date: oct }] }
     });
     expect(expired.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
     expect(expired.accessSinceOf(actor, secretIn("prod", "other"))).toEqual(oct);
     expect(expired.accessSinceOf(actor, secretIn("dev", "f1"))).toEqual(sept);
+    expect(expired.latestAccessChangeOf(actor)).toEqual(oct);
+  });
+
+  test("floors only the folder and the folders below it for an expired recursive grant on a nested folder", () => {
+    const secretAt = (secretPath: string, environment = "prod") =>
+      activity({
+        secret: { key: "DB_PASS", tags: [], folderId: secretPath } as unknown as TSecretActivity["secret"],
+        environment,
+        secretPath
+      });
+    const expired = dating([{ date: sept, permission: () => readsAll }], {
+      subtreesReopenedByActorId: { actor: [{ environment: "prod", secretPath: "/apps/sandbox", date: oct }] }
+    });
+
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox"))).toEqual(oct);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox/keys"))).toEqual(oct);
+    expect(expired.accessSinceOf(actor, secretAt("/apps"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox-two"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/infra"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox", "dev"))).toEqual(sept);
     expect(expired.latestAccessChangeOf(actor)).toEqual(oct);
   });
 
@@ -362,7 +458,12 @@ describe("createAccessDating", () => {
 
     const recursionTurnedOff = dating([
       { date: sept, permission: () => readsAll },
-      { date: oct, reach: { folderId: "root" }, restartsReach: { environment: "prod" }, permission: () => readsAll }
+      {
+        date: oct,
+        reach: { folderId: "root" },
+        restartsReach: { environment: "prod", secretPath: "/" },
+        permission: () => readsAll
+      }
     ]);
     expect(recursionTurnedOff.accessSinceOf(actor, secretIn("prod", "nested"))).toEqual(oct);
     expect(recursionTurnedOff.accessSinceOf(actor, secretIn("dev", "nested"))).toEqual(sept);

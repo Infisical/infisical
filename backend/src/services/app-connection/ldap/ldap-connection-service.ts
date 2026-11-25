@@ -6,7 +6,14 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { TLdapConnection, TLdapConnectionConfig } from "./ldap-connection-types";
-import { DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT, listDirectoryMachines, TDirectoryMachine } from "./ldap-directory-fns";
+import {
+  assertLdapProviderIsSupported,
+  DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT,
+  listDirectoryMachines,
+  searchDirectoryGroups,
+  TDirectoryMachine,
+  withActiveDirectoryErrors
+} from "./ldap-directory-fns";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -43,7 +50,21 @@ export const ldapConnectionService = (
     });
   };
 
+  const listGroups = async (connectionId: string, { search }: { search?: string }, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.LDAP, connectionId, actor);
+    assertLdapProviderIsSupported(
+      appConnection.credentials.provider,
+      appConnection.name,
+      "Group search reads Active Directory security groups, so it requires an Active Directory connection."
+    );
+    return searchDirectoryGroups(
+      { config: appConnection as unknown as TLdapConnectionConfig, search },
+      { gatewayV2Service, gatewayPoolService }
+    ).catch(withActiveDirectoryErrors(appConnection));
+  };
+
   return {
-    listMachines
+    listMachines,
+    listGroups
   };
 };

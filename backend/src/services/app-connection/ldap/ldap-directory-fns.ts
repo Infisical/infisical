@@ -4,17 +4,22 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, GatewayTimeoutError } from "@app/lib/errors";
 import {
   buildDomainBaseDN,
+  buildSidEqualityFilter,
   escapeLdapFilterValue,
   getLdapAttribute,
+  getLdapAttributeBuffer,
+  getLdapAttributeBuffers,
+  isLdapSearchTimeout,
   netbiosFromDomainFqdn,
   searchLdap,
   TLdapSearchOptions
 } from "@app/lib/ldap/ldap-search-fns";
 import { logger } from "@app/lib/logger";
 import { UserPrincipalNameRegex } from "@app/lib/regex";
+import { sidBufferToString } from "@app/lib/windows-sid/windows-sid-fns";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { LdapProvider } from "./ldap-connection-enums";
@@ -27,13 +32,29 @@ type TLdapGatewayServices = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
+export type TLdapDirectoryGatewayServices = Pick<TLdapGatewayServices, "gatewayV2Service" | "gatewayPoolService">;
+
 export type TDirectoryMachine = {
   hostname: string;
+};
+
+type TDirectoryComputer = {
+  dnsHostName: string | null;
+  isDisabled: boolean | null;
+  samAccountName: string;
+};
+
+type TDirectoryGroup = {
+  sid: string;
+  name: string;
 };
 
 const LDAP_SEARCH_TIME_LIMIT_SECONDS = 15;
 export const DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT = 50;
 export const DIRECTORY_MACHINE_LIST_MAX_LIMIT = 200;
+const DIRECTORY_GROUP_LIST_LIMIT = 50;
+const USER_ACCOUNT_CONTROL_ACCOUNT_DISABLED = 0x2;
+const SECURITY_GROUP_FILTER = "(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648)";
 
 const searchDirectory = (
   client: ldap.Client,
@@ -46,11 +67,16 @@ const searchDirectory = (
     timeLimitSeconds: LDAP_SEARCH_TIME_LIMIT_SECONDS,
     acceptSizeLimitExceeded: true,
     mapError: ({ err, status }) =>
-      new BadRequestError({
-        message: err
-          ? `Unable to read from the directory: ${err.message}`
-          : `Unable to read from the directory: the LDAP server returned status ${status}`
-      })
+      isLdapSearchTimeout({ err, status })
+        ? new GatewayTimeoutError({
+            message: `The directory did not answer within ${LDAP_SEARCH_TIME_LIMIT_SECONDS} seconds.`,
+            error: err
+          })
+        : new BadRequestError({
+            message: err
+              ? `Unable to read from the directory: ${err.message}`
+              : `Unable to read from the directory: the LDAP server returned status ${status}`
+          })
   });
 
 type TBindIdentity = {
@@ -209,10 +235,14 @@ const resolveLdapHostLogin = async (
   return username;
 };
 
-export const assertLdapProviderIsSupported = (provider: string | undefined, connectionName: string) => {
+export const assertLdapProviderIsSupported = (
+  provider: string | undefined,
+  connectionName: string,
+  requirement = "Certificate syncs read machine and account attributes that only Active Directory provides, so they require an Active Directory connection."
+) => {
   if (provider !== undefined && provider !== LdapProvider.ActiveDirectory) {
     throw new BadRequestError({
-      message: `The LDAP connection '${connectionName}' uses the '${provider}' provider. Certificate syncs read machine and account attributes that only Active Directory provides, so they require an Active Directory connection.`
+      message: `The LDAP connection '${connectionName}' uses the '${provider}' provider. ${requirement}`
     });
   }
 };
@@ -256,24 +286,15 @@ export const resolveLdapBackedHostCredentials = async (
   return { host, username, password: config.credentials.password };
 };
 
-export const listDirectoryMachines = async (
-  {
-    config,
-    search,
-    limit = DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT
-  }: { config: TLdapConnectionConfig; search?: string; limit?: number },
-  gatewayServices: TLdapGatewayServices
-): Promise<TDirectoryMachine[]> => {
+const searchDomain = async (
+  config: TLdapConnectionConfig,
+  gatewayServices: TLdapDirectoryGatewayServices,
+  options: Pick<TLdapSearchOptions, "filter" | "attributes" | "sizeLimit">
+) => {
   const { domainFqdn } = parseLdapBindIdentity(config.credentials.dn);
   const fallbackBaseDN = buildDomainBaseDN(domainFqdn);
-  const cappedLimit = Math.min(limit, DIRECTORY_MACHINE_LIST_MAX_LIMIT);
 
-  const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
-  const filter = escapedSearch
-    ? `(&(objectCategory=computer)(|(cn=${escapedSearch}*)(dNSHostName=${escapedSearch}*)))`
-    : "(objectCategory=computer)";
-
-  const entries = await executeWithPotentialGateway(
+  return executeWithPotentialGateway(
     config,
     gatewayServices.gatewayV2Service,
     async (client) => {
@@ -283,16 +304,161 @@ export const listDirectoryMachines = async (
           return null;
         })) ?? fallbackBaseDN;
 
-      return searchDirectory(client, baseDN, {
-        filter,
-        attributes: ["cn", "dNSHostName"],
-        sizeLimit: cappedLimit
-      });
+      return searchDirectory(client, baseDN, options);
     },
     gatewayServices.gatewayPoolService
   );
+};
+
+export const listDirectoryMachines = async (
+  {
+    config,
+    search,
+    limit = DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT
+  }: { config: TLdapConnectionConfig; search?: string; limit?: number },
+  gatewayServices: TLdapGatewayServices
+): Promise<TDirectoryMachine[]> => {
+  const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
+  const entries = await searchDomain(config, gatewayServices, {
+    filter: escapedSearch
+      ? `(&(objectCategory=computer)(|(cn=${escapedSearch}*)(dNSHostName=${escapedSearch}*)))`
+      : "(objectCategory=computer)",
+    attributes: ["cn", "dNSHostName"],
+    sizeLimit: Math.min(limit, DIRECTORY_MACHINE_LIST_MAX_LIMIT)
+  });
 
   return entries
     .map((entry) => ({ hostname: getLdapAttribute(entry, "dNSHostName") || getLdapAttribute(entry, "cn") }))
     .filter(({ hostname }) => hostname);
+};
+
+const toDirectoryGroup = (entry: ldap.SearchEntry): TDirectoryGroup[] => {
+  const sid = getLdapAttributeBuffer(entry, "objectSid");
+  return sid ? [{ sid: sidBufferToString(sid), name: getLdapAttribute(entry, "cn") }] : [];
+};
+
+export const readAccountDisabledFlag = (userAccountControl: string) => {
+  const flags = Number(userAccountControl);
+  if (!userAccountControl.trim() || !Number.isSafeInteger(flags)) return null;
+  // eslint-disable-next-line no-bitwise
+  return (flags & USER_ACCOUNT_CONTROL_ACCOUNT_DISABLED) !== 0;
+};
+
+export const findDirectoryComputerBySid = async (
+  { config, sid }: { config: TLdapConnectionConfig; sid: string },
+  gatewayServices: TLdapDirectoryGatewayServices
+): Promise<TDirectoryComputer | null> => {
+  const [entry] = await searchDomain(config, gatewayServices, {
+    filter: new ldap.AndFilter({
+      filters: [
+        new ldap.EqualityFilter({ attribute: "objectCategory", value: "computer" }),
+        buildSidEqualityFilter(sid)
+      ]
+    }),
+    attributes: ["dNSHostName", "userAccountControl", "sAMAccountName"],
+    sizeLimit: 1
+  });
+  if (!entry) return null;
+
+  return {
+    dnsHostName: getLdapAttribute(entry, "dNSHostName") || null,
+    isDisabled: readAccountDisabledFlag(getLdapAttribute(entry, "userAccountControl")),
+    samAccountName: getLdapAttribute(entry, "sAMAccountName")
+  };
+};
+
+export const withActiveDirectoryErrors =
+  (connection: { id: string; name: string }) =>
+  (err: unknown): never => {
+    if (err instanceof LdapTargetConfigurationError) throw err;
+    logger.warn({ err }, `Unable to search Active Directory [connectionId=${connection.id}]`);
+    if (err instanceof GatewayTimeoutError) {
+      throw new GatewayTimeoutError({
+        message: `Could not search Active Directory with the LDAP connection '${connection.name}': ${err.message} Try again.`,
+        error: err
+      });
+    }
+    const details = err instanceof BadRequestError ? ` Details: ${err.message}` : "";
+    throw new BadRequestError({
+      message: `Could not search Active Directory with the LDAP connection '${connection.name}'. Check that the directory is reachable and the connection's credentials are valid.${details}`
+    });
+  };
+
+export const searchDirectoryGroups = async (
+  { config, search }: { config: TLdapConnectionConfig; search?: string },
+  gatewayServices: TLdapDirectoryGatewayServices
+): Promise<{ groups: TDirectoryGroup[]; isTruncated: boolean }> => {
+  const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
+  const entries = await searchDomain(config, gatewayServices, {
+    filter: escapedSearch
+      ? `(&${SECURITY_GROUP_FILTER}(|(cn=*${escapedSearch}*)(sAMAccountName=*${escapedSearch}*)))`
+      : `(&${SECURITY_GROUP_FILTER})`,
+    attributes: ["cn", "objectSid"],
+    sizeLimit: DIRECTORY_GROUP_LIST_LIMIT + 1
+  });
+
+  return {
+    groups: entries.slice(0, DIRECTORY_GROUP_LIST_LIMIT).flatMap(toDirectoryGroup),
+    isTruncated: entries.length > DIRECTORY_GROUP_LIST_LIMIT
+  };
+};
+
+export const resolveDirectorySecurityGroupNames = async (
+  { config, sids }: { config: TLdapConnectionConfig; sids: string[] },
+  gatewayServices: TLdapDirectoryGatewayServices
+): Promise<Record<string, string | null>> => {
+  const entries = await searchDomain(config, gatewayServices, {
+    filter: new ldap.AndFilter({
+      filters: [
+        ldap.parseFilter(`(&${SECURITY_GROUP_FILTER})`),
+        new ldap.OrFilter({ filters: sids.map(buildSidEqualityFilter) })
+      ]
+    }),
+    attributes: ["cn", "objectSid"],
+    sizeLimit: sids.length
+  });
+  const namesBySid = new Map(entries.flatMap(toDirectoryGroup).map((group) => [group.sid, group.name]));
+
+  return Object.fromEntries(sids.map((sid) => [sid, namesBySid.get(sid) ?? null]));
+};
+
+export const readDirectoryComputerGroupSids = async (
+  { config, sid }: { config: TLdapConnectionConfig; sid: string },
+  gatewayServices: TLdapDirectoryGatewayServices
+): Promise<string[] | null> => {
+  const { domainFqdn } = parseLdapBindIdentity(config.credentials.dn);
+
+  return executeWithPotentialGateway(
+    config,
+    gatewayServices.gatewayV2Service,
+    async (client) => {
+      const baseDN =
+        (await readDefaultNamingContext(client).catch((err: unknown) => {
+          logger.warn({ err }, `Unable to read the directory's naming context [domain=${domainFqdn}]`);
+          return null;
+        })) ?? buildDomainBaseDN(domainFqdn);
+
+      const [computer] = await searchDirectory(client, baseDN, {
+        filter: new ldap.AndFilter({
+          filters: [
+            new ldap.EqualityFilter({ attribute: "objectCategory", value: "computer" }),
+            buildSidEqualityFilter(sid)
+          ]
+        }),
+        attributes: ["distinguishedName"],
+        sizeLimit: 1
+      });
+      const distinguishedName = computer ? getLdapAttribute(computer, "distinguishedName") : "";
+      if (!distinguishedName) return null;
+
+      const [groups] = await searchDirectory(client, distinguishedName, {
+        filter: "(objectClass=*)",
+        attributes: ["tokenGroups"],
+        scope: "base",
+        sizeLimit: 1
+      });
+      return groups ? getLdapAttributeBuffers(groups, "tokenGroups").map(sidBufferToString) : [];
+    },
+    gatewayServices.gatewayPoolService
+  );
 };

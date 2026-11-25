@@ -1,8 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
-import RE2 from "re2";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,
@@ -21,11 +21,13 @@ import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
-  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY
+  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY,
+  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
 } from "../certificate-common/certificate-constants";
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeReservedExtensionOid,
+  findMicrosoftAutoenrollmentRuleProblems,
   isReservedExtensionOid,
   resolveCustomExtensions,
   TCustomExtensionRule,
@@ -44,6 +46,7 @@ import {
   matchesNormalizedPattern,
   matchesSanRuleValue,
   normalizeUriForComparison,
+  parsePolicyTtlMs,
   RequestReference,
   validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
@@ -81,30 +84,6 @@ export const certificatePolicyServiceFactory = ({
     });
 
     return Array.from(consolidated.values());
-  };
-
-  const parseTTL = (ttl: string): number => {
-    const regex = new RE2("^(\\d+)([dmyh])$");
-    const match = regex.exec(ttl);
-    if (!match) {
-      throw new Error(`Invalid TTL format: ${ttl}`);
-    }
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case "h":
-        return value * 60 * 60 * 1000;
-      case "d":
-        return value * 24 * 60 * 60 * 1000;
-      case "m":
-        return value * 30 * 24 * 60 * 60 * 1000;
-      case "y":
-        return value * 365 * 24 * 60 * 60 * 1000;
-      default:
-        throw new Error(`Unsupported TTL unit: ${unit}`);
-    }
   };
 
   const validateSubjectAttributePolicy = (subjectAttributes: TSubjectRule[]) => {
@@ -627,11 +606,11 @@ export const certificatePolicyServiceFactory = ({
 
     // Validate TTL against template validity constraints
     if (request.validity?.ttl && template.validity) {
-      const requestDurationMs = parseTTL(request.validity.ttl);
+      const requestDurationMs = parsePolicyTtlMs(request.validity.ttl);
 
       // Check maximum duration using max field
       if (template.validity.max) {
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDurationMs > maxDurationMs) {
           errors.push("Requested validity period exceeds maximum allowed duration");
@@ -645,7 +624,7 @@ export const certificatePolicyServiceFactory = ({
 
       if (notAfter && notBefore && notAfter instanceof Date && notBefore instanceof Date) {
         const requestDuration = notAfter.getTime() - notBefore.getTime();
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDuration > maxDurationMs) {
           errors.push(
@@ -693,7 +672,8 @@ export const certificatePolicyServiceFactory = ({
       declarations: options?.profileCustomExtensions,
       rules: template.customExtensions,
       requestExtensions: request.customExtensions,
-      skipRequired: options?.skipRequired
+      skipRequired: options?.skipRequired,
+      issuerAddedExtensions: options?.issuerAddedExtensions
     });
     errors.push(...customExtensionErrors);
 
@@ -907,7 +887,35 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    const updatedTemplate = await certificatePolicyDAL.updateById(policyId, updateData);
+    const windowsRuleProblems = consolidatedData.customExtensions
+      ? findMicrosoftAutoenrollmentRuleProblems(consolidatedData.customExtensions)
+      : [];
+    const updatedTemplate = await certificatePolicyDAL.transaction(async (tx) => {
+      if (windowsRuleProblems.length || consolidatedData.algorithms !== undefined) {
+        await certificatePolicyDAL.lockById(policyId, tx);
+        const windowsProfiles = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
+        const [windowsProfile] = windowsProfiles;
+        if (windowsProfile && windowsRuleProblems.length) {
+          throw new BadRequestError({
+            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${windowsRuleProblems.join(" ")} You can also turn off Microsoft Autoenrollment for that profile.`
+          });
+        }
+        const updatedPolicy = { ...existingTemplate, ...updateData } as TCertificatePolicy;
+        for (const { profileName, profileDefaults, applicationName, caKeyAlgorithm, caKeySource } of windowsProfiles) {
+          const keyProblem = findTemplatePolicyProblem(
+            { slug: profileName, defaults: profileDefaults },
+            { keyAlgorithm: caKeyAlgorithm, keySource: caKeySource },
+            (request) => validateRequestAgainstPolicy(updatedPolicy, request, { skipRequired: true }).isValid
+          );
+          if (keyProblem) {
+            throw new BadRequestError({
+              message: `Certificate profile '${profileName}' uses this policy with Microsoft Autoenrollment in Application '${applicationName}'. ${keyProblem}`
+            });
+          }
+        }
+      }
+      return certificatePolicyDAL.updateById(policyId, updateData, tx);
+    });
     if (!updatedTemplate) {
       throw new NotFoundError({ message: "Failed to update certificate policy" });
     }
