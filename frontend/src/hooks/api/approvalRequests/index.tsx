@@ -4,13 +4,15 @@ export {
   useCreateApprovalRequest,
   useRejectApprovalRequest
 } from "./mutations";
-export { approvalRequestQuery, usePendingCertificateRevocations } from "./queries";
+export { type TPendingCertificateAction } from "./pending-certificate-actions";
+export { approvalRequestQuery, usePendingCertificateActions } from "./queries";
 export {
   type ApprovalRequestApproval,
   ApprovalRequestApprovalDecision,
   ApprovalRequestStatus,
   type ApprovalRequestStep,
   ApprovalRequestStepStatus,
+  type CertDeletionRequestData,
   type CertRequestRequestData,
   type CertRevocationRequestData,
   isCertRenewalRequest,
@@ -18,6 +20,7 @@ export {
   type PamAccessRequestData,
   type TApprovalRequest,
   type TApproveApprovalRequestDTO,
+  type TCertificateActionRequestData,
   type TCreateApprovalRequestDTO,
   type TGetApprovalRequestByIdDTO,
   type TListApprovalRequestsDTO,

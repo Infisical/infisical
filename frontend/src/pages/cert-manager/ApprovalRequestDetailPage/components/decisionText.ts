@@ -11,6 +11,10 @@ const DECISION_TEXT = {
       "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone.",
     reject: "The request is closed and the certificate isn't revoked. The requester can ask again."
   },
+  deletion: {
+    approve: "Once every step approves, the certificate is deleted. This can't be undone.",
+    reject: "The request is closed and the certificate isn't deleted. The requester can ask again."
+  },
   issuance: {
     approve: "Once every step approves, Infisical issues the certificate.",
     reject: "The request is closed and no certificate is issued. The requester can ask again."
@@ -34,6 +38,7 @@ const DECISION_TEXT = {
 // A renewal raised before raisedByAutoRenewal existed counts as manual, as it does when the backend rejects it.
 export const getDecisionText = (request: TApprovalRequest) => {
   if (request.type === ApprovalPolicyType.CertRevocation) return DECISION_TEXT.revocation;
+  if (request.type === ApprovalPolicyType.CertDeletion) return DECISION_TEXT.deletion;
   if (request.type === ApprovalPolicyType.CertRequest) {
     const data = request.requestData.requestData as CertRequestRequestData;
     if (!isCertRenewalRequest(data)) return DECISION_TEXT.issuance;

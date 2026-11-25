@@ -3,8 +3,8 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ApprovalPolicyScope, ApprovalPolicyType } from "../approvalPolicies/types";
-import { getPendingRevocations } from "./pending-revocations";
+import { ApprovalPolicyScope, TCertificateActionPolicyType } from "../approvalPolicies/types";
+import { getPendingCertificateActions } from "./pending-certificate-actions";
 import { TApprovalRequest, TGetApprovalRequestByIdDTO, TListApprovalRequestsDTO } from "./types";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
@@ -42,16 +42,19 @@ export const approvalRequestQuery = {
     })
 };
 
-export const usePendingCertificateRevocations = (applicationId?: string | null) => {
+export const usePendingCertificateActions = (
+  policyType: TCertificateActionPolicyType,
+  applicationId?: string | null
+) => {
   const [expiryTick, onExpiry] = useReducer((tick: number) => tick + 1, 0);
   const { data } = useQuery({
     ...approvalRequestQuery.list({
-      policyType: ApprovalPolicyType.CertRevocation,
+      policyType,
       scope: ApprovalPolicyScope.PkiApplication,
       scopeId: applicationId ?? ""
     }),
     enabled: Boolean(applicationId),
-    select: (requests) => getPendingRevocations(requests, Date.now())
+    select: (requests) => getPendingCertificateActions(requests, Date.now())
   });
 
   // A refetch would not drop a lapsed request: the list still returns it unchanged, so the cached

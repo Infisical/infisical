@@ -13,13 +13,14 @@ const ApprovalRequestSearchSchema = z.object({
   from: z.enum(["root-requests"]).optional()
 });
 
-// Revocation requests only exist in Applications, so they live in Application Requests, not the
-// legacy Approvals page.
+// Revocation and deletion requests only exist in Applications, so they live in Application
+// Requests, not the legacy Approvals page.
 const REQUESTS_TAB_BY_POLICY_TYPE: Partial<
   Record<ApprovalPolicyType, "signing-requests" | "application-requests">
 > = {
   [ApprovalPolicyType.CertCodeSigning]: "signing-requests",
-  [ApprovalPolicyType.CertRevocation]: "application-requests"
+  [ApprovalPolicyType.CertRevocation]: "application-requests",
+  [ApprovalPolicyType.CertDeletion]: "application-requests"
 };
 
 export const Route = createFileRoute(

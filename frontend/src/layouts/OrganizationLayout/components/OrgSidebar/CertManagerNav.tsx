@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import {
   Bell,
@@ -20,12 +20,13 @@ import { ResourceIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import {
+  APPLICATION_POLICY_TYPES,
   approvalPolicyQuery,
   ApprovalPolicyScope,
   ApprovalPolicyType
 } from "@app/hooks/api/approvalPolicies";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
-import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
+import { ApprovalRequestStatus, TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
@@ -34,6 +35,17 @@ import { useListWorkspacePkiSubscribers } from "@app/hooks/api/projects/queries"
 
 import { ProjectNavList } from "./ProjectNavLink";
 import type { NavItem, Submenu } from "./types";
+
+const REQUESTS_INBOX_POLICY_TYPES = [
+  ...APPLICATION_POLICY_TYPES,
+  ApprovalPolicyType.CertCodeSigning
+] as const;
+
+const countPendingRequests = (requests: TApprovalRequest[]) =>
+  requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length;
+
+const sumPendingCounts = (results: UseQueryResult<number>[]) =>
+  results.reduce((sum, { data = 0 }) => sum + data, 0);
 
 export const CertManagerNav = ({
   onSubmenuOpen
@@ -78,35 +90,18 @@ export const CertManagerNav = ({
     }),
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
-  const { data: pendingCertRequestsCount = 0 } = useQuery({
-    ...approvalRequestQuery.list({
-      scope: ApprovalPolicyScope.Project,
-      scopeId: projectId,
-      policyType: ApprovalPolicyType.CertRequest
-    }),
-    enabled: Boolean(projectId),
-    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
+  const pendingRequestsCount = useQueries({
+    queries: REQUESTS_INBOX_POLICY_TYPES.map((policyType) => ({
+      ...approvalRequestQuery.list({
+        scope: ApprovalPolicyScope.Project,
+        scopeId: projectId,
+        policyType
+      }),
+      enabled: Boolean(projectId),
+      select: countPendingRequests
+    })),
+    combine: sumPendingCounts
   });
-  const { data: pendingSigningRequestsCount = 0 } = useQuery({
-    ...approvalRequestQuery.list({
-      scope: ApprovalPolicyScope.Project,
-      scopeId: projectId,
-      policyType: ApprovalPolicyType.CertCodeSigning
-    }),
-    enabled: Boolean(projectId),
-    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
-  });
-  const { data: pendingRevocationRequestsCount = 0 } = useQuery({
-    ...approvalRequestQuery.list({
-      scope: ApprovalPolicyScope.Project,
-      scopeId: projectId,
-      policyType: ApprovalPolicyType.CertRevocation
-    }),
-    enabled: Boolean(projectId),
-    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
-  });
-  const pendingRequestsCount =
-    pendingCertRequestsCount + pendingRevocationRequestsCount + pendingSigningRequestsCount;
 
   const hasLegacyAlerts =
     Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||

@@ -105,6 +105,8 @@ export enum EventType {
   REVOKE_CERT = "revoke-cert",
   REQUEST_CERT_REVOCATION = "request-cert-revocation",
   CERT_REVOCATION_FAILED = "cert-revocation-failed",
+  REQUEST_CERT_DELETION = "request-cert-deletion",
+  CERT_DELETION_FAILED = "cert-deletion-failed",
   RENEW_CERTIFICATE = "renew-certificate",
   AUTOMATED_RENEW_CERTIFICATE = "automated-renew-certificate",
   AUTOMATED_RENEW_CERTIFICATE_FAILED = "automated-renew-certificate-failed",

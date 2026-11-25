@@ -4,8 +4,38 @@ export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
   CertRevocation = "cert-revocation",
+  CertDeletion = "cert-deletion",
   CertCodeSigning = "cert-code-signing"
 }
+
+export const APPLICATION_POLICY_TYPES = [
+  ApprovalPolicyType.CertRequest,
+  ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertDeletion
+] as const;
+
+export type TApplicationPolicyType = (typeof APPLICATION_POLICY_TYPES)[number];
+
+export const isApplicationPolicyType = (type: ApprovalPolicyType): type is TApplicationPolicyType =>
+  (APPLICATION_POLICY_TYPES as readonly ApprovalPolicyType[]).includes(type);
+
+export const APPLICATION_POLICY_TYPE_LABELS: Record<TApplicationPolicyType, string> = {
+  [ApprovalPolicyType.CertRequest]: "Issuance",
+  [ApprovalPolicyType.CertRevocation]: "Revocation",
+  [ApprovalPolicyType.CertDeletion]: "Deletion"
+};
+
+export const CERTIFICATE_ACTION_POLICY_TYPES = [
+  ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertDeletion
+] as const;
+
+export type TCertificateActionPolicyType = (typeof CERTIFICATE_ACTION_POLICY_TYPES)[number];
+
+export const isCertificateActionPolicyType = (
+  type: ApprovalPolicyType
+): type is TCertificateActionPolicyType =>
+  (CERTIFICATE_ACTION_POLICY_TYPES as readonly ApprovalPolicyType[]).includes(type);
 
 export enum ApprovalPolicyScope {
   Project = "project",

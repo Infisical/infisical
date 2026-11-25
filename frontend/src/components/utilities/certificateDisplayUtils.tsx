@@ -56,6 +56,12 @@ export const getCertificateDisplayName = (
   };
 };
 
+export const getCertificateLabel = (
+  cert: CertificateNameData & { friendlyName?: string | null },
+  serialNumber: string
+) =>
+  getCertificateDisplayName(cert, undefined, cert.friendlyName || serialNumber).originalDisplayName;
+
 /**
  * Renders a certificate display name with optional tooltip for truncated names
  * @param cert - Certificate object with potential altNames/commonName fields

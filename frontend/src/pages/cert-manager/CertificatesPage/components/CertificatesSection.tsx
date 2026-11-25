@@ -36,7 +36,11 @@ import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
-import { getCertificateDeletionWarning } from "./CertificatesTable.utils";
+import {
+  getCertificateDeletionTitle,
+  getCertificateDeletionToast,
+  getCertificateDeletionWarning
+} from "./CertificatesTable.utils";
 import type { FilterRule } from "./inventory-types";
 import { useCertificateHoldingSyncs } from "./useCertificateHoldingSyncs";
 
@@ -83,12 +87,12 @@ export const CertificatesSection = ({
   const onRemoveCertificateSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCert({
+    const response = await deleteCert({
       id
     });
 
     createNotification({
-      text: "Successfully deleted certificate",
+      text: getCertificateDeletionToast(response),
       type: "success"
     });
 
@@ -141,11 +145,16 @@ export const CertificatesSection = ({
 
   const deleteCertificateData = popUp?.deleteCertificate?.data as
     | {
+        commonName: string;
+        altNames?: string | null;
+        friendlyName?: string | null;
+        serialNumber: string;
         status: string;
         notAfter: string;
         hasPrivateKey?: boolean;
         canRevoke?: boolean;
         isRevocableAfterDeletion?: boolean;
+        isDeletionApprovalRequired?: boolean;
         certificateId?: string;
         applicationId?: string | null;
       }
@@ -235,15 +244,18 @@ export const CertificatesSection = ({
         />
         <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
-          title={`Delete Certificate ${
-            (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-          }?`}
+          title={
+            deleteCertificateData
+              ? getCertificateDeletionTitle(deleteCertificateData)
+              : "Delete Certificate?"
+          }
           description={
             <>
               {getCertificateDeletionWarning(
                 deleteCertificateData,
                 deleteCertificateData?.canRevoke,
-                deleteCertificateData?.isRevocableAfterDeletion
+                deleteCertificateData?.isRevocableAfterDeletion,
+                deleteCertificateData?.isDeletionApprovalRequired
               )}
               <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
             </>
@@ -251,6 +263,9 @@ export const CertificatesSection = ({
           onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           isPending={isLoadingHoldingSyncs}
           confirmKey="confirm"
+          confirmLabel={
+            deleteCertificateData?.isDeletionApprovalRequired ? "Request Deletion" : undefined
+          }
           onConfirm={() =>
             onRemoveCertificateSubmit(
               (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId

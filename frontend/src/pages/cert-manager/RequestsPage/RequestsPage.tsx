@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
   Card,
@@ -41,18 +40,24 @@ import {
 import { useProject } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
-import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  APPLICATION_POLICY_TYPES,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
-  CertRequestRequestData,
-  CertRevocationRequestData,
   CodeSigningRequestData,
-  isCertRenewalRequest,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import {
+  getApplicationRequestSummary,
+  matchesApplicationRequestSearch
+} from "./RequestsPage.utils";
 
 type StatusFilter = "pending" | "approved" | "rejected";
 
@@ -94,42 +99,6 @@ const formatRelative = (iso: string): string => {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 };
 
-const isCertRequestData = (data: unknown): data is { requestData: CertRequestRequestData } => {
-  return Boolean(
-    data &&
-    typeof data === "object" &&
-    "requestData" in data &&
-    data.requestData &&
-    typeof data.requestData === "object" &&
-    "profileName" in (data.requestData as object)
-  );
-};
-
-// Issuance, renewal and revocation requests all belong to an Application, so they share one table.
-const getApplicationRequestSummary = (request: TApprovalRequest) => {
-  if (request.type === ApprovalPolicyType.CertRevocation) {
-    const data = request.requestData.requestData as CertRevocationRequestData;
-    return {
-      typeLabel: "Revocation",
-      commonName: data.commonName || data.serialNumber,
-      renewedCertificateName: "",
-      displayName: data.commonName || truncateSerialNumber(data.serialNumber),
-      profileName: data.profileName
-    };
-  }
-
-  const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
-  const renewal = data && "renewal" in data ? data.renewal : undefined;
-  const commonName = data?.certificateRequest?.commonName ?? "";
-  return {
-    typeLabel: data && isCertRenewalRequest(data) ? "Renewal" : "Issuance",
-    commonName,
-    renewedCertificateName: renewal?.certificateName ?? "",
-    displayName: commonName,
-    profileName: data?.profileName ?? ""
-  };
-};
-
 const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
   if (!data || typeof data !== "object") return null;
   const wrapped = (data as { requestData?: unknown }).requestData;
@@ -138,6 +107,13 @@ const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
   }
   return null;
 };
+
+const combineApplicationRequests = (results: UseQueryResult<TApprovalRequest[]>[]) => ({
+  requests: results
+    .flatMap(({ data = [] }) => data)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  isPending: results.some((result) => result.isPending)
+});
 
 export const RequestsPage = () => {
   const { orgId } = useParams({ strict: false }) as { orgId?: string };
@@ -179,28 +155,16 @@ export const RequestsPage = () => {
   };
   const isSigningFiltered = signingStatusFilters.size > 0;
 
-  const { data: issuanceRequests = [], isPending: isIssuanceRequestsLoading } = useQuery(
-    approvalRequestQuery.list({
-      policyType: ApprovalPolicyType.CertRequest,
-      scope: ApprovalPolicyScope.Project,
-      scopeId: projectId
-    })
-  );
-  const { data: revocationRequests = [], isPending: isRevocationRequestsLoading } = useQuery(
-    approvalRequestQuery.list({
-      policyType: ApprovalPolicyType.CertRevocation,
-      scope: ApprovalPolicyScope.Project,
-      scopeId: projectId
-    })
-  );
-  const isRequestsLoading = isIssuanceRequestsLoading || isRevocationRequestsLoading;
-  const requests = useMemo(
-    () =>
-      [...issuanceRequests, ...revocationRequests].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    [issuanceRequests, revocationRequests]
-  );
+  const { requests, isPending: isRequestsLoading } = useQueries({
+    queries: APPLICATION_POLICY_TYPES.map((policyType) =>
+      approvalRequestQuery.list({
+        policyType,
+        scope: ApprovalPolicyScope.Project,
+        scopeId: projectId
+      })
+    ),
+    combine: combineApplicationRequests
+  });
 
   const { data: signingRequests = [], isPending: isSigningRequestsLoading } = useQuery(
     approvalRequestQuery.list({
@@ -252,19 +216,7 @@ export const RequestsPage = () => {
 
     return (requests as TApprovalRequest[])
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
-      .filter((r) => {
-        if (!norm) return true;
-        const { typeLabel, commonName, renewedCertificateName, profileName } =
-          getApplicationRequestSummary(r);
-        const requester = `${r.requesterName} ${r.requesterEmail}`;
-        return (
-          commonName.toLowerCase().includes(norm) ||
-          renewedCertificateName.toLowerCase().includes(norm) ||
-          profileName.toLowerCase().includes(norm) ||
-          typeLabel.toLowerCase().includes(norm) ||
-          requester.toLowerCase().includes(norm)
-        );
-      });
+      .filter((r) => matchesApplicationRequestSearch(r, norm));
   }, [requests, statusFilters, debouncedSearch]);
 
   const filteredSigning = useMemo(() => {
@@ -329,8 +281,8 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
                     <CardDescription>
-                      Pending certificate issuance, renewal and revocation requests from your
-                      applications.
+                      Pending certificate issuance, renewal, revocation and deletion requests from
+                      your applications.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -388,8 +340,8 @@ export const RequestsPage = () => {
                               : "No requests"}
                           </EmptyTitle>
                           <EmptyDescription>
-                            Certificate requests and revocations from any application will appear
-                            here.
+                            Certificate requests, revocations and deletions from any application
+                            will appear here.
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>

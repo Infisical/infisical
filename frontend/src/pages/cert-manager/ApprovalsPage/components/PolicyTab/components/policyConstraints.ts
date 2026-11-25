@@ -14,5 +14,6 @@ export const getCertPolicyTypeLabel = (
   operation?: CertRequestPolicyOperation
 ) => {
   if (type === ApprovalPolicyType.CertRevocation) return "Revocation";
+  if (type === ApprovalPolicyType.CertDeletion) return "Deletion";
   return operation === CertRequestPolicyOperation.Renewal ? "Renewal" : "Issuance";
 };

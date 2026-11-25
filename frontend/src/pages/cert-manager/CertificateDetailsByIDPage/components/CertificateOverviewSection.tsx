@@ -35,7 +35,7 @@ import { CertificateMetadataSection } from "./CertificateMetadataSection";
 
 type Props = {
   certificateId: string;
-  pendingRevocationBadge?: ReactNode;
+  pendingActionBadges?: ReactNode;
 };
 
 const formatDateUTC = (dateString: string) => {
@@ -76,7 +76,7 @@ const getProviderReference = (metadata?: TCertificateExternalMetadata | null) =>
   }
 };
 
-export const CertificateOverviewSection = ({ certificateId, pendingRevocationBadge }: Props) => {
+export const CertificateOverviewSection = ({ certificateId, pendingActionBadges }: Props) => {
   const { orgId } = useParams({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
   });
@@ -154,7 +154,7 @@ export const CertificateOverviewSection = ({ certificateId, pendingRevocationBad
                   {certificate.deletedAt && certificate.status === CertStatus.REVOKED && (
                     <Badge variant="danger">Revoked</Badge>
                   )}
-                  {pendingRevocationBadge}
+                  {pendingActionBadges}
                 </div>
               </DetailValue>
             </Detail>
