@@ -79,6 +79,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-block: var(--cipher-space-8);
 }
 
 .body {
