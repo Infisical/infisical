@@ -1,7 +1,7 @@
 import { QueueJobs } from "@app/queue";
 
 import { signerAutoRenewalQueueFactory } from "./signer-auto-renewal-queue";
-import { SignerAutoRenewalOutcome } from "./signer-enums";
+import { SignerAutoRenewalOutcome, SignerStatus } from "./signer-enums";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
@@ -36,6 +36,7 @@ describe("signer auto-renewal worker", () => {
     } as unknown as Parameters<typeof signerAutoRenewalQueueFactory>[0]);
     await runJob!({ name: QueueJobs.SignerDailyAutoRenewal });
 
+    expect(signerDAL.findByStatusWithCertificate).toHaveBeenCalledWith(SignerStatus.Active);
     expect(signerService.autoRenewCertificate.mock.calls).toEqual([["due"]]);
   });
 });
