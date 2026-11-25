@@ -100,6 +100,7 @@ import {
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
+  getSecretEtagPermissionFingerprint,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -1409,20 +1410,13 @@ export const secretV2BridgeServiceFactory = ({
       ...params
     } = dto;
 
-    let permissionFingerprint = "";
-
-    if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // The fingerprint of the permission this request is answered with, read from the permission cache's own
-      // marker. It gates only the ETag cache; the real check is still getProjectPermission below. It includes the
-      // project's folder version, so folder grants are covered, at the cost of any folder change churning the ETag.
-      permissionFingerprint = await permissionService.getProjectPermissionCacheFingerprint({
-        actor,
-        actorId,
-        projectId,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
-    }
+    const permissionFingerprint = await getSecretEtagPermissionFingerprint({
+      permissionService,
+      projectId,
+      actor,
+      actorId,
+      actorOrgId
+    });
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     // Hash of only the request inputs that change the response body, shared by the ETag field and the

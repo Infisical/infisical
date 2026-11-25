@@ -114,6 +114,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findByFolderIds"
     | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
+    | "findGrantTargetProjectIds"
   >;
   kmsDataKeyService: TKmsDataKeyService;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
@@ -933,6 +934,7 @@ export const secretFolderServiceFactory = ({
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
 
+    let grantTargetProjectIds: string[] = [];
     const folder = await folderDAL.transaction(async (tx) => {
       const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!parentFolder)
@@ -988,6 +990,10 @@ export const secretFolderServiceFactory = ({
         if (subfolder) throw error;
       }
 
+      // Deleting the folder cascades the cross-project grants on it and its subfolders, after which
+      // invalidateSecretCacheByProjectId can no longer find the projects that imported from them.
+      grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
+
       const [doc] = await folderDAL.delete(
         {
           envId: env.id,
@@ -1036,7 +1042,7 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, undefined, { grantTargetProjectIds });
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
 
     // A recursive sync rooted above this folder just lost every secret it held, and no secret-level
@@ -1634,6 +1640,7 @@ export const secretFolderServiceFactory = ({
       {} as Record<string, typeof folders>
     );
 
+    let grantTargetProjectIds: string[] = [];
     const executeBulkDelete = async (tx: Knex) => {
       const targets = [];
 
@@ -1698,6 +1705,7 @@ export const secretFolderServiceFactory = ({
         tx
       );
       await folderDAL.lockFoldersForUpdate([...new Set(subtrees.map((folder) => folder.id))], tx);
+      grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
 
       const deletedFolders = [];
       for (const { environment, env, parentFolder, idOrName, folderToDelete } of targets) {
@@ -1765,6 +1773,7 @@ export const secretFolderServiceFactory = ({
 
     const result = providedTx ? await executeBulkDelete(providedTx) : await folderDAL.transaction(executeBulkDelete);
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, providedTx, { grantTargetProjectIds });
     await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
 
     return {
@@ -2021,6 +2030,7 @@ export const secretFolderServiceFactory = ({
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
+    let grantTargetProjectIds: string[] = [];
     const { moveResults } = await folderDAL.transaction(async (tx) => {
       const destinationParentFolder = await folderDAL.findBySecretPath(
         projectId,
@@ -2270,6 +2280,8 @@ export const secretFolderServiceFactory = ({
         );
       }
 
+      grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
+
       // 8. delete the source root. secret_folders.parentId and secrets_v2.folderId both cascade on delete, so
       // removing only the source root removes the entire subtree. the source is always fully emptied here: a
       // subtree governed by a source approval policy was rejected up front, so no secret is left pending.
@@ -2322,7 +2334,7 @@ export const secretFolderServiceFactory = ({
       )
     );
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, undefined, { grantTargetProjectIds });
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
 
     return {

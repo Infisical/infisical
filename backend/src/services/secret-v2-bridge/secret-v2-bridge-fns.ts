@@ -15,6 +15,7 @@ import {
 } from "@app/db/schemas";
 import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import {
@@ -716,6 +717,32 @@ export const recursivelyGetSecretPaths = async ({
   const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
+};
+
+// The fingerprint of the permission a secret read is answered with, read from the permission cache's own marker.
+// It gates only the ETag; the real check is still getProjectPermission.
+export const getSecretEtagPermissionFingerprint = async ({
+  permissionService,
+  projectId,
+  actor,
+  actorId,
+  actorOrgId
+}: {
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissionCacheFingerprint">;
+  projectId: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+}) => {
+  if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) return "";
+
+  return permissionService.getProjectPermissionCacheFingerprint({
+    actor,
+    actorId,
+    projectId,
+    actorOrgId,
+    actionProjectType: ActionProjectType.SecretManager
+  });
 };
 
 export type TSecretReferenceTraceNode = {

@@ -358,6 +358,14 @@ const envSchema = z
       .describe(
         "Credits an organization may spend on reading secrets per minute. A read costs one credit per 100 secrets it returns, rounded up"
       ),
+    MAX_SECRETS_PER_BATCH_REQUEST: zpStr(
+      z.coerce
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Most secrets one batch request may include. Unset, batch requests have no limit")
+    ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),

@@ -28,6 +28,7 @@ import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { chunkByCount } from "../../../SecretDropzone/parseNestedJson";
 import { BulkSelectionTable } from "../BulkSelectionTable";
 
 const formSchema = z.object({
@@ -186,17 +187,20 @@ const BulkTagDialogContent = ({
             };
           });
 
-          const result = await updateSecretBatch({
-            projectId,
-            environment: envSlug,
-            secretPath,
-            secrets: secretUpdates
-          });
+          for (const chunk of chunkByCount(secretUpdates)) {
+            // eslint-disable-next-line no-await-in-loop
+            const result = await updateSecretBatch({
+              projectId,
+              environment: envSlug,
+              secretPath,
+              secrets: chunk
+            });
 
-          if (result && "approval" in result) {
-            hasApprovalRequest = true;
-          } else {
-            hasDirectUpdate = true;
+            if (result && "approval" in result) {
+              hasApprovalRequest = true;
+            } else {
+              hasDirectUpdate = true;
+            }
           }
 
           return { environment: envSlug };

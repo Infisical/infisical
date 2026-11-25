@@ -250,6 +250,10 @@ Example values:
   Number of secrets that an instance assumes a request to list secrets returns, the first time the instance handles a request with that project and those parameters. After the first time, the instance assumes the number of secrets the request returned last time. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
+<ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" optional>
+  Maximum number of secrets in one batch request. Infisical rejects a batch that includes more secrets than this. Split the secrets into multiple requests. When unset, batch requests have no limit.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.

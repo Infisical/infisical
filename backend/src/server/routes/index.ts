@@ -2585,7 +2585,8 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     folderDAL,
-    approvalPolicySecretEnvironmentDAL
+    approvalPolicySecretEnvironmentDAL,
+    secretV2BridgeDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
@@ -2614,7 +2615,8 @@ export const registerRoutes = async (
     secretDAL,
     secretQueueService,
     secretV2BridgeDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    keyStore
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,
