@@ -655,16 +655,7 @@
                   "documentation/platform/pam/access-requests/break-glass"
                 ]
               },
-              {
-                "group": "AI agents",
-                "pages": [
-                  "documentation/platform/pam/ai-agents/overview",
-                  "documentation/platform/pam/ai-agents/run",
-                  "documentation/platform/pam/ai-agents/instructions",
-                  "documentation/platform/pam/ai-agents/unattended",
-                  "documentation/platform/pam/ai-agents/review"
-                ]
-              },
+              "documentation/platform/pam/ai-agents/overview",
               {
                 "group": "Credential rotation",
                 "pages": [
@@ -5587,7 +5578,23 @@
     },
     {
       "source": "/documentation/platform/pam/ai-agents/sandbox",
-      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
+      "destination": "/documentation/platform/pam/ai-agents/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/run",
+      "destination": "/documentation/platform/pam/ai-agents/overview#agent-workflow"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/instructions",
+      "destination": "/documentation/platform/pam/ai-agents/overview#tell-the-agent-about-pam"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/unattended",
+      "destination": "/documentation/platform/pam/ai-agents/overview#run-an-agent-as-a-machine-identity"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/review",
+      "destination": "/documentation/platform/pam/ai-agents/overview#review-and-stop-an-agent"
     },
     {
       "source": "/documentation/platform/pam/dependencies/overview",
