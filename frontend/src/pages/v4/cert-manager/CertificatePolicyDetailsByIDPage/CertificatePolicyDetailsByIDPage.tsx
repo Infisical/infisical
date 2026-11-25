@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { subject } from "@casl/ability";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -83,6 +83,14 @@ const Values = ({
   </Inline>
 );
 
+const ruleValueGrid = {
+  display: "grid",
+  gridTemplateColumns: "auto auto",
+  gap: 8,
+  alignItems: "center",
+  justifyContent: "end"
+} as const;
+
 const RuleValueList = ({
   rule,
   format: formatValue,
@@ -92,16 +100,16 @@ const RuleValueList = ({
   format?: (value: string) => string;
   mono?: boolean;
 }) => (
-  <Stack gap={8}>
+  <div style={ruleValueGrid}>
     {(["required", "allowed", "denied"] as const)
       .filter((state) => rule[state]?.length)
       .map((state) => (
-        <Inline key={state} gap={8} align="center">
+        <Fragment key={state}>
           <SmallText muted>{POLICY_STATE_LABELS[state]}</SmallText>
           <Values values={rule[state] ?? []} format={formatValue} mono={mono} />
-        </Inline>
+        </Fragment>
       ))}
-  </Stack>
+  </div>
 );
 
 const ruleId = (rule: RuleValues & { oid: string }) =>

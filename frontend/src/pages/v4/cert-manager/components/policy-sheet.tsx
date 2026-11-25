@@ -784,27 +784,31 @@ const ExtensionsStep = ({
       primary: true,
       grow: true,
       text: (rule) => extensionLabel(rule.oid, rule.label),
+      render: (rule) => extensionLabel(rule.oid, rule.label),
       secondary: (rule) => rule.oid
     },
     {
       id: "rule",
       header: "Rule",
       width: 96,
-      text: (rule) => POLICY_STATE_LABELS[rule.effect]
+      text: (rule) => POLICY_STATE_LABELS[rule.effect],
+      render: (rule) => POLICY_STATE_LABELS[rule.effect]
     },
     {
       id: "criticality",
       header: "Criticality",
       width: 200,
       wrap: true,
-      text: (rule) => CRITICALITY_LABELS[rule.critical]
+      text: (rule) => CRITICALITY_LABELS[presetCriticality(rule.oid) ?? rule.critical],
+      render: (rule) => CRITICALITY_LABELS[presetCriticality(rule.oid) ?? rule.critical]
     },
     {
       id: "value",
       header: "Value pattern",
       width: 160,
       mono: true,
-      text: (rule) => rule.value
+      text: (rule) => rule.value,
+      render: (rule) => rule.value
     }
   ];
 

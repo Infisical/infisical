@@ -206,18 +206,25 @@ export const GroupRoles = ({
   projectId,
   groupId,
   groupName,
-  roles
+  roles,
+  wrap = false
 }: {
   projectId: string;
   groupId: string;
   groupName: string;
   roles: readonly Grant[];
+  wrap?: boolean;
 }) => {
   const { assignable, canEdit } = useGroupRoleAccess(projectId, groupName);
   const [open, setOpen] = useState(false);
   return (
-    <span className={styles.roleCell} onClick={stopClick} role="presentation">
-      <RoleBadges roles={roles} />
+    <span
+      className={styles.roleCell}
+      data-wrap={wrap || undefined}
+      onClick={stopClick}
+      role="presentation"
+    >
+      <RoleBadges roles={roles} wrap={wrap} />
       <Popover open={open} onOpenChange={setOpen}>
         <Gate allowed={canEdit}>
           <Tooltip content="Edit roles">

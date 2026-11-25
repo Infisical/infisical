@@ -36,6 +36,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import type { TCreateIdentityProjectPrivilegeDTO } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
+import type { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
 import type { TProjectPermission } from "@app/hooks/api/roles/types";
 import {
@@ -179,10 +180,13 @@ const useSavePrivilege = (projectId: string, target: PrivilegeTarget) => {
   };
 };
 
-const useGrantableSubjects = (conditions: ReturnType<typeof usePrivilegeAccess>["conditions"]) =>
+const useGrantableSubjects = (
+  projectType: ProjectType,
+  conditions: ReturnType<typeof usePrivilegeAccess>["conditions"]
+) =>
   useMemo(
     () =>
-      filterByGrantConditions(subjectsFor("project"), {
+      filterByGrantConditions(subjectsFor("project", projectType), {
         getKey: (config) => config.subject,
         allowed: conditions?.subjects,
         forbidden: conditions?.forbiddenSubjects
@@ -194,7 +198,7 @@ const useGrantableSubjects = (conditions: ReturnType<typeof usePrivilegeAccess>[
           forbidden: conditions?.forbiddenActions
         })
       })),
-    [conditions]
+    [projectType, conditions]
   );
 
 const sheetCopy = (editing: boolean, slug?: string) =>
@@ -303,6 +307,7 @@ const PrivilegeFields = ({
 
 const PrivilegeSheet = ({
   projectId,
+  projectType,
   target,
   privilegeId,
   editable,
@@ -311,6 +316,7 @@ const PrivilegeSheet = ({
   onOpenChange
 }: {
   projectId: string;
+  projectType: ProjectType;
   target: PrivilegeTarget;
   privilegeId?: string;
   editable: boolean;
@@ -340,7 +346,7 @@ const PrivilegeSheet = ({
   const currentSlug = slug ?? loaded?.slug ?? "";
   const currentDuration = duration ?? (loaded ? draftOf(loaded as Privilege) : permanent(""));
   const current = draft ?? stored;
-  const subjects = useGrantableSubjects(conditions);
+  const subjects = useGrantableSubjects(projectType, conditions);
   const slugTaken =
     Boolean(currentSlug) && taken.includes(currentSlug) && currentSlug !== loaded?.slug;
   const copy = sheetCopy(Boolean(privilegeId), loaded?.slug);
@@ -521,10 +527,12 @@ const RemovePrivilegeDialog = ({
 
 export const AdditionalPrivilegesSection = ({
   projectId,
+  projectType,
   target,
   readOnly = false
 }: {
   projectId: string;
+  projectType: ProjectType;
   target: PrivilegeTarget;
   readOnly?: boolean;
 }) => {
@@ -658,6 +666,7 @@ export const AdditionalPrivilegesSection = ({
         <PrivilegeSheet
           key={editing.key}
           projectId={projectId}
+          projectType={projectType}
           target={target}
           privilegeId={editing.id}
           editable={!readOnly && canEdit && !editingRow?.isLinkedToAccessApproval}

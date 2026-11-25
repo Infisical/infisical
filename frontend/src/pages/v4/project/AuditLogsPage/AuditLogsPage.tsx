@@ -9,6 +9,7 @@ import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { AuditRetentionUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   ProjectPermissionAuditLogsActions,
@@ -20,14 +21,16 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
-import { toast } from "../../access/toast";
+import { failed, saved as savedToast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import {
   CertManagerNotSetUp,
   useCertManagerProjectId
 } from "../../cert-manager/components/certificate";
 import { useV4Adapter } from "../../data/adapters";
+import type { TAuditLogPlan } from "../../data/audit-logs/contract";
 import { useV4Session } from "../../data/session/contract";
+import { useUpgradeGate } from "../../license";
 import { orgHref, useGo } from "../../links";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { EventClassesCard } from "../../organization/AuditLogsPage/event-classes";
@@ -45,6 +48,13 @@ const scopeOf = (type: ProjectType) =>
   isOrgScopedProduct(type) ? `your ${getProjectTitle(type)}` : "this project";
 
 type Scope = { projectId: string; projectType: ProjectType };
+
+const isInvalidDays = (days: number) =>
+  !Number.isInteger(days) || days < 0 || days > MAX_RETENTION_DAYS;
+
+const needsRetentionUpgrade = (plan: TAuditLogPlan | undefined, days: number) =>
+  plan?.auditLogs === false ||
+  (plan?.auditLogsRetentionDays != null && days > plan.auditLogsRetentionDays);
 
 const ProjectEventClassesCard = ({
   projectId,
@@ -79,6 +89,7 @@ const RetentionCard = ({ projectId, projectType, canEdit }: Scope & { canEdit: b
   const { data: plan } = adapter.usePlan(organization.id);
   const { data: project, isPending } = useV4Adapter("access").useProject(projectId);
   const update = adapter.useUpdateProjectRetention();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const unlimited = plan?.auditLogsRetentionDays === null;
   const initial =
     project?.auditLogsRetentionDays || (unlimited ? 0 : (plan?.auditLogsRetentionDays ?? 0));
@@ -87,52 +98,64 @@ const RetentionCard = ({ projectId, projectType, canEdit }: Scope & { canEdit: b
   const [draft, setDraft] = useState<string>();
   const text = draft ?? (unlimited && !stored ? "" : String(stored));
   const days = text === "" ? 0 : Number(text);
-  const invalid = !Number.isInteger(days) || days < 0 || days > MAX_RETENTION_DAYS;
+  const invalid = isInvalidDays(days);
 
-  let locked: string | undefined;
-  if (!canEdit) locked = EDIT_REQUIRED;
-  else if (plan && !plan.auditLogs) locked = "Configuring retention needs a paid plan.";
+  const locked = canEdit ? undefined : EDIT_REQUIRED;
 
   return (
-    <SettingsCard
-      title="Retention"
-      description={`Set how many days to keep audit logs for ${scopeOf(projectType)}.`}
-      loading={isPending}
-      dirty={draft !== undefined && days !== stored}
-      locked={locked}
-      onDiscard={() => setDraft(undefined)}
-      onSave={async () => {
-        if (invalid) throw new Error(`Enter a whole number of days up to ${MAX_RETENTION_DAYS}.`);
-        if (plan?.auditLogsRetentionDays != null && days > plan.auditLogsRetentionDays)
-          throw new Error(
-            `Your plan keeps audit logs for up to ${plan.auditLogsRetentionDays} days. Upgrade to keep them longer.`
-          );
-        await update.mutateAsync({ projectId, auditLogsRetentionDays: days });
-        setSaved(days);
-        setDraft(undefined);
-        toast({ tone: "ok", title: "Audit log retention updated" });
-      }}
-    >
-      <Field
-        label="Number of days"
-        description={
-          unlimited ? "Leave empty to use your plan's retention, which has no limit." : undefined
-        }
-        error={invalid ? `Enter a whole number of days up to ${MAX_RETENTION_DAYS}.` : undefined}
+    <>
+      <SettingsCard
+        title="Retention"
+        description={`Set how many days to keep audit logs for ${scopeOf(projectType)}.`}
+        loading={isPending}
+        dirty={draft !== undefined && days !== stored}
+        locked={locked}
+        onDiscard={() => setDraft(undefined)}
+        onSave={async () => {
+          if (invalid) return;
+          if (needsRetentionUpgrade(plan, days)) {
+            openUpgradeGate({
+              intent: AuditRetentionUpgradeIntent,
+              paywallKey: "project.audit-logs-retention"
+            });
+            return;
+          }
+          try {
+            await update.mutateAsync({
+              projectId,
+              auditLogsRetentionDays: days
+            });
+          } catch (error) {
+            failed("Failed to update audit log retention", error);
+            return;
+          }
+          setSaved(days);
+          setDraft(undefined);
+          savedToast("Audit log retention updated");
+        }}
       >
-        <Input
-          type="number"
-          min={1}
-          step={1}
-          inputMode="numeric"
-          value={text}
-          placeholder={unlimited ? "Unlimited" : undefined}
-          invalid={invalid}
-          disabled={Boolean(locked)}
-          onChange={(event) => setDraft(event.target.value)}
-        />
-      </Field>
-    </SettingsCard>
+        <Field
+          label="Number of days"
+          description={
+            unlimited ? "Leave empty to use your plan's retention, which has no limit." : undefined
+          }
+          error={invalid ? `Enter a whole number of days up to ${MAX_RETENTION_DAYS}.` : undefined}
+        >
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={text}
+            placeholder={unlimited ? "Unlimited" : undefined}
+            invalid={invalid}
+            disabled={Boolean(locked)}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        </Field>
+      </SettingsCard>
+      {upgradeGate}
+    </>
   );
 };
 
@@ -197,7 +220,10 @@ const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
             label="Audit log sections"
             value={activeTab}
             onValueChange={(next) =>
-              navigate({ to: ".", search: (prev) => ({ ...prev, selectedTab: next }) })
+              navigate({
+                to: ".",
+                search: (prev) => ({ ...prev, selectedTab: next })
+              })
             }
             tabs={tabs.map((tab) => ({ ...tab, content: null }))}
           />
