@@ -24,6 +24,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
@@ -50,7 +51,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
   const { permission } = useProjectPermission(projectId);
   const pki = useV4Adapter("pkiPolicies");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiCertificateProfilesTable", 20);
   const [editing, setEditing] = useState<Editing>();
   const [deleting, setDeleting] = useState<TCertificateProfile>();
   const { data, isPending, error } = pki.useProfiles({
@@ -219,7 +220,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
           }
         }}
         pagination={
-          total > pageSize ? (
+          showPagination(total) ? (
             <Pagination
               label="Certificate profile pages"
               variant="compact"

@@ -183,6 +183,7 @@ export const OrgRolesTab = () => {
   const isDefault = (role: TOrgRole) =>
     org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug;
   const list = usePagedList({
+    table: "orgRolesTable",
     rows: roles,
     initialSort: { columnId: "type", direction: "asc" },
     matches: (role, needle) =>

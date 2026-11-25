@@ -69,6 +69,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -277,7 +278,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
   const [query, setQuery] = useState("");
   const [debounced] = useDebounce(query.trim());
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("secretScanningResourcesTable", 20);
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: SecretScanningResourceOrderBy.Name,
     direction: "asc"

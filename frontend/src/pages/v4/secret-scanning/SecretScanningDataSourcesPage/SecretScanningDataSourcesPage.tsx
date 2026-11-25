@@ -55,6 +55,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { UpgradeGate } from "../../license";
 import { v4Path } from "../../links";
@@ -385,7 +386,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize("secretScanningDataSourcesTable", 20);
   const [editing, setEditing] = useState<TSecretScanningDataSourceWithDetails>();
   const [deleting, setDeleting] = useState<TSecretScanningDataSourceWithDetails>();
   const [adding, setAdding] = useState(false);

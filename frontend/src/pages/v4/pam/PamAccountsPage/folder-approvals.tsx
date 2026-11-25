@@ -24,11 +24,6 @@ import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import { type TAlert } from "@app/hooks/api/alerts/types";
 import {
   PamAccessRequestStatus,
@@ -41,6 +36,7 @@ import {
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { errorMessage, failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { ApprovalRequestSheet } from "../PamApprovalRequestsPage/ApprovalRequestSheet";
 import { isGrantActive, requesterSubtitle, requestStatus } from "../PamApprovalRequestsPage/status";
@@ -228,9 +224,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const revoke = pam.useRevokeAccessRequest();
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE_PREFERENCE, PreferenceKey.PerPage, 10)
-  );
+  const [perPage, setPerPage, showPagination] = usePageSize(TABLE_PREFERENCE, 10);
   const [status, setStatus] = useState("all");
   const [revoking, setRevoking] = useState<TPamAccessRequest | null>(null);
   const [selected, setSelected] = useState<TPamAccessRequest>();
@@ -389,7 +383,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
             />
           }
           pagination={
-            total > perPage ? (
+            showPagination(total) ? (
               <Pagination
                 label="Access request pages"
                 variant="compact"
@@ -401,7 +395,6 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
                 onPageSizeChange={(size) => {
                   setPerPage(size);
                   setPage(1);
-                  setUserTablePreference(TABLE_PREFERENCE, PreferenceKey.PerPage, size);
                 }}
               />
             ) : undefined

@@ -25,17 +25,13 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
 import type { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AccessBundleDialog, DeleteAccessBundleDialog } from "../resources/access-bundle-dialogs";
@@ -77,9 +73,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
     direction: "asc" | "desc";
   }>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
-  );
+  const [perPage, setPerPage] = usePageSize(TABLE, 20);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TAgentVaultAccessBundleListItem>();
   const [deleting, setDeleting] = useState<TAgentVaultAccessBundleListItem>();
@@ -362,7 +356,6 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
                 onPageSizeChange={(next) => {
                   setPerPage(next);
                   setPage(1);
-                  setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
                 }}
               />
             ) : undefined

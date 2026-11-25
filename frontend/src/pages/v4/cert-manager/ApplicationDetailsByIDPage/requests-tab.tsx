@@ -32,6 +32,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { orgHref, v4Path } from "../../links";
@@ -146,7 +147,7 @@ export const RequestsTab = ({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiApplicationRequestsTable", 20);
   const [busyId, setBusyId] = useState<string>();
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | StatusFilter
@@ -379,7 +380,7 @@ export const RequestsTab = ({
         }
         persistentStatus={totalCount ? plural(totalCount, "request", "requests") : undefined}
         pagination={
-          totalCount > pageSize ? (
+          showPagination(totalCount) ? (
             <Pagination
               label="Certificate request pages"
               variant="compact"

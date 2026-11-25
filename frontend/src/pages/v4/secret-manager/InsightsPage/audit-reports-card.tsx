@@ -29,6 +29,7 @@ import { AuditReportStatus, type TAuditReport } from "@app/hooks/api/auditReport
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { AUDIT_REPORT_OPTIONS, AUDIT_REPORT_STATUS, auditReportLabel } from "./insights.utils";
 import { GenerateReportDialog } from "./shared/generate-report-dialog";
@@ -46,7 +47,7 @@ export const AuditReportsCard = ({ projectId }: { projectId: string }) => {
   const insights = useV4Adapter("secretInsights");
   const { permission } = useProjectPermission(projectId);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = usePageSize("insightsAuditReportsTable", 10);
   const [requesting, setRequesting] = useState(false);
   const [deleting, setDeleting] = useState<TAuditReport>();
   const { data, isPending } = insights.useAuditReports({

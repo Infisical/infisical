@@ -23,6 +23,7 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useDebounced } from "../../org/use-debounced";
 import { failed, saved, toast } from "../../toast";
@@ -83,7 +84,7 @@ export const useMemberList = <T extends AgentVaultMemberType>(projectId: string,
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search.trim());
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = usePageSize("agentVaultAccessControlTable", 20);
   const list = av.useMembers(projectId, {
     actorType,
     search: debouncedSearch || undefined,

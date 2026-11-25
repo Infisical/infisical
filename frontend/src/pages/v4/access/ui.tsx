@@ -17,6 +17,7 @@ import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { ClockAlertIcon, ClockIcon } from "lucide-react";
 
+import { usePageSize } from "../components/use-page-size";
 import { grantLabel, isGrantExpired, type RoleGrant } from "./roles";
 
 import styles from "./access.module.css";
@@ -155,7 +156,8 @@ export const usePagedList = <Row,>({
   compare,
   initialSort,
   initialSearch = "",
-  perPage: initialPerPage = 20
+  perPage: initialPerPage = 20,
+  table
 }: {
   rows: readonly Row[];
   matches: (row: Row, needle: string) => boolean;
@@ -163,11 +165,12 @@ export const usePagedList = <Row,>({
   initialSort: Sort;
   initialSearch?: string;
   perPage?: number;
+  table: string;
 }) => {
   const [search, setSearchValue] = useState(initialSearch);
   const [sort, setSort] = useState<Sort>(initialSort);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(initialPerPage);
+  const [perPage, setPerPage] = usePageSize(table, initialPerPage);
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return rows
