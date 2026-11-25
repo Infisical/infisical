@@ -120,17 +120,20 @@ const CrlSettingsDialog = ({
   });
 
   const submit = async () => {
-    const next = { ...crlUrlErrors(urls), crlValidityDays: crlValidityIssue(validity) };
+    const next =
+      setting === "urls" ? crlUrlErrors(urls) : { crlValidityDays: crlValidityIssue(validity) };
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
     const submitted = urls.map((url) => url.value.trim());
-    const changed: Configuration = {
-      ...((submitted.length !== current.length ||
-        submitted.some((url, index) => url !== current[index])) && {
-        crlDistributionPointUrls: submitted
-      }),
-      ...(Number(validity) !== currentValidity && { crlValidityDays: Number(validity) })
-    };
+    const changed: Configuration =
+      setting === "urls"
+        ? {
+            ...((submitted.length !== current.length ||
+              submitted.some((url, index) => url !== current[index])) && {
+              crlDistributionPointUrls: submitted
+            })
+          }
+        : { ...(Number(validity) !== currentValidity && { crlValidityDays: Number(validity) }) };
     if (Object.keys(changed).length === 0) {
       onClose();
       return;
