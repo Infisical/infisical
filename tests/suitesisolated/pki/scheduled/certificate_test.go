@@ -15,6 +15,7 @@ import (
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -107,7 +108,8 @@ func TestCertificateAutoRenewalJob(t *testing.T) {
 }
 
 // renewedBy waits for a certificate to be renewed and returns the certificate that
-// replaced it.
+// replaced it, once `as` can read it. An external CA's renewal is linked before it is
+// attached to the application, so an application member is refused it at first.
 func renewedBy(t *testing.T, as *harness.Principal, certID uuid.UUID) uuid.UUID {
 	t.Helper()
 	res := pki.Poll(t, "reading the certificate", func(ctx context.Context) (*api.GetCertificateResponse, int, []byte, error) {
@@ -121,7 +123,19 @@ func renewedBy(t *testing.T, as *harness.Principal, certID uuid.UUID) uuid.UUID 
 	}, func(res *api.GetCertificateResponse) bool {
 		return res.JSON200.Certificate.RenewedByCertificateId != nil
 	})
-	return *res.JSON200.Certificate.RenewedByCertificateId
+	renewedID := *res.JSON200.Certificate.RenewedByCertificateId
+	_, err := wait.For(t.Context(), func(ctx context.Context) (struct{}, bool, error) {
+		res, err := as.API.GetCertificateWithResponse(ctx, renewedID, nil)
+		if err != nil {
+			return struct{}{}, false, err
+		}
+		if res.StatusCode() != http.StatusOK {
+			return struct{}{}, false, fmt.Errorf("reading the renewed certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		}
+		return struct{}{}, true, nil
+	})
+	require.NoError(t, err, "waiting for the renewed certificate to be readable")
+	return renewedID
 }
 
 // bundleOf is the PEM body of a certificate as `as` reads it.
