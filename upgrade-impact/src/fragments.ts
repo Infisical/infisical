@@ -31,7 +31,7 @@ export type ReleaseFragment = {
   evidence: Evidence;
 };
 
-export type ReleaseDraft = Pick<
+type ReleaseDraft = Pick<
   ReleaseImpact,
   | "impactLevel"
   | "summary"
@@ -89,7 +89,7 @@ const evidenceForFragment = (previousTag: string, tag: string, file: string): Ev
     return { type: "file", ref: file, path: file };
   }
 
-  const prNumber = commit.subject.match(/\(#(\d+)\)\s*$/)?.[1];
+  const prNumber = commit.subject.match(/^Merge pull request #(\d+) |\(#(\d+)\)\s*$/)?.slice(1).find(Boolean);
 
   return prNumber
     ? { type: "pr", ref: `#${prNumber}`, url: `${REPO_URL}/pull/${prNumber}`, description: commit.subject }

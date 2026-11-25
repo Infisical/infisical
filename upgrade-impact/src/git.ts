@@ -71,6 +71,9 @@ export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${re
 export const getAddingCommit = (fromTag: string, toTag: string, file: string) => {
   const lines = runGit([
     "log",
+    // Stays on the release line, so a fragment merged with a merge commit resolves to that merge,
+    // whose subject names the pull request, and not to the author's branch commit.
+    "--first-parent",
     "--no-renames",
     "--diff-filter=A",
     "--pretty=format:%H%x09%s",

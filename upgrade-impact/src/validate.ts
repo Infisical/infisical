@@ -192,6 +192,8 @@ const validateFragments = async (changesDir: string, errors: string[]) => {
     throw error;
   }
 
+  const fileByTitle = new Map<string, string>();
+
   for (const file of files) {
     if (file === "README.md") {
       continue;
@@ -203,11 +205,24 @@ const validateFragments = async (changesDir: string, errors: string[]) => {
     }
 
     try {
-      const { action } = parseFragment(await fs.readFile(path.join(changesDir, file), "utf8"), `changes/${file}`);
+      const { title, action } = parseFragment(
+        await fs.readFile(path.join(changesDir, file), "utf8"),
+        `changes/${file}`
+      );
 
-      // A release copies the action verbatim and fails on this same rule, after the fragment can no longer be edited.
+      // A release copies the title and action verbatim and fails on these same rules, after the
+      // fragment can no longer be edited.
       if (isUnclearAction(action)) {
         errors.push(`changes/${file} uses unclear operator action: ${action}`);
+      }
+
+      const titleKey = normalizeEntryKey(title);
+      const fileWithSameTitle = fileByTitle.get(titleKey);
+
+      if (fileWithSameTitle) {
+        errors.push(`changes/${file} repeats the title of changes/${fileWithSameTitle}: "${title}"`);
+      } else {
+        fileByTitle.set(titleKey, file);
       }
     } catch (error) {
       errors.push((error as Error).message);

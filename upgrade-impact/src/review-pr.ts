@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import { Agent, run, tool } from "@openai/agents";
 import { stringify } from "yaml";
 import { z } from "zod";
@@ -187,9 +185,6 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
     return truncated.truncated ? { truncatedByTotalToolBudget: true, partialResultJson: truncated.value } : result;
   };
 
-  const isSafeChangedPath = (file: string) =>
-    !path.isAbsolute(file) && !file.split(/[\\/]/).includes("..") && changedFiles.has(file);
-
   const fileDiffTool = tool({
     name: "get_file_diff",
     description: "Return a capped git diff for one file this pull request changes.",
@@ -199,7 +194,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
     }),
     async execute({ file, contextLines }) {
       return guard(() => {
-        if (!isSafeChangedPath(file)) {
+        if (!changedFiles.has(file)) {
           return { error: `File is not changed by this pull request: ${file}` };
         }
 
@@ -220,7 +215,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
     }),
     async execute({ file, ref }) {
       return guard(() => {
-        if (!isSafeChangedPath(file)) {
+        if (!changedFiles.has(file)) {
           return { error: `File is not changed by this pull request: ${file}` };
         }
 
@@ -269,5 +264,5 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
 
   process.stderr.write(`Review used ${toolState.calls} tool call(s) and ${toolState.resultChars} tool result chars.\n`);
 
-  return ReviewSchema.parse(result.finalOutput).findings;
+  return result.finalOutput.findings;
 };
