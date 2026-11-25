@@ -18,7 +18,7 @@ import {
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -510,6 +510,37 @@ export const assertFolderDeleteAllowed = (
 ) => {
   if (!protectedFolder) return;
   throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, permission));
+};
+
+// A folder is deleted with every folder below it and the folder access set on them. Only an explicit deny refuses the
+// delete: a role that allows folder delete on the parent path alone says nothing about the folders below. The refusal
+// is a PermissionBoundaryError because a plain ForbiddenRequestError is not recorded as a permission-denied audit event.
+export const assertFolderSubtreeDeleteAllowed = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  environment: string,
+  [folderToDelete, ...foldersBelow]: { path: string }[]
+) => {
+  const deniedFolder = [folderToDelete, ...foldersBelow].find(
+    (folder) =>
+      permission.relevantRuleFor(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: folder.path })
+      )?.inverted
+  );
+  if (!deniedFolder) return;
+
+  throw new PermissionBoundaryError({
+    message: `Deleting the folder '${folderToDelete.path}' requires permission to delete folders in it and in every folder below it in environment with slug '${environment}'. Your access on '${deniedFolder.path}' does not allow deleting folders. Ask someone who can delete folders there to delete it.`,
+    details: {
+      missingPermissions: [
+        {
+          action: ProjectPermissionActions.Delete,
+          subject: ProjectPermissionSub.SecretFolders,
+          conditions: { environment, secretPath: deniedFolder.path }
+        }
+      ]
+    }
+  });
 };
 
 export const assertFolderRenameAllowed = (

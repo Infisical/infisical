@@ -83,6 +83,8 @@ Set default values for custom X.509 extensions. The [certificate policy](/docume
 
 Set a value and Infisical uses it whenever the request doesn't supply one. Leave the value empty and the request supplies it, which suits a per-principal value such as an Active Directory security identifier. Either way, Infisical checks the value against the policy's rule for that OID.
 
+[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds two extensions: the computer's security identifier in the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and the **Certificate template information** (`1.3.6.1.4.1.311.21.7`). Both replace any value the profile sets for those OIDs. If the certificate policy restricts custom extensions, it must allow both, and their values are checked against its rules.
+
 Mark an extension **Critical** when a client that can't process it must reject the certificate rather than ignore it. Leave it clear otherwise, which is the usual choice. Where an extension's own specification fixes criticality, or the certificate policy pins it for that OID, the checkbox is read only.
 
 Enter the value as you want it read and Infisical encodes it. A few well-known extensions have a shape their specification fixes, so Infisical checks those as you type:
@@ -108,7 +110,7 @@ Profiles are consumed through [Applications](/documentation/platform/pki/applica
     Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
   </Step>
   <Step title="Application Admin configures enrollment">
-    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
+    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP, Microsoft Autoenrollment) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
   </Step>
   <Step title="Certificates are issued">
     Teams request certificates through the configured enrollment method. Requests are validated against the profile's policy and signed by the profile's CA.

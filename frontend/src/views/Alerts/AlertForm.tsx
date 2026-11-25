@@ -69,7 +69,8 @@ export const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.SecretSyncFailed]: "Sync failure alert",
   [AlertEventType.HoneyTokenTriggered]: "Honey token trigger alert",
   [AlertEventType.SecretScanningSecretsDetected]: "Secrets detected",
-  [AlertEventType.SecretScanningScanFailed]: "Secret scanning failed"
+  [AlertEventType.SecretScanningScanFailed]: "Secret scanning failed",
+  [AlertEventType.GatewayOffline]: "Gateway offline alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",

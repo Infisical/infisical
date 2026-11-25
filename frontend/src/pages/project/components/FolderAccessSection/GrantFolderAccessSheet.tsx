@@ -22,6 +22,7 @@ import {
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -33,15 +34,17 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
-  grantStateOf,
+  findInheritedGrant,
+  isRootFolderPath,
   normalizeFolderPath
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
-import { TFolderAccessSectionActor } from "./types";
+import { folderAccessChangeSourceOf, TFolderAccessSectionActor } from "./types";
 
 type Props = {
   isOpen: boolean;
@@ -58,6 +61,7 @@ type FormProps = {
 
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
   const { projectId, currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
 
   const environments = currentProject?.environments ?? [];
@@ -91,7 +95,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         row.environment === environmentSlug &&
         normalizeFolderPath(row.secretPath) === normalizedPath
     ) ?? null;
-  const grant = useFolderGrantDraft(existingGrant, isRoot);
+  const grant = useFolderGrantDraft(existingGrant, normalizedPath);
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
@@ -116,19 +120,14 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       ? `This ${actorNoun} already has access to ${normalizedPath}. Saving updates that access.`
       : null;
 
-  const environmentGrant = isRoot
-    ? null
-    : existingAccess.find(
-        (row) =>
-          row.environment === environmentSlug &&
-          row.isPermissionRecursive &&
-          normalizeFolderPath(row.secretPath) === "/" &&
-          grantStateOf(row) !== "expired"
-      );
-  const inheritedNote =
-    environmentGrant && !targetError && !isCheckingFolder
-      ? `This ${actorNoun} has ${FOLDER_ROLE_TIER_LABELS[environmentGrant.permission]} on ${normalizedPath} through access applied to the environment from /. ${existingGrant ? "The access set on this folder overrides it here." : "Access you set here overrides it on this folder."}`
-      : null;
+  const inheritedGrant = findInheritedGrant(existingAccess, environmentSlug, normalizedPath);
+  const inheritedNote = (() => {
+    if (!inheritedGrant || targetError || isCheckingFolder) return null;
+    const source = isRootFolderPath(inheritedGrant.secretPath)
+      ? "the environment from /"
+      : `the subfolders of ${inheritedGrant.secretPath}`;
+    return `This ${actorNoun} has ${FOLDER_ROLE_TIER_LABELS[inheritedGrant.permission]} on ${normalizedPath} through access applied to ${source}. ${existingGrant ? "The access set on this folder overrides it here." : "Access you set here overrides it on this folder."}`;
+  })();
 
   const isSubmitDisabled =
     isCheckingFolder ||
@@ -147,6 +146,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         await updateIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
       }
       createNotification({ type: "success", text: "Folder access updated" });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+        source: folderAccessChangeSourceOf(actor),
+        action: "updated",
+        actorType: actor.type,
+        projectId
+      });
       onClose();
       return;
     }
@@ -158,6 +163,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       await createIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
     }
     createNotification({ type: "success", text: "Folder access granted" });
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source: folderAccessChangeSourceOf(actor),
+      action: "added",
+      actorType: actor.type,
+      projectId
+    });
     onClose();
   };
 

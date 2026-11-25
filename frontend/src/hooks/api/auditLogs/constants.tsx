@@ -111,6 +111,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET]: "Rotate ACME EAB secret on Application",
   [EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT]: "Set SCEP enrollment on Application",
   [EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT]: "Clear SCEP enrollment on Application",
+  [EventType.SET_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT]:
+    "Set Microsoft Autoenrollment enrollment on Application",
+  [EventType.CLEAR_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT]:
+    "Clear Microsoft Autoenrollment enrollment on Application",
+  [EventType.REENROLL_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_COMPUTERS]:
+    "Re-enroll all Microsoft Autoenrollment computers on Application",
   [EventType.GET_CERT_MANAGER_INSTANCE_STATE]: "Get Certificate Manager instance state",
   [EventType.SET_CERT_MANAGER_ACTIVE_PROJECT]: "Set active Certificate Manager project",
   [EventType.GET_CERT_BODY]: "Get certificate body",
@@ -125,6 +131,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ALERT]: "Update alert",
   [EventType.DELETE_ALERT]: "Delete alert",
   [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
+  [EventType.CREATE_AUDIT_LOG_STREAM]: "Create audit log stream",
+  [EventType.UPDATE_AUDIT_LOG_STREAM]: "Update audit log stream",
+  [EventType.DELETE_AUDIT_LOG_STREAM]: "Delete audit log stream",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -419,6 +428,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
   [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
   [EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED]: "SCEP Dynamic Challenge Generated",
+
+  [EventType.MICROSOFT_AUTOENROLLMENT_ISSUANCE]: "Microsoft Autoenrollment Certificate Issuance",
+  [EventType.MICROSOFT_AUTOENROLLMENT_RENEWAL]: "Microsoft Autoenrollment Certificate Renewal",
+  [EventType.MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED]: "Microsoft Autoenrollment Request Refused",
 
   [EventType.APPROVAL_POLICY_CREATE]: "Create Approval Policy",
   [EventType.APPROVAL_POLICY_UPDATE]: "Update Approval Policy",

@@ -1,0 +1,107 @@
+---
+title: "Stream PAM session activity"
+sidebarTitle: "Activity streaming"
+description: "Send the commands, queries, and requests run in PAM sessions to your logging system while the sessions run."
+---
+
+Infisical can send the activity in each [PAM session](/documentation/platform/pam/sessions/overview) to your own logging system while the session runs. The activity includes the commands a user runs on a server, the queries they run on a database, and the requests they send to a Kubernetes cluster. Streaming it lets you alert on risky commands in your SIEM and keep session activity next to the rest of your logs.
+
+Infisical sends session activity through an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams). You turn it on for each stream, and the stream then sends session activity along with its audit logs. Infisical keeps the [session recording](/documentation/platform/pam/sessions/session-recording) either way.
+
+## Prerequisites
+
+- A plan that includes [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams)
+- An [organization role](/documentation/platform/access-controls/role-based-access-controls) with the **Read** and **Edit** actions on the **Audit Log Streams** policy
+- The **Admin** role in PAM, which makes you a [product admin](/documentation/platform/pam/concepts/access-control) (only a product admin can turn on session activity for a stream, or change a stream that sends it)
+
+Deleting a stream doesn't need the PAM **Admin** role. Anyone with the **Edit** action on the **Audit Log Streams** policy can delete a stream, including one that sends session activity.
+
+## Turn on session activity
+
+<Steps>
+  <Step>
+    In your organization, go to **Audit Logs** and select the **External Log Streams** tab.
+  </Step>
+  <Step>
+    Select **Add Log Stream** to create a stream, or select the three dot menu next to an existing stream and select **Edit**.
+  </Step>
+  <Step>
+    Turn on **Include PAM Session Activity**.
+  </Step>
+  <Step>
+    To also send the output of each command, query, and request, turn on **Include Output**.
+
+    Output can contain sensitive data, such as query results and file contents. It's also usually much larger than the commands themselves.
+  </Step>
+  <Step>
+    Select **Create Log Stream** or **Update**.
+  </Step>
+</Steps>
+
+Infisical sends a session's activity in batches while the session runs, usually within 20 seconds of when it happens. Activity the Gateway records before you turn on **Include PAM Session Activity** but uploads afterward is sent too.
+
+## Activity by account type
+
+| Account type | Sent for each session | Added with **Include Output** |
+| --- | --- | --- |
+| PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query | The database's response |
+| SSH | Each command, including commands run without a shell and SFTP file operations | The terminal output |
+| Kubernetes, GCP service account, Azure CLI, AWS IAM through a Gateway | The method and URL of each request | Each response's status, and the request and response bodies |
+| Windows, Windows AD | Nothing, because the recording is a replay of the remote desktop | Nothing |
+| AWS IAM without a Gateway | Nothing, because connections don't go through a Gateway | Nothing |
+
+Infisical doesn't send input that isn't a command, such as a password typed at a prompt or data piped into a command. If a user connects without a terminal, Infisical can't tell the commands they type apart from that kind of input, so it doesn't send those commands either. This happens with `ssh -T` and with `ssh <host> bash`. The session recording still shows the commands.
+
+The account's [template](/documentation/platform/pam/templates/overview) also changes what reaches the stream:
+
+- If the template [masks sensitive values](/documentation/platform/pam/sessions/session-recording#mask-sensitive-values), the stream receives the masked text
+- If a [Command Blocking](/documentation/platform/pam/templates/overview#policies) policy rejects a command, the event for that command includes `"blocked": true`
+
+<Note>
+  To stream commands typed in an interactive SSH shell, update your [Gateway](/documentation/platform/gateways/overview) to the latest version. Older Gateways record those commands only as terminal output, so the commands reach a stream only if it includes output. They also don't mark blocked SSH commands with `"blocked": true`.
+</Note>
+
+## Event format
+
+Session activity events have the same top-level fields as [audit log events](/documentation/platform/audit-log-streams/audit-log-streams#audit-logs-structure), except `expiresAt`, `updatedAt`, and `userAgentType`, so the rules your logging system uses to parse audit logs can parse session activity too. Infisical delivers them in the same [batches](/documentation/platform/audit-log-streams/audit-log-streams#delivery-format), with the same [retries and failure alerts](/documentation/platform/audit-log-streams/audit-log-streams#delivery-reliability-and-failure-handling).
+
+```json
+{
+  "id": "0d6b3a6e-4e7c-5a2f-9b1d-2f4c8e7a1b3c",
+  "createdAt": "2026-11-20T01:05:07.336Z",
+  "orgId": "785649f1-ff4b-4ef9-a40a-9b9878e46e57",
+  "projectId": "5c1e8f2a-7b4d-4e9a-8c3f-1a2b3c4d5e6f",
+  "actor": "user",
+  "actorMetadata": {
+    "userId": "7383b701-d83f-45c0-acb4-04e138b987ab",
+    "email": "jane@example.com",
+    "username": "jane@example.com"
+  },
+  "ipAddress": "203.0.113.7",
+  "userAgent": "infisical-cli",
+  "eventType": "pam-session-activity-command",
+  "eventMetadata": {
+    "sessionId": "9e2d4c6b-1a3f-4b5e-8d7c-6f5e4d3c2b1a",
+    "accountId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "accountName": "prod-web",
+    "accountType": "ssh",
+    "folderName": "production",
+    "host": null,
+    "channel": "terminal",
+    "command": "systemctl restart nginx"
+  }
+}
+```
+
+`eventType` is one of the following. Every session activity event type starts with `pam-session-activity-`, so you can filter on that prefix to separate session activity from the stream's audit logs.
+
+| Event type | What it records | Fields in `eventMetadata` |
+| --- | --- | --- |
+| `pam-session-activity-command` | An SSH command or SFTP file operation | `command`, and `channel` (`terminal`, `exec`, or `sftp`) |
+| `pam-session-activity-query` | A database query | `query`, and `output` if the stream includes output |
+| `pam-session-activity-request` | An HTTP request | `method`, `url`, `requestId`, and `body` if the stream includes output |
+| `pam-session-activity-output` | Terminal output, sent only if the stream includes output | `output` and `channel` |
+| `pam-session-activity-response` | An HTTP response, sent only if the stream includes output | `status`, `requestId`, and `body` |
+| `pam-session-activity-skipped` | Activity that was too large to send or that Infisical failed to export, which you can still view in the session recording | `reason`, `chunkIndex`, and, if `reason` is `too-many-events`, `skippedEvents` |
+
+Every `eventMetadata` also identifies the session and account with `sessionId`, `accountId`, `accountName`, `accountType`, `folderName`, and `host`. If a value is longer than 16,384 characters, Infisical shortens it and adds ` [truncated]` at the end.

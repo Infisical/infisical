@@ -21,8 +21,10 @@ import {
 import { SecretFolderRole } from "@app/hooks/api/folderAccess";
 
 import { FOLDER_ROLE_TIER_LABELS, FOLDER_ROLE_TIERS } from "./folder-access.const";
+import { isRootFolderPath } from "./folder-access.utils";
 
 export type TRecursiveControl = {
+  label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 };
@@ -47,6 +49,8 @@ type Props = {
   removeVariant?: "default" | "danger" | "warning";
   // a change is still saving, so picking again would send a second, conflicting request
   isPending?: boolean;
+  // a pick that opens a confirmation closes the menu so the dialog does not sit on top of it
+  closeOnSelect?: boolean;
 };
 
 // option rows follow the Combobox rich option shape: label over a muted text-xs description, with the
@@ -55,14 +59,15 @@ type Props = {
 const TierOptions = ({
   activeTier,
   onSelectTier,
-  isPending
-}: Pick<Props, "activeTier" | "onSelectTier" | "isPending">) =>
+  isPending,
+  closeOnSelect
+}: Pick<Props, "activeTier" | "onSelectTier" | "isPending" | "closeOnSelect">) =>
   FOLDER_ROLE_TIERS.map((tier) => (
     <DropdownMenuItem
       key={tier.value}
       isDisabled={isPending}
       onClick={(e) => {
-        e.preventDefault();
+        if (!closeOnSelect) e.preventDefault();
         onSelectTier(tier.value);
       }}
     >
@@ -79,20 +84,22 @@ const TierOptions = ({
 // the menu stays open on toggle so a tier can still be picked afterwards, which means the check
 // state is flipped by hand instead of through the item's own select handling
 const RecursiveItem = ({
+  label,
   checked,
   onCheckedChange,
-  isPending
-}: TRecursiveControl & { isPending?: boolean }) => (
+  isPending,
+  closeOnSelect
+}: TRecursiveControl & { isPending?: boolean; closeOnSelect?: boolean }) => (
   <DropdownMenuCheckboxItem
     checked={checked}
     disabled={isPending}
     onClick={(e) => {
-      e.preventDefault();
+      if (!closeOnSelect) e.preventDefault();
       onCheckedChange(!checked);
     }}
   >
     <FolderTreeIcon />
-    Apply to Environment
+    {label}
   </DropdownMenuCheckboxItem>
 );
 
@@ -115,17 +122,25 @@ export const TierDropdown = ({
   onRemove,
   removeLabel = "Remove access",
   removeVariant = "danger",
-  isPending
+  isPending,
+  closeOnSelect
 }: Props) => {
   // an inherited grant is edited where it was made, so this menu only explains it and offers an
   // exact grant on top
   if (!activeTier && inherited) {
+    const isFromRoot = isRootFolderPath(inherited.sourcePath);
     return (
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Inherited</DropdownMenuLabel>
         <div className="flex items-center gap-1.5 px-2 py-1 text-sm">
           <span className="font-medium">{FOLDER_ROLE_TIER_LABELS[inherited.tier]}</span>
-          <span className="text-muted">from environment permissions</span>
+          {isFromRoot ? (
+            <span className="text-muted">from environment permissions</span>
+          ) : (
+            <span className="min-w-0 truncate text-muted">
+              from <span className="font-mono">{inherited.sourcePath}</span>
+            </span>
+          )}
 
           {inherited.expiryLabel && (
             <span className="ml-auto text-xs whitespace-nowrap text-muted">
@@ -133,19 +148,28 @@ export const TierDropdown = ({
             </span>
           )}
         </div>
-        <p className="px-2 pb-1.5 text-xs leading-4 text-muted">
-          This role was applied to the full environment and all of its subfolders. To change or
-          remove it, edit it on the environment layer permissions.
+        <p className="px-2 pb-1.5 text-xs leading-4 break-words text-muted">
+          {isFromRoot
+            ? "This role was applied to the full environment and all of its subfolders. To change or remove it, edit it on the environment layer permissions."
+            : `This role was applied to ${inherited.sourcePath} and all of its subfolders. To change or remove it, edit it on ${inherited.sourcePath}.`}
         </p>
         {inherited.onManage && (
           <DropdownMenuItem onClick={inherited.onManage}>
             <CornerLeftUpIcon />
-            Manage Environment Permissions
+            {isFromRoot ? (
+              "Manage Environment Permissions"
+            ) : (
+              <span className="min-w-0 truncate">Manage Access on {inherited.sourcePath}</span>
+            )}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Add a Role on This Folder</DropdownMenuLabel>
-        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
+        <TierOptions
+          onSelectTier={onSelectTier}
+          isPending={isPending}
+          closeOnSelect={closeOnSelect}
+        />
       </DropdownMenuContent>
     );
   }
@@ -154,10 +178,15 @@ export const TierDropdown = ({
   if (!activeTier) {
     return (
       <DropdownMenuContent align="end" className="w-80">
-        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
+        <TierOptions
+          onSelectTier={onSelectTier}
+          isPending={isPending}
+          closeOnSelect={closeOnSelect}
+        />
         {recursive && (
           <>
             <DropdownMenuSeparator />
+            {/* without a grant this toggle only stages the next pick, and closing would reset it */}
             <RecursiveItem {...recursive} isPending={isPending} />
           </>
         )}
@@ -179,6 +208,7 @@ export const TierDropdown = ({
               activeTier={activeTier}
               onSelectTier={onSelectTier}
               isPending={isPending}
+              closeOnSelect={closeOnSelect}
             />
           </DropdownMenuSubContent>
         </DropdownMenuPortal>
@@ -189,7 +219,9 @@ export const TierDropdown = ({
           {temporaryLabel}
         </DropdownMenuItem>
       )}
-      {recursive && <RecursiveItem {...recursive} isPending={isPending} />}
+      {recursive && (
+        <RecursiveItem {...recursive} isPending={isPending} closeOnSelect={closeOnSelect} />
+      )}
       {onRemove && (
         <DropdownMenuItem variant={removeVariant} onClick={onRemove}>
           <Trash2Icon />

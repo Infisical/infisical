@@ -12,7 +12,8 @@ export enum AlertResourceType {
   SecretRotation = "secret.rotation",
   SecretSync = "secret.sync",
   HoneyToken = "secret.honey-token",
-  SecretScanning = "secret-scanning.data-source"
+  SecretScanning = "secret-scanning.data-source",
+  Gateway = "networking.gateway"
 }
 
 export enum AlertEventType {
@@ -27,7 +28,8 @@ export enum AlertEventType {
   SecretSyncFailed = "secret.sync.failed",
   HoneyTokenTriggered = "secret.honey-token.triggered",
   SecretScanningSecretsDetected = "secret-scanning.data-source.secrets-detected",
-  SecretScanningScanFailed = "secret-scanning.data-source.scan-failed"
+  SecretScanningScanFailed = "secret-scanning.data-source.scan-failed",
+  GatewayOffline = "networking.gateway.offline"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -53,7 +55,8 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   [AlertResourceType.SecretScanning]: [
     AlertEventType.SecretScanningSecretsDetected,
     AlertEventType.SecretScanningScanFailed
-  ]
+  ],
+  [AlertResourceType.Gateway]: [AlertEventType.GatewayOffline]
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -175,7 +178,8 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.SecretRotation]: "Secret Rotation",
   [AlertResourceType.SecretSync]: "Secret Sync",
   [AlertResourceType.HoneyToken]: "Honey Token",
-  [AlertResourceType.SecretScanning]: "Secret Scanning"
+  [AlertResourceType.SecretScanning]: "Secret Scanning",
+  [AlertResourceType.Gateway]: "Gateway"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -190,7 +194,8 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.SecretSyncFailed]: "Sync Failure",
   [AlertEventType.HoneyTokenTriggered]: "Honey Token Triggered",
   [AlertEventType.SecretScanningSecretsDetected]: "Secrets Detected",
-  [AlertEventType.SecretScanningScanFailed]: "Scan Failure"
+  [AlertEventType.SecretScanningScanFailed]: "Scan Failure",
+  [AlertEventType.GatewayOffline]: "Gateway Offline"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -216,7 +221,9 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
     "Notify when someone uses the honey token's decoy credentials.",
   [AlertEventType.SecretScanningSecretsDetected]:
     "Notify when a scan finds a secret for the first time, or a push brings back a resolved one.",
-  [AlertEventType.SecretScanningScanFailed]: "Notify when a scan fails after all of its retries."
+  [AlertEventType.SecretScanningScanFailed]: "Notify when a scan fails after all of its retries.",
+  [AlertEventType.GatewayOffline]:
+    "Notify when a gateway stops responding to health checks. Sends once per outage, at most once an hour."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.

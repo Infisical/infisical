@@ -36,7 +36,7 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
-  enforceImportReplication: boolean;
+  enforceOnSecretImports: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
@@ -53,7 +53,7 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
-  enforceImportReplication?: boolean;
+  enforceOnSecretImports?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
@@ -94,7 +94,7 @@ export type TSecretChangePolicyBypasser = { type: BypasserType; id: string; user
 
 export type TSecretChangePolicy = TSecretApprovalPolicies & {
   projectId: string;
-  enforceImportReplication: boolean;
+  enforceOnSecretImports: boolean;
   environments: TSecretChangePolicyEnvironment[];
   environment: TSecretChangePolicyEnvironment;
   approvers: TSecretChangePolicyApprover[];

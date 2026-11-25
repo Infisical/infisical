@@ -2,14 +2,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import {
   AlertTriangleIcon,
   EyeIcon,
   EyeOffIcon,
+  FileKeyIcon,
   FileTextIcon,
   Plus,
-  RotateCwIcon
+  RotateCwIcon,
+  TriangleAlertIcon
 } from "lucide-react";
+import { z } from "zod";
 
 import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
@@ -18,6 +23,8 @@ import {
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -26,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -33,6 +41,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CodeBlock,
   Combobox,
   DiscardChangesAlertDialog,
   DropdownMenu,
@@ -48,6 +57,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FileDropzone,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -65,6 +75,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Skeleton,
   Spinner,
   Tabs,
   TabsContent,
@@ -84,25 +95,42 @@ import {
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
-import { useDiscardChangesGuard, useToggle } from "@app/hooks";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { bytesToBase64 } from "@app/helpers/string";
+import { useDebounce, useDiscardChangesGuard, useToggle } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useLdapConnectionListGroups } from "@app/hooks/api/appConnections/ldap";
 import { isScepRaCaSigningSupported } from "@app/hooks/api/ca/capabilities";
 import { CaType } from "@app/hooks/api/ca/enums";
-import { useGetPkiApplicationEnrollment } from "@app/hooks/api/pkiApplications";
+import { enrollmentTypeToNameMap } from "@app/hooks/api/certificates/constants";
+import {
+  useGetMicrosoftAutoenrollmentServicePrincipal,
+  useGetPkiApplicationEnrollment
+} from "@app/hooks/api/pkiApplications";
 import {
   useClearPkiApplicationAcmeEnrollment,
   useClearPkiApplicationApiEnrollment,
   useClearPkiApplicationEstEnrollment,
+  useClearPkiApplicationMicrosoftAutoenrollmentEnrollment,
+  useReenrollPkiApplicationMicrosoftAutoenrollmentComputers,
   useClearPkiApplicationScepEnrollment,
   useRevealPkiApplicationAcmeEabSecret,
   useRotatePkiApplicationAcmeEabSecret,
   useSetPkiApplicationAcmeEnrollment,
   useSetPkiApplicationApiEnrollment,
   useSetPkiApplicationEstEnrollment,
+  useSetPkiApplicationMicrosoftAutoenrollmentEnrollment,
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
-import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
+import {
+  MicrosoftAutoenrollmentChannelBindingStatus,
+  ScepChallengeType,
+  TMicrosoftAutoenrollmentEnrollment,
+  TMicrosoftAutoenrollmentGroup,
+  TMicrosoftAutoenrollmentOtherProfile,
+  TPkiApplicationProfile
+} from "@app/hooks/api/pkiApplications/types";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
@@ -171,14 +199,26 @@ const CopyableField = ({
   );
 };
 
-const DisableEnrollmentButton = ({
-  method,
+const ConfirmActionButton = ({
+  label,
+  title,
+  description,
+  confirmLabel,
+  confirmVariant,
+  triggerSize,
   onConfirmed,
-  isPending
+  isPending,
+  isDisabled = false
 }: {
-  method: "API" | "EST" | "ACME" | "SCEP";
+  label: string;
+  title: string;
+  description: React.ReactNode;
+  confirmLabel: string;
+  confirmVariant: "project" | "danger";
+  triggerSize?: React.ComponentProps<typeof Button>["size"];
   onConfirmed: () => Promise<void>;
   isPending: boolean;
+  isDisabled?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -188,33 +228,26 @@ const DisableEnrollmentButton = ({
       <Button
         type="button"
         variant="outline"
+        size={triggerSize}
         onClick={() => setIsOpen(true)}
-        isDisabled={isActionPending}
+        isDisabled={isActionPending || isDisabled}
       >
-        Disable
+        {label}
       </Button>
-      <AlertDialog
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!isActionPending) setIsOpen(open);
-        }}
-      >
+      <AlertDialog open={isOpen} onOpenChange={setIsOpen} isPending={isActionPending}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
               <AlertTriangleIcon className="text-warning" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Disable {method} enrollment for this profile?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Clients using {method} against this profile via this application will stop being able
-              to request certificates. Existing certificates remain valid.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
             <Button
               type="button"
-              variant="danger"
+              variant={confirmVariant}
               isPending={isActionPending}
               isDisabled={isActionPending}
               onClick={async () => {
@@ -231,7 +264,7 @@ const DisableEnrollmentButton = ({
                 }
               }}
             >
-              Disable Enrollment
+              {confirmLabel}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -239,6 +272,28 @@ const DisableEnrollmentButton = ({
     </>
   );
 };
+
+const DisableEnrollmentButton = ({
+  method,
+  consequence,
+  onConfirmed,
+  isPending
+}: {
+  method: "API" | "EST" | "ACME" | "SCEP" | "Microsoft Autoenrollment";
+  consequence?: string;
+  onConfirmed: () => Promise<void>;
+  isPending: boolean;
+}) => (
+  <ConfirmActionButton
+    label="Disable"
+    title={`Disable ${method === "Microsoft Autoenrollment" ? method : `${method} enrollment`} for this profile?`}
+    description={`Clients using ${method} against this profile via this application will stop being able to request certificates.${consequence ? ` ${consequence}` : ""}`}
+    confirmLabel="Disable Enrollment"
+    confirmVariant="danger"
+    onConfirmed={onConfirmed}
+    isPending={isPending}
+  />
+);
 
 type ApiForm = { autoRenew: boolean; renewBeforeDays: number | null };
 
@@ -1409,20 +1464,700 @@ const ScepPanel = ({
   );
 };
 
-export type EnrollmentMethod = "api" | "est" | "acme" | "scep";
+const DEFAULT_RENEW_BEFORE_DAYS = 42;
+const MAX_RENEW_BEFORE_DAYS = 3650;
+const MAX_ALLOWED_GROUPS = 50;
+const MAX_GROUP_SEARCH_LENGTH = 64;
+const MAX_GROUP_RESULTS = 50;
+const MAX_KEYTAB_BYTES = 64 * 1024;
+const KEYTAB_FILE_NAME = "infisical.keytab";
 
-export const METHOD_LABELS: Record<EnrollmentMethod, string> = {
-  api: "API",
-  est: "EST",
-  acme: "ACME",
-  scep: "SCEP"
+const createMicrosoftAutoenrollmentFormSchema = (
+  isKeytabRequired: boolean,
+  isReuseCandidateOffered: boolean
+) =>
+  z
+    .object({
+      connectionId: z.string().nullable(),
+      allowedGroups: z.array(z.custom<TMicrosoftAutoenrollmentGroup>()),
+      renewBeforeDays: z.number().nullable(),
+      keytabFile: z.instanceof(File).nullable(),
+      reuseFrom: z.custom<TMicrosoftAutoenrollmentOtherProfile>().nullable(),
+      allowAnyChannelBinding: z.boolean()
+    })
+    .superRefine((values, ctx) => {
+      if (values.keytabFile && values.keytabFile.size === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: "The keytab file is empty."
+        });
+      }
+      if (values.keytabFile && values.keytabFile.size > MAX_KEYTAB_BYTES) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: "The keytab must be 64 KB or smaller."
+        });
+      }
+      if (isKeytabRequired && !values.keytabFile && !values.reuseFrom) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: isReuseCandidateOffered
+            ? "Upload a keytab, or select Use This Keytab."
+            : "Upload the keytab the command created."
+        });
+      }
+      if (!values.connectionId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["connectionId"],
+          message: "Select an LDAP connection."
+        });
+      }
+      if (values.allowedGroups.length > MAX_ALLOWED_GROUPS) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["allowedGroups"],
+          message: `Select at most ${MAX_ALLOWED_GROUPS} groups.`
+        });
+      }
+      if (
+        values.renewBeforeDays === null ||
+        !Number.isInteger(values.renewBeforeDays) ||
+        values.renewBeforeDays < 1 ||
+        values.renewBeforeDays > MAX_RENEW_BEFORE_DAYS
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["renewBeforeDays"],
+          message: `Must be between 1 and ${MAX_RENEW_BEFORE_DAYS}`
+        });
+      }
+    });
+
+type MicrosoftAutoenrollmentForm = z.infer<
+  ReturnType<typeof createMicrosoftAutoenrollmentFormSchema>
+>;
+
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+
+const formatRenewalPeriod = (seconds: number) => {
+  const days = Math.floor(seconds / SECONDS_PER_DAY);
+  const hours = Math.floor((seconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+  const parts = [
+    days ? `${days} ${days === 1 ? "day" : "days"}` : null,
+    hours ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : "less than an hour";
 };
+
+const MIN_WINDOWS_RENEWAL_PERIOD_SECONDS = 8 * SECONDS_PER_HOUR;
+
+const getRenewalPeriodNote = (initial: TMicrosoftAutoenrollmentEnrollment | null) => {
+  const seconds = initial?.effectiveRenewBeforeSeconds;
+  if (seconds == null || !initial) return null;
+  if (seconds <= MIN_WINDOWS_RENEWAL_PERIOD_SECONDS) {
+    return " Windows never renews certificates this short-lived, so computers request a new one instead.";
+  }
+  if (seconds === initial.renewBeforeDays * SECONDS_PER_DAY) return null;
+  return ` For this profile, Windows renews ${formatRenewalPeriod(seconds)} before expiry.`;
+};
+
+const getMicrosoftAutoenrollmentFormValues = (
+  initial: TMicrosoftAutoenrollmentEnrollment | null
+): MicrosoftAutoenrollmentForm => ({
+  connectionId: initial?.connectionId ?? null,
+  allowedGroups: initial?.allowedGroups ?? [],
+  renewBeforeDays: initial?.renewBeforeDays ?? DEFAULT_RENEW_BEFORE_DAYS,
+  keytabFile: null,
+  reuseFrom: null,
+  allowAnyChannelBinding: initial?.allowAnyChannelBinding ?? false
+});
+
+const KeytabFileRow = ({ details, action }: { details: string; action?: React.ReactNode }) => (
+  <div className="flex items-center gap-3">
+    <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-accent">
+      <FileKeyIcon />
+    </div>
+    <div className="flex min-w-0 flex-1 flex-col">
+      <span className="font-mono text-sm text-foreground">{KEYTAB_FILE_NAME}</span>
+      <span className="text-xs break-all text-accent">{details}</span>
+    </div>
+    {action}
+  </div>
+);
+
+const MicrosoftAutoenrollmentPanel = ({
+  applicationId,
+  profileId,
+  enabled,
+  initial,
+  otherProfiles,
+  onUpgradeRequired,
+  onCancelPending,
+  onDirtyChange,
+  onPendingChange
+}: {
+  applicationId: string;
+  profileId: string;
+  enabled: boolean;
+  initial: TMicrosoftAutoenrollmentEnrollment | null;
+  otherProfiles: TMicrosoftAutoenrollmentOtherProfile[];
+  onUpgradeRequired?: () => void;
+  onCancelPending: () => void;
+  onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
+  onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
+}) => {
+  const { currentProject } = useProject();
+  const setMutation = useSetPkiApplicationMicrosoftAutoenrollmentEnrollment();
+  const clearMutation = useClearPkiApplicationMicrosoftAutoenrollmentEnrollment();
+  const reenrollMutation = useReenrollPkiApplicationMicrosoftAutoenrollmentComputers();
+  const [isReplacingKeytab, setIsReplacingKeytab] = useState(false);
+  const [connectionBeforeReuse, setConnectionBeforeReuse] = useState<string | null>(null);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
+  const { data: servicePrincipal, error: servicePrincipalError } =
+    useGetMicrosoftAutoenrollmentServicePrincipal(applicationId, profileId);
+  const instanceServicePrincipalName = servicePrincipal?.servicePrincipalName.toLowerCase();
+  const savedPrincipalName = initial?.servicePrincipalName.toLowerCase();
+  const reuseCandidate = instanceServicePrincipalName
+    ? otherProfiles
+        .filter(
+          (p) =>
+            p.servicePrincipalName.split("@")[0].toLowerCase() === instanceServicePrincipalName &&
+            (!initial ||
+              p.servicePrincipalName.toLowerCase() !== initial.servicePrincipalName.toLowerCase() ||
+              p.keyVersion > initial.keyVersion)
+        )
+        .reduce<TMicrosoftAutoenrollmentOtherProfile | undefined>((best, p) => {
+          if (!best) return p;
+          const isCandidateSamePrincipal =
+            p.servicePrincipalName.toLowerCase() === savedPrincipalName;
+          const isBestSamePrincipal =
+            best.servicePrincipalName.toLowerCase() === savedPrincipalName;
+          if (isCandidateSamePrincipal !== isBestSamePrincipal) {
+            return isCandidateSamePrincipal ? p : best;
+          }
+          return p.keyVersion > best.keyVersion ? p : best;
+        }, undefined)
+    : undefined;
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    clearErrors,
+    formState: { isDirty, isSubmitting, dirtyFields }
+  } = useForm<MicrosoftAutoenrollmentForm>({
+    resolver: zodResolver(
+      createMicrosoftAutoenrollmentFormSchema(
+        !initial || isReplacingKeytab,
+        Boolean(reuseCandidate)
+      )
+    ),
+    defaultValues: getMicrosoftAutoenrollmentFormValues(initial)
+  });
+
+  const savedFormValuesKey = JSON.stringify(getMicrosoftAutoenrollmentFormValues(initial));
+  useEffect(() => {
+    reset(getMicrosoftAutoenrollmentFormValues(initial));
+    setIsReplacingKeytab(false);
+  }, [savedFormValuesKey, reset]);
+
+  const connectionId = watch("connectionId");
+  const keytabFile = watch("keytabFile");
+  const reuseFrom = watch("reuseFrom");
+  const allowAnyChannelBinding = watch("allowAnyChannelBinding");
+  const channelBindingStatus = initial?.channelBinding.status;
+  const isCloud = isInfisicalCloud();
+
+  const { data: ldapConnections, isPending: isLdapConnectionsLoading } =
+    useListAvailableAppConnections(AppConnection.LDAP, currentProject.id);
+  const connectionCreation = useConnectionCreation(AppConnection.LDAP, (connection) =>
+    setValue("connectionId", connection.id, { shouldDirty: true, shouldValidate: true })
+  );
+  const {
+    data: groupSearchResult,
+    isFetching: isGroupsFetching,
+    isError: isGroupsError,
+    error: groupsError
+  } = useLdapConnectionListGroups(
+    connectionId ?? undefined,
+    debouncedGroupSearch.trim().slice(0, MAX_GROUP_SEARCH_LENGTH) || undefined
+  );
+
+  const isPending =
+    setMutation.isPending || clearMutation.isPending || reenrollMutation.isPending || isSubmitting;
+  useEffect(() => {
+    onDirtyChange("microsoft-autoenrollment", isDirty);
+  }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange("microsoft-autoenrollment", isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange("microsoft-autoenrollment", false);
+      onPendingChange("microsoft-autoenrollment", false);
+    },
+    [onDirtyChange, onPendingChange]
+  );
+
+  const isKeytabUploadShown = !reuseFrom && (!initial || isReplacingKeytab);
+  const reuseCandidateConnectionName = ldapConnections?.find(
+    (c) => c.id === reuseCandidate?.connectionId
+  )?.name;
+
+  const onUseReuseCandidate = () => {
+    if (!reuseCandidate) return;
+    setConnectionBeforeReuse(connectionId);
+    setValue("keytabFile", null);
+    setValue("reuseFrom", reuseCandidate, { shouldDirty: true, shouldValidate: true });
+    setValue("connectionId", reuseCandidate.connectionId, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const onReplaceKeytab = () => {
+    if (reuseFrom && connectionId === reuseFrom.connectionId) {
+      setValue("connectionId", connectionBeforeReuse, { shouldDirty: true });
+    }
+    setValue("reuseFrom", null, { shouldDirty: true });
+    setIsReplacingKeytab(true);
+  };
+
+  const onKeepCurrentKeytab = () => {
+    setValue("keytabFile", null, { shouldDirty: true });
+    clearErrors("keytabFile");
+    setIsReplacingKeytab(false);
+  };
+
+  const onSave = handleSubmit(async (values) => {
+    if (setMutation.isPending || clearMutation.isPending) return;
+    if (onUpgradeRequired) {
+      onUpgradeRequired();
+      return;
+    }
+    await setMutation.mutateAsync({
+      applicationId,
+      profileId,
+      connectionId:
+        !initial || dirtyFields.connectionId ? (values.connectionId ?? undefined) : undefined,
+      allowedGroupSids:
+        !initial || dirtyFields.allowedGroups
+          ? values.allowedGroups.map((group) => group.sid)
+          : undefined,
+      renewBeforeDays:
+        !initial || dirtyFields.renewBeforeDays ? (values.renewBeforeDays ?? undefined) : undefined,
+      keytab: values.keytabFile
+        ? bytesToBase64(new Uint8Array(await values.keytabFile.arrayBuffer()))
+        : undefined,
+      reuseKeytab: values.reuseFrom ? { profileId: values.reuseFrom.profileId } : undefined,
+      allowAnyChannelBinding:
+        !initial || dirtyFields.allowAnyChannelBinding ? values.allowAnyChannelBinding : undefined
+    });
+    reset({ ...values, keytabFile: null, reuseFrom: null });
+    setIsReplacingKeytab(false);
+    createNotification({ type: "success", text: "Microsoft Autoenrollment saved" });
+  });
+
+  const onDisable = async () => {
+    await clearMutation.mutateAsync({ applicationId, profileId });
+    createNotification({ type: "success", text: "Microsoft Autoenrollment disabled" });
+  };
+
+  const ktpassServicePrincipalName = servicePrincipal?.servicePrincipalName;
+  const ktpassCommand = ktpassServicePrincipalName
+    ? `ktpass -princ ${ktpassServicePrincipalName}@<REALM> -mapuser <DOMAIN>\\<service-account> -crypto AES256-SHA1 -ptype KRB5_NT_PRINCIPAL -pass * -out ${KEYTAB_FILE_NAME}`
+    : null;
+
+  let ktpassContent: React.ReactNode = <Skeleton className="h-20 w-full" />;
+  if (ktpassCommand) {
+    ktpassContent = <CodeBlock value={ktpassCommand} />;
+  } else if (servicePrincipalError) {
+    ktpassContent = (
+      <Alert variant="danger">
+        <TriangleAlertIcon />
+        <AlertTitle>Could not build the ktpass command</AlertTitle>
+        <AlertDescription>
+          {(servicePrincipalError as AxiosError<{ message?: string }>)?.response?.data?.message ??
+            servicePrincipalError.message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const savedKeytabServicePrincipalName = initial?.servicePrincipalName.split("@")[0];
+  const isSavedKeytabForOtherHost =
+    Boolean(initial && instanceServicePrincipalName) &&
+    !isReplacingKeytab &&
+    !reuseFrom &&
+    savedKeytabServicePrincipalName?.toLowerCase() !== instanceServicePrincipalName;
+
+  let keytabRow: React.ReactNode = null;
+  if (reuseFrom) {
+    keytabRow = (
+      <KeytabFileRow
+        details={`${reuseFrom.servicePrincipalName} · key version ${reuseFrom.keyVersion} · same as ${reuseFrom.profileName}`}
+      />
+    );
+  } else if (initial && !isReplacingKeytab) {
+    keytabRow = (
+      <KeytabFileRow
+        details={`${initial.servicePrincipalName} · key version ${initial.keyVersion}`}
+      />
+    );
+  }
+
+  let keytabActions: React.ReactNode;
+  if (keytabRow) {
+    keytabActions = (
+      <Button variant="outline" size="xs" onClick={onReplaceKeytab}>
+        Replace
+      </Button>
+    );
+  } else if (initial && isReplacingKeytab) {
+    keytabActions = (
+      <Button variant="outline" size="xs" onClick={onKeepCurrentKeytab}>
+        Keep Current Keytab
+      </Button>
+    );
+  }
+
+  return (
+    <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
+      <fieldset
+        disabled={isPending}
+        className="min-h-0 thin-scrollbar min-w-0 flex-1 space-y-5 overflow-y-auto p-4"
+      >
+        {enabled && initial ? (
+          <SectionCard title="Endpoint">
+            <CopyableField
+              label="Enrollment policy URL"
+              value={initial.policyUrl}
+              helper="Add it in Group Policy under Certificate Enrollment Policy, with Windows integrated authentication."
+            />
+            <CopyableField label="Policy ID" value={initial.policyId} />
+          </SectionCard>
+        ) : null}
+        {isKeytabUploadShown && !keytabFile && reuseCandidate ? (
+          <SectionCard title={`Reuse ${reuseCandidate.profileName}'s Keytab?`}>
+            <KeytabFileRow
+              details={[
+                reuseCandidate.servicePrincipalName,
+                `key version ${reuseCandidate.keyVersion}`,
+                reuseCandidateConnectionName ? `LDAP ${reuseCandidateConnectionName}` : null
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              action={
+                <Button variant="outline" onClick={onUseReuseCandidate}>
+                  Use This Keytab
+                </Button>
+              }
+            />
+          </SectionCard>
+        ) : null}
+        <SectionCard title="Kerberos Keytab" actions={keytabActions}>
+          {keytabRow}
+          {isSavedKeytabForOtherHost ? (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Keytab is for another host name</AlertTitle>
+              <AlertDescription>
+                <p>
+                  Computers ask for{" "}
+                  <span className="font-mono">{servicePrincipal?.servicePrincipalName}</span>.
+                  Replace the keytab with one for that name.
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {isKeytabUploadShown ? (
+            <>
+              <p className="text-sm text-accent">
+                On a domain controller, turn on AES for the service account first. Without it,
+                tickets can be encrypted with RC4, which the keytab can&apos;t read.
+              </p>
+              <CodeBlock value="Set-ADUser <service-account> -KerberosEncryptionType AES128,AES256" />
+              <p className="text-sm text-accent">
+                Then run this with your realm and service account, and upload the file it creates.
+              </p>
+              {ktpassContent}
+              <p className="text-xs text-warning">
+                Running <span className="font-mono">ktpass</span> again for an account breaks the
+                keytabs made earlier for it. Upload the new keytab to every profile that uses one.
+              </p>
+              <Controller
+                control={control}
+                name="keytabFile"
+                render={({ field, fieldState: { error } }) => (
+                  <Field ref={field.ref} tabIndex={-1} className="scroll-mb-20 outline-none">
+                    <FileDropzone
+                      accept=".keytab"
+                      title="Upload keytab"
+                      description="The .keytab file the command created"
+                      files={field.value ? [field.value] : undefined}
+                      onFilesSelect={(files) => {
+                        if (files[0]) field.onChange(files[0]);
+                      }}
+                      onFileRemove={() => field.onChange(null)}
+                      isDisabled={isPending}
+                    />
+                    {error ? <FieldError>{error.message}</FieldError> : null}
+                  </Field>
+                )}
+              />
+            </>
+          ) : null}
+        </SectionCard>
+        <SectionCard title="Active Directory">
+          <Controller
+            control={control}
+            name="connectionId"
+            render={({ field: { value, onChange, onBlur, name, ref }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="microsoft-autoenrollment-connection">
+                  LDAP connection
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    ref={ref}
+                    id="microsoft-autoenrollment-connection"
+                    name={name}
+                    onBlur={onBlur}
+                    isDisabled={isPending}
+                    value={ldapConnections?.find((c) => c.id === value) ?? null}
+                    isError={Boolean(error)}
+                    isLoading={isLdapConnectionsLoading}
+                    onValueChange={(newValue) => onChange(newValue?.id ?? null)}
+                    options={ldapConnections ?? []}
+                    placeholder="Select an LDAP connection"
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                    creation={connectionCreation}
+                  />
+                </FieldContent>
+                <FieldDescription>
+                  Needs an LDAP connection that uses the Active Directory provider. Looks up each
+                  computer&apos;s DNS name in the domain.
+                </FieldDescription>
+                {error ? <FieldError>{error.message}</FieldError> : null}
+              </Field>
+            )}
+          />
+        </SectionCard>
+        <SectionCard title="Allowed Computers">
+          <Controller
+            control={control}
+            name="allowedGroups"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="microsoft-autoenrollment-groups">
+                  AD groups (optional)
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    id="microsoft-autoenrollment-groups"
+                    multiple
+                    isDisabled={isPending}
+                    options={groupSearchResult?.groups ?? []}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    getOptionValue={(option) => option.sid}
+                    getOptionLabel={(option) => option.name}
+                    renderOption={(option) => (
+                      <div className="flex min-w-0 items-center justify-between gap-4">
+                        <span className="truncate">{option.name}</span>
+                        <span className="shrink-0 font-mono text-xs text-muted">{option.sid}</span>
+                      </div>
+                    )}
+                    onSearchChange={setGroupSearch}
+                    isLoading={isGroupsFetching}
+                    isError={Boolean(error)}
+                    placeholder="Search groups by name"
+                    listFooter={
+                      groupSearchResult?.isTruncated
+                        ? `Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`
+                        : undefined
+                    }
+                    emptyMessage={(() => {
+                      if (!connectionId) return "Select an LDAP connection first.";
+                      if (isGroupsError) {
+                        return (
+                          (groupsError as AxiosError<{ message?: string }>)?.response?.data
+                            ?.message ?? "Could not search Active Directory."
+                        );
+                      }
+                      return "No groups match the search.";
+                    })()}
+                  />
+                </FieldContent>
+                <FieldDescription>
+                  Only computers in one of these groups can enroll. Leave empty to allow every
+                  computer in the domain.
+                </FieldDescription>
+                {error ? <FieldError>{error.message}</FieldError> : null}
+              </Field>
+            )}
+          />
+        </SectionCard>
+        <SectionCard title="TLS Channel Binding">
+          <p className="text-sm text-accent">
+            Windows ties each sign-in to the HTTPS certificate the computer sees. Sign-ins tied to a
+            different certificate are refused, so a sign-in captured by another site can&apos;t be
+            used to get certificates here.
+          </p>
+          {!allowAnyChannelBinding &&
+          channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable ? (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Channel bindings can&apos;t be checked</AlertTitle>
+              <AlertDescription>
+                <p>
+                  {isCloud
+                    ? "Infisical can't check TLS channel bindings right now, so requests are refused. Contact Infisical support."
+                    : `${initial?.channelBinding.reason} Requests are refused. If this can't be fixed, turn on Skip the channel binding check below.`}
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <Controller
+            control={control}
+            name="allowAnyChannelBinding"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="microsoft-autoenrollment-allow-any-channel-binding">
+                    Skip the channel binding check
+                  </Label>
+                  <FieldDescription>
+                    {isCloud
+                      ? "Turn on only if computers reach Infisical through a proxy that inspects HTTPS."
+                      : "Turn on only if computers reach Infisical through a proxy that inspects HTTPS, or this instance can't check bindings."}{" "}
+                    While it&apos;s on, a site that gets a computer to sign in to it can request
+                    certificates as that computer.
+                  </FieldDescription>
+                  {!isCloud &&
+                  !allowAnyChannelBinding &&
+                  channelBindingStatus ===
+                    MicrosoftAutoenrollmentChannelBindingStatus.NotChecked ? (
+                    <FieldDescription>{initial?.channelBinding.reason}</FieldDescription>
+                  ) : null}
+                </FieldContent>
+                <Toggle
+                  variant="project"
+                  id="microsoft-autoenrollment-allow-any-channel-binding"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </Field>
+            )}
+          />
+        </SectionCard>
+        <SectionCard title="Renewal">
+          <Controller
+            control={control}
+            name="renewBeforeDays"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="microsoft-autoenrollment-renew-before-days">
+                  Renew before (days)
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="microsoft-autoenrollment-renew-before-days"
+                    ref={field.ref}
+                    name={field.name}
+                    onBlur={field.onBlur}
+                    type="number"
+                    inputMode="numeric"
+                    value={field.value ?? ""}
+                    onChange={handleOptionalIntChange(field.onChange)}
+                    isError={Boolean(error)}
+                    className="scroll-mb-20"
+                  />
+                </FieldContent>
+                {error ? <FieldError>{error.message}</FieldError> : null}
+                <FieldDescription>
+                  Days before expiry that Windows renews the certificate.
+                  {getRenewalPeriodNote(initial)}
+                </FieldDescription>
+              </Field>
+            )}
+          />
+          {enabled && (
+            <Field>
+              <FieldLabel>Re-enroll computers</FieldLabel>
+              <FieldDescription>
+                {isDirty
+                  ? "Save or discard your changes before re-enrolling computers."
+                  : "Makes every computer that can still enroll request a new certificate the next time it fetches the enrollment policy."}
+              </FieldDescription>
+              <div>
+                <ConfirmActionButton
+                  label="Re-enroll All Computers"
+                  title={`Re-enroll All Computers for ${initial?.templateName ?? ""}?`}
+                  description="Every computer that holds a certificate from this profile and can still enroll requests a new one the next time it fetches the enrollment policy, which can take up to 8 hours. If an approval policy covers the profile, each request waits for approval."
+                  confirmLabel="Re-enroll"
+                  confirmVariant="project"
+                  triggerSize="sm"
+                  isPending={isPending}
+                  isDisabled={isDirty}
+                  onConfirmed={async () => {
+                    if (onUpgradeRequired) {
+                      onUpgradeRequired();
+                      return;
+                    }
+                    await reenrollMutation.mutateAsync({ applicationId, profileId });
+                    createNotification({
+                      type: "success",
+                      text: "Computers will request new certificates the next time they fetch the enrollment policy, within 8 hours."
+                    });
+                  }}
+                />
+              </div>
+            </Field>
+          )}
+        </SectionCard>
+      </fieldset>
+      <SheetFooter className="justify-end border-t">
+        {enabled && (
+          <DisableEnrollmentButton
+            method="Microsoft Autoenrollment"
+            consequence="Computers keep asking this profile for certificates until you remove its enrollment policy URL from Group Policy, and approved requests that computers haven't picked up yet can no longer be collected."
+            onConfirmed={onDisable}
+            isPending={isPending}
+          />
+        )}
+        <Button type="button" variant="ghost" onClick={onCancelPending} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={setMutation.isPending || isSubmitting}
+          isDisabled={isPending}
+        >
+          {enabled ? "Save" : "Enable"}
+        </Button>
+      </SheetFooter>
+    </form>
+  );
+};
+
+export type EnrollmentMethod = "api" | "est" | "acme" | "scep" | "microsoft-autoenrollment";
 
 const METHOD_DOCS: Record<EnrollmentMethod, string> = {
   api: PkiDocsUrls.applications.enrollment.api,
   est: PkiDocsUrls.applications.enrollment.est,
   acme: PkiDocsUrls.applications.enrollment.acme,
-  scep: PkiDocsUrls.applications.enrollment.scep
+  scep: PkiDocsUrls.applications.enrollment.scep,
+  "microsoft-autoenrollment": PkiDocsUrls.applications.enrollment.microsoftAutoenrollment
 };
 
 const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
@@ -1433,7 +2168,7 @@ const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
       rel="noopener noreferrer"
       className="underline hover:text-foreground"
     >
-      {METHOD_LABELS[method]}
+      {enrollmentTypeToNameMap[method]}
     </a>
   );
 
@@ -1450,6 +2185,8 @@ const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
           Provision device certificates through MDM platforms like Jamf or Intune using {docLink}.
         </>
       );
+    case "microsoft-autoenrollment":
+      return <>Enroll domain-joined Windows computers through Group Policy with {docLink}.</>;
     default:
       return null;
   }
@@ -1470,6 +2207,7 @@ export const ConfigureEnrollmentModal = ({
   if (data?.estConfigured) configuredMethods.push("est");
   if (data?.acmeConfigured) configuredMethods.push("acme");
   if (data?.scepConfigured) configuredMethods.push("scep");
+  if (data?.microsoftAutoenrollmentConfigured) configuredMethods.push("microsoft-autoenrollment");
 
   const [pendingMethods, setPendingMethods] = useState<EnrollmentMethod[]>([]);
   const [activeTab, setActiveTab] = useState<EnrollmentMethod | "">("");
@@ -1483,7 +2221,7 @@ export const ConfigureEnrollmentModal = ({
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
-  const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
+  const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep", "microsoft-autoenrollment"];
   const visibleMethods = ALL_ORDER.filter(
     (m) => configuredMethods.includes(m) || pendingMethods.includes(m)
   );
@@ -1493,7 +2231,8 @@ export const ConfigureEnrollmentModal = ({
   // API and ACME are available on every plan.
   const lockedMethods: Partial<Record<EnrollmentMethod, boolean>> = {
     est: !subscription.pkiEst,
-    scep: !subscription.pkiScep
+    scep: !subscription.pkiScep,
+    "microsoft-autoenrollment": !subscription.pkiMicrosoftAutoenrollment
   };
 
   useEffect(() => {
@@ -1526,6 +2265,12 @@ export const ConfigureEnrollmentModal = ({
     setActiveTab(method);
   };
 
+  const openEnrollmentUpgradeGate = (method: EnrollmentMethod) =>
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
+
   const handleAddMethod = (method: EnrollmentMethod) => {
     if (isPending) return;
     if (!lockedMethods[method]) {
@@ -1533,10 +2278,7 @@ export const ConfigureEnrollmentModal = ({
       return;
     }
 
-    openUpgradeGate({
-      intent: CertificateEnrollmentUpgradeIntent,
-      paywallKey: `cert-manager.application-enrollment.${method}`
-    });
+    openEnrollmentUpgradeGate(method);
   };
 
   const handleDirtyChange = useCallback(
@@ -1624,7 +2366,7 @@ export const ConfigureEnrollmentModal = ({
                   <TabsList variant="project" className="border-b-0">
                     {visibleMethods.map((m) => (
                       <TabsTrigger key={m} value={m} disabled={isPending}>
-                        {METHOD_LABELS[m]}
+                        {enrollmentTypeToNameMap[m]}
                         {isUnsaved(m) && (
                           <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
@@ -1646,15 +2388,21 @@ export const ConfigureEnrollmentModal = ({
                   <DropdownMenuContent align="end">
                     {addableMethods.map((m) => {
                       const isLocked = lockedMethods[m] ?? false;
-                      return (
+                      const unsupportedReason =
+                        m === "microsoft-autoenrollment"
+                          ? (data?.microsoftAutoenrollmentUnsupportedReason ?? null)
+                          : null;
+                      const isUnsupported = Boolean(unsupportedReason);
+                      const item = (
                         <DropdownMenuItem
                           key={m}
                           onClick={() => handleAddMethod(m)}
-                          isDisabled={isPending}
+                          isDisabled={isPending || isUnsupported}
+                          isDisabledFocusable={isUnsupported}
                         >
                           <div className="flex flex-col">
                             <span className="flex items-center gap-2 font-medium">
-                              {METHOD_LABELS[m]}
+                              {enrollmentTypeToNameMap[m]}
                               {isLocked && <Badge variant="info">Enterprise</Badge>}
                             </span>
                             <span className="text-xs text-accent">
@@ -1662,6 +2410,15 @@ export const ConfigureEnrollmentModal = ({
                             </span>
                           </div>
                         </DropdownMenuItem>
+                      );
+                      if (!isUnsupported) return item;
+                      return (
+                        <Tooltip key={m}>
+                          <TooltipTrigger asChild>{item}</TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs">
+                            {unsupportedReason}
+                          </TooltipContent>
+                        </Tooltip>
                       );
                     })}
                   </DropdownMenuContent>
@@ -1764,6 +2521,33 @@ export const ConfigureEnrollmentModal = ({
                     />
                   </TabsContent>
                 ) : null}
+                {visibleMethods.includes("microsoft-autoenrollment") ? (
+                  <TabsContent
+                    value="microsoft-autoenrollment"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    forceMount
+                  >
+                    <MicrosoftAutoenrollmentPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.microsoftAutoenrollmentConfigured)}
+                      initial={data?.microsoftAutoenrollment ?? null}
+                      otherProfiles={data?.microsoftAutoenrollmentOtherProfiles ?? []}
+                      onUpgradeRequired={
+                        lockedMethods["microsoft-autoenrollment"]
+                          ? () => openEnrollmentUpgradeGate("microsoft-autoenrollment")
+                          : undefined
+                      }
+                      onCancelPending={
+                        data?.microsoftAutoenrollmentConfigured
+                          ? handleDismiss
+                          : () => handleCancelPending("microsoft-autoenrollment")
+                      }
+                      onDirtyChange={handleDirtyChange}
+                      onPendingChange={handlePendingChange}
+                    />
+                  </TabsContent>
+                ) : null}
               </>
             )}
           </Tabs>
@@ -1782,7 +2566,7 @@ export const ConfigureEnrollmentModal = ({
           title="Discard Enrollment Changes?"
           description={
             discardMethod.current
-              ? `Unsaved ${METHOD_LABELS[discardMethod.current]} enrollment settings will be lost.`
+              ? `Unsaved ${enrollmentTypeToNameMap[discardMethod.current]} enrollment settings will be lost.`
               : "All unsaved enrollment settings and newly added methods will be lost."
           }
         />

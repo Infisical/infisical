@@ -126,12 +126,12 @@ import { InlineServicesList, SessionSkillsList } from "./components/SessionAcces
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
-import { SessionLabel } from "./components/SessionLabel";
 import {
   SESSION_METADATA_MAX_KEYS,
   sessionMetadataRowsSchema
 } from "./components/sessionMetadataSchema";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
+import { TruncatedText } from "./components/TruncatedText";
 
 const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Active,
@@ -573,7 +573,7 @@ export const AgentVaultSessionsPage = () => {
                     >
                       <TableCell>
                         {session.label ? (
-                          <SessionLabel label={session.label} className="max-w-60" />
+                          <TruncatedText text={session.label} className="max-w-60" />
                         ) : (
                           <span className="text-muted">—</span>
                         )}

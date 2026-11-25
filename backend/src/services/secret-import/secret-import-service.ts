@@ -241,7 +241,7 @@ export const secretImportServiceFactory = ({
         environment,
         path.posix.join("/", folder.path)
       );
-      if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
+      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
@@ -388,7 +388,7 @@ export const secretImportServiceFactory = ({
         environment,
         path.posix.join("/", folder.path)
       );
-      if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
+      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
     // check if user has permission to import from target path when source is changing
