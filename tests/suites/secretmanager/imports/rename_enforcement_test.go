@@ -2,6 +2,7 @@ package imports_test
 
 import (
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -214,6 +215,71 @@ func TestImportReplicationEnforcement_FolderRename(t *testing.T) {
 		require.Equal(t, "/gov", res.JSON200.Folder.Path)
 	})
 
+	t.Run("should never let a direct import created during the rename end up in a folder that requires approval", func(t *testing.T) {
+		t.Parallel()
+
+		tn := h.NewTenant(t)
+		for range raceAttempts {
+			// Setup
+			proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+			identity := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+			secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+			legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
+			createBypassPolicy(t, proj, "prod", "/gov", true)
+
+			// Action
+			renamed, imported := raceRename(t, identity, proj, legacyID, func() (int, error) {
+				body := api.CreateSecretImportJSONRequestBody{ProjectId: proj.ID, Environment: "prod", Path: new("/legacy")}
+				body.Import.Environment = stagingApp.Env
+				body.Import.Path = stagingApp.Path
+				res, err := identity.API.CreateSecretImportWithResponse(t.Context(), body)
+				if err != nil {
+					return 0, err
+				}
+				return res.StatusCode(), nil
+			})
+
+			// Assert
+			require.Falsef(t, renamed == http.StatusOK && imported == http.StatusOK,
+				"both the rename and the import succeeded, leaving a direct import in /gov")
+		}
+	})
+
+	t.Run("should never let an import repointed to this project during the rename end up in a folder that requires approval", func(t *testing.T) {
+		t.Parallel()
+
+		tn := h.NewTenant(t)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		for range raceAttempts {
+			// Setup
+			source := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+			proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+			identity := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+			secretmanager.GrantFolder(t, source, proj, secretmanager.Location{Env: "dev", Path: "/"})
+			secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+			legacyID := secretmanager.CreateFolder(t, proj, "prod", "/legacy")
+			crossImport := secretmanager.CreateImport(t, proj, "prod", secretmanager.Location{Env: "dev", Path: "/"},
+				secretmanager.FromProject(source), secretmanager.IntoPath("/legacy"))
+			createBypassPolicy(t, proj, "prod", "/gov", true)
+
+			// Action
+			renamed, repointed := raceRename(t, identity, proj, legacyID, func() (int, error) {
+				body := api.UpdateSecretImportJSONRequestBody{ProjectId: proj.ID, Environment: "prod", Path: new("/legacy")}
+				body.Import.Environment = &stagingApp.Env
+				body.Import.Path = &stagingApp.Path
+				res, err := identity.API.UpdateSecretImportWithResponse(t.Context(), crossImport, body)
+				if err != nil {
+					return 0, err
+				}
+				return res.StatusCode(), nil
+			})
+
+			// Assert
+			require.Falsef(t, renamed == http.StatusOK && repointed == http.StatusOK,
+				"both the rename and the repoint succeeded, leaving a direct import in /gov")
+		}
+	})
+
 	t.Run("should keep refusing a user the policy applies to with the existing protected path error", func(t *testing.T) {
 		t.Parallel()
 
@@ -254,6 +320,39 @@ func createBypassPolicy(t *testing.T, proj *fixture.Project, env, secretPath str
 	})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+}
+
+// raceAttempts is how many times each race runs. one run cannot force the interleaving, but the property checked has
+// to hold on every run, so a regression fails most of them.
+const raceAttempts = 5
+
+// raceRename renames the folder to /gov while other runs, starting both together, and returns both status codes. the
+// racing calls report errors instead of failing the test, since require cannot stop a test from another goroutine.
+func raceRename(t *testing.T, actor *harness.Principal, proj *fixture.Project, folderID string, other func() (int, error)) (int, int) {
+	t.Helper()
+	var renamed, otherStatus int
+	var renameErr, otherErr error
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		<-start
+		res, err := actor.API.UpdateSecretFolderWithResponse(t.Context(), folderID, api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "prod", Path: new("/"), Name: "gov",
+		})
+		renameErr = err
+		if err == nil {
+			renamed = res.StatusCode()
+		}
+	})
+	wg.Go(func() {
+		<-start
+		otherStatus, otherErr = other()
+	})
+	close(start)
+	wg.Wait()
+	require.NoError(t, renameErr)
+	require.NoError(t, otherErr)
+	return renamed, otherStatus
 }
 
 func renameFolder(t *testing.T, actor *harness.Principal, proj *fixture.Project, env, parentPath, folderID, name string) *api.UpdateSecretFolderResponse {
