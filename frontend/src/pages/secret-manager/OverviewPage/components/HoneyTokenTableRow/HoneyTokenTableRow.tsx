@@ -8,7 +8,8 @@ import {
   EllipsisIcon,
   HexagonIcon,
   InfoIcon,
-  ListIcon
+  ListIcon,
+  TrashIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -67,6 +68,7 @@ type Props = {
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
+  onDelete: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
   isExpanded: boolean;
   onExpandedChange: (isExpanded: boolean) => void;
@@ -79,6 +81,7 @@ export const HoneyTokenTableRow = ({
   getHoneyTokenByName,
   onEdit,
   onRevoke,
+  onDelete,
   onViewDetails,
   isExpanded,
   onExpandedChange
@@ -105,6 +108,10 @@ export const HoneyTokenTableRow = ({
 
   const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
+    const permissionSubject = subject(ProjectPermissionSub.HoneyTokens, {
+      environment: honeyToken.environment.slug,
+      secretPath: honeyToken.folder.path
+    });
 
     return (
       <div
@@ -127,43 +134,22 @@ export const HoneyTokenTableRow = ({
           </TooltipTrigger>
           <TooltipContent>View details</TooltipContent>
         </Tooltip>
-        {isRevoked ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="ghost"
-                size="xs"
-                className={twMerge(
-                  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-                  "cursor-not-allowed opacity-50 hover:bg-transparent"
-                )}
-                aria-label={`More actions unavailable for ${honeyToken.name}`}
-                aria-disabled
-              >
-                <EllipsisIcon />
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>Revoked honey tokens cannot be edited.</TooltipContent>
-          </Tooltip>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                variant="ghost"
-                size="xs"
-                className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                aria-label={`More actions for ${honeyToken.name}`}
-              >
-                <EllipsisIcon />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+              aria-label={`More actions for ${honeyToken.name}`}
+            >
+              <EllipsisIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!isRevoked && (
               <ProjectPermissionCan
                 I={ProjectPermissionHoneyTokenActions.Edit}
-                a={subject(ProjectPermissionSub.HoneyTokens, {
-                  environment: honeyToken.environment.slug,
-                  secretPath: honeyToken.folder.path
-                })}
+                a={permissionSubject}
               >
                 {(isAllowed) => (
                   <DropdownMenuItem isDisabled={!isAllowed} onSelect={() => onEdit(honeyToken)}>
@@ -172,14 +158,22 @@ export const HoneyTokenTableRow = ({
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionHoneyTokenActions.Revoke}
-                a={subject(ProjectPermissionSub.HoneyTokens, {
-                  environment: honeyToken.environment.slug,
-                  secretPath: honeyToken.folder.path
-                })}
-              >
-                {(isAllowed) => (
+            )}
+            <ProjectPermissionCan
+              I={ProjectPermissionHoneyTokenActions.Revoke}
+              a={permissionSubject}
+            >
+              {(isAllowed) =>
+                isRevoked ? (
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!isAllowed}
+                    onSelect={() => onDelete(honeyToken)}
+                  >
+                    <TrashIcon />
+                    Delete
+                  </DropdownMenuItem>
+                ) : (
                   <DropdownMenuItem
                     variant="danger"
                     isDisabled={!isAllowed}
@@ -188,11 +182,11 @@ export const HoneyTokenTableRow = ({
                     <BanIcon />
                     Revoke
                   </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                )
+              }
+            </ProjectPermissionCan>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };

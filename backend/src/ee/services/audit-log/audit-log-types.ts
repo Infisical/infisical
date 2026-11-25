@@ -1050,6 +1050,7 @@ export enum EventType {
   CREATE_HONEY_TOKEN = "create-honey-token",
   UPDATE_HONEY_TOKEN = "update-honey-token",
   REVOKE_HONEY_TOKEN = "revoke-honey-token",
+  DELETE_HONEY_TOKEN = "delete-honey-token",
   TRIGGER_HONEY_TOKEN = "trigger-honey-token",
 
   // Project Grants
@@ -8884,6 +8885,17 @@ interface RevokeHoneyTokenEvent {
   };
 }
 
+interface DeleteHoneyTokenEvent {
+  type: EventType.DELETE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 interface TriggerHoneyTokenEvent {
   type: EventType.TRIGGER_HONEY_TOKEN;
   metadata: {
@@ -9741,6 +9753,7 @@ export type Event =
   | CreateHoneyTokenEvent
   | UpdateHoneyTokenEvent
   | RevokeHoneyTokenEvent
+  | DeleteHoneyTokenEvent
   | TriggerHoneyTokenEvent
   | CreateGroupEvent
   | UpdateGroupEvent

@@ -44,6 +44,7 @@ import { twMerge } from "tailwind-merge";
 
 import {
   CreateHoneyTokenModal,
+  DeleteHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
@@ -1630,6 +1631,7 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "editHoneyToken",
     "revokeHoneyToken",
+    "deleteHoneyToken",
     "createEnvironment",
     "createSharedSecret"
   ] as const);
@@ -4996,6 +4998,9 @@ const OverviewPageContent = () => {
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
                             }
+                            onDelete={(honeyToken) =>
+                              handlePopUpOpen("deleteHoneyToken", honeyToken)
+                            }
                             onViewDetails={(honeyToken) =>
                               setDetailsDrawerHoneyTokenId(honeyToken.id)
                             }
@@ -5451,6 +5456,11 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
+      />
+      <DeleteHoneyTokenModal
+        isOpen={popUp.deleteHoneyToken.isOpen}
+        honeyToken={popUp.deleteHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteHoneyToken", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet
