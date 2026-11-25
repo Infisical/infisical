@@ -17,7 +17,7 @@ const PlanKeys = {
 const PlanKeyTtls = {
   planInSeconds: 1800,
   // The background refresh starts this long before the plan expires, jittered so orgs don't refresh together.
-  refreshAheadInSeconds: 300,
+  refreshAheadInSeconds: 600,
   // Covers Stripe reconciling a billing change.
   passThroughInSeconds: 180,
   // Hosted checkout only applies once the customer finishes it, which can take minutes.

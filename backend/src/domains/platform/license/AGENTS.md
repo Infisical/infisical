@@ -36,7 +36,7 @@ Rules:
   `UsageQueues`): old pods share them during a rolling deploy. The cached plan's `refreshAt` is a top-level field
   beside the features, not a wrapper, so old pods still read it as a plan.
 - **`getPlan` is the only plan read; it serves the cached plan while it refreshes it.** The plan key lives 30
-  minutes; past the `refreshAt` stored in it (about 5 minutes before expiry, jittered) `getPlan` still returns it
+  minutes; past the `refreshAt` stored in it (about 10 minutes before expiry, jittered) `getPlan` still returns it
   and refreshes it in the background
   (`revalidateInBackground`, one caller per root org under the revalidate lock). A failed refresh leaves the
   cached plan in place until it expires. `invalidatePlan` and a

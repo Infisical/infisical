@@ -125,7 +125,7 @@ describe("LicenseService.getPlan", () => {
     const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
     licenseServer.failNextFetches = 1;
-    now += 27 * 60 * 1000;
+    now += 22 * 60 * 1000;
 
     // Action
     await licenseService.getPlan(ROOT.id);
@@ -174,7 +174,7 @@ describe("LicenseService.getPlan", () => {
     const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
-    now += 27 * 60 * 1000;
+    now += 22 * 60 * 1000;
 
     // Action
     const served = await licenseService.getPlan(ROOT.id);
@@ -194,7 +194,7 @@ describe("LicenseService.getPlan", () => {
     let now = 1_000_000;
     const { licenseService, licenseServer } = await buildLicense({ now: () => now });
     await licenseService.getPlan(ROOT.id);
-    now += 23 * 60 * 1000;
+    now += 18 * 60 * 1000;
 
     // Action
     await licenseService.getPlan(ROOT.id);

@@ -36,11 +36,11 @@ describe("PlanCache read and write", () => {
     await cache.write(ROOT_ID, plan);
 
     // Action
-    clock.now += 23 * 60_000;
+    clock.now += 18 * 60_000;
     const fresh = await cache.read(ROOT_ID);
     clock.now += 4 * 60_000;
     const stale = await cache.read(ROOT_ID);
-    clock.now += 4 * 60_000;
+    clock.now += 9 * 60_000;
     const expired = await cache.read(ROOT_ID);
 
     // Assert
