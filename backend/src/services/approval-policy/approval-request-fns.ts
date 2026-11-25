@@ -4,6 +4,7 @@ import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
 
 import {
   ApprovalPolicyType,
@@ -273,10 +274,11 @@ export const getApprovalRequestSubjectMetadata = (
   }
 
   if (isCertificateActionPolicyType(request.type)) {
-    const { certificateId, commonName, profileName } = requestData as
-      | TCertRevocationRequestData
-      | TCertDeletionRequestData;
-    return { certificateId, commonName, profileName };
+    const actionData = requestData as TCertRevocationRequestData | TCertDeletionRequestData;
+    const { certificateId, commonName, profileName } = actionData;
+    // A certificate with only SANs has an empty common name, so the event also carries a name that falls back to the
+    // friendly name and then the serial.
+    return { certificateId, certificateName: getCertificateDisplayName(actionData), commonName, profileName };
   }
 
   if (request.type === ApprovalPolicyType.CertCodeSigning) {

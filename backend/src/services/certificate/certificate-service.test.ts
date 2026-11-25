@@ -1792,6 +1792,7 @@ describe("certificate revocation behind an approval policy", () => {
               requesterEmail: "requester@example.com",
               reason: "The request's approvers can no longer approve it, so a new revocation request replaced it.",
               certificateId: "cert-1",
+              certificateName: applicationCertificate.commonName,
               commonName: applicationCertificate.commonName,
               profileName: "web-servers"
             }

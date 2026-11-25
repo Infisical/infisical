@@ -101,9 +101,38 @@ describe("getApprovalRequestSubjectMetadata", () => {
         }
       });
 
-      expect(metadata).toEqual({ certificateId: "cert-1", commonName: "web.example.com", profileName: "web-servers" });
+      expect(metadata).toEqual({
+        certificateId: "cert-1",
+        certificateName: "web.example.com",
+        commonName: "web.example.com",
+        profileName: "web-servers"
+      });
     }
   );
+
+  test.each([
+    ["its friendly name", { friendlyName: "payments api" }, "payments api"],
+    ["its serial number when it has no friendly name", {}, "4f1a9c2be07d"]
+  ])("names a deletion request's certificate with only SANs by %s", (_label, extra, certificateName) => {
+    const metadata = getApprovalRequestSubjectMetadata({
+      type: ApprovalPolicyType.CertDeletion,
+      requestData: {
+        version: 1,
+        requestData: {
+          certificateId: "cert-1",
+          serialNumber: "4f1a9c2be07d",
+          commonName: "",
+          altNames: "api.example.com",
+          profileId: "profile-1",
+          profileName: "web-servers",
+          applicationId: "app-1",
+          ...extra
+        }
+      }
+    });
+
+    expect(metadata).toMatchObject({ certificateName, commonName: "" });
+  });
 });
 
 describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
