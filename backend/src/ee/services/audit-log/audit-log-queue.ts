@@ -43,13 +43,13 @@ export const auditLogQueueServiceFactory = ({
       return null;
     }
 
-    const project =
-      !data.orgId && projectId
-        ? await requestMemoize(requestMemoKeys.auditLogProjectConfig(projectId), () =>
-            auditConfigSource.findProjectConfig(projectId)
-          )
-        : null;
-    if (!data.orgId && projectId && !project) {
+    // Loaded whenever there is a project, orgId or not: its retention and name belong on the log.
+    const project = projectId
+      ? await requestMemoize(requestMemoKeys.auditLogProjectConfig(projectId), () =>
+          auditConfigSource.findProjectConfig(projectId)
+        )
+      : null;
+    if (projectId && !project) {
       logger.error(
         `audit-log-queue: Skipping entry, project was deleted [projectId=${projectId}] [event=${data.event?.type}]`
       );
@@ -70,7 +70,7 @@ export const auditLogQueueServiceFactory = ({
 
     return {
       orgId,
-      ...(projectId ? { project: { id: projectId, name: project?.name } } : {}),
+      ...(projectId && project ? { project: { id: projectId, name: project.name } } : {}),
       policy: {
         retentionDays: orgConfig.retentionDays,
         projectRetentionDays: project?.retentionDays,
