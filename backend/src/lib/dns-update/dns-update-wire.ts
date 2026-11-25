@@ -219,7 +219,8 @@ export const readDnsName = (buf: Buffer, start: number): { name: string; next: n
       ensureAvailable(buf, offset, 2);
       if (next === -1) next = offset + 2;
       hops += 1;
-      if (hops > MAX_NAME_POINTER_HOPS) throw new DnsWireError("DNS message has a name with too many compression pointers");
+      if (hops > MAX_NAME_POINTER_HOPS)
+        throw new DnsWireError("DNS message has a name with too many compression pointers");
       // eslint-disable-next-line no-bitwise
       const target = buf.readUInt16BE(offset) & 0x3fff;
       if (target >= offset) throw new DnsWireError("DNS message has a name pointer that does not point backwards");

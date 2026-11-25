@@ -44,11 +44,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 vi.mock("@app/services/app-connection/rfc2136", () => ({
   getRfc2136ErrorMessage: (error: Error) => error.message,
-  executeWithRfc2136Client: (
-    _connection: unknown,
-    _deps: unknown,
-    operation: (client: unknown) => Promise<unknown>
-  ) =>
+  executeWithRfc2136Client: (_connection: unknown, _deps: unknown, operation: (client: unknown) => Promise<unknown>) =>
     operation({
       findZone: vi.fn(),
       updateTxtRecord: vi.fn().mockResolvedValue(undefined),
