@@ -18,6 +18,7 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { useLocalStorageState } from "@app/hooks";
 import { certKeyAlgorithmToNameMap, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import type { TDashboardDistribution, TDashboardStats } from "@app/hooks/api/certificates/types";
 
@@ -117,14 +118,108 @@ const pqcSlices = (stats: TDashboardStats): DonutSlice[] => {
   ];
 };
 
+const BreakdownSection = ({ stats, projectId }: { stats: TDashboardStats; projectId: string }) => {
+  const adapter = useV4Adapter("certificates");
+  const [pqcTrendRange, setPqcTrendRange] = useState("30d");
+  const { data: pqcTrend } = adapter.usePqcTrend(projectId, pqcTrendRange);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useLocalStorageState(
+    "certManagerDashboardBreakdownOpen",
+    true
+  );
+  return (
+    <Collapsible open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
+      <Stack gap={16}>
+        <Inline gap={12} justify="between">
+          <Heading level={2}>Breakdown</Heading>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconRight={isBreakdownOpen ? "chev-down" : "chev-right"}
+              aria-label={isBreakdownOpen ? "Hide breakdown" : "Show breakdown"}
+            >
+              {isBreakdownOpen ? "Hide" : "Show"}
+            </Button>
+          </CollapsibleTrigger>
+        </Inline>
+        <CollapsibleContent>
+          <Stack gap={32}>
+            <Stack gap={16}>
+              <Heading level={3} size="subsection">
+                Distribution
+              </Heading>
+              <Grid gap={16} columns={2}>
+                <DonutCard
+                  title="By enrollment method"
+                  slices={foldTail(
+                    stats.distributions.byEnrollmentMethod,
+                    (label) => (label === "Other" ? label : label.toUpperCase()),
+                    (entry) =>
+                      entry.label === "Other" ? undefined : { filterEnrollmentType: entry.label }
+                  )}
+                />
+                <DonutCard
+                  title="By algorithm"
+                  slices={foldTail(stats.distributions.byAlgorithm, algorithmName, (entry) =>
+                    entry.label === "Unknown" ? undefined : { filterKeyAlgorithm: entry.label }
+                  )}
+                />
+                <DonutCard
+                  title="By issuing CA"
+                  slices={foldTail(
+                    stats.distributions.byCA,
+                    (label) => label,
+                    (entry) => (entry.id ? { filterCaId: entry.id } : undefined)
+                  )}
+                />
+                <DonutCard
+                  title="By time to expiry"
+                  emptyTitle="No expiration data"
+                  slices={expirationSlices(stats)}
+                />
+              </Grid>
+            </Stack>
+            <ValidityReadinessSection stats={stats} />
+            {stats.totals.total > 0 && (
+              <Stack gap={16}>
+                <Heading level={3} size="subsection">
+                  Post-quantum readiness
+                </Heading>
+                <Grid gap={16} columns={2}>
+                  <DonutCard title="PQC readiness" slices={pqcSlices(stats)} />
+                  <TrendCard
+                    title="PQC adoption"
+                    data={pqcTrend?.periods}
+                    range={pqcTrendRange}
+                    onRangeChange={setPqcTrendRange}
+                    emptyTitle="No certificates issued in this period"
+                    series={[
+                      { key: "pqc", label: "PQC-ready", color: "var(--cipher-ok)" },
+                      {
+                        key: "nonPqc",
+                        label: "Classical",
+                        color: "var(--chart-2)",
+                        dashed: true
+                      }
+                    ]}
+                  />
+                </Grid>
+              </Stack>
+            )}
+            <CodeSigningSection projectId={projectId} />
+          </Stack>
+        </CollapsibleContent>
+      </Stack>
+    </Collapsible>
+  );
+};
+
 export const DashboardPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/cert-manager/overview" });
   const adapter = useV4Adapter("certificates");
   const { projectId, isPending: isProjectPending } = useCertManagerProjectId(orgId);
   const id = projectId ?? "";
   const [trendRange, setTrendRange] = useState("30d");
-  const [pqcTrendRange, setPqcTrendRange] = useState("30d");
-  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
   const access = adapter.useProjectPermission({ projectId: id });
   const {
     data: stats,
@@ -132,7 +227,6 @@ export const DashboardPage = () => {
     error: statsError
   } = adapter.useDashboardStats(id);
   const { data: trend } = adapter.useActivityTrend(id, trendRange);
-  const { data: pqcTrend } = adapter.usePqcTrend(id, pqcTrendRange);
 
   if (isProjectPending) return <Loader size="page" label="Loading dashboard" />;
   if (!projectId) return <CertManagerNotSetUp orgId={orgId} />;
@@ -208,92 +302,7 @@ export const DashboardPage = () => {
             />
           </Grid>
         </Stack>
-        <Collapsible open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
-          <Stack gap={16}>
-            <Inline gap={12} justify="between">
-              <Heading level={2}>Breakdown</Heading>
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconRight={isBreakdownOpen ? "chev-down" : "chev-right"}
-                  aria-label={isBreakdownOpen ? "Hide breakdown" : "Show breakdown"}
-                >
-                  {isBreakdownOpen ? "Hide" : "Show"}
-                </Button>
-              </CollapsibleTrigger>
-            </Inline>
-            <CollapsibleContent>
-              <Stack gap={32}>
-                <Stack gap={16}>
-                  <Heading level={3} size="subsection">
-                    Distribution
-                  </Heading>
-                  <Grid gap={16} columns={2}>
-                    <DonutCard
-                      title="By enrollment method"
-                      slices={foldTail(
-                        stats.distributions.byEnrollmentMethod,
-                        (label) => (label === "Other" ? label : label.toUpperCase()),
-                        (entry) =>
-                          entry.label === "Other"
-                            ? undefined
-                            : { filterEnrollmentType: entry.label }
-                      )}
-                    />
-                    <DonutCard
-                      title="By algorithm"
-                      slices={foldTail(stats.distributions.byAlgorithm, algorithmName, (entry) =>
-                        entry.label === "Unknown" ? undefined : { filterKeyAlgorithm: entry.label }
-                      )}
-                    />
-                    <DonutCard
-                      title="By issuing CA"
-                      slices={foldTail(
-                        stats.distributions.byCA,
-                        (label) => label,
-                        (entry) => (entry.id ? { filterCaId: entry.id } : undefined)
-                      )}
-                    />
-                    <DonutCard
-                      title="By time to expiry"
-                      emptyTitle="No expiration data"
-                      slices={expirationSlices(stats)}
-                    />
-                  </Grid>
-                </Stack>
-                <ValidityReadinessSection stats={stats} />
-                {stats.totals.total > 0 && (
-                  <Stack gap={16}>
-                    <Heading level={3} size="subsection">
-                      Post-quantum readiness
-                    </Heading>
-                    <Grid gap={16} columns={2}>
-                      <DonutCard title="PQC readiness" slices={pqcSlices(stats)} />
-                      <TrendCard
-                        title="PQC adoption"
-                        data={pqcTrend?.periods}
-                        range={pqcTrendRange}
-                        onRangeChange={setPqcTrendRange}
-                        emptyTitle="No certificates issued in this period"
-                        series={[
-                          { key: "pqc", label: "PQC-ready", color: "var(--cipher-ok)" },
-                          {
-                            key: "nonPqc",
-                            label: "Classical",
-                            color: "var(--chart-2)",
-                            dashed: true
-                          }
-                        ]}
-                      />
-                    </Grid>
-                  </Stack>
-                )}
-                <CodeSigningSection projectId={projectId} />
-              </Stack>
-            </CollapsibleContent>
-          </Stack>
-        </Collapsible>
+        <BreakdownSection stats={stats} projectId={projectId} />
       </Stack>
     );
 

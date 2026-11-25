@@ -151,6 +151,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
     <Stack gap={24}>
       <PageHeader
         title="Certificate profiles"
+        description="Each profile pairs a certificate authority with a policy, much like a certificate template in AD CS."
         badges={<DocumentationLink href={PROFILE_DOCS} subject="Certificate profiles" />}
         actions={
           <Button
