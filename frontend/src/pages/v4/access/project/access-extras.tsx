@@ -40,7 +40,12 @@ export const ProjectAccessExtras = ({
   return (
     <>
       {!privilegesHidden && isLegacyPrivileges && (
-        <AdditionalPrivilegesSection projectId={projectId} target={target} readOnly={readOnly} />
+        <AdditionalPrivilegesSection
+          projectId={projectId}
+          projectType={projectType}
+          target={target}
+          readOnly={readOnly}
+        />
       )}
       {isSecretManager && !hasFolderRbacPlan && !isLegacyPrivileges && <PrivilegesMovedNotice />}
       {isSecretManager && (

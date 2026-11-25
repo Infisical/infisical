@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useMemo, useState } from "react";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { Badge, BadgeGroup } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
@@ -208,7 +208,15 @@ export const usePagedList = <Row,>({
   };
 };
 
-export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; max?: number }) => {
+export const RoleBadges = ({
+  roles,
+  max = 2,
+  wrap = false
+}: {
+  roles: readonly RoleGrant[];
+  max?: number;
+  wrap?: boolean;
+}) => {
   const badge = (grant: RoleGrant) => {
     const expired = isGrantExpired(grant);
     const node = (
@@ -225,6 +233,7 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
       node
     );
   };
+  if (!wrap) return <BadgeGroup className={styles.roleGroup}>{roles.map(badge)}</BadgeGroup>;
   const overflow = roles.slice(max);
   return (
     <span className={styles.roles}>
