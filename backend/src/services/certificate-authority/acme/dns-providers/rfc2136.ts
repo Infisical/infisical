@@ -1,6 +1,8 @@
-import dns from "node:dns";
+import dns from "dns";
 import RE2 from "re2";
 
+import { getConfig } from "@app/lib/config/env";
+import { delay } from "@app/lib/delay";
 import {
   DnsUpdateError,
   isDnsNameInZone,
@@ -8,8 +10,6 @@ import {
   normalizeDnsName,
   TDnsUpdateClient
 } from "@app/lib/dns-update";
-import { getConfig } from "@app/lib/config/env";
-import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";

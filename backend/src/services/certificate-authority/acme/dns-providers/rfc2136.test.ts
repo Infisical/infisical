@@ -31,7 +31,7 @@ const { dnsMock, resolveTxtByServer, configMock, queryTxtRecordMock } = vi.hoist
   };
 });
 
-vi.mock("node:dns", () => ({ default: dnsMock }));
+vi.mock("dns", () => ({ default: dnsMock }));
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => configMock }));
 // time only moves when the code waits, so the 60-second deadline is reached without real waiting
 vi.mock("@app/lib/delay", () => ({
