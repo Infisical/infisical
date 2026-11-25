@@ -4843,6 +4843,13 @@ export const SecretValidationRules = {
   }
 } as const;
 
+export const INSTANCE_DEPLOYMENT_AWS_METADATA = {
+  description:
+    "Get details about the AWS account the Infisical instance runs as, such as the account ID to trust in an IAM role's trust policy. If Infisical can't reach AWS STS to find out, the request fails instead of returning a null account ID.",
+  accountId:
+    "The AWS account ID Infisical acts as when it assumes an IAM role in your AWS account, for example for an AWS App Connection. Name this account as the trusted principal in the role's trust policy. Null when the instance has no AWS identity."
+} as const;
+
 export const CRON_JOB_TRIGGER = {
   description:
     "Run a scheduled job once, now, and wait for its handler to return. Only instance admins can call it, and only when the instance sets ALLOW_CRON_JOB_TRIGGER=true. The instance that serves the request must run general workers, because jobs are registered only there. A 200 means the handler returned; work it queued may still be running.",
