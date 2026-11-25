@@ -90,6 +90,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CERT_REVOCATION_FAILED]: "Certificate revocation failed",
   [EventType.REQUEST_CERT_DELETION]: "Request certificate deletion",
   [EventType.CERT_DELETION_FAILED]: "Certificate deletion failed",
+  [EventType.CERTIFICATE_CLEANUP_COMPLETED]: "Certificate cleanup completed",
   [EventType.RENEW_CERTIFICATE]: "Renew certificate",
   [EventType.AUTOMATED_RENEW_CERTIFICATE]: "Automatic certificate renewal",
   [EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED]: "Automatic certificate renewal failed",
