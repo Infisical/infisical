@@ -49,6 +49,7 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { TAvailableProjectUser } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
+import { useProjectRoleCreation } from "@app/pages/project/RoleDetailsBySlugPage/components/useProjectRoleCreation";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -144,6 +145,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     setValue,
+    getValues,
     watch,
     formState: { isSubmitting, errors }
   } = useForm<TAddMemberForm>({
@@ -152,6 +154,23 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+
+  const { creation: roleCreation, upgradeGate: roleUpgradeGate } = useProjectRoleCreation<
+    TAddMemberForm["projectRoleSlugs"][number]
+  >((role) => {
+    const isAssignable =
+      filterByGrantConditions([role], {
+        getKey: (el) => el.slug,
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
+      }).length > 0;
+    if (!isAssignable) return;
+    setValue(
+      "projectRoleSlugs",
+      [...getValues("projectRoleSlugs"), { slug: role.slug, name: role.name }],
+      { shouldValidate: true }
+    );
+  });
 
   useEffect(() => {
     if (requesterEmail) {
@@ -358,6 +377,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     getOptionValue={(option) => option.slug}
                     getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
+                    creation={roleCreation}
                     isError={Boolean(error)}
                     isLoading={isReferenceDataLoading}
                     isDisabled={!canAddMembers || hasReferenceDataError}
@@ -411,6 +431,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
           </DialogFooter>
         </form>
+        {roleUpgradeGate}
       </DialogContent>
     </Dialog>
   );
