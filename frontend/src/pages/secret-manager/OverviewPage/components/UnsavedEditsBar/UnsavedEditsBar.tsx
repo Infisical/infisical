@@ -149,7 +149,6 @@ export const UnsavedEditsBar = ({
   const [referencedChanges, setReferencedChanges] = useState<TUnsavedChange[] | null>(null);
   const [message, setMessage] = useState("");
   const isSingleChange = count === 1;
-  const commitLabel = isSingleChange ? "Save Change" : `Commit ${count} Changes`;
 
   const commit = async () => {
     if (isCommitting || !(await onCommit(message))) return;
@@ -202,7 +201,7 @@ export const UnsavedEditsBar = ({
           isPending={isCommitting}
         >
           <SaveIcon />
-          {commitLabel}
+          Save
         </Button>
       </SelectedActionBar>
 
@@ -294,7 +293,7 @@ export const UnsavedEditsBar = ({
                   isDisabled={isCommitting}
                 >
                   <SaveIcon />
-                  {commitLabel}
+                  Save
                 </Button>
               </div>
             </div>
@@ -338,7 +337,7 @@ export const UnsavedEditsBar = ({
                 commit();
               }}
             >
-              {commitLabel}
+              Save
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
