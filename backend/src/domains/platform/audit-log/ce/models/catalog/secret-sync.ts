@@ -100,8 +100,8 @@ export type TAuditLogSecretSyncDelete = {
 };
 
 export type TAuditLogSecretSyncRaw = {
-  syncOptions: unknown;
-  destinationConfig: unknown;
+  syncOptions?: unknown;
+  destinationConfig?: unknown;
   destination: string;
   connectionId: string;
   folderId?: string | null;

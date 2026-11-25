@@ -121,8 +121,8 @@ export type TAuditLogSecretRotationDelete = {
 };
 
 export type TAuditLogSecretRotationRaw = {
-  parameters: unknown;
-  secretsMapping: unknown;
+  parameters?: unknown;
+  secretsMapping?: unknown;
   type: string;
   connectionId: string;
   folderId: string;

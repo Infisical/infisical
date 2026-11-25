@@ -4,6 +4,7 @@ import { TableName, type TAuditLogs } from "@app/db/schemas";
 import { singleStoreConnection } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
+import { describeAuditLogStoreContract } from "../testing/audit-log-store-contract";
 import { AuditLogStore } from "./audit-log-store";
 
 describe("AuditLogStore.insertBatch", () => {
@@ -80,5 +81,19 @@ describe("AuditLogStore.insertBatch", () => {
 
     // Assert
     expect(await storedFor(tn.org.id)).toHaveLength(1_050);
+  });
+});
+
+describe("AuditLogStore on Postgres", () => {
+  const h = setupIntegration();
+
+  describeAuditLogStoreContract("AuditLogStore", async () => {
+    const tn = await h.newTenant();
+    return {
+      store: new AuditLogStore(singleStoreConnection(h.db)),
+      orgId: tn.org.id,
+      storedIds: async (orgId) =>
+        (await h.db(TableName.AuditLog).where({ orgId }).select("id")).map((row: { id: string }) => row.id)
+    };
   });
 });
