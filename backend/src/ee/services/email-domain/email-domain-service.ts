@@ -16,6 +16,7 @@ import { TEmailDomainDALFactory } from "./email-domain-dal";
 import { getEmailDomainVerificationRecordValue } from "./email-domain-fns";
 import {
   EmailDomainStatus,
+  EmailDomainVerificationError,
   TCreateEmailDomainDTO,
   TDeleteEmailDomainDTO,
   TListEmailDomainsDTO,
@@ -151,6 +152,7 @@ export const emailDomainServiceFactory = ({
       plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.PlanRestricted,
         message: "Failed to verify email domain due to plan restriction. Upgrade plan to use email domain verification."
       });
     }
@@ -170,6 +172,7 @@ export const emailDomainServiceFactory = ({
 
     if (emailDomainRecord.status === EmailDomainStatus.Expired) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
         message: "Verification code has expired. Please create a new domain verification request."
       });
     }
@@ -178,6 +181,7 @@ export const emailDomainServiceFactory = ({
     if (new Date(emailDomainRecord.codeExpiresAt) < new Date()) {
       await emailDomainDAL.updateById(emailDomainId, { status: EmailDomainStatus.Expired });
       throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
         message: "Verification code has expired. Please create a new domain verification request."
       });
     }
@@ -189,6 +193,7 @@ export const emailDomainServiceFactory = ({
     } catch (err) {
       logger.error(err, "Failed to resolve DNS records for the domain");
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsLookupFailed,
         message:
           "Failed to resolve DNS records for the domain. Please verify the DNS TXT record exists and try again. DNS changes may take time to propagate."
       });
@@ -200,6 +205,7 @@ export const emailDomainServiceFactory = ({
 
     if (!isVerified) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsRecordMismatch,
         message: `DNS TXT record not found or value does not match. Expected a TXT record at ${emailDomainRecord.verificationRecordName} with value: ${expectedValue}`
       });
     }
@@ -228,7 +234,10 @@ export const emailDomainServiceFactory = ({
     });
 
     if (updatedEmailDomain.error) {
-      throw new BadRequestError({ message: updatedEmailDomain.error });
+      throw new BadRequestError({
+        name: EmailDomainVerificationError.AlreadyVerified,
+        message: updatedEmailDomain.error
+      });
     }
 
     return {

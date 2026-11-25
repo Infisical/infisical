@@ -50,6 +50,7 @@ func TestEmailDomain_Verify(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "EMAIL_DOMAIN_DNS_LOOKUP_FAILED", res.JSON400.Error)
 		require.Equal(t, "pending", domainStatus(t, tn, d.Domain))
 	})
 
@@ -67,8 +68,50 @@ func TestEmailDomain_Verify(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "EMAIL_DOMAIN_DNS_RECORD_MISMATCH", res.JSON400.Error)
 		require.Contains(t, string(res.Body), "DNS TXT record not found or value does not match")
 		require.Equal(t, "pending", domainStatus(t, tn, d.Domain))
+	})
+
+	t.Run("should refuse verification when the plan has lost its SSO feature and leave it pending", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		d := pendingDomain(t, tn)
+		fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), d.VerificationRecordName, d.VerificationCode)
+		tn.SetPlan(t, license.Enterprise().Without(license.SAMLSSO, license.OIDCSSO, license.LDAP))
+
+		// Action
+		res, err := tn.Admin.API.VerifyEmailDomainWithResponse(t.Context(), d.Id)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "EMAIL_DOMAIN_PLAN_RESTRICTED", res.JSON400.Error)
+		require.Equal(t, "pending", domainStatus(t, tn, d.Domain))
+	})
+
+	t.Run("should refuse verification when another org verified the same domain first", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn, other := h.NewTenant(t), h.NewTenant(t)
+		domain := id.Nonce() + ".test"
+		mine, theirs := pendingDomainFor(t, tn, domain), pendingDomainFor(t, other, domain)
+		fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), mine.VerificationRecordName, mine.VerificationCode, theirs.VerificationCode)
+		res, err := other.Admin.API.VerifyEmailDomainWithResponse(t.Context(), theirs.Id)
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+
+		// Action
+		res, err = tn.Admin.API.VerifyEmailDomainWithResponse(t.Context(), mine.Id)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "EMAIL_DOMAIN_ALREADY_VERIFIED", res.JSON400.Error)
+		require.Equal(t, "pending", domainStatus(t, tn, domain))
 	})
 
 	t.Run("should return a conflict and keep the domain verified when it is verified again", func(t *testing.T) {
@@ -196,7 +239,12 @@ type emailDomain struct {
 
 func pendingDomain(t *testing.T, tn *harness.Tenant) emailDomain {
 	t.Helper()
-	res, err := tn.Admin.API.CreateEmailDomainWithResponse(t.Context(), api.CreateEmailDomainJSONRequestBody{Domain: id.Nonce() + ".test"})
+	return pendingDomainFor(t, tn, id.Nonce()+".test")
+}
+
+func pendingDomainFor(t *testing.T, tn *harness.Tenant, domain string) emailDomain {
+	t.Helper()
+	res, err := tn.Admin.API.CreateEmailDomainWithResponse(t.Context(), api.CreateEmailDomainJSONRequestBody{Domain: domain})
 	require.NoError(t, err)
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	d := res.JSON200.EmailDomain
