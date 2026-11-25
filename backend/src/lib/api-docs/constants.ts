@@ -4577,7 +4577,7 @@ export const EMAIL_DOMAINS = {
   },
   VERIFY: {
     emailDomainId:
-      "The ID of the email domain to verify. Infisical looks up the DNS TXT record named in verificationRecordName and expects the value infisical-domain-verification=<verificationCode>."
+      "The ID of the email domain to verify. Infisical looks up the DNS TXT record named in verificationRecordName and expects the value in verificationCode."
   },
   DELETE: {
     emailDomainId: "The ID of the email domain to delete."

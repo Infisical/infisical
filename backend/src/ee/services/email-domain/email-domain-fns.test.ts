@@ -1,6 +1,10 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "./email-domain-fns";
+import {
+  getEmailDomainVerificationRecordValue,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "./email-domain-fns";
 import { EmailDomainStatus } from "./email-domain-types";
 
 const ownedDomain = { id: "domain-1", orgId: "org-1", domain: "acme.com", status: EmailDomainStatus.Verified };
@@ -66,5 +70,17 @@ describe("isIdpAuthoritativeForDomain", () => {
     ["neither", { isAuthEnforced: false, ownedDomain: undefined }]
   ] as const)("is not authoritative with %s", (_label, input) => {
     expect(isIdpAuthoritativeForDomain(input)).toBe(false);
+  });
+});
+
+describe("getEmailDomainVerificationRecordValue", () => {
+  test("returns a code that already carries the prefix as it is", () => {
+    expect(getEmailDomainVerificationRecordValue("infisical-domain-verification=abc123")).toBe(
+      "infisical-domain-verification=abc123"
+    );
+  });
+
+  test("adds the prefix to the bare code of a domain created before codes carried it", () => {
+    expect(getEmailDomainVerificationRecordValue("abc123")).toBe("infisical-domain-verification=abc123");
   });
 });

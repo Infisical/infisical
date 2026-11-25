@@ -63,7 +63,7 @@ export const EmailDomainVerificationModal = ({
     }
   };
 
-  const txtValue = `infisical-domain-verification=${domainData?.verificationCode ?? ""}`;
+  const txtValue = domainData?.verificationCode ?? "";
 
   return (
     <Dialog

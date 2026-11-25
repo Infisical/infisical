@@ -26,7 +26,7 @@ func TestEmailDomain_Verify(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		d := pendingDomain(t, tn)
-		fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), d.VerificationRecordName, "infisical-domain-verification="+d.VerificationCode)
+		fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), d.VerificationRecordName, d.VerificationCode)
 
 		// Action
 		res, err := tn.Admin.API.VerifyEmailDomainWithResponse(t.Context(), d.Id)

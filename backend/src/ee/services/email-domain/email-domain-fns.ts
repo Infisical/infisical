@@ -4,6 +4,14 @@ import { BadRequestError } from "@app/lib/errors";
 import { TEmailDomainDALFactory } from "./email-domain-dal";
 import { EmailDomainStatus } from "./email-domain-types";
 
+const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
+
+// A verification code is the whole TXT record value.
+export const getEmailDomainVerificationRecordValue = (verificationCode: string) =>
+  verificationCode.startsWith(`${DNS_TXT_VALUE_PREFIX}=`)
+    ? verificationCode
+    : `${DNS_TXT_VALUE_PREFIX}=${verificationCode}`;
+
 /**
  * Given an email and orgId, verifies the org is allowed to manage a user with this email and
  * returns the verified domain record.
