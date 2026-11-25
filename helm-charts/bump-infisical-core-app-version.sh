@@ -10,7 +10,7 @@
 # Infisical has no other signal for breaking changes, so the chart cannot judge them either.
 # A version already at or above that bump (an open bump PR, or a hand-made bump) is kept and
 # the change joins its CHANGELOG section. Every version merged to main is published, so none
-# is skipped. The breaking changes of the releases this run adds are appended to the
+# is skipped. The upgrade impact entries of the releases this run adds are appended to the
 # section's upgrade notes for review. Compares against BASE_REF (default origin/main), so
 # fetch it and the release tags first. Needs yq v4. Never moves appVersion backwards, so a
 # patch release tagged on an older line after a newer release leaves the chart alone.
@@ -120,11 +120,23 @@ else
 fi
 mv "$CHANGELOG_FILE.tmp" "$CHANGELOG_FILE"
 
+# Breaking changes from every release. The other sections only from releases built from fragments,
+# which an author wrote for operators; in older, model-generated data they are too noisy to publish.
+# The entry that only lists a release's migration files is left out: nearly every release has one.
+# shellcheck disable=SC2016
+NOTES_QUERY='
+  (.generatedBy.model == "fragments") as $fromFragments
+  | ([.breakingChanges[]] + ([.configChanges[], .deploymentNotes[], .dbSchemaChanges[], .knownIssues[]] | map(select($fromFragments))))
+  | .[]
+  | select(.evidence | any_c((.path // "") | test("^backend/src/db/migrations/") | not))
+  | "* " + .title + " (`" + strenv(V) + "`): " + ((.description + " " + .action) | sub("\s*\n\s*"; " "))
+'
+
 NOTES=""
 for v in $(releases_between "$CURRENT_APP_VERSION" "$TAG"); do
   DATA_FILE="$IMPACT_DIR/$v.yaml"
   if [ -f "$DATA_FILE" ]; then
-    NOTES+="$(V="$v" yq '.breakingChanges[] | "* " + .title + " (`" + strenv(V) + "`): " + ((.description + " " + .action) | sub("\s*\n\s*"; " "))' "$DATA_FILE")"$'\n'
+    NOTES+="$(V="$v" yq "$NOTES_QUERY" "$DATA_FILE")"$'\n'
   fi
 done
 NOTES="$(sed '/^$/d' <<< "$NOTES")"

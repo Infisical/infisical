@@ -138,9 +138,30 @@ jobs:
               pull_number: pr.number,
               per_page: 100
             });
+            const isFragment = (name) => /^upgrade-impact\/changes\/[^/]+\.yaml$/.test(name);
             const fragments = files
-              .filter((file) => file.status === 'added' && /^upgrade-impact\/changes\/[^/]+\.yaml$/.test(file.filename))
+              .filter((file) => file.status === 'added' && isFragment(file.filename))
               .map((file) => file.filename);
+
+            // A release collects a fragment once, when it is added, and its release PR deletes only
+            // files that still match the tag. An edited or moved fragment is never collected again
+            // and never deleted.
+            const editedFragments = files
+              .filter((file) =>
+                file.status === 'renamed' ? isFragment(file.previous_filename) : file.status === 'modified' && isFragment(file.filename)
+              )
+              .map((file) => (file.status === 'renamed' ? `${file.previous_filename} (renamed)` : file.filename));
+
+            if (editedFragments.length > 0) {
+              core.setFailed(`
+            ❌ **This PR changes a fragment that is already on the base branch**
+
+            This PR edits or renames ${editedFragments.map((file) => `\`${file}\``).join(', ')}. A release reads a fragment once, when it is added, so the change would never reach the upgrade notes, and the release PR would no longer delete the file.
+
+            **How to fix:** restore the fragment to what the base branch has. To correct a note that was already released, edit that release's file under \`upgrade-impact/data/releases/\`. See the rules in [upgrade-impact/changes/README.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/upgrade-impact/changes/README.md#rules).
+            `);
+              return;
+            }
 
             if (saysYes && fragments.length === 0) {
               core.setFailed(`

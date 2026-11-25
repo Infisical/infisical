@@ -68,7 +68,7 @@ Write none for features, fixes, refactors, docs, changes that only affect Infisi
 
 Read [`upgrade-impact/changes/README.md`](upgrade-impact/changes/README.md) before writing one or deciding a borderline case: it has the format, the meaning of each `impactLevel`, an example per category, and the changes that look like they need a fragment but do not. Check the file with `make validate-upgrade-impact`. Never edit, rename or delete a fragment that is already on `main`: the release pull request deletes the ones it collected, and until it merges a moved file is counted again and an edit never ships.
 
-In the pull request description, tick exactly one box under "Self-hosted upgrade impact": **Yes** when the PR adds a fragment, **None** otherwise. `validate-pr-description.yml` fails when the box and the files disagree, or when a PR marked `Breaking` (or titled with `!`) adds no fragment.
+In the pull request description, tick exactly one box under "Self-hosted upgrade impact": **Yes** when the PR adds a fragment, **None** otherwise. `validate-pr-description.yml` fails when the box and the files disagree, when a PR marked `Breaking` (or titled with `!`) adds no fragment, or when a PR edits or renames a fragment already on its base branch.
 
 ### Dependency Policy
 

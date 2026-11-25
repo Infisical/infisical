@@ -120,7 +120,8 @@ When there is truly nothing to do, say so and say what to expect: "No action req
 - Never edit, rename or delete a fragment after its pull request merges. The release pull request
   deletes the fragments it collected. Until it merges, a released fragment is still here, and a
   moved one would be counted again while an edit would never ship. To correct a released note, edit
-  that release's file under `upgrade-impact/data/releases/`.
+  that release's file under `upgrade-impact/data/releases/`. CI fails a pull request that edits or
+  renames a fragment already on its base branch.
 - Tick **Yes** under "Self-hosted upgrade impact" in the pull request description. CI fails when the
   box and the files disagree.
 - On pull requests from this repository that touch backend, Docker or config paths, an automated
