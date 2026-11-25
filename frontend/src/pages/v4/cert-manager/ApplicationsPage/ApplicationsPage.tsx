@@ -151,6 +151,7 @@ const Page = () => {
       <Stack gap={24}>
         <PageHeader
           title="Applications"
+          description="Each application is a service or workload with its own certificates, enrollment methods, and members."
           badges={<DocumentationLink href={APPLICATION_DOCS.overview} subject="Applications" />}
           actions={
             <Button

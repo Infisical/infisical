@@ -217,22 +217,25 @@ const GroupMembersCard = ({
 
   const columns: DataTableColumn<Member>[] = [
     {
-      id: "type",
-      header: "Member type",
-      width: 40,
-      render: (member) => (
-        <span className={styles.memberIcon}>
-          <Icon name={member.type === GroupMemberType.USER ? "user" : "machine"} />
-        </span>
-      )
-    },
-    {
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
+      minWidth: 160,
+      text: (member) => (member.email ? `${member.name} (${member.email})` : member.name),
       render: (member) => (
         <span>
+          <span
+            className={styles.memberIcon}
+            role="img"
+            aria-label={member.type === GroupMemberType.USER ? "User" : "Machine identity"}
+          >
+            <Icon
+              name={member.type === GroupMemberType.USER ? "user" : "machine"}
+              size="var(--cipher-size-icon-small)"
+            />
+          </span>
           {member.name}
           {member.email && <span className={styles.muted}>{` (${member.email})`}</span>}
         </span>
@@ -249,7 +252,7 @@ const GroupMembersCard = ({
     inline: [
       {
         label: "Assume privileges",
-        icon: "user",
+        icon: "sign-in",
         disabledReason: assumeBlocked,
         onSelect: setAssuming
       }

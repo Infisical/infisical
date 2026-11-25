@@ -225,6 +225,7 @@ const Page = () => {
     <Stack gap={24}>
       <PageHeader
         title="Signers"
+        description="A signer is a code-signing certificate plus the members and approval policy that control who can sign with it."
         badges={<DocumentationLink href={CODE_SIGNING_DOCS.signers} subject="Signers" />}
       />
       <SignersList orgId={orgId} projectId={projectId} />

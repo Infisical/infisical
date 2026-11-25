@@ -110,12 +110,6 @@ const exportReason = (item: TCmek, permissions: KeyPermissions) => {
   return disabledReason(item);
 };
 
-const rotateReason = (item: TCmek, permissions: KeyPermissions) => {
-  if (!permissions.rotate) return RESTRICTED;
-  if (item.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) return "Only encryption keys rotate";
-  return disabledReason(item);
-};
-
 const isServed = (item: TCmek) => item.isPublicKeyPublished && !item.isDisabled;
 
 const copy = async (value: string, label: string) => {
@@ -189,6 +183,15 @@ const KeyMenu = ({
         <Icon name="pencil" />
         Edit key
       </DropdownMenuItem>
+      {item.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+        <DropdownMenuItem
+          disabledReason={permissions.rotate ? disabledReason(item) : RESTRICTED}
+          onSelect={() => onOpen("rotate")}
+        >
+          <Icon name="sync" />
+          Rotate key
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem disabledReason={editReason} onSelect={onToggle}>
         <Icon name={item.isDisabled ? "check-c" : "x"} />
         {item.isDisabled ? "Enable key" : "Disable key"}
@@ -520,14 +523,6 @@ export const OverviewPage = () => {
           getRowId={(r) => r.id}
           rowLabel={(r) => r.name}
           rowActions={{
-            inline: [
-              {
-                label: "Rotate key",
-                icon: "sync",
-                disabledReason: (r) => rotateReason(r, permissions),
-                onSelect: (r) => setOpen({ kind: "rotate", key: r })
-              }
-            ],
             renderMenu: (r) => (
               <KeyMenu
                 item={r}

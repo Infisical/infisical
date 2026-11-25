@@ -168,7 +168,7 @@ const SessionLengthCard = ({
         saved("Session length updated");
       }}
     >
-      <Inline gap={12} align="start" wrap={false}>
+      <>
         <Field label="Expires after" error={error}>
           <Input
             type="number"
@@ -191,7 +191,7 @@ const SessionLengthCard = ({
             onChange={(unit) => setDraft({ ...draft, unit })}
           />
         </Field>
-      </Inline>
+      </>
     </SettingsCard>
   );
 };
