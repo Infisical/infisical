@@ -141,6 +141,8 @@ Configure your EST client with the EST endpoint URL and passphrase.
     ```
 
     If the device's current certificate came from the same Application and profile, Infisical links the new certificate to it. The current certificate then shows as renewed, and Infisical stops sending expiry alerts for it. If the current certificate was already renewed, Infisical links the new certificate to its most recent renewal instead.
+
+    If an [approval policy](/documentation/platform/pki/applications/approvals#renewals) covers the profile, Infisical holds the re-enrollment for approval, and the device gets an error that includes the certificate request ID. The device can't download the certificate over EST after the request is approved, so get it from the certificate inventory. While the request waits for approval, Infisical refuses another re-enrollment of the same certificate. Once it's approved, sending the re-enrollment again starts a new approval request.
   </Tab>
   <Tab title="Get CA Chain">
     Retrieve the CA certificate chain for validation:
