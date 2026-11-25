@@ -108,7 +108,8 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
         const estimate = lastKnownSize ?? appCfg.SECRET_READ_DEFAULT_SECRET_WEIGHT;
         let held = toWeight(estimate);
 
-        if (!hasRoomFor(held)) refuseIfEnforced(req, reply, held);
+        let refusalRecorded = !hasRoomFor(held);
+        if (refusalRecorded) refuseIfEnforced(req, reply, held);
 
         used += held;
         let released = false;
@@ -120,7 +121,11 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
             const next = toWeight(secretCount);
             // Admission ran on an estimate, so a read that turns out larger than the room left is refused here, before
             // the work it would still do (decryption, reference expansion) grows the heap further.
-            if (next > held && !hasRoomFor(next, held)) refuseIfEnforced(req, reply, next);
+            // Observe mode records one refusal per request, as enforce mode would refuse it only once.
+            if (!refusalRecorded && next > held && !hasRoomFor(next, held)) {
+              refusalRecorded = true;
+              refuseIfEnforced(req, reply, next);
+            }
             used += next - held;
             held = next;
           });

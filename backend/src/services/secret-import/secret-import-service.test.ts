@@ -197,6 +197,17 @@ describe("getRawSecretsFromImports read slot", () => {
     expect(keyStore.deleteItem).not.toHaveBeenCalled();
   });
 
+  test("reports an empty read when the importing folder is gone, so a stale size is not kept", async () => {
+    const { keyStore, read } = await buildCachedService();
+    keyStore.getItemBuffer.mockResolvedValue(undefined);
+    const reported: number[] = [];
+    const secretReadSlot: TConcurrencySlot = (work) => work((secretCount) => reported.push(secretCount));
+
+    await expect(read(undefined, secretReadSlot)).resolves.toMatchObject({ secrets: [] });
+
+    expect(reported).toEqual([0]);
+  });
+
   test("takes a slot for a read the cache cannot answer", async () => {
     const { keyStore, read, slotTaken } = await buildCachedService();
     keyStore.getItemBuffer.mockResolvedValue(undefined);

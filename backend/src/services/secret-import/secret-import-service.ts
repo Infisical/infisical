@@ -1077,7 +1077,10 @@ export const secretImportServiceFactory = ({
       }
 
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { secrets: [] };
+      if (!folder) {
+        reportSize(0);
+        return { secrets: [] };
+      }
       const secretImports = (
         await $annotateCrossProjectImports(
           await secretImportDAL.find({ folderId: folder.id, isReplication: false }),

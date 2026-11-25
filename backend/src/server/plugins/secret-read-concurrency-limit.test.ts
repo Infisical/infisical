@@ -274,6 +274,25 @@ describe("secretReadConcurrencyLimit", () => {
     expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
   });
 
+  test("records one refusal per request in observe mode, however often it reports", async () => {
+    config.SECRET_READ_CONCURRENCY_LIMIT_MODE = "observe";
+    const { held, list } = await buildServer({ budget: 150 });
+
+    const requests = [list("org-a"), list("org-b")];
+    await flush();
+    held[1].reportSize(950);
+    held[1].reportSize(980);
+    held[0].reportSize(400);
+
+    expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
+      [{ bucket: "read_budget", outcome: "would_refuse", planSlug: "pro" }],
+      [{ bucket: "read_budget", outcome: "would_refuse", planSlug: "pro" }]
+    ]);
+
+    held.forEach((request) => request.finish());
+    expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
+  });
+
   test("admits a read it has seen before on the size it had last time", async () => {
     const { held, list } = await buildServer({ budget: 1000 });
 
