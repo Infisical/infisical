@@ -9,6 +9,7 @@ import {
   normalizeDnsName,
   readDnsName,
   scanDnsMessage,
+  TDnsMessageLayout,
   uint16,
   uint32,
   uint48
@@ -140,9 +141,13 @@ export type TTsigVerification =
 
 export const verifyDnsReply = (
   reply: Buffer,
-  { key, requestMac, now }: { key: TTsigKey; requestMac: Buffer; now: number }
+  {
+    key,
+    requestMac,
+    now,
+    layout = scanDnsMessage(reply)
+  }: { key: TTsigKey; requestMac: Buffer; now: number; layout?: TDnsMessageLayout }
 ): TTsigVerification => {
-  const layout = scanDnsMessage(reply);
   const tsig = layout.lastAdditionalStart === undefined ? undefined : readTsigRecord(reply, layout.lastAdditionalStart);
   if (!tsig || layout.lastAdditionalStart === undefined) return { status: "unsigned" };
 

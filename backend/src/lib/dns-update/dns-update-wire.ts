@@ -26,6 +26,8 @@ export enum DnsClass {
 
 const MAX_LABEL_LENGTH = 63;
 const MAX_NAME_WIRE_LENGTH = 255;
+// A real name follows at most one pointer per label, and a 255-byte name has at most 127 labels
+const MAX_NAME_POINTER_HOPS = 127;
 const MAX_TXT_STRING_LENGTH = 255;
 // Hostname-style labels only: anything else (spaces, CR/LF) would reach a non-DNS service raw if one is configured.
 const LABEL_REGEX = new RE2("^[A-Za-z0-9_-]+$");
@@ -194,12 +196,14 @@ const ensureAvailable = (buf: Buffer, offset: number, length: number) => {
 };
 
 // Bounded by RFC 1035 rules a hostile server could otherwise break to make us expand huge names: a name is at most
-// 255 bytes, and a compression pointer only points to an earlier position (which also rules out loops).
+// 255 bytes, and a compression pointer only points to an earlier position (which also rules out loops). The hop cap
+// stops chains of pointers, which add no length but still cost a step each.
 export const readDnsName = (buf: Buffer, start: number): { name: string; next: number } => {
   const labels: string[] = [];
   let offset = start;
   let next = -1;
   let wireLength = 1;
+  let hops = 0;
 
   for (;;) {
     ensureAvailable(buf, offset, 1);
@@ -214,6 +218,8 @@ export const readDnsName = (buf: Buffer, start: number): { name: string; next: n
     if ((length & 0xc0) === 0xc0) {
       ensureAvailable(buf, offset, 2);
       if (next === -1) next = offset + 2;
+      hops += 1;
+      if (hops > MAX_NAME_POINTER_HOPS) throw new DnsWireError("DNS message has a name with too many compression pointers");
       // eslint-disable-next-line no-bitwise
       const target = buf.readUInt16BE(offset) & 0x3fff;
       if (target >= offset) throw new DnsWireError("DNS message has a name pointer that does not point backwards");
@@ -247,6 +253,8 @@ export const scanDnsMessage = (buf: Buffer): TDnsMessageLayout => {
   const questionCount = buf.readUInt16BE(4);
   const recordCount = buf.readUInt16BE(6) + buf.readUInt16BE(8);
   const additionalCount = buf.readUInt16BE(10);
+  // Every request we send carries exactly one question, so a reply with more is not an answer to it
+  if (questionCount > 1) throw new DnsWireError("DNS reply has more than one question");
 
   let offset = DNS_HEADER_LENGTH;
   for (let i = 0; i < questionCount; i += 1) {

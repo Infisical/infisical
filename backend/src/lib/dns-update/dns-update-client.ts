@@ -101,9 +101,12 @@ export const createDnsUpdateClient = ({
     let packet: dnsPacket.Packet;
     let verification: TTsigVerification;
     try {
+      // Our scanner has to run first: dns-packet does not cap compression pointer chains
       layout = scanDnsMessage(reply);
       packet = dnsPacket.decode(reply);
-      verification = sign ? verifyDnsReply(reply, { key, requestMac: mac, now: now() }) : { status: "unsigned" };
+      verification = sign
+        ? verifyDnsReply(reply, { key, requestMac: mac, now: now(), layout })
+        : { status: "unsigned" };
     } catch (error) {
       throw new DnsUpdateError({
         reason: DnsUpdateErrorReason.MalformedReply,

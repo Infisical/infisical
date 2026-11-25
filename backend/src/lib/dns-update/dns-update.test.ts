@@ -13,6 +13,7 @@ import {
   isDnsNameInZone,
   isValidDnsName,
   readDnsName,
+  scanDnsMessage,
   uint16
 } from "./dns-update-wire";
 
@@ -177,6 +178,38 @@ describe("dns-update wire format", () => {
   it("refuses name pointers that do not point backwards", () => {
     expect(() => readDnsName(Buffer.from([0xc0, 0x00]), 0)).toThrow(/does not point backwards/);
     expect(() => readDnsName(Buffer.from([0xc0, 0x02, 1, 0x61, 0]), 0)).toThrow(/does not point backwards/);
+  });
+
+  it("caps pointer chains at one hop per possible label", () => {
+    // the root name at offset 0, then pointers that each point at the pointer before them
+    const pointerChain = (hops: number) => {
+      const parts = [0];
+      for (let k = 0; k < hops; k += 1) {
+        const target = k === 0 ? 0 : 1 + (k - 1) * 2;
+        // eslint-disable-next-line no-bitwise
+        parts.push(0xc0 | (target >> 8), target & 0xff);
+      }
+      return { buf: Buffer.from(parts), start: 1 + (hops - 1) * 2 };
+    };
+
+    const allowed = pointerChain(127);
+    expect(readDnsName(allowed.buf, allowed.start).name).toBe("");
+    const tooMany = pointerChain(128);
+    expect(() => readDnsName(tooMany.buf, tooMany.start)).toThrow(/too many compression pointers/);
+  });
+
+  it("refuses a reply made of many questions that each walk a longer pointer chain", () => {
+    // each question's name points at the previous question's name, so question k walks k pointers
+    const questionCount = 8000;
+    const questions = [0, 0, 16, 0, 1];
+    for (let k = 1; k < questionCount; k += 1) {
+      const target = k === 1 ? 12 : 17 + (k - 2) * 6;
+      // eslint-disable-next-line no-bitwise
+      questions.push(0xc0 | (target >> 8), target & 0xff, 0, 16, 0, 1);
+    }
+    const header = [0, 1, 0x80, 0, ...uint16(questionCount), 0, 0, 0, 0, 0, 0];
+
+    expect(() => scanDnsMessage(Buffer.from([...header, ...questions]))).toThrow(/more than one question/);
   });
 
   it("splits TXT values longer than 255 bytes into several strings", () => {
