@@ -377,26 +377,26 @@ export const shellDemo: ShellAdapter = {
       isPending: false
     };
   },
-  useMarkNotificationRead: () => {
+  useMarkNotificationsRead: () => {
     const scenario = useShellScenario();
     return {
-      mutateAsync: async ({ notificationId }) =>
+      mutateAsync: async ({ notificationIds }) =>
         notifications.update((current) => ({
           ...current,
           [scenario]: current[scenario].map((entry) =>
-            entry.id === notificationId ? { ...entry, isRead: true } : entry
+            notificationIds.includes(entry.id) ? { ...entry, isRead: true } : entry
           )
         })),
       isPending: false
     };
   },
-  useDeleteNotification: () => {
+  useDeleteNotifications: () => {
     const scenario = useShellScenario();
     return {
-      mutateAsync: async ({ notificationId }) =>
+      mutateAsync: async ({ notificationIds }) =>
         notifications.update((current) => ({
           ...current,
-          [scenario]: current[scenario].filter((entry) => entry.id !== notificationId)
+          [scenario]: current[scenario].filter((entry) => !notificationIds.includes(entry.id))
         })),
       isPending: false
     };

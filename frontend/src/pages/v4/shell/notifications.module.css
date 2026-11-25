@@ -64,6 +64,10 @@
   overflow-wrap: anywhere;
 }
 
+.body[data-expanded] {
+  display: block;
+}
+
 .meta {
   position: relative;
   z-index: 1;

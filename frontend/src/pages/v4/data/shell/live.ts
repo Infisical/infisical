@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
 import { envConfig } from "@app/config/env";
 import { apiRequest } from "@app/config/request";
@@ -33,6 +34,36 @@ const useNotificationMutation = <TVariables extends { orgId: string }>(
     onSuccess: (_, { orgId }) =>
       queryClient.invalidateQueries({ queryKey: notificationKeys.list(orgId) })
   });
+};
+
+const RATE_LIMIT_RETRIES = 5;
+const RATE_LIMIT_FALLBACK_MS = 10_000;
+
+const rateLimitWait = (error: unknown) => {
+  if (!isAxiosError(error) || error.response?.status !== 429) return undefined;
+  const seconds = Number(error.response.headers["retry-after"]);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : RATE_LIMIT_FALLBACK_MS;
+};
+
+// The notification API has no bulk endpoint and each write counts against the per-minute write
+// limit, so a grouped row's requests run one at a time and wait out a 429 instead of failing midway.
+const eachPaced = async (ids: string[], run: (id: string) => Promise<unknown>) => {
+  for (const id of ids) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await run(id);
+        break;
+      } catch (error) {
+        const wait = rateLimitWait(error);
+        if (wait === undefined || attempt >= RATE_LIMIT_RETRIES) throw error;
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, wait);
+        });
+      }
+    }
+  }
 };
 
 export const shellLive: ShellAdapter = {
@@ -96,13 +127,15 @@ export const shellLive: ShellAdapter = {
     }),
   useMarkAllNotificationsRead: () =>
     useNotificationMutation(() => apiRequest.post("/api/v1/notifications/user/mark-as-read")),
-  useMarkNotificationRead: () =>
-    useNotificationMutation(({ notificationId }: { orgId: string; notificationId: string }) =>
-      apiRequest.patch(`/api/v1/notifications/user/${notificationId}`, { isRead: true })
+  useMarkNotificationsRead: () =>
+    useNotificationMutation(({ notificationIds }: { orgId: string; notificationIds: string[] }) =>
+      eachPaced(notificationIds, (id) =>
+        apiRequest.patch(`/api/v1/notifications/user/${id}`, { isRead: true })
+      )
     ),
-  useDeleteNotification: () =>
-    useNotificationMutation(({ notificationId }: { orgId: string; notificationId: string }) =>
-      apiRequest.delete(`/api/v1/notifications/user/${notificationId}`)
+  useDeleteNotifications: () =>
+    useNotificationMutation(({ notificationIds }: { orgId: string; notificationIds: string[] }) =>
+      eachPaced(notificationIds, (id) => apiRequest.delete(`/api/v1/notifications/user/${id}`))
     ),
   useDeleteAllNotifications: () =>
     useNotificationMutation(() => apiRequest.delete("/api/v1/notifications/user")),

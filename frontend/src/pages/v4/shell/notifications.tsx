@@ -104,12 +104,13 @@ const InboxBody = ({
   const shell = useV4Adapter("shell");
   const go = useGo();
   const markAll = shell.useMarkAllNotificationsRead();
-  const markRead = shell.useMarkNotificationRead();
-  const remove = shell.useDeleteNotification();
+  const markRead = shell.useMarkNotificationsRead();
+  const remove = shell.useDeleteNotifications();
   const clearAll = shell.useDeleteAllNotifications();
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [filter, setFilter] = useState<Filter>("all");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [expanded, setExpanded] = useState<string>();
 
   const groups = groupNotifications(notifications);
   const unread = notifications.filter((notification) => !notification.isRead).length;
@@ -123,19 +124,19 @@ const InboxBody = ({
   const today = shown.filter((group) => isToday(group.latest.createdAt));
   const earlier = shown.filter((group) => !isToday(group.latest.createdAt));
 
-  const readGroup = (group: NotificationGroup) =>
-    Promise.all(
-      group.items
-        .filter((notification) => !notification.isRead)
-        .map((notification) => markRead.mutateAsync({ orgId, notificationId: notification.id }))
-    ).catch((error) => failed("Failed to mark notifications as read", error));
+  const readGroup = (group: NotificationGroup) => {
+    const notificationIds = group.items
+      .filter((notification) => !notification.isRead)
+      .map((notification) => notification.id);
+    if (!notificationIds.length) return;
+    markRead
+      .mutateAsync({ orgId, notificationIds })
+      .catch((error) => failed("Failed to mark notifications as read", error));
+  };
 
   const deleteGroup = (group: NotificationGroup) =>
-    Promise.all(
-      group.items.map((notification) =>
-        remove.mutateAsync({ orgId, notificationId: notification.id })
-      )
-    )
+    remove
+      .mutateAsync({ orgId, notificationIds: group.items.map((notification) => notification.id) })
       .then(() =>
         toast({
           tone: "ok",
@@ -149,14 +150,11 @@ const InboxBody = ({
 
   const openGroup = (event: MouseEvent, group: NotificationGroup, href?: string) => {
     readGroup(group);
-    if (
-      !href ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    )
+    if (!href) {
+      setExpanded(expanded === group.key ? undefined : group.key);
+      return;
+    }
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
     event.preventDefault();
     onClose();
@@ -185,7 +183,7 @@ const InboxBody = ({
         }
         description={
           latest.body && (
-            <span className={styles.body}>
+            <span className={styles.body} data-expanded={expanded === group.key || undefined}>
               <ReactMarkdown components={inline}>{latest.body}</ReactMarkdown>
             </span>
           )
