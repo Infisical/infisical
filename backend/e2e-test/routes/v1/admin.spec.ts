@@ -112,11 +112,11 @@ describe("Admin V1 Router", () => {
       expect(payload.organization.name).toBe(organizationName);
     });
 
-    test("reports that no activation token is required when none is configured", async () => {
+    test("reports that no setup token is required when none is configured", async () => {
       const response = await testServer.inject({ method: "GET", url: "/api/v1/admin/config" });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().config.isInitialSetupActivationTokenRequired).toBe(false);
+      expect(response.json().config.isInstanceSetupTokenRequired).toBe(false);
     });
   });
 

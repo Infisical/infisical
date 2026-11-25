@@ -1648,7 +1648,14 @@ export const SECRET_IMPORTS = {
     path: "The path to list secret imports from."
   },
   GET: {
-    secretImportId: "The ID of the secret import to fetch."
+    secretImportId: "The ID of the secret import to fetch.",
+    importEnv: {
+      id: "The ID of the environment the secret import reads secrets from.",
+      name: "The name of the environment the secret import reads secrets from.",
+      slug: "The slug of the environment the secret import reads secrets from.",
+      projectId:
+        "The ID of the project the secret import reads secrets from. It differs from the top-level projectId, the project the import is in, when the import reads from another project."
+    }
   },
   CREATE: {
     environment: "The slug of the environment to import into.",
@@ -4867,6 +4874,13 @@ export const SecretValidationRules = {
     providers:
       "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
   }
+} as const;
+
+export const INSTANCE_DEPLOYMENT_AWS_METADATA = {
+  description:
+    "Get details about the AWS account the Infisical instance runs as, such as the account ID to trust in an IAM role's trust policy. If Infisical can't reach AWS STS to find out, the request fails instead of returning a null account ID.",
+  accountId:
+    "The AWS account ID Infisical acts as when it assumes an IAM role in your AWS account, for example for an AWS App Connection. Name this account as the trusted principal in the role's trust policy. Null when the instance has no AWS identity."
 } as const;
 
 export const CRON_JOB_TRIGGER = {
