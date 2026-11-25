@@ -69,7 +69,11 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import {
+  assertOrgHasVerifiedEmailDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
@@ -220,6 +224,8 @@ export const ldapConfigServiceFactory = ({
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
     }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({

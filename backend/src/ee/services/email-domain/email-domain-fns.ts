@@ -2,7 +2,7 @@ import { TEmailDomains } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
-import { EmailDomainStatus } from "./email-domain-types";
+import { EmailDomainStatus, SsoEmailDomainError } from "./email-domain-types";
 
 const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
@@ -13,6 +13,23 @@ export const toEmailDomainResponse = <T extends { verificationCode: string }>(em
   ...emailDomain,
   verificationCode: getEmailDomainVerificationRecordValue(emailDomain.verificationCode)
 });
+
+// SSO login only admits users from the org's verified domains, so a config created without one can never sign anyone in.
+export const assertOrgHasVerifiedEmailDomain = async ({
+  orgId,
+  emailDomainDAL
+}: {
+  orgId: string;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+}) => {
+  const verifiedDomain = await emailDomainDAL.findOne({ orgId, status: EmailDomainStatus.Verified });
+  if (!verifiedDomain) {
+    throw new BadRequestError({
+      name: SsoEmailDomainError.NotVerified,
+      message: "Verify an email domain for this organization before adding an SSO configuration."
+    });
+  }
+};
 
 /**
  * Given an email and orgId, verifies the org is allowed to manage a user with this email and

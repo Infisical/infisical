@@ -24,6 +24,7 @@ func TestOIDCConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := configBody(t, tn)
 
 		// Action
@@ -63,6 +64,7 @@ func TestOIDCConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := configBody(t, tn)
 		body.OrganizationId = nil
 
@@ -88,6 +90,23 @@ func TestOIDCConfig_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "Failed to create OIDC SSO configuration due to plan restriction")
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should reject creation when the organization has no verified email domain", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, tn))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.NotNil(t, res.JSON400)
+		require.Equal(t, "SSO_EMAIL_DOMAIN_NOT_VERIFIED", res.JSON400.Error)
 		requireNoConfig(t, tn)
 	})
 

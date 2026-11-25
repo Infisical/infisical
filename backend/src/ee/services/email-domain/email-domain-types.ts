@@ -15,6 +15,11 @@ export enum EmailDomainVerificationError {
   AlreadyVerified = "EMAIL_DOMAIN_ALREADY_VERIFIED"
 }
 
+// Clients branch on this name (the Terraform provider hints at domain verification), so treat renames as breaking.
+export enum SsoEmailDomainError {
+  NotVerified = "SSO_EMAIL_DOMAIN_NOT_VERIFIED"
+}
+
 export type TCreateEmailDomainDTO = {
   domain: string;
 } & TOrgPermission;

@@ -78,6 +78,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
+  assertOrgHasVerifiedEmailDomain,
   findOrgIdByVerifiedDomain,
   isIdpAuthoritativeForDomain,
   verifyEmailDomainOwnership
@@ -833,6 +834,8 @@ export const oidcConfigServiceFactory = ({
         message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
       });
     }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId: org.id, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
