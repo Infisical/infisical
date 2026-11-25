@@ -10,7 +10,7 @@ import {
   getFileAtRef,
   getFilesAtRef,
   getModifiedFiles,
-  getPreviousStableTag,
+  getPreviousReleasedTag,
   getTagDate,
   hasGitRef
 } from "./git.js";
@@ -179,13 +179,14 @@ export type FragmentRelease = {
 };
 
 // Reads fragments from the tag itself, so a tag always yields the same data, even after the release
-// PR deletes them from main.
-export const collectFragmentRelease = (tag: string): FragmentRelease => {
+// PR deletes them from main. The range starts at the last release that has data, not the last tag:
+// a release whose data was never generated collected nothing, so its fragments belong to this one.
+export const collectFragmentRelease = (tag: string, releasedVersions: ReadonlySet<string>): FragmentRelease => {
   if (!hasGitRef(tag)) {
     throw new Error(`Could not find git tag "${tag}"`);
   }
 
-  const previousTag = getPreviousStableTag(tag);
+  const previousTag = getPreviousReleasedTag(tag, releasedVersions);
   const addedFiles = getAddedFiles(previousTag, tag);
 
   // A fragment that reuses the name of one the previous tag still carried is a new note, but the
@@ -231,11 +232,13 @@ const readFileIfPresent = async (file: string) => {
 
 // Removes every fragment the tag contains, not only the ones this release added: a release PR built
 // on a branch cut before a fragment reached main cannot delete it, so a later release has to. A
-// fragment in a tag was collected by that release or an earlier one. The content check spares a new
-// fragment that reuses the name of one an older release line still carries.
-export const removeReleasedFragmentFiles = async (repoRoot: string, tag: string) => {
-  // The first release collects nothing, so its fragments wait for the next one.
-  if (!getPreviousStableTag(tag)) {
+// fragment in a tag was collected by that release or an earlier one, which holds only while
+// previousTag is the tag the release collected from. The content check spares a new fragment that
+// reuses the name of one an older release line still carries.
+export const removeReleasedFragmentFiles = async (repoRoot: string, tag: string, previousTag: string | null) => {
+  // A release with no earlier one to diff against collects nothing, so its fragments wait for the
+  // next one.
+  if (!previousTag) {
     return [];
   }
 

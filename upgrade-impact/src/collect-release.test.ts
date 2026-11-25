@@ -82,7 +82,7 @@ describe("collectFragmentRelease", () => {
   });
 
   it("collects the fragments a release added, from the tag, after main deleted them", () => {
-    const release = collectFragmentRelease("v1.0.1");
+    const release = collectFragmentRelease("v1.0.1", new Set(["v1.0.0"]));
     const sha = git("rev-parse", "v1.0.1^").toString().trim();
 
     expect(release.previousTag).toBe("v1.0.0");
@@ -101,12 +101,22 @@ describe("collectFragmentRelease", () => {
   });
 
   it("collects a fragment that reuses a released name, but not one edited in place", () => {
-    const release = collectFragmentRelease("v1.0.2");
+    const release = collectFragmentRelease("v1.0.2", new Set(["v1.0.0", "v1.0.1"]));
 
     expect(release.fragments.map(({ file, evidence }) => [file, evidence.ref])).toEqual([
       ["upgrade-impact/changes/from-pr.yaml", "#5"]
     ]);
     expect(release.draft.configChanges.map((entry) => entry.title)).toEqual(["Reuses a released name"]);
+  });
+
+  it("collects the fragments of a release whose data was never generated", () => {
+    const release = collectFragmentRelease("v1.0.2", new Set(["v1.0.0"]));
+
+    expect(release.previousTag).toBe("v1.0.0");
+    expect(release.fragments.map(({ file, fragment }) => [file, fragment.title])).toEqual([
+      ["upgrade-impact/changes/from-merge.yaml", "Edited after its release"],
+      ["upgrade-impact/changes/from-pr.yaml", "Reuses a released name"]
+    ]);
   });
 
   it("removes released fragments an earlier release left behind, and spares unreleased ones", async () => {
@@ -116,13 +126,13 @@ describe("collectFragmentRelease", () => {
       "upgrade-impact/changes/unreleased.yaml": fragmentYaml("Unreleased")
     });
 
-    expect(await removeReleasedFragmentFiles(repo, "v1.0.1")).toEqual(["upgrade-impact/changes/from-commit.yaml"]);
+    expect(await removeReleasedFragmentFiles(repo, "v1.0.1", "v1.0.0")).toEqual(["upgrade-impact/changes/from-commit.yaml"]);
     expect(git("status", "--short").toString().trim()).toBe("D upgrade-impact/changes/from-commit.yaml");
-    expect(await removeReleasedFragmentFiles(repo, "v1.0.0")).toEqual([]);
+    expect(await removeReleasedFragmentFiles(repo, "v1.0.0", null)).toEqual([]);
   });
 
   it("collects nothing for the first release, which has no range to read", () => {
-    const release = collectFragmentRelease("v1.0.0");
+    const release = collectFragmentRelease("v1.0.0", new Set());
 
     expect(release.previousTag).toBeNull();
     expect(release.fragments).toEqual([]);

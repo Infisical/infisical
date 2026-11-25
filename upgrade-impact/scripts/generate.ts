@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parse, stringify } from "yaml";
 
 import { collectFragmentRelease, FragmentRelease, removeReleasedFragmentFiles } from "../src/fragments.js";
-import { compareVersions, isStableVersion } from "../src/git.js";
+import { compareVersions, getFilesAtRef, isStableVersion } from "../src/git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "../src/schema.js";
 
 const GENERATOR_NAME = "@infisical/upgrade-impact";
@@ -29,7 +29,8 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag") ?? process.env.GITHUB_REF_NAME,
     dryRun: args.includes("--dry-run"),
-    fromFile: getValue("--from-file")
+    fromFile: getValue("--from-file"),
+    dataRef: getValue("--data-ref")
   };
 };
 
@@ -90,20 +91,40 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
   );
 };
 
-export const generateReleaseImpact = (tag: string) => {
-  const release = collectFragmentRelease(tag);
+// Data waiting on the release PR's branch counts too (dataRef): that release was collected, just
+// not merged, and starting before it would collect its fragments a second time.
+const listReleasedVersions = async (dataRef?: string) => {
+  let localFiles: string[] = [];
+
+  try {
+    localFiles = await fs.readdir(releasesDir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const refFiles = dataRef ? getFilesAtRef(dataRef, path.relative(repoRoot, releasesDir)) : [];
+
+  return new Set(
+    [...localFiles, ...refFiles].filter((file) => file.endsWith(".yaml")).map((file) => path.basename(file, ".yaml"))
+  );
+};
+
+export const generateReleaseImpact = async (tag: string, dataRef?: string) => {
+  const release = collectFragmentRelease(tag, await listReleasedVersions(dataRef));
 
   return { fragments: release.fragments, releaseImpact: assembleReleaseImpact(release) };
 };
 
 const main = async () => {
-  const { tag, dryRun, fromFile } = parseArgs();
+  const { tag, dryRun, fromFile, dataRef } = parseArgs();
 
   // Replays data generated earlier onto an index that may have changed since.
   if (fromFile) {
     const releaseImpact = ReleaseImpactSchema.parse(parse(await fs.readFile(fromFile, "utf8")));
     await writeReleaseImpact(releaseImpact);
-    await removeReleasedFragmentFiles(repoRoot, releaseImpact.version);
+    await removeReleasedFragmentFiles(repoRoot, releaseImpact.version, releaseImpact.previousTag);
     process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version} from ${fromFile}\n`);
     return;
   }
@@ -112,7 +133,7 @@ const main = async () => {
     throw new Error(`Expected a stable vX.Y.Z tag. Received: ${tag ?? "<missing>"}`);
   }
 
-  const { fragments, releaseImpact } = generateReleaseImpact(tag);
+  const { fragments, releaseImpact } = await generateReleaseImpact(tag, dataRef);
 
   if (dryRun) {
     process.stdout.write(`${JSON.stringify({ fragments, releaseImpact }, null, 2)}\n`);
@@ -120,7 +141,7 @@ const main = async () => {
   }
 
   await writeReleaseImpact(releaseImpact);
-  await removeReleasedFragmentFiles(repoRoot, releaseImpact.version);
+  await removeReleasedFragmentFiles(repoRoot, releaseImpact.version, releaseImpact.previousTag);
   process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version}\n`);
 };
 

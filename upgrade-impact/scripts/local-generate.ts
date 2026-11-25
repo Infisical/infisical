@@ -104,7 +104,7 @@ const main = async () => {
     ensureTag(previousTag, skipFetch);
   }
 
-  const { releaseImpact } = generateReleaseImpact(tag);
+  const { releaseImpact } = await generateReleaseImpact(tag);
   const parsedReleaseImpact = ReleaseImpactSchema.parse(releaseImpact);
   const yaml = stringify(parsedReleaseImpact);
   const outputPath = path.resolve(output ?? path.join(defaultOutputDir, `${tag}.yaml`));

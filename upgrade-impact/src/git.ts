@@ -38,15 +38,18 @@ export const getStableTags = () =>
     .filter(isStableVersion)
     .sort(compareVersions);
 
-export const getPreviousStableTag = (tag: string) => {
+// The newest stable tag below this one that already has upgrade impact data. A release whose data
+// was never generated is passed over, so the next release's range covers its changes too.
+export const getPreviousReleasedTag = (tag: string, releasedVersions: ReadonlySet<string>) => {
   const stableTags = getStableTags();
   const index = stableTags.indexOf(tag);
 
-  if (index <= 0) {
-    return null;
-  }
-
-  return stableTags[index - 1];
+  return (
+    stableTags
+      .slice(0, Math.max(index, 0))
+      .reverse()
+      .find((candidate) => releasedVersions.has(candidate)) ?? null
+  );
 };
 
 export const getTagDate = (tag: string) => runGit(["log", "-1", "--format=%cI", tag]);

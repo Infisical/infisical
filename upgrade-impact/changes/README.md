@@ -3,7 +3,7 @@
 A fragment is a small YAML file that tells self-hosted operators what a change means for their
 upgrade. The pull request that makes the change adds the fragment, so the author who has the context
 writes it and it is reviewed with the code. Each release then collects the fragments added since the
-previous release into `upgrade-impact/data/releases/<version>.yaml`, which feeds the Helm chart
+last release that has upgrade impact data into `upgrade-impact/data/releases/<version>.yaml`, which feeds the Helm chart
 upgrade notes, and its release pull request deletes them from this directory. What is here is what
 has not been released yet.
 

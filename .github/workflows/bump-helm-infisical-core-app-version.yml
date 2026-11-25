@@ -71,6 +71,12 @@ jobs:
             echo "generate=true" >> "$GITHUB_OUTPUT"
           fi
 
+          # Releases waiting on the open PR's branch were already collected, so the range this
+          # release collects must start after them.
+          if [ -n "$OPEN_PR" ] && git rev-parse --verify --quiet "origin/${BRANCH_NAME}" >/dev/null; then
+            echo "data_ref=origin/${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
         if: steps.impact.outputs.generate == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -97,7 +103,10 @@ jobs:
       # The chart's upgrade notes come from this data, so the chart is never bumped without it.
       - name: Generate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
-        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          DATA_REF: ${{ steps.impact.outputs.data_ref }}
+        run: npm run generate -- --tag "$TAG_NAME" ${DATA_REF:+--data-ref "$DATA_REF"}
         working-directory: upgrade-impact
 
       - name: Validate upgrade impact data
