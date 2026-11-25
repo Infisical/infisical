@@ -25,7 +25,7 @@ Infisical Cloud can't connect to private IP addresses without a Gateway. If you 
 
 Create a TSIG key, then allow the key to change TXT records at the `_acme-challenge` name of each domain you request certificates for. Limit the key to those records, so the key can't change any other record in the zone.
 
-Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts HMAC-SHA224, HMAC-SHA384, HMAC-SHA512, and HMAC-SHA1. Infisical doesn't accept HMAC-MD5 or truncated algorithms such as BIND's `hmac-sha256-128`, so if your server has one of those keys, create a new key.
+Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts HMAC-SHA224, HMAC-SHA384, HMAC-SHA512, and HMAC-SHA1. Infisical doesn't accept HMAC-MD5 or truncated algorithms such as `hmac-sha256-128` in BIND, so if your server has one of those keys, create a new key.
 
 <Tabs>
   <Tab title="BIND">
