@@ -36,6 +36,11 @@ import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
 
+const POLICY_OPERATION_NOUN = {
+  [CertRequestPolicyOperation.Issuance]: "issuance",
+  [CertRequestPolicyOperation.Renewal]: "renewal"
+};
+
 type Props = {
   popUp: UsePopUpState<["policy"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["policy"]>, state?: boolean) => void;
@@ -89,6 +94,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     formState: { isDirty, isSubmitting, isValidating }
   } = formMethods;
   const selectedPolicyType = watch("policyType");
+  const selectedOperation = watch("operation");
 
   const { mutateAsync: createPolicy, isPending: isCreating } = useCreateApprovalPolicy();
   const { mutateAsync: updatePolicy, isPending: isUpdating } = useUpdateApprovalPolicy();
@@ -230,9 +236,11 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               : "Create Certificate Approval Policy"}
           </SheetTitle>
           <SheetDescription>
-            {selectedPolicyType === ApprovalPolicyType.CertRevocation
-              ? "Configure a certificate approval policy requiring approval for certificate revocation."
-              : "Configure a certificate approval policy requiring approval for certificate issuance."}
+            {`Configure a certificate approval policy requiring approval for certificate ${
+              selectedPolicyType === ApprovalPolicyType.CertRevocation
+                ? "revocation"
+                : POLICY_OPERATION_NOUN[selectedOperation ?? CertRequestPolicyOperation.Issuance]
+            }.`}
           </SheetDescription>
         </SheetHeader>
         <FormProvider {...formMethods}>
