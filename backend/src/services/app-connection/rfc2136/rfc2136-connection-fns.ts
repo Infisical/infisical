@@ -169,12 +169,12 @@ const RCODE_MESSAGES: Partial<Record<DnsRcode, string>> = {
   [DnsRcode.FormErr]: "the DNS server could not parse the update request",
   [DnsRcode.ServFail]: "the DNS server failed to process the request",
   [DnsRcode.NotImp]: "the DNS server does not accept dynamic updates",
-  // PowerDNS also answers REFUSED, unsigned, when the TSIG secret is wrong
+  // Servers reuse REFUSED and NOTAUTH for several causes (PowerDNS for a wrong secret or clock, Knot for an unknown
+  // key or an ACL denial), so these name every cause rather than guess one
   [DnsRcode.Refused]:
-    "the DNS server refused the update. Check the TSIG secret, that the key is allowed to update TXT records for this name (BIND update-policy, Knot ACL, PowerDNS TSIG-ALLOW-DNSUPDATE and ALLOW-DNSUPDATE-FROM), and that the host is the zone's primary server",
-  // Knot answers NOTAUTH, not REFUSED, when its ACL denies the update
+    "the DNS server refused the update. Possible causes: wrong key name, secret or algorithm; the server's clock is more than 5 minutes off; the key isn't allowed to update this name; or Host isn't the zone's primary server",
   [DnsRcode.NotAuth]:
-    "the DNS server is not authoritative for the zone, or the key is not allowed to update this name. Check the zone, and the key's update policy (BIND update-policy, Knot ACL, PowerDNS TSIG-ALLOW-DNSUPDATE)",
+    "the DNS server did not accept the update for this zone. Possible causes: wrong zone; wrong key name or algorithm; or the key isn't allowed to update this name",
   [DnsRcode.NotZone]: "the record name is not inside the zone"
 };
 
@@ -215,7 +215,7 @@ export const getRfc2136ErrorMessage = (error: unknown, tsigSecret?: string): str
         }`;
       }
       if (error.tsigError === undefined) {
-        return "the DNS server rejected the TSIG key. Check the key name, the secret and the algorithm";
+        return "the DNS server rejected the TSIG key. Possible causes: wrong key name, secret or algorithm; or the server's clock is more than 5 minutes off";
       }
       return TSIG_ERROR_MESSAGES[error.tsigError as TsigError] ?? error.message;
     case DnsUpdateErrorReason.Rcode:

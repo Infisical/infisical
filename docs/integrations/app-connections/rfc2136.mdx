@@ -25,7 +25,7 @@ Infisical Cloud can't connect to private IP addresses without a Gateway. If you 
 
 Create a TSIG key, then allow the key to change TXT records at the `_acme-challenge` name of each domain you request certificates for. Limit the key to those records, so the key can't change any other record in the zone.
 
-Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts HMAC-SHA224, HMAC-SHA384, HMAC-SHA512, and HMAC-SHA1. Infisical doesn't accept HMAC-MD5, so if your server has an HMAC-MD5 key, create a new key.
+Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts HMAC-SHA224, HMAC-SHA384, HMAC-SHA512, and HMAC-SHA1. Infisical doesn't accept HMAC-MD5 or truncated algorithms such as BIND's `hmac-sha256-128`, so if your server has one of those keys, create a new key.
 
 <Tabs>
   <Tab title="BIND">
@@ -156,7 +156,11 @@ Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts H
         pdnsutil metadata add example.com TSIG-ALLOW-DNSUPDATE infisical-acme
         ```
 
-        On older PowerDNS versions, run `pdnsutil add-meta example.com TSIG-ALLOW-DNSUPDATE infisical-acme` instead. Both add the key to the zone's list, so keys that other systems already use to update the zone keep working.
+        On older PowerDNS versions, run `pdnsutil add-meta example.com TSIG-ALLOW-DNSUPDATE infisical-acme` instead. Both add the key to the zone's list and keep any keys already on it.
+
+        <Warning>
+          If the list was empty, PowerDNS accepted updates signed with any key, and now only `infisical-acme` can update the zone. If other systems update this zone, add their keys too, for example `pdnsutil metadata add example.com TSIG-ALLOW-DNSUPDATE dhcp-key`.
+        </Warning>
       </Step>
     </Steps>
 
@@ -300,12 +304,12 @@ If Infisical can't save the connection or add a challenge record, the error mess
 
 | The error message contains | Fix |
 | --- | --- |
-| `the TSIG secret or algorithm does not match the key configured on the DNS server` | Copy the secret from the key file again, and check that **Algorithm** matches the key's algorithm |
-| `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server |
+| `the TSIG secret or algorithm does not match the key configured on the DNS server` | Copy the secret from the key file again, and check that **Algorithm** matches the key's algorithm. If the key file names a truncated algorithm such as `hmac-sha256-128`, create a new `hmac-sha256` key |
+| `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server, and sync the DNS server's clock with NTP |
 | `does not recognize the TSIG key name or its algorithm` | Check **Key Name** for typos, and check that the DNS server has loaded the key |
 | `its clock differs from Infisical's by more than 5 minutes` | Sync the DNS server's clock with NTP |
-| `refused the update` | Copy the secret from the key file again (PowerDNS refuses updates signed with a wrong secret). Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE` and `allow-dnsupdate-from`), and that **Host** is the zone's primary server |
-| `not authoritative for the zone, or the key is not allowed to update this name` | Check the **Zone** on the certificate authority, and that the key is allowed to update TXT records at the challenge name (Knot DNS reports a denied update this way) |
+| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE` and `allow-dnsupdate-from`), and that **Host** is the zone's primary server |
+| `did not accept the update for this zone` | Check the **Zone** on the certificate authority, **Key Name** and **Algorithm**, and that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`) |
 | `does not accept dynamic updates` | Turn on dynamic updates on the DNS server, such as `dnsupdate=yes` in PowerDNS |
 | `is not authoritative for any zone containing` | Point **Host** at the zone's primary server, or enter the **Zone** on the certificate authority |
 | `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
