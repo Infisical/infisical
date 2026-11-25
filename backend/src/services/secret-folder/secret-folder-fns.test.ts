@@ -994,7 +994,7 @@ describe("assertNoDirectImportEnteringEnforcedPath", () => {
     expect(error).toMatchObject({
       name: "RenameFolderImportIntoEnforcedPath",
       message:
-        'You cannot rename the selected folder because its secret imports would move to folder path "/prod/api", where the change policy "import-guard" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Recreate them as imports that respect approval policies, or choose a different name.'
+        'You cannot rename the selected folder because its secret imports would move to folder path "/prod/api", where the change policy "import-guard" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Choose a different name and try again.'
     });
   });
 

@@ -630,7 +630,7 @@ export const assertNoDirectImportEnteringEnforcedPath = (
   const { environment, path, contentPath, policyName } = destination;
   if (canActorReadBlock(permission, environment, "secret_import", contentPath)) {
     throw new BadRequestError({
-      message: `You cannot rename the selected folder because its secret imports would move to folder path "${path}", where the change policy "${policyName}" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Recreate them as imports that respect approval policies, or choose a different name.`,
+      message: `You cannot rename the selected folder because its secret imports would move to folder path "${path}", where the change policy "${policyName}" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Choose a different name and try again.`,
       name: "RenameFolderImportIntoEnforcedPath"
     });
   }
