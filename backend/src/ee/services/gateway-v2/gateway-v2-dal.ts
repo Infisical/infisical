@@ -5,11 +5,16 @@ import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
+import { HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
 import { buildGatewayLastSeenSql, buildGatewayProbedSql, buildGatewayReachableSql } from "./gateway-v2-transport-fns";
 
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 
 const OFFLINE_CLAIM_STATEMENT_TIMEOUT_MS = 30_000;
+
+// Gateways check in every 180 seconds, and one failed check-in marks a gateway unreachable until the next one, so
+// wait out a second miss before alerting.
+const OFFLINE_ALERT_MIN_SILENCE_SECONDS = 2 * 180 + HEARTBEAT_BUFFER_SECONDS;
 
 export type TOfflineGateway = {
   id: string;
@@ -22,7 +27,7 @@ export type TOfflineGateway = {
 // moves forward when the gateway comes back. The hour floor caps a gateway that keeps flapping at one alert an hour.
 const buildOfflineAlertDueSql = () => {
   const alertedAt = `"${TableName.GatewayV2}"."healthAlertedAt"`;
-  return `(${buildGatewayProbedSql()} AND NOT ${buildGatewayReachableSql()} AND (${alertedAt} IS NULL OR (${alertedAt} < ${buildGatewayLastSeenSql()} AND ${alertedAt} < NOW() - interval '1 hour')))`;
+  return `(${buildGatewayProbedSql()} AND NOT ${buildGatewayReachableSql()} AND ${buildGatewayLastSeenSql()} < NOW() - make_interval(secs => ${OFFLINE_ALERT_MIN_SILENCE_SECONDS}) AND (${alertedAt} IS NULL OR (${alertedAt} < ${buildGatewayLastSeenSql()} AND ${alertedAt} < NOW() - interval '1 hour')))`;
 };
 
 export const gatewayV2DalFactory = (db: TDbClient) => {

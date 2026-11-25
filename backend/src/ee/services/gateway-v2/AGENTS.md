@@ -12,6 +12,10 @@ successful probe (`buildGatewayLastSeenSql`, the later of `heartbeat` and `direc
 down gateway alerts once per outage and at most once an hour. Only a successful probe moves either heartbeat forward,
 which is what makes "alerted before the last probe" mean "recovered since".
 
+It also waits until the last successful probe is older than `OFFLINE_ALERT_MIN_SILENCE_SECONDS` (two missed
+check-ins), because one failed check-in already marks a gateway unreachable and would otherwise page on a single
+glitch. Leave `buildGatewayReachableSql` alone for this: pools and routing use it.
+
 `healthAlertedAt` is stamped with the app's clock, like the heartbeats it is compared with.
 
 ## The claim

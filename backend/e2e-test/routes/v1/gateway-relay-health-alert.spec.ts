@@ -193,12 +193,24 @@ describe("Gateway and relay health alerts", () => {
     expect(payload.gateways).toEqual([{ id: gateway.id, lastSeenAt: expect.any(Date) as Date }]);
   });
 
+  test("one missed check-in does not alert until a second one is missed", async () => {
+    const { gatewayV2Service } = buildServices();
+    const gateway = await createGateway(authToken);
+    await testDb(TableName.GatewayV2)
+      .where({ id: gateway.id })
+      .update({ heartbeat: minutesAgo(5), heartbeatTTL: 0 });
+
+    await gatewayV2Service.healthcheckNotify();
+
+    expect(await offlineEventsFor(gateway.id)).toHaveLength(0);
+  });
+
   test("a gateway that recovers and drops again within the hour waits for the hour", async () => {
     const { gatewayV2Service } = buildServices();
     const gateway = await createGateway(authToken);
     await testDb(TableName.GatewayV2)
       .where({ id: gateway.id })
-      .update({ heartbeat: minutesAgo(5), heartbeatTTL: 0, healthAlertedAt: minutesAgo(10) });
+      .update({ heartbeat: minutesAgo(8), heartbeatTTL: 0, healthAlertedAt: minutesAgo(10) });
 
     await gatewayV2Service.healthcheckNotify();
 
@@ -219,7 +231,9 @@ describe("Gateway and relay health alerts", () => {
         gateways.push(await createGateway(bulkAuthToken));
       }
       const ids = gateways.map((gateway) => gateway.id);
-      await testDb(TableName.GatewayV2).whereIn("id", ids).update({ heartbeat: minutesAgo(10), heartbeatTTL: 0 });
+      await testDb(TableName.GatewayV2)
+        .whereIn("id", ids)
+        .update({ heartbeat: minutesAgo(10), heartbeatTTL: 0 });
 
       await gatewayV2Service.healthcheckNotify();
 
