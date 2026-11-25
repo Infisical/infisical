@@ -12,6 +12,7 @@ import {
   getProjectPermissionFingerprint,
   handlebarsClient,
   interpolatePermissionRules,
+  isFolderPathBelow,
   recursiveFolderPathGlob,
   throwIfMissingSecretReadValueOrDescribePermission,
   validateOrgSSO
@@ -529,9 +530,32 @@ describe("validateOrgSSO session binding", () => {
 describe("recursiveFolderPathGlob", () => {
   test.each([
     ["/", "/**"],
+    ["", "/**"],
+    ["//", "/**"],
     ["/a", "/a/**"],
-    ["/a/b", "/a/b/**"]
+    ["/a/b", "/a/b/**"],
+    ["/path//", "/path/**"],
+    ["//path/", "/path/**"],
+    ["path", "/path/**"],
+    ["/a//b/", "/a/b/**"]
   ])("builds the subtree glob for %s", (path, glob) => {
     expect(recursiveFolderPathGlob(path)).toBe(glob);
+  });
+});
+
+describe("isFolderPathBelow", () => {
+  test.each([
+    ["/path/child", "/path//", true],
+    ["/path/child", "//path/", true],
+    ["/path/child", "path", true],
+    ["/a/b", "/a//", true],
+    ["/a", "/", true],
+    ["/a", "", true],
+    ["/", "/", false],
+    ["/path", "/path/", false],
+    ["/path2", "/path", false],
+    ["/path", "/path/child", false]
+  ])("%s is below %s: %s", (folderPath, ancestorPath, below) => {
+    expect(isFolderPathBelow(folderPath, ancestorPath)).toBe(below);
   });
 });

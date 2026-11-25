@@ -40,7 +40,7 @@ A product admin can't connect to an account unless they also have a role on the 
   </Step>
 </Steps>
 
-On the **Identities** tab, you can also create a new machine identity for PAM. To learn how an AI agent uses one, see [Run agents unattended](/documentation/platform/pam/ai-agents/unattended).
+On the **Identities** tab, you can also create a new machine identity for PAM, for example to [run an AI agent as its own identity](/documentation/platform/pam/ai-agents/overview#run-an-agent-as-a-machine-identity).
 
 ### Organization admins
 
@@ -95,7 +95,7 @@ If you assign a role to a group, the role follows the group's membership. When s
 
 Machine identities can hold any role, but the following stay with users and groups:
 
-- **Connecting in the browser**: Machine identities connect through the [CLI](/cli/reference#pam-agentic-access)
+- **Connecting in the browser**: Machine identities connect through the [CLI](/cli/reference#pam-access)
 - **Approving access requests**: A machine identity can request access, but only users and groups can [approve requests](/documentation/platform/pam/access-requests/overview)
 - **Accounts that require MFA**: A machine identity can't complete an MFA challenge, so it can't connect to an account whose template requires MFA
 

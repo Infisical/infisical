@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -68,6 +70,9 @@ export type TSignCertificateFromProfileDTO = {
   auditLogInfo?: AuditLogInfo;
   issuanceOperation?: CertificateIssuanceOperation;
   originalCertificateId?: string;
+  issuerNameOverride?: TIssuerNameOverride;
+  additionalExtensions?: TIssuerAddedExtension[];
+  onCertificateRequestPersisted?: (certificateRequest: { id: string; createdAt: Date }, tx: Knex) => Promise<void>;
   renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
 } & Omit<TProjectPermission, "projectId">;
 
@@ -223,4 +228,15 @@ export type TUpdateCertificateDTO = {
 export type TAltNameEntry = {
   type: CertSubjectAlternativeNameType;
   value: string;
+};
+
+export type TIssuerAddedExtension = {
+  oid: string;
+  critical: boolean;
+  value: Buffer;
+};
+
+export type TIssuerNameOverride = {
+  commonName?: string;
+  altNames: TAltNameEntry[];
 };

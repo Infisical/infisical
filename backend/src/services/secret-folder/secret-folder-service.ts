@@ -30,6 +30,7 @@ import {
   assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
   assertFolderRenameAllowed,
+  assertFolderSubtreeDeleteAllowed,
   buildFolderPath,
   buildToAbsPath,
   canActorReadBlock,
@@ -895,6 +896,7 @@ export const secretFolderServiceFactory = ({
 
     // Include the target folder itself plus all its descendants
     const foldersToCheck = [targetFolderWithPath, ...targetFolderDescendants];
+    assertFolderSubtreeDeleteAllowed(permission, env.slug, foldersToCheck);
 
     const folderPolicyPaths = foldersToCheck.map((folder) => ({
       path: folder.path,

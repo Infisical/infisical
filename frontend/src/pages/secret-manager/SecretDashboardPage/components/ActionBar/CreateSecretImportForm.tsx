@@ -102,9 +102,7 @@ export const CreateSecretImportForm = ({
     secretPath,
     options: { enabled: Boolean(isOpen) }
   });
-  const enforcingPolicy = destinationPolicy?.enforceImportReplication
-    ? destinationPolicy
-    : undefined;
+  const enforcingPolicy = destinationPolicy?.enforceOnSecretImports ? destinationPolicy : undefined;
 
   const canCrossProjectShare =
     subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;

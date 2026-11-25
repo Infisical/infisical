@@ -9,32 +9,31 @@ import {
   Toggle
 } from "@app/components/v3";
 
+import { normalizeFolderPath, subfolderToggleLabelOf } from "./folder-access.utils";
+
 type Props = {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  // only grants on the root folder may apply to subfolders
-  isDisabled?: boolean;
+  folderPath: string;
 };
 
-export const ApplyToSubfoldersToggle = ({ checked, onCheckedChange, isDisabled }: Props) => (
+export const ApplyToSubfoldersToggle = ({ checked, onCheckedChange, folderPath }: Props) => (
   <FieldLabel htmlFor="apply-to-subfolders" variant="project">
-    <Field orientation="horizontal" data-disabled={isDisabled}>
+    <Field orientation="horizontal">
       <FieldContent>
         <FieldTitle>
           <FolderTreeIcon />
-          {isDisabled ? "Apply to Subfolders" : "Apply to Environment"}
+          {subfolderToggleLabelOf(folderPath)}
         </FieldTitle>
         <FieldDescription>
-          {isDisabled
-            ? "Only access on the root folder can be applied to subfolders."
-            : "The selected permission also applies to every folder under /."}
+          The selected permission also applies to every folder under{" "}
+          {normalizeFolderPath(folderPath)}.
         </FieldDescription>
       </FieldContent>
       <Toggle
         id="apply-to-subfolders"
         variant="project"
         checked={checked}
-        disabled={isDisabled}
         onCheckedChange={onCheckedChange}
       />
     </Field>

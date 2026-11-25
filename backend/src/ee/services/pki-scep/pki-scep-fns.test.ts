@@ -2,14 +2,22 @@
 import { AsnConvert } from "@peculiar/asn1-schema";
 import * as asn1x509 from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
+
+import { getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
 
 import {
   decodeAsn1ChallengePasswordValue,
   evaluateScepRenewalAuthorization,
   extractScepChallengePassword,
+  isSignerCertIssuedByCa,
   ScepRenewalDenyReason
 } from "./pki-scep-fns";
+
+vi.mock("@app/services/certificate-authority/certificate-authority-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/certificate-authority/certificate-authority-fns")>()),
+  getCaCertChains: vi.fn()
+}));
 
 // Builds a DER-encoded ASN.1 string (tag + length + value) like @peculiar/x509 surfaces the attribute value.
 const derString = (tag: number, value: string): Uint8Array => {
@@ -521,5 +529,64 @@ describe("evaluateScepRenewalAuthorization", () => {
         signerCertSubjectName: new x509.Name("CN=device-01")
       })
     ).toEqual({ authorized: false, reason: ScepRenewalDenyReason.InvalidSigner });
+  });
+});
+
+describe("isSignerCertIssuedByCa", () => {
+  let signerCert: x509.X509Certificate;
+  let expiredSignerCert: x509.X509Certificate;
+
+  const createSignerCert = async (notAfter: Date) =>
+    x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "0a1b2c3d",
+      name: "CN=device-01",
+      notBefore: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      notAfter,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      keys: await globalThis.crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"])
+    });
+
+  const check = (cert: x509.X509Certificate, shouldThrowLookupErrors?: boolean) =>
+    isSignerCertIssuedByCa({
+      signerCertDer: Buffer.from(cert.rawData),
+      signerCert: cert,
+      caId: "ca-id",
+      certificateDAL: { findOne: vi.fn(), transaction: vi.fn() },
+      certificateAuthorityCertDAL: { find: vi.fn(), findById: vi.fn() },
+      certificateAuthorityDAL: { findById: vi.fn() },
+      projectDAL: { findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() },
+      kmsService: { decryptWithKmsKey: vi.fn(), generateKmsKey: vi.fn() },
+      shouldThrowLookupErrors
+    } as unknown as Parameters<typeof isSignerCertIssuedByCa>[0]);
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(globalThis.crypto);
+    signerCert = await createSignerCert(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    expiredSignerCert = await createSignerCert(new Date(Date.now() - 1000));
+  });
+
+  test("treats a failure to load the CA chain as an invalid signer by default", async () => {
+    vi.mocked(getCaCertChains).mockRejectedValueOnce(new Error("connection terminated"));
+
+    await expect(check(signerCert)).resolves.toBe(false);
+  });
+
+  test("passes on a failure to load the CA chain when asked to", async () => {
+    vi.mocked(getCaCertChains).mockRejectedValueOnce(new Error("connection terminated"));
+
+    await expect(check(signerCert, true)).rejects.toThrow("connection terminated");
+  });
+
+  test("still treats an expired signer as invalid without a lookup when asked to pass on lookup failures", async () => {
+    vi.mocked(getCaCertChains).mockClear();
+
+    await expect(check(expiredSignerCert, true)).resolves.toBe(false);
+    expect(getCaCertChains).not.toHaveBeenCalled();
+  });
+
+  test("treats a signer no CA certificate verifies as invalid when asked to pass on lookup failures", async () => {
+    vi.mocked(getCaCertChains).mockResolvedValueOnce([]);
+
+    await expect(check(signerCert, true)).resolves.toBe(false);
   });
 });

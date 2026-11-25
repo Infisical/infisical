@@ -22,7 +22,7 @@ const draftOf = (grant: TFolderAccess | null) => ({
 
 // edits a folder grant's tier, expiry and recursion; with an existing grant the draft starts from
 // it and resets whenever the grant being edited changes
-export const useFolderGrantDraft = (grant: TFolderAccess | null, isRoot: boolean) => {
+export const useFolderGrantDraft = (grant: TFolderAccess | null, folderPath: string) => {
   const grantId = grant?.id ?? null;
   const [draft, setDraft] = useState(() => draftOf(grant));
   const [draftGrantId, setDraftGrantId] = useState(grantId);
@@ -49,7 +49,7 @@ export const useFolderGrantDraft = (grant: TFolderAccess | null, isRoot: boolean
   // a touched range always restarts it from now
   const temporalChanged =
     Boolean(grant) && (isTemporary !== grant?.isTemporary || (isTemporary && rangeTouched));
-  const recursiveChanged = Boolean(grant) && isRoot && isRecursive !== grant?.isPermissionRecursive;
+  const recursiveChanged = Boolean(grant) && isRecursive !== grant?.isPermissionRecursive;
 
   let temporaryLabel = "No expiration";
   const currentExpiry = expiryOf(grant);
@@ -62,7 +62,7 @@ export const useFolderGrantDraft = (grant: TFolderAccess | null, isRoot: boolean
 
   return {
     draft,
-    isRoot,
+    folderPath,
     isInvalid: !isRangeValid || isFullAccessTemporary,
     isFullAccessTemporary,
     hasChanges: tierChanged || temporalChanged || recursiveChanged,
@@ -78,7 +78,7 @@ export const useFolderGrantDraft = (grant: TFolderAccess | null, isRoot: boolean
     createFields: () => ({
       permission: tier,
       type: isTemporary ? temporaryType() : undefined,
-      isPermissionRecursive: isRoot && isRecursive ? true : undefined
+      isPermissionRecursive: isRecursive ? true : undefined
     }),
     updateFields: () => ({
       permission: tierChanged ? tier : undefined,
@@ -93,9 +93,9 @@ type TFolderGrantDraft = ReturnType<typeof useFolderGrantDraft>;
 export const FolderGrantFields = ({ grant }: { grant: TFolderGrantDraft }) => (
   <>
     <ApplyToSubfoldersToggle
-      checked={grant.isRoot && grant.draft.isRecursive}
+      checked={grant.draft.isRecursive}
       onCheckedChange={grant.setRecursive}
-      isDisabled={!grant.isRoot}
+      folderPath={grant.folderPath}
     />
 
     <div className="space-y-2">
