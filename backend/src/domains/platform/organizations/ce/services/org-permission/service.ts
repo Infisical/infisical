@@ -1,8 +1,7 @@
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { ActorContextMemo, TActorContext } from "@app/domains/lib/actor-context";
-import { PermissionDeniedError, RuleViolationError, EntityNotFoundError } from "@app/domains/lib/errors";
+import { ActorContextMemo, roleHolderOf, TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import {
-  Grant,
   Permission,
   RuleIdentity,
   TActorGrantsService,
@@ -62,9 +61,7 @@ export class OrgPermissionService implements TOrgPermissionService {
     scope = OrganizationActionScope.Any
   }: TGetOrgPermissionInput): Promise<OrgPermission> {
     const { principal } = actor;
-    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
-      throw new RuleViolationError({ message: "Invalid actor provided", name: "Get org permission" });
-    }
+    const holder = roleHolderOf(principal);
     if (orgId !== actor.org.id) {
       throw new PermissionDeniedError({
         message: `Your token is scoped to organization with ID ${actor.org.id}, but this resource belongs to a different organization.`
@@ -73,16 +70,20 @@ export class OrgPermissionService implements TOrgPermissionService {
 
     return this.memo.getOrCompute(actor, `${orgId}:${scope}`, async () => {
       const grants = await this.actorGrantsService.getActorGrants({
-        actor: { type: principal.type, id: principal.id },
+        actor: holder,
         scope: { scope: AccessScope.Organization, orgId }
       });
       if (!grants.hasMembership) {
         throw new PermissionDeniedError({
-          message: `You are not a member of this organization with ID ${orgId}. Please assign this ${principal.type} to the organization with the appropriate permissions, then try again.`
+          message: `You are not a member of this organization with ID ${orgId}. Please assign this ${holder.type} to the organization with the appropriate permissions, then try again.`
         });
       }
       Organization.fromActorOrg(actor.org).assertLevel(scope);
-      return OrgPermission.fromGrants({ grants, principal });
+      return OrgPermission.fromGrants({
+        grants,
+        principal,
+        usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+      });
     });
   }
 
@@ -96,22 +97,16 @@ export class OrgPermissionService implements TOrgPermissionService {
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TOrgRolePermission[]> {
     // "custom" counts as built in, so it resolves to no rules rather than to a custom role of that slug.
-    const isBuiltIn = (slug: string) => Object.values(OrgMembershipRole).includes(slug as OrgMembershipRole);
-    const customSlugs = roles.filter((slug) => !isBuiltIn(slug));
-    const customRoles = await this.roleService.findRolesBySlugs({ owner: { orgId }, slugs: customSlugs });
-    const bySlug = new Map(customRoles.map((role) => [role.slug, role]));
-    const missing = customSlugs.filter((slug) => !bySlug.has(slug));
-    if (missing.length && !ignoreUnresolvedRoles) {
-      throw new EntityNotFoundError({
-        message: `Specified roles '${missing.join(",")}' was not found in the organization with ID '${orgId}'`
-      });
-    }
-    return roles.flatMap((slug): TOrgRolePermission[] => {
-      if (isBuiltIn(slug)) return [{ permission: OrgPermission.forGrant({ grant: Grant.restore({ slug }) }) }];
-      const role = bySlug.get(slug);
-      if (!role) return [];
-      return [{ permission: OrgPermission.forGrant({ grant: role.toGrant() }), role: role.toJSON() }];
+    const resolved = await this.roleService.resolveRoles({
+      owner: { orgId },
+      slugs: roles,
+      builtInSlugs: Object.values(OrgMembershipRole),
+      ignoreUnresolvedRoles
     });
+    return resolved.map(({ grant, role }) => ({
+      permission: OrgPermission.forGrant({ grant }),
+      ...(role && { role: role.toJSON() })
+    }));
   }
 
   async getGrantPermissions({
@@ -137,6 +132,6 @@ export class OrgPermissionService implements TOrgPermissionService {
       scope: { scope: AccessScope.Organization, orgId: rootOrgId }
     });
     if (!grants.hasMembership) return false;
-    return OrgPermission.fromGrants({ grants }).canBypassSso();
+    return OrgPermission.grantsSsoBypass(grants);
   }
 }

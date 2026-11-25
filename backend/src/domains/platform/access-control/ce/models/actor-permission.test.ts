@@ -1,5 +1,6 @@
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 
+import { ActorPermission } from "./actor-permission";
 import { Permission, TPermissionRule } from "./permission";
 
 type TSet = ["read" | "edit" | "delete" | "assign-role", "secrets" | "identity" | "member"];
@@ -19,27 +20,33 @@ const adminRules: TPermissionRule<TSet>[] = [
   { action: "assign-role", subject: "member" }
 ];
 
+// What a target holds.
 const admin = Permission.fromRules<TSet>({ rules: adminRules });
 const member = Permission.fromRules<TSet>({ rules: memberRules });
-const nobody = Permission.none<TSet>();
 
-const removeIdentity = (
-  usesNewPrivilegeSystem: boolean,
-  targets: { permission: Permission<TSet>; roleSlug?: string }[]
-) => ({
-  usesNewPrivilegeSystem,
+// The actor making the change, in an org on one privilege system or the other.
+const actorWith = (rules: TPermissionRule<TSet>[], usesNewPrivilegeSystem: boolean) =>
+  ActorPermission.of<TSet>({ rules, usesNewPrivilegeSystem });
+const legacy = { admin: actorWith(adminRules, false), member: actorWith(memberRules, false) };
+const current = {
+  admin: actorWith(adminRules, true),
+  member: actorWith(memberRules, true),
+  nobody: actorWith([], true)
+};
+
+const removeIdentity = (targets: { permission: Permission<TSet>; roleSlug?: string }[]) => ({
   actions: "delete" as const,
   subject: "identity" as const,
   targets
 });
 
-describe("Permission.boundsViolations under the old privilege system", () => {
+describe("ActorPermission.boundsViolations under the old privilege system", () => {
   test("should allow an admin to change a member's roles", () => {
     // Setup
-    const check = removeIdentity(false, [{ permission: member }]);
+    const check = removeIdentity([{ permission: member }]);
 
     // Action
-    const missing = admin.boundsViolations(check);
+    const missing = legacy.admin.boundsViolations(check);
 
     // Assert
     expect(missing).toEqual([]);
@@ -47,10 +54,10 @@ describe("Permission.boundsViolations under the old privilege system", () => {
 
   test("should report what a member lacks when the target is an admin", () => {
     // Setup
-    const check = removeIdentity(false, [{ permission: admin }]);
+    const check = removeIdentity([{ permission: admin }]);
 
     // Action
-    const missing = member.boundsViolations(check);
+    const missing = legacy.member.boundsViolations(check);
 
     // Assert
     expect(missing.length).toBeGreaterThan(0);
@@ -58,11 +65,11 @@ describe("Permission.boundsViolations under the old privilege system", () => {
 
   test("should measure every role of a multi-role target, not just the first", () => {
     // Setup
-    const memberOnly = removeIdentity(false, [{ permission: member }]);
-    const memberAndAdmin = removeIdentity(false, [{ permission: member }, { permission: admin }]);
+    const memberOnly = removeIdentity([{ permission: member }]);
+    const memberAndAdmin = removeIdentity([{ permission: member }, { permission: admin }]);
 
     // Action
-    const results = [member.boundsViolations(memberOnly), member.boundsViolations(memberAndAdmin)];
+    const results = [legacy.member.boundsViolations(memberOnly), legacy.member.boundsViolations(memberAndAdmin)];
 
     // Assert
     expect(results[0]).toEqual([]);
@@ -71,23 +78,23 @@ describe("Permission.boundsViolations under the old privilege system", () => {
 
   test("should run no comparison for an empty target set", () => {
     // Setup
-    const check = removeIdentity(false, []);
+    const check = removeIdentity([]);
 
     // Action
-    const missing = member.boundsViolations(check);
+    const missing = legacy.member.boundsViolations(check);
 
     // Assert
     expect(missing).toEqual([]);
   });
 });
 
-describe("Permission.boundsViolations under the new privilege system", () => {
+describe("ActorPermission.boundsViolations under the new privilege system", () => {
   test("should let the actor's own grant of the action decide, whatever the target holds", () => {
     // Setup
-    const check = removeIdentity(true, [{ permission: admin }]);
+    const check = removeIdentity([{ permission: admin }]);
 
     // Action
-    const results = [member.boundsViolations(check), nobody.boundsViolations(check)];
+    const results = [current.member.boundsViolations(check), current.nobody.boundsViolations(check)];
 
     // Assert
     expect(results[0]).toEqual([]);
@@ -96,10 +103,10 @@ describe("Permission.boundsViolations under the new privilege system", () => {
 
   test("should still require the action when the target set is empty", () => {
     // Setup
-    const check = removeIdentity(true, []);
+    const check = removeIdentity([]);
 
     // Action
-    const results = [member.boundsViolations(check), nobody.boundsViolations(check)];
+    const results = [current.member.boundsViolations(check), current.nobody.boundsViolations(check)];
 
     // Assert
     expect(results[0]).toEqual([]);
@@ -109,14 +116,13 @@ describe("Permission.boundsViolations under the new privilege system", () => {
   test("should accept any of several actions and report the first when none is held", () => {
     // Setup
     const check = {
-      usesNewPrivilegeSystem: true,
       actions: ["assign-role" as const, "edit" as const],
       subject: "member" as const,
       targets: [{ permission: member }]
     };
 
     // Action
-    const results = [admin.boundsViolations(check), member.boundsViolations(check)];
+    const results = [current.admin.boundsViolations(check), current.member.boundsViolations(check)];
 
     // Assert
     expect(results[0]).toEqual([]);
@@ -125,13 +131,10 @@ describe("Permission.boundsViolations under the new privilege system", () => {
 
   describe("for an actor whose rule is scoped with an assignableRole condition", () => {
     const scopedActor = (condition: Record<string, unknown>) =>
-      Permission.fromRules<TSet>({
-        rules: [{ action: "assign-role", subject: "identity", conditions: { assignableRole: condition } }]
-      });
+      actorWith([{ action: "assign-role", subject: "identity", conditions: { assignableRole: condition } }], true);
 
-    const assignRole = (actor: Permission<TSet>, targets: { permission: Permission<TSet>; roleSlug?: string }[]) =>
+    const assignRole = (actor: ActorPermission<TSet>, targets: { permission: Permission<TSet>; roleSlug?: string }[]) =>
       actor.boundsViolations({
-        usesNewPrivilegeSystem: true,
         actions: "assign-role",
         subject: "identity",
         fields: { identityId: "identity-1" },
@@ -178,11 +181,10 @@ describe("Permission.boundsViolations under the new privilege system", () => {
 
   describe("for a delete rule scoped to the resource's own identity", () => {
     const scopedDeleter = (conditions: Record<string, unknown>) =>
-      Permission.fromRules<TSet>({ rules: [{ action: "delete", subject: "member", conditions }] });
+      actorWith([{ action: "delete", subject: "member", conditions }], true);
 
-    const removeMember = (actor: Permission<TSet>, userEmail: string | undefined) =>
+    const removeMember = (actor: ActorPermission<TSet>, userEmail: string | undefined) =>
       actor.boundsViolations({
-        usesNewPrivilegeSystem: true,
         actions: "delete",
         subject: "member",
         fields: { userEmail },
@@ -230,7 +232,7 @@ describe("Permission.boundsViolations under the new privilege system", () => {
   });
 });
 
-describe("Permission.assertBounds", () => {
+describe("ActorPermission.assertBounds", () => {
   const MESSAGE = "Failed to remove a more privileged identity";
 
   const refusalOf = (run: () => void) => {
@@ -245,8 +247,8 @@ describe("Permission.assertBounds", () => {
   test("should not throw when the actor may make the change", () => {
     // Setup
     const run = () => {
-      admin.assertBounds({ ...removeIdentity(false, [{ permission: member }]), message: MESSAGE });
-      member.assertBounds({ ...removeIdentity(true, [{ permission: admin }]), message: MESSAGE });
+      legacy.admin.assertBounds({ ...removeIdentity([{ permission: member }]), message: MESSAGE });
+      current.member.assertBounds({ ...removeIdentity([{ permission: admin }]), message: MESSAGE });
     };
 
     // Action and assert
@@ -256,7 +258,7 @@ describe("Permission.assertBounds", () => {
   test("should refuse with the privilege level message and the missing permissions under the old system", () => {
     // Action
     const error = refusalOf(() =>
-      member.assertBounds({ ...removeIdentity(false, [{ permission: admin }]), message: MESSAGE })
+      legacy.member.assertBounds({ ...removeIdentity([{ permission: admin }]), message: MESSAGE })
     );
 
     // Assert
@@ -269,8 +271,7 @@ describe("Permission.assertBounds", () => {
   test("should refuse naming the first action and the subject under the new system", () => {
     // Action
     const error = refusalOf(() =>
-      nobody.assertBounds({
-        usesNewPrivilegeSystem: true,
+      current.nobody.assertBounds({
         actions: ["delete", "read"],
         subject: "identity",
         targets: [{ permission: member }],

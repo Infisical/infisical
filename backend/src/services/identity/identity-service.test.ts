@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
@@ -82,7 +82,9 @@ const createService = ({
     orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: false })
+        ),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: Permission.fromRules({ rules: [] }) }])
     } as never,
     licenseService,

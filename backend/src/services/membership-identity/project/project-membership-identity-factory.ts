@@ -105,14 +105,12 @@ export const newProjectMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
     }
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
       projectId: scope.value,
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         subject: ProjectPermissionSub.Identity,
         fields: {
@@ -170,8 +168,6 @@ export const newProjectMembershipIdentityFactory = ({
       await assertOrgAccess(dto.selector.identityId, dto.actor.org.id);
     }
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: dto.scopeData,
       identityId: dto.selector.identityId
@@ -183,7 +179,6 @@ export const newProjectMembershipIdentityFactory = ({
       ignoreUnresolvedRoles: true
     });
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
       subject: ProjectPermissionSub.Identity,
       fields: { identityId: dto.selector.identityId },
@@ -197,7 +192,6 @@ export const newProjectMembershipIdentityFactory = ({
     });
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         subject: ProjectPermissionSub.Identity,
         fields: {
@@ -242,10 +236,8 @@ export const newProjectMembershipIdentityFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionIdentityActions.Delete,
       subject: ProjectPermissionSub.Identity,
       fields: { identityId: dto.selector.identityId },

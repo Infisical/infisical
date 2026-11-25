@@ -1,6 +1,7 @@
 import { ServiceTokenScopes } from "@app/db/schemas";
 import {
   ActorGrants,
+  ActorPermission,
   Membership,
   Permission,
   TRuleSource,
@@ -14,16 +15,17 @@ import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./perm
 import { Project } from "./project";
 
 // What an actor may do in one project, with the project and the memberships it was built from.
-export class ProjectPermission extends Permission<ProjectPermissionSet> {
+export class ProjectPermission extends ActorPermission<ProjectPermissionSet> {
   private constructor(
     rules: TRuleSource,
     readonly project: Project,
     // What it was built from, for code that still reads the membership rows.
     readonly grants: ActorGrants,
     // A delegated OAuth token holds no roles of its own: it only borrows what its scopes allow.
-    private readonly isDelegated: boolean
+    private readonly isDelegated: boolean,
+    usesNewPrivilegeSystem: boolean
   ) {
-    super(Permission.abilityOf<ProjectPermissionSet>(rules));
+    super(Permission.abilityOf<ProjectPermissionSet>(rules), usesNewPrivilegeSystem);
   }
 
   // The only way to build one from role rules, so every project permission, generic or a product's, gets the same
@@ -33,13 +35,15 @@ export class ProjectPermission extends Permission<ProjectPermissionSet> {
     project,
     grants,
     principal,
-    identity
+    identity,
+    usesNewPrivilegeSystem
   }: {
     rules: RuleSet;
     project: Project;
     grants: ActorGrants;
     principal: TPrincipal;
     identity: RuleIdentity;
+    usesNewPrivilegeSystem: boolean;
   }): ProjectPermission {
     const interpolated = rules.interpolate(identity.toContext());
     const scopes = delegatedOauthScopesOf(principal);
@@ -47,7 +51,8 @@ export class ProjectPermission extends Permission<ProjectPermissionSet> {
       scopes ? interpolated.narrowTo(projectOauthAllowlist(scopes)) : interpolated,
       project,
       grants,
-      Boolean(scopes)
+      Boolean(scopes),
+      usesNewPrivilegeSystem
     );
   }
 
@@ -55,14 +60,16 @@ export class ProjectPermission extends Permission<ProjectPermissionSet> {
   static forServiceToken({
     project,
     scopes,
-    permissions
+    permissions,
+    usesNewPrivilegeSystem
   }: {
     project: Project;
     scopes: unknown;
     permissions: string[];
+    usesNewPrivilegeSystem: boolean;
   }): ProjectPermission {
     const { rules } = buildServiceTokenProjectPermission(ServiceTokenScopes.parse(scopes || []), permissions);
-    return new ProjectPermission(RuleSet.of(rules), project, ActorGrants.empty(), false);
+    return new ProjectPermission(RuleSet.of(rules), project, ActorGrants.empty(), false, usesNewPrivilegeSystem);
   }
 
   get memberships(): Membership[] {

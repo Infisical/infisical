@@ -97,10 +97,8 @@ export const newOrgMembershipGroupFactory = ({
       orgId: dto.actor.org.id,
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
         targets: [{ permission: permissionRole.permission }],
@@ -125,8 +123,6 @@ export const newOrgMembershipGroupFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
       groupId: dto.selector.groupId
@@ -139,7 +135,6 @@ export const newOrgMembershipGroupFactory = ({
     });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.GrantPrivileges,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(targetPermissions),
@@ -148,7 +143,6 @@ export const newOrgMembershipGroupFactory = ({
 
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
         targets: [{ permission: permissionRole.permission }],
@@ -184,10 +178,8 @@ export const newOrgMembershipGroupFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.Delete,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(targetPermissions),

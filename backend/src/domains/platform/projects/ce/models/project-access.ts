@@ -61,7 +61,8 @@ export class ProjectAccess {
     readonly grants: ActorGrants,
     private readonly roles: TProjectRoles,
     private readonly principal: TPrincipal,
-    private readonly identity: RuleIdentity
+    private readonly identity: RuleIdentity,
+    private readonly usesNewPrivilegeSystem: boolean
   ) {}
 
   static create({
@@ -69,15 +70,17 @@ export class ProjectAccess {
     grants,
     roles,
     principal,
-    identity
+    identity,
+    usesNewPrivilegeSystem
   }: {
     project: Project;
     grants: ActorGrants;
     roles: TProjectRoles;
     principal: TPrincipal;
     identity: RuleIdentity;
+    usesNewPrivilegeSystem: boolean;
   }): ProjectAccess {
-    return new ProjectAccess(project, grants, roles, principal, identity);
+    return new ProjectAccess(project, grants, roles, principal, identity, usesNewPrivilegeSystem);
   }
 
   // Several roles and privileges held together, as this product defines them: legacy forbids widened, then merged so
@@ -104,7 +107,8 @@ export class ProjectAccess {
       project: this.project,
       grants: this.grants,
       principal: this.principal,
-      identity: this.identity
+      identity: this.identity,
+      usesNewPrivilegeSystem: this.usesNewPrivilegeSystem
     });
   }
 }

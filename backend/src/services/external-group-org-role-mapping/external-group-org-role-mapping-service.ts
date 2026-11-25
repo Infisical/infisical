@@ -74,8 +74,6 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       orgId: actor.org.id
     });
 
-    const { shouldUseNewPrivilegeSystem } = actor.org;
-
     const currentMappings = await externalGroupOrgRoleMappingDAL.find(
       { orgId: actor.org.id },
       { tx: externalGroupOrgRoleMappingDAL.primaryNode() }
@@ -137,7 +135,6 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
 
       for (const { roleSlug, baseMessage } of boundaryChecks) {
         permission.assertBounds({
-          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: OrgPermissionMemberActions.GrantPrivileges,
           subject: OrgPermissionSubjects.Member,
           targets: toBoundsTargets([rolePermissions[roleSlugsToCheck.indexOf(roleSlug)]]),

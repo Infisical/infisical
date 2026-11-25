@@ -56,7 +56,8 @@ const accessWith = async (seededRoles: TSeedRole[], customRules?: TProjectRule[]
     grants,
     roles,
     principal: userPrincipal({ id: userId }),
-    identity: RuleIdentity.create({ id: userId, username: "ada", metadata: {} })
+    identity: RuleIdentity.create({ id: userId, username: "ada", metadata: {} }),
+    usesNewPrivilegeSystem: false
   });
 };
 

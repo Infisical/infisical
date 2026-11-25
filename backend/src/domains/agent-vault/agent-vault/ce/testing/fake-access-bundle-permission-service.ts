@@ -86,7 +86,8 @@ export class FakeAccessBundlePermissionService implements TAccessBundlePermissio
       }),
       grants: ActorGrants.empty(),
       principal: actor.principal,
-      identity: RuleIdentity.create({ id: actor.principal.id, username: "", metadata: {} })
+      identity: RuleIdentity.create({ id: actor.principal.id, username: "", metadata: {} }),
+      usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
     });
     return { ...access, permission };
   }

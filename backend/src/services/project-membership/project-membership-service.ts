@@ -273,10 +273,8 @@ export const projectMembershipServiceFactory = ({
       projectId,
       roles: [ProjectMembershipRole.Member]
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
     for (const addedUser of orgMembershipUsernames) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         subject: ProjectPermissionSub.Member,
         fields: { userEmail: addedUser.email || undefined },
@@ -384,7 +382,6 @@ export const projectMembershipServiceFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
     const unattributableRoles: typeof resolvedRoles = [];
@@ -402,7 +399,6 @@ export const projectMembershipServiceFactory = ({
         ...unattributableRoles
       ];
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: ProjectPermissionMemberActions.Delete,
         subject: ProjectPermissionSub.Member,
         fields: { userEmail: projectMember.user.email || undefined },

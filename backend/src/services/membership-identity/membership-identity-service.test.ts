@@ -2,7 +2,7 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
@@ -79,7 +79,9 @@ const createService = ({
     orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never })),
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }] as never, usesNewPrivilegeSystem: false })
+        ),
       // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
       // without a `role` field, and an empty target ability clears the boundary for the actor above.
       getOrgPermissionByRoles: vi
@@ -91,7 +93,9 @@ const createService = ({
     secretsPermissionService: {
       getProjectPermissionWithFolderGrants: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never }))
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }] as never, usesNewPrivilegeSystem: false })
+        )
     } as never,
     projectPermissionService: {
       getProjectPermissionByRoles: vi

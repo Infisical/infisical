@@ -86,7 +86,7 @@ describe("ServiceToken.toPermission", () => {
     const own = project();
 
     // Action
-    const permission = token().toPermission(own);
+    const permission = token().toPermission({ project: own, usesNewPrivilegeSystem: false });
 
     // Assert
     const readAt = (secretPath: string) =>

@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
   orgNoAccessPermissions,
@@ -54,6 +54,8 @@ const projectIdentityDeleter = createMongoAbility<MongoAbility>([
 ]);
 
 const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
+const actorPermissionOf = (ability: MongoAbility, usesNewPrivilegeSystem: boolean) =>
+  ActorPermission.of({ rules: ability.rules as never, usesNewPrivilegeSystem });
 
 const createOrgGuard = ({
   actorPermission,
@@ -66,7 +68,7 @@ const createOrgGuard = ({
 }) => {
   const factory = newOrgIdentityFactory({
     orgPermissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
+      getOrgPermission: vi.fn().mockResolvedValue(actorPermissionOf(actorPermission, shouldUseNewPrivilegeSystem)),
       getOrgPermissionByRoles: vi
         .fn()
         .mockImplementation(({ roles }: { roles: string[] }) =>
@@ -95,7 +97,9 @@ const createProjectGuard = ({
 }) => {
   const factory = newProjectIdentityFactory({
     secretsPermissionService: {
-      getProjectPermissionWithFolderGrants: vi.fn().mockResolvedValue(toPermission(actorPermission))
+      getProjectPermissionWithFolderGrants: vi
+        .fn()
+        .mockResolvedValue(actorPermissionOf(actorPermission, shouldUseNewPrivilegeSystem))
     } as never,
     projectPermissionService: {
       getProjectPermissionByRoles: vi

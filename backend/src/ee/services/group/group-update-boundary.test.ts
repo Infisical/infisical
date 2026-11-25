@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
 import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
@@ -86,7 +86,12 @@ const createUpdate = ({
 
   const service = groupServiceFactory({
     orgPermissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
+      getOrgPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      ),
       getOrgPermissionByRoles: vi
         .fn()
         .mockImplementation(({ roles }: { roles: string[] }) =>

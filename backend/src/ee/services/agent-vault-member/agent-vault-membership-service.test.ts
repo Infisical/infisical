@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
-import { Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionGroupActions,
@@ -144,9 +144,12 @@ const buildService = ({
           role: { name: role, slug: role }
         }))
       ),
-      getProjectPermission: vi
-        .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: rules as unknown as TPermissionRule<ProjectPermissionSet>[] }))
+      getProjectPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: rules as unknown as TPermissionRule<ProjectPermissionSet>[],
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      )
     },
     identityDAL: {
       // Honours a projectId filter, because the ownership check pushes it into the query rather than

@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
-import { TActorContext } from "@app/domains/lib/actor-context";
+import { roleHolderOf, TActorContext } from "@app/domains/lib/actor-context";
 import { ReadFrom } from "@app/domains/lib/data-access";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { TTransaction } from "@app/domains/lib/transactions";
 import {
   ActorGrants,
@@ -21,7 +21,6 @@ import {
   TProjectsService
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { effectiveActorForProject, TPrincipal } from "@app/lib/auth/principal";
 
 import { FolderGrant } from "../../models/folder-grant";
 import { FolderGrants } from "../../models/folder-grants";
@@ -86,7 +85,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     projectId: string;
   }): Promise<TSecretsPermission> {
     if (actor.principal.type === ActorType.SERVICE) {
-      return this.serviceTokenPermission({ serviceTokenId: actor.principal.id, orgId: actor.org.id, projectId });
+      return this.serviceTokenPermission({ actor, projectId });
     }
 
     const access = await this.projectPermissionService.getProjectAccess({
@@ -105,12 +104,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     projectId: string;
   }): Promise<ProjectPermission> {
     if (actor.principal.type === ActorType.SERVICE) {
-      const { permission } = await this.serviceTokenPermission({
-        serviceTokenId: actor.principal.id,
-        orgId: actor.org.id,
-        projectId,
-        anyProjectType: true
-      });
+      const { permission } = await this.serviceTokenPermission({ actor, projectId, anyProjectType: true });
       return permission;
     }
 
@@ -264,7 +258,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     const folderGrants = access.isAdmin
       ? FolderGrants.none()
       : await this.cachedFolderGrants({
-          actor: SecretsPermissionService.grantActorOf(actor.principal, access.project.id),
+          actor: roleHolderOf(actor.principal, { projectId: access.project.id }),
           orgId: access.project.orgId,
           projectId: access.project.id
         });
@@ -272,30 +266,29 @@ export class SecretsPermissionService implements TSecretsPermissionService {
   }
 
   private async serviceTokenPermission({
-    serviceTokenId,
-    orgId,
+    actor,
     projectId,
     anyProjectType = false
   }: {
-    serviceTokenId: string;
-    orgId: string;
+    actor: TActorContext;
     projectId: string;
     anyProjectType?: boolean;
   }): Promise<TSecretsPermission> {
+    const serviceTokenId = actor.principal.id;
     const serviceToken = await this.serviceTokenStore.findById(serviceTokenId);
     if (!serviceToken)
       throw new EntityNotFoundError({ message: `Service token with ID '${serviceTokenId}' not found` });
     const tokenProject = await this.projectsService.findProject(serviceToken.projectId);
-    const project = serviceToken.assertUsableIn({ project: tokenProject, projectId, orgId, anyProjectType });
-    return { permission: serviceToken.toPermission(project), folderGrants: FolderGrants.none() };
-  }
-
-  // Whose folder grants apply: the principal's, or those of the actor it assumed inside this project.
-  private static grantActorOf(principal: TPrincipal, projectId: string): TGrantActor {
-    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
-      throw new RuleViolationError({ message: "Invalid actor provided", name: "Get org permission" });
-    }
-    const { actorType, actorId } = effectiveActorForProject(principal, projectId);
-    return { type: actorType, id: actorId };
+    const project = serviceToken.assertUsableIn({
+      project: tokenProject,
+      projectId,
+      orgId: actor.org.id,
+      anyProjectType
+    });
+    const permission = serviceToken.toPermission({
+      project,
+      usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+    });
+    return { permission, folderGrants: FolderGrants.none() };
   }
 }

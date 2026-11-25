@@ -75,7 +75,6 @@ export const newProjectIdentityFactory = ({
     });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionIdentityActions.Delete,
       subject: ProjectPermissionSub.Identity,
       fields: { identityId: dto.selector.identityId },

@@ -50,7 +50,8 @@ const projectPermissionsOver = (actorGrantsService: FakeActorGrantsService) => {
       return ProjectPermission.forServiceToken({
         project: Project.restore({ id: projectId, name: "p", slug: "p", orgId: ORG_ID, type: ProjectType.AgentVault }),
         scopes: [],
-        permissions: []
+        permissions: [],
+        usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
       });
     }
     const grants = await actorGrantsService.getCachedProjectGrants({
@@ -66,7 +67,8 @@ const projectPermissionsOver = (actorGrantsService: FakeActorGrantsService) => {
       grants,
       roles: new AgentVaultProjectRoles(),
       principal,
-      identity: RuleIdentity.create({ id: principal.id, username: "user", metadata: {} })
+      identity: RuleIdentity.create({ id: principal.id, username: "user", metadata: {} }),
+      usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
     }).toPermission();
   });
   return { getProjectPermission } as unknown as TProjectPermissionService & {

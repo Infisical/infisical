@@ -1,9 +1,9 @@
 /* eslint-disable class-methods-use-this */
 import { ProjectType } from "@app/db/schemas";
-import { EntityNotFoundError, PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
+import { roleHolderOf } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, PermissionDeniedError } from "@app/domains/lib/errors";
 import { RuleIdentity, TActorGrantsService } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { effectiveActorForProject } from "@app/lib/auth/principal";
 
 import { ProjectAccess } from "../models/project-access";
 import { ProjectPermission } from "../models/project-permission";
@@ -35,30 +35,31 @@ export class FakeProjectPermissionService implements TProjectPermissionService {
 
   async findProjectAccess({ actor, projectId, type }: TGetProjectPermissionInput): Promise<ProjectAccess | null> {
     const { principal } = actor;
-    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
-      throw new RuleViolationError({ message: "Invalid actor provided", name: "Get org permission" });
-    }
+    const holder = roleHolderOf(principal, { projectId });
     const project = await this.projectStore.findProject(projectId);
     if (!project) throw new EntityNotFoundError({ message: `Project with ${projectId} not found` });
     project.assertUsableBy({ orgId: actor.org.id, type });
-    const { actorType, actorId } = effectiveActorForProject(principal, projectId);
     const grants = await this.actorGrantsService.getCachedProjectGrants({
-      actor: { type: actorType, id: actorId },
+      actor: holder,
       orgId: project.orgId,
       projectId
     });
     if (!grants.hasMembership) return null;
-    const username = principal.type === ActorType.USER ? principal.username : principal.name;
+    let username = "";
+    if (principal.type === ActorType.USER) username = principal.username;
+    if (principal.type === ActorType.IDENTITY) username = principal.name;
+    const assumedName = "assumed" in principal ? principal.assumed?.actorName : undefined;
     return ProjectAccess.create({
       project,
       grants,
       roles: this.getProjectRoles({ projectType: project.type }),
       principal,
       identity: RuleIdentity.create({
-        id: actorId,
-        username: actorId === principal.id ? username : (principal.assumed?.actorName ?? ""),
+        id: holder.id,
+        username: holder.id === principal.id ? username : (assumedName ?? ""),
         metadata: grants.attributeMap()
-      })
+      }),
+      usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
     });
   }
 

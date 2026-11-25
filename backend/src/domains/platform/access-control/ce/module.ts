@@ -10,6 +10,7 @@ import { GroupService, TGroupService } from "./services/groups/service";
 import { RoleService, TRoleService } from "./services/roles/service";
 
 export * from "./models/actor-grants";
+export * from "./models/actor-permission";
 export * from "./models/grant";
 export * from "./models/membership";
 export * from "./models/permission";
@@ -23,7 +24,7 @@ export * from "./models/temporary-access";
 export type { TActorGrantsService, TActorGrantsTransaction } from "./services/actor-grants/service";
 export type { TActorMembership, TGrantActor, TGrantScope, TGroup, TRoleOwner } from "./services/dependencies";
 export type { TGroupService } from "./services/groups/service";
-export type { TRoleService } from "./services/roles/service";
+export type { TResolvedRole, TResolveRolesInput, TRoleService } from "./services/roles/service";
 
 export type TAccessControlDeps = {
   db: TDbClient;

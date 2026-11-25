@@ -533,13 +533,11 @@ export const agentVaultMembershipServiceFactory = ({
   // only manages identities add or promote an Agent Vault admin.
   const assertRoleBoundary = async ({
     projectId,
-    ctx,
     permission,
     entries,
     baseMessage
   }: {
     projectId: string;
-    ctx: TActorContext;
     permission: ProjectPermission;
     entries: { actor: TAgentVaultActorRef; roles: string[] }[];
     baseMessage: string;
@@ -555,7 +553,6 @@ export const agentVaultMembershipServiceFactory = ({
     entries.forEach(({ actor, roles }) => {
       const op = ROLE_ASSIGNMENT[actor.type];
       permission.assertBounds({
-        usesNewPrivilegeSystem: ctx.org.shouldUseNewPrivilegeSystem,
         actions: [...op.actions],
         subject: op.subject,
         fields: op.fields(actor.id, names.get(actorKey(actor))),
@@ -606,7 +603,6 @@ export const agentVaultMembershipServiceFactory = ({
     await assertActorsAreAddable(actors, ctx.org.id, projectId);
     await assertRoleBoundary({
       projectId,
-      ctx,
       permission,
       entries: actors.map((actor) => ({ actor, roles: [role] })),
       baseMessage: "Failed to add the member with this role"
@@ -693,14 +689,12 @@ export const agentVaultMembershipServiceFactory = ({
 
     await assertRoleBoundary({
       projectId,
-      ctx,
       permission,
       entries: await currentRolesOf(projectId, actors),
       baseMessage: "Failed to change the role of a more privileged member"
     });
     await assertRoleBoundary({
       projectId,
-      ctx,
       permission,
       entries: actors.map((actor) => ({ actor, roles: [role] })),
       baseMessage: "Failed to give the member this role"
@@ -800,7 +794,6 @@ export const agentVaultMembershipServiceFactory = ({
 
     await assertRoleBoundary({
       projectId,
-      ctx,
       permission,
       entries: await currentRolesOf(projectId, actors),
       baseMessage: "Failed to remove a more privileged member"

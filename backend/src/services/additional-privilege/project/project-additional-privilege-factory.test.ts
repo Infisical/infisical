@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
@@ -23,7 +23,10 @@ const TARGET_ID = "target-user";
 const createFactory = (actorRules: Rule[]) => {
   const withMembership = (permission: Permission<ProjectPermissionSet>, actorUserId: string) =>
     Object.assign(permission, { memberships: [{ toJSON: () => ({ actorUserId }) }] });
-  const actorPermission = withMembership(Permission.fromRules({ rules: actorRules }), ACTOR_ID);
+  const actorPermission = withMembership(
+    ActorPermission.of({ rules: actorRules, usesNewPrivilegeSystem: true }),
+    ACTOR_ID
+  );
   const targetPermission = withMembership(Permission.none<ProjectPermissionSet>(), TARGET_ID);
 
   const secretsPermissionService = {

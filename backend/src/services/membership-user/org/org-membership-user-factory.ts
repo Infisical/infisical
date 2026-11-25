@@ -112,10 +112,8 @@ export const newOrgMembershipUserFactory = ({
         orgId: dto.actor.org.id,
         roles: rolesToBound.map((el) => el.role)
       });
-      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
         targets: toBoundsTargets(permissionRoles),
@@ -347,8 +345,6 @@ export const newOrgMembershipUserFactory = ({
     const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
     permission.assert({ action: OrgPermissionMemberActions.Edit, subject: OrgPermissionSubjects.Member });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
     if (dto.data.roles.length || dto.data.metadata !== undefined)
       targetOps.push({
@@ -375,7 +371,6 @@ export const newOrgMembershipUserFactory = ({
 
       for (const { opAction, baseMessage } of targetOps) {
         permission.assertBounds({
-          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: opAction,
           subject: OrgPermissionSubjects.Member,
           targets: toBoundsTargets(targetPermissions),
@@ -392,7 +387,6 @@ export const newOrgMembershipUserFactory = ({
       });
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
         targets: toBoundsTargets(permissionRoles),
@@ -415,10 +409,8 @@ export const newOrgMembershipUserFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionMemberActions.Delete,
       subject: OrgPermissionSubjects.Member,
       targets: toBoundsTargets(targetPermissions),

@@ -1,8 +1,8 @@
 import { PackRule, packRules } from "@casl/ability/extra";
 
 import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { ActorContextMemo, TActorContext } from "@app/domains/lib/actor-context";
-import { EntityNotFoundError, PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
+import { ActorContextMemo, roleHolderOf, TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, PermissionDeniedError } from "@app/domains/lib/errors";
 import {
   ActorGrants,
   Grant,
@@ -14,7 +14,7 @@ import {
   TRoleService
 } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { effectiveActorForProject, TPrincipal } from "@app/lib/auth/principal";
+import { TPrincipal } from "@app/lib/auth/principal";
 
 import { ProjectPermissionSet } from "../../models/permissions/project-permission-set";
 import { Project } from "../../models/project";
@@ -114,7 +114,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
   async getProjectAccess(input: TGetProjectPermissionInput): Promise<ProjectAccess> {
     const access = await this.findProjectAccess(input);
     if (access) return access;
-    const grantActor = ProjectPermissionService.grantActorFor(input.actor.principal, input.projectId);
+    const grantActor = roleHolderOf(input.actor.principal, { projectId: input.projectId });
     throw new PermissionDeniedError({
       name: "ProjectMembershipNotFound",
       message: `You are not a member of this project with ID ${input.projectId}. Please assign this ${grantActor.type} to the project with the appropriate permissions, then try again.`
@@ -123,7 +123,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
 
   async findProjectAccess({ actor, projectId, type }: TGetProjectPermissionInput): Promise<ProjectAccess | null> {
     const { principal } = actor;
-    const grantActor = ProjectPermissionService.grantActorFor(principal, projectId);
+    const grantActor = roleHolderOf(principal, { projectId });
     const { project, grants } = await this.memo.getOrCompute(actor, projectId, async () => {
       const loaded = await this.projectCache.getOrLoad({
         projectId,
@@ -152,7 +152,8 @@ export class ProjectPermissionService implements TProjectPermissionService {
       grants,
       roles: this.getProjectRoles({ projectType: project.type }),
       principal,
-      identity: ProjectPermissionService.identityFor({ principal, grantActor, grants })
+      identity: ProjectPermissionService.identityFor({ principal, grantActor, grants }),
+      usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
     });
   }
 
@@ -169,28 +170,22 @@ export class ProjectPermissionService implements TProjectPermissionService {
     roles: string[];
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TProjectRolePermission[]> {
-    const isBuiltIn = (slug: string) => Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
-    const project = await this.projectStore.findById(projectId);
-    const projectRoles = project ? this.getProjectRoles({ projectType: project.type }) : null;
-    const customSlugs = roles.filter((slug) => !isBuiltIn(slug));
-    const customRoles = await this.roleService.findRolesBySlugs({ owner: { projectId }, slugs: customSlugs });
-    const bySlug = new Map(customRoles.map((role) => [role.slug, role]));
-    const missing = customSlugs.filter((slug) => !bySlug.has(slug));
-    if (missing.length && !ignoreUnresolvedRoles) {
-      throw new EntityNotFoundError({
-        message: `Specified roles '${missing.join(",")}' was not found in the project with ID '${projectId}'`
-      });
-    }
-    const permissionOf = (grant: Grant) =>
-      Permission.fromRules<ProjectPermissionSet>({
-        rules: ProjectAccess.rulesOf([grant], projectRoles ?? StandardProjectRoles.generic(ProjectType.SecretManager))
-      });
-    return roles.flatMap((slug): TProjectRolePermission[] => {
-      if (isBuiltIn(slug)) return [{ permission: permissionOf(Grant.restore({ slug })), role: { name: slug, slug } }];
-      const role = bySlug.get(slug);
-      if (!role) return [];
-      return [{ permission: permissionOf(role.toGrant()), role: role.toJSON() }];
-    });
+    const [project, resolved] = await Promise.all([
+      this.projectStore.findById(projectId),
+      this.roleService.resolveRoles({
+        owner: { projectId },
+        slugs: roles,
+        builtInSlugs: Object.values(ProjectMembershipRole),
+        ignoreUnresolvedRoles
+      })
+    ]);
+    const projectRoles = project
+      ? this.getProjectRoles({ projectType: project.type })
+      : StandardProjectRoles.generic(ProjectType.SecretManager);
+    return resolved.map(({ slug, grant, role }) => ({
+      permission: Permission.fromRules<ProjectPermissionSet>({ rules: ProjectAccess.rulesOf([grant], projectRoles) }),
+      role: role ? role.toJSON() : { name: slug, slug }
+    }));
   }
 
   async getGrantPermissions({
@@ -289,16 +284,6 @@ export class ProjectPermissionService implements TProjectPermissionService {
       });
     });
     return { sources, grants };
-  }
-
-  // Whose grants decide: the principal, or the actor it assumed inside this project. Only users and identities hold
-  // project roles.
-  private static grantActorFor(principal: TPrincipal, projectId: string): TGrantActor {
-    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
-      throw new RuleViolationError({ message: "Invalid actor provided", name: "Get org permission" });
-    }
-    const effective = effectiveActorForProject(principal, projectId);
-    return { type: effective.actorType, id: effective.actorId };
   }
 
   private static identityFor({

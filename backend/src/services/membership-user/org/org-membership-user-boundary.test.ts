@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
 import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
@@ -89,7 +89,12 @@ const createGuard = ({
 
   const factory = newOrgMembershipUserFactory({
     orgPermissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
+      getOrgPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      ),
       getOrgPermissionByRoles: vi
         .fn()
         .mockImplementation(({ roles }: { roles: string[] }) =>
@@ -318,7 +323,12 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
 
     const factory = newOrgMembershipUserFactory({
       orgPermissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
+        getOrgPermission: vi.fn().mockResolvedValue(
+          ActorPermission.of({
+            rules: actorPermission.rules as never,
+            usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+          })
+        ),
         getOrgPermissionByRoles: vi
           .fn()
           .mockImplementation(({ roles }: { roles: string[] }) =>

@@ -71,10 +71,8 @@ export const newOrgMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
         targets: [{ permission: permissionRole.permission }],
@@ -94,8 +92,6 @@ export const newOrgMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: dto.scopeData,
       identityId: dto.selector.identityId
@@ -108,7 +104,6 @@ export const newOrgMembershipIdentityFactory = ({
     });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionIdentityActions.GrantPrivileges,
       subject: OrgPermissionSubjects.Identity,
       targets: toBoundsTargets(targetPermissions),
@@ -117,7 +112,6 @@ export const newOrgMembershipIdentityFactory = ({
 
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
         targets: [{ permission: permissionRole.permission }],
@@ -168,10 +162,8 @@ export const newOrgMembershipIdentityFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionIdentityActions.Delete,
       subject: OrgPermissionSubjects.Identity,
       targets: toBoundsTargets(targetPermissions),

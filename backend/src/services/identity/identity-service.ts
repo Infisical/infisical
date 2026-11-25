@@ -94,7 +94,6 @@ export const identityServiceFactory = ({
 
     const [rolePermissionDetails] = await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] });
 
-    const { shouldUseNewPrivilegeSystem } = actor.org;
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
@@ -106,7 +105,6 @@ export const identityServiceFactory = ({
     }
     if (role !== OrgMembershipRole.NoAccess) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
         targets: [{ permission: rolePermissionDetails.permission }],
@@ -206,7 +204,6 @@ export const identityServiceFactory = ({
         orgId: actor.org.id,
         roles: [role]
       });
-      const { shouldUseNewPrivilegeSystem } = actor.org;
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
@@ -227,7 +224,6 @@ export const identityServiceFactory = ({
       });
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
         targets: toBoundsTargets(targetPermissions),
@@ -235,7 +231,6 @@ export const identityServiceFactory = ({
       });
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
         targets: [{ permission: rolePermissionDetails?.permission }],
@@ -344,10 +339,8 @@ export const identityServiceFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionIdentityActions.Delete,
       subject: OrgPermissionSubjects.Identity,
       targets: toBoundsTargets(targetPermissions),

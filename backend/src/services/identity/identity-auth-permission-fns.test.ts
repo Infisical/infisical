@@ -3,7 +3,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { AccessScope } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { PERMISSION_BOUNDARY_ERROR_NAME, PermissionDeniedError } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
@@ -80,6 +80,8 @@ const runBoundary = async ({
   principals?: TPrincipal[];
 }) => {
   const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
+  const actorPermissionOf = (ability: MongoAbility) =>
+    ActorPermission.of({ rules: ability.rules as never, usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem });
   // One permission per grant the target holds. The real implementation builds these from the
   // target's grants, so direct roles, group-inherited roles and additional privileges are
   // indistinguishable from each other by the time they reach the boundary.
@@ -92,7 +94,7 @@ const runBoundary = async ({
   type TGrantInput = { actor: { type: ActorType; id: string }; orgId: string; projectId: string };
   const deps = {
     orgPermissionService: {
-      getOrgPermission: () => Promise.resolve(toPermission(actorPermission)),
+      getOrgPermission: () => Promise.resolve(actorPermissionOf(actorPermission)),
       getGrantPermissions: (input: TGrantInput) =>
         grantPermissions({ scope: AccessScope.Organization, orgId: input.orgId }, input.actor)
     },
@@ -101,7 +103,7 @@ const runBoundary = async ({
         grantPermissions({ scope: AccessScope.Project, orgId: input.orgId, projectId: input.projectId }, input.actor)
     },
     secretsPermissionService: {
-      getProjectPermissionWithFolderGrants: () => Promise.resolve(toPermission(actorPermission)),
+      getProjectPermissionWithFolderGrants: () => Promise.resolve(actorPermissionOf(actorPermission)),
       getFolderGrantPermissions: () => Promise.resolve([])
     },
     actorGrantsService: { getActorGrants: () => Promise.resolve({}) }

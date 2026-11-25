@@ -20,11 +20,15 @@ permission from what Access Control returns.
   (it decides where it matches). Product-specific orderings (Secrets' folder grants, a project admin's resource
   rules) live in the product, built from these two.
 - **`Permission` is the check.** `can` / `assert({ action, subject, fields })`; `assert` throws
-  `PermissionDeniedError` with the denial the 403 body and the permission-denied audit log report. `assertBounds`
-  refuses a change to another actor's roles or privileges under either privilege system, with
-  `PermissionDeniedError` named `PermissionBoundaryError` (`boundsViolations` returns the missing permissions
-  instead);
+  `PermissionDeniedError` with the denial the 403 body and the permission-denied audit log report.
   `toAbility()` is for legacy code that still reads a CASL ability.
+- **`ActorPermission` is the requesting actor's permission** (`OrgPermission` and `ProjectPermission` extend it).
+  Its owner passes `actor.org.shouldUseNewPrivilegeSystem` when it builds one, so `assertBounds` (refuses a change
+  to another actor's roles or privileges, with `PermissionDeniedError` named `PermissionBoundaryError`) and
+  `boundsViolations` (the missing permissions instead) never take the flag from callers. A target's permission
+  stays a plain `Permission`, which has no bounds methods.
+- **Role slugs resolve through `roleService.resolveRoles`**: the owner passes its built-in slugs, every other slug
+  is read as one of its custom roles, and a missing one is refused unless `ignoreUnresolvedRoles` is set.
 - **Caching:** `getCachedProjectGrants` serves an actor's project grants from `ActorGrantsCache` (Redis, marker 10s,
   data 10 min) while their fingerprint (memberships at the org, project and its resources, role assignments, custom
   roles, project privileges, attributes) is unchanged, so a membership or role change needs no invalidation call.

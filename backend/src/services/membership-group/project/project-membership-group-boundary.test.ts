@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionGroupActions,
   ProjectPermissionSub,
@@ -80,9 +80,12 @@ const createGuard = ({
 
   const factory = newProjectMembershipGroupFactory({
     secretsPermissionService: {
-      getProjectPermissionWithFolderGrants: vi
-        .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never }))
+      getProjectPermissionWithFolderGrants: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      )
     } as never,
     projectPermissionService: {
       getProjectPermissionByRoles: vi.fn().mockImplementation(({ roles }: { roles: string[] }) =>

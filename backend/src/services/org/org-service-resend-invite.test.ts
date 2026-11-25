@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
 import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
   orgAdminPermissions,
@@ -41,6 +41,8 @@ const MEMBERSHIP_ID = "membership-id";
 type TRules = MongoAbility["rules"];
 
 const toPermission = (rules: TRules) => Permission.fromRules({ rules: rules as never });
+const actorPermissionOf = (rules: TRules, usesNewPrivilegeSystem: boolean) =>
+  ActorPermission.of({ rules: rules as never, usesNewPrivilegeSystem });
 
 const abilityByRole: Record<string, TRules> = {
   admin: orgAdminPermissions as TRules,
@@ -83,7 +85,7 @@ const setup = ({
 
   const service = orgServiceFactory({
     orgPermissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
+      getOrgPermission: vi.fn().mockResolvedValue(actorPermissionOf(actorPermission, shouldUseNewPrivilegeSystem)),
       getGrantPermissions: vi
         .fn()
         .mockResolvedValue(

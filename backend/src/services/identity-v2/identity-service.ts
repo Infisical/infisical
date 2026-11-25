@@ -164,15 +164,12 @@ export const identityV2ServiceFactory = ({
         }
       }
 
-      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
       const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
         projectId: scopeData.projectId,
         roles: filterRolesNeedingPrivilegeBoundary(data.roles).map((el) => el.role)
       });
       for (const permissionRole of permissionRoles) {
         actorPermission.assertBounds({
-          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
           subject: ProjectPermissionSub.Identity,
           targets: [{ permission: permissionRole.permission, roleSlug: permissionRole.role?.slug }],

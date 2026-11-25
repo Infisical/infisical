@@ -91,14 +91,12 @@ export const newProjectMembershipGroupFactory = ({
     const groupDetails = await groupDAL.findById(dto.data.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
       projectId: scope.value,
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
         subject: ProjectPermissionSub.Groups,
         fields: { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug },
@@ -150,8 +148,6 @@ export const newProjectMembershipGroupFactory = ({
     const groupDetails = await groupDAL.findById(dto.selector.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
       groupId: dto.selector.groupId
@@ -164,7 +160,6 @@ export const newProjectMembershipGroupFactory = ({
     });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
       subject: ProjectPermissionSub.Groups,
       fields: { groupName: groupDetails.name },
@@ -178,7 +173,6 @@ export const newProjectMembershipGroupFactory = ({
     });
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
         subject: ProjectPermissionSub.Groups,
         fields: { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug },
@@ -212,10 +206,8 @@ export const newProjectMembershipGroupFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionGroupActions.Delete,
       subject: ProjectPermissionSub.Groups,
       fields: { groupName: groupDetails.name },

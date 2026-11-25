@@ -64,7 +64,15 @@ const build = ({
   grants?: ActorGrants;
   principal?: TPrincipal;
   identity?: RuleIdentity;
-}) => ProjectPermission.build({ rules: RuleSet.of(rules), project: project(), grants, principal, identity });
+}) =>
+  ProjectPermission.build({
+    rules: RuleSet.of(rules),
+    project: project(),
+    grants,
+    principal,
+    identity,
+    usesNewPrivilegeSystem: false
+  });
 
 describe("ProjectPermission.build", () => {
   test("should fill the identity's username, metadata and auth into conditions", () => {
@@ -184,7 +192,12 @@ describe("ProjectPermission.forServiceToken", () => {
     const scopes = [{ environment: "dev", secretPath: "/app/**" }];
 
     // Action
-    const permission = ProjectPermission.forServiceToken({ project: project(), scopes, permissions: ["read"] });
+    const permission = ProjectPermission.forServiceToken({
+      project: project(),
+      scopes,
+      permissions: ["read"],
+      usesNewPrivilegeSystem: false
+    });
 
     // Assert
     const read = (fields: Record<string, unknown>) =>
@@ -202,7 +215,12 @@ describe("ProjectPermission.forServiceToken", () => {
 
   test("should hold no roles or memberships", () => {
     // Action
-    const permission = ProjectPermission.forServiceToken({ project: project(), scopes: [], permissions: ["write"] });
+    const permission = ProjectPermission.forServiceToken({
+      project: project(),
+      scopes: [],
+      permissions: ["write"],
+      usesNewPrivilegeSystem: false
+    });
 
     // Assert
     expect(permission.hasRole({ slug: "admin" })).toBe(false);
@@ -217,7 +235,8 @@ describe("ProjectPermission.hasProjectEnforcement", () => {
       ProjectPermission.forServiceToken({
         project: project({ enforceEncryptedSecretManagerSecretMetadata }),
         scopes: [],
-        permissions: []
+        permissions: [],
+        usesNewPrivilegeSystem: false
       })
     );
 

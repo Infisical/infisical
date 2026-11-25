@@ -1,11 +1,10 @@
 import { AbilityTuple } from "@casl/ability";
 
 import { ProjectMembershipRole, ProjectType, RESOURCE_SCOPE } from "@app/db/schemas";
-import type { TActorContext } from "@app/domains/lib/actor-context";
-import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
+import { roleHolderOf, TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { ActorGrants, TActorGrantsService } from "@app/domains/platform/access-control/ce/module";
 import type { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { delegatedOauthScopesOf } from "@app/lib/auth/principal";
 
 import { ProjectResourcePermission, TResourceRoles } from "../../models/project-resource-permission";
@@ -48,9 +47,7 @@ export class ProjectResourcePermissionService implements TProjectResourcePermiss
     roles
   }: TGetResourcePermissionInput<TSet>): Promise<ProjectResourcePermission<TSet>> {
     const { principal } = actor;
-    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
-      throw new RuleViolationError({ message: "Invalid actor provided", name: "Get resource permission" });
-    }
+    const holder = roleHolderOf(principal);
     // No OAuth scope covers resource memberships, so a delegated token gets nothing on a resource.
     if (delegatedOauthScopesOf(principal)) return ProjectResourcePermission.none<TSet>();
 
@@ -64,7 +61,7 @@ export class ProjectResourcePermissionService implements TProjectResourcePermiss
     const grantsPerResource = await Promise.all(
       resources.map(({ resourceType, resourceId }) =>
         this.actorGrantsService.getActorGrants({
-          actor: { type: principal.type, id: principal.id },
+          actor: holder,
           scope: { scope: RESOURCE_SCOPE, orgId: actor.org.id, projectId, resourceType, resourceId }
         })
       )

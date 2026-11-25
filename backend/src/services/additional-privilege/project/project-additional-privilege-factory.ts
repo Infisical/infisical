@@ -186,7 +186,6 @@ export const newProjectAdditionalPrivilegesFactory = ({
     }
 
     const missingPermissions = actorPermission.boundsViolations({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions,
       subject: permissionSubject,
       fields: subjectFields,

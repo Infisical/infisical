@@ -52,7 +52,6 @@ export const newOrgIdentityFactory = ({
     });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
       actions: OrgPermissionIdentityActions.Delete,
       subject: OrgPermissionSubjects.Identity,
       targets: toBoundsTargets(targetPermissions),

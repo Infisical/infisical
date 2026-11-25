@@ -125,7 +125,6 @@ export const newProjectMembershipUserFactory = ({
       }
     }
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
       projectId: scope.value,
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
@@ -135,7 +134,6 @@ export const newProjectMembershipUserFactory = ({
       // Per-user checks
       for (const newUser of newUsers) {
         permission.assertBounds({
-          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           subject: ProjectPermissionSub.Member,
           fields: {
@@ -243,8 +241,6 @@ export const newProjectMembershipUserFactory = ({
       throw new NotFoundError({ message: `User not found for project membership update` });
     }
 
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
-
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
       userId: dto.selector.userId
@@ -256,7 +252,6 @@ export const newProjectMembershipUserFactory = ({
       ignoreUnresolvedRoles: true
     });
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
       subject: ProjectPermissionSub.Member,
       fields: { userEmail: targetUser.email || undefined },
@@ -271,7 +266,6 @@ export const newProjectMembershipUserFactory = ({
 
     for (const permissionRole of permissionRoles) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         subject: ProjectPermissionSub.Member,
         fields: {
@@ -302,10 +296,8 @@ export const newProjectMembershipUserFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionMemberActions.Delete,
       subject: ProjectPermissionSub.Member,
       fields: { userEmail: targetMembership?.user.email || undefined },

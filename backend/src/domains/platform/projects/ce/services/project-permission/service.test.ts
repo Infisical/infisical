@@ -527,23 +527,6 @@ describe("ProjectPermissionService.getProjectPermissionByRoles", () => {
     expect(result).toEqual([]);
   });
 
-  test("should look up no custom role for a built-in slug", async () => {
-    // Setup
-    const { service, roleService, projectId } = arrange();
-    const findRolesBySlugs = vi.spyOn(roleService, "findRolesBySlugs");
-
-    // Action
-    const result = await service.getProjectPermissionByRoles({
-      projectId,
-      roles: [ProjectMembershipRole.Admin],
-      ignoreUnresolvedRoles: true
-    });
-
-    // Assert
-    expect(result).toHaveLength(1);
-    expect(findRolesBySlugs).toHaveBeenCalledWith({ owner: { projectId }, slugs: [] });
-  });
-
   test("should resolve a built-in slug as the project's product defines it", async () => {
     // Setup
     const { service, projectId } = arrange({ type: ProjectType.PAM, projectRoles: [pamRoles()] });

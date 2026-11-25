@@ -926,8 +926,6 @@ export const orgServiceFactory = ({
     if (actor.principal.type === ActorType.USER && foundMembership.actorUserId === actor.principal.id)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
-    const { shouldUseNewPrivilegeSystem } = actor.org;
-
     const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
     if (role !== undefined || metadata !== undefined)
       targetOps.push({
@@ -948,7 +946,6 @@ export const orgServiceFactory = ({
 
       for (const { opAction, baseMessage } of targetOps) {
         permission.assertBounds({
-          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: opAction,
           subject: OrgPermissionSubjects.Member,
           targets: targetPermissions,
@@ -979,7 +976,6 @@ export const orgServiceFactory = ({
         await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] })
       );
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
         targets: permissionRoles,
@@ -1121,7 +1117,6 @@ export const orgServiceFactory = ({
     });
     if (inviteePermissions.length) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
         targets: inviteePermissions.map((grant) => ({ permission: grant })),
@@ -1328,13 +1323,11 @@ export const orgServiceFactory = ({
   const $assertMembershipRemovalBoundary = async ({
     membershipIds,
     orgId,
-    permission,
-    shouldUseNewPrivilegeSystem
+    permission
   }: {
     membershipIds: string[];
     orgId: string;
     permission: OrgPermission;
-    shouldUseNewPrivilegeSystem: boolean;
   }) => {
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
     const targetPermissions = toBoundsTargets(
@@ -1342,7 +1335,6 @@ export const orgServiceFactory = ({
     );
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionMemberActions.Delete,
       subject: OrgPermissionSubjects.Member,
       targets: targetPermissions,
@@ -1365,8 +1357,7 @@ export const orgServiceFactory = ({
     await $assertMembershipRemovalBoundary({
       membershipIds: [membershipId],
       orgId,
-      permission,
-      shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+      permission
     });
 
     const [deletedMembership] = await deleteOrgMembershipsFn({
@@ -1409,8 +1400,7 @@ export const orgServiceFactory = ({
     await $assertMembershipRemovalBoundary({
       membershipIds,
       orgId,
-      permission,
-      shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+      permission
     });
 
     const deletedMemberships = await deleteOrgMembershipsFn({

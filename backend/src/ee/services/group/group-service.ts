@@ -161,11 +161,9 @@ export const groupServiceFactory = ({
       orgId: actor.org.id,
       roles: [role]
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (role !== OrgMembershipRole.NoAccess) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
         targets: [{ permission: rolePermissionDetails.permission }],
@@ -247,7 +245,6 @@ export const groupServiceFactory = ({
       });
     }
 
-    const { shouldUseNewPrivilegeSystem } = actor.org;
     const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
     const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
       orgId: actor.org.id,
@@ -259,7 +256,6 @@ export const groupServiceFactory = ({
     // group, which can be more privileged. Bound it like adding a member.
     if (name && name !== group.name) {
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.AddMembers,
         subject: OrgPermissionSubjects.Groups,
         targets: toBoundsTargets(targetPermissions),
@@ -276,7 +272,6 @@ export const groupServiceFactory = ({
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
         targets: toBoundsTargets(targetPermissions),
@@ -284,7 +279,6 @@ export const groupServiceFactory = ({
       });
 
       permission.assertBounds({
-        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
         targets: [{ permission: rolePermissionDetails.permission }],
@@ -446,10 +440,8 @@ export const groupServiceFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.Delete,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(targetPermissions),
@@ -700,10 +692,8 @@ export const groupServiceFactory = ({
       roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.AddMembers,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(rolePermissionDetails),
@@ -784,10 +774,8 @@ export const groupServiceFactory = ({
       roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.AddIdentities,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(rolePermissionDetails),
@@ -866,10 +854,8 @@ export const groupServiceFactory = ({
       roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.RemoveMembers,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(rolePermissionDetails),
@@ -929,10 +915,8 @@ export const groupServiceFactory = ({
       roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.RemoveIdentities,
       subject: OrgPermissionSubjects.Groups,
       targets: toBoundsTargets(rolePermissionDetails),

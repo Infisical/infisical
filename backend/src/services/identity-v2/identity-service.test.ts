@@ -2,7 +2,7 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorPermission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
@@ -63,13 +63,17 @@ const createService = ({
     orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: true })
+        ),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     secretsPermissionService: {
       getProjectPermissionWithFolderGrants: vi
         .fn()
-        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: true })
+        )
     } as never,
     projectPermissionService: {
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])

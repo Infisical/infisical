@@ -52,7 +52,7 @@ describe("OrgPermission.fromGrants", () => {
     });
 
     // Action
-    const permission = OrgPermission.fromGrants({ grants });
+    const permission = OrgPermission.fromGrants({ grants, principal: userPrincipal(), usesNewPrivilegeSystem: false });
 
     // Assert
     expect(permission.can(createMember)).toBe(false);
@@ -66,7 +66,7 @@ describe("OrgPermission.fromGrants", () => {
     });
 
     // Action
-    const permission = OrgPermission.fromGrants({ grants });
+    const permission = OrgPermission.fromGrants({ grants, principal: userPrincipal(), usesNewPrivilegeSystem: false });
 
     // Assert
     expect(permission.can(createMember)).toBe(false);
@@ -82,7 +82,7 @@ describe("OrgPermission.fromGrants", () => {
     const principal = userPrincipal({ oauth: { clientId: "client", scopes: ["secrets:read"] } });
 
     // Action
-    const permission = OrgPermission.fromGrants({ grants, principal });
+    const permission = OrgPermission.fromGrants({ grants, principal, usesNewPrivilegeSystem: false });
 
     // Assert
     expect(permission.rules).toEqual(unpackRules(packRules([{ ...createMember, inverted: true }])));
@@ -95,7 +95,7 @@ describe("OrgPermission.fromGrants", () => {
     const principal = userPrincipal({ oauth: { clientId: "client" } });
 
     // Action
-    const permission = OrgPermission.fromGrants({ grants, principal });
+    const permission = OrgPermission.fromGrants({ grants, principal, usesNewPrivilegeSystem: false });
 
     // Assert
     expect(permission.can(createMember)).toBe(true);
@@ -119,7 +119,7 @@ describe("OrgPermission.fromGrants", () => {
     );
 
     // Action
-    const permission = OrgPermission.fromGrants({ grants });
+    const permission = OrgPermission.fromGrants({ grants, principal: userPrincipal(), usesNewPrivilegeSystem: false });
 
     // Assert
     expect(permission.hasRole({ slug: OrgMembershipRole.Admin })).toBe(true);
@@ -127,7 +127,7 @@ describe("OrgPermission.fromGrants", () => {
   });
 });
 
-describe("OrgPermission.canBypassSso", () => {
+describe("OrgPermission.grantsSsoBypass", () => {
   test("should let an org admin bypass SSO enforcement and not an org member", async () => {
     // Setup
     const [admin, member] = await Promise.all([
@@ -136,7 +136,7 @@ describe("OrgPermission.canBypassSso", () => {
     ]);
 
     // Action
-    const can = [admin, member].map((grants) => OrgPermission.fromGrants({ grants }).canBypassSso());
+    const can = [admin, member].map((grants) => OrgPermission.grantsSsoBypass(grants));
 
     // Assert
     expect(can).toEqual([true, false]);
@@ -150,7 +150,7 @@ describe("OrgPermission.canBypassSso", () => {
     });
 
     // Action
-    const can = OrgPermission.fromGrants({ grants }).canBypassSso();
+    const can = OrgPermission.grantsSsoBypass(grants);
 
     // Assert
     expect(can).toBe(true);

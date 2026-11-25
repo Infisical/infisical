@@ -72,7 +72,6 @@ export const assertIdentityAuthAccessAllowed = async (
     const folderGrants = await secretsPermissionService.getFolderGrantPermissions({ target, projectId, grants });
 
     permission.assertBounds({
-      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: PROJECT_ACTION_BY_ORG_ACTION[action],
       subject: ProjectPermissionSub.Identity,
       fields: { identityId },
@@ -92,7 +91,6 @@ export const assertIdentityAuthAccessAllowed = async (
     orgId
   });
   permission.assertBounds({
-    usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
     actions: action,
     subject: OrgPermissionSubjects.Identity,
     targets: roleGrants.map((grant) => ({ permission: grant })),

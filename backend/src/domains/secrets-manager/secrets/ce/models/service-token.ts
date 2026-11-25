@@ -56,8 +56,19 @@ export class ServiceToken {
     return project;
   }
 
-  toPermission(project: Project): ProjectPermission {
-    return ProjectPermission.forServiceToken({ project, scopes: this.scopes, permissions: this.permissions });
+  toPermission({
+    project,
+    usesNewPrivilegeSystem
+  }: {
+    project: Project;
+    usesNewPrivilegeSystem: boolean;
+  }): ProjectPermission {
+    return ProjectPermission.forServiceToken({
+      project,
+      scopes: this.scopes,
+      permissions: this.permissions,
+      usesNewPrivilegeSystem
+    });
   }
 
   toJSON(): TServiceTokenRecord {
