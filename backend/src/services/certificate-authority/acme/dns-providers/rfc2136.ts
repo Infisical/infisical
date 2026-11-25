@@ -26,6 +26,8 @@ const READ_BACK_INTERVAL_MS = 1000;
 const NAMESERVER_WAIT_MS = 60_000;
 const NAMESERVER_POLL_INTERVAL_MS = 2000;
 const NAMESERVER_QUERY_TIMEOUT_MS = 2000;
+// Real zones list 2 to 6 nameservers; the cap keeps a zone from turning each order into a flood of queries
+const MAX_NAMESERVERS = 10;
 const SURROUNDING_QUOTES_REGEX = new RE2('^"|"$', "g");
 
 export type TRfc2136ProviderDeps = TRfc2136GatewayDeps & { abortSignal?: AbortSignal };
@@ -113,18 +115,30 @@ const askNameserver = async (ip: string, name: string, value: string): Promise<T
   }
 };
 
+const firstPublicIp = async (resolve: (hostname: string) => Promise<string[]>, hostname: string) =>
+  (await resolve(hostname).catch(() => [] as string[])).find((ip) => !isPrivateIp(ip));
+
+// One public address per nameserver, IPv4 first, and no address asked twice
 const getPublicNameservers = async (zone: string) => {
-  const names = await dns.promises.resolveNs(zone);
-  const nameservers = await Promise.all(
-    names.map(async (nsName) => {
-      const addresses = [
-        ...(await dns.promises.resolve4(nsName).catch(() => [] as string[])),
-        ...(await dns.promises.resolve6(nsName).catch(() => [] as string[]))
-      ];
-      return { name: nsName, ips: addresses.filter((ip) => !isPrivateIp(ip)) };
-    })
+  const names = [...new Set((await dns.promises.resolveNs(zone)).map((nsName) => nsName.toLowerCase()))].slice(
+    0,
+    MAX_NAMESERVERS
   );
-  return nameservers.filter(({ ips }) => ips.length > 0);
+  const resolved = await Promise.all(
+    names.map(async (nsName) => ({
+      name: nsName,
+      ip:
+        (await firstPublicIp((hostname) => dns.promises.resolve4(hostname), nsName)) ??
+        (await firstPublicIp((hostname) => dns.promises.resolve6(hostname), nsName))
+    }))
+  );
+
+  const seen = new Set<string>();
+  return resolved.filter((nameserver): nameserver is { name: string; ip: string } => {
+    if (!nameserver.ip || seen.has(nameserver.ip)) return false;
+    seen.add(nameserver.ip);
+    return true;
+  });
 };
 
 // The CA can ask any of the zone's public nameservers, and with a hidden primary those are secondaries that copy the
@@ -145,23 +159,23 @@ export const waitForPublicNameservers = async (
     return;
   }
 
-  const pending = new Map(nameservers.map((nameserver) => [nameserver.name, nameserver.ips]));
-  const lagging = new Set<string>();
+  const pending = new Map(nameservers.map((nameserver) => [nameserver.name, nameserver.ip]));
+  // a server that answered once stays pending through a later timeout, since one lost packet proves nothing
+  const answered = new Set<string>();
   const deadline = Date.now() + NAMESERVER_WAIT_MS;
 
   while (pending.size > 0 && !abortSignal?.aborted) {
-    lagging.clear();
     // eslint-disable-next-line no-await-in-loop
     await Promise.all(
-      [...pending].map(async ([nsName, ips]) => {
-        const answers = await Promise.all(ips.map((ip) => askNameserver(ip, name, value)));
-        if (answers.every((answer) => answer === "has-value" || answer === "no-answer")) {
+      [...pending].map(async ([nsName, ip]) => {
+        const answer = await askNameserver(ip, name, value);
+        if (answer === "has-value") {
           pending.delete(nsName);
-          if (answers.every((answer) => answer === "no-answer")) {
-            logger.info(`Skipping RFC 2136 nameserver that did not answer [zone=${zone}] [nameserver=${nsName}]`);
-          }
-        } else {
-          lagging.add(nsName);
+        } else if (answer === "missing") {
+          answered.add(nsName);
+        } else if (!answered.has(nsName)) {
+          pending.delete(nsName);
+          logger.info(`Skipping RFC 2136 nameserver that did not answer [zone=${zone}] [nameserver=${nsName}]`);
         }
       })
     );
@@ -170,9 +184,9 @@ export const waitForPublicNameservers = async (
     await delay(NAMESERVER_POLL_INTERVAL_MS);
   }
 
-  if (lagging.size === 0 || abortSignal?.aborted) return;
+  if (pending.size === 0 || abortSignal?.aborted) return;
 
-  const laggingList = [...lagging].join("', '");
+  const laggingList = [...pending.keys()].join("', '");
   if (!getConfig().isCloud) {
     logger.warn(
       `RFC 2136 nameservers still do not serve the challenge record, continuing [zone=${zone}] [name=${name}] [nameservers=${laggingList}]`
@@ -180,7 +194,7 @@ export const waitForPublicNameservers = async (
     return;
   }
   const [subject, verb, object] =
-    lagging.size === 1 ? ["Nameserver", "doesn't", "it receives"] : ["Nameservers", "don't", "they receive"];
+    pending.size === 1 ? ["Nameserver", "doesn't", "it receives"] : ["Nameservers", "don't", "they receive"];
   throw new Error(
     `${subject} '${laggingList}' still ${verb} serve the challenge record '${name}' after ${NAMESERVER_WAIT_MS / 1000} seconds. Check that ${object} updates from your primary server (NOTIFY and zone transfers).`
   );

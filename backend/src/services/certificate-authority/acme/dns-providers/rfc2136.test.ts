@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { dnsMock, resolveTxtByServer, configMock, queryTxtRecordMock } = vi.hoisted(() => {
+const { dnsMock, resolveTxtByServer, queriedServers, configMock, queryTxtRecordMock } = vi.hoisted(() => {
   const byServer = new Map<string, () => Promise<string[][]>>();
+  const queried: string[] = [];
   class Resolver {
     private server = "";
 
@@ -10,12 +11,14 @@ const { dnsMock, resolveTxtByServer, configMock, queryTxtRecordMock } = vi.hoist
     }
 
     resolveTxt() {
+      queried.push(this.server);
       const answer = byServer.get(this.server);
       return answer ? answer() : Promise.reject(Object.assign(new Error("timeout"), { code: "ETIMEOUT" }));
     }
   }
   return {
     resolveTxtByServer: byServer,
+    queriedServers: queried,
     dnsMock: {
       NODATA: "ENODATA",
       NOTFOUND: "ENOTFOUND",
@@ -75,6 +78,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.clearAllMocks();
   resolveTxtByServer.clear();
+  queriedServers.length = 0;
   configMock.isCloud = true;
   setNameservers({});
 });
@@ -153,12 +157,60 @@ describe("rfc2136 public nameserver check", () => {
     await expect(waitForPublicNameservers("corp.com", NAME, "token")).resolves.toBeUndefined();
   });
 
-  it("stops waiting when the order is cancelled", async () => {
+  it("keeps waiting on a nameserver that answered once and then timed out", async () => {
     setNameservers({ "ns1.corp.com": ["45.33.10.1"] });
-    resolveTxtByServer.set("45.33.10.1", missing);
+    let calls = 0;
+    resolveTxtByServer.set("45.33.10.1", () => {
+      calls += 1;
+      if (calls === 1) return missing();
+      if (calls === 2) return Promise.reject(Object.assign(new Error("timeout"), { code: "ETIMEOUT" }));
+      return Promise.resolve([["token"]]);
+    });
+
+    await expect(waitForPublicNameservers("corp.com", NAME, "token")).resolves.toBeUndefined();
+    expect(calls).toBe(3);
+
+    resolveTxtByServer.set("45.33.10.1", () =>
+      queriedServers.length === 4
+        ? missing()
+        : Promise.reject(Object.assign(new Error("timeout"), { code: "ETIMEOUT" }))
+    );
+    await expect(waitForPublicNameservers("corp.com", NAME, "token")).rejects.toThrow(/still doesn't serve/);
+  });
+
+  it("asks at most 10 nameservers, one address each, never the same address twice", async () => {
+    const nameservers: Record<string, string[]> = {};
+    for (let i = 1; i <= 15; i += 1) nameservers[`ns${i}.corp.com`] = [`45.33.10.${i}`, `45.33.11.${i}`];
+    nameservers["ns2.corp.com"] = ["45.33.10.1"];
+    setNameservers(nameservers);
+    for (let i = 1; i <= 15; i += 1) resolveTxtByServer.set(`45.33.10.${i}`, serving("token"));
+
+    await waitForPublicNameservers("corp.com", NAME, "token");
+    expect(queriedServers).toHaveLength(9);
+    expect(new Set(queriedServers).size).toBe(9);
+    expect(queriedServers.some((ip) => ip.startsWith("45.33.11."))).toBe(false);
+  });
+
+  it("stops polling when the order is cancelled", async () => {
+    setNameservers({ "ns1.corp.com": ["45.33.10.1"] });
     const controller = new AbortController();
-    controller.abort();
+    resolveTxtByServer.set("45.33.10.1", () => {
+      if (queriedServers.length === 2) controller.abort();
+      return missing();
+    });
 
     await expect(waitForPublicNameservers("corp.com", NAME, "token", controller.signal)).resolves.toBeUndefined();
+    expect(queriedServers).toHaveLength(2);
+  });
+
+  it("runs after the read-back when a certificate order adds the record", async () => {
+    queryTxtRecordMock.mockResolvedValue({ values: ["token"] });
+    setNameservers({ "ns1.corp.com": ["45.33.10.1"] });
+    resolveTxtByServer.set("45.33.10.1", missing);
+
+    await expect(rfc2136InsertTxtRecord(connection, "corp.com", NAME, "token", deps)).rejects.toThrow(
+      "Nameserver 'ns1.corp.com' still doesn't serve the challenge record"
+    );
+    expect(dnsMock.promises.resolveNs).toHaveBeenCalledWith("corp.com");
   });
 });
