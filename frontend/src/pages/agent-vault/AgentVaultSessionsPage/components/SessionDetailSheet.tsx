@@ -1,4 +1,4 @@
-import { Children, isValidElement, ReactNode } from "react";
+import { Children, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -55,6 +55,7 @@ import { SessionExpiry } from "./SessionExpiry";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
+import { TruncatedText } from "./TruncatedText";
 
 const SHOWN_INLINE_SERVICES = 1;
 const SHOWN_SERVICES = 2;
@@ -71,7 +72,6 @@ const moreButton = (count: number) => (
   </button>
 );
 
-// A session with this many fields or fewer shows them in one row; more use two.
 const SINGLE_ROW_MAX_FIELDS = 5;
 
 // Each column of up to rowsPerColumn rows is a divided cell, so the block never grows taller than rowsPerColumn. A group wraps as one unit, keeping its cells together.
@@ -100,9 +100,10 @@ const DetailSection = ({
         className
       )}
     >
-      {columns.map((column) => (
+      {columns.map((column, index) => (
         <dl
-          key={isValidElement(column[0]) ? column[0].key : undefined}
+          // oxlint-disable-next-line react/no-array-index-key
+          key={index}
           className="grid min-w-0 flex-[1_1_auto] grid-cols-[auto_minmax(0,1fr)] content-start items-start gap-x-4 gap-y-1.5 px-4 py-2.5"
         >
           {column}
@@ -112,38 +113,17 @@ const DetailSection = ({
   );
 };
 
-// Focusable, so keyboard users can open the tooltip to read a shortened value in full.
-const TruncatedText = ({ text, className }: { text: string; className?: string }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={0}
-        className={twMerge(
-          "truncate rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50",
-          className
-        )}
-      >
-        {text}
-      </span>
-    </TooltipTrigger>
-    <TooltipContent className="max-w-sm break-all">{text}</TooltipContent>
-  </Tooltip>
-);
-
 const DetailRow = ({
   label,
   children,
-  className,
-  labelClassName
+  className
 }: {
-  label: ReactNode;
+  label: string;
   children: ReactNode;
   className?: string;
-  labelClassName?: string;
 }) => (
   <div className="contents">
-    <dt className={twMerge("truncate text-xs leading-5 text-label", labelClassName)}>{label}</dt>
+    <dt className="truncate text-xs leading-5 text-label">{label}</dt>
     <dd
       className={twMerge(
         "flex min-h-5 min-w-0 items-center gap-2 text-sm leading-5 text-foreground",
@@ -292,7 +272,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   <SheetTitle
                     className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
                   >
-                    {session.label ?? "Unlabeled session"}
+                    {session.label ?? "Unlabeled Session"}
                   </SheetTitle>
                   <SessionStatusBadge status={session.status} />
                   {canEdit && (
@@ -308,7 +288,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                   )}
                 </div>
                 <SheetDescription>
-                  Every request the agent made during this session.
+                  The session&apos;s details and every request the agent made.
                 </SheetDescription>
               </div>
               {session.status === AgentVaultSessionStatus.Active && canRevoke && (
@@ -480,38 +460,41 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                 </DetailSection>
 
                 {metadataEntries.length > 0 && (
+                  // One labeled cell holding the key/value pairs, so user-defined keys never read as built-in fields.
                   <DetailSection
                     label="Metadata"
                     rowsPerColumn={rowsPerColumn}
-                    className="flex-[3_1_12rem]"
+                    className="min-w-72 flex-[3_1_18rem]"
                   >
-                    {shownMetadata.map(([key, value], index) => (
-                      <DetailRow
-                        key={key}
-                        label={<TruncatedText text={key} className="block" />}
-                        labelClassName="max-w-20 font-mono"
-                      >
-                        <TruncatedText text={value} />
-                        {index === shownMetadata.length - 1 && moreMetadata.length > 0 && (
-                          <SessionAccessHoverCard
-                            content={
-                              <dl className="grid max-h-72 max-w-md grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 overflow-y-auto text-sm">
-                                {moreMetadata.map(([moreKey, moreValue]) => (
-                                  <div key={moreKey} className="contents">
-                                    <dt className="max-w-48 font-mono text-xs leading-5 break-all text-label">
-                                      {moreKey}
-                                    </dt>
-                                    <dd className="break-all">{moreValue}</dd>
-                                  </div>
-                                ))}
-                              </dl>
-                            }
-                          >
-                            {moreButton(moreMetadata.length)}
-                          </SessionAccessHoverCard>
-                        )}
-                      </DetailRow>
-                    ))}
+                    <DetailRow
+                      label="Metadata"
+                      className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5"
+                    >
+                      {shownMetadata.map(([key, value], index) => (
+                        <div key={key} className="contents">
+                          <TruncatedText text={key} className="max-w-20 text-muted" isFocusable />
+                          <span className="flex min-w-0 items-center gap-2">
+                            <TruncatedText text={value} isFocusable />
+                            {index === shownMetadata.length - 1 && moreMetadata.length > 0 && (
+                              <SessionAccessHoverCard
+                                content={
+                                  <dl className="grid max-h-72 max-w-md grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 overflow-y-auto text-sm">
+                                    {moreMetadata.map(([moreKey, moreValue]) => (
+                                      <div key={moreKey} className="contents">
+                                        <dt className="max-w-48 break-all text-muted">{moreKey}</dt>
+                                        <dd className="break-all">{moreValue}</dd>
+                                      </div>
+                                    ))}
+                                  </dl>
+                                }
+                              >
+                                {moreButton(moreMetadata.length)}
+                              </SessionAccessHoverCard>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </DetailRow>
                   </DetailSection>
                 )}
               </div>
