@@ -249,7 +249,7 @@ const GroupMembersCard = ({
     inline: [
       {
         label: "Assume privileges",
-        icon: "user",
+        icon: "sign-in",
         disabledReason: assumeBlocked,
         onSelect: setAssuming
       }

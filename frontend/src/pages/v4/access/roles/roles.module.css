@@ -39,6 +39,7 @@
   gap: var(--cipher-space-8);
 }
 .conditions {
+  container-type: inline-size;
   margin-top: var(--cipher-space-24);
   padding-top: var(--cipher-space-12);
   border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
@@ -73,6 +74,21 @@
   grid-template-columns: minmax(184px, 1fr) minmax(144px, 184px) minmax(120px, 2fr) auto;
   align-items: center;
   gap: var(--cipher-space-8);
+}
+@container (max-width: 34rem) {
+  .conditionRows {
+    gap: var(--cipher-space-16);
+  }
+  .conditionRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .conditionRow > * {
+    grid-column: 1;
+  }
+  .conditionRow > :last-child {
+    grid-row: 1;
+    grid-column: 2;
+  }
 }
 .conditionCell,
 .operatorCell {
@@ -369,11 +385,6 @@
 .previewLine[data-comment] {
   color: var(--cipher-muted);
   font-style: italic;
-}
-.ruleSheetRow {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--cipher-space-12);
 }
 .legend {
   margin: 0;

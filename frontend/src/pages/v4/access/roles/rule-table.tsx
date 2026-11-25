@@ -149,59 +149,57 @@ const RuleSheet = ({
         </SheetHeader>
         <SheetBody>
           <Stack gap={16}>
-            <div className={styles.ruleSheetRow}>
-              <Field label="Policy" error={policyError} description={config?.description}>
-                <Combobox
-                  label="Policy"
-                  placeholder="Select a policy..."
-                  emptyText="No policies found."
-                  disabled={!editable}
-                  invalid={Boolean(policyError)}
-                  options={[...subjects]
-                    .sort((a, b) => a.title.localeCompare(b.title))
-                    .map((item) => {
-                      const count = draft[item.subject]?.length ?? 0;
-                      return {
-                        value: item.subject,
-                        label: item.title,
-                        meta: count ? plural(count, "rule", "rules") : undefined
-                      };
-                    })}
-                  value={subject ?? ""}
-                  onChange={(value) => {
-                    setSubject(value);
-                    setRule((current) => ({
-                      ...current,
-                      actions: [],
-                      conditions: [],
-                      inverted:
-                        scope === "project" &&
-                        Boolean(subjects.find((item) => item.subject === value)?.conditional) &&
-                        current.inverted
-                    }));
-                    setPolicyError(undefined);
-                    setErrors(undefined);
-                  }}
+            <Field label="Policy" error={policyError} description={config?.description}>
+              <Combobox
+                label="Policy"
+                placeholder="Select a policy..."
+                emptyText="No policies found."
+                disabled={!editable}
+                invalid={Boolean(policyError)}
+                options={[...subjects]
+                  .sort((a, b) => a.title.localeCompare(b.title))
+                  .map((item) => {
+                    const count = draft[item.subject]?.length ?? 0;
+                    return {
+                      value: item.subject,
+                      label: item.title,
+                      meta: count ? plural(count, "rule", "rules") : undefined
+                    };
+                  })}
+                value={subject ?? ""}
+                onChange={(value) => {
+                  setSubject(value);
+                  setRule((current) => ({
+                    ...current,
+                    actions: [],
+                    conditions: [],
+                    inverted:
+                      scope === "project" &&
+                      Boolean(subjects.find((item) => item.subject === value)?.conditional) &&
+                      current.inverted
+                  }));
+                  setPolicyError(undefined);
+                  setErrors(undefined);
+                }}
+              />
+            </Field>
+            <Field label="Effect">
+              <Gate
+                allowed={conditional}
+                reason="This policy does not support Forbid rules or conditions"
+              >
+                <Select
+                  label="Effect"
+                  value={String(rule.inverted)}
+                  disabled={!editable || !conditional}
+                  options={[
+                    { value: "false", label: "Allow" },
+                    { value: "true", label: "Forbid" }
+                  ]}
+                  onChange={(value) => setRule({ ...rule, inverted: value === "true" })}
                 />
-              </Field>
-              <Field label="Effect">
-                <Gate
-                  allowed={conditional}
-                  reason="This policy does not support Forbid rules or conditions"
-                >
-                  <Select
-                    label="Effect"
-                    value={String(rule.inverted)}
-                    disabled={!editable || !conditional}
-                    options={[
-                      { value: "false", label: "Allow" },
-                      { value: "true", label: "Forbid" }
-                    ]}
-                    onChange={(value) => setRule({ ...rule, inverted: value === "true" })}
-                  />
-                </Gate>
-              </Field>
-            </div>
+              </Gate>
+            </Field>
             {config && (
               <>
                 <Field label="Actions" error={errors?.actions} wide>
