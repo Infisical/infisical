@@ -5,7 +5,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
 
-import { planSyncBindings, TBindingPlan } from "./cloudflare-workers-binding-fns";
+import { planSyncBindings, TBindingPlan, toEnvPatch } from "./cloudflare-workers-binding-fns";
 import { throwOnCloudflareRequestError, validateCloudflareResponse } from "./cloudflare-workers-errors";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
@@ -102,12 +102,7 @@ const $applySecrets = async (
   const plan = planSyncBindings(secretSync, secretMap, baseBindings);
   if (!plan.written.length && !plan.dropped.length) return undefined;
 
-  // Null-prototype object so secret names like "__proto__" are sent as regular keys.
-  const env = Object.create(null) as Record<string, unknown>;
-  for (const { name, ...binding } of plan.written) env[name] = binding;
-  for (const name of plan.dropped) env[name] = null;
-
-  const created = await $patchLatestVersion(ctx, env);
+  const created = await $patchLatestVersion(ctx, toEnvPatch(plan));
   logger.info(
     `SecretSync Cloudflare Workers created version [scriptId=${ctx.scriptId}] [baseVersionId=${latest.id}] [newVersionId=${created.id}]`
   );

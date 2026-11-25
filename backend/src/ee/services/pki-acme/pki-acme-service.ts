@@ -14,6 +14,7 @@ import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -28,6 +29,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -35,7 +37,7 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ACME_SAN_TYPES, CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -59,18 +61,20 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { assertCertificateMaterialAvailable } from "@app/services/certificate/certificate-fns";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
@@ -145,7 +149,7 @@ const assertAcmeCaSupportsCustomExtensions = (caType: CaType, count: number): vo
 };
 
 type TPkiAcmeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
@@ -179,10 +183,8 @@ type TPkiAcmeServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: TLicenseService;
   certManagerService: TCertManagerService;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -213,7 +215,8 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   licenseService,
   certManagerService,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateV3Service,
   certificatePolicyService,
   certificateRequestService,
@@ -676,12 +679,8 @@ export const pkiAcmeServiceFactory = ({
       if (!effectiveAcmeConfig?.encryptedEabSecret) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
       }
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: profile.projectId,
-        projectDAL,
-        kmsService
-      });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
       const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
@@ -1272,11 +1271,7 @@ export const pkiAcmeServiceFactory = ({
         return error;
       };
 
-      const allowedSanTypes = new Set([
-        CertSubjectAlternativeNameType.DNS_NAME,
-        CertSubjectAlternativeNameType.IP_ADDRESS
-      ]);
-      if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+      if (certificateRequest.subjectAlternativeNames?.some((san) => !ACME_SAN_TYPES.includes(san.type))) {
         throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 
@@ -1314,6 +1309,14 @@ export const pkiAcmeServiceFactory = ({
       ) {
         throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
+
+      certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.ACME,
+        csrCommonName: certificateRequest.commonName,
+        subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+        isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
+      }).subjectAlternativeNames;
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
       // holding a pooled connection across signing is what let concurrent finalizations exhaust
@@ -1652,13 +1655,9 @@ export const pkiAcmeServiceFactory = ({
     if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({

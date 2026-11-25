@@ -31,6 +31,11 @@ export enum CrlReason {
   A_A_COMPROMISE = "A_A_COMPROMISE"
 }
 
+export enum CertificateRevocationSource {
+  MicrosoftIntune = "microsoft-intune",
+  SameCertificate = "same-certificate"
+}
+
 export enum CertKeyUsage {
   DIGITAL_SIGNATURE = "digital_signature",
   KEY_ENCIPHERMENT = "key_encipherment",

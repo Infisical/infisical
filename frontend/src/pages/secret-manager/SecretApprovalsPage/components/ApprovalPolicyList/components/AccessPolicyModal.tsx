@@ -18,6 +18,14 @@ import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   AlertTitle,
   Badge,
   Button,
@@ -71,6 +79,11 @@ import { TDelegatedApprovalPolicyInput } from "@app/hooks/api/delegatedApprovals
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { onRequestError } from "@app/hooks/api/reactQuery";
+import { fetchSecretApprovalPolicyImports } from "@app/hooks/api/secretApproval";
+import {
+  TSecretApprovalPolicy,
+  TSecretApprovalPolicyImport
+} from "@app/hooks/api/secretApproval/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -174,6 +187,7 @@ const Form = ({
   onRequestClose: () => void;
 }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [directImports, setDirectImports] = useState<TSecretApprovalPolicyImport[] | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
     () =>
@@ -209,6 +223,7 @@ const Form = ({
             approvals: editValues.approvals,
             allowedSelfApprovals: editValues.allowedSelfApprovals,
             bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
+            enforceOnSecretImports: editValues.enforceOnSecretImports ?? false,
             maxTimePeriod: editValues.maxTimePeriod,
             requestExpirationTime: editValues.requestExpirationTime,
             sequenceApprovers: withFallbackApprovalStep(
@@ -314,20 +329,23 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
+    enforceOnSecretImports,
     ...data
-  }: TApprovalPolicyFormSchema) => {
-    if (!projectId) return;
+  }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
+    if (!projectId) return undefined;
 
     const bypassers = [...userBypassers, ...groupBypassers];
+    let changePolicy: TSecretApprovalPolicy | undefined;
 
     if (data.policyType === PolicyType.ChangePolicy) {
-      await createSecretApprovalPolicy({
+      ({ approval: changePolicy } = await createSecretApprovalPolicy({
         ...data,
+        enforceOnSecretImports,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectId: currentProject?.id || ""
-      });
+      }));
     } else if (isDelegated) {
       await createAccessApprovalPolicy({
         ...data,
@@ -358,7 +376,7 @@ const Form = ({
       type: "success",
       text: "Successfully created policy"
     });
-    onToggle(false);
+    return { changePolicy };
   };
 
   const handleUpdatePolicy = async ({
@@ -370,22 +388,25 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
+    enforceOnSecretImports,
     ...data
-  }: TApprovalPolicyFormSchema) => {
-    if (!projectId || !projectSlug) return;
-    if (!editValues?.id) return;
+  }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
+    if (!projectId || !projectSlug) return undefined;
+    if (!editValues?.id) return undefined;
 
     const bypassers = [...userBypassers, ...groupBypassers];
+    let changePolicy: TSecretApprovalPolicy | undefined;
 
     if (data.policyType === PolicyType.ChangePolicy) {
-      await updateSecretApprovalPolicy({
+      ({ approval: changePolicy } = await updateSecretApprovalPolicy({
         id: editValues?.id,
         ...data,
+        enforceOnSecretImports,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         projectId: currentProject?.id || "",
         environments: environments.map((env) => env.slug)
-      });
+      }));
     } else if (isDelegated) {
       await updateAccessApprovalPolicy({
         id: editValues?.id,
@@ -419,16 +440,34 @@ const Form = ({
       type: "success",
       text: "Successfully updated policy"
     });
-    onToggle(false);
+    return { changePolicy };
+  };
+
+  // Imports that still read their source directly are not converted when the policy starts requiring approval
+  // for imported secrets, so once it is saved the admin is shown which ones to recreate.
+  const showDirectImports = async (policy: TSecretApprovalPolicy) => {
+    try {
+      const imports = await fetchSecretApprovalPolicyImports({
+        policyId: policy.id,
+        isReplication: false
+      });
+      if (!imports.length) return false;
+      setDirectImports(imports);
+      return true;
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        type: "warning",
+        text: "The policy was saved, but the imports that ignore it couldn't be listed. Check this path's imports and recreate any that read their source directly."
+      });
+      return false;
+    }
   };
 
   const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+    let saved: Awaited<ReturnType<typeof handleCreatePolicy>>;
     try {
-      if (isEditMode) {
-        await handleUpdatePolicy(data);
-      } else {
-        await handleCreatePolicy(data);
-      }
+      saved = isEditMode ? await handleUpdatePolicy(data) : await handleCreatePolicy(data);
     } catch (error) {
       const serverResponse = axios.isAxiosError(error) ? error.response?.data : undefined;
       const message = serverResponse?.message;
@@ -443,7 +482,13 @@ const Form = ({
       }
 
       if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
+      return;
     }
+    if (!saved) return;
+
+    if (saved.changePolicy?.enforceOnSecretImports && (await showDirectImports(saved.changePolicy)))
+      return;
+    onToggle(false);
   };
 
   const memberOptions = useMemo<ApproverOptionData[]>(
@@ -1154,6 +1199,30 @@ const Form = ({
             {!isAccessPolicyType && (
               <Controller
                 control={control}
+                name="enforceOnSecretImports"
+                render={({ field: { value, onChange } }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>Require Approval for Imported Secrets</FieldTitle>
+                      <FieldDescription>
+                        Imports from this project into this path need approval to change their
+                        values.
+                      </FieldDescription>
+                    </FieldContent>
+                    <Toggle
+                      id="enforce-import-replication"
+                      aria-label="Require approval for imported secrets"
+                      variant="project"
+                      checked={value}
+                      onCheckedChange={onChange}
+                    />
+                  </Field>
+                )}
+              />
+            )}
+            {!isAccessPolicyType && (
+              <Controller
+                control={control}
                 name="bypassForMachineIdentities"
                 render={({ field: { value, onChange } }) => (
                   <Field orientation="horizontal">
@@ -1255,6 +1324,49 @@ const Form = ({
           </>
         )}
       </div>
+      <AlertDialog
+        open={Boolean(directImports)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setDirectImports(null);
+          onToggle(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TriangleAlertIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Recreate Imports That Ignore This Policy</AlertDialogTitle>
+            <AlertDialogDescription>
+              The policy was saved.{" "}
+              {directImports?.length === 1
+                ? "This import reads its source directly"
+                : `These ${directImports?.length} imports read their source directly`}
+              , so changes to their values won&apos;t need approval. Recreate each one as an import
+              that respects approval policies, and delete the old one after the new import&apos;s
+              first change request is merged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border text-sm">
+            {directImports?.map((secretImport) => (
+              <li
+                key={secretImport.id}
+                className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2 last:border-b-0"
+              >
+                <Badge variant="neutral">{secretImport.environment.name}</Badge>
+                <span className="font-mono text-xs">{secretImport.secretPath}</span>
+                <span className="text-muted">imports</span>
+                <Badge variant="neutral">{secretImport.sourceEnvironment.name}</Badge>
+                <span className="font-mono text-xs">{secretImport.sourceSecretPath}</span>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogAction variant="project">Done</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <SheetFooter className="justify-end border-t">
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close

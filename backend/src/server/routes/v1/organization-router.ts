@@ -529,7 +529,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         scimEnabled: z.boolean().optional(),
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        allowedMfaMethods: z
+          .nativeEnum(MfaMethod)
+          .array()
+          .min(1, "Select at least one MFA method")
+          .max(3)
+          .refine((methods) => new Set(methods).size === methods.length, "MFA methods must not repeat")
+          .optional()
+          .describe("Methods members may use to satisfy MFA while it is enforced"),
         ssoMfaTrust: z.nativeEnum(SsoMfaTrust).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
         bypassOrgAuthEnabled: z.boolean().optional(),
@@ -860,9 +867,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             foldersCount: z.number()
           }),
           agentVault: z.object({
-            accessBundlesCount: z.number(),
             servicesCount: z.number(),
-            proxiesCount: z.number(),
+            skillsCount: z.number(),
             projectsCount: z.number()
           })
         })

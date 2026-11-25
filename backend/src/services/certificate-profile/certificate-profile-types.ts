@@ -17,8 +17,28 @@ export enum EnrollmentType {
   API = "api",
   EST = "est",
   ACME = "acme",
-  SCEP = "scep"
+  SCEP = "scep",
+  MICROSOFT_AUTOENROLLMENT = "microsoft-autoenrollment"
 }
+
+export const PROFILE_ENROLLMENT_TYPES = [
+  EnrollmentType.API,
+  EnrollmentType.EST,
+  EnrollmentType.ACME,
+  EnrollmentType.SCEP
+] as const;
+
+export const ISSUER_NAMED_ENROLLMENT_TYPES: ReadonlySet<string> = new Set([EnrollmentType.MICROSOFT_AUTOENROLLMENT]);
+
+export const RENEWAL_LINKED_ENROLLMENT_TYPES: ReadonlySet<string> = new Set([EnrollmentType.MICROSOFT_AUTOENROLLMENT]);
+
+export const ENROLLMENT_TYPE_NAME_MAP: Record<EnrollmentType, string> = {
+  [EnrollmentType.API]: "API",
+  [EnrollmentType.EST]: "EST",
+  [EnrollmentType.ACME]: "ACME",
+  [EnrollmentType.SCEP]: "SCEP",
+  [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
+};
 
 export enum IssuerType {
   CA = "ca",

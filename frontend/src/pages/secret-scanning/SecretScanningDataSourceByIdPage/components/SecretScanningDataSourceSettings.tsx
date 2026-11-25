@@ -26,10 +26,12 @@ import {
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
 import { usePopUp } from "@app/hooks";
+import { AlertResourceType } from "@app/hooks/api/alerts";
 import {
   TSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
+import { AlertAction } from "@app/views/Alerts";
 
 import { DataSourceConfigDisplay } from "./DataSourceConfigDisplay";
 import { DataSourceDetailsCard } from "./DataSourceDetailsCard";
@@ -132,6 +134,30 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
               ))}
             </FieldGroup>
           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>
+              Choose who&apos;s alerted when a scan of {dataSource.name} finds secrets or fails.
+            </CardDescription>
+            <CardAction>
+              <AlertAction
+                resourceType={AlertResourceType.SecretScanning}
+                resourceId={dataSource.id}
+                projectId={dataSource.projectId}
+                renderPermissionGate={(render) => (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+                    a={ProjectPermissionSub.SecretScanningDataSources}
+                  >
+                    {render}
+                  </ProjectPermissionCan>
+                )}
+              />
+            </CardAction>
+          </CardHeader>
         </Card>
 
         <Card>

@@ -70,12 +70,19 @@ export enum ActorType {
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
   SCEP_ACCOUNT = "scepAccount",
+  MICROSOFT_AUTOENROLLMENT_ACCOUNT = "microsoftAutoenrollmentAccount",
   UNKNOWN_USER = "unknownUser",
   GATEWAY = "gateway",
   RELAY = "relay",
   KMIP_SERVER = "kmipServer",
   AGENT_VAULT_PROXY = "agentVaultProxy"
 }
+
+export const PROTOCOL_ENROLLMENT_ACTORS: ReadonlySet<ActorType> = new Set([
+  ActorType.EST_ACCOUNT,
+  ActorType.SCEP_ACCOUNT,
+  ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT
+]);
 
 export type TGatewayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
@@ -140,7 +147,7 @@ export type AuthModeMfaJwtTokenPayload = {
   userId: string;
   organizationId?: string;
   issuingRootOrgId?: string;
-  requiredMfaMethod: MfaMethod;
+  allowedMfaMethods: MfaMethod[];
   idpMfaOrgId?: string;
 };
 

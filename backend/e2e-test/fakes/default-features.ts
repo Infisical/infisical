@@ -73,6 +73,7 @@ export const getDefaultOnPremFeatures = () => {
     pkiAcme: true,
     pkiEst: false,
     pkiScep: false,
+    pkiMicrosoftAutoenrollment: false,
     pkiPqc: false,
     caCrl: true,
     pkiOcsp: false,
@@ -93,6 +94,7 @@ export const getDefaultOnPremFeatures = () => {
     maxSansPerCertificate: null,
     // product gating
     pam: null,
+    agentVault: null,
     certManager: null,
     secretsTemporaryAccess: null,
     enterprisePamAccount: null,

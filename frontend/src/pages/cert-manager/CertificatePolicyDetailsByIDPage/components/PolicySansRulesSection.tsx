@@ -9,6 +9,7 @@ import {
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 import {
   CertSubjectAlternativeNameType,
+  formatRequestReferenceValue,
   formatSANType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -53,9 +54,21 @@ export const PolicySansRulesSection = ({ policy }: Props) => {
                 <div className="text-sm font-medium text-foreground">
                   {formatSANType(rule.type as CertSubjectAlternativeNameType)}
                 </div>
-                <RuleList label="Allowed" values={rule.allowed} />
-                <RuleList label="Required" values={rule.required} />
-                <RuleList label="Denied" values={rule.denied} />
+                <RuleList
+                  label="Allowed"
+                  values={rule.allowed}
+                  formatter={formatRequestReferenceValue}
+                />
+                <RuleList
+                  label="Required"
+                  values={rule.required}
+                  formatter={formatRequestReferenceValue}
+                />
+                <RuleList
+                  label="Denied"
+                  values={rule.denied}
+                  formatter={formatRequestReferenceValue}
+                />
               </div>
             ))}
           </DetailGroup>

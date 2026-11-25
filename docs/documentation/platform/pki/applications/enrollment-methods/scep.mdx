@@ -85,6 +85,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
     - Requires a **Microsoft Intune** [App Connection](/integrations/app-connections/microsoft-intune) with permission to validate SCEP requests. Microsoft Intune is an enterprise App Connection.
     - Infisical reports issuance success and failure back to Intune for each request.
+    - When you wipe, retire, or unenroll a device in Intune, [its certificate is revoked](/documentation/platform/pki/guides/applications/microsoft-intune-scep#how-revocation-works)
 
     <Warning>
       **Do not attach an approval policy to a profile used with Microsoft Intune.** Intune SCEP issues synchronously and has no pending state. When issuance cannot complete within the request, Infisical reports the request to Intune as failed and returns a failure to the device rather than leaving either side waiting.

@@ -1,4 +1,4 @@
-import { KeyRoundIcon, ScrollTextIcon, ShieldCheckIcon, UserIcon } from "lucide-react";
+import { AtSignIcon, KeyRoundIcon, ScrollTextIcon, ShieldCheckIcon, UserIcon } from "lucide-react";
 
 import {
   Badge,
@@ -20,8 +20,11 @@ import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomEx
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertSubjectAlternativeNameType,
   formatExtendedKeyUsage,
-  formatKeyUsage
+  formatKeyUsage,
+  formatRequestReferenceValue,
+  formatSANType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type Props = {
@@ -59,9 +62,15 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasBasicConstraints = Boolean(defaults?.basicConstraints);
 
+  const hasSanDefaults = Boolean(defaults?.subjectAltNames?.length);
+
   if (
     !defaults ||
-    (!hasSubjectDefaults && !hasCryptoDefaults && !hasKeyUsages && !hasBasicConstraints)
+    (!hasSubjectDefaults &&
+      !hasSanDefaults &&
+      !hasCryptoDefaults &&
+      !hasKeyUsages &&
+      !hasBasicConstraints)
   ) {
     return (
       <Card className="w-full">
@@ -241,6 +250,35 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
                 </DetailValue>
               </Detail>
             )}
+          </div>
+        </>
+      )
+    });
+  }
+
+  if (hasSanDefaults) {
+    sections.push({
+      id: "subjectAltNames",
+      node: (
+        <>
+          <SectionHeader icon={<AtSignIcon />} title="Subject Alternative Names" />
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {[...new Set(defaults.subjectAltNames?.map((san) => san.type))].map((type) => (
+              <Detail key={type}>
+                <DetailLabel>{formatSANType(type as CertSubjectAlternativeNameType)}</DetailLabel>
+                <DetailValue>
+                  <div className="flex flex-wrap gap-1">
+                    {defaults.subjectAltNames
+                      ?.filter((san) => san.type === type)
+                      .map((san) => (
+                        <Badge key={san.value} variant="neutral">
+                          {formatRequestReferenceValue(san.value)}
+                        </Badge>
+                      ))}
+                  </div>
+                </DetailValue>
+              </Detail>
+            ))}
           </div>
         </>
       )

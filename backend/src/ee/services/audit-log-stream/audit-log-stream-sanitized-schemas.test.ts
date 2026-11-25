@@ -95,4 +95,14 @@ describe("audit log stream sanitized read schemas", () => {
     ]);
     expect(JSON.stringify(read)).not.toContain(secret);
   });
+
+  test("keeps the PAM session activity filter in every read", () => {
+    const filters = { products: ["pam"], pamSessionActivity: { includeOutput: true } };
+    const read = SanitizedCriblProviderSchema.parse({
+      ...stored(LogProvider.Cribl, { url: "https://cribl.example.com/ingest", token: secret }),
+      filters
+    });
+
+    expect(read.filters).toEqual(filters);
+  });
 });

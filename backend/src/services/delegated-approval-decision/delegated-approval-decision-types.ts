@@ -1,3 +1,5 @@
+import { EventResultStatus } from "@app/domains/platform/events/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -6,8 +8,6 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { DelegatedApprovalSupportedPolicyType } from "@app/services/delegated-approval/delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
-import { EventResultStatus } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./delegated-approval-decision-enums";
@@ -25,7 +25,7 @@ export type TDelegatedApprovalDecisionReadResult =
       decision: DelegatedApprovalDecision;
       approvalRequestId: string | null;
       permissions: string[];
-      decidedBy: string | null;
+      approvedBy: string[];
       decidedAt: string | null;
       notes: string | null;
     };
@@ -57,7 +57,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "isUserProjectMember">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalResources: Record<DelegatedApprovalSupportedPolicyType, Pick<TApprovalResource, "postApprovalTxRoutine">>;
   decisionNotifiers: Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>;

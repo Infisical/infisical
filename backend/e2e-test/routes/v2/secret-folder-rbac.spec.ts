@@ -10,6 +10,7 @@ import {
   TableName
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -57,7 +58,7 @@ const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(project
 
 beforeAll(async () => {
   initLogger();
-  await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+  await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
   permissionService = permissionServiceFactory({

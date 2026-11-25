@@ -16,10 +16,6 @@ vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => (
   getCaSigner: (...args: unknown[]) => getCaSignerMock(...args) as unknown
 }));
 
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-key-id")
-}));
-
 // eslint-disable-next-line import/first
 import { certificateAuthorityOcspServiceFactory } from "./certificate-authority-ocsp-service";
 
@@ -44,7 +40,7 @@ type THarness = Awaited<ReturnType<typeof buildHarness>>;
 
 let caCounter = 0;
 
-const buildHarness = async () => {
+const buildHarness = async ({ certificates = [] as Record<string, unknown>[] } = {}) => {
   caCounter += 1;
   const caId = `ca-${caCounter}`;
   const caCertId = `ca-cert-${caCounter}`;
@@ -101,9 +97,9 @@ const buildHarness = async () => {
       findById: vi.fn(async () => ({ id: caCertId, encryptedCertificate: Buffer.from("ignored") }))
     } as never,
     certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
-    certificateDAL: { find: vi.fn(async () => []), primaryNode: vi.fn(() => undefined) } as never,
-    projectDAL: { findById: vi.fn(), findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() } as never,
-    kmsService: {
+    certificateDAL: { find: vi.fn(async () => certificates), primaryNode: vi.fn(() => undefined) } as never,
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-id") } as never,
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn(async () => async () => Buffer.from(caCert.rawData)),
       generateKmsKey: vi.fn()
     } as never,
@@ -254,4 +250,69 @@ describe("cache coherence after revocation", () => {
     expect(harness.getSignCount()).toBe(2);
     expect(third.response.equals(first.response)).toBe(false);
   });
+});
+
+describe("a serial shared by a deleted certificate and its re-import", () => {
+  const readCertStatusTag = (response: Buffer) => {
+    const ocspResponse = pkijs.OCSPResponse.fromBER(asNonSharedBuffer(response));
+    const basicResponse = pkijs.BasicOCSPResponse.fromBER(
+      asNonSharedBuffer(Buffer.from(ocspResponse.responseBytes!.response.valueBlock.valueHexView))
+    );
+    return (basicResponse.tbsResponseData.responses[0].certStatus as { idBlock: { tagNumber: number } }).idBlock
+      .tagNumber;
+  };
+
+  it.each([
+    ["the revoked record is listed first", ["revoked", "active"]],
+    ["the revoked record is listed last", ["active", "revoked"]]
+  ])("should answer revoked when either record is revoked, whatever the order (%s)", async (_label, statuses) => {
+    const harness: THarness = await buildHarness({
+      certificates: statuses.map((status, index) => ({
+        id: `cert-${index}`,
+        serialNumber: "01",
+        status,
+        revokedAt: status === "revoked" ? new Date("2026-11-01T00:00:00.000Z") : null,
+        revocationReason: status === "revoked" ? 1 : null,
+        deletedAt: index === 0 ? new Date("2026-10-01T00:00:00.000Z") : null
+      }))
+    });
+    harness.releaseGate();
+
+    const { response } = await harness.service.getOcspResponse({
+      caId: harness.caId,
+      requestDer: await harness.buildRequestDer()
+    });
+
+    expect(readCertStatusTag(response)).toBe(1);
+  });
+
+  it.each([
+    ["the earliest listed last", false],
+    ["the earliest listed first", true]
+  ])(
+    "should answer with the earliest revocation when both records are revoked, as the CRL does (%s)",
+    async (_label, earliestFirst) => {
+      const firstRevokedAt = new Date("2026-10-01T00:00:00.000Z");
+      const records = [
+        { id: "cert-1", serialNumber: "01", status: "revoked", revokedAt: new Date("2026-11-01T00:00:00.000Z") },
+        { id: "cert-0", serialNumber: "01", status: "revoked", revokedAt: firstRevokedAt, deletedAt: firstRevokedAt }
+      ];
+      const harness: THarness = await buildHarness({ certificates: earliestFirst ? records.reverse() : records });
+      harness.releaseGate();
+
+      const { response } = await harness.service.getOcspResponse({
+        caId: harness.caId,
+        requestDer: await harness.buildRequestDer()
+      });
+
+      const ocspResponse = pkijs.OCSPResponse.fromBER(asNonSharedBuffer(response));
+      const basicResponse = pkijs.BasicOCSPResponse.fromBER(
+        asNonSharedBuffer(Buffer.from(ocspResponse.responseBytes!.response.valueBlock.valueHexView))
+      );
+      const revokedInfo = basicResponse.tbsResponseData.responses[0].certStatus as {
+        valueBlock: { value: { toDate: () => Date }[] };
+      };
+      expect(revokedInfo.valueBlock.value[0].toDate().getTime()).toBe(firstRevokedAt.getTime());
+    }
+  );
 });

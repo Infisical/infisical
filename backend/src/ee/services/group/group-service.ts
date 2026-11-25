@@ -28,6 +28,7 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -35,7 +36,6 @@ import { TGenericPermission } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -300,19 +300,31 @@ export const groupServiceFactory = ({
       });
     }
 
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+    const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+
+    // IdP group syncs match groups by name, so a rename can pull an IdP group's members into this
+    // group, which can be more privileged. Bound it like adding a member.
+    if (name && name !== group.name) {
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.AddMembers,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to rename a more privileged group"
+      });
+    }
+
     let customRole: TRoles | undefined;
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
-
-      const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
-        ignoreUnresolvedRoles: true
-      });
 
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
@@ -531,7 +543,6 @@ export const groupServiceFactory = ({
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
       usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
@@ -539,7 +550,6 @@ export const groupServiceFactory = ({
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 

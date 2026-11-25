@@ -6,7 +6,7 @@ import { seedData1 } from "@app/db/seed-data";
 // Several auth specs flip org-wide flags on the *shared* seeded org and undo it
 // in afterAll:
 //
-//   auth-mfa.spec.ts                        enforceMfa
+//   auth-mfa.spec.ts                        enforceMfa, allowedMfaMethods
 //   auth-signup-sso-enforced.spec           authEnforced
 //   scim.spec.ts                            scimEnabled
 //   auth-idp-attacks.spec.ts                scimEnabled
@@ -30,6 +30,7 @@ beforeAll(async () => {
   const db = (globalThis as unknown as { testDb: Knex }).testDb;
   await db(TableName.Organization).where({ id: seedData1.organization.id }).update({
     enforceMfa: false,
+    allowedMfaMethods: null,
     authEnforced: false,
     scimEnabled: false,
     shouldUseNewPrivilegeSystem: true

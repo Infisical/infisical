@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -7,6 +8,7 @@ import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
 import {
   SignerStatus,
   TGetPublicKeyResponse,
+  TGetSigningActivityTrendDTO,
   TGetUserSignerPermissionDTO,
   TListEffectiveSignerMembersDTO,
   TListEffectiveSignerMembersResponse,
@@ -20,11 +22,29 @@ import {
   TListSigningOperationsResponse,
   TSigner,
   TSignerPolicy,
-  TSigningOperationDetail
+  TSigningActivityPeriod,
+  TSigningOperationDetail,
+  getOpenCertificateRequest
 } from "./types";
 
 const SIGNER_LIST_POLL_MS = 4000;
 const SIGNER_DETAIL_POLL_MS = 3000;
+const SIGNER_FAST_POLL_WINDOW_MS = 60_000;
+const SIGNER_SLOW_POLL_MS = 30_000;
+
+const useBackoffPollInterval = (fastPollMs: number) => {
+  const pollingSince = useRef<number | null>(null);
+  return (shouldPoll: boolean) => {
+    if (!shouldPoll) {
+      pollingSince.current = null;
+      return false;
+    }
+    pollingSince.current ??= Date.now();
+    return Date.now() - pollingSince.current < SIGNER_FAST_POLL_WINDOW_MS
+      ? fastPollMs
+      : SIGNER_SLOW_POLL_MS;
+  };
+};
 
 export const signerKeys = {
   all: ["signers"] as const,
@@ -33,6 +53,8 @@ export const signerKeys = {
     [...signerKeys.list(filters.projectId), filters] as const,
   byId: (signerId: string) => [...signerKeys.all, "detail", signerId] as const,
   publicKey: (signerId: string) => [...signerKeys.all, "publicKey", signerId] as const,
+  activityTrend: (filters: TGetSigningActivityTrendDTO) =>
+    [...signerKeys.all, "activity-trend", filters] as const,
   operations: (signerId: string) => [...signerKeys.all, "operations", signerId] as const,
   operationsWithOpts: (filters: TListSigningOperationsDTO) =>
     [...signerKeys.operations(filters.signerId), filters] as const,
@@ -63,6 +85,7 @@ export const fetchUserSignerPermissions = async ({ signerId }: TGetUserSignerPer
 };
 
 export const useListSigners = (dto: TListSignersDTO) => {
+  const getPollInterval = useBackoffPollInterval(SIGNER_LIST_POLL_MS);
   return useQuery({
     queryKey: signerKeys.listWithOpts(dto),
     queryFn: async () => {
@@ -81,13 +104,21 @@ export const useListSigners = (dto: TListSignersDTO) => {
     enabled: Boolean(dto.projectId),
     placeholderData: (previousData) => previousData,
     refetchInterval: (query) =>
-      query.state.data?.signers?.some((s) => s.status === SignerStatus.Pending)
-        ? SIGNER_LIST_POLL_MS
-        : false
+      getPollInterval(
+        Boolean(
+          query.state.data?.signers?.some(
+            (s) =>
+              s.status === SignerStatus.Pending ||
+              s.hasOpenCertificateRequest ||
+              s.status === SignerStatus.RevocationPending
+          )
+        )
+      )
   });
 };
 
 export const useGetSigner = (signerId: string) => {
+  const getPollInterval = useBackoffPollInterval(SIGNER_DETAIL_POLL_MS);
   return useQuery({
     queryKey: signerKeys.byId(signerId),
     queryFn: async () => {
@@ -96,7 +127,11 @@ export const useGetSigner = (signerId: string) => {
     },
     enabled: Boolean(signerId),
     refetchInterval: (query) =>
-      query.state.data?.status === SignerStatus.Pending ? SIGNER_DETAIL_POLL_MS : false
+      getPollInterval(
+        query.state.data?.status === SignerStatus.Pending ||
+          Boolean(query.state.data && getOpenCertificateRequest(query.state.data)) ||
+          query.state.data?.status === SignerStatus.RevocationPending
+      )
   });
 };
 
@@ -110,6 +145,26 @@ export const useGetSignerPublicKey = (signerId: string) => {
       return data;
     },
     enabled: Boolean(signerId)
+  });
+};
+
+export const useGetSigningActivityTrend = (
+  dto: TGetSigningActivityTrendDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  return useQuery({
+    queryKey: signerKeys.activityTrend(dto),
+    queryFn: async () => {
+      const params = new URLSearchParams({ range: dto.range });
+      if (dto.signerId) params.set("signerId", dto.signerId);
+
+      const { data } = await apiRequest.get<{ periods: TSigningActivityPeriod[] }>(
+        `/api/v1/cert-manager/signers/activity-trend?${params.toString()}`
+      );
+      return data.periods;
+    },
+    enabled,
+    placeholderData: (previousData) => previousData
   });
 };
 

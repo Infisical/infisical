@@ -12,6 +12,7 @@ import {
   TAgentVaultCredentialUpdate,
   TAgentVaultOauthCredentialInput,
   TAgentVaultService,
+  TAgentVaultServiceHookInput,
   TAgentVaultSshKeyCredentialInput,
   TAgentVaultSshKeyCredentialUpdate,
   TCreateAgentVaultServiceDTO,
@@ -19,16 +20,20 @@ import {
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
+import { buildHookNarrowing, hookNarrowingDraftOf, sameHookNarrowing } from "../hooks/hookSchema";
 import {
   hasDatabase,
   hostOf,
   isAllMethods,
   isCredentialMemberProvided,
   isMemberProvidedOAuthService,
+  isOAuthVariableCredential,
+  isOAuthVariableService,
   McpToolScope,
   newOAuthAuthorizationId,
   serverUrlOf,
   storedMemberFields,
+  storedOAuthVariableKey,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -80,8 +85,29 @@ const buildBearerCredential = (data: TServiceForm) => {
   };
 };
 
+// Left out on edit unless the variable changes, so the stored one stays: naming a variable needs permission to read
+// its value, which keeping it doesn't. An empty key is one the caller can't see.
+const oauthVariableCredential = (
+  data: TServiceForm,
+  service?: TAgentVaultService | null
+): TAgentVaultOauthCredentialInput | undefined => {
+  if (!data.oauthVariableKey) return undefined;
+  if (
+    isOAuthVariableService(service) &&
+    data.oauthVariableKey === storedOAuthVariableKey(service)
+  ) {
+    return undefined;
+  }
+  return { type: AgentVaultCredentialType.OAuth, variable: data.oauthVariableKey };
+};
+
 // A member-provided field is sent without a value: each member sets their own.
-const buildHttpCredential = (data: TServiceForm): TAgentVaultCredentialInput => {
+const buildHttpCredential = (
+  data: TServiceForm
+): TAgentVaultCredentialInput | TAgentVaultOauthCredentialInput => {
+  if (data.credentialType === AgentVaultCredentialType.OAuth) {
+    return { type: AgentVaultCredentialType.OAuth, variable: data.oauthVariableKey };
+  }
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
@@ -149,6 +175,9 @@ const isMemberOAuthClientChanged = (data: TServiceForm, service?: TAgentVaultSer
 
 const buildMcpCredential = (data: TServiceForm) => {
   if (data.credentialType !== AgentVaultCredentialType.OAuth) return buildBearerCredential(data);
+  if (isOAuthVariableCredential(data)) {
+    return { type: AgentVaultCredentialType.OAuth as const, variable: data.oauthVariableKey };
+  }
   if (isCredentialMemberProvided(data)) return { ...MEMBER_OAUTH, ...memberOAuthClient(data) };
   return {
     type: AgentVaultCredentialType.OAuth as const,
@@ -164,6 +193,7 @@ const buildMcpCredentialPatch = (
   service: TAgentVaultService | null
 ): TAgentVaultCredentialUpdate | undefined => {
   if (data.credentialType !== AgentVaultCredentialType.OAuth) return buildHttpCredentialPatch(data);
+  if (isOAuthVariableCredential(data)) return oauthVariableCredential(data, service);
   const wasMemberProvided = isMemberProvidedOAuthService(service);
   if (isCredentialMemberProvided(data)) {
     if (!wasMemberProvided) return { ...MEMBER_OAUTH, ...memberOAuthClient(data) };
@@ -266,24 +296,30 @@ const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativ
 const intoBundle = (accessBundleId?: string) =>
   accessBundleId ? { accessBundleIds: [accessBundleId] } : {};
 
-// Only On sends a hook. A secret at the sentinel, or emptied, keeps the stored one.
-const typedHookSecret = (data: TServiceForm) =>
-  data.hookSigningSecret && data.hookSigningSecret !== UNCHANGED_SECRET
-    ? data.hookSigningSecret
-    : undefined;
+const buildServiceHook = (data: TServiceForm): TAgentVaultServiceHookInput | null =>
+  data.hook.hookId
+    ? { name: data.hook.hookName, ...buildHookNarrowing(data.hook, data.serviceType) }
+    : null;
 
-const buildHookCreate = (data: TServiceForm) =>
-  data.hookEnabled
-    ? { hook: { url: data.hookUrl.trim(), signingSecret: data.hookSigningSecret } }
-    : {};
+const withNewHook = (data: TServiceForm) => {
+  const hook = buildServiceHook(data);
+  return hook ? { hook } : {};
+};
 
-// Sent only when something changed, so a save that didn't touch the hook can't trip the plan check.
-const buildHookPatch = (service: TAgentVaultService, data: TServiceForm) => {
-  if (!data.hookEnabled) return service.hook ? { hook: null } : {};
-  const url = data.hookUrl.trim();
-  const signingSecret = typedHookSecret(data);
-  if (service.hook && url === service.hook.url && !signingSecret) return {};
-  return { hook: { url, ...(signingSecret ? { signingSecret } : {}) } };
+// Left out when unchanged: setting or changing a hook needs the plan's hooks feature, so an edit that leaves it alone
+// must not send it. A service read without its hook (a caller who can't read hooks) never has one to compare.
+const withHookChange = (service: TAgentVaultService, data: TServiceForm) => {
+  const next = buildServiceHook(data);
+  const saved = service.hook ?? null;
+  if (!next) return saved ? { hook: null } : {};
+  // The saved narrowing goes through the form's shape too: a saved list of every method is no list once built.
+  if (
+    saved &&
+    saved.id === data.hook.hookId &&
+    sameHookNarrowing(buildHookNarrowing(hookNarrowingDraftOf(saved), data.serviceType), next)
+  )
+    return {};
+  return { hook: next };
 };
 
 const buildNativeCreateRequest = (
@@ -328,7 +364,7 @@ export const buildCreateServiceRequest = (
     return {
       ...buildNativeCreateRequest(accessBundleId, data, data.serviceType),
       description,
-      ...buildHookCreate(data)
+      ...withNewHook(data)
     };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
@@ -338,7 +374,7 @@ export const buildCreateServiceRequest = (
         ...buildMcpFields(data),
         description,
         credential: buildMcpCredential(data),
-        ...buildHookCreate(data)
+        ...withNewHook(data)
       }
     : {
         ...intoBundle(accessBundleId),
@@ -346,7 +382,7 @@ export const buildCreateServiceRequest = (
         ...buildHttpFields(data),
         description,
         credential: buildHttpCredential(data),
-        ...buildHookCreate(data)
+        ...withNewHook(data)
       };
 };
 
@@ -363,7 +399,7 @@ export const buildUpdateServiceRequest = (
       ...buildNativeConnection(data, data.serviceType),
       description,
       credential: buildNativeCredentialPatch(data),
-      ...buildHookPatch(service, data)
+      ...withHookChange(service, data)
     };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
@@ -373,15 +409,19 @@ export const buildUpdateServiceRequest = (
         ...buildMcpFields(data),
         description,
         ...withCredential(buildMcpCredentialPatch(data, service)),
-        ...buildHookPatch(service, data)
+        ...withHookChange(service, data)
       }
     : {
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         description,
-        credential: buildHttpCredentialPatch(data),
-        ...buildHookPatch(service, data)
+        ...withCredential(
+          data.credentialType === AgentVaultCredentialType.OAuth
+            ? oauthVariableCredential(data, service)
+            : buildHttpCredentialPatch(data)
+        ),
+        ...withHookChange(service, data)
       };
 };
 
@@ -402,18 +442,23 @@ const ownToolsCredential = (
         memberProvidedFields: []
       };
 
+const listToolsCredential = (data: TServiceForm, service?: TAgentVaultService | null) =>
+  isOAuthVariableCredential(data)
+    ? oauthVariableCredential(data, service)
+    : buildMcpCredentialPatch(data, null);
+
 // The credential and headers go as an update sends them, so on edit a value left untouched falls back to
 // the saved service's.
 export const buildListMcpToolsRequest = (
   projectId: string,
-  serviceId: string | undefined,
+  service: TAgentVaultService | null | undefined,
   data: TServiceForm,
   own?: TMcpToolsOwnCredential
 ): TListAgentVaultMcpToolsDTO => ({
   projectId,
-  ...(serviceId ? { serviceId } : {}),
+  ...(service ? { serviceId: service.id } : {}),
   ...buildMcpConnection(data),
-  ...withCredential(own ? ownToolsCredential(data, own) : buildMcpCredentialPatch(data, null))
+  ...withCredential(own ? ownToolsCredential(data, own) : listToolsCredential(data, service))
 });
 
 const typedValuesNoun = (
@@ -429,6 +474,11 @@ const typedValuesNoun = (
 
 const nextCredentialTail = (data: TServiceForm) => {
   const nextFields = data.memberProvidedFields;
+  if (isOAuthVariableCredential(data)) {
+    return data.oauthVariableKey
+      ? `, and sessions will use the sign-in of the ${data.oauthVariableKey} variable.`
+      : ", and sessions will use the sign-in of an OAuth variable.";
+  }
   if (data.credentialType === AgentVaultCredentialType.OAuth) {
     return isCredentialMemberProvided(data)
       ? ". Each member has to connect their own account."
@@ -473,7 +523,7 @@ export const membersClearedNotice = (
     if (!isCredentialMemberProvided(data)) {
       return {
         title: connectionsRemoved,
-        description: `Every member's connection to ${storedHost} will be removed, and sessions will use your account.`
+        description: `Every member's connection to ${storedHost} will be removed${nextCredentialTail(data)}`
       };
     }
     const isServerChanged = isMcp && data.serverUrl.trim() !== storedServerUrl;
@@ -488,6 +538,7 @@ export const membersClearedNotice = (
 
   if (
     storedType === AgentVaultCredentialType.OAuth &&
+    !isOAuthVariableService(service) &&
     data.credentialType === AgentVaultCredentialType.OAuth &&
     isCredentialMemberProvided(data)
   ) {

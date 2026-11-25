@@ -8,24 +8,25 @@ would get something wrong from the code alone; cut anything the code already sta
 attaches the real credential on the way out. What an agent may reach lives in a **session** row on our side,
 never in anything the agent holds.
 
-| Noun | What it is |
-| --- | --- |
-| **Access bundle** | A named set of the project's services and skills. The unit you grant |
-| **Service** | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
-| **Session** | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token *is* the session |
-| **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
+| Noun              | What it is                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Access bundle** | A named set of the project's services and skills. The unit you grant                                                               |
+| **Service**       | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
+| **Session**       | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token _is_ the session     |
+| **Proxy**         | One egress identity and its CA. Any number of processes can run it from its proxy token                                            |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
-agent-vault-variable/        global and personal variables and the reads behind Used By
+agent-vault-variable/        global and personal variables, OAuth variables, and the reads behind Used By
 agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
-agent-vault-session/         mint, revoke, list, get, edit label
+agent-vault-hook/            saved hooks (CRUD, usedBy), the service hook grammar and narrowing checks
+agent-vault-session/         mint, revoke, list, get, edit label and metadata
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
-agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
+agent-vault-oauth/           OAuth sign-ins for services and OAuth variables: discovery, registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 agent-vault-project/         project resolver: projectId lookup and the temporary fallback
 ```
@@ -48,7 +49,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   break the exclusion and every org loses a workspace slot.
 - Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId, "query" | "body")`
   (`ee/routes/v1/agent-vault-routers/agent-vault-router-fns.ts`) for lists, creates, project-level routes and lookups
-  by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Service,Skill,Proxy,Session,Variable,Authorization}` for
+  by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Service,Skill,Hook,Proxy,Session,Variable,Authorization}` for
   by-id routes, which take the project from the row and check the caller's membership in it. A project that is missing,
   soft-deleted, of another type or in another org is a 404 that echoes only the sent id. On a by-id route, a row in a
   project the caller isn't a member of is the row's own 404 (the resolver maps `ProjectMembershipNotFound`), never
@@ -62,7 +63,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   time), never to a project created since, and is a 400 when the org has none. The fallback is undocumented, logged
   at info for each use, and goes after 2027-01-04 together with the column.
 - Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
-  admins. Nothing joins them silently, and that route is where the `agent_vault_identities` meter moves for them.
+  admins. Nothing joins them silently.
 - Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
   removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
   actor's grants and then runs `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a
@@ -84,8 +85,49 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
   product owner; service-hosts is documented as the hardening step.
-- Wherever code branches on `ProjectType.PAM` for metering or roles, check whether Agent Vault needs the same:
-  `AgentVaultIdentities` metering emits, the admin-or-member predefined roles filter, `AuditLogStreamProduct`.
+- Wherever code branches on `ProjectType.PAM` for roles, check whether Agent Vault needs the same: the
+  admin-or-member predefined roles filter, `AuditLogStreamProduct`. Agent Vault has no identity meter; it bills
+  per brokered request (see Billing).
+
+## Billing
+
+Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, the access rule and usage.
+
+- **Only brokering is gated, at the free limit on Infisical Cloud.** Which proxy calls check it, and which never do,
+  is in `src/domains/agent-vault/agent-vault/AGENTS.md`. This is the one written exception to the license rule in
+  `backend/CODE_QUALITY.md`.
+- **Free-usage emails and events** (75% and the limit) come only from `agentVaultFreeUsageNoticeService`, fed by
+  the usage route; see the domain's AGENTS.md.
+- **The refusal is a `RuleViolationError` named `AgentVaultFreeLimitReached`.** The CLI keys on that name, so
+  keep it.
+- **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)
+  with `{ reportId, endedAt, brokered }`. It isn't gated, so the last minute before the limit is still counted and
+  reported. A resent report keeps its `reportId` and `endedAt`, which the free count and the License Server dedupe
+  on.
+
+## Permissions
+
+- **Every gate checks a CASL action, never the role.** The actions that stand in for what used to be role checks:
+  `read-any`, `edit-any` and `revoke-any` on sessions (other actors' sessions and their session logs; plain `read`,
+  `edit` and `revoke` reach only your own), `create-with-inline-services` on sessions, the `agent-vault-variables`
+  subject (global variables), the project's `Settings` subject (session log settings, `read` to view and `edit` to
+  change), `edit` on proxies (the proxy list carries a proxy's settings only for it), `manage-members` on access bundles
+  (a delegation's missing bundles), and `create`, `edit` and `delete` on members, groups or identities, for only the
+  kinds a membership change names. Typing a global variable reference into a service or an MCP tool load also takes
+  `read-value` on `agent-vault-variables`, checked before the key lookup so a missing key can't be told apart.
+- **Giving, changing or removing a member's role is bounded like Secrets Management's membership routes**
+  (`assertRoleBoundary` in the membership service): `assign-role` on that kind of member, and on the legacy privilege
+  system every permission of each role involved. The change actions alone would let a role that only manages
+  identities add or promote an admin.
+- **Only the admin rule set holds them.** In an Agent Vault project any role but admin resolves to the member set,
+  custom roles and additional privileges included, so `buildAgentVaultProjectAdminPermissionRules` is the one place an
+  action is granted. A new role is a new rule set, not a new branch in a service.
+- **`create-with-inline-skills` on sessions is the one session action both rule sets hold.** A skill sent with a session
+  carries instructions, not credentials or hosts, so any member may send one; it is still an action so a later role
+  can be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
+- **Reaching every bundle without a grant is the one rule that follows the role** (see below), because queries lock and
+  read the role rows that confer it.
+- Keep each refusal's error type when a gate changes: an id you may not act on stays a 404.
 
 ## Grants and reachability
 
@@ -112,8 +154,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
   `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
   count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.
-- Reachability is a service-layer filter (`whereIn` on ids, `null` for an admin), not a CASL condition:
-  conditions can interpolate only `identity.id`, `username` and `metadata`.
+- Reachability is a service-layer filter (`whereIn` on ids, `null` for a role that reaches every bundle), not a CASL
+  condition: conditions can interpolate only `identity.id`, `username` and `metadata`.
+- **The roles that reach every bundle are `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`** (admin alone), checked through
+  `hasRoleReachingEveryBundle`. A personal value save locks those role rows, the cleanup after a revoke keeps the values
+  of anyone holding one, and a delegation reads a group's reach from them, all filtering by that list, so a role added
+  to it is added everywhere at once. Granting a role that reach is a decision about bundles, never a side effect of a
+  permission.
 - The creator grant exists only for a creator with a direct project membership. A group-inherited admin gets
   none, so no individual grant row ever outlives its owner's membership.
 - A cross-org or ungranted id is 404, never 403, and mint uses one message for an unknown and an ungranted
@@ -125,7 +172,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 ## Sessions and resolve
 
 - The token is the lookup key, so it is stored as sha256 (not bcrypt) and returned exactly once.
-- A session carries at most one bundle, and none when an admin sends only inline services. The session API
+- A session carries at most one bundle, and none when it carries only services it lists by name or sends inline. The session API
   takes an optional `accessBundle` name and returns `accessBundle` as `{ id, name }` or null; the router still
   accepts the old `accessBundles` list (at most one name, mapped in a preprocess so the API reference does not
   show it) until 2027-01-04, the date in the router's comment. Storage was not narrowed: the junction
@@ -138,7 +185,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
   (10 second marker), so a promotion or demotion can lag by that much on top of the proxy's poll.
 - Resolve requires a live session-read permission, not a membership row: a lapsed time-limited role leaves
-  its row behind, and `hasRole(Admin)` alone would fall through as member. An actor removed from the project
+  its row behind, and `hasRoleReachingEveryBundle` alone would fall through as member. An actor removed from the project
   surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
   the next poll instead of riding its grace window.
 - Removing an actor from an Agent Vault project does not revoke their sessions. The sessions resolve to nothing while
@@ -148,9 +195,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
-  went, and the session log service retires the session from it. So nothing writes to such a row: label edits
-  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
-  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  went, and the session log service retires the session from it. So nothing writes to such a row: label and
+  metadata edits are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each
+  write's own SQL on the primary (`updateLabel`, `lockForEdit`, `revokeIfActive`), not in a check on the session
+  read beforehand, which
   can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
   reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
@@ -216,11 +264,15 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   a grant drops the bundle's services like an owner's lost grant, with no 401.
 - **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
   (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
-  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints.
+  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints. The
+  services list does the same, and its `personalValues` say only which of the user's values are set: never the
+  personal variables those values use or the user's OAuth connection, which only the user may read.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
-  as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
-  as resolve requires.
+  as an uncovered one. A request that names nothing, only inline skills, is refused before the user lookup when the
+  identity holds no bundle at all, as `findOnBehalfOfListScope` does for the lists; keep that guard for anything else a
+  member can send without a grant. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
+  org member, as resolve requires.
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
   can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
   uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
@@ -263,8 +315,8 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   the delegation row before reading or replacing it, and `updatedAt` moves only on a save or a real add or remove.
 - **Delegation routes take `projectId` in the query string on every method**, like the session log settings: they are
   addressed by machine identity, and an identity can be in several Agent Vault projects.
-- **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
-  don't narrow, and a delegation lets an identity act as other users.
+- **Delegation routes take no `AuthMode.OAUTH`.** A delegation lets an identity act as other users, so no delegated token
+  reads or changes one.
 
 ## Services and bundles
 
@@ -281,9 +333,11 @@ keyed by the service, so a member sets them once however many bundles give them 
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
-- **A session's inline service wins over a bundle service with the same name.** Resolve and `GET /session/services`
-  both drop the shadowed bundle service through `withoutShadowedBundleServices`, so the agent, the proxy and the
-  session logs see one service per name. Use that helper in any new path that lists a session's services. Admins can
+- **A session's inline service wins over a bundle service with the same name, except an override.** Resolve and
+  `GET /session/services` both pick one service per name through `withoutShadowedServices`, so the agent, the proxy
+  and the session logs see the same set. Use that helper in any new path that lists a session's services. An override
+  (`isOverride`) wins over an inline service of its name instead, because it only narrows a listed service's hosts and
+  the session's sender must not be able to switch it off; a mint refuses that name (`assertNoOverrideConflicts`). Admins can
   add or rename bundle services while sessions are live; a mint still refuses an inline service that clashes with its
   bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
   Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
@@ -300,28 +354,39 @@ keyed by the service, so a member sets them once however many bundles give them 
 ## Inline services
 
 An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
-that holds its own credentials and needs a host for one session only. The API calls them the session's `services` (on
-mint, on session reads and in the mint audit event); the code and the Sessions page say inline services, which is what
-tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
+that holds its own credentials and needs a host for one session only. The API sends them in the session's `services`,
+beside the services it lists by name (`isInline` tells the two apart on reads and in the mint audit event's `services`); the code and the Sessions page say inline services, which is what tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
 child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
 reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
-only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
-the database too.
+only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields off them in the
+database too; the OAuth shapes below are checked in code.
 
-- **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
-  which credentials, an admin's call for a bundle's services too. It also keeps `service-hosts` meaningful: a proxy lets
-  through any host a session's services cover, so a member's inline service would open any host they chose. Resolve
-  sends inline services only while the session's owner (the identity, on an on-behalf-of session) is a live admin, so a
-  demotion keeps the bundle and drops the inline services until they are an admin again, the way a lost grant drops a
-  bundle.
+- **They take `create-with-inline-services` on sessions, at mint and on every resolve, and only the admin role holds it.**
+  Whoever starts the session decides which hosts it reaches and with which credentials, the same call as writing a
+  bundle's services. It also keeps `service-hosts` meaningful: a proxy lets through any host a session's services
+  cover, so an inline service from anyone else would open any host they chose. Resolve and the services list send
+  inline services only while the session's owner (the identity, on an on-behalf-of session) holds it, so a demotion
+  keeps the bundle and drops the inline services until the owner holds it again, the way a lost grant drops a bundle.
 - **No value may wrap text in double braces, and resolve never expands one.** Whoever starts the session names its
   hosts, so a variable reference would let them send any variable's value to a host of their choosing, and the stored
   `{{<uuid>}}` form is refused by the same rule (`acceptsNoVariableReferences` on every value field). Resolve adds
   inline services after `$expandVariableReferences` and `$applyPersonalValues`, so the rule doesn't rest on the refusal
-  alone.
-- **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
-  the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
-  them by name, as a bundle service's create refuses fields its type doesn't take.
+  alone. The one exception is an OAuth credential naming an OAuth variable (④ below): only admins mint inline services,
+  and admins are trusted to decide where tokens go, as they are when a bundle service names one. It still takes
+  `read-value` on variables, as a bundle service's does.
+- **No member-provided fields.** Every value arrives with the mint. The schema accepts them, hidden, so
+  `prepareInlineServices` refuses them by name, as a bundle service's create refuses fields its type doesn't take.
+- **OAuth comes in two shapes, and neither has a sign-in** (no `authorizationId`, no sign-in link on sessions).
+  ④ `{ type: "oauth", variable: "KEY" }` names a global OAuth variable. Mint checks `read-value` before the key lookup,
+  so a missing key can't be told from an unreadable one, and `bindInlineOauthVariables` stores
+  `{ source: "variable", variableId }` with no reference row, so the variable can be deleted while the session is live.
+  Resolve then sends the service with `credentialRemoved` and `personalValuesMissing`, so a current proxy refuses it by
+  name and an older one fails closed with a 403. ⑤ sends `accessToken` (and optionally `refreshToken`, `expiresAt`,
+  `clientSecret`) with the provider's `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes`. They are
+  checked like an OAuth variable's import and stored as sent, sealed in `encryptedCredential`, deleted with the
+  session's other secrets, and refreshed in place by `inlineTokenHolder`. Its reads and writes
+  (`findOauthTokensByIdPrimary`, `compareAndSwapOauthTokens`, `addOauthRequiredScopes`) live in
+  `agent-vault-session-inline-service-dal.ts`, the only code that touches inline rows; `serviceTokenHolder` skips them.
 - **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
   server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
   that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or
@@ -331,18 +396,86 @@ the database too.
   are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
   a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
   a tie by slice order, so the bundle's service gets the host.
-- **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`), the hook's signing
-  secret (`encryptedHookSecret`) and the custom header and substitution values (`encryptedValue` on the child rows) are
-  set to NULL together with `secretsDeletedAt`, in one transaction. The row keeps the name, type, hosts, rules,
-  credential type, header names, placeholders and hook URL, since sessions stay until their project is deleted and the Sessions page shows what an
-  ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
+- **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`), the custom header and
+  substitution values (`encryptedValue` on the child rows) and, on rows minted before hooks became their own resource,
+  `encryptedHookSecret` are set to NULL together with `secretsDeletedAt`, in one transaction. The row keeps the name, type, hosts, rules, credential type, header names
+  and placeholders, since sessions stay until their project is deleted and the Sessions page shows what an ended session
+  could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
   (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
   Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
   session keeps its secrets until it is revoked or its owner is deleted.
 - **Resolve opens an inline service's values with `openInlineServiceSecrets`**, which returns none once
   `secretsDeletedAt` is set or any value it needs is missing, so resolve leaves the service out rather than send a
-  half-built one. Only a pass-through service with no custom headers, substitutions or hook goes out with nothing
-  sealed.
+  half-built one. Only a pass-through service, or one using an OAuth variable, with no custom headers or substitutions
+  goes out with nothing sealed.
+
+## Services a session lists by name
+
+Mint's `services` also takes a project service's name as a plain string, beside or instead of an access bundle and
+inline objects. `agent_vault_session_services` links the session to each one with the `position` it was sent at, which
+inline services share, so reads (`withSessionServices`) return both kinds in the order sent.
+
+- **A listed service has to be in a bundle the owner could carry.** An admin (a role in
+  `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can list any project service, even one in no bundle; anyone else only a
+  service in a bundle granted to them, directly or through a group; an on-behalf-of session only one in a bundle both the
+  identity and the user reach. An unknown name and an unreachable one get the same 400, so mint never confirms a service
+  exists. Keep this rule identical to the access bundle's, or listing becomes a way round a bundle grant.
+- **Resolve re-checks it on every poll.** `findResolvableServices` returns a listed service only while a link to a bundle
+  in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
+  and deleting the service drops it by cascade. A listed service resolves with `accessBundleId` and `accessBundleName`
+  null, like an inline one, so a null bundle never means a service was sent with the session; catalog names are unique
+  per project, so the proxy's inline-first rule never has two candidates.
+- **A listed service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
+  re-credentials one host of a wildcard service with a second service for that host. Listing the wildcard service alone
+  would drop that, so `findOverridesOfServices` adds every service that a bundle in the owner's reach holding the
+  listed service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
+  `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
+  the session names exactly. Not when the reach is every bundle: that owner could list the wildcard service alone
+  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or listing becomes a way
+  round a bundle's override. A mint checks inline names against them through `findServiceOverrides`.
+- **Names are unique across the whole `services` array**, listed and inline together, refused in the schema (422) like a
+  duplicate inline name. Host patterns are checked like a bundle's services: listed ones against the bundle's and each other at
+  mint, and inline ones against both (`assertNoServiceConflicts`). The check of listed ones runs off the replica to fail fast,
+  then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
+  service to the bundle or change a host right then.
+- **Reads return only what identifies a listed service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
+  service's settings belong to the services API, which a member reaches through their bundles.
+
+## Skills a session lists or sends
+
+Mint's `skills` takes a project skill's name as a string or an inline skill as `{ files }`, the upload body of a project
+skill, with name and description read from its `SKILL.md`. `agent_vault_session_skills` links listed skills with the
+`position` they were sent at; inline skills are rows of `agent_vault_skills` with `sessionId` and the same positions,
+each with one `agent_vault_skill_versions` row holding its files, so reads return both in the order sent, told apart by
+`isInline`. Only `agent-vault-session-inline-skill-dal.ts` reads or writes inline skills, and nothing edits them.
+
+- **Every project skill query leaves inline rows out** (`whereNull("sessionId")`, as `agent-vault-skill-dal.ts` does
+  through `projectSkills`, and the project resolver for `/skills/:skillId`), so no list, read, count, bundle link or
+  picker sees them. Project names are unique only among project skills (`agent_vault_skills_project_name_unique`,
+  partial on `sessionId IS NULL`), so a project skill may share a name with a live inline skill, and inline skills
+  don't count toward `AGENT_VAULT_MAX_SKILLS`.
+- **A listed skill follows the listed-service rule exactly** (`skillIdsReachedThrough`, shared with the skills list's
+  scope): admin any skill, member only skills in a bundle they reach, on-behalf-of only skills in a bundle both reach,
+  and an unknown name gets the same 400 as an unreachable one. `findSessionSkills` re-checks it on every fetch, so a
+  lost bundle or a deleted skill drops it from the next agent start.
+- **Inline skills are validated like an upload** (`prepareInlineSkills` runs `validateSkillFiles` and
+  `assertSkillNameNotReserved`, prefixing each error with the skill) and sealed whole with the project's SecretManager
+  key. At most 5 per session, and their files share the session create body limit (`AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT`,
+  2 MB). Names are unique across the whole `skills` array, refused in the schema (422) by reading each inline
+  `SKILL.md` (`skillNameOf`).
+- **A session lists at most 20 skills by name** (`AGENT_VAULT_MAX_SESSION_SKILLS`): with the bundle's 25 and the 2 MB of
+  inline files, every skill at 1 MB still fits the 64 MB that released CLIs and proxies read from `GET /session/skills`.
+  Raise it only with those read limits; `agent-vault-session-skills-response.test.ts` works the worst case out from the
+  limits and fails if a change passes them.
+- **Delivery:** `getSessionSkills` returns bundle and listed skills (a skill in both once, as the bundle's), plus inline
+  skills while the owner holds `create-with-inline-skills`, each as version 1 with its own row id. Each skill installs as a
+  folder of its name, so mint refuses an inline skill named like one in the session's bundle (`SkillConflict`, as inline
+  services refuse a bundle's), and at fetch a project skill wins over an inline one of its name: one that joined the
+  bundle, or took the name, after the session was made.
+- **Files go when the session ends; the row stays.** The version's `encryptedFiles` is set to NULL and the skill's
+  `filesDeletedAt` set at revoke (both revoke routes) and by the hourly `deleteFilesOfEndedSessions`, the same predicate
+  and cron as inline service secrets. Only an inline skill's version may have no files, so a project read that opens
+  files goes through `findByVersion`, which never returns one.
 
 ## Database and SSH services
 
@@ -425,8 +558,8 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
 `agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
-- Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
-  A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
+- Paths are rejected _in a host pattern_; `allowedPathPrefixes` is a separate filter that never decodes.
+  A filter is judged by what it _allows_, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
   rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
@@ -484,34 +617,55 @@ outside it is logged unparsed and still checked against the list.
 
 ## Hooks
 
-A service can name a hook: a server of the customer's that the proxy asks before it attaches the credential, and
-that allows or refuses the request. HTTP and MCP services ask on every request; Postgres, MySQL and SSH ask once
-when a connection opens. The proxy does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical only
-stores the hook and sends it on resolve.
+A hook is a server of the customer's that the proxy asks before it applies substitutions and the credential, and that
+allows or refuses the request. HTTP and MCP ask per request; Postgres, MySQL and SSH ask once per connection. The proxy
+does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical stores hooks and sends each service's on
+resolve.
 
-- **The signing secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in
-  `encryptedHookSecret`, never returned, audited only as `hookSecretReplaced`. A PATCH without `signingSecret`
-  keeps it; `hook: null` removes URL and secret together. The URL refuses a query string, userinfo and a fragment
-  because it is shown in reads, audits and session details.
-- **Members never see a hook.** `viewService` leaves `hook` out for anyone without Edit on access bundles, the same
-  branch that leaves out `variableReferences`; the response schemas take it as optional for that reason.
-- **A PATCH that echoes the stored hook changes nothing** (`classifyHookUpdate`): the same URL with no secret, or
-  `null` with none stored, is dropped like the other read-backs, before the "Provide at least one field" check.
-  `updateService` re-checks under the lock that a hook it sets still has none and one it changes or removes still
-  exists (`reconcileWithLockedRow`), and audits from the locked row.
-- **The plan flag gates writes only** (`agentVaultHooks`, on for every plan, `assertAgentVaultHooksOnPlan`): adding
-  a hook or changing its URL or secret on create, update and mint. Removal, reads and resolve never check it, so a
+- **A hook is a project resource with no rules of its own** (`agent_vault_hooks`: name, description, URL, sealed
+  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the project's services that use it. There are no
+  session-level or inline hooks; if inline hooks come back, add them to saved and inline services together.
+- **A service has at most one hook, stored on its row**: `hookId` (FK, `ON DELETE SET NULL`) plus the narrowing
+  `hookMethods`/`hookPaths` (HTTP) or `hookTools` (MCP), null meaning every request or connection. No link table, so the
+  hook saves in the same create or PATCH as the service. Every write sets all four columns (`toServiceHookColumns`,
+  `NO_SERVICE_HOOK`), and readers ignore the narrowing whenever `hookId` is null: a hook deleted through the foreign key
+  leaves an inline row's narrowing behind.
+- **The API names the hook, never its ID**: `hook: { name, methods?, paths?, tools? }` on service create and update
+  (`null` on update removes it, left out keeps it) and on an inline service at mint. An unknown name is a 404
+  (`hookNotFoundByName`); a narrowing that doesn't fit the service's type is a 400 (`assertHookNarrowingFitsService`).
+  The name is looked up again inside the write's transaction FOR KEY SHARE (`findByNameForService`,
+  `findByNamesForService` at mint), so a hook deleted meanwhile is a 404 rather than a failed key.
+- **Lock order is service rows, then the hook.** A service write locks its row and then the hook; `deleteHook` locks
+  the project's services using the hook (FOR NO KEY UPDATE), then the hook, then reads them again under the hook's
+  lock, clears their hook columns and deletes the hook. Keep that order in anything new that touches both.
+- **Permissions**: flat CRUD on `agent-vault-hooks` (admin all, member `read`). Setting a hook on a service is like
+  using a variable in it: Edit on services plus `read` on hooks, which naming a hook on an inline service also takes.
+  Removing one takes only Edit on services. Service reads (list, single, bundle, create and update responses) and a
+  session's inline services (mint, get and list) carry `hook: { id, name, methods?, paths?, tools? } | null` only for
+  callers with `read` on hooks, and leave the field out otherwise, since null would claim there is none.
+- **The secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in `encryptedSecret`,
+  never returned, audited only as `secretReplaced`. A PATCH without `secret` keeps it. The URL refuses a query string,
+  userinfo and a fragment because it is shown in reads and audits. The secret is never variable expanded.
+- **Edits reach live sessions on the proxy's next resolve**, since services reference the hook, not a copy. Sessions
+  don't pick hooks: whoever mints a session gets each service's hook, so an admin's hook always applies.
+- **Deleting a hook is never blocked**, and the response (`usedBy`) and the `agent-vault-hook-delete` audit event
+  (`services`) list the services that lose it.
+- **The plan flag gates writes that add or change a hook** (`agentVaultHooks`, `assertAgentVaultHooksOnPlan`): hook
+  create, a hook edit of URL or secret, setting or changing a service's hook or narrowing (`isServiceHookChange`, which
+  compares narrowing as sets, so re-sending the same hook in any order is free), and a mint whose inline service names
+  a hook. Rename, description, removing a service's hook, deleting a hook, reads and resolve never check it, so a
   downgrade keeps existing hooks running.
-- **A hook the proxy can't sign for never becomes "no hook".** Two CHECKs pair the columns
-  (`agent_vault_services_hook_secret_check`, `agent_vault_services_hook_url_check`); only an inline service whose
-  secrets were deleted may keep a URL without a secret, and resolve leaves such a service out.
-- **The secret is never expanded.** Resolve sends it as stored, outside `$expandVariableReferences`, and it only
-  signs checks to the hook, so braces in it are allowed, including on inline services.
-- **Old proxies skip hooks by decision.** Resolve sends `hook` to every proxy with no version check; a proxy from
-  before hooks ignores the field and brokers without asking. Docs and the UI make no version promise.
-- Resolve also sends each service's `accessBundleId` (null inline) and a top-level `session` (`label`, `actor`
-  with the `actorType` fallback, `onBehalfOf`), which the proxy puts in the hook's payload. Every field must be in the
-  `/resolve` 200 schema or it is stripped.
+- **Resolve sends `services[i].hook: { id, name, url, secret, methods?, paths?, tools? } | null`** (`findHooks`, kept to
+  the session's project, retried on the primary for IDs the replica lacks; one still missing was deleted and goes out
+  as none). `session.metadata` is read and sent only when some service has a hook. Proxies
+  that predate narrowing read `url` and `secret` and ask about every request of the service, so they check more, never
+  less. Every field must be in the `/resolve` 200 schema or it is stripped.
+- **Upgrades.** The migration turned each project service's old `hookUrl`/`encryptedHookSecret` into a saved hook named
+  `<service>-hook` (suffixed on a clash) with no narrowing. Inline services minted before the upgrade still carry those
+  columns, and resolve sends that hook (`id` = the service's, `name` = `<service>-hook`, every request) until the
+  session ends. On a project service the old columns are never read. They stay this release for pods on the previous
+  release during a rolling deploy; the next release's migration drops them, together with the inline secret cleanup
+  that nulls `encryptedHookSecret`.
 
 ## Transformations
 
@@ -537,7 +691,8 @@ header" is the name in every layer; unqualified "header" means the credential's 
 A global variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set
 and global keys are unique per project (personal variables are covered under Member-provided values). A service uses
 one as `{{KEY}}` in its token, username, password, a custom header value or a substitution value. Nothing else takes
-one: a host pattern, method or path decides what a service can reach, so it stays literal.
+one: a host pattern, method or path decides what a service can reach, so it stays literal. An OAuth variable holds a
+sign-in rather than text and is never expanded into a field; see [OAuth variables](#oauth-variables).
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
@@ -551,7 +706,8 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   project's own variables, which is exactly what resolve expands. Nothing in the database can compare the
   rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
   sends it. Any new path that seals a service field derives its rows the same way. Resolve expands only the
-  session project's variables.
+  session project's variables. The one row not read off text is an OAuth variable credential's, which has no sealed
+  text (see [OAuth variables](#oauth-variables)).
 - **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
   locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
   the global-key partial unique index is the backstop.
@@ -596,10 +752,11 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Global variables are admin only, reads included: the service checks `Edit` on access bundles, which a member lacks,
-  and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
-  an empty list would claim they use none). Every value is sealed and no response but the value route returns
-  one. That route is a GET with no-store headers and one audit event per read.
+- Global variables take the `agent-vault-variables` subject, reads included, and only the admin role holds it. Without
+  its `read`, the bundle read leaves each service's `variableReferences` out (left out, not empty, since an empty list
+  would claim they use none). Used By on a global variable lists the services of every bundle, which is right only
+  while every role that can read variables reaches every bundle. Every value is sealed and no response but the value
+  route (`read-value`) returns one. That route is a GET with no-store headers and one audit event per read.
 
 ## Member-provided values
 
@@ -689,7 +846,7 @@ set and how its connection is doing come from the same row.
 - **The service row keeps no tokens.** Its `credentialConfig` is a `TAgentVaultOauthMemberConfig` (server URL, issuer,
   `registration`, and an admin-entered `clientId`), and `encryptedCredential` is `{ clientSecret }` for an admin-entered
   client with a secret, NULL otherwise. Anything that reads an OAuth service's sealed credential as tokens checks
-  `isMemberProvidedOauth` first: resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
+  `isMemberProvidedOauth` first (and `isVariableOauth`, see [OAuth variables](#oauth-variables)): resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
 - **The save runs discovery and keeps no client** (`prepareMemberOauth`): a server with no OAuth, or with no
   registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
   that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
@@ -756,15 +913,16 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy at the
+  intersection as the services) and of the skills it lists or was sent with (see
+  [Skills a session lists or sends](#skills-a-session-lists-or-sends)), sorted by name, read from the primary. The CLI calls it through the proxy at the
   proxy's Infisical host, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
-  (data-access class) listing every skill delivered (id, name, version, sha256), with the session's owner as the
-  actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
-  bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
-  count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+  (data-access class) listing every skill delivered (id, name, version, sha256, the bundle it came through or null for
+  a listed or inline skill, and `isInline`), with the session's owner as the actor (a user named as they are now, or
+  from the session's snapshot if they are gone) and the session's access bundle when any skill came through it, plus
+  one anonymous `Agent Vault Skills Delivered` PostHog event with the count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
 - **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
   `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
   is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule
@@ -799,8 +957,10 @@ an installed copy.
 
 ## OAuth credentials
 
-`agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
-code exchange and refresh; the proxy only ever receives the access token.
+`agent-vault-oauth/`. Infisical is the OAuth client and does discovery, registration, the code exchange and refresh;
+the proxy only ever receives the access token. A service's own sign-in and a member's are MCP only. An HTTP service
+gets OAuth only through an OAuth variable (`HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE`), which an MCP service can use too;
+see [OAuth variables](#oauth-variables).
 
 - **The tokens live on the service row**, like every other credential, unless the sign-in is left to members (see
   [An OAuth sign-in left to members](#an-oauth-sign-in-left-to-members)): the non-secret half (endpoints, client,
@@ -830,12 +990,14 @@ code exchange and refresh; the proxy only ever receives the access token.
   write. Refresh serializes per service on a Redis lock, not a row lock.
 - **A pending authorization is Redis only** (10 minutes), with the PKCE verifier and tokens sealed by the project
   cipher. Only its creator can read or complete it (anyone else gets a 404), so an authorize link sent to someone
-  else can't capture their account. It is single use: a save validates it, then claims it by deleting the Redis
+  else can't capture their account. The creator is the record's `actor { type, id }`, matched on both; a record
+  without one reads as the user in `actorUserId`. Service and personal sign-ins still need a user, since they need a
+  browser; only an OAuth variable's sign-in may be started by a machine identity. It is single use: a save validates it, then claims it by deleting the Redis
   record, and only the save whose delete removed it proceeds. A save that fails after the claim puts the exact
   stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
 - **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
   injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
-  credential stores no header name or prefix and its input is `authorizationId`, or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  credential stores no header name or prefix and its input is `authorizationId`, `variable` (an OAuth variable's key), or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
   that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
   dropped client, providers' own revoked or expired refresh token codes: `isDeadLoginError`) moves the service
@@ -850,11 +1012,13 @@ code exchange and refresh; the proxy only ever receives the access token.
   the rejected one. Either then answers with what is stored, and a waiter whose holder failed spends only the time
   left before 13 seconds on its own request. Keep that under the proxy's timeout.
 - **Neither refreshes nor resolve are audited.** Connect and reauthorize are recorded by the service create and
-  update events, which carry `oauthIssuer` and `oauthScopes`.
+  update events, which carry `oauthIssuer` and `oauthScopes`, or `oauthVariable { id, key }` instead for a service
+  using an OAuth variable. A variable that gets tokens records `agent-vault-oauth-variable-connect` (`method`
+  `sign-in`, `reconnect` or `import`, success only).
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
-  arrives. Parameters added to every request for a known provider are not fallbacks and are not recorded:
+  arrives (by origin only for an OAuth variable set up by hand with no issuer; see [OAuth variables](#oauth-variables)). Parameters added to every request for a known provider are not fallbacks and are not recorded:
   `buildAuthorizeUrl` sends Google (`accounts.google.com`) `access_type=offline` and `prompt=consent`, since Google
   ignores `offline_access` and issues a refresh token only for those.
 - **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
@@ -877,6 +1041,100 @@ code exchange and refresh; the proxy only ever receives the access token.
   for HTTP services, and an MCP client may start its own OAuth on it (the TypeScript SDK's `onInsufficientScope`
   defaults to `reauthorize`).
 
+## OAuth variables
+
+A global variable with `type: "oauth"` holds an OAuth sign-in instead of text, so one sign-in can serve any number of
+HTTP and MCP services, and a customer's backend can keep one per end user of its own app. A service names it with the
+credential `{ type: "oauth", variable: "KEY" }`. The variable gets tokens from a sign-in (the dashboard popup, or a link
+from `POST /variables/:variableId/authorizations` that the customer's own callback finishes through
+`.../authorizations/complete`) or from an import (`tokens` on create or PATCH). Pure helpers live in
+`agent-vault-variable/agent-vault-oauth-variable-fns.ts`.
+
+- **`oauthConfig` is `{ settings, connection }`** (`TAgentVaultOauthVariableConfig`). `settings` is what the caller set:
+  a `serverUrl` to discover from, or `authorizationEndpoint` and `tokenEndpoint` set by hand, plus client, scopes,
+  `resource`, `clientName` and `redirectUri`. `connection` is the non-secret half of the last sign-in or import, in the
+  `TAgentVaultOauthConfig` shape the refresh code already reads. `encryptedValue` holds the sealed
+  `{ accessToken, refreshToken?, clientSecret? }` and is **NULL until the variable is signed in**: not connected means a
+  NULL value, never a status written beside it. The `agent_vault_variables_*_check` constraints keep `oauthConfig` on
+  exactly the OAuth rows, a value on every text row, and OAuth rows global. The client secret is sealed with the tokens,
+  so it arrives only with a sign-in start or an import.
+- **Global only, and the type is fixed at create.** A personal OAuth variable is a 400, and personal values can only use
+  their owner's personal variables, so they never reach one. A string `value` on an OAuth variable is a 400: its tokens
+  change only by a sign-in, an import, or a disconnect (`value: null`). A text variable refuses `oauth`, `tokens` and
+  `value: null`. Renames are allowed, since services hold the id.
+- **It counts toward the 500 global variables** and is created through `createVariable` (advisory lock and cap).
+- **Never in text.** A service field's `{{KEY}}` naming an OAuth variable is refused at save with a 400 that points to
+  the OAuth credential. Resolve's text expansion reads text variables only (`findValuesForResolve`), so an id naming
+  an OAuth variable stays unresolved even if one got through. The sheet's autocomplete asks `GET /variables?type=text`.
+- **Tokens are write-only.** `GET /variables/:id/value` on an OAuth variable is a 400, after the 404 and permission
+  checks so it reveals nothing more. Responses carry `toOauthVariableView` only.
+- **Any sign-in field change disconnects** (`OAUTH_VARIABLE_SIGN_IN_FIELDS`: server URL, issuer, either endpoint, client
+  ID and so registration mode, auth method, resource). The update sets `encryptedValue` and `connection` to NULL, client
+  secret included, so the secret must be sent again with the next sign-in. Scopes, `clientName` and `redirectUri` only
+  shape the next sign-in. An edit that keeps the tokens leaves `encryptedValue` alone and writes the connection the
+  locked row holds (`oauthUpdateOf`), so it never undoes a refresh.
+- **Imports are stored as given**: no validation refresh, which would rotate the caller's own copy (GitHub then revokes
+  both). The first use tells whether the provider accepts them. Only a variable set up by hand takes an import
+  (`describeOauthVariableImportProblem`), since refresh needs its endpoints and client.
+- **A sign-in record carries `variableId`**, the redirect URI it was started with (the variable's `redirectUri`, else
+  Infisical's callback page; a machine identity must have a `redirectUri`, since the dashboard callback completes as a user), the actor, and `variableSettingsFingerprint` (`oauthVariableSettingsFingerprintOf` over
+  the sign-in fields). Starting needs `edit` and `read` on variables (the completion returns the variable), or `create` when it starts with the variable's create
+  (`signIn`). With `edit` and no `read` it is a 403 before any registration or link. Discovery that only guessed the endpoints, or found metadata naming another issuer, sends nothing to them
+  (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A
+  variable set up by hand with no `issuer` records only its authorization endpoint's origin as the issuer, so its record
+  carries `issuerOriginOnly` and a callback's `iss` must have that origin (Keycloak issues from a path under it); no
+  `iss` passes. Records from before the rename carry `issuerUnchecked`, read the same way. A variable that names no
+  scopes asks for what the server's challenge or protected resource lists, never the authorization server's whole
+  `scopes_supported` (that list covers every API it protects, admin scopes included), and with none of those it signs
+  in with no `scope` parameter, as a service's own does;
+  a variable set up by hand must name a scope. A dynamic registration happens on every sign-in,
+  as for a service's own, and sends the variable's `clientName` (default: the project's name) and the record's redirect
+  URI.
+- **Every finished sign-in writes straight into its variable**, from the public complete route and the dashboard's
+  hidden `/oauth/authorizations/:id/complete` alike, and a service save refuses a variable record. The code exchange
+  runs first, outside any transaction, under `AgentVaultOauthAuthorizationCompleteLock` (a second caller gets a 409).
+  `writeVariableSignIn` then re-checks `edit` and `read` on variables, locks the variable row, and compares the fingerprint (409
+  `AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE` on a mismatch) before writing the tokens. The record is kept with its
+  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. Right after the
+  exchange, before the variable is written, the record is saved authorized with its sealed tokens
+  (`keepUnwrittenVariableSignIn`; `isUnwrittenVariableSignIn`, read as pending), so a completion that fails after the
+  code was redeemed, its own final record save included, is retried without a second exchange. A `state` whose
+  record names another variable is a 400. The public route's statuses are part of its contract: 200 done or already
+  done, 400 provider refusal or mismatch with the reason, 404 missing, expired or not yours, 409 in progress or
+  settings changed. A failed record keeps the class of its refusal (`errorStatus`), so completing it again answers with
+  the same status; a record without one answers 400.
+- **The dashboard hides Reauthorize for a variable with an API `redirectUri`**, whose sign-in has to finish at the
+  customer's callback. That is UI only: the API lets anyone who can edit variables start one.
+- **A service using a variable stores `{ type: "oauth", source: "variable", variableId }`** with `encryptedCredential`
+  NULL, so every path that reads an OAuth service's sealed credential as tokens checks `isVariableOauth` (and
+  `isInlineTokensOauth` for a session's own service) beside `isMemberProvidedOauth`. The credential can't be combined
+  with `authorizationId` or `memberProvidedFields`, and naming the variable takes `read-value` on variables, checked
+  before the key lookup (`findOauthVariableForCredential`), since it sends the tokens to the service's hosts as a typed
+  `{{KEY}}` sends a value.
+- **Every save of that credential rebuilds its reference row from the chosen `variableId`** (`oauthVariableReferenceRow`,
+  field `credential-value`, through `insertReferenceRows` and its `FOR SHARE` lock), after checking the variable is
+  OAuth. It is the one reference row not read off sealed text, and it is what makes the delete refusal and Used By see
+  the service.
+- **Refresh runs on `variableTokenHolder(variableId, { serviceId })`**: tokens and connection from the variable row
+  (compare-and-swap on `encryptedValue`, merge into `oauthConfig.connection` only), destination from the service row
+  (host pattern, server URL, and a 409 `AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE` once it no longer names this
+  variable, after a status write too). A service that is gone or in another project is a 409
+  `AGENT_VAULT_SERVICE_MOVED_MESSAGE`; only a missing or unsigned variable is a 404. The lock is per variable (`AgentVaultOauthVariableRefreshLock`). Resolve reads the session's OAuth
+  variables once and refreshes each at most once, through the first service still pointing where its snapshot says,
+  trying the next on a 409. Its dead-login and not-signed-in texts name the variable but no page, since a variable
+  with an API `redirectUri` is signed in outside the dashboard; a refused OAuth app of the caller's own asks for its new
+  client secret. Loading tools sends the token to a URL the admin typed, so when no saved service points there it
+  refreshes through `refreshVariableToken` (`variableTokenHolder(variableId, { projectId })`: the same lock and swap,
+  no destination), retrying once on a 401 only when no custom header could be the one refused. A rejection reported
+  there never marks the variable dead on its own (`rejectionUnvouched`), since a wrong URL would cut off every service
+  sharing it.
+- **A service whose variable isn't signed in goes out with `credentialNotConnected`** beside `personalValuesMissing`
+  (bundle and session services alike), so a current proxy names the cause and an older one still refuses it. The
+  services list reads the same variables (`findOauthForResolve`, never decrypted, `oauthVariableSignedInOf`) and marks
+  such a service `needs-personal-values` with text that sends it to an admin, not to the member.
+- **A shared variable lives and dies together.** A 401 on any service using it refreshes it for all of them, and a
+  dead sign-in is dead for all of them. Accepted: the docs say so.
+
 ## Session logs
 
 HTTP and MCP records are metadata only (method, host, path, status, decision). Bodies, headers and the query string
@@ -897,7 +1155,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   can exist while the effective settings are null.
 - **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
   share code with it.
-- **Keys.** Mint wraps a per-session log key with `kmsService.wrapKey` (label `{sessionId}|v1`), even while session
+- **Keys.** Mint wraps a per-session log key with `kmsDataKeyService.wrapKey` (label `{sessionId}|v1`), even while session
   logs are off. The layout, `sha256(label) || key` under the project data key, must not change: a session can have
   no expiry, so a key wrapped by older code may still need to open. Unwrap only through `openSessionLogKey` or
   `unwrapSessionLogKey` (`agent-vault-session-log-secrets.ts`), so a key copied onto another row is refused. A key
@@ -918,7 +1176,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   other files can't make a request walk the bucket.
 - **A read that can't reach the bucket fails with `AgentVaultSessionLogStorageUnavailable`**: 400 when the
   settings or AWS side need fixing, 500 when S3 isn't responding. Never a 200 with no chunks, which callers read
-  as "no logs". Only admins see the cause.
+  as "no logs". Only someone who can read the session log settings sees the cause.
 - **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
   `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
 - **History (`/logs`) is one LIST paged by size; the tail (`/logs/tail`) never LISTs.** Registering a chunk adds
@@ -961,8 +1219,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
 - **External storage uses the generic `/app-connections/aws` routes with the project's `projectId`.**
   `createAppConnection` refuses any app but AWS in an Agent Vault project. The connection's AWS External ID is the
   project id (it was the org id), so a role that still trusts the org id fails until its trust policy changes.
-- **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
-  the shared connection modals read CASL.
+- **The admin role carries the CASL `AppConnections` subject**, because the shared connection modals read CASL.
 
 ## The CLI
 
@@ -998,7 +1255,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
     never `passthrough` or `brokered`, which a host's own answer gets. A proxy refusal with no URL (a session refused
     since the CONNECT) neither confirms nor contradicts the claim. Otherwise the agent gets no variable, the skills come
     from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
-    `HEAD` of the services list confirms the claim (logged as Listed Services).
+    `HEAD` of the services list confirms the claim (logged with decision `discovery`).
   - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
     base URL (an inherited value never passes through). A proxy
     that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
@@ -1007,7 +1264,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
     `infisical_unreachable`, `proxy_revoked` and `session_unresolvable` answers as the proxy's
     (`agentvault.IsInfisicalForwardRefusal`), and its
     `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`). The session endpoints pass Infisical's
-  `Retry-After` on, which `run`'s retries honor.
+    `Retry-After` on, which `run`'s retries honor.
 - **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
   service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
   JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
@@ -1042,8 +1299,9 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
   without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
 - **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
-  services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
-  forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
+  services list with decision `discovery` and the skills with `skills`. Each forwarded endpoint gets its own decision,
+  so a new one on the allowlist needs a value and an outcome hover in `SessionLogRow.tsx`; the frontend shows and filters
+  them all as Passthrough (`sessionLogOutcome`), so the outcome filter keeps four entries. The
   frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
   value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
@@ -1074,8 +1332,10 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
 
 ## The frontend
 
-- Admin is a role check on both sides, `hasRole(ProjectMembershipRole.Admin)`, not a CASL check. It decides
-  the projected API shapes (`members` omitted from a bundle, settings omitted from a proxy) and the UI branches.
+- The UI checks permissions (`permission.can`), never the role; the role badge only displays it. Where the server
+  shapes a response by permission, the UI branches on the same action: a proxy's settings on proxy `edit`, a service's
+  `variableReferences` on variables `read`, its OAuth sign-in state on bundle `edit`. Predicates used in more than one
+  place live in `helpers/agentVaultPermissions.ts`.
 - The service template catalog (`helpers/agentVaultTemplates.ts`) is frontend-only and never persisted; icons
   re-derive from the stored host pattern. The backend must never learn a service name.
 - Docs links live in `pages/agent-vault/agent-vault-docs-urls.ts`; keep them pointing at existing pages.
@@ -1088,3 +1348,4 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
 - **Raw passthrough over SOCKS5.** Non-HTTP TCP to hosts no service names could be spliced through untouched,
   so SSH and databases work for SOCKS5 clients other than E2B. That traffic would carry no credential and
   produce no request logs.
+- **OAuth Client Credentials grant (machine-to-machine, also called two-legged or app-only OAuth; RFC 6749 section 4.4).** OAuth variables support only the Authorization Code grant, where a person signs in. A Client Credentials variable would hold a token URL, client ID, secret and scopes, and Infisical would fetch a new token when the old one expires, under the same variable lock and swap. The token request and client authentication (`client_secret_basic`, `client_secret_post`) already exist in the dynamic secret OAuth2 provider (`ee/services/dynamic-secret/providers/oauth2.ts`).

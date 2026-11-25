@@ -30,7 +30,7 @@ func TestGroup_Escalation(t *testing.T) {
 		group := fixture.NewGroup(t, tn)
 
 		// Action
-		res, err := actor.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), target.Email)
+		res, err := actor.API.AddUserToGroupWithResponse(t.Context(), group.ID, target.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestGroup_Escalation(t *testing.T) {
 		group := fixture.NewGroup(t, tn, fixture.WithGroupRole("admin"))
 
 		// Action
-		res, err := actor.API.UpdateGroupWithResponse(t.Context(), group.ID.String(), api.UpdateGroupJSONRequestBody{
+		res, err := actor.API.UpdateGroupWithResponse(t.Context(), group.ID, api.UpdateGroupJSONRequestBody{
 			Role: new("member"),
 		})
 
@@ -95,7 +95,7 @@ func TestGroup_Escalation(t *testing.T) {
 		group := fixture.NewGroup(t, tn, fixture.WithGroupRole("admin"))
 
 		// Action
-		res, err := actor.API.DeleteGroupWithResponse(t.Context(), group.ID.String())
+		res, err := actor.API.DeleteGroupWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)

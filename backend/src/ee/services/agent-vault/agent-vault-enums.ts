@@ -1,3 +1,10 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
+
+// Reaching every bundle without a grant comes with the role, not with a permission: a personal value save locks the
+// role rows that confer it, the cleanup after a revoke keeps the values of anyone holding one, and a delegation reads a
+// group's reach from its role rows. Those queries filter by this list, so it is the one definition.
+export const AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE: readonly string[] = [ProjectMembershipRole.Admin];
+
 export enum AgentVaultCredentialType {
   Bearer = "bearer",
   Basic = "basic",
@@ -9,7 +16,9 @@ export enum AgentVaultCredentialType {
 export enum AgentVaultOauthStatus {
   Connected = "connected",
   NeedsReauthorization = "needs-reauthorization",
-  NeedsAdditionalScopes = "needs-additional-scopes"
+  NeedsAdditionalScopes = "needs-additional-scopes",
+  // Never stored: an OAuth variable with no sign-in or import yet, or one an edit disconnected.
+  NotConnected = "not-connected"
 }
 
 export enum AgentVaultOauthAuthorizationStatus {
@@ -111,6 +120,19 @@ export enum AgentVaultVariableReferenceField {
 export enum AgentVaultVariableScope {
   Global = "global",
   Personal = "personal"
+}
+
+export enum AgentVaultVariableType {
+  Text = "text",
+  OAuth = "oauth"
+}
+
+// How an OAuth variable got its tokens: a first sign-in, a sign-in that replaced its tokens, or tokens an API caller
+// imported.
+export enum AgentVaultOauthVariableConnectMethod {
+  SignIn = "sign-in",
+  Reconnect = "reconnect",
+  Import = "import"
 }
 
 /**

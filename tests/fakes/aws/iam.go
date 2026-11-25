@@ -2,6 +2,7 @@ package aws
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"slices"
@@ -11,10 +12,11 @@ import (
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
-// IAMAccount is one account's IAM users and their access keys.
+// IAMAccount is one account's IAM users, their access keys, and its roles.
 type IAMAccount struct {
 	Policy
 	Users map[string]*User `json:"users"`
+	Roles map[string]*Role `json:"roles"`
 
 	mu     sync.Mutex
 	events fakenet.Emitter
@@ -40,7 +42,7 @@ type AccessKey struct {
 const accessKeysPerUser = 2
 
 func newIAM(svc service, events fakenet.Emitter) fakenet.Fake {
-	a := &IAMAccount{Users: map[string]*User{}, events: events}
+	a := &IAMAccount{Users: map[string]*User{}, Roles: map[string]*Role{}, events: events}
 	a.h = handler{svc: svc, mu: &a.mu, policy: func() *Policy { return &a.Policy }, actions: map[string]func(call) (any, *apiError){
 		"CreateUser":      a.createUser,
 		"DeleteUser":      a.deleteUser,
@@ -59,17 +61,19 @@ func (a *IAMAccount) Snapshot() ([]byte, error) {
 	return json.Marshal(struct {
 		Policy
 		Users map[string]*User `json:"users"`
-	}{a.Policy, a.Users})
+		Roles map[string]*Role `json:"roles"`
+	}{a.Policy, a.Users, a.Roles})
 }
 
-// Seed merges users, and any keys they already hold, that exist before Infisical
-// touches the account. A seeded key with no secret gets the derived one, so it signs
-// like a credential a test invented. A removed access key is deleted the way an
+// Seed merges users, and any keys they already hold, and roles that exist before
+// Infisical touches the account. A seeded key with no secret gets the derived one, so it
+// signs like a credential a test invented. A removed access key is deleted the way an
 // operator deletes one in the console: behind Infisical's back.
 func (a *IAMAccount) Seed(raw []byte) error {
 	var in struct {
 		Policy
 		Users             map[string]*User `json:"users"`
+		Roles             map[string]*Role `json:"roles"`
 		RemovedAccessKeys []string         `json:"removedAccessKeys"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
@@ -104,6 +108,18 @@ func (a *IAMAccount) Seed(raw []byte) error {
 			continue
 		}
 		a.Users[name] = u
+	}
+	for name, r := range in.Roles {
+		r.RoleName = name
+		if r.Owner == "" {
+			return fmt.Errorf("role %s has no owner account", name)
+		}
+		r.Arn = RoleArn(r.Owner, name)
+		if r.CreateDate.IsZero() {
+			r.CreateDate = now()
+		}
+		a.Roles[name] = r
+		registerRole(*r)
 	}
 	for _, id := range in.RemovedAccessKeys {
 		for _, u := range a.Users {

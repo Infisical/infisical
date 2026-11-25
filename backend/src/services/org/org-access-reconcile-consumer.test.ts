@@ -1,6 +1,6 @@
+import { EventResultStatus, TEvent } from "@app/domains/platform/events/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
 import { TRevokedProjectAccess } from "@app/services/membership/project-access-revoke-service";
 
 import { ACTORS_PER_RECONCILE_TX, orgAccessReconcileConsumerFactory } from "./org-access-reconcile-consumer";
@@ -239,7 +239,7 @@ describe("org access reconcile consumer", () => {
         }
       })
     );
-    expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
+    expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(2);
   });
 
   test("records the identity and the group that carried the lost path, and says which grants went", async () => {

@@ -13,7 +13,10 @@ src/domains/
 ├── domains.ts                  # the only wiring file, builds every module in dependency order
 ├── lib/                        # shared building blocks, no business logic
 ├── platform/                   # domains other products depend on
+│   ├── events/
 │   ├── license/
+│   ├── kms-core/
+│   ├── instance-config-core/
 │   └── organizations-projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
@@ -24,18 +27,19 @@ src/domains/
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md).
+[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
+[events](platform/events/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
 
 | Folder | Exports | Test doubles |
 | --- | --- | --- |
-| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `ExternalSystemError` | |
+| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `StateConflictError`, `ExternalSystemError` | |
 | `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
 | `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
-| `lib/data-access/` | `toCount` and other row helpers every store needs | |
+| `lib/data-access/` | `ReadFrom`, `TReadOptions`, `TStoreConnection`, `poolStoreConnection`, `singleStoreConnection`, `findOnReplicaThenPrimary`, `toCount` and other row helpers every store needs | |
 | `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
 
 Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
@@ -113,20 +117,34 @@ rule about it shows up.
 - If a module needs to read something before it can answer (the instance license), give it a private
   constructor and `static async create(deps)` (`LicenseModule.create`). Never a holder that throws until
   something fills it later.
-- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `routes/index.ts` calls
-  once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
+- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `main()` (`server/app.ts`)
+  calls once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
   gets its own method returning a handle that `routes/index.ts` stops on shutdown (`LicenseModule.startBackgroundSync`).
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.
 
 ### Stores and caches
 
-- Take a connection source, not a handle: `constructor(private readonly knex: () => Knex)`. The module passes
-  `() => db.replicaNode()` for the instance the service reads through outside a transaction, and `() => trx`
-  for the ones in the stores bundle (`OrganizationsProjectsModule`). `replicaNode()` picks a replica per call, which is
-  why it's a function.
-- Reads outside `run` go to a replica and can lag. A read that must see a write just made, or that guards a
-  write, goes through `run` (or `within(tx)`) so it runs on the primary.
+- Take a connection, not a handle: `constructor(private readonly connection: TStoreConnection)`
+  (`lib/data-access/`). The module builds the stores a service reads through outside a transaction on
+  `poolStoreConnection(db)` and the stores bundle on `singleStoreConnection(trx)` (`OrganizationsProjectsModule`).
+  A migration passes its own connection as the replica too (`poolStoreConnection(db, () => db)`), never the global
+  replica.
+- Every fetch (`find*`, `get*`, `list*`, `count*`, `references*`, `is*`) takes a separate trailing
+  `options?: TReadOptions`, also when it already takes an object (`listProjectKeys(query, options)`), declared the
+  same way on the store type, and queries through `this.connection.reader(options)`. A subquery or helper it uses
+  runs on the same reader. Writes, claims, deletes and lock-taking reads (`forUpdate`) use `this.connection.writer()`
+  and take no options: they always run on the primary.
+- Outside a transaction reads go to a replica and can lag. A read that must see a write just made passes
+  `{ readFrom: ReadFrom.Primary }`, written inline: there is no shared constant. A read that must find a row another
+  request may have just committed, and treats a miss as final, goes through `findOnReplicaThenPrimary`, so only a
+  miss costs a primary read. A read that guards a write goes through `run` (or `within(tx)`), so it runs on the
+  transaction under its lock.
+- Inside `run` and `within(tx)` the stores are bound to the transaction, so `readFrom` changes nothing: every read sees
+  the transaction, uncommitted rows included. Never read `this.stores` inside `run`: it is the replica, not the
+  transaction.
+- Only stores take read options. A service method takes `options?: TReadOptions` only where a caller needs it, and
+  passes it on. In-memory stores accept the options and ignore them.
 - Convert counts with `toCount` (`lib/data-access/`): Postgres returns `count(*)` as a string.
 - Wrap each query in `try/catch` and rethrow `DatabaseError` from `@app/lib/errors` with a `name` saying what
   failed. It's the one class from that file a domain uses.
@@ -192,12 +210,14 @@ Calling another domain is a last resort. Before adding one:
 1. If you keep needing another domain's data for your own decisions, the boundary is wrong. Move the data
    or rule and raise it in review.
 2. If the other domain should react to your change (keys for a new project, cleanup after a delete), emit an
-   outbox event in your transaction. Until that event exists, call it after your commit.
+   event in your transaction (`eventEmitterService.within(tx).emit(...)`, see "Events joins transactions"). Until that
+   event exists, call it after your commit.
 3. If you need a value to write your own data (a cipher, a key id, a plan), call it before your `run`.
 
 Domains don't share a transaction by default. A shared one keeps one domain's row locks held while another
 works, and with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a
-sequence of short, repeatable calls; the one exception is in "Sharing a transaction" below.
+sequence of short, repeatable calls; the exceptions are in "Sharing a transaction", "KMS Core joins
+transactions" and "Events joins transactions" below.
 
 ```ts
 async createSecret(input: TCreateSecretInput) {
@@ -246,6 +266,46 @@ transaction never sees its own rows.
 
 If something truly has to be atomic across two domains, the boundary is wrong. Move the data into one domain.
 
+### KMS Core joins transactions
+
+KMS Core is the one domain any caller may bring into its transaction, and the rules in "Across domains" that it breaks
+(no network call inside a transaction, no advisory lock held across a caller's transaction) are deliberate here. It is
+the platform every product encrypts through, so writing ciphertext and creating the key it needs have to commit or
+roll back together: a project created with its first secrets, a secret change and its commit, a project deleted with
+its keys. Fetching keys before the transaction instead leaves orphan keys or projects when the transaction fails, and
+cannot see a project the transaction has just created.
+
+- `kmsDataKeyService.within(tx)` returns `TKmsDataKeyTransaction` (cipher pairs, first use included, the project's KMS key
+  id, the certificate key id, `deleteProjectKeys`); `kmsKeyService.within(tx)` returns `TKmsKeyTransaction` (encrypt,
+  decrypt, `getKmsById`). Root key, rotation and external KMS management never join.
+- First use creates the org or project key under KMS Core's frozen advisory locks, held until the caller commits.
+  Keep the transaction short and take locks in KMS Core's order (root key, org, project).
+- For a project whose key is in an external KMS (AWS, GCP), the provider call runs inside the caller's transaction,
+  as it did before KMS Core was a domain. This is not a precedent for other network calls inside a transaction.
+- A joined call never reads or writes KMS Core's Redis cache, so a rollback cannot leave a cache entry naming a key
+  that does not exist.
+- An error from a joined call leaves the caller's transaction unusable: let it roll back.
+- Outside a transaction, call the service directly.
+
+See `platform/kms-core/AGENTS.md` for how the domain does this inside.
+
+### Events joins transactions
+
+Events is the other domain any caller may bring into its transaction, because that is the whole point of an outbox:
+the event has to commit or roll back with the write it describes. Emitting after the commit loses the event
+whenever the pod dies in between.
+
+- `eventEmitterService.within(tx)` returns `TEventEmitterTransaction`, which can only `emit`. Call it inside your `run` with
+  the `tx` you were handed. This is the one case where `tx` goes to another domain and a method of another domain
+  runs inside `run`.
+- It costs one insert on your connection: no lock, no read, no network call, and nothing waits on another
+  domain's rows. Validation runs in memory before it.
+- A malformed event throws and fails your transaction, on purpose. So does a failed insert: don't catch either,
+  the transaction is unusable afterwards.
+- Outside a transaction, call `eventEmitterService.emit(events)`.
+- Take `eventEmitterService: TEventEmitterService` in your module deps; `domains.ts` builds Events first. Define your events
+  with `EventDefinition.define` in your own domain.
+
 ## Errors
 
 A domain throws only the kinds in `lib/errors/`, never `BadRequestError` and the rest of `@app/lib/errors`: domains
@@ -254,8 +314,9 @@ maps them at the HTTP boundary.
 
 | Kind | Throw when | HTTP |
 | --- | --- | --- |
-| `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan, a conflict | 400 |
+| `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan | 400 |
 | `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
+| `StateConflictError` | The request is valid, but the current state prevents it: the name is taken, it is in use, or it changed since it was read | 409 |
 | `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
 
 Who throws:
@@ -348,7 +409,11 @@ sets the pattern from the rules above, and its PR names it here.
 | --- | --- |
 | Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
 | Stores bundle passed to `TransactionRunner` | `platform/organizations-projects/ce/module.ts` |
-| Entity, in-memory store, contract suite, router | none yet |
+| Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
+| In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
+| Router | none yet |
+| A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
+| Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
 | Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
@@ -394,8 +459,7 @@ Where each legacy piece lands:
    every API change.
 7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
 8. Fix every path that named the old files: `vitest.e2e.config.mts` aliases, `.github/workflows/*` that `sed`
-   a source file, `backend-go/tests/infra/builder.go` (it patches the compiled file inside the published
-   image), docs, and test failure messages. `git grep` the old file names before calling it done.
+   a source file, docs, and test failure messages. `git grep` the old file names before calling it done.
 9. Run `make reviewable-api`, `npm run test:unit -- src/domains`, `npm run test:integration`, and the e2e specs
    for the routes you touched (`make test-api-e2e SPEC=<pattern>`).
 

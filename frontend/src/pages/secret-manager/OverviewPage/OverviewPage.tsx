@@ -52,6 +52,7 @@ import {
   DynamicSecretsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
   hasEnvironmentCapacity,
   HoneyTokensUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
@@ -1037,6 +1038,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1562,6 +1564,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -1745,36 +1758,76 @@ const OverviewPageContent = () => {
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName),
-        environmentSlug: singleEnvSlug
-      });
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "overview_folder_row",
-        projectId
-      });
+      const openFolderAccess = () => {
+        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+        if (!folder) return;
+        setFolderAccessTarget({
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
+        });
+        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+          source: "overview_folder_row",
+          projectId
+        });
+      };
+
+      if (!subscription?.secretsFolderRbac) {
+        openUpgradeGate({
+          intent: FolderAccessControlsUpgradeIntent
+        });
+        return;
+      }
+
+      openFolderAccess();
     },
-    [getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
+    [
+      getFolderByNameAndEnv,
+      singleEnvSlug,
+      childFolderPath,
+      orgId,
+      projectId,
+      subscription?.secretsFolderRbac,
+      openUpgradeGate
+    ]
   );
 
-  // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
-  const handleManageRootAccess = useCallback(() => {
-    setFolderAccessTarget(null);
-    setIsCurrentFolderAccessOpen(false);
-    navigate({ search: (prev) => ({ ...prev, secretPath: "/" }) }).then(() =>
-      setIsCurrentFolderAccessOpen(true)
-    );
-  }, [navigate]);
+  // an inherited grant is managed on the folder that set it, so the nested sheet hands off to that one
+  const handleManageInheritedAccess = useCallback(
+    (inheritedPath: string) => {
+      setFolderAccessTarget(null);
+      setIsCurrentFolderAccessOpen(false);
+      navigate({ search: (prev) => ({ ...prev, secretPath: inheritedPath }) }).then(() =>
+        setIsCurrentFolderAccessOpen(true)
+      );
+    },
+    [navigate]
+  );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    setIsCurrentFolderAccessOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "overview_breadcrumb",
-      projectId
-    });
-  }, [orgId, projectId]);
+    const openCurrentFolderAccess = () => {
+      setIsCurrentFolderAccessOpen(true);
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "overview_breadcrumb",
+        projectId
+      });
+    };
+
+    if (!subscription?.secretsFolderRbac) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent
+      });
+      return;
+    }
+
+    openCurrentFolderAccess();
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -4497,31 +4550,33 @@ const OverviewPageContent = () => {
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="-mr-1.5 flex items-center gap-2">
-                              <Badge variant="ghost" asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    overviewTelemetry.interaction({
-                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
-                                      source: "header",
-                                      resourceType: "secret"
-                                    });
-                                    setIsSingleEnvSecretsVisible.toggle();
-                                  }}
-                                >
-                                  {isSingleEnvSecretsVisible ? (
-                                    <>
-                                      <EyeOffIcon />
-                                      Hide Values
-                                    </>
-                                  ) : (
-                                    <>
-                                      <EyeIcon />
-                                      Reveal All
-                                    </>
-                                  )}
-                                </button>
-                              </Badge>
+                              {(mergedSecKeys.length > 0 || sortableImportItems.length > 0) && (
+                                <Badge variant="ghost" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      overviewTelemetry.interaction({
+                                        action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                        source: "header",
+                                        resourceType: "secret"
+                                      });
+                                      setIsSingleEnvSecretsVisible.toggle();
+                                    }}
+                                  >
+                                    {isSingleEnvSecretsVisible ? (
+                                      <>
+                                        <EyeOffIcon />
+                                        Hide Values
+                                      </>
+                                    ) : (
+                                      <>
+                                        <EyeIcon />
+                                        Reveal All
+                                      </>
+                                    )}
+                                  </button>
+                                </Badge>
+                              )}
                               {isProtectedBranch && (
                                 <Tooltip>
                                   <TooltipTrigger>
@@ -4736,7 +4791,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4768,7 +4823,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",
@@ -5386,6 +5441,7 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
       <EditHoneyTokenModal
+        secretPath={secretPath}
         isOpen={popUp.editHoneyToken.isOpen}
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
@@ -5533,7 +5589,7 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
-          onManageRootAccess={handleManageRootAccess}
+          onManageInheritedAccess={handleManageInheritedAccess}
           source="overview_folder_row"
         />
       )}
@@ -5545,7 +5601,7 @@ const OverviewPageContent = () => {
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
-          onManageRootAccess={handleManageRootAccess}
+          onManageInheritedAccess={handleManageInheritedAccess}
           source="overview_breadcrumb"
         />
       )}

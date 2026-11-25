@@ -68,9 +68,9 @@ export type TFolderAccessIdentity = {
 // when the access comes from the folder grant alone). `usersWithoutAccess` have none, their
 // membership.roles holds every role, and folderRBACAccess is always null. search/offset/limit
 // apply to each group independently.
-// inheritedFolderRBACAccess is the active recursive grant on `/` of the same environment, null on
-// the root sheet and in the without-access lists; when folderRBACAccess is also set, that exact
-// grant is the effective role at this folder.
+// inheritedFolderRBACAccess is the active recursive grant on the nearest folder above this one, null
+// when there is none, on the root sheet, and in the without-access lists; when folderRBACAccess is
+// also set, that exact grant is the effective role at this folder.
 export type TListFolderAccessUsersResponse = {
   users: TFolderAccessUser[];
   usersWithoutAccess: TFolderAccessUser[];

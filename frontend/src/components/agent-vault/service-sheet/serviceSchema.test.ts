@@ -4,6 +4,7 @@ import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/helpers/agentVaultCon
 import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE } from "@app/helpers/agentVaultDescription";
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
@@ -15,18 +16,17 @@ import {
   buildServiceSchema,
   certificateAuthorityError,
   credentialLabel,
-  HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
-  hookSigningSecretError,
-  hookUrlError,
   isOAuthAuthorizationMissing,
   MAX_ALLOWED_TOOLS,
   McpToolScope,
+  memberFieldsAfterTypeSwitch,
   nativeDatabaseError,
   nativeHostError,
   newOAuthAuthorizationId,
   OAUTH_CLIENT_VARIABLES_MESSAGE,
   oauthStatusLabel,
   serverUrlError,
+  serviceHookDraftOf,
   storedOAuthCredential,
   TServiceForm,
   UNCHANGED_SECRET
@@ -62,14 +62,14 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [],
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hookEnabled: false,
-  hookUrl: "",
-  hookSigningSecret: "",
+  hook: serviceHookDraftOf(null),
   ...overrides
 });
 
@@ -85,6 +85,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     allowedTools: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,
+      source: "service",
       memberProvidedFields: [],
       status: AgentVaultOauthStatus.NeedsReauthorization,
       issuer: "https://mcp.linear.app",
@@ -204,6 +205,31 @@ describe("storedOAuthCredential", () => {
     } satisfies TAgentVaultService;
     expect(storedOAuthCredential(bearer, SERVER_URL)).toBeNull();
     expect(storedOAuthCredential(undefined, SERVER_URL)).toBeNull();
+  });
+});
+
+describe("memberFieldsAfterTypeSwitch", () => {
+  const memberProvided = {
+    ...storedOAuthService(),
+    credential: {
+      ...storedOAuthService().credential,
+      memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+    }
+  } satisfies TAgentVaultService;
+
+  it("restores the stored setting when switching back to the stored type", () => {
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.OAuth, memberProvided, false)
+    ).toEqual([AgentVaultVariableReferenceField.CredentialValue]);
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.Bearer, memberProvided, false)
+    ).toEqual([]);
+  });
+
+  it("keeps it off when switching back to OAuth with an OAuth variable chosen", () => {
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.OAuth, memberProvided, true)
+    ).toEqual([]);
   });
 });
 
@@ -678,109 +704,84 @@ describe("buildServiceSchema with a description", () => {
   });
 });
 
-describe("hookUrlError, which mirrors the API's hook URL rule", () => {
-  it("accepts https and http URLs with a path", () => {
-    expect(hookUrlError("https://hooks.example.com/agent-vault")).toBeNull();
-    expect(hookUrlError(" http://10.0.0.5:8080/check ")).toBeNull();
-  });
-
-  it("refuses what the API refuses, with its message", () => {
-    expect(hookUrlError("")).toBe("Enter the hook URL.");
-    expect(hookUrlError(`https://hooks.example.com/${"a".repeat(2048)}`)).toBe(
-      "The hook URL can be at most 2048 characters."
-    );
-    expect(hookUrlError("https://hooks.example.com/a b")).toBe(
-      "The hook URL can't contain spaces."
-    );
-    expect(hookUrlError("https://hooks.example.com/{{TOKEN}}")).toBe(
-      "Variables aren't supported in the hook URL. Enter the URL itself."
-    );
-    expect(hookUrlError("ftp://hooks.example.com")).toBe(
-      "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault."
-    );
-    expect(hookUrlError("https:hooks.example.com")).toBe(
-      "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault."
-    );
-    expect(hookUrlError("https://")).toBe(
-      "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
-    );
-    expect(hookUrlError("https://user:pass@hooks.example.com/check")).toBe(
-      "The hook URL can't contain a username or password."
-    );
-    expect(hookUrlError("https://hooks.example.com/check#top")).toBe(
-      "The hook URL can't contain a fragment (the part after #)."
-    );
-    expect(hookUrlError("https://hooks.example.com/check?token=1")).toBe(
-      "Hook URLs can't include a query string."
-    );
-  });
-
-  it("refuses backslashes, stray % signs, a % in the host and an empty host", () => {
-    const strayMessage =
-      "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
-    expect(hookUrlError("https://hooks.example.com\\agent-vault")).toBe(strayMessage);
-    expect(hookUrlError("https://ex%61mple.com/hook")).toBe(strayMessage);
-    expect(hookUrlError("https://hooks.example.com/a%zz")).toBe(strayMessage);
-    expect(hookUrlError("https:///hook")).toBe(
-      "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
-    );
-    expect(hookUrlError("https://hooks.example.com/a%20b")).toBeNull();
-  });
-});
-
-describe("hookSigningSecretError", () => {
-  it("keeps a stored secret at the sentinel or when the box is emptied", () => {
-    expect(hookSigningSecretError(UNCHANGED_SECRET, true)).toBeNull();
-    expect(hookSigningSecretError("", true)).toBeNull();
-  });
-
-  it("asks for a secret when none is stored", () => {
-    expect(hookSigningSecretError("", false)).toBe(HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
-  });
-
-  it("refuses short secrets and anything but printable ASCII, without trimming", () => {
-    expect(hookSigningSecretError("a".repeat(31), false)).toBe(
-      "The signing secret must be at least 32 characters."
-    );
-    expect(hookSigningSecretError(`${"a".repeat(32)} `, false)).toBe(
-      "The signing secret can only use letters, numbers and symbols, with no spaces."
-    );
-    expect(hookSigningSecretError(`${"a".repeat(32)}\u00e9`, false)).toBe(
-      "The signing secret can only use letters, numbers and symbols, with no spaces."
-    );
-    expect(hookSigningSecretError("a".repeat(513), false)).toBe(
-      "The signing secret can be at most 512 characters."
-    );
-  });
-
-  it("accepts 32 printable characters", () => {
-    expect(hookSigningSecretError("!~{}abcdefghijklmnopqrstuvwxyz01", false)).toBeNull();
-  });
-});
-
 describe("buildServiceSchema with a hook", () => {
-  it("asks for a signing secret when a new service turns the hook on", () => {
-    expect(
-      messageOf(
-        nativeForm({ hookEnabled: true, hookUrl: "https://hooks.example.com/agent-vault" }),
-        "hookSigningSecret"
-      )
-    ).toBe(HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
+  const hookIssues = (hook: TServiceForm["hook"]) =>
+    (
+      buildServiceSchema().safeParse(
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL, hook })
+      ).error?.issues ?? []
+    )
+      .filter((issue) => issue.path[0] === "hook")
+      .map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+
+  it("checks the narrowing only once a hook is picked", () => {
+    const typedTool = { ...serviceHookDraftOf(null), toolDraft: "delete issue" };
+    expect(hookIssues(typedTool)).toEqual([]);
+    expect(hookIssues({ ...typedTool, hookId: "hook-1", hookName: "approvals" })).toEqual([
+      expect.objectContaining({ path: "hook.tools" })
+    ]);
   });
 
-  it("checks nothing about the hook while it is off", () => {
-    expect(issuesOf(nativeForm({ hookUrl: "ftp://nope", hookSigningSecret: "short" }))).toEqual([]);
+  it("accepts a picked hook with no narrowing", () => {
+    expect(hookIssues(serviceHookDraftOf({ id: "hook-1", name: "approvals" }))).toEqual([]);
+  });
+});
+
+describe("buildServiceSchema with an OAuth variable", () => {
+  const httpOAuthForm = (overrides: Partial<TServiceForm> = {}) =>
+    mcpForm({
+      serviceType: AgentVaultServiceType.Http,
+      serverUrl: "",
+      hosts: ["www.googleapis.com"],
+      methods: [AgentVaultHttpMethod.Get],
+      credentialType: AgentVaultCredentialType.OAuth,
+      ...overrides
+    });
+
+  it("asks an HTTP API with OAuth for a variable", () => {
+    expect(issuesOf(httpOAuthForm())).toEqual(["oauthVariableKey"]);
+    expect(issuesOf(httpOAuthForm({ oauthVariableKey: "GDRIVE" }))).toEqual([]);
   });
 
-  it("accepts a hook with a URL and a signing secret", () => {
+  it("needs no sign-in for an MCP server that uses a variable", () => {
+    expect(issuesOf(mcpForm({ oauthUsesVariable: true }))).toEqual(["oauthVariableKey"]);
+    expect(issuesOf(mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }))).toEqual([]);
+    expect(isOAuthAuthorizationMissing(mcpForm({ oauthUsesVariable: true }))).toBe(false);
+  });
+
+  it("names the variable on review", () => {
+    expect(oauthStatusLabel(mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }))).toBe(
+      "Uses the LINEAR variable"
+    );
+  });
+
+  it("refuses an OAuth variable's key in text", () => {
+    const result = buildServiceSchema(
+      null,
+      () => new Set(),
+      () => new Set(["GDRIVE"])
+    ).safeParse(
+      httpOAuthForm({ credentialType: AgentVaultCredentialType.Bearer, secret: "{{GDRIVE}}" })
+    );
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.message)).toEqual([
+      "'GDRIVE' is an OAuth variable, which can't be used in text. Set the service's credential to OAuth and choose the variable there."
+    ]);
+  });
+
+  it("doesn't count a variable's sign-in as the service's own", () => {
+    const service = storedOAuthService();
     expect(
-      issuesOf(
-        nativeForm({
-          hookEnabled: true,
-          hookUrl: "https://hooks.example.com/agent-vault",
-          hookSigningSecret: "s".repeat(32)
-        })
+      storedOAuthCredential(
+        {
+          ...service,
+          credential: {
+            ...service.credential,
+            source: "variable",
+            variable: { id: "variable-1", key: "LINEAR" }
+          }
+        },
+        SERVER_URL
       )
-    ).toEqual([]);
+    ).toBeNull();
   });
 });

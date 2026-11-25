@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import * as x509 from "@peculiar/x509";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   CertExtendedKeyUsageType,
@@ -6,8 +7,14 @@ import {
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
-import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { applyProfileDefaults } from "./certificate-v3-fns";
+import { RequestReference } from "../certificate-policy/certificate-policy-fns";
+import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import {
+  applyCommonNameDefaultSan,
+  applyIssuerNameOverride,
+  applyProfileDefaults,
+  getCommonNameCopySubjectAltNames
+} from "./certificate-v3-fns";
 
 const BARE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
 MIICjjCCAXYCAQAwGzEZMBcGA1UEAwwQc2hvcC5leGFtcGxlLmNvbTCCASIwDQYJ
@@ -196,6 +203,15 @@ describe("applyProfileDefaults", () => {
     expect(request.validity).toEqual({ ttl: "47d" });
   });
 
+  it("never copies the common name reference itself into the request as a SAN", () => {
+    const request = applyProfileDefaults(
+      { commonName: "app.example.com", altNames: [] as { type: string; value: string }[] },
+      { subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }] }
+    );
+
+    expect(request.altNames).toEqual([]);
+  });
+
   it("keeps the resolved validity and SANs when no defaults exist", () => {
     const request = applyProfileDefaults(
       { ...extractCertificateRequestFromCSR(BARE_CSR), validity: { ttl: "47d" } },
@@ -206,5 +222,171 @@ describe("applyProfileDefaults", () => {
     expect(request.subjectAlternativeNames).toEqual([
       { type: CertSubjectAlternativeNameType.DNS_NAME, value: "shop.example.com" }
     ]);
+  });
+});
+
+describe("applyIssuerNameOverride", () => {
+  const issuerNameOverride = {
+    commonName: "laptop01.corp.example.com",
+    altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "laptop01.corp.example.com" }]
+  };
+  const csrRequest = {
+    commonName: "anything",
+    keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+    extendedKeyUsages: [CertExtendedKeyUsageType.CODE_SIGNING]
+  };
+
+  it("takes key usages from the profile when it sets them, so the computer cannot pick its own", () => {
+    const profileDefaults = {
+      keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+    };
+
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(csrRequest, issuerNameOverride, profileDefaults),
+      profileDefaults
+    );
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.KEY_ENCIPHERMENT]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CLIENT_AUTH]);
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+  });
+
+  it("never takes the subject from the request, so a domain computer cannot pick its own organization or unit", () => {
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(
+        { ...csrRequest, organization: "Attacker Inc", organizationalUnit: "Domain Admins", country: "XX" },
+        issuerNameOverride,
+        {}
+      ),
+      { organization: "Example Corp" }
+    );
+
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+    expect(result.organization).toBe("Example Corp");
+    expect(result.organizationalUnit).toBeUndefined();
+    expect(result.country).toBeUndefined();
+  });
+
+  it("keeps the request's key usages when the profile sets none", () => {
+    const result = applyProfileDefaults(applyIssuerNameOverride(csrRequest, issuerNameOverride, {}), {});
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.DIGITAL_SIGNATURE]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CODE_SIGNING]);
+  });
+});
+
+describe("applyCommonNameDefaultSan", () => {
+  const dns = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+  const commonNameDefault = (...types: CertSubjectAlternativeNameType[]): TCertificateProfileDefaults => ({
+    subjectAltNames: types.map((type) => ({ type, value: RequestReference.CommonName }))
+  });
+  const apply = (overrides: Partial<Parameters<typeof applyCommonNameDefaultSan>[0]>) =>
+    applyCommonNameDefaultSan({
+      defaults: commonNameDefault(CertSubjectAlternativeNameType.DNS_NAME),
+      enrollmentType: EnrollmentType.API,
+      commonName: "app.example.com",
+      ...overrides
+    }).subjectAlternativeNames;
+
+  it("adds nothing when the request lists its own SANs, like every other default SAN", () => {
+    expect(apply({ subjectAlternativeNames: [dns("other.example.com")] })).toEqual([dns("other.example.com")]);
+  });
+
+  it("adds the common name after the profile's other default SANs when the request listed none", () => {
+    expect(
+      apply({ subjectAlternativeNames: [dns("static.example.com")], requestedSubjectAlternativeNames: [] })
+    ).toEqual([dns("static.example.com"), dns("app.example.com")]);
+  });
+
+  it("does not add the common name again when a default SAN already equals it in another case", () => {
+    expect(apply({ subjectAlternativeNames: [dns("APP.example.com")], requestedSubjectAlternativeNames: [] })).toEqual([
+      dns("APP.example.com")
+    ]);
+  });
+
+  it("adds nothing when the common name is not a valid value for the default's SAN type", () => {
+    expect(apply({ commonName: "John Smith" })).toBeUndefined();
+    expect(apply({ commonName: "café.example.com" })).toBeUndefined();
+  });
+
+  it("accepts the DNS names a hand-typed DNS SAN accepts: underscores and a trailing dot", () => {
+    expect(apply({ commonName: "host_a.corp.local" })).toEqual([dns("host_a.corp.local")]);
+    expect(apply({ commonName: "app.example.com." })).toEqual([dns("app.example.com.")]);
+    expect(apply({ commonName: "host.123" })).toEqual([dns("host.123")]);
+  });
+
+  it("treats a trailing dot as the same DNS name, so the common name is not added twice", () => {
+    expect(
+      apply({
+        commonName: "app.example.com.",
+        subjectAlternativeNames: [dns("app.example.com")],
+        requestedSubjectAlternativeNames: []
+      })
+    ).toEqual([dns("app.example.com")]);
+  });
+
+  it("adds nothing when the CA signs the CSR as sent", () => {
+    expect(apply({ isCsrSignedAsSent: true })).toBeUndefined();
+  });
+
+  it("on ACME copies only the CSR's own common name and only into DNS or IP SANs", () => {
+    const acme = { enrollmentType: EnrollmentType.ACME, commonName: "profile-default.example.com" };
+
+    expect(apply({ ...acme, csrCommonName: "app.example.com" })).toEqual([dns("app.example.com")]);
+    expect(apply(acme)).toBeUndefined();
+    expect(
+      apply({
+        ...acme,
+        defaults: commonNameDefault(CertSubjectAlternativeNameType.EMAIL),
+        csrCommonName: "user@example.com"
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe("getCommonNameCopySubjectAltNames", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(globalThis.crypto);
+  });
+
+  const csrPem = async (name: string, sans: x509.JsonGeneralName[] = []) => {
+    const keys = await globalThis.crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ]);
+    const csr = await x509.Pkcs10CertificateRequestGenerator.create({
+      name,
+      keys,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      extensions: sans.length ? [new x509.SubjectAlternativeNameExtension(sans)] : []
+    });
+    return csr.toString("pem");
+  };
+  const sanNames = (extension: x509.Extension | null) =>
+    extension ? new x509.SubjectAlternativeNameExtension(extension.rawData).names.toJSON() : null;
+
+  it("rebuilds the common name copies on the issued certificate, whatever the profile defaults are now", async () => {
+    const issued = new x509.SubjectAlternativeNameExtension([{ type: "dns", value: "device.example.com" }]);
+
+    const copies = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: issued,
+      enrollmentType: EnrollmentType.EST,
+      csr: await csrPem("CN=device.example.com")
+    });
+
+    expect(sanNames(copies)).toEqual([{ type: "dns", value: "device.example.com" }]);
+  });
+
+  it("returns nothing when the CSR lists its own SANs", async () => {
+    const issued = new x509.SubjectAlternativeNameExtension([{ type: "dns", value: "device.example.com" }]);
+
+    const copies = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: issued,
+      enrollmentType: EnrollmentType.EST,
+      csr: await csrPem("CN=device.example.com", [{ type: "dns", value: "other.example.com" }])
+    });
+
+    expect(copies).toBeNull();
   });
 });

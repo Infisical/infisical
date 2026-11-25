@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -48,6 +49,7 @@ import {
   NotFoundError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -58,6 +60,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { getOrgAllowedMfaMethods } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import {
   ActorAuthMethod,
@@ -65,11 +68,11 @@ import {
   AuthMethod,
   AuthModeJwtTokenPayload,
   AuthTokenType,
+  MfaMethod,
   SsoMfaTrust
 } from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
@@ -87,6 +90,7 @@ import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { TOrgDeletionServiceFactory } from "./org-deletion-service";
 import { deleteOrgMembershipsFn } from "./org-fns";
+import { TOrgInviteQuota } from "./org-invite-quota";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -143,6 +147,8 @@ type TOrgServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -179,7 +185,9 @@ export const orgServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
-  eventEmitter
+  eventEmitter,
+  orgInviteQuota,
+  instanceConfigService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -354,7 +362,16 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
+  const findAllWorkspaces = async ({ actor, actorId, orgId, actorOrgId, actorAuthMethod }: TFindAllWorkspacesDTO) => {
+    await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.Any
+    });
+
     if (actor === ActorType.USER) {
       const workspaces = await projectDAL.findUserProjects(actorId, orgId);
       return workspaces;
@@ -487,7 +504,7 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
-      selectedMfaMethod,
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -553,16 +570,23 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (enforceMfa !== undefined) {
+    if (enforceMfa !== undefined || allowedMfaMethods) {
       if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
       }
 
-      if (!appCfg.isSmtpConfigured) {
+      // Email codes need SMTP; passkeys and authenticator apps don't, so only an allowlist with email does.
+      const orgBeforeUpdate = await orgDAL.findById(orgId);
+      const willEnforceMfa = enforceMfa ?? orgBeforeUpdate?.enforceMfa;
+      const willAllowEmail = (allowedMfaMethods ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
+        MfaMethod.EMAIL
+      );
+      if (willEnforceMfa && willAllowEmail && !appCfg.isSmtpConfigured) {
         throw new BadRequestError({
-          message: "Failed to enforce user MFA due to missing instance SMTP configuration."
+          message:
+            "Email MFA codes need SMTP, which is not configured for this instance. Remove Email from the allowed MFA methods or configure SMTP."
         });
       }
     }
@@ -714,7 +738,7 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      selectedMfaMethod,
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -841,10 +865,12 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
-    if (!trx) await usageMeteringService.syncSeats(organization.id);
-
-    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    // Seat sync calls the License Server and the usage event enqueues a job, so both wait for commit. A caller that
+    // passed a tx runs them after its own commit.
+    if (!trx) {
+      await usageMeteringService.syncSeats(organization.id);
+      usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    }
 
     return organization;
   };
@@ -1107,6 +1133,11 @@ export const orgServiceFactory = ({
     return `${appCfg.SITE_URL}/login`;
   };
 
+  const $isEmailLoginEnabled = async () => {
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    return loginPolicy.allows(LoginMethod.EMAIL);
+  };
+
   const resendOrgMemberInvitation = async ({
     orgId,
     actorId,
@@ -1137,14 +1168,59 @@ export const orgServiceFactory = ({
       [`${TableName.Membership}.id` as "id"]: membershipId
     });
 
+    if (!inviteeOrgMembership) {
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
+    }
+
     if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
       throw new BadRequestError({
         message: "Organization invitation already accepted"
       });
     }
 
+    const inviteePermissions = await permissionService.getActorGrantAbilities({
+      scopeData: { scope: AccessScope.Organization, orgId },
+      actorId: inviteeOrgMembership.actorUserId as string,
+      actorType: ActorType.USER
+    });
+    if (inviteePermissions.length) {
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+        orgDAL.findById(orgId)
+      );
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: inviteePermissions,
+        baseMessage: "Failed to resend the invitation of this org member"
+      });
+    }
+
+    if (!org?.authEnforced && !(await $isEmailLoginEnabled())) {
+      const inviteeRole = await membershipRoleDAL.findOne({ membershipId: inviteeOrgMembership.id });
+      if (inviteeRole?.role !== OrgMembershipRole.Admin) {
+        throw new BadRequestError({
+          message:
+            "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
+        });
+      }
+    }
+
+    // Only a mailed invitation counts: without SMTP the caller gets the link instead. A step that fails before
+    // the mail goes out gives the reservation back.
+    const reservation = appCfg.isSmtpConfigured ? await orgInviteQuota.admit(orgId, 1) : undefined;
+    const releaseOnFailure = async <T>(step: () => Promise<T>) => {
+      try {
+        return await step();
+      } catch (error) {
+        await reservation?.release();
+        throw error;
+      }
+    };
+
     if (org?.authEnforced) {
-      const ssoLoginUrl = await $getEnforcedSsoLoginUrl(org.id, org.slug);
+      const ssoLoginUrl = await releaseOnFailure(() => $getEnforcedSsoLoginUrl(org.id, org.slug));
 
       if (!appCfg.isSmtpConfigured) {
         return {
@@ -1155,17 +1231,19 @@ export const orgServiceFactory = ({
         };
       }
 
-      await smtpService.sendMail({
-        template: SmtpTemplates.OrgInvite,
-        subjectLine: "Infisical organization invitation",
-        recipients: [inviteeOrgMembership.email as string],
-        substitutions: {
-          inviterFirstName: invitingUser.firstName,
-          inviterUsername: invitingUser.email,
-          organizationName: org?.name,
-          callback_url: ssoLoginUrl
-        }
-      });
+      await releaseOnFailure(() =>
+        smtpService.sendMail({
+          template: SmtpTemplates.OrgInvite,
+          subjectLine: "Infisical organization invitation",
+          recipients: [inviteeOrgMembership.email as string],
+          substitutions: {
+            inviterFirstName: invitingUser.firstName,
+            inviterUsername: invitingUser.email,
+            organizationName: org?.name,
+            callback_url: ssoLoginUrl
+          }
+        })
+      );
 
       await membershipUserDAL.updateById(inviteeOrgMembership.id, {
         lastInvitedAt: new Date()
@@ -1174,11 +1252,13 @@ export const orgServiceFactory = ({
       return { signupToken: undefined };
     }
 
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: inviteeOrgMembership.actorUserId as string,
-      orgId
-    });
+    const token = await releaseOnFailure(() =>
+      tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: inviteeOrgMembership.actorUserId as string,
+        orgId
+      })
+    );
 
     if (!appCfg.isSmtpConfigured) {
       return {
@@ -1189,19 +1269,21 @@ export const orgServiceFactory = ({
       };
     }
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.OrgInvite,
-      subjectLine: "Infisical organization invitation",
-      recipients: [inviteeOrgMembership.email as string],
-      substitutions: {
-        inviterFirstName: invitingUser.firstName,
-        inviterUsername: invitingUser.email,
-        organizationName: org?.name,
-        callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
-          inviteeOrgMembership.email as string
-        )}&organization_id=${org?.id}`
-      }
-    });
+    await releaseOnFailure(() =>
+      smtpService.sendMail({
+        template: SmtpTemplates.OrgInvite,
+        subjectLine: "Infisical organization invitation",
+        recipients: [inviteeOrgMembership.email as string],
+        substitutions: {
+          inviterFirstName: invitingUser.firstName,
+          inviterUsername: invitingUser.email,
+          organizationName: org?.name,
+          callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+            inviteeOrgMembership.email as string
+          )}&organization_id=${org?.id}`
+        }
+      })
+    );
 
     await membershipUserDAL.updateById(inviteeOrgMembership.id, {
       lastInvitedAt: new Date()
@@ -1267,10 +1349,13 @@ export const orgServiceFactory = ({
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
-    if (
-      organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
-    ) {
+    const isAdminInvite = membershipRole.role === OrgMembershipRole.Admin;
+
+    if (!isAdminInvite && !(await $isEmailLoginEnabled())) {
+      return { user, organizationName: organization.name };
+    }
+
+    if (organization.authEnforced && !(organization.bypassOrgAuthEnabled && isAdminInvite)) {
       return { user, organizationName: organization.name };
     }
 
@@ -1394,7 +1479,6 @@ export const orgServiceFactory = ({
     // Removing an org member cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, Meter.SecretIdentities);
     usageMeteringService.emit(orgId, Meter.PamIdentities);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 
@@ -1448,7 +1532,6 @@ export const orgServiceFactory = ({
     // Removing org members cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, Meter.SecretIdentities);
     usageMeteringService.emit(orgId, Meter.PamIdentities);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMemberships;
   };
 

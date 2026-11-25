@@ -7,19 +7,23 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  TGatewaysV2,
   TGatewaysV2Update,
   TRelays
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { getReportedCliVersion } from "@app/lib/cli-version/cli-version-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -33,12 +37,9 @@ import {
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
@@ -63,8 +64,14 @@ import {
   GatewayTransport,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
-import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
+import { TGatewayV2DALFactory, TOfflineGateway } from "./gateway-v2-dal";
+import { emitGatewayOffline, GATEWAY_OFFLINE_BATCH_SIZE } from "./gateway-v2-events";
+import {
+  parseDirectAddress,
+  rearmsOfflineAlert,
+  resolveClientTransports,
+  resolveTransports
+} from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
@@ -73,14 +80,14 @@ const MAX_GATEWAYS_PER_ORG = 50;
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  eventEmitter: TEventEmitter;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
@@ -99,17 +106,33 @@ type TGatewayV2ServiceFactoryDep = {
   >;
 };
 
+// Written on every connect, register and heartbeat, nulls included, so a downgrade or a non-CLI caller clears
+// a stale version instead of leaving it on display.
+//
+// cliVersionReportedAt is its own column because the Last Seen timestamps (heartbeat, directHeartbeat) can't
+// stand in: $checkGatewayHealth writes them only when Infisical's health check reaches the gateway, so using
+// them on the gateway detail page would
+// - date the version tooltip from a stale health check, or not at all after Revoke Access clears them,
+// - show a dash, not "Older than v0.43.131", for an old CLI whose health check fails,
+// - show "Older than v0.43.131" for a current gateway behind a proxy that rewrites its User-Agent,
+// - show "Older than v0.43.131" for every healthy gateway until its next heartbeat (up to 3 minutes).
+const getCliVersionFields = (userAgent?: string) => {
+  const { cliVersion, fromCli } = getReportedCliVersion(userAgent);
+  return { cliVersion, cliVersionReportedAt: fromCli ? new Date() : null };
+};
+
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
-  kmsService,
+  kmsDataKeyService,
   relayService,
   gatewayV2DAL,
   relayDAL,
   permissionService,
   orgDAL,
   notificationService,
+  eventEmitter,
   appConnectionDAL,
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
@@ -135,10 +158,11 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const $getOrgCAs = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
 
     const orgCAs = await orgGatewayConfigV2DAL.transaction(async (tx) => {
       const orgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId });
@@ -409,7 +433,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -584,7 +608,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -791,14 +815,20 @@ export const gatewayV2ServiceFactory = ({
   // before the revoke would otherwise write them back after it, so the write only lands while the
   // version the request authenticated with is still current.
   const $writeAgentTransports = async (
-    gatewayId: string,
+    gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat" | "healthAlertedAt">,
     tokenVersion: number | undefined,
-    transports: Pick<TGatewaysV2Update, "directAddress" | "directHeartbeat" | "heartbeat" | "relayId">
+    transports: Pick<
+      TGatewaysV2Update,
+      "cliVersion" | "cliVersionReportedAt" | "directAddress" | "directHeartbeat" | "heartbeat" | "relayId"
+    >
   ) => {
     if (tokenVersion === undefined) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
-    const [updated] = await gatewayV2DAL.update({ id: gatewayId, tokenVersion }, transports);
+    const [updated] = await gatewayV2DAL.update(
+      { id: gateway.id, tokenVersion },
+      rearmsOfflineAlert(gateway, transports) ? { ...transports, healthAlertedAt: null } : transports
+    );
     if (!updated) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
@@ -813,7 +843,8 @@ export const gatewayV2ServiceFactory = ({
     relayName,
     directAddress,
     name,
-    tokenVersion
+    tokenVersion,
+    userAgent
   }: {
     orgId: string;
     actorId: string;
@@ -824,6 +855,7 @@ export const gatewayV2ServiceFactory = ({
     name?: string;
     /** The gateway access token's version, when a gateway agent is the actor. */
     tokenVersion?: number;
+    userAgent?: string;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -856,7 +888,8 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
+        ...getCliVersionFields(userAgent),
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -892,6 +925,7 @@ export const gatewayV2ServiceFactory = ({
               orgId,
               name,
               identityId: actorId,
+              ...getCliVersionFields(userAgent),
               relayId: relay?.id ?? null,
               directAddress: directAddress ?? null,
               directHeartbeat: null,
@@ -1080,27 +1114,31 @@ export const gatewayV2ServiceFactory = ({
 
   const heartbeat = async ({
     orgPermission,
-    capabilities
+    capabilities,
+    userAgent
   }: {
     orgPermission: OrgServiceActor;
+    userAgent?: string;
     capabilities?: {
       pkcs11?: boolean;
       pkcs11MlDsa?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
       clickhouseNativeProtocol?: boolean;
+      outputMasking?: boolean;
       certificateScan?: boolean;
       windowsCertificateScan?: boolean;
       supported_account_types?: string[];
     };
   }) => {
     const nextCapabilities = capabilities ?? {};
+    const cliVersionFields = getCliVersionFields(userAgent);
 
     if (orgPermission.type === ActorType.GATEWAY) {
       const gateway = await gatewayV2DAL.findById(orgPermission.id);
       if (!gateway || gateway.orgId !== orgPermission.orgId) {
         throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
       }
-      await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
+      await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
       await $checkAllGatewayTransports(gateway.id);
       return;
     }
@@ -1116,7 +1154,7 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
     }
 
-    await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
+    await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
     await $checkAllGatewayTransports(gateway.id);
   };
 
@@ -1219,6 +1257,12 @@ export const gatewayV2ServiceFactory = ({
       );
     }
 
+    // Fetched before the transaction: calling KMS Core inside it without joining would grab a second pool connection.
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgPermission.orgId
+    });
+
     return gatewayV2DAL.transaction(async (tx) => {
       const gateway = await gatewayV2DAL.findOne(
         orgPermission.type === ActorType.GATEWAY ? { id: orgPermission.id } : { identityId: orgPermission.id },
@@ -1228,11 +1272,6 @@ export const gatewayV2ServiceFactory = ({
       if (!gateway) {
         throw new NotFoundError({ message: "Gateway not found" });
       }
-
-      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: orgPermission.orgId
-      });
 
       if (gateway.encryptedPamSessionKey) {
         return decryptor({ cipherTextBlob: gateway.encryptedPamSessionKey });
@@ -1256,20 +1295,40 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const healthcheckNotify = async () => {
-    const unhealthyGateways = await gatewayV2DAL.find({
-      isHeartbeatStale: true
-    });
-
-    if (unhealthyGateways.length === 0) return;
+    const dueGateways = await gatewayV2DAL.findOfflineDueForAlert();
+    if (dueGateways.length === 0) return;
 
     logger.warn(
-      { gatewayIds: unhealthyGateways.map((g) => g.id) },
+      { gatewayIds: dueGateways.map((g) => g.id) },
       "Found gateways that may be offline or unreachable. Sending notifications."
     );
 
-    const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
+    const gatewaysByOrg = groupBy(dueGateways, (gw) => gw.orgId);
 
-    for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
+    for await (const [orgId, candidates] of Object.entries(gatewaysByOrg)) {
+      const gateways: TOfflineGateway[] = [];
+      for await (const batch of chunkArray(candidates, GATEWAY_OFFLINE_BATCH_SIZE)) {
+        try {
+          const claimed = await gatewayV2DAL.transaction(async (tx) => {
+            const batchClaimed = await gatewayV2DAL.markOfflineAlerted(
+              batch.map((gw) => gw.id),
+              tx
+            );
+            if (batchClaimed.length > 0) {
+              await emitGatewayOffline(eventEmitter, { orgId, gateways: batchClaimed }, tx);
+            }
+            return batchClaimed;
+          });
+          gateways.push(...claimed);
+        } catch (error) {
+          logger.error(error, `Failed to raise gateway offline alerts for organization [orgId=${orgId}]`);
+        }
+      }
+      if (gateways.length === 0) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       try {
         const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
           (admin) => admin.status !== OrgMembershipStatus.Invited
@@ -1293,20 +1352,6 @@ export const gatewayV2ServiceFactory = ({
             link: `/organizations/${orgId}/networking`
           }))
         );
-
-        // Temporarily disabled email notifications due to excessive noise. Will be revised later
-        //
-        // await smtpService.sendMail({
-        //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-        //   subjectLine: "Gateway Health Alert",
-        //   substitutions: {
-        //     type: "gateway",
-        //     names: gatewayNames
-        //   },
-        //   template: SmtpTemplates.HealthAlert
-        // });
-
-        await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
         logger.error(error, `Failed to send gateway health notifications for organization [orgId=${orgId}]`);
       }
@@ -1531,7 +1576,8 @@ export const gatewayV2ServiceFactory = ({
     actorType,
     relayName,
     directAddress,
-    tokenVersion
+    tokenVersion,
+    userAgent
   }: {
     orgId: string;
     actorId: string;
@@ -1540,6 +1586,7 @@ export const gatewayV2ServiceFactory = ({
     directAddress?: string;
     /** The gateway access token's version the request authenticated with. */
     tokenVersion?: number;
+    userAgent?: string;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -1570,7 +1617,10 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
+        // In relay mode the CLI only starts heartbeating once it reaches the relay, so a gateway that
+        // connects but cannot reach its relay reports its version here and nowhere else.
+        ...getCliVersionFields(userAgent),
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,

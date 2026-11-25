@@ -2,10 +2,6 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BotIcon, SearchIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
 
-import {
-  FolderAccessControlsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
@@ -42,7 +38,7 @@ import {
   useOrganization,
   useProject,
   useProjectPermission,
-  useSubscription
+  useUser
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
@@ -67,12 +63,11 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 
+import { ChangeOwnFolderAccessDialog, TOwnFolderAccessChange } from "./ChangeOwnFolderAccessDialog";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
   byAdminThenName,
   byName,
-  canGrantFolderAccess,
-  isRootFolderPath,
   TFolderAccessActor,
   toIdentityActor,
   toOrgIdentityActor,
@@ -91,7 +86,7 @@ import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
-// organization members outside the project are not paged, so each kind is capped and search narrows it
+// organization members outside the project are not paged, so each tab is capped and search narrows it
 const ORG_PREVIEW_LIMIT = 10;
 const NO_ACCESS_SECTION = "no-access";
 
@@ -122,7 +117,7 @@ type Props = {
   environmentSlug: string;
   folderPath: string;
   environmentName: string;
-  onManageRootAccess?: () => void;
+  onManageInheritedAccess?: (secretPath: string) => void;
   source: FolderAccessSheetSource;
 };
 
@@ -133,30 +128,21 @@ export const FolderAccessSheet = ({
   environmentSlug,
   folderPath,
   environmentName,
-  onManageRootAccess,
+  onManageInheritedAccess,
   source
 }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
+  const [ownAccessChange, setOwnAccessChange] = useState<TOwnFolderAccessChange | null>(null);
   const [filter, setFilter] = useState<TFolderAccessFilter>(EMPTY_FOLDER_ACCESS_FILTER);
   const [noAccessSection, setNoAccessSection] = useState("");
-  const { subscription } = useSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const isGrantBlocked = (change: Parameters<typeof canGrantFolderAccess>[1]) => {
-    if (canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), change)) return false;
-    openUpgradeGate({
-      intent: FolderAccessControlsUpgradeIntent,
-      paywallKey: "secret-manager.folder-access-sheet"
-    });
-    return true;
-  };
   const [noAccessTab, setNoAccessTab] = useState<TFolderAccessActor["type"]>("user");
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
-  const isRoot = isRootFolderPath(folderPath);
 
   const queryClient = useQueryClient();
+  const { user: currentUser } = useUser();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -285,11 +271,11 @@ export const FolderAccessSheet = ({
 
     return {
       actors: {
-        user: matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor).sort(byName),
+        user: matchingUsers.map(toOrgUserActor).sort(byName).slice(0, ORG_PREVIEW_LIMIT),
         identity: matchingIdentities
-          .slice(0, ORG_PREVIEW_LIMIT)
           .map(toOrgIdentityActor)
           .sort(byName)
+          .slice(0, ORG_PREVIEW_LIMIT)
       },
       totals: { user: matchingUsers.length, identity: matchingIdentities.length },
       usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username]))
@@ -383,12 +369,11 @@ export const FolderAccessSheet = ({
     permission: SecretFolderRole,
     isPermissionRecursive = false
   ) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const appliesToSubfolders = actor.access
       ? actor.access.isPermissionRecursive
       : isPermissionRecursive;
-    if (isGrantBlocked({ isPermissionRecursive: appliesToSubfolders })) return;
-    const target = { projectId, environmentSlug, secretPath: folderPath };
-    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
     const onSuccess = () => {
       notifySuccess(
@@ -426,7 +411,6 @@ export const FolderAccessSheet = ({
   };
 
   const setRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) => {
-    if (isGrantBlocked({ isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () => {
       notifySuccess(
@@ -450,7 +434,6 @@ export const FolderAccessSheet = ({
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
-    if (isGrantBlocked({ isPermissionRecursive: actor.access?.isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () => {
       notifySuccess(
@@ -480,7 +463,6 @@ export const FolderAccessSheet = ({
     tier: SecretFolderRole,
     isRecursive: boolean
   ) => {
-    if (isGrantBlocked({ isPermissionRecursive: isRecursive })) return;
     try {
       if (actor.type === "user") {
         await addUserToProject.mutateAsync({
@@ -512,6 +494,43 @@ export const FolderAccessSheet = ({
           queryKey[1] === "project-users")
     });
   };
+
+  const isSelf = (actor: TFolderAccessActor) =>
+    actor.type === "user" && actor.id === currentUser.id;
+
+  const confirmIfSelf = (actor: TFolderAccessActor, summary: string, apply: () => void) => {
+    if (isSelf(actor)) setOwnAccessChange({ summary, apply });
+    else apply();
+  };
+
+  const changeTier = (
+    actor: TFolderAccessActor,
+    permission: SecretFolderRole,
+    isPermissionRecursive: boolean
+  ) => {
+    const apply = () => setTier(actor, permission, isPermissionRecursive);
+    if (actor.access?.permission === permission) {
+      apply();
+      return;
+    }
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
+    confirmIfSelf(
+      actor,
+      actor.access
+        ? `Your access will change from ${FOLDER_ROLE_TIER_LABELS[actor.access.permission]} to ${tierLabel}.`
+        : `You will get ${tierLabel} on this folder, replacing the access you have here now.`,
+      apply
+    );
+  };
+
+  const changeRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) =>
+    confirmIfSelf(
+      actor,
+      isPermissionRecursive
+        ? "Your access will also apply to every subfolder."
+        : "Your access will apply to this folder only, not its subfolders.",
+      () => setRecursive(actor, isPermissionRecursive)
+    );
 
   const removeAccess = (actor: TFolderAccessActor) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
@@ -622,21 +641,28 @@ export const FolderAccessSheet = ({
                     <FolderAccessRow
                       key={`${actor.type}-${actor.id}`}
                       actor={actor}
+                      isSelf={isSelf(actor)}
                       isPending={isAccessLocked}
-                      canApplyToSubfolders={isRoot}
-                      onSetTier={(tier, isRecursive) => setTier(actor, tier, isRecursive)}
-                      onSetRecursive={(isRecursive) => setRecursive(actor, isRecursive)}
+                      folderPath={folderPath}
+                      onSetTier={(tier, isRecursive) => changeTier(actor, tier, isRecursive)}
+                      onSetRecursive={(isRecursive) => changeRecursive(actor, isRecursive)}
                       onSetTemporaryRange={(range) =>
-                        setAccessType(actor, {
-                          isTemporary: true,
-                          temporaryMode: "relative",
-                          temporaryRange: range,
-                          temporaryAccessStartTime: new Date().toISOString()
-                        })
+                        confirmIfSelf(actor, `Your access will expire in ${range}.`, () =>
+                          setAccessType(actor, {
+                            isTemporary: true,
+                            temporaryMode: "relative",
+                            temporaryRange: range,
+                            temporaryAccessStartTime: new Date().toISOString()
+                          })
+                        )
                       }
-                      onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
+                      onMakePermanent={() =>
+                        confirmIfSelf(actor, "Your access will no longer expire.", () =>
+                          setAccessType(actor, { isTemporary: false })
+                        )
+                      }
                       onRemove={() => setRemovalActor(actor)}
-                      onManageInheritedAccess={onManageRootAccess}
+                      onManageInheritedAccess={onManageInheritedAccess}
                     />
                   ))}
                 </div>
@@ -715,11 +741,12 @@ export const FolderAccessSheet = ({
                                     <FolderAccessGrantRow
                                       key={`${actor.type}-${actor.id}`}
                                       actor={actor}
+                                      isSelf={isSelf(actor)}
                                       isDisabled={isGrantLocked}
                                       isPending={isGrantLocked}
-                                      canApplyToSubfolders={isRoot}
+                                      folderPath={folderPath}
                                       onSetTier={(tier, isRecursive) =>
-                                        setTier(actor, tier, isRecursive)
+                                        changeTier(actor, tier, isRecursive)
                                       }
                                     />
                                   ))}
@@ -740,7 +767,7 @@ export const FolderAccessSheet = ({
                                       actor={actor}
                                       isDisabled={isGrantLocked}
                                       isPending={isGrantLocked}
-                                      canApplyToSubfolders={isRoot}
+                                      folderPath={folderPath}
                                       footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
                                       onSetTier={(tier, isRecursive) =>
                                         addToProjectAndGrant(actor, tier, isRecursive)
@@ -750,8 +777,8 @@ export const FolderAccessSheet = ({
                                 </div>
                                 {orgCandidates.totals[type] > ORG_PREVIEW_LIMIT && (
                                   <p className="py-2.5 text-xs text-muted">
-                                    Showing the first {ORG_PREVIEW_LIMIT}. Search to find someone
-                                    else.
+                                    Showing the first {ORG_PREVIEW_LIMIT} of{" "}
+                                    {orgCandidates.totals[type]}. Search to find someone else.
                                   </p>
                                 )}
                               </section>
@@ -793,8 +820,20 @@ export const FolderAccessSheet = ({
         isPending={deleteUserAccess.isPending || deleteIdentityAccess.isPending}
         folderPath={folderPath}
         environmentName={environmentName}
+        isSelf={removalActor ? isSelf(removalActor) : false}
       />
-      {upgradeGate}
+      <ChangeOwnFolderAccessDialog
+        change={ownAccessChange}
+        onOpenChange={(open) => {
+          if (!open) setOwnAccessChange(null);
+        }}
+        onConfirm={(change) => {
+          change.apply();
+          setOwnAccessChange(null);
+        }}
+        folderPath={folderPath}
+        environmentName={environmentName}
+      />
     </>
   );
 };

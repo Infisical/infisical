@@ -11,14 +11,19 @@ import {
   SecretScanningExecPhase
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
 
+import { SecretScanningAlertEvent } from "./secret-scanning-v2-events";
 import {
   assertClonedRepositoryWithinSizeLimit,
+  completeDiffScan,
+  completeFullScan,
   convertPatchLineToFileLineNumber,
+  failScan,
   parseScanErrorMessage,
   planCommitBatches,
   replaceNonChangesWithNewlines,
   repositoryHasCommits,
-  SecretScanningSizeLimitError
+  SecretScanningSizeLimitError,
+  TScanOutcomeDeps
 } from "./secret-scanning-v2-fns";
 
 // getConfig is read lazily inside the functions under test; only the size limit matters here.
@@ -324,5 +329,147 @@ describe("convertPatchLineToFileLineNumber", () => {
     const patch = "--- a/file.txt\n+++ b/file.txt\n@@ -4,0 +5,1 @@\n+secret";
 
     expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "secret"))).toBe(5);
+  });
+});
+
+describe("replaceNonChangesWithNewlines", () => {
+  // Diff scans use the scanner's columns as they are, so a leak gets the same fingerprint as in a full scan.
+  test("keeps an added line exactly as it is in the file, so the scanner reports the file's columns", () => {
+    const patch = '@@ -1,1 +1,2 @@\n line one\n+  token = "secret"';
+
+    expect(replaceNonChangesWithNewlines(patch).split("\n")).toEqual(["", "", '  token = "secret"']);
+  });
+});
+
+const counts = { locations: 3, findings: 2, unresolvedFindings: 2 };
+const dataSource = { id: "ds-1", projectId: "project-1" };
+
+const buildOutcome = ({
+  closes = true,
+  projectExists = true,
+  createdUnresolved = 1,
+  reopened = 0
+}: {
+  closes?: boolean;
+  projectExists?: boolean;
+  createdUnresolved?: number;
+  reopened?: number;
+} = {}) => {
+  const transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn("tx"));
+  const emit = vi.fn<(events: { type: string; data: Record<string, unknown> }[]) => Promise<void>>(async () => {});
+
+  const deps = {
+    secretScanningV2DAL: {
+      scans: {
+        transaction,
+        markCompleted: vi.fn(async () => closes),
+        markFailed: vi.fn(async () => closes)
+      },
+      findings: {
+        transaction,
+        persistLocations: vi.fn(async () => ({
+          scannedLocations: [],
+          reopenedFindings: Array.from({ length: reopened }, (_, i) => ({ id: `reopened-${i}`, rule: "rule" }))
+        })),
+        countByScanId: vi.fn(async () => counts),
+        countUnresolvedCreatedByScanId: vi.fn(async () => createdUnresolved)
+      }
+    } as unknown as TScanOutcomeDeps["secretScanningV2DAL"],
+    projectDAL: {
+      findById: vi.fn(async () => (projectExists ? { id: "project-1", orgId: "org-1" } : undefined))
+    } as unknown as TScanOutcomeDeps["projectDAL"],
+    eventEmitter: { emit } as unknown as TScanOutcomeDeps["eventEmitter"]
+  };
+
+  return { deps, emit };
+};
+
+const row = {
+  fingerprint: "commit:file:rule:1:1",
+  rule: "rule",
+  severity: "high",
+  details: {},
+  secretFindingBlindIndex: "blind"
+} as unknown as Parameters<typeof completeDiffScan>[1]["rows"][number];
+
+describe("completeFullScan", () => {
+  test("alerts on the findings it created", async () => {
+    const { deps, emit } = buildOutcome({ createdUnresolved: 2 });
+
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toEqual(counts);
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit.mock.calls[0][0][0]).toMatchObject({
+      type: SecretScanningAlertEvent.SecretsDetected,
+      data: { orgId: "org-1", resourceId: "ds-1", targetIds: ["scan-1"], unresolvedFindings: 2 }
+    });
+  });
+
+  test("returns null and emits nothing for a scan already closed", async () => {
+    const { deps, emit } = buildOutcome({ closes: false });
+
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toBeNull();
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  test("closes the scan without an alert when its project is being deleted", async () => {
+    const { deps, emit } = buildOutcome({ projectExists: false });
+
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toEqual(counts);
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("completeDiffScan", () => {
+  test("counts reopened findings as news", async () => {
+    const { deps, emit } = buildOutcome({ createdUnresolved: 0, reopened: 2 });
+
+    const result = await completeDiffScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1", rows: [row] });
+
+    expect(result.counts).toEqual(counts);
+    expect(emit.mock.calls[0][0][0].data).toMatchObject({ unresolvedFindings: 2 });
+  });
+
+  test("keeps the findings of a scan already closed but reports no counts", async () => {
+    const { deps, emit } = buildOutcome({ closes: false, reopened: 1 });
+
+    const result = await completeDiffScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1", rows: [row] });
+
+    expect(result.counts).toBeNull();
+    expect(result.reopenedFindings).toHaveLength(1);
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("failScan", () => {
+  test("alerts only when given the data source to alert", async () => {
+    const silent = buildOutcome();
+    await expect(failScan(silent.deps, { scanId: "scan-1", statusMessage: "boom" })).resolves.toBe(true);
+    expect(silent.emit).not.toHaveBeenCalled();
+
+    const alerted = buildOutcome();
+    await failScan(alerted.deps, { scanId: "scan-1", statusMessage: "boom", alertDataSource: dataSource });
+    expect(alerted.emit.mock.calls[0][0][0]).toMatchObject({
+      type: SecretScanningAlertEvent.ScanFailed,
+      data: { errorMessage: "boom" }
+    });
+  });
+
+  test("fails a scan whose project is being deleted, without an alert", async () => {
+    const { deps, emit } = buildOutcome({ projectExists: false });
+
+    await expect(
+      failScan(deps, { scanId: "scan-1", statusMessage: "boom", alertDataSource: dataSource })
+    ).resolves.toBe(true);
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  test("emits nothing for a scan already closed", async () => {
+    const { deps, emit } = buildOutcome({ closes: false });
+
+    await expect(
+      failScan(deps, { scanId: "scan-1", statusMessage: "boom", alertDataSource: dataSource })
+    ).resolves.toBe(false);
+    expect(emit).not.toHaveBeenCalled();
   });
 });

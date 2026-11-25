@@ -1,7 +1,8 @@
 export const BillingProduct = {
   SecretsManagement: "secrets_manager",
   CertificateManagement: "cert_management",
-  Pam: "pam"
+  Pam: "pam",
+  AgentVault: "agent_vault"
 } as const;
 
 export const BillingPlan = {
@@ -42,7 +43,9 @@ export const UpgradeFeature = {
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
   PamEnterpriseAlerting: "pam-enterprise-alerting",
-  EnterprisePamAccounts: "enterprise-pam-accounts"
+  EnterprisePamAccounts: "enterprise-pam-accounts",
+  AgentVault: "agent-vault",
+  AgentVaultHooks: "agent-vault-hooks"
 } as const;
 
 export type UpgradeIntent = {
@@ -128,10 +131,10 @@ export const FolderAccessControlsUpgradeIntent = {
   featureKey: UpgradeFeature.FolderAccessControls,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  upgradeLabel: "Unlock Environment-Wide Folder Access",
-  title: "Apply Access to the Environment",
+  upgradeLabel: "Unlock Folder Access Controls",
+  title: "Manage Folder Access",
   description:
-    "Applying folder access to every folder in an environment is included with Secrets Management Pro. Review the plan or start a free trial to continue."
+    "Folder-level access controls are included with Secrets Management Pro. Review the plan or start a free trial to continue."
 } satisfies UpgradeIntent;
 
 export const SecretImportReplicationUpgradeIntent = {
@@ -331,6 +334,26 @@ export const PamUpgradeIntent = {
   title: "Open Privileged Access Management",
   description:
     "Privileged Access Management is included with the Pro plan. Review the plans or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const AgentVaultUpgradeIntent = {
+  featureKey: UpgradeFeature.AgentVault,
+  productKey: BillingProduct.AgentVault,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Agent Vault",
+  title: "Add Agent Vault to Your Plan",
+  description:
+    "Agent Vault is on the Pro plan. Add a payment method to keep brokering past the free requests."
+} satisfies UpgradeIntent;
+
+export const AgentVaultHooksUpgradeIntent = {
+  featureKey: UpgradeFeature.AgentVaultHooks,
+  productKey: BillingProduct.AgentVault,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Hooks",
+  title: "Add Hooks to Your Plan",
+  description:
+    "Hooks are on the Pro plan. Upgrade to have your own server allow or refuse agent requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {

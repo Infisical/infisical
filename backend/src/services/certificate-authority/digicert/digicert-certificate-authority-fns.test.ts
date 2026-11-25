@@ -2,6 +2,8 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { CrlReason } from "@app/services/certificate/certificate-types";
+
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { DigiCertCertificateAuthorityFns } from "./digicert-certificate-authority-fns";
 
@@ -9,11 +11,16 @@ const client = {
   getOrder: vi.fn(),
   reissueOrder: vi.fn(),
   downloadCertificatePem: vi.fn(),
-  cancelOrderReissue: vi.fn()
+  cancelOrderReissue: vi.fn(),
+  revokeCertificate: vi.fn(),
+  revokeOrder: vi.fn()
 };
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
-vi.mock("./digicert-api-client", () => ({ createDigiCertApiClient: () => client }));
+vi.mock("./digicert-api-client", () => ({
+  createDigiCertApiClient: () => client,
+  DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS: 20_000
+}));
 vi.mock("./digicert-certificate-authority-shared", () => ({
   castDbEntryToDigiCertCertificateAuthority: () => ({
     id: "ca-1",
@@ -23,10 +30,6 @@ vi.mock("./digicert-certificate-authority-shared", () => ({
   getDigiCertClientCredentials: vi.fn().mockResolvedValue({ apiKey: "key", baseUrl: "https://digicert.example" }),
   extractLeafAndChain: (pem: string) => ({ leaf: pem, chain: "" })
 }));
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
-}));
-
 const createCertificate = async (name: string) => {
   const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
   const keys = (await webcrypto.subtle.generateKey(algorithm, true, ["sign", "verify"])) as CryptoKeyPair;
@@ -63,6 +66,11 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
       serialNumber: "0a1b",
       externalMetadata: { type: CaType.DIGICERT, orderId: ORDER_ID, certificateId: storedCertificateId }
     }),
+    findOneLiveFirst: vi.fn().mockResolvedValue({
+      id: ORIGINAL_CERTIFICATE_ID,
+      serialNumber: "0a1b",
+      externalMetadata: { type: CaType.DIGICERT, orderId: ORDER_ID, certificateId: storedCertificateId }
+    }),
     updateById: vi.fn()
   };
   const certificateAuthorityDAL = {
@@ -74,10 +82,10 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
     certificateBodyDAL: {
       findOne: vi.fn().mockResolvedValue({ encryptedCertificate: Buffer.from(storedCertificate.rawData) })
     },
-    kmsService: {
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
-    },
-    projectDAL: {}
+    }
   } as unknown as Parameters<typeof DigiCertCertificateAuthorityFns>[0]);
 };
 
@@ -235,5 +243,39 @@ describe("DigiCert cancelPendingRequest", () => {
       buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })
     ).resolves.toBeUndefined();
     expect(client.cancelOrderReissue).toHaveBeenCalledWith(ORDER_ID, expect.any(String));
+  });
+});
+
+describe("DigiCert revokeCertificate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    client.revokeCertificate.mockResolvedValue({ id: 9001, status: "pending" });
+  });
+
+  it("sends a plain revoke without skipping approval and succeeds while the request waits", async () => {
+    await expect(
+      buildFns(CURRENT_CERTIFICATE_ID).revokeCertificate({
+        caId: CA_ID,
+        serialNumber: "0a1b",
+        reason: CrlReason.SUPERSEDED
+      })
+    ).resolves.toBeUndefined();
+    expect(client.revokeCertificate).toHaveBeenCalledWith(CURRENT_CERTIFICATE_ID, expect.any(String), {
+      skipApproval: false
+    });
+  });
+
+  it("skips approval and returns the pending request id only when the caller allows a pending approval", async () => {
+    await expect(
+      buildFns(CURRENT_CERTIFICATE_ID).revokeCertificate({
+        caId: CA_ID,
+        serialNumber: "0a1b",
+        reason: CrlReason.SUPERSEDED,
+        allowPendingApproval: true
+      })
+    ).resolves.toBe(9001);
+    expect(client.revokeCertificate).toHaveBeenCalledWith(CURRENT_CERTIFICATE_ID, expect.any(String), {
+      skipApproval: true
+    });
   });
 });

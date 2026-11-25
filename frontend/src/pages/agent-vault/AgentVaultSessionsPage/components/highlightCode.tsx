@@ -4,6 +4,7 @@ import { pythonLanguage } from "@codemirror/lang-python";
 import { yamlLanguage } from "@codemirror/lang-yaml";
 import { Language, StreamLanguage } from "@codemirror/language";
 import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
+import { go } from "@codemirror/legacy-modes/mode/go";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { highlightCode, tagHighlighter } from "@lezer/highlight";
 
@@ -20,10 +21,12 @@ const styleFor = (classes: string): CSSProperties =>
 
 const shellLanguage = StreamLanguage.define(shell);
 const dockerfileLanguage = StreamLanguage.define(dockerFile);
+const goLanguage = StreamLanguage.define(go);
 
 export enum CodeLanguage {
   TypeScript = "typescript",
   Python = "python",
+  Go = "go",
   Yaml = "yaml",
   Shell = "shell",
   Dockerfile = "dockerfile"
@@ -32,6 +35,7 @@ export enum CodeLanguage {
 const LANGUAGES: Record<CodeLanguage, Language> = {
   [CodeLanguage.TypeScript]: typescriptLanguage,
   [CodeLanguage.Python]: pythonLanguage,
+  [CodeLanguage.Go]: goLanguage,
   [CodeLanguage.Yaml]: yamlLanguage,
   [CodeLanguage.Shell]: shellLanguage,
   [CodeLanguage.Dockerfile]: dockerfileLanguage
@@ -41,6 +45,7 @@ export const codeLanguageForFile = (fileName: string) => {
   if (fileName.split("/").pop()?.startsWith("Dockerfile")) return CodeLanguage.Dockerfile;
   if (fileName.endsWith(".ts")) return CodeLanguage.TypeScript;
   if (fileName.endsWith(".py")) return CodeLanguage.Python;
+  if (fileName.endsWith(".go")) return CodeLanguage.Go;
   if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) return CodeLanguage.Yaml;
   if (fileName.endsWith(".sh")) return CodeLanguage.Shell;
   return null;

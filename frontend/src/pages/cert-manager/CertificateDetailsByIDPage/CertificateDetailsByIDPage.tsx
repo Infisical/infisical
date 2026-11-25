@@ -7,6 +7,7 @@ import { PageTitle } from "@app/components/PageTitle";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   AccessRestrictedDialog,
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +38,8 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
+import { useRevocationPolicyProfileNames } from "@app/hooks/api/approvalPolicies";
+import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -67,9 +70,11 @@ import {
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
   getCertificateDeletionWarning,
+  getPendingRevocationRequestLink,
+  getPendingRevocationState,
+  getRenewNowState,
   isExpiringWithinOneDay,
-  isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  isManagedCertificate
 } from "../CertificatesPage/components/CertificatesTable.utils";
 import { useCertificateHoldingSyncs } from "../CertificatesPage/components/useCertificateHoldingSyncs";
 import {
@@ -112,6 +117,13 @@ const Page = () => {
   const { permission } = useProjectPermission();
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
+  );
+  const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
+  const pendingRevocationRequest = certificate
+    ? pendingRevocations?.get(certificate.id)
+    : undefined;
+  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(
+    certificate?.applicationId
   );
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
@@ -243,10 +255,19 @@ const Page = () => {
         PkiApplicationResourceSub.Certificates
       ))
   );
+  const isRevocationApprovalRequired = Boolean(
+    certificate?.profileName && revocationPolicyProfileNames?.has(certificate.profileName)
+  );
+  const pendingRevocation = getPendingRevocationState({
+    pendingRequest: pendingRevocationRequest,
+    isRevoked,
+    isRevocationApprovalRequired
+  });
   const applicationAccess = certificate?.applicationId
     ? getApplicationCertificateAccess({
         applicationName: certificate.applicationName ?? "this application",
-        permission: appPermissionData?.permission
+        permission: appPermissionData?.permission,
+        isRevocationApprovalRequired
       })
     : undefined;
   const canEditCertificate = applicationAccess
@@ -258,9 +279,23 @@ const Page = () => {
     : Boolean(
         certSubject && permission.can(ProjectPermissionCertificateActions.Delete, certSubject)
       );
+  const canRevokeCertificate = applicationAccess
+    ? applicationAccess.canRevoke
+    : canDeleteCertificate;
   const canEditPkiSyncs = applicationAccess
     ? applicationAccess.canManagePkiSyncs
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+  const revokeBlockedReason =
+    pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
+  const pendingRevocationLink =
+    pendingRevocation.isPending && pendingRevocationRequest
+      ? getPendingRevocationRequestLink(currentProject, pendingRevocationRequest.id)
+      : undefined;
+  const pendingRevocationBadge = pendingRevocationLink ? (
+    <Badge variant="warning" asChild>
+      <Link {...pendingRevocationLink}>Revocation Pending</Link>
+    </Badge>
+  ) : null;
 
   let certificateBackLink = (
     <Link
@@ -327,8 +362,41 @@ const Page = () => {
         <PageHeader
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
-          description="View certificate details"
-          title={displayName}
+          description={
+            pendingRevocationLink ? (
+              <>
+                This certificate isn&apos;t revoked until its{" "}
+                <Link
+                  {...pendingRevocationLink}
+                  className="text-foreground underline underline-offset-2 hover:text-project"
+                >
+                  revocation request
+                </Link>{" "}
+                is approved.
+                {pendingRevocation.revokeReplacesRequestReason &&
+                  ` ${pendingRevocation.revokeReplacesRequestReason}`}
+              </>
+            ) : (
+              "View certificate details"
+            )
+          }
+          title={
+            pendingRevocationBadge ? (
+              // The h1 truncates as one line after its 26px scope icon (plus mr-3), so this box gets the rest
+              // of the width; at max-w-full it overflows and the h1 replaces the whole title with an ellipsis.
+              <span className="inline-flex max-w-[calc(100%-2.375rem)] items-center gap-x-3 align-bottom">
+                <span
+                  className="min-w-0 truncate underline decoration-project/90 underline-offset-4"
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+                {pendingRevocationBadge}
+              </span>
+            ) : (
+              displayName
+            )
+          }
         >
           {isDeleted && !canOfferRevoke ? (
             <Tooltip>
@@ -435,18 +503,19 @@ const Page = () => {
 
                   if (!isRenewable) return null;
 
-                  const profileMissing = !certificate.profileId;
-                  if (profileMissing && !isManagedCertificate(certificate)) return null;
+                  if (!certificate.profileId && !isManagedCertificate(certificate)) return null;
 
-                  const renewBlockedReason = profileMissing
-                    ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                    : applicationAccess?.renewBlockedReason;
+                  const renewNow = getRenewNowState({
+                    certificate,
+                    canRenew: canRenewCertificate,
+                    permissionBlockedReason: applicationAccess?.renewBlockedReason
+                  });
 
                   return (
-                    <BlockedActionTooltip reason={renewBlockedReason}>
+                    <BlockedActionTooltip reason={renewNow.reason}>
                       <DropdownMenuItem
-                        isDisabled={!canRenewCertificate || profileMissing}
-                        isDisabledFocusable={Boolean(renewBlockedReason)}
+                        isDisabled={renewNow.isDisabled}
+                        isDisabledFocusable={Boolean(renewNow.reason)}
                         onClick={() =>
                           handlePopUpOpen("renewCertificate", {
                             certificateId: certificate.id,
@@ -483,13 +552,18 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip reason={applicationAccess?.revokeBlockedReason}>
+                  <BlockedActionTooltip
+                    reason={revokeBlockedReason ?? pendingRevocation.revokeReplacesRequestReason}
+                  >
                     <DropdownMenuItem
-                      isDisabled={!canDeleteCertificate}
-                      isDisabledFocusable={Boolean(applicationAccess?.revokeBlockedReason)}
+                      isDisabled={
+                        !canRevokeCertificate || Boolean(pendingRevocation.revokeBlockedReason)
+                      }
+                      isDisabledFocusable={Boolean(revokeBlockedReason)}
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {
-                          certificateId: certificate.id
+                          certificateId: certificate.id,
+                          isRevocationApprovalRequired
                         })
                       }
                     >
@@ -514,7 +588,10 @@ const Page = () => {
           )}
         </PageHeader>
         <div className="flex flex-col gap-5 lg:flex-row">
-          <CertificateOverviewSection certificateId={certificate.id} />
+          <CertificateOverviewSection
+            certificateId={certificate.id}
+            pendingRevocationBadge={pendingRevocationBadge}
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
             <CertificateInstallationsSection certificateId={certificate.id} />

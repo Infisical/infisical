@@ -29,7 +29,15 @@ const getCreateDate = (key: AccessKeyMetadata): number => {
 export const awsIamUserSecretRotationFactory: TRotationFactory<
   TAwsIamUserSecretRotationWithConnection,
   TAwsIamUserSecretRotationGeneratedCredentials
-> = (secretRotation) => {
+> = (
+  secretRotation,
+  _appConnectionDAL,
+  _kmsDataKeyService,
+  _gatewayV2Service,
+  _gatewayPoolService,
+  _keyStore,
+  instanceConfigService
+) => {
   const {
     parameters: { region, userName },
     connection,
@@ -37,7 +45,11 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
   } = secretRotation;
 
   const $rotateClientSecret = async () => {
-    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(
+      connection,
+      instanceConfigService,
+      region
+    );
     const iam = new IAMClient({ credentials, region: resolvedRegion });
 
     const { AccessKeyMetadata } = await iam.send(new ListAccessKeysCommand({ UserName: userName }));
@@ -80,7 +92,11 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     generatedCredentials,
     callback
   ) => {
-    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(
+      connection,
+      instanceConfigService,
+      region
+    );
     const iam = new IAMClient({ credentials, region: resolvedRegion });
 
     await Promise.all(
@@ -126,7 +142,7 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TAwsIamUserSecretRotationGeneratedCredentials
   > = async ({ accessKeyId, secretAccessKey }) => {
-    const { region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const { region: resolvedRegion } = await getAwsConnectionConfig(connection, instanceConfigService, region);
 
     const sts = new STSClient({
       credentials: {

@@ -24,6 +24,10 @@ export const workflowIntegrationKeys = {
     "microsoft-teams-workflow-integration-teams"
   ],
   getSlackIntegrationChannels: (id?: string) => [{ id }, "slack-workflow-integration-channels"],
+  getSlackIntegrationAlertCount: (id?: string) => [
+    { id },
+    "slack-workflow-integration-alert-count"
+  ],
   getMicrosoftTeamsClientId: () => ["microsoft-teams-client-id"]
 };
 
@@ -145,6 +149,18 @@ export const useGetSlackIntegrationChannels = (id?: string) =>
   useQuery({
     queryKey: workflowIntegrationKeys.getSlackIntegrationChannels(id),
     queryFn: () => fetchSlackIntegrationChannels(id),
+    enabled: Boolean(id)
+  });
+
+export const useGetSlackIntegrationAlertCount = (id?: string) =>
+  useQuery({
+    queryKey: workflowIntegrationKeys.getSlackIntegrationAlertCount(id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ alertCount: number }>(
+        `/api/v1/workflow-integrations/slack/${id}/alert-count`
+      );
+      return data.alertCount;
+    },
     enabled: Boolean(id)
   });
 

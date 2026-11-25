@@ -1,11 +1,10 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -42,6 +41,7 @@ type TSecretImportSecretsV2 = {
     name: string;
   };
   id: string;
+  importId: string;
   folderId: string | undefined;
   importFolderId: string;
   crossProjectImport: boolean;
@@ -82,7 +82,7 @@ export const processReservedImports = async <
 >(
   imports: T[],
   secretImportDAL: Pick<TSecretImportDALFactory, "findByIds">
-): Promise<T[]> => {
+): Promise<(T & { replicationImportId?: string })[]> => {
   const reservedImportIds: string[] = [];
 
   imports.forEach((secretImport) => {
@@ -124,7 +124,8 @@ export const processReservedImports = async <
             return {
               ...secretImport,
               importPath: referencedDetails.importPath,
-              importEnv: referencedDetails.importEnv
+              importEnv: referencedDetails.importEnv,
+              replicationImportId: referencedImportId
             };
           }
         }
@@ -259,7 +260,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior,
   projectId,
   projectFolderGrantDAL,
-  kmsService,
+  kmsDataKeyService,
   actorOrgId,
   orgDAL,
   abortSignal
@@ -286,7 +287,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   actorOrgId: string;
   abortSignal?: AbortSignal;
 }) => {
@@ -294,7 +295,7 @@ export const fnSecretsV2FromImports = async ({
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: sourceDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });
@@ -441,7 +442,7 @@ export const fnSecretsV2FromImports = async ({
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
     const isFirstIteration = !processedImports.length;
-    processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved }, i) => {
+    processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved, replicationImportId }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
 
       const isCrossProject =
@@ -511,6 +512,9 @@ export const fnSecretsV2FromImports = async ({
           environmentInfo: importEnv,
           folderId: importedFolders?.[i]?.id,
           id,
+          // The import the user sees: a replication import's values come through its reserved row, which reports
+          // the same source environment and path as a regular import of that source.
+          importId: replicationImportId ?? id,
           importFolderId: folderId,
           secrets: secretsWithDuplicate,
           crossProjectImport: isCrossProject

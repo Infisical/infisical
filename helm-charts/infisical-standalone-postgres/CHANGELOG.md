@@ -1,3 +1,35 @@
+## 1.12.5
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.14` to `v0.167.15`.
+
+Upgrade notes:
+* Organization selectedMfaMethod removed (`v0.167.15`): PATCH /api/v1/organization/:organizationId ignores selectedMfaMethod, and organization responses no longer return it. A request that sets enforceMfa to true with selectedMfaMethod keeps the organization's allowed methods, which default to email only, so it leaves email allowed or, without SMTP, fails with a 400 error. Before upgrading, change automation that sets selectedMfaMethod to send allowedMfaMethods (for example `["totp"]`) instead.
+* Rollout: with the default `infisical.replicaCount: 2`, pods still running `v0.167.14` write the dropped `selectedMfaMethod` column when organization MFA settings change, so those changes fail until the rollout finishes. Don't change organization MFA settings until every pod runs `v0.167.15`.
+
+## 1.12.4
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.13` to `v0.167.14`.
+
+## 1.12.3
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.12` to `v0.167.13`.
+
+## 1.12.2
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.0` to `v0.167.12`.
+
+Upgrade notes:
+* Agent Vault session logs license (`v0.167.5`): Session logs in default storage (OBJECT_STORAGE_S3_*) now need a license that includes them, and existing licenses may not. Without one, instances stop recording them there and can't show existing ones, while external storage is unaffected. If you store session logs in default storage, confirm before upgrading that your license includes them, and replace offline license keys that don't.
+* Proxied service creation disabled (`v0.167.5`): Creating a proxied service, including through POST /api/v1/proxied-services, now returns a 400 error as Agent Proxy moves to Agent Vault. Existing proxied services keep working and can still be edited or deleted. Move any automation that creates proxied services to Agent Vault before upgrading.
+* AWS IAM dynamic secret IRSA setting (`v0.167.5`): AWS IAM dynamic secrets that use IRSA with the temporary credentials type now require KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN, as the IAM user type already did. With the default of false, creating, updating and leasing them fails. If you use these dynamic secrets, set KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN=true before upgrading, or move them to another authentication method.
+* PKI certificate deletion keeps records (`v0.167.5`): Deleting a certificate, including through Certificate Cleanup, now keeps its record as Deleted, and the same certificate can't be imported again. Change automation that deletes and re-imports a certificate so it issues a new one.
+* Legacy access approval system removed (`v0.167.8`): Infisical no longer reads the legacy access approval tables, so policies that the v0.166.9 migration left on the legacy system are not listed or enforced, and their requests can't be reviewed. Before upgrading, search the logs from your v0.166.9 or later upgrade for "migrate-access-approval-policies-to-global: policy not migrated" and recreate any policy listed there.
+* Audit log reads need a license (`v0.167.8`): GET /api/v1/organization/audit-logs and the deprecated project audit logs route now return a 400 error when the license doesn't include audit logs, which is the default without a license. Logs are still recorded. If you read audit logs through the API, confirm before upgrading that your license includes them.
+
+## 1.12.1
+Changes:
+* `infisical.image.tag` now defaults to `""`, which uses the chart's `appVersion`. Each chart release sets `appVersion` to the Infisical release it ships, so the default image no longer has to be bumped by hand. Setting `infisical.image.tag` still pins a specific version.
+
 ## 1.12.0
 Changes:
 * Added `infisical.rolloutOnEveryRender` (default `true`) to control the `updatedAt` annotation on the Infisical Deployment and pod template. The annotation is set to the render time, so every `helm upgrade`, and every Argo CD or Flux sync, rolls all pods even when nothing changed, and GitOps tools show the release as permanently out of sync. Set it to `false` to keep the pod spec stable between renders. After changing the `infisical.kubeSecretRef` secret, restart the pods with `kubectl rollout restart`.

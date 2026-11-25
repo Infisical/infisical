@@ -47,7 +47,20 @@ export enum DynamicSecretProviders {
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
-  Kafka = "kafka"
+  Kafka = "kafka",
+  OpenRouter = "openrouter",
+  Neon = "neon"
+}
+
+export enum OpenRouterLimitReset {
+  Daily = "daily",
+  Weekly = "weekly",
+  Monthly = "monthly"
+}
+
+export enum NeonLeaseType {
+  Role = "role",
+  Branch = "branch"
 }
 
 export enum KafkaSaslMechanism {
@@ -625,6 +638,16 @@ export type TDynamicSecretProvider =
           };
     }
   | {
+      type: DynamicSecretProviders.OpenRouter;
+      inputs: {
+        managementKey?: string;
+        workspaceId?: string | null;
+        limit?: string | null;
+        limitReset?: OpenRouterLimitReset | null;
+        includeByokInLimit?: boolean;
+      };
+    }
+  | {
       type: DynamicSecretProviders.OAuth2;
       inputs: {
         grantType: OAuth2GrantType.ClientCredentials;
@@ -657,6 +680,29 @@ export type TDynamicSecretProvider =
         ca?: string;
         sslRejectUnauthorized?: boolean;
       };
+    }
+  | {
+      type: DynamicSecretProviders.Neon;
+      inputs:
+        | {
+            leaseType: NeonLeaseType.Role;
+            apiKey?: string;
+            projectId: string;
+            branchId: string;
+            databaseName: string;
+            pooled: boolean;
+          }
+        | {
+            leaseType: NeonLeaseType.Branch;
+            apiKey?: string;
+            projectId: string;
+            parentBranchId?: string | null;
+            databaseName: string;
+            roleName: string;
+            pooled: boolean;
+            resetRolePassword: boolean;
+            setBranchExpiration: boolean;
+          };
     };
 
 export type TCreateDynamicSecretDTO = {

@@ -26,6 +26,7 @@ export enum PkiApplicationResourceActions {
   Delete = "delete",
   Create = "create",
   List = "list",
+  RequestRevocation = "request-revocation",
   ReadPrivateKey = "read-private-key",
   Import = "import",
   SyncCertificates = "sync-certificates",
@@ -66,6 +67,7 @@ export type TPkiApplicationProfile = {
   apiConfigId?: string | null;
   acmeConfigId?: string | null;
   scepConfigId?: string | null;
+  microsoftAutoenrollmentConfigId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -77,6 +79,12 @@ export type TPkiApplicationMemberDetails = {
   authMethod?: string | null;
   slug?: string | null;
 };
+
+export enum PkiApplicationMemberRole {
+  Admin = "admin",
+  Operator = "operator",
+  Auditor = "auditor"
+}
 
 export type TPkiApplicationMember = {
   membershipId: string;
@@ -92,6 +100,44 @@ export type TPkiApplicationMember = {
 };
 
 export { ScepChallengeType };
+
+export type TMicrosoftAutoenrollmentGroup = {
+  sid: string;
+  name: string;
+};
+
+export enum MicrosoftAutoenrollmentChannelBindingStatus {
+  Enforced = "enforced",
+  Unverifiable = "unverifiable",
+  NotChecked = "not-checked"
+}
+
+export type TMicrosoftAutoenrollmentEnrollment = {
+  id: string;
+  policyUrl: string;
+  policyId: string;
+  templateName: string;
+  templateOid: string;
+  allowedGroups: TMicrosoftAutoenrollmentGroup[];
+  renewBeforeDays: number;
+  effectiveRenewBeforeSeconds: number | null;
+  servicePrincipalName: string;
+  keyVersion: number;
+  connectionId: string;
+  allowAnyChannelBinding: boolean;
+  channelBinding: {
+    status: MicrosoftAutoenrollmentChannelBindingStatus;
+    reason: string | null;
+  };
+};
+
+export type TMicrosoftAutoenrollmentOtherProfile = {
+  profileId: string;
+  profileName: string;
+  servicePrincipalName: string;
+  keyVersion: number;
+  connectionId: string;
+};
 
 export type TPkiApplicationEnrollmentState = {
   applicationId: string;
@@ -122,10 +168,14 @@ export type TPkiApplicationEnrollmentState = {
     validationConnectionId: string | null;
     signRaWithCa: boolean;
   } | null;
+  microsoftAutoenrollment: TMicrosoftAutoenrollmentEnrollment | null;
+  microsoftAutoenrollmentOtherProfiles: TMicrosoftAutoenrollmentOtherProfile[];
   caType: CaType;
+  microsoftAutoenrollmentUnsupportedReason: string | null;
   estConfigured: boolean;
   acmeConfigured: boolean;
   scepConfigured: boolean;
+  microsoftAutoenrollmentConfigured: boolean;
 };
 
 export type TCreatePkiApplicationDTO = {
@@ -237,4 +287,21 @@ export type TSetScepEnrollmentDTO = {
   dynamicChallengeMaxPending?: number;
   validationConnectionId?: string;
   signRaWithCa?: boolean;
+};
+
+export type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  connectionId?: string;
+  allowedGroupSids?: string[] | null;
+  renewBeforeDays?: number;
+  keytab?: string;
+  reuseKeytab?: {
+    profileId: string;
+  };
+  allowAnyChannelBinding?: boolean;
+};
+
+export type TMicrosoftAutoenrollmentServicePrincipal = {
+  servicePrincipalName: string;
 };

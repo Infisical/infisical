@@ -1,0 +1,82 @@
+---
+title: "SSH"
+description: "Let an AI agent run commands on an SSH server without holding its password or key."
+---
+
+An SSH service lets an agent reach an SSH server during a [session](/documentation/platform/agent-vault/sessions), with clients such as `ssh`. The agent never holds the password or key: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the server with the service's account. The agent reaches the service through [`infisical agent-vault connect`](/cli/reference#agent-vault-connect).
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the service to
+- A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that can reach the server, and whose HTTP port the agent can reach
+- An account on the server with only the access your agents need
+
+## Add an SSH server
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, select the **Databases and More** tab, then select **SSH**.
+  </Step>
+  <Step>
+    On the **Details** step, enter a **Name** and the [server's details](#server-details). Select **Continue**.
+  </Step>
+  <Step>
+    On the **Credential** step, set up the [account](#credentials) the proxy logs in as. Select **Continue**.
+  </Step>
+  <Step>
+    Optionally, on the **Hook** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks each connection to this service. Select **Continue**.
+  </Step>
+  <Step>
+    On the **Review** step, select **Add Service**.
+  </Step>
+</Steps>
+
+Next, [connect your agent](/documentation/platform/agent-vault/databases-and-ssh#connect-your-agent) to the service.
+
+## Server details
+
+- **Name:** The name the agent connects with, as in `infisical agent-vault connect bastion` (lowercase letters, numbers, and hyphens, at most 63 characters)
+- **Host:** The server's host name or IP address, as the proxy reaches it (no scheme, port, path, or variable)
+- **Port:** The server's port (defaults to `22`)
+
+## Credentials
+
+### Username and password
+
+Enter the account's **Username** and **Password**. To give each member their own account, leave the username, the password, or both to each member, as described in [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values). To use a password that several services share, type `{{` in **Password** and select a [variable](/documentation/platform/agent-vault/variables).
+
+### SSH key
+
+An SSH service can log in with a key instead of a password. Under **Credential Type**, select **SSH Key**, then enter the **Username**, paste the **Private Key**, and optionally paste an SSH certificate for the key in **Certificate (optional)**.
+
+- The key must not have a passphrase
+- Members can't each provide their own key or username
+- The key can't use a variable
+
+If the proxy can't use the key, such as a key with a passphrase or a certificate that doesn't match the key, `infisical agent-vault connect` [refuses the service](/documentation/platform/agent-vault/databases-and-ssh#services-the-proxy-refuses) and says why.
+
+## Limitations
+
+- **SSH port forwarding isn't controlled:** An agent can forward ports through an SSH service to anything the SSH server reaches, and the forwarded traffic isn't recorded, so set `AllowTcpForwarding no` and `PermitTunnel no` for the service's account on the SSH server
+- **SSH host keys aren't checked:** The proxy accepts the SSH server's host key without checking it, so run the proxy on a network you trust to reach the server
+- **SSH errors aren't shown:** The agent doesn't see what a command writes to standard error, and the session log doesn't record it or the command's exit code
+- **Password logins only use SSH's password method:** An SSH server that only allows keyboard-interactive logins rejects a password, so use an [SSH key](#ssh-key) instead
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The client says the server closed the connection">
+    The proxy couldn't log in to the server. Check that:
+
+    - The service's **Host** and **Port** are reachable from the proxy's machine
+    - The account's username and password, or key, are correct
+
+    The session's log shows the failed connection as an **Error** row with the reason, and so does the proxy's own log.
+
+    If `connect` printed a message about the service's hook, the hook server refused the connection or didn't give a usable answer. See the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
+  </Accordion>
+</AccordionGroup>

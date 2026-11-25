@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/pwnedpasswords"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
@@ -67,6 +69,30 @@ func TestPassword_Change(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "Incorrect current password.", apierr.Message(res.Body))
 		require.Equal(t, http.StatusOK, meStatus(t, alice.API))
+		current, _ := login(t, tn, alice.Email, harness.UserPassword)
+		require.Equal(t, http.StatusOK, current.StatusCode())
+	})
+
+	t.Run("should refuse a password found in a data breach and keep the current one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		// Dashes keep random hex clear of the policy's repeated-character rule.
+		breached := "Breached-" + strings.Join(strings.Split(id.Short(), ""), "-") + "-9#"
+		pwnedpasswords.Breach(t, fixture.FakenetAdmin(t, tn), breached, 3)
+
+		// Action
+		res, err := alice.API.ResetUserPasswordWithResponse(t.Context(), api.ResetUserPasswordJSONRequestBody{
+			OldPassword: harness.UserPassword,
+			NewPassword: breached,
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "This password has appeared in a known data breach. Choose a different password.", apierr.Message(res.Body))
 		current, _ := login(t, tn, alice.Email, harness.UserPassword)
 		require.Equal(t, http.StatusOK, current.StatusCode())
 	})

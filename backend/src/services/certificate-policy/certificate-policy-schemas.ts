@@ -17,9 +17,19 @@ import {
   PKI_TEXT_COLUMN_MAX_LENGTH
 } from "@app/services/certificate-common/certificate-constants";
 
+import { isUnknownRequestReference, RequestReference } from "./certificate-policy-fns";
 import { TSingleValuedSubjectAttributeType } from "./certificate-policy-types";
 
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
+
+export const refineRequestReference = (value: string, ctx: z.RefinementCtx) => {
+  if (isUnknownRequestReference(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `'${value}' is not a supported reference. Use ${Object.values(RequestReference).join(", ")} as the whole value, or a value without "{{".`
+    });
+  }
+};
 
 const SINGLE_VALUED_SUBJECT_ATTRIBUTE_TYPES = Object.values(CertSubjectAttributeType).filter(
   (type): type is TSingleValuedSubjectAttributeType => type !== CertSubjectAttributeType.DOMAIN_COMPONENT

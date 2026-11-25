@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TAuditLogs } from "@app/db/schemas";
+
 import { AuditLogStreamProduct, LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { auditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
 import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
@@ -84,6 +86,8 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
 // DAL calls inside it asserting against the same object.
 const TX = { tx: true, transaction: async (cb: (savepoint: unknown) => Promise<unknown>) => cb(TX) };
 
+const PRIMARY = { primary: true } as never;
+
 const createService = () => {
   const auditLogStreamOutboxDAL = {
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
@@ -97,11 +101,13 @@ const createService = () => {
       dropped: []
     })),
     findStreamsWithOverdueRows: vi.fn(async () => []),
-    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
+    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
+    deleteOrphanedRows: vi.fn(async () => 0)
   };
 
   const auditLogStreamDAL = {
     find: vi.fn(async () => []),
+    primaryNode: vi.fn(() => PRIMARY),
     findById: vi.fn(
       async (): Promise<{
         id: string;
@@ -109,6 +115,7 @@ const createService = () => {
         orgId: string;
         encryptedCredentials: Buffer;
         streamMode: StreamMode;
+        filters?: unknown;
       }> => ({
         id: STREAM_ID,
         provider: PROVIDER,
@@ -131,7 +138,7 @@ const createService = () => {
     auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
     auditLogStreamDAL: auditLogStreamDAL as never,
     projectDAL: projectDAL as never,
-    kmsService: {} as never,
+    kmsDataKeyService: {} as never,
     keyStore: {} as never,
     queueService: {} as never,
     eventEmitter
@@ -187,6 +194,111 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(call.successIds).toEqual([]);
     expect(call.retriable).toBeNull();
     expect(call.exhaustedIds).toEqual([1]);
+  });
+
+  test("never delivers queued session activity once the stream stops receiving it", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    const auditLog = buildRow({ id: 1, payload: { id: "log-1", eventType: "create-secret" } as never });
+    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
+
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([auditLog, activity]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenCalledTimes(1);
+    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [auditLog.payload] }));
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as { successIds: number[] };
+    expect(call.successIds).toEqual([2, 1]);
+  });
+
+  test("strips output from queued session activity once the stream stops including it", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const query = buildRow({
+      id: 2,
+      payload: {
+        id: "act-1",
+        eventType: "pam-session-activity-query",
+        eventMetadata: { query: "SELECT secret FROM vault", output: "hunter2" }
+      } as never
+    });
+    const output = buildRow({
+      id: 3,
+      payload: { id: "act-2", eventType: "pam-session-activity-output", eventMetadata: { output: "hunter2" } } as never
+    });
+
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch,
+      filters: { pamSessionActivity: { includeOutput: false } }
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([query, output]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamDAL.findById).toHaveBeenCalledWith(STREAM_ID, PRIMARY);
+    expect(batchStreamLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditLogs: [expect.objectContaining({ eventMetadata: { query: "SELECT secret FROM vault" } })]
+      })
+    );
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as { successIds: number[] };
+    expect(call.successIds).toEqual([3, 2]);
+  });
+
+  test("delivers queued session activity while the stream still receives it", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const activity = buildRow({
+      id: 2,
+      payload: { id: "act-1", eventType: "pam-session-activity-command", eventMetadata: { command: "ls" } } as never
+    });
+
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch,
+      filters: { pamSessionActivity: { includeOutput: false } }
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([activity]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
+  });
+
+  test("uses session activity settings saved during a job for its later batches", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const activity = buildRow({
+      id: 2,
+      payload: { id: "act-1", eventType: "pam-session-activity-command", eventMetadata: { command: "ls" } } as never
+    });
+    const stream = {
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch
+    };
+
+    auditLogStreamDAL.findById
+      .mockResolvedValueOnce(stream)
+      .mockResolvedValueOnce({ ...stream, filters: { pamSessionActivity: { includeOutput: false } } });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow()])
+      .mockResolvedValueOnce([activity])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenLastCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
   });
 
   test("commits delivered rows on the success path", async () => {
@@ -382,7 +494,8 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       commitDeliveryResult: vi.fn(async () => undefined),
       recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
       findStreamsWithOverdueRows: vi.fn(async () => []),
-      deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
+      deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
+      deleteOrphanedRows: vi.fn(async () => 0)
     };
 
     const auditLogStreamDAL = {
@@ -404,7 +517,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
       auditLogStreamDAL: auditLogStreamDAL as never,
       projectDAL: projectDAL as never,
-      kmsService: {} as never,
+      kmsDataKeyService: {} as never,
       keyStore: keyStore as never,
       queueService: queueService as never,
       eventEmitter: { emit: vi.fn(async () => undefined) }
@@ -413,7 +526,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, keyStore, queueService };
   };
 
-  const log = (id: string, orgId?: string) => ({ id, orgId }) as TAuditLogStreamOutboxRow["payload"];
+  const log = (id: string, orgId?: string) => ({ id, orgId }) as TAuditLogs;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -471,8 +584,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
   });
 
   // A log carrying a projectId, used to exercise product-scoped streams.
-  const projectLog = (id: string, orgId: string, projectId: string) =>
-    ({ id, orgId, projectId }) as TAuditLogStreamOutboxRow["payload"];
+  const projectLog = (id: string, orgId: string, projectId: string) => ({ id, orgId, projectId }) as TAuditLogs;
 
   test("no stream has a product filter → project types are never resolved (zero-overhead path)", async () => {
     const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, projectDAL } = buildService();
@@ -566,6 +678,26 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     // Only the catch-all stream receives it; the KMS-filtered stream does not.
     expect(inserted.map((r) => r.streamId)).toEqual(["sCatchAll"]);
   });
+
+  test("enqueueStreamEvents inserts the rows it was given and wakes each stream once", async () => {
+    const { service, auditLogStreamOutboxDAL, queueService } = buildService();
+    const sA = { id: "sA", orgId: "orgA", provider: PROVIDER };
+    const sB = { id: "sB", orgId: "orgA", provider: PROVIDER };
+    const event = (id: string) => ({ id, createdAt: "2026-11-19T10:00:00.000Z" });
+
+    await service.enqueueStreamEvents([
+      { stream: sA, payload: event("e1") },
+      { stream: sA, payload: event("e2") },
+      { stream: sB, payload: event("e1") }
+    ]);
+
+    expect(auditLogStreamOutboxDAL.batchInsert).toHaveBeenCalledWith([
+      { streamId: "sA", orgId: "orgA", payload: event("e1") },
+      { streamId: "sA", orgId: "orgA", payload: event("e2") },
+      { streamId: "sB", orgId: "orgA", payload: event("e1") }
+    ]);
+    expect(queueService.queue).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
@@ -576,6 +708,7 @@ describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
     await service.pruneDeliveredRows();
 
     expect(auditLogStreamOutboxDAL.deleteDeliveredOlderThan).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.deleteOrphanedRows).toHaveBeenCalledTimes(1);
     const [retentionMs] = auditLogStreamOutboxDAL.deleteDeliveredOlderThan.mock.calls[0];
     // Retention must comfortably outlive the ~5s ingest-stream trim window so the
     // delivered rows still serve their dedup-guard purpose — guards against accidental

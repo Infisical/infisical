@@ -2,6 +2,7 @@ package approvals_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -80,6 +81,175 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
+	})
+
+	t.Run("should hold a write to the protected folder when its path is sent without the leading slash or with extra slashes", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		spellings := map[string]string{"NO_LEADING_SLASH": "guarded", "DOUBLE_SLASH": "//guarded", "EXTRA_TRAILING": "/guarded//"}
+
+		for key, secretPath := range spellings {
+			// Action
+			res, err := committer.API.CreateSecretV4WithResponse(t.Context(), key, api.CreateSecretV4JSONRequestBody{
+				ProjectId: proj.ID, Environment: "dev", SecretPath: new(secretPath), SecretValue: "value",
+			})
+
+			// Assert
+			require.NoError(t, err)
+			require.Equalf(t, []change{{Op: "create", Key: key}}, heldRequest(t, proj, res.Body).Changes, "path %q", secretPath)
+		}
+		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev", secretmanager.WithPath("/guarded")))
+	})
+
+	t.Run("should hold a batch update whose entries name the protected folder as a request on that folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "old", secretmanager.WithPath("/guarded"))
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/")}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "API_KEY", new("new")
+		body.Secrets[0].SecretPath = new("/guarded")
+
+		// Action
+		res, err := committer.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, []change{{Op: "update", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
+		require.Equal(t, "old", secretmanager.GetSecret(t, proj, "dev", "API_KEY", secretmanager.WithPath("/guarded")).Value)
+	})
+
+	t.Run("should keep a rename in a batch update held on the protected folder named by its entries", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "old", secretmanager.WithPath("/guarded"))
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/")}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].NewSecretName = "API_KEY", new("RENAMED_KEY")
+		body.Secrets[0].SecretPath = new("/guarded")
+		res, err := committer.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+		require.NoError(t, err)
+		held := heldRequest(t, proj, res.Body)
+		approve(t, reviewer, held.ID)
+
+		// Action
+		merge(t, committer, held.ID)
+
+		// Assert
+		require.Equal(t, "old", secretmanager.GetSecret(t, proj, "dev", "RENAMED_KEY", secretmanager.WithPath("/guarded")).Value)
+	})
+
+	t.Run("should refuse a held rename from a user who can edit only the new name", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		proj.NewRole(t, "renamer", fixture.Permission{
+			Subject:    "secrets",
+			Action:     []string{"describeSecret", "readValue", "create", "edit"},
+			Conditions: map[string]any{"secretName": map[string]any{"$eq": "RENAMED_KEY"}},
+		})
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"), fixture.WithRoles("renamer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "old", secretmanager.WithPath("/guarded"))
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/guarded")}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].NewSecretName = "API_KEY", new("RENAMED_KEY")
+
+		// Action
+		res, err := committer.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "batch returned %s", apierr.Body(res.Body))
+		require.Zero(t, openRequestCount(t, proj))
+	})
+
+	t.Run("should refuse a batch update that mixes the protected folder with another folder and change nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		secretmanager.CreateSecret(t, proj, "dev", "GUARDED_KEY", "old", secretmanager.WithPath("/guarded"))
+		secretmanager.CreateSecret(t, proj, "dev", "OPEN_KEY", "old")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/")}
+		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "GUARDED_KEY", new("new")
+		body.Secrets[0].SecretPath = new("/guarded")
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "OPEN_KEY", new("new")
+
+		// Action
+		res, err := committer.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "batch returned %s", apierr.Body(res.Body))
+		require.Contains(t, res.JSON400.Message, "Secrets in '/guarded' need approval under change policy")
+		require.Equal(t, "old", secretmanager.GetSecret(t, proj, "dev", "GUARDED_KEY", secretmanager.WithPath("/guarded")).Value)
+		require.Equal(t, "old", secretmanager.GetSecret(t, proj, "dev", "OPEN_KEY").Value)
+		require.Zero(t, openRequestCount(t, proj))
+	})
+
+	t.Run("should refuse a mixed batch from a user outside the project without revealing the policy", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		outsider := tn.NewUser(t, harness.WithName("outsider"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/")}
+		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "GUARDED_KEY", new("new")
+		body.Secrets[0].SecretPath = new("/guarded")
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "OPEN_KEY", new("new")
+
+		// Action
+		res, err := outsider.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "batch returned %s", apierr.Body(res.Body))
+		require.NotContains(t, string(res.Body), "change policy")
+		require.NotContains(t, string(res.Body), "/guarded")
 	})
 
 	t.Run("should govern a path with its exact policy over a glob that also matches", func(t *testing.T) {
@@ -173,11 +343,73 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		heldRequest(t, proj, res.Body)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"), "a license check must never change what a policy enforces")
 	})
+
+	t.Run("should hold a write to a folder whose path is 1024 characters long", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", longPolicyPath)
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = longPolicyPath
+		})
+
+		// Action
+		res, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new(longPolicyPath), SecretValue: "value",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
+		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev", secretmanager.WithPath(longPolicyPath)))
+	})
 }
 
 func TestSecretApprovalPolicy_Create(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
+
+	t.Run("should refuse a policy path with a dot folder name on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/prod"
+		})
+
+		for _, secretPath := range []string{"/prod/..", "/a/../prod", "/./prod"} {
+			// Action
+			created, err := tn.Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
+				ProjectId:   proj.ID,
+				Environment: new("staging"),
+				SecretPath:  secretPath,
+				Approvals:   new(float32(1)),
+				Approvers:   approverItems(t, []policyMember{userMember(reviewer)}),
+			})
+			require.NoError(t, err)
+			updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+				api.UpdateSecretApprovalPolicyJSONRequestBody{
+					Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+					SecretPath: new(secretPath),
+				})
+			require.NoError(t, err)
+
+			// Assert
+			require.Equalf(t, http.StatusUnprocessableEntity, created.StatusCode(), "create with %s returned %s", secretPath, apierr.Body(created.Body))
+			require.Equalf(t, http.StatusUnprocessableEntity, updated.StatusCode(), "update with %s returned %s", secretPath, apierr.Body(updated.Body))
+			require.Contains(t, string(created.Body), "Secret path cannot contain '.' or '..'")
+			require.Contains(t, string(updated.Body), "Secret path cannot contain '.' or '..'")
+		}
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+		require.Nil(t, policyAt(t, proj, "staging", "/prod"))
+		require.Equal(t, &policyID, policyAt(t, proj, "dev", "/prod"))
+	})
 
 	t.Run("should refuse more required approvals than approvers and create no policy", func(t *testing.T) {
 		t.Parallel()
@@ -392,6 +624,72 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 			"Only secret access policies can be handled by a delegated approval system. Remove delegatedApproval from the request.",
 			res.JSON400.Message)
 		require.Nil(t, policyAt(t, proj, "dev", "/"))
+	})
+
+	t.Run("should save a policy path of 1024 characters on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		moved := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.Environment = new("staging")
+		})
+
+		// Action
+		created := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = longPolicyPath
+		})
+		updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), moved.String(),
+			api.UpdateSecretApprovalPolicyJSONRequestBody{
+				Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+				SecretPath: new(longPolicyPath),
+			})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, updated.StatusCode(), "update returned %s", apierr.Body(updated.Body))
+		require.Equal(t, &created, policyAt(t, proj, "dev", longPolicyPath))
+		require.Equal(t, &moved, policyAt(t, proj, "staging", longPolicyPath))
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+	})
+
+	t.Run("should refuse a policy path over 1024 characters on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/prod"
+		})
+		tooLong := longPolicyPath + "a"
+
+		// Action
+		created, err := tn.Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
+			ProjectId:   proj.ID,
+			Environment: new("staging"),
+			SecretPath:  tooLong,
+			Approvals:   new(float32(1)),
+			Approvers:   approverItems(t, []policyMember{userMember(reviewer)}),
+		})
+		require.NoError(t, err)
+		updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+			api.UpdateSecretApprovalPolicyJSONRequestBody{
+				Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+				SecretPath: new(tooLong),
+			})
+		require.NoError(t, err)
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, created.StatusCode(), "create returned %s", apierr.Body(created.Body))
+		require.Equalf(t, http.StatusUnprocessableEntity, updated.StatusCode(), "update returned %s", apierr.Body(updated.Body))
+		require.Contains(t, string(created.Body), "String must contain at most 1024 character(s)")
+		require.Contains(t, string(updated.Body), "String must contain at most 1024 character(s)")
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+		require.Equal(t, &policyID, policyAt(t, proj, "dev", "/prod"))
 	})
 }
 

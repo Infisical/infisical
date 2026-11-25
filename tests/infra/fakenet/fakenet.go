@@ -22,9 +22,11 @@ import (
 
 // Service is one third-party API.
 type Service interface {
-	// Host is the name the product's client has hardcoded. It has to be hardcoded
-	// for a test to mean anything: a configurable base URL pointed straight at
-	// fakenet would prove the fake works and nothing about interception.
+	// Host is the name the service answers on. For a vendor-hosted API it is the one
+	// the product's client calls by default: a configurable base URL pointed straight
+	// at fakenet would prove the fake works and nothing about interception. A
+	// customer-hosted service, such as an appliance, has no default, so a test passes
+	// its fixed .test name through the connection's normal host setting.
 	Host() string
 
 	// Scope says which caller a request belongs to, by reading the credential off
@@ -48,6 +50,13 @@ type Fake interface {
 	Seed([]byte) error
 }
 
+// Releaser is a Fake that holds state outside its own scope, such as an account two
+// hosts share, and gives it up when the test removes the scope. Release runs under the
+// server's lock, so it must not call back into the server.
+type Releaser interface {
+	Release()
+}
+
 // Call is one request a scope received.
 type Call struct {
 	Method string    `json:"method"`
@@ -66,6 +75,10 @@ type Rule struct {
 
 	// Times is how many matching requests it applies to. Zero means every one.
 	Times int `json:"times"`
+
+	// Hangup closes the connection without answering, which a client sees as a
+	// connection reset rather than an HTTP error. Status and Body are ignored.
+	Hangup bool `json:"hangup,omitempty"`
 }
 
 type scopeID struct{ host, key string }
@@ -116,13 +129,10 @@ func (s *Server) Hosts() []string {
 	return out
 }
 
-// ServeHTTP is the fake-serving handler, reached over TLS on 443.
+// ServeHTTP is the fake-serving handler, reached over TLS on 443 and over plain HTTP
+// on 80.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	host := hostOf(r)
-
-	s.mu.Lock()
-	svc, known := s.services[host]
-	s.mu.Unlock()
+	host, svc, known := s.service(hostOf(r))
 
 	// Every hostname resolves here, so an unfaked one arrives as a normal request
 	// rather than failing to connect. Answering it with a 501 naming the URL makes a
@@ -142,7 +152,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sc := s.scope(host, svc, key)
 
 	rec := &recorder{ResponseWriter: w, status: http.StatusOK}
-	if rule := s.takeRule(sc, r); rule != nil {
+	if rule := s.takeRule(sc, r); rule != nil && rule.Hangup {
+		rec.status = 0
+		if hj, ok := w.(http.Hijacker); ok {
+			if conn, _, err := hj.Hijack(); err == nil {
+				_ = conn.Close()
+			}
+		}
+	} else if rule != nil {
 		rec.WriteHeader(rule.Status)
 		if rule.Body != "" {
 			_, _ = rec.Write([]byte(rule.Body))
@@ -159,7 +176,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// anyway, and this is the first thing worth reading when a sync did not do what
 	// a test expected: it says whether the call happened at all, and under which
 	// credential.
-	log.Printf("%-6s %s%s -> %d  scope=%s", r.Method, host, r.URL.Path, rec.status, short(key))
+	log.Printf("%-6s %s%s -> %d  scope=%s", r.Method, hostOf(r), r.URL.Path, rec.status, short(key))
 }
 
 func short(key string) string {
@@ -201,7 +218,7 @@ func (s *Server) Lookup(host, key string) (Fake, bool) {
 // Emitter publishes under host and key for a fake that is not an HTTP Service and so
 // is never handed one per scope.
 func (s *Server) Emitter(host, key string) Emitter {
-	return Emitter{log: s.events, host: host, key: key}
+	return Emitter{log: s.events, txt: s.txt, host: host, key: key}
 }
 
 func (s *Server) takeRule(sc *scope, r *http.Request) *Rule {
@@ -234,6 +251,25 @@ func matches(rule *Rule, r *http.Request) bool {
 	default:
 		return rule.Path == r.URL.Path
 	}
+}
+
+// service finds the fake for a request's host. A service registered as "*.<domain>"
+// answers for every name under that domain, for a party whose hostnames the test
+// makes up, such as the web server behind an ACME HTTP-01 identifier. Its scopes and
+// events are filed under the registered name, which is the one a test opens. An exact
+// registration wins over a wildcard.
+func (s *Server) service(host string) (string, Service, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if svc, ok := s.services[host]; ok {
+		return host, svc, true
+	}
+	for name, svc := range s.services {
+		if suffix, ok := strings.CutPrefix(name, "*"); ok && strings.HasSuffix(host, suffix) {
+			return name, svc, true
+		}
+	}
+	return host, nil, false
 }
 
 // hostOf strips the port, which is present on a proxied request and absent on a

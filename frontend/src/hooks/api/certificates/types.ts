@@ -72,6 +72,7 @@ export type TCertificate = {
   caName?: string | null;
   profileName?: string | null;
   enrollmentType?: string | null;
+  isRenewedByClient?: boolean;
   caType?: CertificateIssuerKind | null;
   externalMetadata?: TCertificateExternalMetadata | null;
   applicationId?: string | null;
@@ -102,12 +103,25 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
-export type TRevokeCertResponse = {
-  message: string;
-  serialNumber: string;
-  revokedAt: string;
-  crlWarning?: string;
-};
+export enum CertificateRevocationStatus {
+  Revoked = "revoked",
+  PendingApproval = "pending_approval"
+}
+
+export type TRevokeCertResponse =
+  | {
+      message: string;
+      status: CertificateRevocationStatus.Revoked;
+      serialNumber: string;
+      revokedAt: string;
+      crlWarning?: string;
+    }
+  | {
+      message: string;
+      status: CertificateRevocationStatus.PendingApproval;
+      serialNumber: string;
+      approvalRequestId: string;
+    };
 
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];

@@ -14,7 +14,11 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import {
+  CustomRolesUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -90,7 +94,8 @@ export const ProjectRoleList = () => {
     "role",
     "deleteRole",
     "duplicateRole",
-    "upgradePlan"
+    "upgradePlan",
+    "folderAccessUpgrade"
   ] as const);
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -98,7 +103,8 @@ export const ProjectRoleList = () => {
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const projectsHidden = hidesProjects(currentProject?.type);
-  const canOfferFolderAccess = currentProject?.type === ProjectType.SecretManager;
+  const canOfferFolderAccess =
+    currentProject?.type === ProjectType.SecretManager && !subscription?.secretsFolderRbac;
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
     projectId,
@@ -485,18 +491,21 @@ export const ProjectRoleList = () => {
             ? {
                 title: "Only Need Folder-Level Access?",
                 description:
-                  "Folder access controls grant users and machine identities access to specific environments and folders without a custom role. They're included in your plan.",
-                actionLabel: "Learn About Folder Access",
+                  "Folder access controls grant users and machine identities access to specific environments and folders without a custom role. They're included with Secrets Management Pro.",
+                actionLabel: "View Pro Plan",
                 onSelect: () => {
-                  window.open(
-                    "https://infisical.com/docs/documentation/platform/access-controls/folder-rbac",
-                    "_blank",
-                    "noopener,noreferrer"
-                  );
+                  handlePopUpToggle("upgradePlan", false);
+                  handlePopUpOpen("folderAccessUpgrade");
                 }
               }
             : undefined
         }
+      />
+      <UpgradeGate
+        paywallKey="project.role.folder-access"
+        isOpen={popUp.folderAccessUpgrade.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("folderAccessUpgrade", open)}
+        intent={FolderAccessControlsUpgradeIntent}
       />
     </>
   );

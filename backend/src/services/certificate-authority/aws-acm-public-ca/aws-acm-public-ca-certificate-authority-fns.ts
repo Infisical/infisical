@@ -16,6 +16,8 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -41,9 +43,6 @@ import {
   CertSubjectAlternativeNameType,
   CrlReason
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -83,15 +82,16 @@ type TAwsAcmPublicCaCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export const castDbEntryToAwsAcmPublicCaCertificateAuthority = (
@@ -143,9 +143,10 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
-  certificateProfileDAL
+  kmsDataKeyService,
+  kmsKeyService,
+  certificateProfileDAL,
+  instanceConfigService
 }: TAwsAcmPublicCaCertificateAuthorityFnsDeps) => {
   const validateAwsConnection = async ({
     appConnectionId,
@@ -211,7 +212,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     // Smoke-test both connections up front — ACM via ListCertificates (no single "get CA" resource),
     // and Route 53 via GetHostedZone so a misconfigured DNS connection / wrong zone ID fails
     // synchronously here instead of mid-issuance.
-    const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
+    const acmClient = await createAcmClient({
+      appConnectionId,
+      region,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    });
     try {
       await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
     } catch (error) {
@@ -220,9 +227,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       });
     }
 
-    const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
+    const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
     try {
-      await route53GetHostedZone(dnsConnection, hostedZoneId);
+      await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -297,7 +304,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
 
-      const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
+      const acmClient = await createAcmClient({
+        appConnectionId,
+        region,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      });
       try {
         await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
       } catch (error) {
@@ -306,9 +319,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         });
       }
 
-      const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
+      const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
       try {
-        await route53GetHostedZone(dnsConnection, hostedZoneId);
+        await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
       } catch (error) {
         throw new BadRequestError({
           message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -459,13 +472,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     // CA's configured region was edited between issuance and renewal.
     let issuanceRegion: AWSRegion = region;
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
     let certificateArn: string;
     let acmClient: ACMClient;
 
@@ -491,7 +500,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         appConnectionId,
         region: issuanceRegion,
         appConnectionDAL,
-        kmsService
+        kmsDataKeyService,
+        instanceConfigService
       });
 
       const describe = await acmClient.send(new DescribeCertificateCommand({ CertificateArn: certificateArn }));
@@ -511,15 +521,20 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           const dnsConnection = await resolveDnsAwsConnection({
             dnsAppConnectionId,
             appConnectionDAL,
-            kmsService
+            kmsDataKeyService
           });
           for (const dv of detail.DomainValidationOptions) {
             if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-              await route53UpsertRecord(dnsConnection, hostedZoneId, {
-                name: dv.ResourceRecord.Name,
-                type: "CNAME",
-                value: dv.ResourceRecord.Value
-              });
+              await route53UpsertRecord(
+                dnsConnection,
+                hostedZoneId,
+                {
+                  name: dv.ResourceRecord.Name,
+                  type: "CNAME",
+                  value: dv.ResourceRecord.Value
+                },
+                instanceConfigService
+              );
             }
           }
         }
@@ -547,7 +562,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
     } else {
       // New issuance — use the CA's configured region.
-      acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
+      acmClient = await createAcmClient({
+        appConnectionId,
+        region,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      });
 
       const domainName = commonName || (altNames.length > 0 ? altNames[0].value : "");
       if (!domainName) {
@@ -583,15 +604,20 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         const dnsConnection = await resolveDnsAwsConnection({
           dnsAppConnectionId,
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         });
         for (const dv of detail.DomainValidationOptions) {
           if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-            await route53UpsertRecord(dnsConnection, hostedZoneId, {
-              name: dv.ResourceRecord.Name,
-              type: "CNAME",
-              value: dv.ResourceRecord.Value
-            });
+            await route53UpsertRecord(
+              dnsConnection,
+              hostedZoneId,
+              {
+                name: dv.ResourceRecord.Name,
+                type: "CNAME",
+                value: dv.ResourceRecord.Value
+              },
+              instanceConfigService
+            );
           }
         }
       }
@@ -760,7 +786,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     const { appConnectionId } = acmCa.configuration;
 
     // ACM revokes by ARN, not serial number. Look up the ARN from the cert's externalMetadata.
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate with serial number '${serialNumber}' not found under CA '${caId}'`
@@ -790,24 +816,42 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       appConnectionId,
       region: parsedMetadata.data.region,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      instanceConfigService
     });
     const revocationReason = CRL_REASON_TO_ACM_REVOCATION_REASON_MAP[reason];
 
-    let result;
+    const certificateArn = parsedMetadata.data.arn;
     try {
-      result = await acmClient.send(
+      const result = await acmClient.send(
         new RevokeCertificateCommand({
-          CertificateArn: parsedMetadata.data.arn,
+          CertificateArn: certificateArn,
           RevocationReason: revocationReason
         })
       );
+      logger.info(result, "AWS ACM RevokeCertificate result");
     } catch (error) {
+      // ACM documents no "already revoked" error, so read the certificate's status back.
+      const described = await acmClient
+        .send(new DescribeCertificateCommand({ CertificateArn: certificateArn }))
+        .catch((readError: unknown) => {
+          logger.warn(
+            readError,
+            `Failed to read the AWS ACM certificate's status after a failed revoke [caId=${caId}] [certificateId=${cert.id}] [certificateArn=${certificateArn}]`
+          );
+          return null;
+        });
+      const detail = described?.Certificate;
+      if (detail?.Status === CertificateStatus.REVOKED || detail?.RevokedAt) {
+        logger.info(
+          `AWS ACM certificate already revoked upstream, treating as success [caId=${caId}] [certificateId=${cert.id}] [certificateArn=${certificateArn}]`
+        );
+        return;
+      }
       throw new BadRequestError({
         message: `Failed to revoke certificate via AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
-    logger.info(result, "AWS ACM RevokeCertificate result");
   };
 
   return {

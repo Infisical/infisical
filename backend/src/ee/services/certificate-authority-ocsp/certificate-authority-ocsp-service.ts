@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -16,9 +17,6 @@ import { getCaSigner } from "@app/services/certificate-authority/certificate-aut
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import {
   OCSP_MAX_CACHED_CA_CERTIFICATES,
@@ -55,8 +53,8 @@ type TCertificateAuthorityOcspServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
 };
@@ -98,8 +96,8 @@ export const certificateAuthorityOcspServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
-  projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   caKeySourceService,
   keyStore
 }: TCertificateAuthorityOcspServiceFactoryDep): TCertificateAuthorityOcspServiceFactory => {
@@ -110,8 +108,8 @@ export const certificateAuthorityOcspServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findById(activeCaCertId);
     if (!caCert) return null;
 
-    const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCaCert = await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate });
 
     const resolved: TResolvedCaCertificate = {
@@ -157,9 +155,16 @@ export const certificateAuthorityOcspServiceFactory = ({
       { tx: certificateDAL.primaryNode() }
     );
 
-    const bySerial = new Map(
-      certificates.map((certificate) => [normalizeSerialNumber(certificate.serialNumber), certificate])
-    );
+    const bySerial = new Map<string, (typeof certificates)[number]>();
+    certificates.forEach((certificate) => {
+      const serialNumber = normalizeSerialNumber(certificate.serialNumber);
+      const kept = bySerial.get(serialNumber);
+      const isEarlierRevocation =
+        certificate.status === CertStatus.REVOKED &&
+        (kept?.status !== CertStatus.REVOKED ||
+          new Date(certificate.revokedAt as Date).getTime() < new Date(kept.revokedAt as Date).getTime());
+      if (!kept || isEarlierRevocation) bySerial.set(serialNumber, certificate);
+    });
 
     return entries.map((entry) => {
       const certificate = bySerial.get(entry.serialNumber);
@@ -272,8 +277,8 @@ export const certificateAuthorityOcspServiceFactory = ({
           caId: ca.id,
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
-          projectDAL,
-          kmsService,
+          kmsDataKeyService,
+          kmsKeyService,
           caKeySourceService,
           prefetched: { kmsKeyId: activeCaCert.kmsKeyId }
         });

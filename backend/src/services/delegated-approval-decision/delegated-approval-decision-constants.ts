@@ -1,4 +1,4 @@
-import { MAX_OUTBOX_ATTEMPTS } from "@app/services/event-outbox/event-outbox-types";
+import { MAX_OUTBOX_ATTEMPTS } from "@app/domains/platform/events/ce/module";
 
 export const DELEGATED_APPROVAL_DECISION_CONSUMER = "delegated-approval-decision";
 

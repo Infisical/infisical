@@ -6,6 +6,10 @@ description: "Infisical service tokens allow users to programmatically interact 
 Service tokens are authentication credentials that services can use to access designated endpoints in the Infisical API to manage project resources like secrets.
 Each service token can be provisioned scoped access to select environment(s) and path(s) within them.
 
+<Tip>
+  Use a [machine identity](/documentation/platform/identities/machine-identities) instead of a service token. A machine identity can call more of the Infisical API, uses the same roles as users, and supports more auth methods. If you want a single token that works like a service token, add [Token Auth](/documentation/platform/identities/token-auth) to the machine identity.
+</Tip>
+
 ## Service tokens
 
 You can manage service tokens in Access Control > Service Tokens (tab).

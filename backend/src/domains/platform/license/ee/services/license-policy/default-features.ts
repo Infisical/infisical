@@ -55,6 +55,7 @@ type TDefaultOnPremFeatures = TInstanceFeatures & {
   pkiAcme: true;
   pkiEst: false;
   pkiScep: false;
+  pkiMicrosoftAutoenrollment: false;
   pkiPqc: false;
   caCrl: true;
   pkiOcsp: false;
@@ -74,6 +75,7 @@ type TDefaultOnPremFeatures = TInstanceFeatures & {
   maxWildcardCertificates: null;
   maxSansPerCertificate: null;
   pam: null;
+  agentVault: null;
   certManager: null;
   secretsTemporaryAccess: null;
   enterprisePamAccount: null;
@@ -153,6 +155,7 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
+  pkiMicrosoftAutoenrollment: false,
   pkiPqc: false,
   caCrl: true,
   pkiOcsp: false,
@@ -173,6 +176,7 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   maxSansPerCertificate: null,
   // product gating
   pam: null,
+  agentVault: null,
   certManager: null,
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,

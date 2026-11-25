@@ -1,0 +1,102 @@
+import { TableName, TKmsKekHistory } from "@app/db/schemas";
+import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
+import { DatabaseError } from "@app/lib/errors";
+
+import { KekHistoryEntry } from "../models/kek-history-entry";
+import { TKekHistoryStore } from "../services/dependencies";
+
+const toModel = (row: TKmsKekHistory) =>
+  KekHistoryEntry.restore({
+    id: row.id,
+    kekLabel: row.kekLabel,
+    activatedAt: row.activatedAt,
+    supersededAt: row.supersededAt,
+    retiredAt: row.retiredAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  });
+
+export class KekHistoryStore implements TKekHistoryStore {
+  constructor(private readonly connection: TStoreConnection) {}
+
+  async findPage(
+    { offset, limit }: { offset: number; limit: number },
+    options?: TReadOptions
+  ): Promise<KekHistoryEntry[]> {
+    try {
+      const rows = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .select("*")
+        .orderBy("activatedAt", "desc")
+        .offset(offset)
+        .limit(limit)) as TKmsKekHistory[];
+      return rows.map(toModel);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find KEK history page" });
+    }
+  }
+
+  async count(options?: TReadOptions): Promise<number> {
+    try {
+      const [{ count }] = await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .count<{ count: string | number }[]>("* as count");
+      return Number(count);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count KEK history" });
+    }
+  }
+
+  async findActiveByLabel(kekLabel: string, options?: TReadOptions): Promise<KekHistoryEntry | null> {
+    try {
+      const row = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .where({ kekLabel })
+        .whereNull("retiredAt")
+        .first("*")) as TKmsKekHistory | undefined;
+      return row ? toModel(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active KEK history by label" });
+    }
+  }
+
+  async findCurrent(options?: TReadOptions): Promise<KekHistoryEntry | null> {
+    try {
+      const row = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .whereNull("supersededAt")
+        .orderBy("activatedAt", "desc")
+        .first("*")) as TKmsKekHistory | undefined;
+      return row ? toModel(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find current KEK history" });
+    }
+  }
+
+  async insert(entry: KekHistoryEntry): Promise<void> {
+    const record = entry.toJSON();
+    try {
+      await this.connection
+        .writer()(TableName.KmsKekHistory)
+        .insert({
+          id: record.id,
+          kekLabel: record.kekLabel,
+          activatedAt: record.activatedAt
+        } as never);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Insert KEK history entry" });
+    }
+  }
+
+  async save(entry: KekHistoryEntry): Promise<void> {
+    const record = entry.toJSON();
+    try {
+      await this.connection
+        .writer()(TableName.KmsKekHistory)
+        .where({ id: record.id })
+        .update({ supersededAt: record.supersededAt, retiredAt: record.retiredAt });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Save KEK history entry" });
+    }
+  }
+}

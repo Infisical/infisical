@@ -4,7 +4,9 @@ sidebarTitle: "Findings"
 description: "Review the secrets Infisical finds in your repositories."
 ---
 
-A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). To see the findings from every data source, go to **Secret Scanning** > **Findings**.
+A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). Infisical creates one finding for each secret value in a repository. If the same value appears in several files or commits, each place is a location of that one finding, so you review the secret once. If the same value appears in another repository, it's a separate finding there.
+
+To see the findings from every data source, go to **Secret Scanning** > **Findings**.
 
 ![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
 
@@ -13,12 +15,10 @@ A finding is a secret that a scan found in one of your [data sources](/documenta
 To see the details of a finding, select its row:
 
 - **Description**: What the matching rule detects, such as a type of API key
-- **File**: The path of the file that contains the secret
-- **Commit**, **Author**, **Email**, and **Commit Message**: The commit that added the secret, and who made it
-- **Start Line**, **End Line**, **Start Column**, and **End Column**: Where the secret is in the file
-- **Link**: A link to the file at that commit, on GitHub, GitLab, or Bitbucket
-
-If a later scan finds the same secret in the same place, Infisical keeps the existing finding and its status instead of adding a new one.
+- **Last Detected**: The last time a scan found the secret in a new place
+- **First Detected**: The first time a scan found the secret
+- **Comment**: The comment left with the finding's current status, if any
+- **Locations**: Every place Infisical found the secret, with the file and line, the commit and its author, and a link to the file at that commit on GitHub, GitLab, or Bitbucket
 
 ## Finding statuses
 
@@ -26,9 +26,19 @@ Every new finding starts as **Unresolved**. After you review a finding, change i
 
 - **Resolved**: You've dealt with the leak, for example by revoking the secret
 - **False Positive**: The value isn't a secret
-- **Ignore**: The value is a secret, but you've decided it's safe to leave, such as a test credential
+- **Ignored**: The value is a secret, but you've decided it's safe to leave, such as a test credential
 
-The status is only a record of your review, and doesn't change how Infisical scans. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+A status applies to every location of the finding, including locations that later scans find. To stop Infisical from reporting a value at all, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+
+## When a scan finds the secret again
+
+If a later scan finds the secret in a place Infisical already recorded, the finding doesn't change.
+
+If a later scan finds the secret in a new place, Infisical adds the location to the finding. What happens next depends on the finding's status:
+
+- **Unresolved**: The finding doesn't change, and Infisical doesn't send another [alert](#alerts-about-new-findings)
+- **Resolved**: Infisical sets the finding back to **Unresolved**. If a push or a pull request brought the secret back, Infisical sends an alert
+- **False Positive** or **Ignored**: The finding keeps its status, and Infisical doesn't send an alert
 
 ## Change a finding's status
 
@@ -37,26 +47,71 @@ The status is only a record of your review, and doesn't change how Infisical sca
     Go to **Secret Scanning** > **Findings**.
   </Step>
   <Step>
-    Select the finding's row, then select **Update Status**.
+    Select the finding's row, then select **Mark Resolved**. For another status, select the arrow next to **Mark Resolved**, then select **Mark False Positive** or **Ignore**.
 
-    To change several findings at once, select the checkbox on each finding's row, then select **Update Status** below the table.
+    To change several findings at once, select the checkbox on each finding's row, then select **Set Status** and a status.
   </Step>
   <Step>
-    Select a **Status**. Optionally, enter a **Comment** that explains your decision.
+    Optionally, enter a **Comment** that explains your decision.
   </Step>
   <Step>
-    Select **Update Status**.
+    Select **Confirm**.
   </Step>
 </Steps>
 
-Your comment appears as **Remarks** in the finding's details, and when you hover over the finding's status.
+To set a finding back to **Unresolved**, select its row, then select **Reopen**.
 
-## Notifications about new findings
+## Alerts about new findings
 
-When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
+Each data source has its own alerts, which notify your team by email, Slack, webhook, or PagerDuty, once for each scan. A data source can have one alert for each of two events:
 
-If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+- **Secrets Detected**: A scan found a secret for the first time, or a push or pull request brought back a resolved one (the notification links to the findings from that scan)
+- **Scan Failure**: A scan failed after all of its retries (the notification links to the data source and includes the error)
+
+When you create a data source, its **Alerts** step lets you choose which of the two alerts it gets and where the alerts are sent. Both alerts start out on, and both email the project's admins. If your [project role](/documentation/platform/access-controls/role-based-access-controls) doesn't have the **Edit Data Sources** action, you can't change the alerts in that step, and the data source gets both alerts as they start out.
+
+If a data source existed before alerts were available, it has both alerts, and both email the project's admins.
+
+### Change who gets a data source's alerts
+
+To change a data source's alerts, your [project role](/documentation/platform/access-controls/role-based-access-controls) needs the **Edit Data Sources** action on **Secret Scanning Data Sources**.
+
+<Tabs>
+  <Tab title="Data source settings">
+    <Steps>
+      <Step>
+        Go to **Secret Scanning** > **Data Sources**, select the data source, and open its **Settings** tab.
+      </Step>
+      <Step>
+        Under **Notifications**, select **Alerts**. To turn an alert off, use the toggle next to it. To change it, select the menu next to the alert, then select **Edit**.
+      </Step>
+      <Step>
+        Change the alert's channels, such as the email recipients or a Slack channel for the team that owns the data source. To stop alerts about pull requests, select every kind of scan except **Pull request** under **Scans**.
+      </Step>
+      <Step>
+        Select **Update Alert**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Edit data source">
+    <Steps>
+      <Step>
+        Go to **Secret Scanning** > **Data Sources**, select the menu next to the data source, then select **Edit Data Source**.
+      </Step>
+      <Step>
+        Select the **Alerts** step. Use the toggle next to each alert to turn it on or off, and change the channels under an alert that's on.
+      </Step>
+      <Step>
+        Select **Continue**, then select **Save Changes**.
+      </Step>
+    </Steps>
+
+    To stop alerts about pull requests, use the data source's **Settings** tab. Saving here keeps the kinds of scans an alert already skips.
+  </Tab>
+</Tabs>
+
+If you leave out pull requests, the pull request's check still fails on GitHub, so the author still sees the secret.
 
 <Note>
-  If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.
+  If you self-host Infisical, email alerts need an [email service](/self-hosting/configuration/envars#email-service) configured.
 </Note>

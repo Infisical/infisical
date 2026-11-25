@@ -30,6 +30,7 @@ export type TImportedSecrets = {
   environmentInfo: ProjectEnv;
   secretPath: string;
   folderId: string;
+  importId?: string;
   secrets: Omit<SecretV3Raw, "secretValue">[];
 };
 

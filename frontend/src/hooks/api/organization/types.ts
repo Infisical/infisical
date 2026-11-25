@@ -26,7 +26,7 @@ export type Organization = {
   slug: string;
   defaultMembershipRole: string;
   enforceMfa: boolean;
-  selectedMfaMethod?: MfaMethod;
+  allowedMfaMethods?: MfaMethod[] | null;
   ssoMfaTrust: SsoMfaTrust;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
@@ -58,7 +58,7 @@ export type UpdateOrgDTO = {
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
-  selectedMfaMethod?: MfaMethod;
+  allowedMfaMethods?: MfaMethod[];
   ssoMfaTrust?: SsoMfaTrust;
   allowSecretSharingOutsideOrganization?: boolean;
   bypassOrgAuthEnabled?: boolean;
@@ -129,9 +129,8 @@ export type TOrgProductStats = {
     foldersCount: number;
   };
   agentVault: {
-    accessBundlesCount: number;
     servicesCount: number;
-    proxiesCount: number;
+    skillsCount: number;
     projectsCount: number;
   };
 };

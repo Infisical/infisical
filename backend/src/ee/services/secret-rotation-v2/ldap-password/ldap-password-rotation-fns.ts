@@ -114,10 +114,11 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 > = (
   secretRotation,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   _keyStore,
+  _instanceConfigService,
   passwordValidationContext
 ) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
@@ -461,7 +462,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       const encryptedCredentials = await encryptAppConnectionCredentials({
         credentials: updatedCredentials,
         orgId,
-        kmsService,
+        kmsDataKeyService,
         projectId: connection.projectId
       });
 

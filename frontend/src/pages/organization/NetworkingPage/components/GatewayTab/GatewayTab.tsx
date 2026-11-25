@@ -83,6 +83,7 @@ import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
 import { RenameGatewayModal } from "../RenameGatewayModal";
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
+import { GatewayAlertAction } from "./components/GatewayAlertAction";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
 import { GatewayPoliciesSection } from "./components/GatewayPoliciesSection";
@@ -188,7 +189,8 @@ export const GatewayTab = withPermission(
                 ? "Pool gateways for high availability and automatic failover"
                 : "Create and manage gateways that securely proxy Infisical traffic into your infrastructure"}
             </CardDescription>
-            <CardAction>
+            <CardAction className="flex items-center gap-2">
+              <GatewayAlertAction />
               {activeSubTab === "all-gateways" ? (
                 <OrgPermissionCan
                   I={OrgGatewayPermissionActions.CreateGateways}
