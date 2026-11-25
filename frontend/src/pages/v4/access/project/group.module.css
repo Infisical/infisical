@@ -41,6 +41,8 @@
 }
 .memberIcon {
   display: inline-flex;
+  margin-inline-end: var(--cipher-space-8);
+  vertical-align: middle;
   color: var(--cipher-muted);
 }
 .muted {
