@@ -253,8 +253,6 @@ export type BillingOverview = {
     } | null;
     taxIds: { type: string; value: string }[];
   } | null;
-  // The billing email's owner has an Infisical account but no longer has access to this organization.
-  billingContactLeft: boolean;
   invoices: BillingInvoice[];
   entitlements: Record<string, BillingEntitlement>;
   trialedProductKeys: string[];
@@ -280,11 +278,6 @@ export type BillingCheckoutResult = {
 export type TCreateBillingPortalSessionDTO = {
   orgId: string;
   returnPath?: string;
-};
-
-export type TUpdateBillingEmailDTO = {
-  orgId: string;
-  email: string;
 };
 
 // Buy/add one product. The server self-selects append vs Checkout. quantities are buyer-entered

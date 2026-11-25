@@ -669,7 +669,6 @@ export type TLicenseServerBilling = {
   getSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   getCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   getBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
-  updateBillingEmail: (orgId: string, email: string) => Promise<TBillingProfileResponse>;
   listPaymentFailures: () => Promise<TPaymentFailure[]>;
   createPortal: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;

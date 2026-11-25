@@ -10,7 +10,6 @@ export {
   useRefreshBillingEntitlements,
   useRemoveBillingProduct,
   useStartBillingTrial,
-  useUpdateBillingEmail,
   useUpgradeBillingProduct
 } from "./mutations";
 export {

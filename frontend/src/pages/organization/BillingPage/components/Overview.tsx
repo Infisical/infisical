@@ -10,7 +10,6 @@ import {
 
 import { BillingRenderState } from "../billing-view-types";
 import { Banner } from "./Banner";
-import { BillingContactAlert } from "./BillingContactAlert";
 import { RootOrgFilter } from "./RootOrgFilter";
 import { ErrorPanel } from "./states/ErrorPanel";
 import { TabbedOverview, TabbedOverviewSkeleton } from "./TabbedOverview";
@@ -124,13 +123,6 @@ export const Overview = ({
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
-      {overview.billingContactLeft && overview.billingDetails && !isManaged && (
-        <BillingContactAlert
-          orgId={breakdownOrgId}
-          billingEmail={overview.billingDetails.email}
-          canManage={canManageBilling && overview.selfServe && !checkoutFrozen}
-        />
-      )}
       <TrialBanners
         overview={overview}
         catalog={catalog}

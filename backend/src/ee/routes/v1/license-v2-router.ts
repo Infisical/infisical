@@ -200,23 +200,6 @@ const BillingV2TrialSchema = z.object({
   endedDaysAgo: z.number().nullable()
 });
 
-const BillingV2BillingDetailsSchema = z.object({
-  name: z.string(),
-  email: z.string(),
-  address: z
-    .object({
-      // Each sub-field is nullish: Stripe/older license servers omit or null any unfilled line.
-      line1: z.string().nullish(),
-      line2: z.string().nullish(),
-      city: z.string().nullish(),
-      state: z.string().nullish(),
-      postalCode: z.string().nullish(),
-      country: z.string().nullish()
-    })
-    .nullable(),
-  taxIds: z.object({ type: z.string(), value: z.string() }).array()
-});
-
 const BillingV2OverviewSchema = z.object({
   isCloud: z.boolean(),
   mode: z.enum(["self-serve", "managed"]),
@@ -238,8 +221,24 @@ const BillingV2OverviewSchema = z.object({
       .nullable()
   }),
   payment: z.object({ brand: z.string(), last4: z.string(), expMonth: z.number(), expYear: z.number() }).nullable(),
-  billingDetails: BillingV2BillingDetailsSchema.nullable(),
-  billingContactLeft: z.boolean(),
+  billingDetails: z
+    .object({
+      name: z.string(),
+      email: z.string(),
+      address: z
+        .object({
+          // Each sub-field is nullish: Stripe/older license servers omit or null any unfilled line.
+          line1: z.string().nullish(),
+          line2: z.string().nullish(),
+          city: z.string().nullish(),
+          state: z.string().nullish(),
+          postalCode: z.string().nullish(),
+          country: z.string().nullish()
+        })
+        .nullable(),
+      taxIds: z.object({ type: z.string(), value: z.string() }).array()
+    })
+    .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
   trialedProductKeys: z.string().array(),
@@ -493,31 +492,6 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         returnPath: req.body.returnPath
-      });
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/:organizationId/billing/v2/billing-details",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({ organizationId: z.string().trim() }),
-      body: z.object({
-        email: z.string().trim().email().max(254).describe("Address that receives invoices and payment emails.")
-      }),
-      response: {
-        200: z.object({ billingDetails: BillingV2BillingDetailsSchema.nullable(), billingContactLeft: z.boolean() })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.licenseV2.updateBillingEmail({
-        orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
-        email: req.body.email
       });
     }
   });

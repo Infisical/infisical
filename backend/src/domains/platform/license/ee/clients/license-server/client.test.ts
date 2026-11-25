@@ -381,23 +381,6 @@ describe("LicenseServerClient.listPaymentFailures", () => {
   });
 });
 
-describe("LicenseServerClient.updateBillingEmail", () => {
-  test("patches the org's billing profile and returns it", async () => {
-    const profile = {
-      payment: null,
-      billingDetails: { name: "Acme", email: "finance@acme.com", address: null, taxIds: [] },
-      invoices: []
-    };
-    const fetchMock = stubFetch(200, profile);
-
-    const updated = await new LicenseServerClient(cloud()).updateBillingEmail(ORG_ID, "finance@acme.com");
-
-    expect(updated.billingDetails?.email).toBe("finance@acme.com");
-    expect(sent(fetchMock)).toMatchObject({ method: "PATCH", body: { email: "finance@acme.com" } });
-    expect(sent(fetchMock).url.pathname).toBe(`/v1/organizations/${ORG_ID}/billing/profile`);
-  });
-});
-
 describe("LicenseServerClient.deleteOrganization", () => {
   test("calls DELETE on the org and returns what the license server closed", async () => {
     const fetchMock = stubFetch(200, {

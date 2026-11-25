@@ -175,7 +175,6 @@ export const buildOfflineBilling = (
       onDemandAmount: 0,
       payment: null,
       billingDetails: null,
-      billingContactLeft: false,
       invoices: [],
       entitlements,
       trialedProductKeys: [],

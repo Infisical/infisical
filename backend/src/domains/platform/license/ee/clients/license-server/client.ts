@@ -76,7 +76,7 @@ export type TLicenseServerConnection = {
 
 type TSchema<T> = { parse: (data: unknown) => T };
 
-type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type TMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 type TSendOptions = {
   query?: Record<string, string | undefined>;
@@ -306,10 +306,6 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
   // An org with no Stripe customer gets 200 with everything empty; a 404 means it has no license at all.
   getBillingProfile(orgId: string) {
     return this.billingRead(orgId, "/billing/profile", billingProfileResponseSchema, null);
-  }
-
-  updateBillingEmail(orgId: string, email: string) {
-    return this.billingRequest("PATCH", orgId, "/billing/profile", billingProfileResponseSchema, { body: { email } });
   }
 
   // A 404 is a License Server that predates the endpoint, so it reads as nobody failing rather than an error.
