@@ -2571,11 +2571,14 @@ const OverviewPageContent = () => {
       const failedEnvironments = commits
         .filter(({ commit }) => !commit)
         .map(({ environment }) => environment);
+      const reviewEnvironments = commits
+        .filter(({ commit }) => commit?.approval)
+        .map(({ environment }) => environment);
       edits.forEach(({ edit, changes: editChanges }) => {
         const committed = editChanges.filter(
           (change) => !failedEnvironments.includes(change.environment)
         );
-        if (committed.length) edit.settle(committed);
+        if (committed.length) edit.settle(committed, reviewEnvironments);
       });
       showSecretWriteErrors(
         commits.flatMap(({ environment, error }) =>
@@ -2591,9 +2594,6 @@ const OverviewPageContent = () => {
         )
       );
 
-      const reviewEnvironments = commits
-        .filter(({ commit }) => commit?.approval)
-        .map(({ environment }) => environment);
       const reviewEnvironmentNames = [
         ...new Set(
           changes

@@ -51,7 +51,7 @@ export type TUnsavedChange = {
 };
 type TUnsavedEdit = {
   getChanges: () => TUnsavedChange[];
-  settle: (committed: TUnsavedChange[]) => void;
+  settle: (committed: TUnsavedChange[], reviewEnvironments: string[]) => void;
   discard: () => void;
 };
 
@@ -90,7 +90,7 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       if (!changes.length) return;
       const held: TRegisteredEdit = {
         getChanges: () => changes,
-        settle: (committed) => {
+        settle: (committed, reviewEnvironments) => {
           const remaining = changes.flatMap((change) => {
             const done = committed.find(
               ({ environment, secretKey }) =>
@@ -98,6 +98,7 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
             );
             if (!done) return [change];
             if (done.secretValue === change.secretValue) return [];
+            if (reviewEnvironments.includes(change.environment)) return [change];
             return [{ ...change, isCreate: false, originalValue: done.secretValue }];
           });
           if (edits.get(key) === held) {
@@ -132,7 +133,8 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
       getEdits: () =>
         [...edits.entries()].map(([key, edit]) => ({
           getChanges: () => edit.getChanges(),
-          settle: (committed: TUnsavedChange[]) => (edits.get(key) ?? edit).settle(committed),
+          settle: (committed: TUnsavedChange[], reviewEnvironments: string[]) =>
+            (edits.get(key) ?? edit).settle(committed, reviewEnvironments),
           discard: () => edits.get(key)?.discard()
         })),
       takeDraft: (key) => {
@@ -209,7 +211,8 @@ export const useUnsavedEdit = (
     if (!registry || !isDirty) return undefined;
     const unregister = registry.register(key, {
       getChanges: () => editRef.current.getChanges(),
-      settle: (committed) => editRef.current.settle(committed),
+      settle: (committed, reviewEnvironments) =>
+        editRef.current.settle(committed, reviewEnvironments),
       discard: () => editRef.current.discard()
     });
     return () => unregister(isDirtyRef.current);
