@@ -310,7 +310,12 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
-import { UnsavedEditsBar, UnsavedEditsScope, useUnsavedEdits } from "./components/UnsavedEditsBar";
+import {
+  TUnsavedChange,
+  UnsavedEditsBar,
+  UnsavedEditsScope,
+  useUnsavedEdits
+} from "./components/UnsavedEditsBar";
 import {
   createOverviewTelemetry,
   observeOverviewRequest,
@@ -2678,12 +2683,30 @@ const OverviewPageContent = () => {
             : [];
         })
       );
-      const { commits: sentCommits } = sendableChanges.length
+      const isDeleted = (change: TUnsavedChange) =>
+        !change.isCreate &&
+        currentSecrets.has(change.environment) &&
+        !currentSecrets
+          .get(change.environment)
+          ?.some(({ secretKey }) => secretKey === change.secretKey);
+      const deletedChanges = sendableChanges.filter(isDeleted);
+      const savableChanges = sendableChanges.filter((change) => !isDeleted(change));
+      edits.forEach(({ edit, changes: editChanges }) => {
+        if (editChanges.length && editChanges.every((change) => deletedChanges.includes(change)))
+          edit.discard();
+      });
+      if (deletedChanges.length) {
+        createNotification({
+          type: "info",
+          text: `Skipped ${deletedChanges.length} change${deletedChanges.length === 1 ? "" : "s"} to deleted secrets`
+        });
+      }
+      const { commits: sentCommits } = savableChanges.length
         ? await createCommits({
             projectId,
             secretPath,
             message,
-            secrets: sendableChanges.map((change) => {
+            secrets: savableChanges.map((change) => {
               if (change.isCreate) return change;
               const current = currentSecrets
                 .get(change.environment)
@@ -2707,7 +2730,8 @@ const OverviewPageContent = () => {
         .map(({ environment }) => environment);
       edits.forEach(({ edit, changes: editChanges }) => {
         const committed = editChanges.filter(
-          (change) => !failedEnvironments.includes(change.environment)
+          (change) =>
+            !failedEnvironments.includes(change.environment) && !deletedChanges.includes(change)
         );
         if (committed.length) edit.settle(committed, reviewEnvironments);
       });
@@ -2732,7 +2756,7 @@ const OverviewPageContent = () => {
             .map((change) => change.environmentName)
         )
       ];
-      const committedCount = changes.filter(
+      const committedCount = savableChanges.filter(
         (change) =>
           !reviewEnvironments.includes(change.environment) &&
           !failedEnvironments.includes(change.environment)

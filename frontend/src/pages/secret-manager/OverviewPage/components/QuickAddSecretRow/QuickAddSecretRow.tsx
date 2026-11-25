@@ -322,6 +322,16 @@ export const QuickAddSecretRow = ({
     setError(undefined);
   };
 
+  const draftPathRef = useRef(secretPath);
+  useEffect(() => {
+    if (draftPathRef.current === secretPath) return;
+    draftPathRef.current = secretPath;
+    setKey("");
+    setValue("");
+    setComment("");
+    setError(undefined);
+  }, [secretPath]);
+
   const resetDraft = () => {
     clearDraft();
     setTimeout(() => keyInputRef.current?.focus(), 0);
