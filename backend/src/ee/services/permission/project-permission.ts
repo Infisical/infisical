@@ -76,7 +76,8 @@ export enum ProjectPermissionDynamicSecretActions {
   CreateRootCredential = "create-root-credential",
   EditRootCredential = "edit-root-credential",
   DeleteRootCredential = "delete-root-credential",
-  Lease = "lease"
+  Lease = "lease",
+  ManageUserCredentials = "manage-user-credentials"
 }
 
 export enum ProjectPermissionIdentityActions {

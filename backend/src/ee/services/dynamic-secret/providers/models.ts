@@ -1020,7 +1020,8 @@ export const DynamicSecretTailscaleSchema = z
   });
 
 export enum OAuth2GrantType {
-  ClientCredentials = "client-credentials"
+  ClientCredentials = "client-credentials",
+  AuthorizationCode = "authorization-code"
 }
 
 export const OAUTH2_MAX_EXTRA_PARAMS = 20;
@@ -1072,75 +1073,98 @@ export const OAuth2ClientAuthSchema = z.discriminatedUnion("method", [
   })
 ]);
 
+const OAuth2ScopeSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .superRefine((scope, ctx) => {
+    const invalidTokens = scope
+      .split(WHITESPACE_REGEX)
+      .filter((token) => token && !OAUTH2_SCOPE_TOKEN_REGEX.test(token));
+    if (invalidTokens.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Scope contains invalid characters: ${invalidTokens.map((token) => `'${token}'`).join(", ")}`
+      });
+    }
+  })
+  .transform((scope) => normalizeOAuth2Scope(scope) || undefined);
+
+const OAuth2ExtraParamsSchema = z
+  .array(
+    z.object({
+      key: z
+        .string()
+        .trim()
+        .min(1, "Parameter name is required")
+        .max(128)
+        .refine((key) => OAUTH2_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
+        .refine(
+          (key) => !OAUTH2_RESERVED_PARAMS.has(key.toLowerCase()),
+          (key) => ({ message: `'${key}' is set by Infisical and can't be used as an extra parameter` })
+        ),
+      value: z.string().trim().min(1, "Parameter value is required").max(2048)
+    })
+  )
+  .max(OAUTH2_MAX_EXTRA_PARAMS, `At most ${OAUTH2_MAX_EXTRA_PARAMS} extra parameters are allowed`)
+  .superRefine((params, ctx) => {
+    const seen = new Set<string>();
+    params.forEach(({ key }, index) => {
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "key"],
+          message: `Extra parameter '${key}' is set more than once`
+        });
+      }
+      seen.add(key);
+    });
+  })
+  .default([]);
+
+const OAuth2AuthorizationServerFields = {
+  tokenUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .url("Token URL must be a valid URL")
+    .describe("The authorization server's token endpoint."),
+  revocationUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .url("Revocation URL must be a valid URL")
+    .describe("The authorization server's RFC 7009 token revocation endpoint."),
+  clientId: z.string().trim().min(1, "Client ID is required").max(1024).describe("The OAuth 2.0 client ID."),
+  clientAuth: OAuth2ClientAuthSchema.describe(
+    "How Infisical authenticates the client to the token and revocation endpoints."
+  )
+};
+
 export const DynamicSecretOAuth2Schema = z.discriminatedUnion("grantType", [
   z.object({
     grantType: z.literal(OAuth2GrantType.ClientCredentials),
-    tokenUrl: z
-      .string()
-      .trim()
-      .max(2048)
-      .url("Token URL must be a valid URL")
-      .describe("The authorization server's token endpoint."),
-    revocationUrl: z
-      .string()
-      .trim()
-      .max(2048)
-      .url("Revocation URL must be a valid URL")
-      .describe("The authorization server's RFC 7009 token revocation endpoint."),
-    clientId: z.string().trim().min(1, "Client ID is required").max(1024).describe("The OAuth 2.0 client ID."),
-    clientAuth: OAuth2ClientAuthSchema.describe(
-      "How Infisical authenticates the client to the token and revocation endpoints."
+    ...OAuth2AuthorizationServerFields,
+    scope: OAuth2ScopeSchema.optional().describe(
+      "Space-separated scopes to request. Leave empty to use the client's default scopes."
     ),
-    scope: z
-      .string()
-      .trim()
-      .max(2048)
-      .superRefine((scope, ctx) => {
-        const invalidTokens = scope
-          .split(WHITESPACE_REGEX)
-          .filter((token) => token && !OAUTH2_SCOPE_TOKEN_REGEX.test(token));
-        if (invalidTokens.length) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Scope contains invalid characters: ${invalidTokens.map((token) => `'${token}'`).join(", ")}`
-          });
-        }
-      })
-      .transform((scope) => normalizeOAuth2Scope(scope) || undefined)
-      .optional()
-      .describe("Space-separated scopes to request. Leave empty to use the client's default scopes."),
-    extraParams: z
-      .array(
-        z.object({
-          key: z
-            .string()
-            .trim()
-            .min(1, "Parameter name is required")
-            .max(128)
-            .refine((key) => OAUTH2_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
-            .refine(
-              (key) => !OAUTH2_RESERVED_PARAMS.has(key.toLowerCase()),
-              (key) => ({ message: `'${key}' is set by Infisical and can't be used as an extra parameter` })
-            ),
-          value: z.string().trim().min(1, "Parameter value is required").max(2048)
-        })
-      )
-      .max(OAUTH2_MAX_EXTRA_PARAMS, `At most ${OAUTH2_MAX_EXTRA_PARAMS} extra parameters are allowed`)
-      .superRefine((params, ctx) => {
-        const seen = new Set<string>();
-        params.forEach(({ key }, index) => {
-          if (seen.has(key)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: [index, "key"],
-              message: `Extra parameter '${key}' is set more than once`
-            });
-          }
-          seen.add(key);
-        });
-      })
-      .default([])
-      .describe("Additional form parameters sent with the token request, such as audience or resource.")
+    extraParams: OAuth2ExtraParamsSchema.describe(
+      "Additional form parameters sent with the token request, such as audience or resource."
+    )
+  }),
+  z.object({
+    grantType: z
+      .literal(OAuth2GrantType.AuthorizationCode)
+      .describe(
+        "Issue access tokens for your application's users. Your application stores each user's tokens in Infisical, and Infisical refreshes them."
+      ),
+    ...OAuth2AuthorizationServerFields,
+    scope: OAuth2ScopeSchema.optional().describe(
+      "Space-separated scopes to request when refreshing a user's access token. Leave empty to keep the scopes the user granted."
+    ),
+    extraParams: OAuth2ExtraParamsSchema.describe(
+      "Additional form parameters sent with each refresh request, such as audience or resource."
+    )
   })
 ]);
 
@@ -1349,6 +1373,7 @@ export type TDynamicProviderValidateMetadata = {
   defaultTTL?: string;
   maxTTL?: string | null;
   hasActiveLeases?: boolean;
+  hasUserCredentials?: boolean;
 };
 
 export type TDynamicProviderFns = {

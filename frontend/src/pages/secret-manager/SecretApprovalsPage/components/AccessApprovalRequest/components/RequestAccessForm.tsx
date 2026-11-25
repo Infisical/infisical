@@ -27,6 +27,7 @@ import {
   TimerIcon,
   Trash2Icon,
   TriangleAlertIcon,
+  UsersIcon,
   XIcon
 } from "lucide-react";
 import ms from "ms";
@@ -201,6 +202,13 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
         label: "Lease",
         description: "Create and revoke dynamic secret leases",
         Icon: TimerIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.ManageUserCredentials,
+        label: "Manage User Tokens",
+        description:
+          "Store, view, and delete the OAuth 2.0 tokens kept for your application's users",
+        Icon: UsersIcon
       }
     ]
   },

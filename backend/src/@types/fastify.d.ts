@@ -33,6 +33,7 @@ import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/serv
 import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
+import { TDynamicSecretUserCredentialServiceFactory } from "@app/ee/services/dynamic-secret-user-credential/dynamic-secret-user-credential-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
@@ -449,6 +450,7 @@ declare module "fastify" {
     updateCheck: TUpdateCheckServiceFactory;
     dynamicSecret: TDynamicSecretServiceFactory;
     dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
+    dynamicSecretUserCredential: TDynamicSecretUserCredentialServiceFactory;
     emailDomain: TEmailDomainServiceFactory;
     secretSharing: TSecretSharingServiceFactory;
     userActivation: TUserActivationServiceFactory;

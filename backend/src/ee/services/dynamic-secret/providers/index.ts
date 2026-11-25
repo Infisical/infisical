@@ -1,4 +1,5 @@
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TDynamicSecretUserCredentialServiceFactory } from "@app/ee/services/dynamic-secret-user-credential/dynamic-secret-user-credential-service";
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -41,13 +42,15 @@ type TBuildDynamicSecretProviderDTO = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   instanceConfigService: TInstanceConfigService;
+  dynamicSecretUserCredentialService: Pick<TDynamicSecretUserCredentialServiceFactory, "issueAccessToken">;
 };
 
 export const buildDynamicSecretProviders = ({
   gatewayV2Service,
   gatewayPoolService,
   projectDAL,
-  instanceConfigService
+  instanceConfigService,
+  dynamicSecretUserCredentialService
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayV2Service, gatewayPoolService }),
@@ -76,7 +79,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Ssh]: SshProvider(),
   [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
   [DynamicSecretProviders.Tailscale]: TailscaleProvider(),
-  [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
+  [DynamicSecretProviders.OAuth2]: OAuth2Provider({ dynamicSecretUserCredentialService }),
   [DynamicSecretProviders.Kafka]: KafkaProvider(),
   [DynamicSecretProviders.OpenRouter]: OpenRouterProvider(),
   [DynamicSecretProviders.Neon]: NeonProvider()

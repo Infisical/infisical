@@ -20,6 +20,14 @@ export const useCreateDynamicSecretLease = () => {
     TCreateDynamicSecretLeaseDTO
   >({
     mutationFn: async (dto) => {
+      if (dto.provider === DynamicSecretProviders.OAuth2 && dto.config?.externalUserId) {
+        const { data } = await apiRequest.post<{ lease: TDynamicSecretLease; data: unknown }>(
+          "/api/v1/dynamic-secrets/leases/oauth2",
+          dto
+        );
+        return data;
+      }
+
       if (dto.provider === DynamicSecretProviders.Kubernetes) {
         const { data } = await apiRequest.post<{ lease: TDynamicSecretLease; data: unknown }>(
           "/api/v1/dynamic-secrets/leases/kubernetes",

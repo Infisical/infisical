@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
 
 import { DynamicSecretOAuth2Schema, OAuth2ClientAuthMethod, OAuth2GrantType } from "./models";
-import { OAuth2Provider } from "./oauth2";
+import { OAuth2Provider, refreshOAuth2UserToken, revokeOAuth2Token } from "./oauth2";
 
 const { appConfig } = vi.hoisted(() => ({ appConfig: { isDevelopmentMode: false } }));
 
@@ -42,6 +42,9 @@ const baseInputs = {
 };
 
 const metadata = { projectId: "proj-1" };
+
+const mockedIssueAccessToken = vi.fn();
+const providerDeps = { dynamicSecretUserCredentialService: { issueAccessToken: mockedIssueAccessToken } };
 
 const createArgs = (expireAt: number, inputs: object = baseInputs) => ({
   inputs,
@@ -132,14 +135,17 @@ describe("OAuth2Provider.validateProviderInputs", () => {
 
   test("rejects http URLs outside development mode", async () => {
     await expect(
-      OAuth2Provider().validateProviderInputs({ ...baseInputs, tokenUrl: "http://auth.example.com/token" }, metadata)
+      OAuth2Provider(providerDeps).validateProviderInputs(
+        { ...baseInputs, tokenUrl: "http://auth.example.com/token" },
+        metadata
+      )
     ).rejects.toThrow("Token URL must use https");
   });
 
   test("allows http URLs in development mode", async () => {
     appConfig.isDevelopmentMode = true;
     await expect(
-      OAuth2Provider().validateProviderInputs(
+      OAuth2Provider(providerDeps).validateProviderInputs(
         { ...baseInputs, revocationUrl: "http://localhost:8080/revoke" },
         metadata
       )
@@ -148,7 +154,7 @@ describe("OAuth2Provider.validateProviderInputs", () => {
 
   test("rejects a token URL change while leases are active", async () => {
     await expect(
-      OAuth2Provider().validateProviderInputs(
+      OAuth2Provider(providerDeps).validateProviderInputs(
         { ...baseInputs, tokenUrl: "https://other.example.com/token" },
         { ...metadata, previousInputs: baseInputs, hasActiveLeases: true }
       )
@@ -157,7 +163,7 @@ describe("OAuth2Provider.validateProviderInputs", () => {
 
   test("rejects a client ID change while leases are active", async () => {
     await expect(
-      OAuth2Provider().validateProviderInputs(
+      OAuth2Provider(providerDeps).validateProviderInputs(
         { ...baseInputs, clientId: "rotated-client" },
         { ...metadata, previousInputs: baseInputs, hasActiveLeases: true }
       )
@@ -166,7 +172,7 @@ describe("OAuth2Provider.validateProviderInputs", () => {
 
   test("allows token URL and client ID changes when there are no leases", async () => {
     await expect(
-      OAuth2Provider().validateProviderInputs(
+      OAuth2Provider(providerDeps).validateProviderInputs(
         { ...baseInputs, tokenUrl: "https://other.example.com/token", clientId: "rotated-client" },
         { ...metadata, previousInputs: baseInputs, hasActiveLeases: false }
       )
@@ -175,7 +181,7 @@ describe("OAuth2Provider.validateProviderInputs", () => {
 
   test("allows rotating the secret, auth method and revocation URL while leases are active", async () => {
     await expect(
-      OAuth2Provider().validateProviderInputs(
+      OAuth2Provider(providerDeps).validateProviderInputs(
         {
           ...baseInputs,
           revocationUrl: "https://auth.example.com/oauth2/v2/revoke",
@@ -196,7 +202,7 @@ describe("OAuth2Provider token request", () => {
   test("form-urlencodes client credentials before base64 encoding them", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token" }));
 
-    await OAuth2Provider().create(
+    await OAuth2Provider(providerDeps).create(
       createArgs(Date.now() + 60_000, {
         ...baseInputs,
         clientId: "my client",
@@ -210,7 +216,7 @@ describe("OAuth2Provider token request", () => {
   test("sends client credentials in the body without an Authorization header for client_secret_post", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token" }));
 
-    await OAuth2Provider().create(
+    await OAuth2Provider(providerDeps).create(
       createArgs(Date.now() + 60_000, {
         ...baseInputs,
         clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "p+s%:w" }
@@ -229,7 +235,7 @@ describe("OAuth2Provider token request", () => {
   test("sends grant_type, normalized scope and extra params with retries disabled", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token" }));
 
-    await OAuth2Provider().create(
+    await OAuth2Provider(providerDeps).create(
       createArgs(Date.now() + 60_000, {
         ...baseInputs,
         scope: "read write read",
@@ -255,7 +261,7 @@ describe("OAuth2Provider token request", () => {
     );
 
     const before = Date.now();
-    const { entityId, data } = await OAuth2Provider().create(createArgs(Date.now() + 60_000));
+    const { entityId, data } = await OAuth2Provider(providerDeps).create(createArgs(Date.now() + 60_000));
 
     expect(entityId).toHaveLength(32);
     const leaseData = data as Record<string, string>;
@@ -269,7 +275,7 @@ describe("OAuth2Provider token request", () => {
     const exp = Math.floor(Date.now() / 1000) + 1800;
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: jwtWithExp(exp) }));
 
-    const { data } = await OAuth2Provider().create(createArgs(Date.now() + 60_000));
+    const { data } = await OAuth2Provider(providerDeps).create(createArgs(Date.now() + 60_000));
 
     expect((data as Record<string, string>).EXPIRES_AT).toBe(new Date(exp * 1000).toISOString());
   });
@@ -277,7 +283,7 @@ describe("OAuth2Provider token request", () => {
   test("skips the TTL check when the lifetime is unknown", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token" }));
 
-    const { data } = await OAuth2Provider().create(createArgs(Date.now() + 365 * 24 * 3_600_000));
+    const { data } = await OAuth2Provider(providerDeps).create(createArgs(Date.now() + 365 * 24 * 3_600_000));
 
     expect(data).not.toHaveProperty("EXPIRES_AT");
     expect(mockedPost).toHaveBeenCalledOnce();
@@ -286,7 +292,7 @@ describe("OAuth2Provider token request", () => {
   test("accepts a lease TTL within the 60s clock skew tolerance", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token", expires_in: 3599 }));
 
-    await expect(OAuth2Provider().create(createArgs(Date.now() + 3_600_000))).resolves.toBeDefined();
+    await expect(OAuth2Provider(providerDeps).create(createArgs(Date.now() + 3_600_000))).resolves.toBeDefined();
   });
 
   test("rejects a lease TTL longer than the token lifetime and revokes the token", async () => {
@@ -294,7 +300,7 @@ describe("OAuth2Provider token request", () => {
       .mockResolvedValueOnce(tokenResponse({ access_token: "opaque-access-token", expires_in: 1800 }))
       .mockResolvedValueOnce(tokenResponse(""));
 
-    await expect(OAuth2Provider().create(createArgs(Date.now() + 3_600_000))).rejects.toThrow(
+    await expect(OAuth2Provider(providerDeps).create(createArgs(Date.now() + 3_600_000))).rejects.toThrow(
       /lease TTL \(3600s\) is longer than the lifetime of the access tokens the authorization server issues \(1800s\)/
     );
 
@@ -312,7 +318,7 @@ describe("OAuth2Provider token request", () => {
       })
     );
 
-    const result = OAuth2Provider().create(createArgs(Date.now() + 60_000));
+    const result = OAuth2Provider(providerDeps).create(createArgs(Date.now() + 60_000));
 
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toThrow(/rejected the token request: invalid_client: Client authentication failed/);
@@ -324,7 +330,7 @@ describe("OAuth2Provider token request", () => {
       upstreamError(401, { error: "invalid_client", error_description: "bad secret p+s (sent as p%2Bs)" })
     );
 
-    const result = OAuth2Provider().create(
+    const result = OAuth2Provider(providerDeps).create(
       createArgs(Date.now() + 60_000, {
         ...baseInputs,
         clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "p+s" }
@@ -337,7 +343,9 @@ describe("OAuth2Provider token request", () => {
   test("rejects a token response without an access_token", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ token_type: "Bearer" }));
 
-    await expect(OAuth2Provider().create(createArgs(Date.now() + 60_000))).rejects.toThrow("without an access_token");
+    await expect(OAuth2Provider(providerDeps).create(createArgs(Date.now() + 60_000))).rejects.toThrow(
+      "without an access_token"
+    );
   });
 });
 
@@ -349,7 +357,10 @@ describe("OAuth2Provider.revoke", () => {
   test("posts the stored token to the revocation endpoint with an access_token hint", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse(""));
 
-    await OAuth2Provider().revoke(baseInputs, "entity-1", { ...metadata, leaseData: { ACCESS_TOKEN: "stored-token" } });
+    await OAuth2Provider(providerDeps).revoke(baseInputs, "entity-1", {
+      ...metadata,
+      leaseData: { ACCESS_TOKEN: "stored-token" }
+    });
 
     const { url, body, options } = callAt(0);
     expect(url).toBe(REVOCATION_URL);
@@ -361,7 +372,7 @@ describe("OAuth2Provider.revoke", () => {
   test("authenticates the revocation request the same way as the token request for client_secret_post", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse(""));
 
-    await OAuth2Provider().revoke(
+    await OAuth2Provider(providerDeps).revoke(
       { ...baseInputs, clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "post-secret" } },
       "entity-1",
       { ...metadata, leaseData: { ACCESS_TOKEN: "stored-token" } }
@@ -382,7 +393,7 @@ describe("OAuth2Provider.revoke", () => {
       upstreamError(401, { error: "invalid_client", error_description: "unknown secret post-secret-value" })
     );
 
-    const result = OAuth2Provider().revoke(
+    const result = OAuth2Provider(providerDeps).revoke(
       {
         ...baseInputs,
         clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "post-secret-value" }
@@ -397,7 +408,7 @@ describe("OAuth2Provider.revoke", () => {
 
   test("rejects an unknown client auth method", async () => {
     await expect(
-      OAuth2Provider().revoke(
+      OAuth2Provider(providerDeps).revoke(
         { ...baseInputs, clientAuth: { method: "private_key_jwt", privateKey: "key" } },
         "entity-1",
         { ...metadata, leaseData: { ACCESS_TOKEN: "stored-token" } }
@@ -407,7 +418,7 @@ describe("OAuth2Provider.revoke", () => {
   });
 
   test("throws a readable error when the lease has no stored token", async () => {
-    await expect(OAuth2Provider().revoke(baseInputs, "entity-1", metadata)).rejects.toThrow(
+    await expect(OAuth2Provider(providerDeps).revoke(baseInputs, "entity-1", metadata)).rejects.toThrow(
       "This lease has no stored access token"
     );
     expect(mockedPost).not.toHaveBeenCalled();
@@ -419,7 +430,7 @@ describe("OAuth2Provider.revoke", () => {
       upstreamError(400, { error: "invalid_request", error_description: `bad token ${accessToken}` })
     );
 
-    const result = OAuth2Provider().revoke(baseInputs, "entity-1", {
+    const result = OAuth2Provider(providerDeps).revoke(baseInputs, "entity-1", {
       ...metadata,
       leaseData: { ACCESS_TOKEN: accessToken }
     });
@@ -440,7 +451,7 @@ describe("OAuth2Provider.validateConnection", () => {
       .mockResolvedValueOnce(tokenResponse(""));
 
     await expect(
-      OAuth2Provider().validateConnection(baseInputs, { ...metadata, defaultTTL: "30m", maxTTL: "1h" })
+      OAuth2Provider(providerDeps).validateConnection(baseInputs, { ...metadata, defaultTTL: "30m", maxTTL: "1h" })
     ).resolves.toBe(true);
 
     expect(callAt(1).url).toBe(REVOCATION_URL);
@@ -453,7 +464,7 @@ describe("OAuth2Provider.validateConnection", () => {
       .mockResolvedValueOnce(tokenResponse(""));
 
     await expect(
-      OAuth2Provider().validateConnection(baseInputs, { ...metadata, defaultTTL: "30m", maxTTL: "2h" })
+      OAuth2Provider(providerDeps).validateConnection(baseInputs, { ...metadata, defaultTTL: "30m", maxTTL: "2h" })
     ).rejects.toThrow(/max TTL \(7200s\)/);
     expect(callAt(1).url).toBe(REVOCATION_URL);
   });
@@ -463,16 +474,218 @@ describe("OAuth2Provider.validateConnection", () => {
       .mockResolvedValueOnce(tokenResponse({ access_token: "test-token", expires_in: 3600 }))
       .mockRejectedValueOnce(upstreamError(400, { error: "unsupported_token_type" }));
 
-    await expect(OAuth2Provider().validateConnection(baseInputs, { ...metadata, defaultTTL: "30m" })).rejects.toThrow(
-      /couldn't revoke it.*doesn't support revoking access tokens \(unsupported_token_type\)/
-    );
+    await expect(
+      OAuth2Provider(providerDeps).validateConnection(baseInputs, { ...metadata, defaultTTL: "30m" })
+    ).rejects.toThrow(/couldn't revoke it.*doesn't support revoking access tokens \(unsupported_token_type\)/);
   });
 });
 
 describe("OAuth2Provider.renew", () => {
   test("is not supported", async () => {
-    await expect(OAuth2Provider().renew(baseInputs, "entity-1", Date.now(), metadata)).rejects.toThrow(
+    await expect(OAuth2Provider(providerDeps).renew(baseInputs, "entity-1", Date.now(), metadata)).rejects.toThrow(
       "OAuth 2.0 access tokens can't be extended"
+    );
+  });
+});
+
+const userInputs = { ...baseInputs, grantType: OAuth2GrantType.AuthorizationCode };
+
+const userLeaseArgs = (expireAt: number, config?: object) => ({
+  ...createArgs(expireAt, userInputs),
+  dynamicSecret: { id: "ds-1", name: "google-users" } as TDynamicSecrets,
+  config
+});
+
+describe("OAuth2Provider with the authorization code grant", () => {
+  beforeEach(() => {
+    mockedPost.mockReset();
+    mockedIssueAccessToken.mockReset();
+    appConfig.isDevelopmentMode = false;
+  });
+
+  test("accepts the authorization code grant type", () => {
+    expect(DynamicSecretOAuth2Schema.parse(userInputs).grantType).toBe(OAuth2GrantType.AuthorizationCode);
+  });
+
+  test("skips the connection test, since no user has authorized yet", async () => {
+    await expect(
+      OAuth2Provider(providerDeps).validateConnection(userInputs, { ...metadata, defaultTTL: "1h" })
+    ).resolves.toBe(true);
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  test("blocks changing the grant type, token URL or client ID while user tokens are stored", async () => {
+    const provider = OAuth2Provider(providerDeps);
+    const withStoredTokens = { ...metadata, previousInputs: userInputs, hasUserCredentials: true };
+
+    await expect(provider.validateProviderInputs(baseInputs, withStoredTokens)).rejects.toThrow(
+      "grant type can't be changed while this dynamic secret has stored user tokens"
+    );
+    await expect(
+      provider.validateProviderInputs({ ...userInputs, tokenUrl: "https://other.example.com/token" }, withStoredTokens)
+    ).rejects.toThrow("Delete the stored user tokens first");
+    await expect(
+      provider.validateProviderInputs({ ...userInputs, clientId: "other-client" }, withStoredTokens)
+    ).rejects.toThrow("client ID can't be changed while this dynamic secret has stored user tokens");
+  });
+
+  test("requires config.externalUserId on a lease", async () => {
+    await expect(OAuth2Provider(providerDeps).create(userLeaseArgs(Date.now() + 60_000))).rejects.toThrow(
+      "Pass the user's ID as config.externalUserId"
+    );
+    await expect(
+      OAuth2Provider(providerDeps).create(userLeaseArgs(Date.now() + 60_000, { externalUserId: "has space" }))
+    ).rejects.toThrow("Invalid config.externalUserId");
+    expect(mockedIssueAccessToken).not.toHaveBeenCalled();
+  });
+
+  test("returns the user's access token without requesting a client credentials token", async () => {
+    const leaseEndsAt = Date.now() + 300_000;
+    mockedIssueAccessToken.mockResolvedValueOnce({
+      accessToken: "user-access-token",
+      tokenType: "Bearer",
+      scope: "calendar.read",
+      requestedAt: Date.now(),
+      expiresAt: Date.now() + 3_600_000
+    });
+
+    const { data } = await OAuth2Provider(providerDeps).create(
+      userLeaseArgs(leaseEndsAt, { externalUserId: "auth0|user-1" })
+    );
+
+    expect(data).toMatchObject({ ACCESS_TOKEN: "user-access-token", TOKEN_TYPE: "Bearer", SCOPE: "calendar.read" });
+    expect(mockedIssueAccessToken).toHaveBeenCalledWith(
+      expect.objectContaining({ externalUserId: "auth0|user-1", leaseEndsAt, projectId: "proj-1" })
+    );
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  test("rejects a lease TTL longer than the tokens the server issues", async () => {
+    const now = Date.now();
+    mockedIssueAccessToken.mockResolvedValueOnce({
+      accessToken: "user-access-token",
+      requestedAt: now,
+      expiresAt: now + 3_600_000
+    });
+
+    await expect(
+      OAuth2Provider(providerDeps).create(userLeaseArgs(now + 7_200_000, { externalUserId: "user-1" }))
+    ).rejects.toThrow(/lease TTL \(7200s\) is longer than the lifetime/);
+  });
+
+  test("hands the issuer a refresh function bound to the dynamic secret's client", async () => {
+    mockedIssueAccessToken.mockImplementationOnce(
+      async ({ refresh }: { refresh: (refreshToken: string) => Promise<unknown> }) => {
+        await refresh("stored-refresh-token");
+        return { accessToken: "new-access-token", requestedAt: Date.now(), expiresAt: null };
+      }
+    );
+    mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "new-access-token", expires_in: 3600 }));
+
+    await OAuth2Provider(providerDeps).create(userLeaseArgs(Date.now() + 60_000, { externalUserId: "user-1" }));
+
+    const { url, body } = callAt(0);
+    expect(url).toBe(TOKEN_URL);
+    expect(body.get("grant_type")).toBe("refresh_token");
+    expect(body.get("refresh_token")).toBe("stored-refresh-token");
+  });
+
+  test("never revokes anything when a user lease ends", async () => {
+    await expect(
+      OAuth2Provider(providerDeps).revoke(userInputs, "entity-1", {
+        ...metadata,
+        leaseData: { ACCESS_TOKEN: "shared-token" }
+      })
+    ).resolves.toEqual({ entityId: "entity-1" });
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+});
+
+describe("refreshOAuth2UserToken", () => {
+  const providerInputs = DynamicSecretOAuth2Schema.parse({
+    ...userInputs,
+    scope: "calendar.read",
+    extraParams: [{ key: "audience", value: "calendar-api" }]
+  });
+
+  beforeEach(() => {
+    mockedPost.mockReset();
+  });
+
+  test("sends the refresh token with client authentication, scope and extra params, without retries", async () => {
+    mockedPost.mockResolvedValueOnce(
+      tokenResponse({ access_token: "new-access", refresh_token: "rotated-refresh", expires_in: 3600 })
+    );
+
+    const result = await refreshOAuth2UserToken(providerInputs, "old-refresh");
+
+    const { body, options } = callAt(0);
+    expect(body.get("grant_type")).toBe("refresh_token");
+    expect(body.get("refresh_token")).toBe("old-refresh");
+    expect(body.get("scope")).toBe("calendar.read");
+    expect(body.get("audience")).toBe("calendar-api");
+    expect(decodeBasic(options.headers.Authorization)).toBe("infisical-client:super-secret-value");
+    expect(options["axios-retry"]).toEqual({ retries: 0 });
+    expect(result).toMatchObject({ status: "refreshed", accessToken: "new-access", refreshToken: "rotated-refresh" });
+  });
+
+  test("leaves the refresh token unset when the server doesn't rotate it", async () => {
+    mockedPost.mockResolvedValueOnce(tokenResponse({ access_token: "new-access" }));
+    const result = await refreshOAuth2UserToken(providerInputs, "old-refresh");
+    expect(result).toMatchObject({ status: "refreshed", refreshToken: undefined, expiresAt: null });
+  });
+
+  test("reports a dead refresh token as rejected without leaking it", async () => {
+    mockedPost.mockRejectedValueOnce(
+      upstreamError(400, { error: "invalid_grant", error_description: "Token old-refresh has been revoked" })
+    );
+
+    const result = await refreshOAuth2UserToken(providerInputs, "old-refresh");
+
+    expect(result.status).toBe("rejected");
+    expect(result.status === "rejected" && result.reason).toMatch(/invalid_grant: Token \[REDACTED\] has been revoked/);
+  });
+
+  test("treats GitHub's HTTP 200 bad_refresh_token as rejected", async () => {
+    mockedPost.mockResolvedValueOnce(tokenResponse({ error: "bad_refresh_token" }));
+    await expect(refreshOAuth2UserToken(providerInputs, "old-refresh")).resolves.toMatchObject({
+      status: "rejected"
+    });
+  });
+
+  test("throws for errors that are not about the user's refresh token", async () => {
+    mockedPost.mockRejectedValueOnce(upstreamError(401, { error: "invalid_client" }));
+    await expect(refreshOAuth2UserToken(providerInputs, "old-refresh")).rejects.toThrow(
+      /rejected the token refresh: invalid_client/
+    );
+  });
+});
+
+describe("revokeOAuth2Token", () => {
+  beforeEach(() => {
+    mockedPost.mockReset();
+  });
+
+  test("sends a refresh_token hint when revoking a refresh token", async () => {
+    mockedPost.mockResolvedValueOnce(tokenResponse({}));
+    await revokeOAuth2Token(DynamicSecretOAuth2Schema.parse(userInputs), "user-refresh", "refresh_token");
+
+    const { url, body } = callAt(0);
+    expect(url).toBe(REVOCATION_URL);
+    expect(body.get("token")).toBe("user-refresh");
+    expect(body.get("token_type_hint")).toBe("refresh_token");
+  });
+});
+
+describe("OAuth2Provider.validateProviderInputs with leases and user tokens", () => {
+  test("names both blockers when the dynamic secret has active leases and stored user tokens", async () => {
+    await expect(
+      OAuth2Provider(providerDeps).validateProviderInputs(
+        { ...userInputs, clientId: "other-client" },
+        { ...metadata, previousInputs: userInputs, hasActiveLeases: true, hasUserCredentials: true }
+      )
+    ).rejects.toThrow(
+      "has active leases and stored user tokens, because only the client that issued their tokens can revoke or refresh them. Revoke the active leases and delete the stored user tokens first, then change the client ID."
     );
   });
 });

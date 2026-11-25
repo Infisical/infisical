@@ -261,7 +261,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       ProjectPermissionDynamicSecretActions.DeleteRootCredential,
-      ProjectPermissionDynamicSecretActions.Lease
+      ProjectPermissionDynamicSecretActions.Lease,
+      ProjectPermissionDynamicSecretActions.ManageUserCredentials
     ],
     ProjectPermissionSub.DynamicSecrets
   );
@@ -512,7 +513,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       ProjectPermissionDynamicSecretActions.DeleteRootCredential,
-      ProjectPermissionDynamicSecretActions.Lease
+      ProjectPermissionDynamicSecretActions.Lease,
+      ProjectPermissionDynamicSecretActions.ManageUserCredentials
     ],
     ProjectPermissionSub.DynamicSecrets
   );

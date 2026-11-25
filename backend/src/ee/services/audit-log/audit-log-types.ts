@@ -944,6 +944,12 @@ export enum EventType {
   LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
   GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease",
 
+  // Dynamic Secret User Credentials
+  STORE_DYNAMIC_SECRET_USER_CREDENTIAL = "store-dynamic-secret-user-credential",
+  DELETE_DYNAMIC_SECRET_USER_CREDENTIAL = "delete-dynamic-secret-user-credential",
+  GET_DYNAMIC_SECRET_USER_CREDENTIAL = "get-dynamic-secret-user-credential",
+  LIST_DYNAMIC_SECRET_USER_CREDENTIALS = "list-dynamic-secret-user-credentials",
+
   // PKI Discovery
   CREATE_PKI_DISCOVERY = "create-pki-discovery",
   UPDATE_PKI_DISCOVERY = "update-pki-discovery",
@@ -8206,6 +8212,72 @@ interface CreateDynamicSecretLeaseEvent {
     leaseId: string;
     leaseExternalEntityId: string;
     leaseExpireAt: Date;
+    externalUserId?: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface StoreDynamicSecretUserCredentialEvent {
+  type: EventType.STORE_DYNAMIC_SECRET_USER_CREDENTIAL;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    userCredentialId: string;
+    externalUserId: string;
+    wasCreated: boolean;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretUserCredentialEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET_USER_CREDENTIAL;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    userCredentialId: string;
+    externalUserId: string;
+    isRefreshTokenRevoked: boolean;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface GetDynamicSecretUserCredentialEvent {
+  type: EventType.GET_DYNAMIC_SECRET_USER_CREDENTIAL;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    userCredentialId: string;
+    externalUserId: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretUserCredentialsEvent {
+  type: EventType.LIST_DYNAMIC_SECRET_USER_CREDENTIALS;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    userCredentialCount: number;
 
     environment: string;
     secretPath: string;
@@ -9686,6 +9758,10 @@ export type Event =
   | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent
+  | StoreDynamicSecretUserCredentialEvent
+  | DeleteDynamicSecretUserCredentialEvent
+  | GetDynamicSecretUserCredentialEvent
+  | ListDynamicSecretUserCredentialsEvent
   | DeleteDynamicSecretLeaseEvent
   | RenewDynamicSecretLeaseEvent
   | GetDynamicSecretLeaseEvent

@@ -1862,7 +1862,33 @@ export const DYNAMIC_SECRET_LEASES = {
           "The Kubernetes namespace to create the lease in. If not specified, the first namespace defined in the configuration will be used."
       }
     }
+  },
+  OAUTH2: {
+    CREATE: {
+      config: {
+        externalUserId:
+          "Your application's ID for the user to get an access token for. The user's tokens must already be stored on the dynamic secret."
+      }
+    }
   }
+} as const;
+
+export const DYNAMIC_SECRET_USER_CREDENTIALS = {
+  name: "The name of the OAuth 2.0 dynamic secret.",
+  projectSlug: "The slug of the project the dynamic secret is in.",
+  environmentSlug: "The slug of the environment the dynamic secret is in.",
+  path: "The path of the folder the dynamic secret is in.",
+  externalUserId:
+    "Your application's ID for the user. Letters, numbers, and the characters . _ @ | : + = - are allowed.",
+  accessToken: "The user's current access token, from your application's authorization code exchange.",
+  refreshToken:
+    "The user's refresh token. Infisical uses it to get new access tokens and never returns it in a response.",
+  expiresInSeconds:
+    "How many seconds the access token is valid for, from the expires_in field of the token response. If omitted, Infisical reads the expiry from a JWT access token, or refreshes the token on the next lease.",
+  tokenType: "The token type from the token response, such as Bearer.",
+  scope: "The scopes the user granted, from the token response.",
+  offset: "The number of user records to skip.",
+  limit: "The maximum number of user records to return."
 } as const;
 
 export const PROXIED_SERVICES = {

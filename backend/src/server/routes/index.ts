@@ -85,6 +85,8 @@ import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/c
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { dynamicSecretUserCredentialDALFactory } from "@app/ee/services/dynamic-secret-user-credential/dynamic-secret-user-credential-dal";
+import { dynamicSecretUserCredentialServiceFactory } from "@app/ee/services/dynamic-secret-user-credential/dynamic-secret-user-credential-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -796,6 +798,7 @@ export const registerRoutes = async (
   const orgAssetDAL = orgAssetDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
+  const dynamicSecretUserCredentialDAL = dynamicSecretUserCredentialDALFactory(db);
   const emailDomainDAL = emailDomainDALFactory(db);
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
@@ -2503,11 +2506,23 @@ export const registerRoutes = async (
     secretValueTrackingQueue
   });
 
+  const dynamicSecretUserCredentialService = dynamicSecretUserCredentialServiceFactory({
+    dynamicSecretUserCredentialDAL,
+    dynamicSecretDAL,
+    folderDAL,
+    projectDAL,
+    permissionService,
+    licenseService,
+    kmsDataKeyService,
+    keyStore
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayV2Service,
     gatewayPoolService,
     projectDAL,
-    instanceConfigService
+    instanceConfigService,
+    dynamicSecretUserCredentialService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -3139,6 +3154,7 @@ export const registerRoutes = async (
     dynamicSecretQueueService,
     dynamicSecretDAL,
     dynamicSecretLeaseDAL,
+    dynamicSecretUserCredentialDAL,
     dynamicSecretProviders,
     folderDAL,
     permissionService,
@@ -5089,6 +5105,7 @@ export const registerRoutes = async (
     secretChangeRequest: secretChangeRequestService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
+    dynamicSecretUserCredential: dynamicSecretUserCredentialService,
     emailDomain: emailDomainService,
     saml: samlService,
     ldap: ldapService,

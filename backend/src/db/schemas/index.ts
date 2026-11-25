@@ -75,6 +75,7 @@ export * from "./certificates";
 export * from "./delegated-approval-policies";
 export * from "./delegated-approval-requests";
 export * from "./dynamic-secret-leases";
+export * from "./dynamic-secret-user-credentials";
 export * from "./dynamic-secrets";
 export * from "./email-domains";
 export * from "./event-outbox";

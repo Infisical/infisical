@@ -100,7 +100,8 @@ export enum KafkaAclPermissionType {
 }
 
 export enum OAuth2GrantType {
-  ClientCredentials = "client-credentials"
+  ClientCredentials = "client-credentials",
+  AuthorizationCode = "authorization-code"
 }
 
 export enum OAuth2ClientAuthMethod {
@@ -650,7 +651,7 @@ export type TDynamicSecretProvider =
   | {
       type: DynamicSecretProviders.OAuth2;
       inputs: {
-        grantType: OAuth2GrantType.ClientCredentials;
+        grantType: OAuth2GrantType;
         tokenUrl: string;
         revocationUrl: string;
         clientId: string;

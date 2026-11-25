@@ -27,8 +27,8 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
-import { useCreateDynamicSecretLease } from "@app/hooks/api";
-import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { useCreateDynamicSecretLease, useGetDynamicSecretDetails } from "@app/hooks/api";
+import { DynamicSecretProviders, OAuth2GrantType } from "@app/hooks/api/dynamicSecret/types";
 
 const OutputDisplay = ({
   value,
@@ -635,10 +635,22 @@ export const CreateSshDynamicSecretLease = ({
   );
 };
 
+// keep in sync with DynamicSecretExternalUserIdSchema in the backend
+const EXTERNAL_USER_ID_REGEX = /^[A-Za-z0-9._@|:+=-]+$/;
+
 const formSchema = z.object({
   ttl: z
     .string()
     .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional(),
+  externalUserId: z
+    .string()
+    .trim()
+    .max(255)
+    .refine(
+      (val) => !val || EXTERNAL_USER_ID_REGEX.test(val),
+      "Use only letters, numbers, and the characters . _ @ | : + = -"
+    )
     .optional()
 });
 
@@ -662,29 +674,50 @@ export const CreateDynamicSecretLease = ({
   environment
 }: Props) => {
   const leaseCapabilities = dynamicSecretProviderRegistry.requireLeaseCapabilities(provider);
+  const isOAuth2 = provider === DynamicSecretProviders.OAuth2;
+  // reading the grant type needs the read permission; without it the user ID field stays optional
+  const { data: dynamicSecretDetails, isLoading: isDetailsLoading } = useGetDynamicSecretDetails({
+    projectSlug,
+    environmentSlug: environment,
+    path: secretPath,
+    name: isOAuth2 ? dynamicSecretName : ""
+  });
+  const grantType = (dynamicSecretDetails?.inputs as { grantType?: OAuth2GrantType } | undefined)
+    ?.grantType;
+  let userIdField: "hidden" | "optional" | "required" = "hidden";
+  if (isOAuth2 && grantType === OAuth2GrantType.AuthorizationCode) userIdField = "required";
+  else if (isOAuth2 && grantType !== OAuth2GrantType.ClientCredentials) userIdField = "optional";
+
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
+    setError
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ttl: "1h"
+      ttl: "1h",
+      externalUserId: ""
     }
   });
   const [isPreloading, setIsPreloading] = useToggle(Boolean(leaseCapabilities.autoGenerate));
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 
-  const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
+  const handleDynamicSecretLeaseCreate = async ({ ttl, externalUserId }: TForm) => {
     if (createDynamicSecretLease.isPending) return;
+    if (userIdField === "required" && !externalUserId) {
+      setError("externalUserId", { message: "User ID is required" });
+      return;
+    }
     await createDynamicSecretLease.mutateAsync({
       environmentSlug: environment,
       projectSlug,
       path: secretPath,
       ttl,
       dynamicSecretName,
-      provider
+      provider,
+      ...(userIdField !== "hidden" && externalUserId ? { config: { externalUserId } } : {})
     });
 
     createNotification({
@@ -734,7 +767,7 @@ export const CreateDynamicSecretLease = ({
 
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
 
-  if (isPreloading) {
+  if (isPreloading || isDetailsLoading) {
     return <Spinner className="mx-auto my-12" label="Provisioning lease" />;
   }
 
@@ -751,6 +784,36 @@ export const CreateDynamicSecretLease = ({
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit(handleDynamicSecretLeaseCreate)}>
+      {userIdField !== "hidden" && (
+        <Controller
+          control={control}
+          name="externalUserId"
+          render={({ field, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="dynamic-secret-lease-user-id">
+                User ID{userIdField === "optional" && " (Optional)"}
+              </FieldLabel>
+              <Input
+                {...field}
+                id="dynamic-secret-lease-user-id"
+                className="font-mono"
+                placeholder="user-123"
+                isError={Boolean(error)}
+                aria-describedby="dynamic-secret-lease-user-id-feedback"
+              />
+              <FieldFeedback
+                id="dynamic-secret-lease-user-id-feedback"
+                description={
+                  userIdField === "required"
+                    ? "Your application's ID for the user to get an access token for. Their tokens must already be stored."
+                    : "Required if this dynamic secret issues tokens for your application's users. Leave blank for client credentials."
+                }
+                error={error?.message}
+              />
+            </Field>
+          )}
+        />
+      )}
       <Controller
         control={control}
         name="ttl"

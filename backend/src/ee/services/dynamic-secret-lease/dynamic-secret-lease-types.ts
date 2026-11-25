@@ -56,7 +56,13 @@ export type TDynamicSecretSshLeaseConfig = {
   principals?: string[];
 };
 
-export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig & TDynamicSecretSshLeaseConfig;
+export type TDynamicSecretOAuth2LeaseConfig = {
+  externalUserId?: string;
+};
+
+export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig &
+  TDynamicSecretSshLeaseConfig &
+  TDynamicSecretOAuth2LeaseConfig;
 
 export type TDynamicSecretLeaseServiceFactory = {
   create: (arg: TCreateDynamicSecretLeaseDTO) => Promise<{
