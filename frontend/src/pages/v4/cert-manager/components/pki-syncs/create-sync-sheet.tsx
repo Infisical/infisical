@@ -132,9 +132,10 @@ const CreateSyncForm = ({
   const { trigger, getValues, setError, control, formState } = form;
   const connection = useWatch({ control, name: "connection" });
   const canRemoveCertificates = useWatch({ control, name: "syncOptions.canRemoveCertificates" });
-  const { data: paloAltoDevice, isPending: detectingPaloAlto } = adapter.usePaloAltoTemplates(
+  const detectsPaloAlto = isPaloAltoNetworksPkiSync(destination) && Boolean(connection?.id);
+  const { data: paloAltoDevice, isPending: paloAltoPending } = adapter.usePaloAltoTemplates(
     connection?.id ?? "",
-    { enabled: isPaloAltoNetworksPkiSync(destination) && Boolean(connection?.id) }
+    { enabled: detectsPaloAlto }
   );
   const [step, setStep] = useState(pickerStep ? 1 : 0);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -262,7 +263,7 @@ const CreateSyncForm = ({
       content: body(entry.key),
       validate: entry.key === "review" ? undefined : () => validateStep(index),
       disabledReason:
-        (entry.key === "destination" && detectingPaloAlto && Boolean(connection?.id)
+        (entry.key === "destination" && detectsPaloAlto && paloAltoPending
           ? "Checking the Palo Alto Networks device"
           : undefined) ||
         (entry.key === "review" && !acknowledged
@@ -378,9 +379,11 @@ export const CreatePkiSyncSheet = ({
           title="Add certificate sync"
           open
           onOpenChange={(next) => !next && close()}
+          completeLabel="Continue"
           steps={[
             {
               title: "Service",
+              disabledReason: "Choose a service",
               render: () => (
                 <PkiSyncDestinationPicker
                   onSelect={(next) => {
@@ -395,8 +398,7 @@ export const CreatePkiSyncSheet = ({
                   }}
                 />
               )
-            },
-            { title: "Destination" }
+            }
           ]}
         />
         {upgradeGate}
