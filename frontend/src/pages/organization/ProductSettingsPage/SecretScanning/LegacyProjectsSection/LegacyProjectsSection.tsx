@@ -65,7 +65,6 @@ export const LegacyProjectsSection = () => {
       </Card>
     );
   }
-  if (projects.length <= 1) return null;
 
   const isMember = (projectId: string) => userProjects.some((p) => p.id === projectId);
 
@@ -94,15 +93,18 @@ export const LegacyProjectsSection = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Alert variant="warning" className="mb-4">
-          <TriangleAlertIcon />
-          <AlertDescription>
-            <p>
-              Secret Scanning no longer uses projects. Opening Secret Scanning takes everyone to the
-              most recently created project below. The earlier ones stay available from their links.
-            </p>
-          </AlertDescription>
-        </Alert>
+        {instanceState?.isMultiInstance && (
+          <Alert variant="warning" className="mb-4">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                Secret Scanning no longer uses projects. Opening Secret Scanning takes everyone to
+                the most recently created project below. The earlier ones stay available from their
+                links.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
         <Table>
           <TableHeader>
             <TableRow>

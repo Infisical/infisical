@@ -56,7 +56,7 @@ import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
 import { CertManagerExportProjectModal } from "./CertManagerExportProjectModal";
 
-export const ProjectsTab = () => {
+export const ProjectsSection = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
   const canManage = permission.can(
@@ -107,8 +107,6 @@ export const ProjectsTab = () => {
       </Card>
     );
   }
-  if (instances.length <= 1) return null;
-
   const handleConfirmActive = async () => {
     if (!pendingActive) return;
     try {
