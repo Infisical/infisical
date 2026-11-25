@@ -4,6 +4,7 @@ import { CronExpressionParser } from "cron-parser";
 import { Cluster, Redis } from "ioredis";
 import RE2 from "re2";
 
+import { GatewayTimeoutError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock";
 
@@ -51,8 +52,6 @@ export const CronJobName = {
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   MonthlyLegacyPkiDeprecationNotice: "monthly-legacy-pki-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
-  EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
-  EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check",
   SecretReadActivityFlush: "secret-read-activity-flush",
@@ -635,5 +634,28 @@ export const cronJobFactory = ({
     }
   };
 
-  return { register, start, stop };
+  // Bypasses the schedule, slots, leases and run-hash dedupe, so the same job can run any number of times.
+  const runNow = async (name: string) => {
+    const entry = entries.get(name);
+    if (!entry) {
+      throw new NotFoundError({
+        message: `Cron job '${name}' is not registered on this instance. Jobs are registered only on instances that run general workers, and only when the job is turned on there.`
+      });
+    }
+    logger.info(`cron[${name}]: triggered on demand`);
+    const timeoutMs = entry.handlerTimeoutMs ?? handlerTimeoutMs;
+    try {
+      await withTimeout(() => entry.handler(), timeoutMs);
+    } catch (err) {
+      if (err instanceof HandlerTimeoutError) {
+        throw new GatewayTimeoutError({
+          message: `Cron job '${name}' did not finish within ${timeoutMs}ms. Its handler may still be running.`,
+          error: err
+        });
+      }
+      throw err;
+    }
+  };
+
+  return { register, start, stop, runNow };
 };

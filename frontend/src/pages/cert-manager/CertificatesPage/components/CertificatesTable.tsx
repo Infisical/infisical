@@ -80,7 +80,11 @@ import type {
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
+import {
+  getEnrollmentTypeName,
+  NON_PQC_KEY_ALGORITHMS,
+  PQC_KEY_ALGORITHMS
+} from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
@@ -101,13 +105,13 @@ import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
+  getRenewNowState,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   getPendingRevocationState,
   isExpiringWithinOneDay,
-  isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  isManagedCertificate
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -169,8 +173,7 @@ const EmptyCell = () => <span className="text-muted">—</span>;
 
 const getEnrollmentMethodBadge = (enrollmentType: string | null | undefined) => {
   if (!enrollmentType) return <EmptyCell />;
-  const label = enrollmentType.toUpperCase();
-  return <Badge variant="ghost">{label}</Badge>;
+  return <Badge variant="ghost">{getEnrollmentTypeName(enrollmentType)}</Badge>;
 };
 
 const SortIcon = ({
@@ -1335,19 +1338,20 @@ export const CertificatesTable = ({
 
                                 if (!isRenewable) return null;
 
-                                const profileMissing = !certificate.profileId;
-                                if (profileMissing && !isManagedCertificate(certificate))
+                                if (!certificate.profileId && !isManagedCertificate(certificate))
                                   return null;
 
-                                const renewBlockedReason = profileMissing
-                                  ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                                  : rowApplicationAccess?.renewBlockedReason;
+                                const renewNow = getRenewNowState({
+                                  certificate,
+                                  canRenew: canRenewCertificate,
+                                  permissionBlockedReason: rowApplicationAccess?.renewBlockedReason
+                                });
 
                                 return (
-                                  <BlockedActionTooltip reason={renewBlockedReason}>
+                                  <BlockedActionTooltip reason={renewNow.reason}>
                                     <DropdownMenuItem
-                                      isDisabled={!canRenewCertificate || profileMissing}
-                                      isDisabledFocusable={Boolean(renewBlockedReason)}
+                                      isDisabled={renewNow.isDisabled}
+                                      isDisabledFocusable={Boolean(renewNow.reason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("renewCertificate", {

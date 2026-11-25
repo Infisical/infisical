@@ -24,6 +24,7 @@ import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/pr
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+import { PamSessionActivityField } from "./PamSessionActivityField";
 
 type Props = {
   auditLogStream?: TCriblProviderLogStream;
@@ -183,6 +184,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           />
         )}
         <ProductsField />
+        <PamSessionActivityField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

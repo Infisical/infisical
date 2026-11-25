@@ -45,6 +45,7 @@ The **Certificate Details** tab lets you pre-configure sensible defaults for cer
 Defaults can be configured for:
 - **TTL** (validity period)
 - **Subject attributes** (CN, O, OU, C, ST, L)
+- **Subject alternative names** (added only if the request has none and no CSR, except a [default SAN that copies the common name](#add-the-common-name-as-a-san), which also fills a CSR without SANs)
 - **Key algorithm** (RSA-2048, ECDSA-P256, etc.)
 - **Signature algorithm**
 - **Key usages** and **Extended key usages**
@@ -62,11 +63,27 @@ Defaults can be configured for:
   If the certificate policy is updated after the profile is saved, existing defaults may no longer comply. Certificate requests will fail at validation until you update the profile defaults to match the new policy.
 </Warning>
 
+### Add the common name as a SAN
+
+To copy each request's common name into its SANs, go to the **Certificate Defaults** step. Under **Subject Alternative Names**, select **Add SAN**, choose the SAN type, such as **DNS Name**, and select **Same as common name** in the value field. The API stores it as `{{request.commonName}}`. It's added only when the request lists no SANs:
+
+- If the common name is valid for the SAN type, it's added as a SAN of that type
+- If the common name isn't valid for the SAN type, such as `John Smith` for a DNS name, nothing is added
+- If the request comes through ACME, only the common name in the client's CSR is added, and only as a DNS name or IP address, because ACME issues only names the client proved it controls
+- If an ACME client such as Certbot sends a CSR without a common name, nothing is added
+- If the request includes a CSR and the profile issues from Microsoft AD CS or Venafi TPP, the certificate authority signs the CSR as sent, so nothing is added
+
+A [renewal](/documentation/platform/pki/applications/certificate-renewal) from Certificate Manager doesn't apply this default. An EST or SCEP client that renews with the same CSR keeps the SANs its current certificate got from this default, even after you remove or change the default.
+
+To save this default, the profile's [certificate policy](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) must allow a common name and SANs of the type you picked. The added SAN must also match the policy's values for that SAN type, or requests that rely on it fail. To make every certificate carry its common name as a SAN, select **Same as common name** as a required SAN value in the policy.
+
 ### Custom extensions
 
 Set default values for custom X.509 extensions. The [certificate policy](/documentation/platform/pki/settings/policies) decides which object identifiers (OIDs) may be emitted, so a request can carry any extension the policy permits, whether or not the profile declares it. A request that supplies a signing request can carry them in the CSR, which is how an MDM enrolling over SCEP sets a per-device value.
 
 Set a value and Infisical uses it whenever the request doesn't supply one. Leave the value empty and the request supplies it, which suits a per-principal value such as an Active Directory security identifier. Either way, Infisical checks the value against the policy's rule for that OID.
+
+[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds two extensions: the computer's security identifier in the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and the **Certificate template information** (`1.3.6.1.4.1.311.21.7`). Both replace any value the profile sets for those OIDs. If the certificate policy restricts custom extensions, it must allow both, and their values are checked against its rules.
 
 Mark an extension **Critical** when a client that can't process it must reject the certificate rather than ignore it. Leave it clear otherwise, which is the usual choice. Where an extension's own specification fixes criticality, or the certificate policy pins it for that OID, the checkbox is read only.
 
@@ -93,7 +110,7 @@ Profiles are consumed through [Applications](/documentation/platform/pki/applica
     Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
   </Step>
   <Step title="Application Admin configures enrollment">
-    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
+    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP, Microsoft Autoenrollment) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
   </Step>
   <Step title="Certificates are issued">
     Teams request certificates through the configured enrollment method. Requests are validated against the profile's policy and signed by the profile's CA.

@@ -14,12 +14,14 @@ import { getProjectLucideIcon } from "@app/helpers/project";
 import { AuditLogStreamProduct } from "@app/hooks/api/auditLogStreams/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-// Shared across every provider form so product scoping stays consistent. Re-exported into each
-// provider's form schema (`...auditLogStreamFiltersSchema.shape`) and rendered via <ProductsField />.
+// Shared across every provider form so filtering stays consistent. Re-exported into each provider's
+// form schema (`...auditLogStreamFiltersSchema.shape`) and rendered via <ProductsField /> and
+// <PamSessionActivityField />.
 export const auditLogStreamFiltersSchema = z.object({
   filters: z
     .object({
-      products: z.nativeEnum(AuditLogStreamProduct).array().nullish()
+      products: z.nativeEnum(AuditLogStreamProduct).array().nullish(),
+      pamSessionActivity: z.object({ includeOutput: z.boolean() }).nullish()
     })
     .nullish()
 });

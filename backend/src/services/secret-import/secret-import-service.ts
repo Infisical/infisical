@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -17,13 +18,13 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { EventModificationType } from "../event-outbox/event-definition";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -51,6 +52,7 @@ import {
 
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
@@ -67,11 +69,16 @@ type TSecretImportServiceFactoryDep = {
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
+const ERR_NON_REPLICATION_IMPORT_UNDER_POLICY = (policyName: string) =>
+  new BadRequestError({
+    message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect approval policies. Create an import that respects approval policies instead.`
+  });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
 
 export const secretImportServiceFactory = ({
   secretImportDAL,
+  secretChangePolicyService,
   eventEmitter,
   projectEnvDAL,
   projectFolderGrantDAL,
@@ -134,7 +141,7 @@ export const secretImportServiceFactory = ({
     scope: { projectId: string; environment: string; secretPath: string },
     modificationType: EventModificationType,
     tx: Knex
-  ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
+  ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
 
   const createImport = async ({
     environment,
@@ -225,6 +232,17 @@ export const secretImportServiceFactory = ({
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
+
+    if (!isReplication && !isCrossProjectImport) {
+      // findBySecretPath resolves "//app" to the /app folder but returns the requested path as folder.path, and
+      // policies are matched by path, so an alias would miss the policy that governs the folder.
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+        projectId,
+        environment,
+        path.posix.join("/", folder.path)
+      );
+      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
+    }
 
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
     if (!importEnv) {
@@ -359,6 +377,18 @@ export const secretImportServiceFactory = ({
       throw new NotFoundError({
         error: `Imported environment with slug '${data.environment}' in project with ID '${projectId}' not found`
       });
+    }
+
+    const isSourceChanging =
+      (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
+      (data.path !== undefined && data.path !== secImpDoc.importPath);
+    if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+        projectId,
+        environment,
+        path.posix.join("/", folder.path)
+      );
+      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
     // check if user has permission to import from target path when source is changing
@@ -527,15 +557,16 @@ export const secretImportServiceFactory = ({
             tx
           );
           await folderDAL.deleteById(replicatedFolder.id, tx);
-          await FolderModifiedEventV1.emit(
-            eventEmitter,
-            {
-              folderId: replicatedFolder.id,
-              projectId,
-              environment,
-              secretPath: replicatedFolder.path,
-              modificationType: EventModificationType.Deleted
-            },
+          await eventEmitter.emit(
+            [
+              FolderModifiedEventV1.build({
+                folderId: replicatedFolder.id,
+                projectId,
+                environment,
+                secretPath: replicatedFolder.path,
+                modificationType: EventModificationType.Deleted
+              })
+            ],
             tx
           );
         }

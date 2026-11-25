@@ -3,6 +3,7 @@ import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { auditRevokedProjectAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import {
@@ -12,7 +13,6 @@ import {
 } from "@app/services/org/org-membership-events";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";

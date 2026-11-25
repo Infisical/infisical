@@ -55,7 +55,7 @@ To use the template, choose it when you [add an account](/documentation/platform
 
 **Max Session Duration** and **Max Access Duration** limit different things. For example, with a **Max Access Duration** of 1 day and a **Max Session Duration** of 1 hour, an approved user can start sessions for 1 day, and each session ends after 1 hour or when the access ends, whichever comes first.
 
-Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
+Machine identities can't complete an MFA challenge. They can't connect to accounts whose template has **Require MFA** on. If an [AI agent](/documentation/platform/pam/ai-agents/overview#accounts-that-require-mfa) runs as you, it gives you a link to complete MFA in your browser. If an agent runs as a machine identity and needs an account, use **Require Approval** instead.
 
 ### Output masking
 

@@ -12,31 +12,37 @@ package acmeca
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
 // CA is one scope's certificate authority.
 type CA struct {
+	// Orders is every order an account placed, oldest first.
+	Orders []Order `json:"orders"`
 	// Issued is every certificate the CA signed, oldest first.
 	Issued []Issued `json:"issued"`
 
 	mu         sync.Mutex
 	mux        *http.ServeMux
 	events     fakenet.Emitter
-	key        *ecdsa.PrivateKey
-	cert       *x509.Certificate
+	root       *issuer.CA
 	nonces     map[string]bool
 	accounts   map[string]*account
 	orders     map[string]*order
 	authzs     map[string]*authorization
 	challenges map[string]*challenge
+}
+
+// Order is one order an account placed.
+type Order struct {
+	ID    string   `json:"id"`
+	Names []string `json:"names"`
 }
 
 // Issued is one certificate the CA signed.
@@ -46,6 +52,10 @@ type Issued struct {
 	Serial   string    `json:"serial"`
 	PEM      string    `json:"pem"`
 	IssuedAt time.Time `json:"issuedAt"`
+	// RevokedAt is set once the account that ordered it revokes it, with Reason the
+	// RFC 5280 reason code it gave.
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+	Reason    int        `json:"reason,omitempty"`
 }
 
 type account struct {
@@ -91,8 +101,9 @@ func (c *CA) Snapshot() ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return json.Marshal(struct {
+		Orders []Order  `json:"orders"`
 		Issued []Issued `json:"issued"`
-	}{c.Issued})
+	}{c.Orders, c.Issued})
 }
 
 // Seed accepts nothing: everything the CA holds is what a client asked it for.

@@ -77,6 +77,7 @@ import {
   useDeleteApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { enrollmentTypeToNameMap } from "@app/hooks/api/certificates/constants";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
@@ -94,11 +95,7 @@ import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/compone
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import {
-  ConfigureEnrollmentModal,
-  EnrollmentMethod,
-  METHOD_LABELS
-} from "./ConfigureEnrollmentModal";
+import { ConfigureEnrollmentModal, EnrollmentMethod } from "./ConfigureEnrollmentModal";
 import { LegacyApplicationAlertsCard } from "./LegacyApplicationAlertsCard";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
@@ -111,6 +108,7 @@ const methodBadges = (p: TPkiApplicationProfile) => {
   if (p.estConfigId) methods.push("est");
   if (p.acmeConfigId) methods.push("acme");
   if (p.scepConfigId) methods.push("scep");
+  if (p.microsoftAutoenrollmentConfigId) methods.push("microsoft-autoenrollment");
   return methods;
 };
 
@@ -496,7 +494,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           </CardTitle>
           <CardDescription>
             For each profile, configure how this application will issue certificates via API, EST,
-            ACME, or SCEP.
+            ACME, SCEP, or Microsoft Autoenrollment.
           </CardDescription>
           {canManageProfileAttachments ? (
             <CardAction>
@@ -579,9 +577,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                   <button
                                     type="button"
                                     onClick={() => openEnrollment(p, m)}
-                                    aria-label={`Edit ${METHOD_LABELS[m]} enrollment for ${p.profileSlug}`}
+                                    aria-label={`Edit ${enrollmentTypeToNameMap[m]} enrollment for ${p.profileSlug}`}
                                   >
-                                    {METHOD_LABELS[m]}
+                                    {enrollmentTypeToNameMap[m]}
                                   </button>
                                 </Badge>
                               ))
@@ -601,7 +599,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                           <div className="flex flex-wrap gap-1.5">
                             {methods.map((m) => (
                               <Badge key={m} variant="neutral">
-                                {METHOD_LABELS[m]}
+                                {enrollmentTypeToNameMap[m]}
                               </Badge>
                             ))}
                           </div>

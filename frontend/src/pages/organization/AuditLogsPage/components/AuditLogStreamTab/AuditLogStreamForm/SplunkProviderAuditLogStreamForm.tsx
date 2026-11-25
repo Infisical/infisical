@@ -12,6 +12,7 @@ import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/p
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+import { PamSessionActivityField } from "./PamSessionActivityField";
 
 type Props = {
   auditLogStream?: TSplunkProviderLogStream;
@@ -149,6 +150,7 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           )}
         />
         <ProductsField />
+        <PamSessionActivityField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

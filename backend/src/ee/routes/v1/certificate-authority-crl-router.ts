@@ -36,6 +36,7 @@ export const registerCaCrlRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getCrlDer",
       description: "Get CRL in DER format",
       params: z.object({
         crlId: z.string().trim().describe(CA_CRLS.GET.crlId)

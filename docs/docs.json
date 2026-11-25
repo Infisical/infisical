@@ -243,13 +243,8 @@
                     "group": "Honey tokens",
                     "root": "documentation/platform/honey-tokens/overview",
                     "pages": [
-                      {
-                        "group": "AWS",
-                        "pages": [
-                          "documentation/platform/honey-tokens/aws/setup",
-                          "documentation/platform/honey-tokens/aws/usage"
-                        ]
-                      }
+                      "documentation/platform/honey-tokens/usage",
+                      "documentation/platform/honey-tokens/own-aws-account"
                     ]
                   }
                 ]
@@ -511,7 +506,8 @@
                           "documentation/platform/pki/guides/applications/jamf-pro-scep",
                           "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
-                      }
+                      },
+                      "documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment"
                     ]
                   },
                   "documentation/platform/pki/applications/certificates",
@@ -659,16 +655,7 @@
                   "documentation/platform/pam/access-requests/break-glass"
                 ]
               },
-              {
-                "group": "AI agents",
-                "pages": [
-                  "documentation/platform/pam/ai-agents/overview",
-                  "documentation/platform/pam/ai-agents/run",
-                  "documentation/platform/pam/ai-agents/instructions",
-                  "documentation/platform/pam/ai-agents/unattended",
-                  "documentation/platform/pam/ai-agents/review"
-                ]
-              },
+              "documentation/platform/pam/ai-agents/overview",
               {
                 "group": "Credential rotation",
                 "pages": [
@@ -688,7 +675,8 @@
                     "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
                       "documentation/platform/pam/sessions/session-recording",
-                      "documentation/platform/pam/sessions/external-storage"
+                      "documentation/platform/pam/sessions/external-storage",
+                      "documentation/platform/pam/sessions/activity-streaming"
                     ]
                   },
                   "documentation/platform/pam/auditing",
@@ -2300,7 +2288,8 @@
                           "api-reference/endpoints/app-connections/ldap/get-by-name",
                           "api-reference/endpoints/app-connections/ldap/create",
                           "api-reference/endpoints/app-connections/ldap/update",
-                          "api-reference/endpoints/app-connections/ldap/delete"
+                          "api-reference/endpoints/app-connections/ldap/delete",
+                          "api-reference/endpoints/app-connections/ldap/list-groups"
                         ]
                       },
                       {
@@ -3039,6 +3028,7 @@
                     "group": "Secret imports",
                     "pages": [
                       "api-reference/endpoints/secret-imports/list",
+                      "api-reference/endpoints/secret-imports/get-by-id",
                       "api-reference/endpoints/secret-imports/create",
                       "api-reference/endpoints/secret-imports/update",
                       "api-reference/endpoints/secret-imports/delete",
@@ -4301,6 +4291,15 @@
                               "api-reference/endpoints/pki/applications/enrollment/set-scep",
                               "api-reference/endpoints/pki/applications/enrollment/clear-scep"
                             ]
+                          },
+                          {
+                            "group": "Microsoft Autoenrollment",
+                            "pages": [
+                              "api-reference/endpoints/pki/applications/enrollment/set-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/clear-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/reenroll-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/get-microsoft-autoenrollment-service-principal"
+                            ]
                           }
                         ]
                       },
@@ -4939,7 +4938,8 @@
                   {
                     "group": "Instance",
                     "pages": [
-                      "api-reference/endpoints/instance/status"
+                      "api-reference/endpoints/instance/status",
+                      "api-reference/endpoints/instance/aws-deployment-metadata"
                     ]
                   }
                 ]
@@ -5580,11 +5580,35 @@
     },
     {
       "source": "/documentation/platform/pam/ai-agents/sandbox",
-      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
+      "destination": "/documentation/platform/pam/ai-agents/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/run",
+      "destination": "/documentation/platform/pam/ai-agents/overview#agent-workflow"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/instructions",
+      "destination": "/documentation/platform/pam/ai-agents/overview#tell-the-agent-about-pam"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/unattended",
+      "destination": "/documentation/platform/pam/ai-agents/overview#run-an-agent-as-a-machine-identity"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/review",
+      "destination": "/documentation/platform/pam/ai-agents/overview#review-and-stop-an-agent"
     },
     {
       "source": "/documentation/platform/pam/dependencies/overview",
       "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/setup",
+      "destination": "/documentation/platform/honey-tokens/own-aws-account"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/usage",
+      "destination": "/documentation/platform/honey-tokens/usage"
     },
     {
       "source": "/documentation/platform/pam/recording-storage",

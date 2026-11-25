@@ -42,6 +42,8 @@ An account requires approval when its [account template](/documentation/platform
   </Step>
 </Steps>
 
+Approvers get an email for each new access request. If your team reviews requests from Slack or another [alert](#alerts) channel, turn off **Email Approvers** under **Approvers**. Approvers still get the in-app notification, and emails about break-glass use and auto-approvals are still sent.
+
 Approvers must already be members of the folder, which you add on the folder's **Permissions** tab. An approver doesn't need a role that lets them use the account.
 
 Only users and groups can be approvers. A machine identity can't approve a request, even if it has the Admin role on the folder.
@@ -74,7 +76,7 @@ You can't change the reason or the duration after you submit the request. To cha
 
 ## Review a request
 
-When a member requests access, Infisical notifies the folder's approvers by email and in Infisical.
+When a member requests access, Infisical notifies the folder's approvers in Infisical and, unless the folder has **Email Approvers** turned off, by email.
 
 <Steps>
   <Step>
@@ -129,9 +131,9 @@ To add an alert, open the folder's **Approvals** tab, select **Alerts**, and sel
 
 ## Requests from AI agents
 
-An AI agent requests access through the [CLI](/cli/reference#pam-agentic-access). If the agent runs as you, the request is filed under your name. If the agent runs as a machine identity, the request shows the identity's name.
+An AI agent requests access through the [CLI](/cli/reference#pam-access). If the agent runs as you, the request is filed under your name. If the agent runs as a machine identity, the request shows the identity's name.
 
-The first time an agent connects to an account that requires approval, the CLI files a request for the agent. After an approver approves the request, the agent's next connection to the account works.
+When an [agent](/documentation/platform/pam/ai-agents/overview#accounts-that-need-approval) runs [`infisical pam access`](/cli/reference#pam-access) on an account that requires approval, the CLI files a request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting for approval. After an approver approves the request, the agent runs the command again.
 
 <Warning>
   When you approve a request from an agent, you approve everything the agent does with the access for the duration you grant. Give an agent's machine identity a role on only the accounts it needs, and review its [session recordings](/documentation/platform/pam/sessions/session-recording).

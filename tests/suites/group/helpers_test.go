@@ -109,7 +109,7 @@ func createSecret(t *testing.T, client *api.ClientWithResponses, projectID, name
 
 func groupRole(t *testing.T, tn *harness.Tenant, groupID uuid.UUID) string {
 	t.Helper()
-	res, err := tn.Admin.API.GetGroupByIdWithResponse(t.Context(), groupID.String())
+	res, err := tn.Admin.API.GetGroupByIdWithResponse(t.Context(), groupID)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "reading group %s returned %d: %s", groupID, res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Role
@@ -130,7 +130,7 @@ func groupNames(t *testing.T, client *api.ClientWithResponses) []string {
 func groupIdentityIDs(t *testing.T, tn *harness.Tenant, groupID uuid.UUID) []uuid.UUID {
 	t.Helper()
 	filter := api.AssignedMachineIdentities
-	res, err := tn.Admin.API.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID.String(),
+	res, err := tn.Admin.API.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID,
 		&api.ListGroupMachineIdentitiesParams{Filter: &filter})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "listing the identities of group %s returned %d: %s", groupID, res.StatusCode(), apierr.Body(res.Body))
@@ -208,7 +208,7 @@ func accept(t *testing.T, tn *harness.Tenant, addr string) *api.ClientWithRespon
 func groupUsernames(t *testing.T, tn *harness.Tenant, groupID uuid.UUID) []string {
 	t.Helper()
 	filter := api.ListGroupUsersParamsFilterExistingMembers
-	res, err := tn.Admin.API.ListGroupUsersWithResponse(t.Context(), groupID.String(), &api.ListGroupUsersParams{Filter: &filter})
+	res, err := tn.Admin.API.ListGroupUsersWithResponse(t.Context(), groupID, &api.ListGroupUsersParams{Filter: &filter})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "listing the users of group %s returned %d: %s", groupID, res.StatusCode(), apierr.Body(res.Body))
 	out := []string{}

@@ -11,6 +11,7 @@ import {
   describeCustomExtensionValue,
   encodeCustomExtensionValue,
   findCsrCustomExtensionMismatch,
+  findMicrosoftAutoenrollmentRuleProblems,
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
@@ -134,6 +135,149 @@ describe("describeCustomExtensionValue", () => {
     expect(describeCustomExtensionValue(CUSTOM_OID, encodeCustomExtensionValue(CUSTOM_OID, "ops-prod"))).toBe(
       "ops-prod"
     );
+  });
+});
+
+describe("resolveCustomExtensions with extensions the issuer adds", () => {
+  const COMPUTER_SID = "S-1-5-21-1111111111-2222222222-3333333333-1105";
+  const issuerAdded = (oid: string, value: string) => ({
+    oid,
+    critical: false,
+    value: encodeCustomExtensionValue(oid, value),
+    issuerAdded: true
+  });
+  const sidExtension = issuerAdded(SID_OID, COMPUTER_SID);
+
+  it("satisfies a required rule with the issuer's value and returns it in the extensions to sign", () => {
+    const rules = [{ oid: SID_OID, required: ["S-1-5-21-1111111111-2222222222-3333333333-*"] }];
+
+    expect(resolveCustomExtensions({ rules }).errors).toEqual([
+      expect.stringContaining(`This policy requires custom extension '${SID_OID}'`)
+    ]);
+    const { errors, extensions } = resolveCustomExtensions({ rules, issuerAddedExtensions: [sidExtension] });
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([sidExtension]);
+  });
+
+  it("refuses a computer SID the policy denies", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, denied: [COMPUTER_SID] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/is denied by this policy/)]);
+  });
+
+  it("refuses a computer SID outside the domain the policy requires", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, required: ["S-1-5-21-9999999999-*"] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/does not match any value required by this policy/)]);
+  });
+
+  it("checks the issuer's values even when required values are not enforced", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, denied: [COMPUTER_SID] }],
+      issuerAddedExtensions: [sidExtension],
+      skipRequired: true
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/is denied by this policy/)]);
+  });
+
+  it("adds the extensions when the policy does not restrict custom extensions", () => {
+    expect(resolveCustomExtensions({ rules: undefined, issuerAddedExtensions: [sidExtension] })).toEqual({
+      errors: [],
+      extensions: [sidExtension]
+    });
+  });
+
+  it("refuses an extension the issuer adds when the policy restricts custom extensions without allowing it", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: "1.2.3.4", allowed: ["*"] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringContaining(`Add a rule for '${SID_OID}' to the policy.`)]);
+  });
+
+  it("holds the template information to the policy's rule like any other extension", () => {
+    const templateInfo = issuerAdded(TEMPLATE_INFO_OID, "1.3.6.1.4.1.99999.1.2.3:100.0");
+
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: TEMPLATE_INFO_OID, required: ["Machine"] }],
+        issuerAddedExtensions: [templateInfo]
+      }).errors
+    ).toEqual([expect.stringMatching(/does not match any value required by this policy/)]);
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: TEMPLATE_INFO_OID, allowed: ["*"] }],
+        issuerAddedExtensions: [templateInfo]
+      })
+    ).toEqual({ errors: [], extensions: [templateInfo] });
+  });
+
+  it("names what a restricting policy must change for Microsoft Autoenrollment", () => {
+    expect(findMicrosoftAutoenrollmentRuleProblems(null)).toEqual([]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"] }
+      ])
+    ).toEqual([]);
+    expect(findMicrosoftAutoenrollmentRuleProblems([{ oid: SID_OID, allowed: ["*"] }])).toEqual([
+      `Allow ${TEMPLATE_INFO_OID} in the policy's custom extension rules.`
+    ]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["*"] },
+        { oid: TEMPLATE_INFO_OID, required: ["1.3.6.1.4.1.311.21.8.1:100.0"] }
+      ])
+    ).toEqual([expect.stringContaining("denies every value"), expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["S-1-*"] },
+        { oid: TEMPLATE_INFO_OID, required: ["*"] }
+      ])
+    ).toEqual([expect.stringContaining("denies every value")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, required: ["S-1-5-21-1111111111-2222222222-3333333333-*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"] }
+      ])
+    ).toEqual([]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["S-1-5-21-*-1000"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"], denied: ["1.3.6.1.4.1.99999*"] }
+      ])
+    ).toEqual([expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["1.3.6.1.4.1.311.21.8.1.1:100.0", "1.2.3:101.7"] }
+      ])
+    ).toEqual([expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["**"] },
+        { oid: TEMPLATE_INFO_OID, required: ["**"] }
+      ])
+    ).toEqual([]);
+  });
+
+  it("signs the issuer's copy once when the profile declares the same extension", () => {
+    const { errors, extensions } = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID, value: "S-1-5-21-1111111111-2222222222-3333333333-500" }],
+      rules: undefined,
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([sidExtension]);
   });
 });
 

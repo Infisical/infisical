@@ -3,7 +3,7 @@ import RE2 from "re2";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
+import { matchesNormalizedPattern, matchesSanRuleValue } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -188,17 +188,8 @@ export const buildCertificateSubjectFromTemplate = (
   return subject;
 };
 
-const validateValueAgainstPatterns = (value: string, patterns: string[]): boolean => {
-  if (!patterns || patterns.length === 0) {
-    return false;
-  }
-
-  const normalizedValue = value.toLowerCase();
-  return patterns.some((pattern) => matchesNormalizedPattern(normalizedValue, pattern.toLowerCase()));
-};
-
 export const buildSubjectAlternativeNamesFromTemplate = (
-  request: { subjectAlternativeNames?: Array<{ type: string; value: string }> },
+  request: { commonName?: string | null; subjectAlternativeNames?: Array<{ type: string; value: string }> },
   templateSans?: Array<{
     type: string;
     allowed?: string[];
@@ -217,21 +208,31 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   const allowedSans: string[] = [];
 
   request.subjectAlternativeNames.forEach((san) => {
-    const templateSan = templateSans.find((template) => template.type === san.type);
+    const sanRule = templateSans.find((rule) => rule.type === san.type);
 
-    if (!templateSan) {
+    if (!sanRule) {
       allowedSans.push(san.value);
       return;
     }
 
-    if (templateSan.denied && validateValueAgainstPatterns(san.value, templateSan.denied)) {
+    const matchesAny = (ruleValues?: string[]) =>
+      Boolean(
+        ruleValues?.some((ruleValue) =>
+          matchesSanRuleValue({
+            sanType: san.type,
+            sanValue: san.value,
+            ruleValue,
+            commonName: request.commonName,
+            matchesPattern: (value, pattern) => matchesNormalizedPattern(value.toLowerCase(), pattern.toLowerCase())
+          })
+        )
+      );
+
+    if (matchesAny(sanRule.denied)) {
       throw new BadRequestError({ message: `SAN value '${san.value}' is explicitly denied for type '${san.type}'` });
     }
 
-    const isRequired = templateSan.required && validateValueAgainstPatterns(san.value, templateSan.required);
-    const isAllowed = templateSan.allowed && validateValueAgainstPatterns(san.value, templateSan.allowed);
-
-    if (isRequired || isAllowed || (!templateSan.allowed && !templateSan.required)) {
+    if (matchesAny(sanRule.required) || matchesAny(sanRule.allowed) || (!sanRule.allowed && !sanRule.required)) {
       allowedSans.push(san.value);
     } else {
       throw new BadRequestError({ message: `SAN value '${san.value}' is not allowed for type '${san.type}'` });

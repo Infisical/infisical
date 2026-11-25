@@ -157,6 +157,7 @@ export const useGetImportedSecretsAllEnvs = ({
         secretPath: el.secretPath,
         environmentInfo: el.environmentInfo,
         folderId: el.folderId,
+        importId: el.importId,
         secrets: el.secrets.map((encSecret) => ({
           id: encSecret.id,
           env: encSecret.environment,

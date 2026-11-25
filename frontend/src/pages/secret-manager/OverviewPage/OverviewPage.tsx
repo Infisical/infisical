@@ -238,7 +238,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
@@ -1038,6 +1038,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1154,7 +1155,8 @@ const OverviewPageContent = () => {
     folderPath: string;
     environmentSlug: string;
   } | null>(null);
-  const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
+  const [currentFolderAccessSource, setCurrentFolderAccessSource] =
+    useState<FolderAccessSheetSource | null>(null);
 
   const canManageFolderAccessAt = useCallback(
     (environment: string, folderPath: string) =>
@@ -1563,6 +1565,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -1754,7 +1767,7 @@ const OverviewPageContent = () => {
           environmentSlug: singleEnvSlug
         });
         analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-          source: "folder_row",
+          source: "overview_folder_row",
           projectId
         });
       };
@@ -1779,20 +1792,23 @@ const OverviewPageContent = () => {
     ]
   );
 
-  // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
-  const handleManageRootAccess = useCallback(() => {
-    setFolderAccessTarget(null);
-    setIsCurrentFolderAccessOpen(false);
-    navigate({ search: (prev) => ({ ...prev, secretPath: "/" }) }).then(() =>
-      setIsCurrentFolderAccessOpen(true)
-    );
-  }, [navigate]);
+  // an inherited grant is managed on the folder that set it, so the nested sheet hands off to that one
+  const handleManageInheritedAccess = useCallback(
+    (inheritedPath: string, source: FolderAccessSheetSource) => {
+      setFolderAccessTarget(null);
+      setCurrentFolderAccessSource(null);
+      navigate({ search: (prev) => ({ ...prev, secretPath: inheritedPath }) }).then(() =>
+        setCurrentFolderAccessSource(source)
+      );
+    },
+    [navigate]
+  );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
     const openCurrentFolderAccess = () => {
-      setIsCurrentFolderAccessOpen(true);
+      setCurrentFolderAccessSource("overview_breadcrumb");
       analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "breadcrumb",
+        source: "overview_breadcrumb",
         projectId
       });
     };
@@ -4776,7 +4792,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4808,7 +4824,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",
@@ -5574,18 +5590,26 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
-          onManageRootAccess={handleManageRootAccess}
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, "overview_folder_row")
+          }
+          source="overview_folder_row"
         />
       )}
-      {isCurrentFolderAccessOpen && (
+      {currentFolderAccessSource && (
         <FolderAccessSheet
           isOpen
-          onOpenChange={setIsCurrentFolderAccessOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCurrentFolderAccessSource(null);
+          }}
           projectId={projectId}
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
-          onManageRootAccess={handleManageRootAccess}
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, currentFolderAccessSource)
+          }
+          source={currentFolderAccessSource}
         />
       )}
       <ConfirmationAlertDialog
