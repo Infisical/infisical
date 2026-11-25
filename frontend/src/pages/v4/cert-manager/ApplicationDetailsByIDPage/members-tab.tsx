@@ -32,7 +32,7 @@ import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { AddMemberDialog } from "./add-member-dialog";
-import { APP_ROLES, appCan, plural } from "./shared";
+import { APP_ROLES, appCan, plural, ROLE_MENU_WIDTH } from "./shared";
 
 const kindLabel: Record<TPkiApplicationMemberKind, string> = {
   user: "User",
@@ -156,6 +156,8 @@ export const MembersTab = ({
           size="sm"
           aria-label={`Role for ${memberName(member)}`}
           options={APP_ROLES}
+          menuWidth={ROLE_MENU_WIDTH}
+          align="end"
           value={member.role}
           disabled={!canEdit}
           onChange={(role) => changeRole(member, role)}

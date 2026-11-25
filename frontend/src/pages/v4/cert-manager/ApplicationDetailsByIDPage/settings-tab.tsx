@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
@@ -50,6 +51,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import {
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -319,11 +321,17 @@ const ProfilesCard = ({
       grow: true,
       mono: true,
       text: (profile) => profile.profileSlug,
-      render: (profile) => (
-        <RowLink link={go.link(profileHref(profile))} title={profile.profileSlug}>
-          {profile.profileSlug}
-        </RowLink>
-      )
+      render: (profile) =>
+        permission.can(
+          ProjectPermissionCertificateProfileActions.Read,
+          subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.profileSlug })
+        ) ? (
+          <RowLink link={go.link(profileHref(profile))} title={profile.profileSlug}>
+            {profile.profileSlug}
+          </RowLink>
+        ) : (
+          profile.profileSlug
+        )
     },
     {
       id: "methods",

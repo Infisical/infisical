@@ -16,6 +16,8 @@ export const appCan = (
 export const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
+export const ROLE_MENU_WIDTH = 480;
+
 export const APP_ROLES = [
   { value: "admin", label: "Admin", description: "Manage members, profiles and policies" },
   { value: "operator", label: "Operator", description: "Issue certificates and submit requests" },
