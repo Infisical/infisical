@@ -221,7 +221,6 @@ export const RequestAccessSheet = ({
     handleSubmit,
     reset,
     getValues,
-    resetField,
     formState: { isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -230,7 +229,7 @@ export const RequestAccessSheet = ({
 
   useEffect(() => {
     if (!durationOptions.some((opt) => opt.value === getValues("duration"))) {
-      resetField("duration", { defaultValue: defaultDuration });
+      reset({ duration: defaultDuration, reason: getValues("reason") });
     }
   }, [durationOptions, defaultDuration]);
 
