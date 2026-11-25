@@ -40,7 +40,7 @@ describe("collectFragmentRelease", () => {
     await commit("feat: first (#1)", { "upgrade-impact/changes/released.yaml": fragmentYaml("Released") });
     git("tag", "v1.0.0");
 
-    // Deleting the released fragment next to a near-identical new one is what git reports as a rename.
+    // A delete next to a near-identical add is what git reports as a rename.
     await commit("chore(release): v1.0.0 (#2)", {
       "upgrade-impact/changes/released.yaml": null,
       "upgrade-impact/changes/from-pr.yaml": fragmentYaml("From a pull request")

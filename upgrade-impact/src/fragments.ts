@@ -168,8 +168,8 @@ export type FragmentRelease = {
   fragments: ReleaseFragment[];
 };
 
-// A release owns the fragments its range added and reads them from the tag itself, so the same tag
-// always yields the same data, also after the release pull request deletes them from main.
+// Reads fragments from the tag itself, so a tag always yields the same data, even after the release
+// PR deletes them from main.
 export const collectFragmentRelease = (tag: string): FragmentRelease => {
   if (!hasGitRef(tag)) {
     throw new Error(`Could not find git tag "${tag}"`);
@@ -201,8 +201,7 @@ export const collectFragmentRelease = (tag: string): FragmentRelease => {
 export const getReleaseFragmentFiles = (previousTag: string | null, tag: string) =>
   getAddedFiles(previousTag, tag).filter(isFragmentPath);
 
-// Fragments a release collected leave main with its data, so the directory holds only unreleased
-// ones. A fragment already gone from this tree, such as one from an older release line, is skipped.
+// force: a fragment may already be gone from this tree, e.g. one from an older release line.
 export const removeFragmentFiles = async (repoRoot: string, files: string[]) => {
   await Promise.all(files.map((file) => fs.rm(path.join(repoRoot, file), { force: true })));
 };

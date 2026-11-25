@@ -21,7 +21,7 @@
 
 ## Self-hosted upgrade impact
 
-<!-- Tick exactly one. Tick "Yes" when a self-hosted operator has to do or know something to upgrade: a removed or changed API, flag, default or env var, a Docker or deployment change, a risky migration, or a known issue. See upgrade-impact/changes/README.md. CI fails if the box and the files disagree. -->
+<!-- Tick exactly one. "Yes" if a self-hosted operator has to do or know something to upgrade (see upgrade-impact/changes/README.md). CI fails if the box and the files disagree. -->
 
 - [ ] None
 - [ ] Yes, I added a fragment under `upgrade-impact/changes/`

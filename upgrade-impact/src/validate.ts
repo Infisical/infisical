@@ -210,8 +210,7 @@ const validateFragments = async (changesDir: string, errors: string[]) => {
         `changes/${file}`
       );
 
-      // A release copies the title and action verbatim and fails on these same rules, after the
-      // fragment can no longer be edited.
+      // A release copies these verbatim and fails on the same rules, when it's too late to edit.
       if (isUnclearAction(action)) {
         errors.push(`changes/${file} uses unclear operator action: ${action}`);
       }

@@ -56,8 +56,8 @@ export const getAddedFiles = (fromTag: string | null, toTag: string) => {
     return [];
   }
 
-  // Without --no-renames, git can pair a new file with a similar one deleted in the same range and
-  // report a rename, which would hide a new fragment next to the ones the last release removed.
+  // Without --no-renames git can pair a new fragment with one the last release deleted and call it
+  // a rename, which hides the add.
   return runGit(["diff", "--name-status", "--no-renames", `${fromTag}..${toTag}`])
     .split("\n")
     .map((line) => line.split("\t"))
@@ -71,15 +71,15 @@ export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${re
 export const getAddingCommit = (fromTag: string, toTag: string, file: string) => {
   const lines = runGit([
     "log",
-    // Stays on the release line, so a fragment merged with a merge commit resolves to that merge,
-    // whose subject names the pull request, and not to the author's branch commit.
+    // Stay on the release line so a merge-commit PR resolves to the merge (its subject has the PR
+    // number), not the author's branch commit.
     "--first-parent",
     "--no-renames",
     "--diff-filter=A",
     "--pretty=format:%H%x09%s",
     `${fromTag}..${toTag}`,
     "--",
-    // Paths are relative to the repository root, but git reads a pathspec from the working directory.
+    // Paths are repo-root relative, but git reads pathspecs from the cwd.
     `:(top)${file}`
   ])
     .split("\n")

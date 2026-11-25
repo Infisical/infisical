@@ -39,7 +39,7 @@ const ReviewSchema = z.object({
 
 export type Finding = z.infer<typeof FindingSchema>;
 
-// Mirrors the check in validate-pr-description.yml, which is the one that fails a pull request.
+// Keep in sync with validate-pr-description.yml, the check that actually fails a PR.
 export const parseDeclaration = (body: string): Declaration => {
   const lines = body
     .replace(/\r\n/g, "\n")
@@ -73,9 +73,7 @@ export const parseDeclaration = (body: string): Declaration => {
   return checked[0].startsWith("yes") ? "yes" : "unclear";
 };
 
-// The model writes these strings from pull request content, so they are kept from doing anything
-// in the comment beyond being read: a mention would notify people, and a backtick would end the
-// code span or block the text sits in.
+// Model output built from PR content: don't let it ping people or break out of its code span/block.
 const withoutMentions = (text: string) => text.replace(/@(?=\w)/g, "@\u200b");
 
 const codeSpan = (text: string) => `\`${text.replace(/`/g, "")}\``;

@@ -95,8 +95,6 @@ jobs:
         working-directory: upgrade-impact
 
       # The chart's upgrade notes come from this data, so the chart is never bumped without it.
-      # It is aggregated from the fragments pull requests added under upgrade-impact/changes, so
-      # the same tag always produces the same file.
       - name: Generate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
@@ -107,9 +105,9 @@ jobs:
         run: npm run validate
         working-directory: upgrade-impact
 
-      # The data was generated on main. It is set aside and written again on each attempt below,
-      # because index.yaml on the release branch may have gained other releases since. Writing it
-      # there also deletes the fragments this release collected, so main keeps only unreleased ones.
+      # Generated on main, but index.yaml on the release branch may have gained releases since, so
+      # stash it and rewrite it on each attempt below. The rewrite also drops the fragments this
+      # release collected.
       - name: Set generated data aside
         if: steps.impact.outputs.generate == 'true'
         env:

@@ -95,8 +95,6 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
   );
 };
 
-// Release data is only ever aggregated from the fragments pull requests added under
-// upgrade-impact/changes, so the same tag always produces the same file.
 export const generateReleaseImpact = (tag: string) => {
   const release = collectFragmentRelease(tag);
 
@@ -106,8 +104,7 @@ export const generateReleaseImpact = (tag: string) => {
 const main = async () => {
   const { tag, dryRun, fromFile } = parseArgs();
 
-  // Writes data generated earlier, so a caller can add it to an index that changed since, and
-  // removes the fragments that release collected from the tree it is run in.
+  // Replays data generated earlier onto an index that may have changed since.
   if (fromFile) {
     const releaseImpact = ReleaseImpactSchema.parse(parse(await fs.readFile(fromFile, "utf8")));
     await writeReleaseImpact(releaseImpact);

@@ -87,8 +87,7 @@ jobs:
 
             console.log(`✅ Type selected: ${checked.join(', ')}`);
 
-            // Upgrade impact is declared here, by the author, so a release only has to collect
-            // the fragments. The box and the files have to agree in both directions.
+            // The ticked box and the fragment files have to agree both ways.
             const impactStart = lines.findIndex((line) =>
               /^\s{0,3}#{1,6}\s*self-hosted upgrade impact\b/i.test(line)
             );
@@ -172,8 +171,8 @@ jobs:
               return;
             }
 
-            // A hint only: most changes to these paths need no operator action, so failing on
-            // them would teach authors to dismiss the check.
+            // Hint only: most changes here need no operator action, and failing on them would
+            // teach people to ignore the check.
             const sensitive = files
               .map((file) => file.filename)
               .filter((name) =>

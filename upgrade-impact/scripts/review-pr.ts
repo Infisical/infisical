@@ -33,7 +33,7 @@ const main = async () => {
   });
   const comment = renderComment(findings);
 
-  // An empty file tells the workflow the fragments match, so it removes any earlier comment.
+  // Empty file means the fragments match, and the workflow then removes any earlier comment.
   if (output) {
     await fs.writeFile(output, comment);
   }
