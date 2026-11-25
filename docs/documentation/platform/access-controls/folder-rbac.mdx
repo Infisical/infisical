@@ -101,7 +101,7 @@ To stop applying the role to subfolders, select **Apply to Subfolders** or **App
 
 ### Combining roles on several folders
 
-If someone has a role on a folder, that role decides their access in that folder, and it can be higher or lower than a role from a folder above. If a folder has no role of its own, the role applied to subfolders on the nearest folder above it decides their access there. For example, if someone has Read on `/` applied to subfolders, Edit on `/payments`, and Manage on `/payments/stripe` applied to subfolders:
+If someone has a role on a folder, that role takes precedence in that folder over a role applied to subfolders from a folder above, whether it's higher or lower. If a folder has no role of its own, the role applied to subfolders on the nearest folder above it decides their access there. For example, if someone has Read on `/` applied to subfolders, Edit on `/payments`, and Manage on `/payments/stripe` applied to subfolders:
 
 - In `/` and `/payments/keys`, they can only read secrets
 - In `/payments`, they can edit secrets
