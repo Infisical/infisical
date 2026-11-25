@@ -837,8 +837,13 @@ const OverviewPageContent = () => {
     count: unsavedEditsCount,
     getEdits: getUnsavedEdits,
     isCommitting: isCommittingUnsavedEdits,
-    setCommitting: setCommittingUnsavedEdits
+    setCommitting: setCommittingUnsavedEdits,
+    dropHeldDrafts
   } = useUnsavedEdits();
+
+  useEffect(() => {
+    dropHeldDrafts();
+  }, [secretPath, dropHeldDrafts]);
   const isCommittingUnsavedEditsRef = useRef(false);
   const { mutateAsync: createCommits } = useCreateCommits();
   const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
@@ -2536,18 +2541,11 @@ const OverviewPageContent = () => {
     }
   };
 
-  const getUnsavedChanges = () =>
-    getUnsavedEdits().flatMap((edit) => {
-      const change = edit.getChange();
-      return change ? [change] : [];
-    });
+  const getUnsavedChanges = () => getUnsavedEdits().flatMap((edit) => edit.getChanges());
 
   const handleCommitUnsavedEdits = async (message: string) => {
-    const edits = getUnsavedEdits().flatMap((edit) => {
-      const change = edit.getChange();
-      return change ? [{ edit, change }] : [];
-    });
-    const changes = edits.map(({ change }) => change);
+    const edits = getUnsavedEdits().map((edit) => ({ edit, changes: edit.getChanges() }));
+    const changes = edits.flatMap((edit) => edit.changes);
     if (!changes.length || isCommittingUnsavedEditsRef.current) return false;
 
     isCommittingUnsavedEditsRef.current = true;
@@ -2573,9 +2571,12 @@ const OverviewPageContent = () => {
       const failedEnvironments = commits
         .filter(({ commit }) => !commit)
         .map(({ environment }) => environment);
-      edits
-        .filter(({ change }) => !failedEnvironments.includes(change.environment))
-        .forEach(({ edit, change }) => edit.settle(change.secretValue));
+      edits.forEach(({ edit, changes: editChanges }) => {
+        const committed = editChanges.filter(
+          (change) => !failedEnvironments.includes(change.environment)
+        );
+        if (committed.length) edit.settle(committed);
+      });
       showSecretWriteErrors(
         commits.flatMap(({ environment, error }) =>
           error

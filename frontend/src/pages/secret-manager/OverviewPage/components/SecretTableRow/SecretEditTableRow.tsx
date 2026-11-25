@@ -132,7 +132,7 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
-import { useUnsavedEdit } from "../UnsavedEditsBar";
+import { getUnsavedDraftKey, useUnsavedEdit } from "../UnsavedEditsBar";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretLastEditedTime } from "./SecretLastEditedTime";
@@ -1177,35 +1177,43 @@ export const SecretEditTableRow = ({
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
 
-  const isCommittingEdits = useUnsavedEdit(isDirtyState && !isSubmitting, {
-    getChange: () => {
-      const value = getValues("value");
-      if (
-        value === null ||
-        value === undefined ||
-        (secretValueHidden && value === HIDDEN_SECRET_VALUE)
-      )
-        return null;
-      return {
-        environment,
-        environmentName,
-        secretKey: secretName,
-        secretValue: value,
-        originalValue: sharedValueData?.value ?? (defaultValue || null),
-        secretValueHidden,
-        isCreate: Boolean(isCreatable),
-        isReferenced: !isCreatable && isReferencedElsewhere,
-        secretComment: comment,
-        tagIds: tags?.map((tag) => tag.id)
-      };
-    },
-    settle: (committedValue) => {
-      const currentValue = getValues("value");
-      reset({ value: secretValueHidden ? defaultValue || null : committedValue });
-      if (currentValue !== committedValue) setValue("value", currentValue, { shouldDirty: true });
-    },
-    discard: handleFormReset
-  });
+  const { isCommitting: isCommittingEdits } = useUnsavedEdit(
+    getUnsavedDraftKey(environment, secretPath, secretName),
+    isDirtyState && !isSubmitting,
+    {
+      getChanges: () => {
+        const value = getValues("value");
+        if (
+          value === null ||
+          value === undefined ||
+          (secretValueHidden && value === HIDDEN_SECRET_VALUE)
+        )
+          return [];
+        return [
+          {
+            environment,
+            environmentName,
+            secretPath,
+            secretKey: secretName,
+            secretValue: value,
+            originalValue: sharedValueData?.value ?? (defaultValue || null),
+            secretValueHidden,
+            isCreate: Boolean(isCreatable),
+            isReferenced: !isCreatable && isReferencedElsewhere,
+            secretComment: comment,
+            tagIds: tags?.map((tag) => tag.id)
+          }
+        ];
+      },
+      settle: ([{ secretValue: committedValue }]) => {
+        const currentValue = getValues("value");
+        reset({ value: secretValueHidden ? defaultValue || null : committedValue });
+        if (currentValue !== committedValue) setValue("value", currentValue, { shouldDirty: true });
+      },
+      discard: handleFormReset,
+      restore: ([draft]) => setValue("value", draft.secretValue, { shouldDirty: true })
+    }
+  );
 
   useEffect(() => {
     if (isDirtyState || hasPendingValueChange) setIsResolvedValueOpen.off();

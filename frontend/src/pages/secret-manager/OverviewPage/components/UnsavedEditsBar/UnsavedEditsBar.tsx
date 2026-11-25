@@ -4,7 +4,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -40,6 +39,7 @@ import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 export type TUnsavedChange = {
   environment: string;
   environmentName: string;
+  secretPath: string;
   secretKey: string;
   secretValue: string;
   originalValue: string | null;
@@ -49,50 +49,104 @@ export type TUnsavedChange = {
   secretComment?: string;
   tagIds?: string[];
 };
-
 type TUnsavedEdit = {
-  getChange: () => TUnsavedChange | null;
-  settle: (committedValue: string) => void;
+  getChanges: () => TUnsavedChange[];
+  settle: (committed: TUnsavedChange[]) => void;
   discard: () => void;
 };
 
+type TRegisteredEdit = TUnsavedEdit & { isHeld?: boolean };
+
 type TUnsavedEditsRegistry = {
-  register: (id: string, edit: TUnsavedEdit) => () => void;
+  register: (key: string, edit: TUnsavedEdit) => (keepDraft: boolean) => void;
   getEdits: () => TUnsavedEdit[];
+  takeDraft: (key: string) => TUnsavedChange[] | undefined;
+  holdDrafts: (changes: TUnsavedChange[]) => void;
+  dropHeldDrafts: () => void;
   setCommitting: (isCommitting: boolean) => void;
 };
 
+export const getUnsavedDraftKey = (environment: string, secretPath: string, secretKey: string) =>
+  JSON.stringify([environment, secretPath, secretKey]);
+
 const UnsavedEditsRegistryContext = createContext<TUnsavedEditsRegistry | null>(null);
 const UnsavedEditsCountContext = createContext(0);
+const UnsavedEditsKeysContext = createContext<ReadonlySet<string>>(new Set());
 const UnsavedEditsCommittingContext = createContext(false);
 
 export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
-  const editsRef = useRef(new Map<string, TUnsavedEdit>());
-  const [count, setCount] = useState(0);
+  const editsRef = useRef(new Map<string, TRegisteredEdit>());
+  const [snapshot, setSnapshot] = useState({ count: 0, keys: new Set<string>() });
   const [isCommitting, setCommitting] = useState(false);
 
-  const registry = useMemo<TUnsavedEditsRegistry>(
-    () => ({
-      register: (id, edit) => {
-        editsRef.current.set(id, edit);
-        setCount(editsRef.current.size);
-        return () => {
-          editsRef.current.delete(id);
-          setCount(editsRef.current.size);
+  const registry = useMemo<TUnsavedEditsRegistry>(() => {
+    const edits = editsRef.current;
+    const sync = () =>
+      setSnapshot({
+        count: [...edits.values()].reduce((total, edit) => total + edit.getChanges().length, 0),
+        keys: new Set(edits.keys())
+      });
+    const hold = (key: string, changes: TUnsavedChange[]) => {
+      if (!changes.length) return;
+      const held: TRegisteredEdit = {
+        getChanges: () => changes,
+        settle: () => {
+          if (edits.get(key) === held) edits.delete(key);
+          sync();
+        },
+        discard: () => {
+          if (edits.get(key) === held) edits.delete(key);
+          sync();
+        },
+        isHeld: true
+      };
+      edits.set(key, held);
+    };
+    return {
+      register: (key, edit) => {
+        edits.set(key, edit);
+        sync();
+        return (keepDraft) => {
+          if (edits.get(key) !== edit) return;
+          edits.delete(key);
+          if (keepDraft) hold(key, edit.getChanges());
+          sync();
         };
       },
-      getEdits: () => [...editsRef.current.values()],
+      getEdits: () => [...edits.values()],
+      takeDraft: (key) => {
+        const edit = edits.get(key);
+        if (!edit?.isHeld) return undefined;
+        edits.delete(key);
+        sync();
+        return edit.getChanges();
+      },
+      holdDrafts: (changes) => {
+        changes.forEach((change) =>
+          hold(getUnsavedDraftKey(change.environment, change.secretPath, change.secretKey), [
+            change
+          ])
+        );
+        sync();
+      },
+      dropHeldDrafts: () => {
+        edits.forEach((edit, key) => {
+          if (edit.isHeld) edits.delete(key);
+        });
+        sync();
+      },
       setCommitting
-    }),
-    []
-  );
+    };
+  }, []);
 
   return (
     <UnsavedEditsRegistryContext.Provider value={registry}>
-      <UnsavedEditsCountContext.Provider value={count}>
-        <UnsavedEditsCommittingContext.Provider value={isCommitting}>
-          {children}
-        </UnsavedEditsCommittingContext.Provider>
+      <UnsavedEditsCountContext.Provider value={snapshot.count}>
+        <UnsavedEditsKeysContext.Provider value={snapshot.keys}>
+          <UnsavedEditsCommittingContext.Provider value={isCommitting}>
+            {children}
+          </UnsavedEditsCommittingContext.Provider>
+        </UnsavedEditsKeysContext.Provider>
       </UnsavedEditsCountContext.Provider>
     </UnsavedEditsRegistryContext.Provider>
   );
@@ -104,28 +158,48 @@ export const useUnsavedEdits = () => {
   const isCommitting = useContext(UnsavedEditsCommittingContext);
   const getEdits = useCallback(() => registry?.getEdits() ?? [], [registry]);
   const setCommitting = useCallback((value: boolean) => registry?.setCommitting(value), [registry]);
-  return { count, getEdits, isCommitting, setCommitting };
+  const dropHeldDrafts = useCallback(() => registry?.dropHeldDrafts(), [registry]);
+  return { count, getEdits, isCommitting, setCommitting, dropHeldDrafts };
 };
 
-export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
+export const useUnsavedDraftKeys = () => useContext(UnsavedEditsKeysContext);
+
+export const useUnsavedEdit = (
+  key: string,
+  isDirty: boolean,
+  edit: TUnsavedEdit & { restore: (draft: TUnsavedChange[]) => void }
+) => {
   const registry = useContext(UnsavedEditsRegistryContext);
-  const id = useId();
   const editRef = useRef(edit);
+  const isDirtyRef = useRef(isDirty);
 
   useLayoutEffect(() => {
     editRef.current = edit;
+    isDirtyRef.current = isDirty;
   });
 
   useEffect(() => {
+    const draft = registry?.takeDraft(key);
+    if (draft) editRef.current.restore(draft);
+  }, [registry, key]);
+
+  useEffect(() => {
     if (!registry || !isDirty) return undefined;
-    return registry.register(id, {
-      getChange: () => editRef.current.getChange(),
-      settle: (committedValue) => editRef.current.settle(committedValue),
+    const unregister = registry.register(key, {
+      getChanges: () => editRef.current.getChanges(),
+      settle: (committed) => editRef.current.settle(committed),
       discard: () => editRef.current.discard()
     });
-  }, [registry, isDirty, id]);
+    return () => unregister(isDirtyRef.current);
+  }, [registry, isDirty, key]);
 
-  return useContext(UnsavedEditsCommittingContext);
+  return {
+    isCommitting: useContext(UnsavedEditsCommittingContext),
+    holdDrafts: useCallback(
+      (changes: TUnsavedChange[]) => registry?.holdDrafts(changes),
+      [registry]
+    )
+  };
 };
 
 type Props = {
