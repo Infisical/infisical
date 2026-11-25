@@ -33,19 +33,19 @@ func TestSAMLMFATrust_Login(t *testing.T) {
 	}{
 		{
 			name:     "should skip the MFA challenge when the amr attribute lists mfa",
-			provider: sso.Okta, trust: api.Signal,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			idp: func(r *samlidp.Response) { r.Attributes = amrMFA },
 		},
 		{
 			name:     "should skip the MFA challenge when the AuthnContextClassRef is a two-factor class",
-			provider: sso.Okta, trust: api.Signal,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			idp: func(r *samlidp.Response) {
 				r.AuthnContextClassRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract"
 			},
 		},
 		{
 			name:     "should skip the MFA challenge for Entra ID when authnmethodsreferences lists multipleauthn",
-			provider: sso.Azure, trust: api.Signal,
+			provider: sso.Azure, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			idp: func(r *samlidp.Response) {
 				r.Attributes = map[string][]string{
 					"http://schemas.microsoft.com/claims/authnmethodsreferences": {"http://schemas.microsoft.com/claims/multipleauthn"},
@@ -54,25 +54,25 @@ func TestSAMLMFATrust_Login(t *testing.T) {
 		},
 		{
 			name:     "should skip the MFA challenge when the AuthnContextClassRef is one the config accepts",
-			provider: sso.Okta, trust: api.Signal,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			config: &api.UpdateSamlConfigJSONRequestBody{MfaAuthnContexts: &[]string{"urn:acme:ac:push-approved"}},
 			idp:    func(r *samlidp.Response) { r.AuthnContextClassRef = "urn:acme:ac:push-approved" },
 		},
 		{
 			name:     "should skip the MFA challenge when the attribute the config names lists mfa",
-			provider: sso.Okta, trust: api.Signal,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			config: &api.UpdateSamlConfigJSONRequestBody{MfaSignalAttribute: new("session.amr")},
 			idp:    func(r *samlidp.Response) { r.Attributes = map[string][]string{"session.amr": {"pwd", "mfa"}} },
 		},
 		{
 			name:     "should challenge when the IdP reports a password only",
-			provider: sso.Okta, trust: api.Signal,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustSignal,
 			idp:        func(r *samlidp.Response) { r.Attributes = map[string][]string{"amr": {"pwd"}} },
 			challenged: true,
 		},
 		{
 			name:     "should challenge when the amr attribute lists mfa but the org does not trust the IdP",
-			provider: sso.Okta, trust: api.None,
+			provider: sso.Okta, trust: api.UpdateOrganizationJSONBodySsoMfaTrustNone,
 			idp:        func(r *samlidp.Response) { r.Attributes = amrMFA },
 			challenged: true,
 		},
@@ -115,7 +115,7 @@ func TestSAMLMFATrust(t *testing.T) {
 		// Setup
 		s := setup(t, sso.Okta)
 		bob := s.Tenant.NewUser(t)
-		sso.EnforceMFA(t, s.Tenant, api.Signal)
+		sso.EnforceMFA(t, s.Tenant, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
 		login, err := s.Tenant.Anonymous(t).LoginV3WithResponse(t.Context(), api.LoginV3JSONRequestBody{
 			Email:    bob.Email,
 			Password: harness.UserPassword,
@@ -140,7 +140,7 @@ func TestSAMLMFATrust(t *testing.T) {
 		alice := s.SignedUp(t)
 		other := h.NewTenant(t)
 		inviteToOrg(t, other, alice.Email)
-		sso.EnforceMFA(t, other, api.Signal)
+		sso.EnforceMFA(t, other, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
 		alice.Attributes = amrMFA
 		acs := s.SPLogin(t, alice)
 		s.Redirect(t, acs)
@@ -157,7 +157,7 @@ func TestSAMLMFATrust(t *testing.T) {
 
 		// Setup
 		s := setup(t, sso.Okta)
-		sso.EnforceMFA(t, s.Tenant, api.Signal)
+		sso.EnforceMFA(t, s.Tenant, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
 		alice := s.Person()
 		alice.Attributes = amrMFA
 		signup := s.CompleteSignup(t, s.SPLogin(t, alice), s.VerificationCode(t, alice.Email))
@@ -179,7 +179,7 @@ func TestSAMLMFATrust(t *testing.T) {
 		// Setup
 		s := setup(t, sso.Okta)
 		alice := s.SignedUp(t)
-		sso.EnforceMFA(t, s.Tenant, api.Signal)
+		sso.EnforceMFA(t, s.Tenant, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
 		alice.Attributes = amrMFA
 
 		// Action

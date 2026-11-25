@@ -44,10 +44,14 @@ const emptyState = (applicationId: string, profileId: string): TPkiApplicationEn
   est: null,
   acme: null,
   scep: null,
+  microsoftAutoenrollment: null,
+  microsoftAutoenrollmentOtherProfiles: [],
+  microsoftAutoenrollmentUnsupportedReason: null,
   caType: CaType.INTERNAL,
   estConfigured: false,
   acmeConfigured: false,
-  scepConfigured: false
+  scepConfigured: false,
+  microsoftAutoenrollmentConfigured: false
 });
 
 const apiConfig = (

@@ -247,6 +247,10 @@ export type TAltNameMapping = {
   value: string;
 };
 
+export const toAltNameMappings = (
+  entries: { type: CertSubjectAlternativeNameType; value: string }[]
+): TAltNameMapping[] => entries.map(({ type, value }) => ({ type: mapSanTypeToX509Type(type), value }));
+
 export enum ACMESANType {
   DNS = "dns",
   IP = "ip"

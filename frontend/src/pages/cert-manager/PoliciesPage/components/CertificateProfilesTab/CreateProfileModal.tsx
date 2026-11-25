@@ -49,7 +49,11 @@ import {
   mapPolicyKeyAlgorithmToApi,
   mapPolicySignatureAlgorithmToApi
 } from "@app/helpers/certificateConstants";
-import { filterUsages } from "@app/helpers/certificateUtils";
+import {
+  filterUsages,
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/helpers/certificateUtils";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import {
@@ -107,7 +111,7 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAlternativeNameType),
-          value: z.string()
+          value: z.string().refine(isSupportedSanRuleValue, UNSUPPORTED_REFERENCE_MESSAGE)
         })
       )
       .optional(),

@@ -30,7 +30,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
-import { ECDSA_SIGNATURE_ALGORITHMS } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -48,6 +47,7 @@ import {
   resolveAwsKmsDigestSigning,
   toAwsKmsError
 } from "./aws-kms-ca-key-source-fns";
+import { AWS_KMS_REQUIRED_SIGNATURE_ALGORITHMS } from "./ca-key-source-fns";
 import { TExternalCaKeyInput, TExternalCaKeyProvider } from "./ca-key-source-types";
 
 const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
@@ -255,10 +255,7 @@ export const awsKmsCaKeySourceFactory = ({
       });
     },
 
-    requiredSignatureAlgorithm: (keyAlgorithm) => {
-      const keyAlgCfg = keyAlgorithmToAlgCfg(keyAlgorithm);
-      return keyAlgCfg.name === "ECDSA" ? ECDSA_SIGNATURE_ALGORITHMS[keyAlgCfg.hash] : undefined;
-    },
+    requiredSignatureAlgorithm: (keyAlgorithm) => AWS_KMS_REQUIRED_SIGNATURE_ALGORITHMS[keyAlgorithm],
 
     describeKey: async ({ reference }) => {
       const { appConnectionId, externalKeyId: keyArn } = reference;

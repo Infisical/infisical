@@ -28,7 +28,8 @@ import {
   resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
   resolveRenewalSubject,
-  resolveRenewalUsages
+  resolveRenewalUsages,
+  withIssuedRenewalNames
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
@@ -775,6 +776,40 @@ describe("keepCertificateFactsInCsrRenewal", () => {
     );
     expect(keepCertificateFactsInCsrRenewal(csrRequest, { keyUsages: [] }).signatureAlgorithm).toBe(
       CertSignatureAlgorithm.ECDSA_SHA256
+    );
+  });
+});
+
+describe("withIssuedRenewalNames", () => {
+  it("keeps the names the certificate was issued with, mapping SAN types stored before the type rename", () => {
+    const renewal = withIssuedRenewalNames(
+      { commonName: undefined, subjectAlternativeNames: [] } as TCertificateRequest,
+      {
+        commonName: "app.example.com",
+        altNames: [
+          { type: "dns" as CertSubjectAlternativeNameType, value: "app.example.com" },
+          { type: "ip" as CertSubjectAlternativeNameType, value: "10.0.0.5" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "ops@example.com" }
+        ]
+      }
+    );
+
+    expect(renewal.commonName).toBe("app.example.com");
+    expect(renewal.subjectAlternativeNames).toEqual([
+      { type: CertSubjectAlternativeNameType.DNS_NAME, value: "app.example.com" },
+      { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "10.0.0.5" },
+      { type: CertSubjectAlternativeNameType.EMAIL, value: "ops@example.com" }
+    ]);
+  });
+
+  it("keeps the CSR's own common name and SANs when nothing was stored", () => {
+    const csrRequest = {
+      commonName: "csr.example.com",
+      subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "csr.example.com" }]
+    } as TCertificateRequest;
+
+    expect(withIssuedRenewalNames(csrRequest, { commonName: "stored.example.com", altNames: null })).toEqual(
+      csrRequest
     );
   });
 });

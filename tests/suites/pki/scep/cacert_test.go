@@ -28,6 +28,7 @@ func TestScepCACert_Get(t *testing.T) {
 		certs := p.caCerts(t)
 		require.GreaterOrEqual(t, len(certs), 2)
 		require.Contains(t, certs[0].Subject.CommonName, "Infisical SCEP RA")
+		require.True(t, certs[1].Equal(p.ca), "the second certificate is not the profile's CA")
 	})
 
 	t.Run("should return only the RA certificate when the CA is left out", func(t *testing.T) {

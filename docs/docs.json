@@ -243,13 +243,8 @@
                     "group": "Honey tokens",
                     "root": "documentation/platform/honey-tokens/overview",
                     "pages": [
-                      {
-                        "group": "AWS",
-                        "pages": [
-                          "documentation/platform/honey-tokens/aws/setup",
-                          "documentation/platform/honey-tokens/aws/usage"
-                        ]
-                      }
+                      "documentation/platform/honey-tokens/usage",
+                      "documentation/platform/honey-tokens/own-aws-account"
                     ]
                   }
                 ]
@@ -511,7 +506,8 @@
                           "documentation/platform/pki/guides/applications/jamf-pro-scep",
                           "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
-                      }
+                      },
+                      "documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment"
                     ]
                   },
                   "documentation/platform/pki/applications/certificates",
@@ -688,7 +684,8 @@
                     "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
                       "documentation/platform/pam/sessions/session-recording",
-                      "documentation/platform/pam/sessions/external-storage"
+                      "documentation/platform/pam/sessions/external-storage",
+                      "documentation/platform/pam/sessions/activity-streaming"
                     ]
                   },
                   "documentation/platform/pam/auditing",
@@ -2300,7 +2297,8 @@
                           "api-reference/endpoints/app-connections/ldap/get-by-name",
                           "api-reference/endpoints/app-connections/ldap/create",
                           "api-reference/endpoints/app-connections/ldap/update",
-                          "api-reference/endpoints/app-connections/ldap/delete"
+                          "api-reference/endpoints/app-connections/ldap/delete",
+                          "api-reference/endpoints/app-connections/ldap/list-groups"
                         ]
                       },
                       {
@@ -4301,6 +4299,15 @@
                               "api-reference/endpoints/pki/applications/enrollment/set-scep",
                               "api-reference/endpoints/pki/applications/enrollment/clear-scep"
                             ]
+                          },
+                          {
+                            "group": "Microsoft Autoenrollment",
+                            "pages": [
+                              "api-reference/endpoints/pki/applications/enrollment/set-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/clear-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/reenroll-microsoft-autoenrollment",
+                              "api-reference/endpoints/pki/applications/enrollment/get-microsoft-autoenrollment-service-principal"
+                            ]
                           }
                         ]
                       },
@@ -5585,6 +5592,14 @@
     {
       "source": "/documentation/platform/pam/dependencies/overview",
       "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/setup",
+      "destination": "/documentation/platform/honey-tokens/own-aws-account"
+    },
+    {
+      "source": "/documentation/platform/honey-tokens/aws/usage",
+      "destination": "/documentation/platform/honey-tokens/usage"
     },
     {
       "source": "/documentation/platform/pam/recording-storage",

@@ -75,7 +75,8 @@ const seed = (): PoliciesState => ({
       updatedAt: new Date("2026-10-28T15:20:00.000Z"),
       enforcementLevel: EnforcementLevel.Soft,
       allowedSelfApprovals: false,
-      bypassForMachineIdentities: true
+      bypassForMachineIdentities: true,
+      enforceOnSecretImports: false
     },
     {
       id: "policy-stripe-keys",
@@ -88,7 +89,8 @@ const seed = (): PoliciesState => ({
       updatedAt: new Date("2026-10-12T09:00:00.000Z"),
       enforcementLevel: EnforcementLevel.Hard,
       allowedSelfApprovals: true,
-      bypassForMachineIdentities: false
+      bypassForMachineIdentities: false,
+      enforceOnSecretImports: false
     }
   ],
   access: [
@@ -300,7 +302,8 @@ export const approvalPoliciesDemo: ApprovalPoliciesAdapter = {
           updatedAt: new Date(),
           enforcementLevel: dto.enforcementLevel,
           allowedSelfApprovals: dto.allowedSelfApprovals,
-          bypassForMachineIdentities: Boolean(dto.bypassForMachineIdentities)
+          bypassForMachineIdentities: Boolean(dto.bypassForMachineIdentities),
+          enforceOnSecretImports: Boolean(dto.enforceOnSecretImports)
         };
         store.update((state) => ({ ...state, change: [policy, ...state.change] }));
         return {};

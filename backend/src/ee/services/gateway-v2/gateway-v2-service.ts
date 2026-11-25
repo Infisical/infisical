@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  TGatewaysV2,
   TGatewaysV2Update,
   TRelays
 } from "@app/db/schemas";
@@ -18,10 +19,11 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -38,7 +40,6 @@ import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubern
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
@@ -63,8 +64,14 @@ import {
   GatewayTransport,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
-import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
+import { TGatewayV2DALFactory, TOfflineGateway } from "./gateway-v2-dal";
+import { emitGatewayOffline, GATEWAY_OFFLINE_BATCH_SIZE } from "./gateway-v2-events";
+import {
+  parseDirectAddress,
+  rearmsOfflineAlert,
+  resolveClientTransports,
+  resolveTransports
+} from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
@@ -80,7 +87,7 @@ type TGatewayV2ServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  eventEmitter: TEventEmitter;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
@@ -125,6 +132,7 @@ export const gatewayV2ServiceFactory = ({
   permissionService,
   orgDAL,
   notificationService,
+  eventEmitter,
   appConnectionDAL,
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
@@ -807,7 +815,7 @@ export const gatewayV2ServiceFactory = ({
   // before the revoke would otherwise write them back after it, so the write only lands while the
   // version the request authenticated with is still current.
   const $writeAgentTransports = async (
-    gatewayId: string,
+    gateway: Pick<TGatewaysV2, "id" | "heartbeat" | "directHeartbeat" | "healthAlertedAt">,
     tokenVersion: number | undefined,
     transports: Pick<
       TGatewaysV2Update,
@@ -817,7 +825,10 @@ export const gatewayV2ServiceFactory = ({
     if (tokenVersion === undefined) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
-    const [updated] = await gatewayV2DAL.update({ id: gatewayId, tokenVersion }, transports);
+    const [updated] = await gatewayV2DAL.update(
+      { id: gateway.id, tokenVersion },
+      rearmsOfflineAlert(gateway, transports) ? { ...transports, healthAlertedAt: null } : transports
+    );
     if (!updated) {
       throw new UnauthorizedError({ message: "Gateway token has been revoked" });
     }
@@ -877,7 +888,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
         ...getCliVersionFields(userAgent),
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
@@ -1284,20 +1295,40 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const healthcheckNotify = async () => {
-    const unhealthyGateways = await gatewayV2DAL.find({
-      isHeartbeatStale: true
-    });
-
-    if (unhealthyGateways.length === 0) return;
+    const dueGateways = await gatewayV2DAL.findOfflineDueForAlert();
+    if (dueGateways.length === 0) return;
 
     logger.warn(
-      { gatewayIds: unhealthyGateways.map((g) => g.id) },
+      { gatewayIds: dueGateways.map((g) => g.id) },
       "Found gateways that may be offline or unreachable. Sending notifications."
     );
 
-    const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
+    const gatewaysByOrg = groupBy(dueGateways, (gw) => gw.orgId);
 
-    for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
+    for await (const [orgId, candidates] of Object.entries(gatewaysByOrg)) {
+      const gateways: TOfflineGateway[] = [];
+      for await (const batch of chunkArray(candidates, GATEWAY_OFFLINE_BATCH_SIZE)) {
+        try {
+          const claimed = await gatewayV2DAL.transaction(async (tx) => {
+            const batchClaimed = await gatewayV2DAL.markOfflineAlerted(
+              batch.map((gw) => gw.id),
+              tx
+            );
+            if (batchClaimed.length > 0) {
+              await emitGatewayOffline(eventEmitter, { orgId, gateways: batchClaimed }, tx);
+            }
+            return batchClaimed;
+          });
+          gateways.push(...claimed);
+        } catch (error) {
+          logger.error(error, `Failed to raise gateway offline alerts for organization [orgId=${orgId}]`);
+        }
+      }
+      if (gateways.length === 0) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       try {
         const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
           (admin) => admin.status !== OrgMembershipStatus.Invited
@@ -1321,20 +1352,6 @@ export const gatewayV2ServiceFactory = ({
             link: `/organizations/${orgId}/networking`
           }))
         );
-
-        // Temporarily disabled email notifications due to excessive noise. Will be revised later
-        //
-        // await smtpService.sendMail({
-        //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-        //   subjectLine: "Gateway Health Alert",
-        //   substitutions: {
-        //     type: "gateway",
-        //     names: gatewayNames
-        //   },
-        //   template: SmtpTemplates.HealthAlert
-        // });
-
-        await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
         logger.error(error, `Failed to send gateway health notifications for organization [orgId=${orgId}]`);
       }
@@ -1600,7 +1617,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
+      const registeredGateway = await $writeAgentTransports(gateway, tokenVersion, {
         // In relay mode the CLI only starts heartbeating once it reaches the relay, so a gateway that
         // connects but cannot reach its relay reports its version here and nowhere else.
         ...getCliVersionFields(userAgent),

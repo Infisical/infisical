@@ -33,7 +33,12 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
-import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
+import {
+  findInheritedGrant,
+  isRootFolderPath,
+  normalizeFolderPath
+} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
@@ -87,7 +92,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         row.environment === environmentSlug &&
         normalizeFolderPath(row.secretPath) === normalizedPath
     ) ?? null;
-  const grant = useFolderGrantDraft(existingGrant, isRoot);
+  const grant = useFolderGrantDraft(existingGrant, normalizedPath);
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
@@ -111,6 +116,15 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     existingGrant && !targetError && !isCheckingFolder
       ? `This ${actorNoun} already has access to ${normalizedPath}. Saving updates that access.`
       : null;
+
+  const inheritedGrant = findInheritedGrant(existingAccess, environmentSlug, normalizedPath);
+  const inheritedNote = (() => {
+    if (!inheritedGrant || targetError || isCheckingFolder) return null;
+    const source = isRootFolderPath(inheritedGrant.secretPath)
+      ? "the environment from /"
+      : `the subfolders of ${inheritedGrant.secretPath}`;
+    return `This ${actorNoun} has ${FOLDER_ROLE_TIER_LABELS[inheritedGrant.permission]} on ${normalizedPath} through access applied to ${source}. ${existingGrant ? "The access set on this folder overrides it here." : "Access you set here overrides it on this folder."}`;
+  })();
 
   const isSubmitDisabled =
     isCheckingFolder ||
@@ -147,7 +161,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     <>
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2">
-          Grant Folder Access
+          Manage Folder Access
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
         <ActorSummary actor={actor} />
@@ -193,6 +207,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
               {editNote}
             </p>
           )}
+          {inheritedNote && (
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+              {inheritedNote}
+            </p>
+          )}
         </div>
 
         <FolderGrantFields grant={grant} />
@@ -211,7 +231,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           }
           onClick={() => handleSubmit().catch(() => undefined)}
         >
-          {existingGrant ? "Save Changes" : "Grant Access"}
+          {existingGrant ? "Save Changes" : "Save Access"}
         </Button>
       </SheetFooter>
     </>

@@ -1,3 +1,11 @@
+## 1.12.5
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.14` to `v0.167.15`.
+
+Upgrade notes:
+* Organization selectedMfaMethod removed (`v0.167.15`): PATCH /api/v1/organization/:organizationId ignores selectedMfaMethod, and organization responses no longer return it. A request that sets enforceMfa to true with selectedMfaMethod keeps the organization's allowed methods, which default to email only, so it leaves email allowed or, without SMTP, fails with a 400 error. Before upgrading, change automation that sets selectedMfaMethod to send allowedMfaMethods (for example `["totp"]`) instead.
+* Rollout: with the default `infisical.replicaCount: 2`, pods still running `v0.167.14` write the dropped `selectedMfaMethod` column when organization MFA settings change, so those changes fail until the rollout finishes. Don't change organization MFA settings until every pod runs `v0.167.15`.
+
 ## 1.12.4
 Changes:
 * Updated the default Infisical image (`appVersion`) from `v0.167.13` to `v0.167.14`.

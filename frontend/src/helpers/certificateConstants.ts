@@ -191,6 +191,27 @@ export enum CertSanInclude {
 export const SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS = Object.values(CertSubjectAttributeInclude);
 export const SAN_INCLUDE_OPTIONS = Object.values(CertSanInclude);
 
+export enum CertRequestReference {
+  COMMON_NAME = "{{request.commonName}}"
+}
+
+export type TCertRequestReferenceValues = {
+  commonName?: string;
+};
+
+export const COMMON_NAME_REFERENCE_LABEL = "Same as common name";
+
+export const COMMON_NAME_REFERENCE_DESCRIPTION = "The common name of each request";
+
+export const isRequestReference = (value: string): value is CertRequestReference =>
+  (Object.values(CertRequestReference) as string[]).includes(value);
+
+export const withIndefiniteArticle = (label: string): string =>
+  `${/^[AEIO]/i.test(label) ? "an" : "a"} ${label}`;
+
+export const formatRequestReferenceValue = (value: string): string =>
+  value === CertRequestReference.COMMON_NAME ? COMMON_NAME_REFERENCE_LABEL : value;
+
 export const USAGE_STATES = {
   REQUIRED: "required",
   OPTIONAL: "optional"
@@ -379,9 +400,17 @@ export const CUSTOM_EXTENSION_PRESETS: Record<
     label: "AD SID security extension",
     placeholder: "S-1-5-21-...",
     validate: (value) =>
-      SID_PATTERN.test(value)
+      SID_PATTERN.test(value) &&
+      value
+        .split("-")
+        .slice(1)
+        .every((part) => !(part.length > 1 && part.startsWith("0"))) &&
+      value
+        .split("-")
+        .slice(3)
+        .every((part) => Number(part) <= 0xffffffff)
         ? null
-        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103"
+        : "Value must be a security identifier as Active Directory shows it, with no leading zeros and each sub-authority at most 4294967295, for example S-1-5-21-1004336348-1177238915-682003330-1103"
   },
   "1.3.6.1.4.1.311.20.2": {
     critical: false,

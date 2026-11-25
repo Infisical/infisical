@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { EventDefinition, EventModificationType } from "@app/domains/platform/events/ce/module";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 
 // Where an entity was before an update moved it. Only the fields that changed are present.
 export const PreviousSecretLocationSchema = z.object({
@@ -30,7 +30,7 @@ export const previousSecretLocation = (
 // A rename is one `updated` event with the old path in `previous`. A move to another parent recreates the
 // folder and its subfolders under new ids, so it's `created` at the destination and `deleted` at the source.
 // Deleting a folder emits one event that covers everything beneath it; subfolders are not emitted separately.
-export const FolderModifiedEventV1 = defineEvent({
+export const FolderModifiedEventV1 = EventDefinition.define({
   domain: "secrets",
   entity: "folder",
   action: "modified",

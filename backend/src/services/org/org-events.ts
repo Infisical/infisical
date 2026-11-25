@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
+import { EventDefinition, EventModificationType } from "@app/domains/platform/events/ce/module";
 
 // The org row is gone by the time consumers run, so carry what they need. rootOrgId is set for sub-orgs.
-export const OrganizationModifiedEventV1 = defineEvent({
+export const OrganizationModifiedEventV1 = EventDefinition.define({
   domain: "organization",
   entity: "organization",
   action: "modified",

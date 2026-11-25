@@ -11,17 +11,30 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Spinner,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   doesDataSourceSupportDiscovery,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import {
+  AlertChannelType,
+  AlertPrincipalType,
+  AlertResourceType,
+  TAlert,
+  TChannelForm,
+  toChannelForm,
+  toChannelInput,
+  useCreateAlert,
+  useListAlerts,
+  useUpdateAlert
+} from "@app/hooks/api/alerts";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource,
@@ -32,8 +45,19 @@ import {
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2/mutations";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
+import { buildNextChannel, DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
-import { SecretScanningDataSourceSchema, TSecretScanningDataSourceForm } from "./schemas";
+import {
+  buildSecretScanningDataSourceSchema,
+  serializeAlertChannels,
+  TDataSourceAlertField,
+  TSecretScanningDataSourceForm
+} from "./schemas";
+import {
+  canManageDataSourceAlerts,
+  DATA_SOURCE_ALERTS,
+  SecretScanningDataSourceAlertsFields
+} from "./SecretScanningDataSourceAlertsFields";
 import {
   SecretScanningDataSourceConnectionFields,
   SecretScanningDataSourceScanFields
@@ -48,7 +72,8 @@ enum FormStep {
   Connection = 1,
   Scan = 2,
   Details = 3,
-  Review = 4
+  Alerts = 4,
+  Review = 5
 }
 
 const getDefaultConfig = (type: SecretScanningDataSource) => {
@@ -64,13 +89,52 @@ const getDefaultConfig = (type: SecretScanningDataSource) => {
   }
 };
 
-const getDefaultValues = (type: SecretScanningDataSource) =>
+const buildProjectAdminsChannel = (projectId: string): TChannelForm => ({
+  ...buildNextChannel([], AlertChannelType.Email),
+  recipients: [{ principalType: AlertPrincipalType.ProjectAdmins, principalId: projectId }]
+});
+
+// The same alerts a data source gets when its creator doesn't choose any.
+const getDefaultAlertValues = (projectId: string) => ({
+  secretsDetectedAlert: { enabled: true, channels: [buildProjectAdminsChannel(projectId)] },
+  scanFailedAlert: { enabled: true, channels: [buildProjectAdminsChannel(projectId)] }
+});
+
+// An edit starts from each alert as it's saved. A deleted alert starts off, with the channel a new data
+// source's alerts start with.
+const getSavedAlerts = (alerts: TAlert[], projectId: string) => {
+  const byField = Object.fromEntries(
+    DATA_SOURCE_ALERTS.map(({ eventType, field }) => [
+      field,
+      alerts.find((alert) => alert.eventType === eventType)
+    ])
+  ) as Record<TDataSourceAlertField, TAlert | undefined>;
+
+  const toFormValue = (alert?: TAlert) =>
+    alert
+      ? { enabled: alert.enabled, channels: alert.channels.map(toChannelForm) }
+      : { enabled: false, channels: [buildProjectAdminsChannel(projectId)] };
+
+  return {
+    byField,
+    values: {
+      secretsDetectedAlert: toFormValue(byField.secretsDetectedAlert),
+      scanFailedAlert: toFormValue(byField.scanFailedAlert)
+    }
+  };
+};
+
+const getDefaultValues = (type: SecretScanningDataSource, projectId: string) =>
   ({
     type,
     isHistoricalScanEnabled: true,
     isScanNewCommitsEnabled: true,
-    isDiscoveryEnabled: doesDataSourceSupportDiscovery({ type, config: getDefaultConfig(type) }),
-    config: getDefaultConfig(type)
+    isDiscoveryEnabled: doesDataSourceSupportDiscovery({
+      type,
+      config: getDefaultConfig(type)
+    }),
+    config: getDefaultConfig(type),
+    ...getDefaultAlertValues(projectId)
   }) as DefaultValues<TSecretScanningDataSourceForm>;
 
 const CONNECTION_STEP_FIELDS: Record<SecretScanningDataSource, TFormField[]> = {
@@ -97,8 +161,9 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const { singularNoun, pluralNoun, verb } = RESOURCE_DESCRIPTION_HELPER[type];
 
-  return [
+  const steps = [
     {
+      key: FormStep.Provider,
       name: "Provider",
       description: platform,
       title: "Choose a Provider",
@@ -107,6 +172,7 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       fields: [] as TFormField[]
     },
     {
+      key: FormStep.Connection,
       name: "Connection",
       description: "Connection and scope",
       title: `Connect to ${platform}`,
@@ -117,6 +183,7 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       fields: CONNECTION_STEP_FIELDS[type]
     },
     {
+      key: FormStep.Scan,
       name: "Scan Options",
       description: "Scan behavior",
       title: "Configure Scanning",
@@ -129,6 +196,7 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       ] as TFormField[]
     },
     {
+      key: FormStep.Details,
       name: "Details",
       description: "Name and description",
       title: "Name This Data Source",
@@ -137,6 +205,18 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       fields: ["name", "description"] as TFormField[]
     },
     {
+      key: FormStep.Alerts,
+      name: "Alerts",
+      description: "Notifications",
+      title: "Set Up Alerts",
+      subtitle: "Choose where Infisical sends a notice when a scan finds secrets or fails.",
+      info: isEdit
+        ? "Each alert has its own channels. Saving changes only what you changed here, and keeps the kinds of scans each alert skips."
+        : "Infisical sends a notice to every channel when a scan finds secrets or fails. You can change these alerts later from the data source's settings.",
+      fields: ["secretsDetectedAlert", "scanFailedAlert"] as TFormField[]
+    },
+    {
+      key: FormStep.Review,
       name: "Review",
       description: "Confirm configuration",
       title: isEdit ? "Review and Save" : "Review and Create",
@@ -145,10 +225,12 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
         : "Confirm the details below, then create the data source.",
       info: isEdit
         ? "Saving updates the data source right away. Changes to scan options apply to the next scan or commit."
-        : "You can change scan options, name, and description later from the data source's settings.",
+        : "You can change scan options, name, description, and alerts later from the data source's settings.",
       fields: [] as TFormField[]
     }
   ];
+
+  return steps;
 };
 
 const ProviderCard = ({
@@ -209,30 +291,53 @@ type Props = {
   onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
-export const SecretScanningDataSourceForm = ({
+type ContentProps = Props & {
+  alerts: TAlert[];
+  isAlertsUnavailable: boolean;
+};
+
+const SecretScanningDataSourceFormContent = ({
   dataSource,
   initialType = SecretScanningDataSource.GitHub,
   initialFormData,
   onComplete,
   onCancel,
   onDirtyChange,
-  onSubmittingChange
-}: Props) => {
+  onSubmittingChange,
+  alerts,
+  isAlertsUnavailable
+}: ContentProps) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const createDataSource = useCreateSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
+  const createAlert = useCreateAlert();
+  const updateAlert = useUpdateAlert();
   const isEdit = Boolean(dataSource);
+  // Fixed at open: a later refetch must not change what a save compares against, or saving an unrelated
+  // data source change could write over alert changes made elsewhere.
+  const [savedAlerts] = useState(() =>
+    getSavedAlerts(alerts, dataSource?.projectId ?? currentProject.id)
+  );
 
   const [step, setStep] = useState(
     isEdit || initialFormData ? FormStep.Connection : FormStep.Provider
   );
 
   const formMethods = useForm<TSecretScanningDataSourceForm>({
-    resolver: zodResolver(SecretScanningDataSourceSchema),
-    defaultValues: (dataSource ?? {
-      ...getDefaultValues(initialType),
-      ...initialFormData
-    }) as DefaultValues<TSecretScanningDataSourceForm>,
+    resolver: zodResolver(
+      buildSecretScanningDataSourceSchema({
+        secretsDetectedAlert:
+          savedAlerts.byField.secretsDetectedAlert && savedAlerts.values.secretsDetectedAlert,
+        scanFailedAlert: savedAlerts.byField.scanFailedAlert && savedAlerts.values.scanFailedAlert
+      })
+    ),
+    defaultValues: (dataSource
+      ? { ...dataSource, ...savedAlerts.values }
+      : {
+          ...getDefaultValues(initialType, currentProject.id),
+          ...initialFormData
+        }) as DefaultValues<TSecretScanningDataSourceForm>,
     // Step validation uses trigger(), which does not put the form into its submitted state.
     // Validate changes from the start so a field's error clears as soon as it is corrected.
     mode: "onChange",
@@ -262,7 +367,8 @@ export const SecretScanningDataSourceForm = ({
 
   const steps = getSteps(type, isEdit);
   const firstStep = isEdit ? FormStep.Connection : FormStep.Provider;
-  const currentStep = steps[step];
+  const stepIndex = steps.findIndex((s) => s.key === step);
+  const currentStep = steps[stepIndex];
   const isFinalStep = step === FormStep.Review;
 
   let submitLabel = "Continue";
@@ -271,9 +377,57 @@ export const SecretScanningDataSourceForm = ({
   const { name: platform, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const { pluralNoun } = RESOURCE_DESCRIPTION_HELPER[type];
 
-  const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
+  // Each alert is saved on its own, and only what changed is sent, so anything else on it, such as the scans
+  // it skips, stays as it is.
+  const saveEditedAlerts = async (
+    { id: dataSourceId, projectId }: TSecretScanningDataSource,
+    values: Pick<TSecretScanningDataSourceForm, TDataSourceAlertField>
+  ) => {
+    if (isAlertsUnavailable || !canManageDataSourceAlerts(permission)) return;
+
+    await Promise.all(
+      DATA_SOURCE_ALERTS.map(async ({ eventType, field }) => {
+        const { enabled, channels } = values[field];
+        const saved = savedAlerts.byField[field];
+
+        if (saved) {
+          const savedValue = savedAlerts.values[field];
+          const hasChannelChanges =
+            enabled &&
+            serializeAlertChannels(channels) !== serializeAlertChannels(savedValue.channels);
+          if (enabled === saved.enabled && !hasChannelChanges) return;
+          await updateAlert.mutateAsync({
+            alertId: saved.id,
+            enabled,
+            ...(hasChannelChanges && { channels: channels.map(toChannelInput) })
+          });
+          return;
+        }
+
+        if (!enabled) return;
+        await createAlert.mutateAsync({
+          name: DEFAULT_ALERT_NAMES[eventType],
+          resourceType: AlertResourceType.SecretScanning,
+          resourceId: dataSourceId,
+          eventType,
+          projectId,
+          enabled: true,
+          condition: null,
+          channels: channels.map(toChannelInput)
+        });
+      })
+    );
+  };
+
+  const onSubmit = async ({
+    connection,
+    secretsDetectedAlert,
+    scanFailedAlert,
+    ...formData
+  }: TSecretScanningDataSourceForm) => {
     const isDiscoveryEnabled =
       formData.isDiscoveryEnabled && doesDataSourceSupportDiscovery(formData);
+    const alertValues = { secretsDetectedAlert, scanFailedAlert };
 
     if (dataSource) {
       const updated = await updateDataSource.mutateAsync({
@@ -288,6 +442,12 @@ export const SecretScanningDataSourceForm = ({
         isDiscoveryEnabled
       });
 
+      try {
+        await saveEditedAlerts(updated, alertValues);
+      } catch {
+        // MutationCache reports why an alert request failed. The data source itself is saved either way.
+      }
+
       createNotification({
         text: `${platform} data source "${updated.name}" updated`,
         type: "success"
@@ -300,7 +460,16 @@ export const SecretScanningDataSourceForm = ({
       ...formData,
       isDiscoveryEnabled,
       connectionId: connection?.id,
-      projectId: currentProject.id
+      projectId: currentProject.id,
+      // Without permission to choose alerts, the backend gives the data source its default alerts.
+      ...(canManageDataSourceAlerts(permission) && {
+        alerts: DATA_SOURCE_ALERTS.filter(({ field }) => alertValues[field].enabled).map(
+          ({ eventType, field }) => ({
+            eventType,
+            channels: alertValues[field].channels.map(toChannelInput)
+          })
+        )
+      })
     });
 
     createNotification({
@@ -318,7 +487,7 @@ export const SecretScanningDataSourceForm = ({
 
     if (!(await trigger(currentStep.fields))) return;
 
-    setStep((prev) => prev + 1);
+    setStep(steps[stepIndex + 1].key);
   };
 
   const handleBack = () => {
@@ -327,7 +496,7 @@ export const SecretScanningDataSourceForm = ({
       return;
     }
 
-    setStep((prev) => prev - 1);
+    setStep(steps[stepIndex - 1].key);
   };
 
   return (
@@ -344,7 +513,7 @@ export const SecretScanningDataSourceForm = ({
             </div>
             <SheetDescription>
               {dataSource
-                ? `Edit the scan options and details of "${dataSource.name}".`
+                ? `Edit the scan options, details, and alerts of "${dataSource.name}".`
                 : `Connect a ${platform} data source to scan its ${pluralNoun}.`}
             </SheetDescription>
           </div>
@@ -364,7 +533,7 @@ export const SecretScanningDataSourceForm = ({
             <p className="text-xs font-medium tracking-wider text-muted uppercase">
               {isEdit ? "Steps" : "Setup Steps"}
             </p>
-            <Stepper activeStep={step} onStepChange={setStep}>
+            <Stepper activeStep={stepIndex} onStepChange={(index) => setStep(steps[index].key)}>
               <StepperList>
                 {steps.map((s, index) => (
                   <StepperStep
@@ -372,7 +541,7 @@ export const SecretScanningDataSourceForm = ({
                     index={index}
                     title={s.name}
                     description={s.description}
-                    disabled={isEdit && index === FormStep.Provider}
+                    disabled={isEdit && s.key === FormStep.Provider}
                   />
                 ))}
               </StepperList>
@@ -389,7 +558,7 @@ export const SecretScanningDataSourceForm = ({
           {step === FormStep.Provider && (
             <ProviderFields
               onSelect={(newType) => {
-                if (newType !== type) reset(getDefaultValues(newType));
+                if (newType !== type) reset(getDefaultValues(newType, currentProject.id));
                 setStep(FormStep.Connection);
               }}
             />
@@ -397,13 +566,25 @@ export const SecretScanningDataSourceForm = ({
           {step === FormStep.Connection && <SecretScanningDataSourceConnectionFields />}
           {step === FormStep.Scan && <SecretScanningDataSourceScanFields />}
           {step === FormStep.Details && <SecretScanningDataSourceDetailsFields />}
-          {step === FormStep.Review && <SecretScanningDataSourceReviewFields />}
+          {step === FormStep.Alerts && (
+            <SecretScanningDataSourceAlertsFields
+              projectId={dataSource?.projectId ?? currentProject.id}
+              dataSourceId={dataSource?.id}
+              isAlertsUnavailable={isAlertsUnavailable}
+            />
+          )}
+          {step === FormStep.Review && (
+            <SecretScanningDataSourceReviewFields
+              isEdit={isEdit}
+              isAlertsUnavailable={isAlertsUnavailable}
+            />
+          )}
         </div>
 
         {step !== FormStep.Provider && (
           <aside className="hidden w-64 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border p-5 lg:flex">
             <p className="text-xs font-medium tracking-wider text-muted uppercase">
-              Step {step + 1} · {currentStep.name}
+              Step {stepIndex + 1} · {currentStep.name}
             </p>
             <p className="text-sm font-medium text-foreground">What this step does</p>
             <p className="text-sm leading-relaxed text-accent">{currentStep.info}</p>
@@ -413,7 +594,7 @@ export const SecretScanningDataSourceForm = ({
 
       <SheetFooter className="items-center justify-between border-t">
         <span className="text-xs text-muted">
-          Step {step + 1} of {steps.length}
+          Step {stepIndex + 1} of {steps.length}
         </span>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleBack} isDisabled={isSubmitting}>
@@ -433,5 +614,42 @@ export const SecretScanningDataSourceForm = ({
         </div>
       </SheetFooter>
     </FormProvider>
+  );
+};
+
+export const SecretScanningDataSourceForm = (props: Props) => {
+  const { dataSource } = props;
+  const isEdit = Boolean(dataSource);
+
+  const {
+    data: alerts = [],
+    isFetchedAfterMount,
+    isError
+  } = useListAlerts(
+    {
+      resourceType: AlertResourceType.SecretScanning,
+      resourceId: dataSource?.id,
+      projectId: dataSource?.projectId
+    },
+    // A cached list can predate a change made elsewhere, and the form starts from this read.
+    { enabled: isEdit, refetchOnMount: "always" }
+  );
+
+  // The alerts go into the default values rather than a later resetField, which ignores fields that aren't
+  // registered yet, and the Alerts step mounts near the end.
+  if (isEdit && !isFetchedAfterMount) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" label="Loading data source" />
+      </div>
+    );
+  }
+
+  return (
+    <SecretScanningDataSourceFormContent
+      {...props}
+      alerts={alerts}
+      isAlertsUnavailable={isEdit && isError}
+    />
   );
 };
