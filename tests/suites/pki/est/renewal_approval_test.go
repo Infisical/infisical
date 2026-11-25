@@ -29,7 +29,7 @@ func TestEstEnrollment_RenewalApproval(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newApprovalGated(t, tn)
+		g := newApprovalGated(t, tn, "renewal")
 		original := g.stored(t, tn, g.issued)
 
 		// Action
@@ -53,7 +53,7 @@ func TestEstEnrollment_RenewalApproval(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newApprovalGated(t, tn)
+		g := newApprovalGated(t, tn, "renewal")
 		first := g.reenroll(t, newCSR(t, g.key, g.name), enrollOpts{clientCert: g.issued})
 		require.Equalf(t, http.StatusBadRequest, first.StatusCode(), "the first re-enrollment: %s", apierr.Body(first.Body))
 
@@ -71,7 +71,7 @@ func TestEstEnrollment_RenewalApproval(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newApprovalGated(t, tn)
+		g := newApprovalGated(t, tn, "renewal")
 		original := g.stored(t, tn, g.issued)
 		first := g.reenroll(t, newCSR(t, g.key, g.name), enrollOpts{clientCert: g.issued})
 		require.Equalf(t, http.StatusBadRequest, first.StatusCode(), "the re-enrollment: %s", apierr.Body(first.Body))
@@ -92,9 +92,66 @@ func TestEstEnrollment_RenewalApproval(t *testing.T) {
 		require.Equal(t, &replacement, g.stored(t, tn, g.issued).RenewedBy)
 		require.Equal(t, &original.ID, pki.ReadCertificate(t, tn.Admin, replacement).JSON200.Certificate.RenewedFromCertificateId)
 	})
+
+	t.Run("should hold a re-enrollment for approval when an Issuance policy covers the profile", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := newApprovalGated(t, tn, "issuance")
+		original := g.stored(t, tn, g.issued)
+
+		// Action
+		res := g.reenroll(t, newCSR(t, g.key, g.name), enrollOpts{clientCert: g.issued})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Contains(t, apierr.Message(res.Body), "requires approval")
+		require.Nil(t, g.stored(t, tn, g.issued).RenewedBy, "nothing is linked while the renewal waits")
+		held := g.pending(t)
+		require.Len(t, held, 1)
+		require.Equal(t, original.ID.String(), held[0].renewalOf)
+	})
+
+	for _, tc := range []struct {
+		from      string
+		elsewhere func(t *testing.T, tn *harness.Tenant, g approvalGated) estProfile
+	}{
+		{"another Application", func(t *testing.T, tn *harness.Tenant, g approvalGated) estProfile {
+			other := *g.ApplicationGraph
+			other.App = pki.NewApplication(t, g.Project, g.Profile)
+			return enableEst(t, tn, &other, api.SetPkiApplicationEstEnrollmentJSONRequestBody{})
+		}},
+		{"another profile", func(t *testing.T, tn *harness.Tenant, g approvalGated) estProfile {
+			other := *g.ApplicationGraph
+			other.Profile = pki.NewProfile(t, g.Project, g.CA, g.Policy)
+			other.App = pki.NewApplication(t, g.Project, other.Profile)
+			return enableEst(t, tn, &other, api.SetPkiApplicationEstEnrollmentJSONRequestBody{})
+		}},
+	} {
+		t.Run("should issue a re-enrollment with a client certificate from "+tc.from+" at once and unlinked when only a Renewal policy covers the profile", func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tn := h.NewTenant(t)
+			g := newApprovalGated(t, tn, "renewal")
+			elsewhere := tc.elsewhere(t, tn, g)
+			key, name := newKey(t), id.Short()+".est.test"
+			issuedElsewhere := elsewhere.mustEnroll(t, key, name)
+
+			// Action
+			res := g.reenroll(t, newCSR(t, key, name), enrollOpts{clientCert: issuedElsewhere})
+
+			// Assert
+			require.Equalf(t, http.StatusOK, res.StatusCode(), "re-enrolling: %s", apierr.Body(res.Body))
+			require.Empty(t, g.pending(t))
+			require.Nil(t, elsewhere.stored(t, tn, issuedElsewhere).RenewedBy)
+			require.Nil(t, g.stored(t, tn, certsOf(t, res.Body)[0]).RenewedFrom)
+		})
+	}
 }
 
-// approvalGated is an EST profile with a leaf already issued to a device, and a Renewal
+// approvalGated is an EST profile with a leaf already issued to a device, and an approval
 // policy that a separate application admin approves.
 type approvalGated struct {
 	estProfile
@@ -104,9 +161,9 @@ type approvalGated struct {
 	issued   *x509.Certificate
 }
 
-// newApprovalGated issues the device its first certificate, then puts the Renewal policy on
-// the profile, so only what follows is held.
-func newApprovalGated(t *testing.T, tn *harness.Tenant) approvalGated {
+// newApprovalGated issues the device its first certificate, then puts an approval policy for
+// operation on the profile, so only what follows is held.
+func newApprovalGated(t *testing.T, tn *harness.Tenant, operation string) approvalGated {
 	t.Helper()
 	p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
 	approver := tn.NewUser(t, harness.WithName("approver"))
@@ -114,7 +171,7 @@ func newApprovalGated(t *testing.T, tn *harness.Tenant) approvalGated {
 	pki.AddMember(t, p.App, approver, "admin")
 	key, name := newKey(t), id.Short()+".est.test"
 	issued := p.mustEnroll(t, key, name)
-	p.newRenewalPolicy(t, tn, approver.ID)
+	p.newApprovalPolicy(t, tn, operation, approver.ID)
 	return approvalGated{estProfile: p, approver: approver, key: key, name: name, issued: issued}
 }
 

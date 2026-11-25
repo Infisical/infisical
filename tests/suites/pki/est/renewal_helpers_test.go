@@ -50,16 +50,16 @@ func (p estProfile) stored(t *testing.T, tn *harness.Tenant, leaf *x509.Certific
 	return storedCert{}
 }
 
-// newRenewalPolicy holds every renewal on the profile for one approval from approver. The generated
-// client predates the policy type, so the body goes out as JSON.
-func (p estProfile) newRenewalPolicy(t *testing.T, tn *harness.Tenant, approver uuid.UUID) {
+// newApprovalPolicy holds the profile's requests for operation ("issuance" or "renewal") for one
+// approval from approver. The generated client predates the policy type, so the body goes out as JSON.
+func (p estProfile) newApprovalPolicy(t *testing.T, tn *harness.Tenant, operation string, approver uuid.UUID) {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
-		"name":        "renewal-" + id.Short(),
+		"name":        operation + "-" + id.Short(),
 		"scope":       "pki-application",
 		"scopeId":     p.App.ID,
 		"conditions":  []map[string]any{{"profileNames": []string{p.Profile.Slug}}},
-		"constraints": map[string]any{"operation": "renewal"},
+		"constraints": map[string]any{"operation": operation},
 		"steps": []map[string]any{{
 			"requiredApprovals": 1,
 			"approvers":         []map[string]any{{"type": "user", "id": approver}},
@@ -68,5 +68,5 @@ func (p estProfile) newRenewalPolicy(t *testing.T, tn *harness.Tenant, approver 
 	require.NoError(t, err)
 	res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithBodyWithResponse(t.Context(), "application/json", bytes.NewReader(body))
 	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating the Renewal policy: %s", apierr.Body(res.Body))
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating the %s policy: %s", operation, apierr.Body(res.Body))
 }
