@@ -65,6 +65,25 @@ const sleep = async () =>
     setTimeout(resolve, 1000);
   });
 
+// Secrets Manager has no folders, so a mirrored name below the source folder starts with "/", as a
+// Parameter Store name does: "DB_URL" in the source folder, "/api/DB_URL" below it. A secret in the
+// source folder keeps the name it has without the option, so turning the option on doesn't rename it.
+const getMirroredSecretMap = (payload: TSecretSyncPayload): TSecretMap =>
+  Object.fromEntries(
+    Object.entries(payload.mirror()).map(([key, secret]) => [key.includes("/") ? `/${key}` : key, secret])
+  );
+
+// With folders mirrored, a name is the sync's only if it's shaped like one getMirroredSecretMap
+// builds, so another sync's "team-a/DB_URL" or a bare "/DB_URL" is left alone.
+const isSyncedSecretName = (name: string, environment: string, keySchema?: string, mirroredFolders?: Set<string>) => {
+  if (!mirroredFolders) return matchesSchema(name, environment, keySchema);
+
+  const key = name.startsWith("/") ? name.substring(1) : name;
+  if (name.startsWith("/") !== key.includes("/")) return false;
+
+  return matchesSchema(key, environment, keySchema, { mirroredFolders });
+};
+
 const getSecretsRecord = async (
   client: SecretsManagerClient,
   environment: string,
@@ -86,13 +105,13 @@ const getSecretsRecord = async (
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          // A name the sync writes is always its own. matchesSchema alone can miss one: a stored key
-          // containing "/" adds folders to its mirrored name, and the key schema is checked against
-          // the last segment only.
+          // A name the sync writes is always its own. isSyncedSecretName alone can miss one: a stored
+          // key containing "/" adds folders to its mirrored name, and the key schema is checked
+          // against the last segment only.
           if (
             secretEntry.Name &&
             ((secretMap && Object.hasOwn(secretMap, secretEntry.Name)) ||
-              matchesSchema(secretEntry.Name, environment, keySchema, { mirroredFolders }))
+              isSyncedSecretName(secretEntry.Name, environment, keySchema, mirroredFolders))
           ) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
@@ -377,7 +396,7 @@ export const AwsSecretsManagerSyncFns = {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
-    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+    const secretMap = preserveFolderStructure ? getMirroredSecretMap(payload) : payload.flatten();
     const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
     const client = await getSecretsManagerClient(secretSync, instanceConfigService);
@@ -485,7 +504,7 @@ export const AwsSecretsManagerSyncFns = {
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
-        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema, { mirroredFolders })) continue;
+        if (!isSyncedSecretName(secretKey, environment?.slug || "", syncOptions.keySchema, mirroredFolders)) continue;
 
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
@@ -629,7 +648,7 @@ export const AwsSecretsManagerSyncFns = {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
-    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+    const secretMap = preserveFolderStructure ? getMirroredSecretMap(payload) : payload.flatten();
     const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
     const client = await getSecretsManagerClient(secretSync, instanceConfigService);

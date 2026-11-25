@@ -103,6 +103,8 @@ const getFormTabs = (
       : ["secretPath", "environment", "includeAllSubFolders"];
 
   const mirroredPrefix = destination === SecretSync.AWSParameterStore ? "/prod/" : "";
+  // A Secrets Manager name in a folder starts with "/", as a Parameter Store path does.
+  const mirroredFolderPrefix = mirroredPrefix || "/";
 
   return [
     {
@@ -128,7 +130,7 @@ const getFormTabs = (
                 { path: "/backend/API_KEY", result: `${mirroredPrefix}API_KEY`, tone: "success" },
                 {
                   path: "/backend/api/API_KEY",
-                  result: `${mirroredPrefix}api/API_KEY`,
+                  result: `${mirroredFolderPrefix}api/API_KEY`,
                   tone: "success"
                 }
               ]
@@ -158,12 +160,12 @@ const getFormTabs = (
           examples: [
             {
               path: "/backend/api/API_KEY",
-              result: `${mirroredPrefix}api/API_KEY`,
+              result: `${mirroredFolderPrefix}api/API_KEY`,
               tone: "success"
             },
             {
               path: "/backend/workers/API_KEY",
-              result: `${mirroredPrefix}workers/API_KEY`,
+              result: `${mirroredFolderPrefix}workers/API_KEY`,
               tone: "success"
             }
           ]

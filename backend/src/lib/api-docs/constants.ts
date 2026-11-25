@@ -3634,7 +3634,7 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`,
-      preserveFolderStructure: `Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "api/API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.`
+      preserveFolderStructure: `Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.`
     },
     RENDER: {
       autoRedeployServices:

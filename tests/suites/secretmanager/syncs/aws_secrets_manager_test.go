@@ -122,8 +122,11 @@ func TestAwsSecretsManagerSync_SyncSecrets(t *testing.T) {
 func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 	t.Parallel()
 
-	t.Run("should prefix each secret's name with its folder when mapped one to one", func(t *testing.T) {
+	t.Run("should start the name of a secret in a folder with that folder, and keep the name of a source-folder secret", func(t *testing.T) {
 		t.Parallel()
+		spec.Why(t, `Secrets Manager has no folders, so a name in a folder starts with "/" the way a
+			Parameter Store path does. A secret in the source folder keeps the name it has without
+			the option, so turning the option on doesn't rename it.`)
 
 		// Setup
 		proj, conn, cp := setupAWS(t)
@@ -135,16 +138,16 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 
 		// Assert
 		require.Equal(t, map[string]string{
-			"DB_URL":       "value-for-/backend",
-			"child/DB_URL": "value-for-/backend/child",
+			"DB_URL":        "value-for-/backend",
+			"/child/DB_URL": "value-for-/backend/child",
 		}, secretValues(t, cp))
 	})
 
 	t.Run("should leave a secret matching its key schema alone when it is outside the folders it mirrors", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `The key schema names only the last part of a mirrored name, so another sync's
-			"team-a/INF_DB_PASS" matches "INF_{{secretKey}}". Secrets Manager deletes without
-			recovery, so deleting it would lose that secret for good.`)
+		spec.Why(t, `Another sync's "team-a/INF_DB_PASS" ends in a name matching "INF_{{secretKey}}",
+			but it isn't shaped like a mirrored name. Secrets Manager deletes without recovery, so
+			deleting it would lose that secret for good.`)
 
 		// Setup
 		proj, conn, cp := setupAWS(t)
@@ -160,7 +163,32 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 		s.trigger(t)
 
 		// Assert
-		require.Equal(t, map[string]string{"api/INF_KEEP": "v", "team-a/INF_DB_PASS": "a"}, secretValues(t, cp))
+		require.Equal(t, map[string]string{"/api/INF_KEEP": "v", "team-a/INF_DB_PASS": "a"}, secretValues(t, cp))
+	})
+
+	t.Run("should delete stale secrets in the folders it mirrors and leave names not shaped like its own", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `A mirroring sync writes "NAME" for the source folder and "/folder/NAME" below it.
+			"api/STALE" has no leading "/" and "/STALE" has no folder, so neither can be one of its
+			names, even though "api" is one of its folders.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t,
+			aws.SeedSecret("STALE", "old"),
+			aws.SeedSecret("/api/STALE", "old"),
+			aws.SeedSecret("api/STALE", "theirs"),
+			aws.SeedSecret("/STALE", "theirs"),
+		)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"/api/KEEP": "v", "api/STALE": "theirs", "/STALE": "theirs"}, secretValues(t, cp))
 	})
 
 	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one", func(t *testing.T) {

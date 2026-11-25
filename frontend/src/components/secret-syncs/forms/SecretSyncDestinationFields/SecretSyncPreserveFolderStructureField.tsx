@@ -66,7 +66,10 @@ export const SecretSyncPreserveFolderStructureField = ({
 
       return {
         source: `${path === "/" ? "" : path}/`,
-        destination: `${destinationPrefix}${folder ? `${folder}/` : ""}${schemaFolder}` || "/",
+        // A Secrets Manager name in a folder starts with "/", as a Parameter Store path does.
+        destination:
+          `${folder ? `${destinationPrefix || "/"}${folder}/` : destinationPrefix}${schemaFolder}` ||
+          "/",
         isDuplicate: conflictingFolders.has(path)
       };
     });
@@ -126,9 +129,10 @@ export const SecretSyncPreserveFolderStructureField = ({
                     <Code>
                       {sourceRoot}/{exampleFolder}/API_KEY
                     </Code>{" "}
-                    becomes <Code>{exampleFolder}/API_KEY</Code> and duplicate keys never collide.
-                    Turn off to name each secret by its key alone, where each key name must be
-                    unique across folders.
+                    becomes <Code>/{exampleFolder}/API_KEY</Code> and duplicate keys never collide.
+                    Secrets directly in <Code>{sourceRoot || "/"}</Code> keep their name. Turn off
+                    to name each secret by its key alone, where each key name must be unique across
+                    folders.
                   </FieldDescription>
                 )}
               </FieldContent>
