@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ApprovalPolicyScope, CertRequestPolicyOperation } from "../approval-policy-enums";
 import {
+  CertRequestPolicyInputsSchema,
   CreateCertRequestPolicySchema,
   parseCertRequestPolicyOperation,
   UpdateCertRequestPolicySchema
@@ -38,5 +39,16 @@ describe("cert-request policy type", () => {
       UpdateCertRequestPolicySchema.parse({ constraints: { operation: CertRequestPolicyOperation.Renewal } })
         .constraints
     ).toEqual({ operation: CertRequestPolicyOperation.Renewal });
+  });
+
+  it.each([
+    ["create", (operation?: string) => CreateCertRequestPolicySchema.shape.constraints.safeParse({ operation })],
+    ["update", (operation?: string) => UpdateCertRequestPolicySchema.shape.constraints.safeParse({ operation })],
+    ["match", (operation?: string) => CertRequestPolicyInputsSchema.safeParse({ profileName: "web", operation })]
+  ])("accepts the same types on %s", (_route, parse) => {
+    expect(parse(CertRequestPolicyOperation.Issuance).success).toBe(true);
+    expect(parse(CertRequestPolicyOperation.Renewal).success).toBe(true);
+    expect(parse(undefined).success).toBe(true);
+    expect(parse("revocation").success).toBe(false);
   });
 });

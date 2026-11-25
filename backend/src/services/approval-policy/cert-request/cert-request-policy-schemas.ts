@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { APPROVAL_POLICY_CERT_REQUEST } from "@app/lib/api-docs";
 import {
   certificateAttributesSchema,
   domainComponentSchema,
@@ -17,9 +18,11 @@ import {
   BaseUpdateApprovalPolicySchema
 } from "../approval-policy-schemas";
 
+export const CertRequestPolicyOperationSchema = z.nativeEnum(CertRequestPolicyOperation);
+
 export const CertRequestPolicyInputsSchema = z.object({
   profileName: z.string(),
-  operation: z.nativeEnum(CertRequestPolicyOperation).optional(),
+  operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.matchOperation),
   applicationId: z.string().uuid().optional()
 });
 
@@ -30,7 +33,7 @@ export const CertRequestPolicyConditionsSchema = z
   .array();
 
 export const CertRequestPolicyConstraintsSchema = z.object({
-  operation: z.nativeEnum(CertRequestPolicyOperation).optional()
+  operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.operation)
 });
 
 // Policy rows reach callers unparsed, and policies created before Renewal policies existed store no operation.
@@ -124,8 +127,9 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
   // Clients that predate the setting send `{}`: keep the stored value instead of clearing it.
-  constraints: z
-    .object({ operation: z.nativeEnum(CertRequestPolicyOperation).optional() })
+  constraints: CertRequestPolicyConstraintsSchema.extend({
+    operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.updateOperation)
+  })
     .optional()
     .transform((constraints) => (constraints?.operation ? { operation: constraints.operation } : undefined))
 });
