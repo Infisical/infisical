@@ -173,7 +173,8 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
               existing.getChanges().map((change) => ({
                 ...change,
                 isCreate: false,
-                originalValue: moved?.originalValue ?? null
+                originalValue: moved?.originalValue ?? null,
+                isReferenced: change.isReferenced || Boolean(moved?.isReferenced)
               }))
             );
           }

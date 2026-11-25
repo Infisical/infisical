@@ -29,7 +29,7 @@ import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { useRenameHeldDraft } from "../UnsavedEditsBar";
+import { useRenameHeldDraft, useUnsavedEdits } from "../UnsavedEditsBar";
 
 enum SecretActionType {
   Created = "created",
@@ -85,6 +85,7 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const renameHeldDraft = useRenameHeldDraft();
+  const { isCommitting } = useUnsavedEdits();
 
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
     options: { meta: { skipErrorToast: true } }
@@ -234,7 +235,7 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
         </DialogClose>
         <Button
           type="submit"
-          isDisabled={isSubmitting || !isDirty}
+          isDisabled={isSubmitting || isCommitting || !isDirty}
           isPending={isSubmitting}
           variant="project"
         >
