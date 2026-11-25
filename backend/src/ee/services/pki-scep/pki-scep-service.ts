@@ -72,6 +72,7 @@ import {
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { getRenewedCertificateName } from "@app/services/certificate/certificate-fns";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
@@ -1083,12 +1084,14 @@ export const pkiScepServiceFactory = ({
 
     if (approvalPolicy) {
       const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction(async (tx) => {
+        let renewedCertificateName: string | undefined;
         if (isRenewal && originalCertificateId) {
-          await assertNoRenewalAwaitingApproval(
+          const original = await assertNoRenewalAwaitingApproval(
             certificateDAL,
             { certificateId: originalCertificateId, projectId: profile.projectId },
             tx
           );
+          renewedCertificateName = original ? getRenewedCertificateName(original) : undefined;
         }
         return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
@@ -1118,7 +1121,11 @@ export const pkiScepServiceFactory = ({
                 customExtensions: validationResult.resolvedCustomExtensions,
                 basicConstraints: certRequestWithDefaults.basicConstraints
               },
-              ...(isRenewal && originalCertificateId && { renewalOfCertificateId: originalCertificateId })
+              ...(isRenewal &&
+                originalCertificateId && {
+                  renewalOfCertificateId: originalCertificateId,
+                  ...(renewedCertificateName && { renewalOfCertificateName: renewedCertificateName })
+                })
             },
             justification: `SCEP certificate request for ${certRequestWithDefaults.commonName || profile.slug}`,
             requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },

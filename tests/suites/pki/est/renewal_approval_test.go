@@ -44,6 +44,7 @@ func TestEstEnrollment_RenewalApproval(t *testing.T) {
 		held := g.pending(t)
 		require.Len(t, held, 1)
 		require.Equal(t, original.ID.String(), held[0].renewalOf)
+		require.Equal(t, g.name, held[0].renewalOfName, "the approval request names the certificate being renewed")
 		require.Contains(t, g.noticeFor(t, held[0].id), "asked to renew")
 	})
 
@@ -122,6 +123,7 @@ type approvalHeld struct {
 	id                   uuid.UUID
 	certificateRequestID string
 	renewalOf            string
+	renewalOfName        string
 }
 
 // pending lists the application's pending approval requests as the approver sees them.
@@ -139,8 +141,9 @@ func (g approvalGated) pending(t *testing.T) []approvalHeld {
 			Status      string    `json:"status"`
 			RequestData struct {
 				RequestData struct {
-					CertificateRequestID   string `json:"certificateRequestId"`
-					RenewalOfCertificateID string `json:"renewalOfCertificateId"`
+					CertificateRequestID     string `json:"certificateRequestId"`
+					RenewalOfCertificateID   string `json:"renewalOfCertificateId"`
+					RenewalOfCertificateName string `json:"renewalOfCertificateName"`
 				} `json:"requestData"`
 			} `json:"requestData"`
 		} `json:"requests"`
@@ -155,6 +158,7 @@ func (g approvalGated) pending(t *testing.T) []approvalHeld {
 			id:                   r.ID,
 			certificateRequestID: r.RequestData.RequestData.CertificateRequestID,
 			renewalOf:            r.RequestData.RequestData.RenewalOfCertificateID,
+			renewalOfName:        r.RequestData.RequestData.RenewalOfCertificateName,
 		})
 	}
 	return held
