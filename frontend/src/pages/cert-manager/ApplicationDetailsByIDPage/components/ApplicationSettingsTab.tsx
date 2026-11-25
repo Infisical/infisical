@@ -73,7 +73,6 @@ import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
   CertRequestPolicyConditions,
-  combineNewestFirst,
   TApprovalPolicy,
   useDeleteApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
@@ -89,6 +88,7 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { combineNewestFirst } from "@app/lib/fn/array";
 import {
   getCertPolicyTypeLabel,
   getPolicyOperation

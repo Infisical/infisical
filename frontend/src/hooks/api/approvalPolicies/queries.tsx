@@ -1,4 +1,4 @@
-import { queryOptions, useQuery, UseQueryResult } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -111,13 +111,3 @@ export const useCertificateActionPolicyProfileNames = (
           )
       )
   });
-
-// Merges one list query per Application policy type into a single list, newest first.
-export const combineNewestFirst = <T extends { createdAt: string | Date }>(
-  results: UseQueryResult<T[]>[]
-) => ({
-  data: results
-    .flatMap(({ data = [] }) => data)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-  isPending: results.some((result) => result.isPending)
-});

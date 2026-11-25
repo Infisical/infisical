@@ -4,11 +4,7 @@ export {
   useDeleteApprovalPolicy,
   useUpdateApprovalPolicy
 } from "./mutations";
-export {
-  approvalPolicyQuery,
-  combineNewestFirst,
-  useCertificateActionPolicyProfileNames
-} from "./queries";
+export { approvalPolicyQuery, useCertificateActionPolicyProfileNames } from "./queries";
 export {
   APPLICATION_POLICY_TYPE_LABELS,
   APPLICATION_POLICY_TYPES,

@@ -310,6 +310,7 @@ const describeCertificateActionRequestRules = (c: TCertificateActionCase) => {
       }
       expect((coveredError as Error).message).toBe((uncoveredError as Error).message);
       for (const ctx of [covered, uncovered]) {
+        expect(ctx.approvalPolicyService.matchPolicy).not.toHaveBeenCalled();
         expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
         expect(ctx.untouched()).toBe(true);
       }

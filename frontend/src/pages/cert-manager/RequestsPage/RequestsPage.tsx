@@ -43,8 +43,7 @@ import { useDebounce } from "@app/hooks";
 import {
   APPLICATION_POLICY_TYPES,
   ApprovalPolicyScope,
-  ApprovalPolicyType,
-  combineNewestFirst
+  ApprovalPolicyType
 } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
@@ -54,6 +53,7 @@ import {
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { combineNewestFirst } from "@app/lib/fn/array";
 
 import {
   getApplicationRequestSummary,

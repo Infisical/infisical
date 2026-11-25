@@ -78,7 +78,6 @@ export const createUserAccessToken = async ({ userId, orgId }: { userId: string;
   );
 };
 
-// Goes through the route an org admin uses, so whatever deactivation does to the member's access happens here too.
 // A Product Member of the project who can log in to the org through the returned token. Pushes the user's id onto
 // createdUserIds for the spec's deleteUsers.
 export const createProjectMemberUser = async (dto: {
@@ -94,6 +93,7 @@ export const createProjectMemberUser = async (dto: {
   return { userId, username, orgMembershipId, token: await createUserAccessToken({ userId, orgId: dto.orgId }) };
 };
 
+// Goes through the route an org admin uses, so whatever deactivation does to the member's access happens here too.
 export const deactivateOrgMembership = async (dto: { orgId: string; membershipId: string; authToken: string }) => {
   const res = await testServer.inject({
     method: "PATCH",
