@@ -29,6 +29,10 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
   IconButton,
   Pagination,
   Table,
@@ -37,6 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -173,6 +178,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const [autoApprovalDraft, setAutoApprovalDraft] =
     useState<TAutoApprovalDraft>(EMPTY_AUTO_APPROVAL_DRAFT);
   const [showAutoApprovalErrors, setShowAutoApprovalErrors] = useState(false);
+  const savedEmailApprovers = config?.emailApproversOnRequest ?? true;
+  const [emailApprovers, setEmailApprovers] = useState(savedEmailApprovers);
 
   const autoApprovalScope = {
     policyType: ApprovalPolicyType.PamAccess,
@@ -228,6 +235,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   }, [savedNotificationConfigs]);
 
   useEffect(() => {
+    setEmailApprovers(savedEmailApprovers);
+  }, [savedEmailApprovers]);
+
+  useEffect(() => {
     setAutoApprovalDraft(savedAutoApprovalDraft);
     setShowAutoApprovalErrors(false);
   }, [savedAutoApprovalDraft]);
@@ -246,7 +257,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       serializeAutoApprovalDraft(savedAutoApprovalDraft),
     [autoApprovalDraft, savedAutoApprovalDraft]
   );
-  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty;
+  const isEmailApproversDirty = emailApprovers !== savedEmailApprovers;
+  const isAnyDirty =
+    isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty || isEmailApproversDirty;
 
   useEffect(() => {
     onDirtyChange?.(isAnyDirty);
@@ -373,7 +386,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         breakGlassUsers,
         // Legacy Slack configs can only be removed, so they're sent only when one was.
         notificationConfigs: isNotifDirty ? notificationConfigs : undefined,
-        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined
+        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined,
+        emailApproversOnRequest: isEmailApproversDirty ? emailApprovers : undefined
       },
       {
         onSuccess: () => {
@@ -390,6 +404,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setNotificationConfigs(savedNotificationConfigs);
     setAutoApprovalDraft(savedAutoApprovalDraft);
     setShowAutoApprovalErrors(false);
+    setEmailApprovers(savedEmailApprovers);
     setIsDirty(false);
   };
 
@@ -425,6 +440,22 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel htmlFor="email-approvers-on-request">Email Approvers</FieldLabel>
+              <FieldDescription id="email-approvers-on-request-description">
+                Approvers get an email for each new access request, in addition to the in-app
+                notification.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              id="email-approvers-on-request"
+              variant="pam"
+              aria-describedby="email-approvers-on-request-description"
+              checked={emailApprovers}
+              onCheckedChange={setEmailApprovers}
+            />
+          </Field>
           <Combobox
             isClearable={false}
             value={null}

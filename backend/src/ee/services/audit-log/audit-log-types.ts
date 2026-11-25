@@ -7680,6 +7680,7 @@ interface PamApprovalConfigUpdateEvent {
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
     autoApprovalRuleCount?: number;
+    emailApproversOnRequest?: boolean;
   };
 }
 
