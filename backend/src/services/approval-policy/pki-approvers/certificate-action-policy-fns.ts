@@ -1,24 +1,33 @@
-import { approverKey, TApproverEntry, TApprovingPeople } from "../pki-approvers/application-approver-checks";
+import { ApprovalPolicyType } from "../approval-policy-enums";
+import { approverKey, TApproverEntry, TApprovingPeople } from "./application-approver-checks";
 
-export enum RevocationStepShortfallKind {
+export type TCertificateActionPolicyType = ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion;
+
+export const CERTIFICATE_ACTIONS: Record<TCertificateActionPolicyType, { label: string; noun: string; verb: string }> =
+  {
+    [ApprovalPolicyType.CertRevocation]: { label: "Revocation", noun: "revocation", verb: "revoke" },
+    [ApprovalPolicyType.CertDeletion]: { label: "Deletion", noun: "deletion", verb: "delete" }
+  };
+
+export enum ApprovalStepShortfallKind {
   NoApprovers = "no-approvers",
   TooFewApprovers = "too-few-approvers"
 }
 
-export type TRevocationStepShortfall =
-  | { kind: RevocationStepShortfallKind.NoApprovers }
-  | { kind: RevocationStepShortfallKind.TooFewApprovers; requiredApprovals: number; approverCount: number };
+export type TApprovalStepShortfall =
+  | { kind: ApprovalStepShortfallKind.NoApprovers }
+  | { kind: ApprovalStepShortfallKind.TooFewApprovers; requiredApprovals: number; approverCount: number };
 
-export const getRevocationStepShortfall = ({
+export const getApprovalStepShortfall = ({
   requiredApprovals,
   approverCount
 }: {
   requiredApprovals: number;
   approverCount: number;
-}): TRevocationStepShortfall | null => {
-  if (approverCount === 0) return { kind: RevocationStepShortfallKind.NoApprovers };
+}): TApprovalStepShortfall | null => {
+  if (approverCount === 0) return { kind: ApprovalStepShortfallKind.NoApprovers };
   if (requiredApprovals > approverCount) {
-    return { kind: RevocationStepShortfallKind.TooFewApprovers, requiredApprovals, approverCount };
+    return { kind: ApprovalStepShortfallKind.TooFewApprovers, requiredApprovals, approverCount };
   }
   return null;
 };
@@ -28,7 +37,7 @@ export const formatApproverCount = (count: number) => `${count} approver${count 
 export const findPeopleWhoCanApprove = (approvers: TApproverEntry[], people: TApprovingPeople) =>
   new Set(approvers.flatMap((approver) => [...(people.get(approverKey(approver)) ?? [])]));
 
-export type TRevocationRequestStep = {
+export type TCertificateActionRequestStep = {
   stepNumber: number;
   requiredApprovals: number;
   approvers: TApproverEntry[];
@@ -38,8 +47,8 @@ export type TRevocationRequestStep = {
 // A rejection ends a request, so every vote on the step in progress is an approval, and each person votes once. The
 // step can still pass while the people who can approve and haven't voted cover the approvals it still needs, and a
 // later step while it has as many people who can approve as it requires.
-export const isRevocationRequestUndecidable = (
-  { currentStep, steps }: { currentStep: number; steps: TRevocationRequestStep[] },
+export const isCertificateActionRequestUndecidable = (
+  { currentStep, steps }: { currentStep: number; steps: TCertificateActionRequestStep[] },
   people: TApprovingPeople
 ) =>
   steps.some((step) => {

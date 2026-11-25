@@ -1,72 +1,43 @@
 import { z } from "zod";
 
+import { ApprovalPolicyType } from "../approval-policy-enums";
 import {
-  BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
   BaseApprovalRequestSchema,
   BaseCreateApprovalPolicySchema,
   BaseUpdateApprovalPolicySchema
 } from "../approval-policy-schemas";
 import {
-  buildApplicationApprovalStepsSchema,
+  buildApproversCanNoLongerApproveSchema,
+  buildCertificateActionStepsSchema,
   buildNoMachineIdentityBypassSchema,
-  ProfileSlugSchema
-} from "../cert-revocation/cert-revocation-policy-schemas";
+  CertificateActionPolicyConditionsSchema,
+  CertificateActionPolicyConstraintsSchema,
+  CertificateActionRequestDataSchema
+} from "../pki-approvers/certificate-action-policy-schemas";
 
-const NoMachineIdentityBypassSchema = buildNoMachineIdentityBypassSchema("Deletion");
+const NoMachineIdentityBypassSchema = buildNoMachineIdentityBypassSchema(ApprovalPolicyType.CertDeletion);
 
-const CertDeletionPolicyStepsSchema = buildApplicationApprovalStepsSchema("deletion");
-
-export const CertDeletionPolicyInputsSchema = z.object({
-  profileName: ProfileSlugSchema,
-  applicationId: z.string().uuid()
-});
-
-export const CertDeletionPolicyConditionsSchema = z
-  .object({
-    profileNames: ProfileSlugSchema.array().min(1).max(100)
-  })
-  .array()
-  .min(1)
-  .max(50);
-
-export const CertDeletionPolicyConstraintsSchema = z.object({});
+const CertDeletionPolicyStepsSchema = buildCertificateActionStepsSchema(ApprovalPolicyType.CertDeletion);
 
 // Taken when the deletion is requested, so the audit log and notifications can still name the certificate once it's
 // deleted.
-export const CertDeletionPolicyRequestDataSchema = z.object({
-  certificateId: z.string().uuid(),
-  serialNumber: z.string(),
-  commonName: z.string(),
+export const CertDeletionPolicyRequestDataSchema = CertificateActionRequestDataSchema.extend({
   friendlyName: z.string().nullable().optional(),
-  altNames: z.string().nullable().optional(),
-  profileId: z.string().uuid(),
-  profileName: z.string(),
-  applicationId: z.string().uuid()
-});
-
-export const CertDeletionPolicySchema = BaseApprovalPolicySchema.extend({
-  conditions: z.object({
-    version: z.literal(1),
-    conditions: CertDeletionPolicyConditionsSchema
-  }),
-  constraints: z.object({
-    version: z.literal(1),
-    constraints: CertDeletionPolicyConstraintsSchema
-  })
+  altNames: z.string().nullable().optional()
 });
 
 export const CreateCertDeletionPolicySchema = BaseCreateApprovalPolicySchema.extend({
-  conditions: CertDeletionPolicyConditionsSchema,
+  conditions: CertificateActionPolicyConditionsSchema,
   steps: CertDeletionPolicyStepsSchema,
-  constraints: CertDeletionPolicyConstraintsSchema.optional().default({}),
+  constraints: CertificateActionPolicyConstraintsSchema.optional().default({}),
   bypassForMachineIdentities: NoMachineIdentityBypassSchema.optional().default(false)
 });
 
 export const UpdateCertDeletionPolicySchema = BaseUpdateApprovalPolicySchema.extend({
-  conditions: CertDeletionPolicyConditionsSchema.optional(),
+  conditions: CertificateActionPolicyConditionsSchema.optional(),
   steps: CertDeletionPolicyStepsSchema.optional(),
-  constraints: CertDeletionPolicyConstraintsSchema.optional(),
+  constraints: CertificateActionPolicyConstraintsSchema.optional(),
   bypassForMachineIdentities: NoMachineIdentityBypassSchema.optional()
 });
 
@@ -75,12 +46,7 @@ export const CertDeletionRequestSchema = BaseApprovalRequestSchema.extend({
     version: z.literal(1),
     requestData: CertDeletionPolicyRequestDataSchema
   }),
-  approversCanNoLongerApprove: z
-    .boolean()
-    .default(false)
-    .describe(
-      "Whether too few of the approvers this pending request was raised with can still approve it for it ever to pass. Set when requests are listed or one is fetched by ID. Once the policy has approvers who can approve, deleting the certificate again replaces such a request."
-    )
+  approversCanNoLongerApprove: buildApproversCanNoLongerApproveSchema(ApprovalPolicyType.CertDeletion)
 });
 
 export const CertDeletionRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({

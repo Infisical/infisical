@@ -27,14 +27,7 @@ import {
   TAutoApprovalOutcome,
   TAutoApprovalPolicyResponse
 } from "./auto-approval/auto-approval-types";
-import {
-  TCertDeletionPolicy,
-  TCertDeletionPolicyConditions,
-  TCertDeletionPolicyConstraints,
-  TCertDeletionPolicyInputs,
-  TCertDeletionRequest,
-  TCertDeletionRequestData
-} from "./cert-deletion/cert-deletion-policy-types";
+import { TCertDeletionRequest, TCertDeletionRequestData } from "./cert-deletion/cert-deletion-policy-types";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -43,14 +36,7 @@ import {
   TCertRequestRequest,
   TCertRequestRequestData
 } from "./cert-request/cert-request-policy-types";
-import {
-  TCertRevocationPolicy,
-  TCertRevocationPolicyConditions,
-  TCertRevocationPolicyConstraints,
-  TCertRevocationPolicyInputs,
-  TCertRevocationRequest,
-  TCertRevocationRequestData
-} from "./cert-revocation/cert-revocation-policy-types";
+import { TCertRevocationRequest, TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import {
   TCodeSigningPolicy,
   TCodeSigningPolicyConditions,
@@ -68,6 +54,12 @@ import {
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
 import {
+  TCertificateActionPolicy,
+  TCertificateActionPolicyConditions,
+  TCertificateActionPolicyConstraints,
+  TCertificateActionPolicyInputs
+} from "./pki-approvers/certificate-action-policy-types";
+import {
   TSecretAccessPolicy,
   TSecretAccessPolicyConditions,
   TSecretAccessPolicyConstraints,
@@ -83,29 +75,25 @@ export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 export type TApprovalPolicy =
   | TPamAccessPolicy
   | TCertRequestPolicy
-  | TCertRevocationPolicy
-  | TCertDeletionPolicy
+  | TCertificateActionPolicy
   | TCodeSigningPolicy
   | TSecretAccessPolicy;
 export type TApprovalPolicyInputs =
   | TPamAccessPolicyInputs
   | TCertRequestPolicyInputs
-  | TCertRevocationPolicyInputs
-  | TCertDeletionPolicyInputs
+  | TCertificateActionPolicyInputs
   | TCodeSigningPolicyInputs
   | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
-  | TCertRevocationPolicyConditions
-  | TCertDeletionPolicyConditions
+  | TCertificateActionPolicyConditions
   | TCodeSigningPolicyConditions
   | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
-  | TCertRevocationPolicyConstraints
-  | TCertDeletionPolicyConstraints
+  | TCertificateActionPolicyConstraints
   | TCodeSigningPolicyConstraints
   | TSecretAccessPolicyConstraints;
 

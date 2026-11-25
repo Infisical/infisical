@@ -5,9 +5,8 @@ import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
-import { ApprovalAuditAction, ApprovalPolicyScope, ApprovalPolicyType, ApproverType } from "../approval-policy-enums";
+import { ApprovalAuditAction, ApprovalPolicyScope, ApproverType } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
-import { findPeopleWhoCanApprove, isRevocationRequestUndecidable } from "../cert-revocation/cert-revocation-policy-fns";
 import {
   approverKey,
   findLiveApproverEntries,
@@ -17,6 +16,12 @@ import {
   TApproverEntry,
   TPkiApprovingPeopleDeps
 } from "./application-approver-checks";
+import {
+  CERTIFICATE_ACTIONS,
+  findPeopleWhoCanApprove,
+  isCertificateActionRequestUndecidable,
+  TCertificateActionPolicyType
+} from "./certificate-action-policy-fns";
 
 export type TApplicationApproverChecksDep = TPkiApprovingPeopleDeps & {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
@@ -53,10 +58,7 @@ type TApplicationApproverChecks<P extends TApplicationProfilePolicy> = Pick<
 
 export const applicationApproverChecksFactory = <P extends TApplicationProfilePolicy>(
   deps: TApplicationApproverChecksDep,
-  {
-    policyType,
-    policyLabel
-  }: { policyType: ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion; policyLabel: string }
+  policyType: TCertificateActionPolicyType
 ) => {
   const { approvalPolicyDAL, membershipDAL, userDAL, groupDAL } = deps;
   const approverRule = PKI_APPROVER_RULES[policyType];
@@ -123,7 +125,7 @@ export const applicationApproverChecksFactory = <P extends TApplicationProfilePo
           tx
         );
         entries.forEach(({ request, steps }) => {
-          if (isRevocationRequestUndecidable({ currentStep: request.currentStep, steps }, people)) {
+          if (isCertificateActionRequestUndecidable({ currentStep: request.currentStep, steps }, people)) {
             undecidable.add(request.id);
           }
         });
@@ -235,7 +237,7 @@ export const applicationApproverChecksFactory = <P extends TApplicationProfilePo
         ...(groupIds.length ? [`groups ${groupIds.map((id) => groupLabels.get(id) || id).join(", ")}`] : [])
       ];
       throw new BadRequestError({
-        message: `${policyLabel} approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${parts.join("; ")}.`
+        message: `${CERTIFICATE_ACTIONS[policyType].label} approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${parts.join("; ")}.`
       });
     },
 

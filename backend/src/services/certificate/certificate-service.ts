@@ -45,19 +45,16 @@ import {
   getApprovalRequestAuditLabel,
   getApprovalRequestSubjectMetadata
 } from "@app/services/approval-policy/approval-request-fns";
+import { TCertDeletionRequestData } from "@app/services/approval-policy/cert-deletion/cert-deletion-policy-types";
+import { TCertRevocationRequestData } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
 import {
-  TCertDeletionRequestData,
-  TMatchedCertDeletionPolicy
-} from "@app/services/approval-policy/cert-deletion/cert-deletion-policy-types";
-import {
+  ApprovalStepShortfallKind,
+  CERTIFICATE_ACTIONS,
   formatApproverCount,
-  getRevocationStepShortfall,
-  RevocationStepShortfallKind
-} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-fns";
-import {
-  TCertRevocationRequestData,
-  TMatchedCertRevocationPolicy
-} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
+  getApprovalStepShortfall,
+  TCertificateActionPolicyType
+} from "@app/services/approval-policy/pki-approvers/certificate-action-policy-fns";
+import { TMatchedCertificateActionPolicy } from "@app/services/approval-policy/pki-approvers/certificate-action-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -253,13 +250,6 @@ type TCertificateServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update" | "findByIdForUpdate">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
-
-type TCertificateActionPolicyType = ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion;
-
-const CERTIFICATE_ACTION_LABELS: Record<TCertificateActionPolicyType, { noun: string; label: string }> = {
-  [ApprovalPolicyType.CertRevocation]: { noun: "revocation", label: "Revocation" },
-  [ApprovalPolicyType.CertDeletion]: { noun: "deletion", label: "Deletion" }
 };
 
 type TApprovedDeletionOutcome =
@@ -650,7 +640,7 @@ export const certificateServiceFactory = ({
     const policy = (await approvalPolicyService.matchPolicy(policyType, projectId, {
       profileName: profile.slug,
       applicationId: cert.applicationId
-    })) as TMatchedCertRevocationPolicy | TMatchedCertDeletionPolicy | null;
+    })) as TMatchedCertificateActionPolicy | null;
     if (!policy) return null;
 
     return { policy, profile };
@@ -682,7 +672,7 @@ export const certificateServiceFactory = ({
     }
 
     throw new BadRequestError({
-      message: `Only users and machine identities can request a certificate ${CERTIFICATE_ACTION_LABELS[policyType].noun}`
+      message: `Only users and machine identities can request a certificate ${CERTIFICATE_ACTIONS[policyType].noun}`
     });
   };
 
@@ -700,7 +690,7 @@ export const certificateServiceFactory = ({
     policyType: TCertificateActionPolicyType;
     cert: { id: string; commonName: string; friendlyName?: string | null; serialNumber: string };
     projectId: string;
-    policy: TMatchedCertRevocationPolicy | TMatchedCertDeletionPolicy;
+    policy: TMatchedCertificateActionPolicy;
     requestData: TCertRevocationRequestData | TCertDeletionRequestData;
     actor: ActorType;
     actorId: string;
@@ -710,17 +700,17 @@ export const certificateServiceFactory = ({
       tx: Knex
     ) => Promise<void>;
   }) => {
-    const { noun, label } = CERTIFICATE_ACTION_LABELS[policyType];
+    const { noun, label } = CERTIFICATE_ACTIONS[policyType];
     const certificateName = getCertificateDisplayName(cert);
 
     policy.steps.forEach((step, index) => {
-      const shortfall = getRevocationStepShortfall(step);
-      if (shortfall?.kind === RevocationStepShortfallKind.NoApprovers) {
+      const shortfall = getApprovalStepShortfall(step);
+      if (shortfall?.kind === ApprovalStepShortfallKind.NoApprovers) {
         throw new BadRequestError({
           message: `${label} approval policy '${policy.name}' has no approvers who can approve on step ${index + 1}, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy.`
         });
       }
-      if (shortfall?.kind === RevocationStepShortfallKind.TooFewApprovers) {
+      if (shortfall?.kind === ApprovalStepShortfallKind.TooFewApprovers) {
         throw new BadRequestError({
           message: `${label} approval policy '${policy.name}' requires ${shortfall.requiredApprovals} approvals on step ${index + 1} but has only ${formatApproverCount(shortfall.approverCount)} who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals.`
         });

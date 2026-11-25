@@ -1,8 +1,6 @@
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { BaseCheckPolicyMatchResponseSchema } from "@app/services/approval-policy/approval-policy-schemas";
 import {
-  CertDeletionPolicyInputsSchema,
-  CertDeletionPolicySchema,
   CertDeletionRequestGrantSchema,
   CertDeletionRequestSchema,
   CreateCertDeletionPolicySchema,
@@ -17,8 +15,6 @@ import {
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
-  CertRevocationPolicyInputsSchema,
-  CertRevocationPolicySchema,
   CertRevocationRequestGrantSchema,
   CertRevocationRequestSchema,
   CreateCertRevocationPolicySchema,
@@ -43,6 +39,10 @@ import {
   PamAccessRequestSchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
+import {
+  CertificateActionPolicyInputsSchema,
+  CertificateActionPolicySchema
+} from "@app/services/approval-policy/pki-approvers/certificate-action-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
@@ -91,10 +91,10 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       policyType: ApprovalPolicyType.CertRevocation,
       createPolicySchema: CreateCertRevocationPolicySchema,
       updatePolicySchema: UpdateCertRevocationPolicySchema,
-      policyResponseSchema: CertRevocationPolicySchema,
+      policyResponseSchema: CertificateActionPolicySchema,
       requestResponseSchema: CertRevocationRequestSchema,
       grantResponseSchema: CertRevocationRequestGrantSchema,
-      inputsSchema: CertRevocationPolicyInputsSchema,
+      inputsSchema: CertificateActionPolicyInputsSchema,
       checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
       // Revocation requests are opened only by the revoke endpoints, atomically with the certificate they
       // hold, so a caller can't pick which policy gates a revocation or open one for a certificate it can't
@@ -108,10 +108,10 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       policyType: ApprovalPolicyType.CertDeletion,
       createPolicySchema: CreateCertDeletionPolicySchema,
       updatePolicySchema: UpdateCertDeletionPolicySchema,
-      policyResponseSchema: CertDeletionPolicySchema,
+      policyResponseSchema: CertificateActionPolicySchema,
       requestResponseSchema: CertDeletionRequestSchema,
       grantResponseSchema: CertDeletionRequestGrantSchema,
-      inputsSchema: CertDeletionPolicyInputsSchema,
+      inputsSchema: CertificateActionPolicyInputsSchema,
       checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
       // Deletion requests are opened only by the delete endpoints, atomically with the certificate they hold, so a
       // caller can't pick which policy gates a deletion or open one for a certificate it can't delete.

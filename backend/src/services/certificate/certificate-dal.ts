@@ -18,6 +18,7 @@ import {
   ApprovalRequestStatus,
   CertRequestPolicyOperation
 } from "@app/services/approval-policy/approval-policy-enums";
+import { TCertificateActionPolicyType } from "@app/services/approval-policy/pki-approvers/certificate-action-policy-fns";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
@@ -1068,7 +1069,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const $findPendingCertificateActionRequest = async (
-    type: ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion,
+    type: TCertificateActionPolicyType,
     { certificateId, projectId }: { certificateId: string; projectId: string },
     tx?: Knex
   ) => {
