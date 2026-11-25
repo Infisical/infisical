@@ -21,13 +21,13 @@ describe("AcmeCertificateAuthorityConfigurationSchema", () => {
     }
   });
 
-  it("lets RFC 2136 leave the zone out entirely, and still requires it for other providers", () => {
+  it("requires the zone field for every provider, including RFC 2136", () => {
     expect(
       AcmeCertificateAuthorityConfigurationSchema.safeParse({
         ...baseConfiguration,
         dnsProviderConfig: { provider: AcmeDnsProvider.Rfc2136 }
       }).success
-    ).toBe(true);
+    ).toBe(false);
     expect(
       AcmeCertificateAuthorityConfigurationSchema.safeParse({
         ...baseConfiguration,
