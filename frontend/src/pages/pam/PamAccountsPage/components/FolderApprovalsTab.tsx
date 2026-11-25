@@ -32,7 +32,7 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldTitle,
+  FieldLabel,
   IconButton,
   Pagination,
   Table,
@@ -440,6 +440,22 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel htmlFor="email-approvers-on-request">Email Approvers</FieldLabel>
+              <FieldDescription id="email-approvers-on-request-description">
+                Approvers get an email for each new access request, in addition to the in-app
+                notification.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              id="email-approvers-on-request"
+              variant="pam"
+              aria-describedby="email-approvers-on-request-description"
+              checked={emailApprovers}
+              onCheckedChange={setEmailApprovers}
+            />
+          </Field>
           <Combobox
             isClearable={false}
             value={null}
@@ -510,23 +526,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
               </TableBody>
             </Table>
           )}
-          <Field orientation="horizontal">
-            <FieldContent>
-              <FieldTitle>Email Approvers</FieldTitle>
-              <FieldDescription id="email-approvers-on-request-description">
-                Approvers get an email for each new access request, in addition to the in-app
-                notification.
-              </FieldDescription>
-            </FieldContent>
-            <Toggle
-              id="email-approvers-on-request"
-              variant="pam"
-              aria-label="Email Approvers"
-              aria-describedby="email-approvers-on-request-description"
-              checked={emailApprovers}
-              onCheckedChange={setEmailApprovers}
-            />
-          </Field>
         </CardContent>
       </Card>
 

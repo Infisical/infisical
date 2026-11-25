@@ -61,7 +61,11 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
           notificationConfigs: z.array(NotificationConfigResponseSchema),
           breakGlassUsers: z.array(ApproverSchema),
           autoApproval: AutoApprovalConfigResponseSchema,
-          emailApproversOnRequest: z.boolean()
+          emailApproversOnRequest: z
+            .boolean()
+            .describe(
+              "Whether approvers are emailed when access is requested. In-app notifications, alerts, and break-glass and auto-approval emails are unaffected."
+            )
         })
       }
     },
