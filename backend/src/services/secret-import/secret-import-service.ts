@@ -24,7 +24,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, ServerBusyError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -1070,6 +1070,7 @@ export const secretImportServiceFactory = ({
           recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
           return { secrets, etag: cachedEtag };
         } catch (err) {
+          if (err instanceof ServerBusyError) throw err;
           logger.error(err, `Secret imports service layer cache miss [projectId=${projectId}] [actorId=${actorId}]`);
           await keyStore.deleteItem(cacheKey);
         }

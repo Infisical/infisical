@@ -62,7 +62,8 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
   // instance holds nothing instead of being refused on every attempt. It still adds its real weight to `used`, which
   // keeps every other read out until it finishes. Without the cap such a read could never run, and the retry the 503
   // asks for would never succeed.
-  const hasRoomFor = (weight: number) => budget > 0 && used + Math.min(weight, budget) <= budget;
+  const hasRoomFor = (weight: number, alreadyHeld = 0) =>
+    budget > 0 && used - alreadyHeld + Math.min(weight, budget) <= budget;
 
   const lastKnownSizes = new Map<string, number>();
 
@@ -85,6 +86,19 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
     );
   };
 
+  const refuseIfEnforced = (req: FastifyRequest, reply: FastifyReply, weight: number) => {
+    logNoRoom(req, weight);
+    recordSecretRateLimitExceededMetric({
+      bucket: SecretRateLimitBucket.ReadBudget,
+      outcome: isEnforced ? SecretRateLimitOutcome.Refused : SecretRateLimitOutcome.WouldRefuse,
+      planSlug: req.rateLimitPlanSlug
+    });
+    if (isEnforced) {
+      void reply.header("Retry-After", 1);
+      throw new ServerBusyError({ message: REFUSAL_MESSAGE });
+    }
+  };
+
   server.decorate(
     "secretReadSlot",
     (req: FastifyRequest, reply: FastifyReply): TConcurrencySlot =>
@@ -94,18 +108,7 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
         const estimate = lastKnownSize ?? appCfg.SECRET_READ_DEFAULT_SECRET_WEIGHT;
         let held = toWeight(estimate);
 
-        if (!hasRoomFor(held)) {
-          logNoRoom(req, held);
-          recordSecretRateLimitExceededMetric({
-            bucket: SecretRateLimitBucket.ReadBudget,
-            outcome: isEnforced ? SecretRateLimitOutcome.Refused : SecretRateLimitOutcome.WouldRefuse,
-            planSlug: req.rateLimitPlanSlug
-          });
-          if (isEnforced) {
-            void reply.header("Retry-After", 1);
-            throw new ServerBusyError({ message: REFUSAL_MESSAGE });
-          }
-        }
+        if (!hasRoomFor(held)) refuseIfEnforced(req, reply, held);
 
         used += held;
         let released = false;
@@ -115,6 +118,9 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
             if (released) return;
             reportedSize = secretCount;
             const next = toWeight(secretCount);
+            // Admission ran on an estimate, so a read that turns out larger than the room left is refused here, before
+            // the work it would still do (decryption, reference expansion) grows the heap further.
+            if (next > held && !hasRoomFor(next, held)) refuseIfEnforced(req, reply, next);
             used += next - held;
             held = next;
           });

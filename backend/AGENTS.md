@@ -1148,8 +1148,12 @@ service takes no slot. A route that does neither is outside the budget. The slot
   size (project and request parameters) and leave out the actor and the cache version, or the estimate is lost on every
   secret change. `getSecrets` in `secret-v2-bridge-service.ts` is the reference.
 - Call `reportSize` as soon as the count is known (after a cache hit is parsed, after the rows are fetched, after imports
-  are expanded) and again whenever it changes. The held count moves to it at once and never refuses the running read,
-  since the memory is already in use; the total may pass the budget, and new reads are refused until it drops.
+  are expanded) and again whenever it changes, before the expensive work that follows (decryption, reference expansion).
+  A report that grows the read past the room other reads leave refuses it there, a 503 in enforce mode and
+  `would_refuse` in observe mode, and the size is remembered so the next attempt is refused at admission. Admission
+  runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the
+  budget. A `catch` around `reportSize` must rethrow `ServerBusyError`, as the cache hit paths of `getSecrets` and
+  the secret import service do, or a refusal turns into a cache miss and a full reload.
 - Work that never calls `reportSize` holds its estimate until it finishes. The legacy V1 project and secret import
   paths do this today.
 - A read larger than the whole budget is admitted only when the instance holds nothing, so it runs alone.

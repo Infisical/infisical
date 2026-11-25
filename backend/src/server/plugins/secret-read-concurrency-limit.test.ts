@@ -71,7 +71,17 @@ const buildServer = async ({ budget = 10_000 }: { budget?: number } = {}) => {
 
   const holdUntilReleased = async (reportSize: (secretCount: number) => void = () => {}) => {
     await new Promise<void>((resolve, reject) => {
-      held.push({ finish: resolve, fail: () => reject(new Error("read failed")), reportSize });
+      held.push({
+        finish: resolve,
+        fail: () => reject(new Error("read failed")),
+        reportSize: (secretCount) => {
+          try {
+            reportSize(secretCount);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      });
     });
     return { ok: true };
   };
@@ -217,6 +227,51 @@ describe("secretReadConcurrencyLimit", () => {
     held[0].finish();
     expect((await growing).statusCode).toBe(200);
     expect(gauges?.getUsed()).toBe(0);
+  });
+
+  test("refuses a read whose reported size no longer fits beside the others, and admits it on that size later", async () => {
+    const { held, list, gauges } = await buildServer({ budget: 1000 });
+
+    const small = list("org-a");
+    const large = list("org-b", "project-1:hash");
+    await flush();
+    held[1].reportSize(950);
+
+    const refused = await large;
+    expect(refused.statusCode).toBe(503);
+    expect(refused.headers["retry-after"]).toBe("1");
+    expect(gauges?.getUsed()).toBe(100);
+    expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
+      [{ bucket: "read_budget", outcome: "refused", planSlug: "pro" }]
+    ]);
+
+    expect((await list("org-b", "project-1:hash")).statusCode).toBe(503);
+    expect(held).toHaveLength(2);
+
+    held[0].finish();
+    expect((await small).statusCode).toBe(200);
+    const retried = list("org-b", "project-1:hash");
+    await flush();
+    expect(gauges?.getUsed()).toBe(950);
+    held[2].finish();
+    expect((await retried).statusCode).toBe(200);
+  });
+
+  test("lets a read that outgrows the room keep running in observe mode, and reports it", async () => {
+    config.SECRET_READ_CONCURRENCY_LIMIT_MODE = "observe";
+    const { held, list, gauges } = await buildServer({ budget: 1000 });
+
+    const requests = [list("org-a"), list("org-b")];
+    await flush();
+    held[1].reportSize(950);
+
+    expect(gauges?.getUsed()).toBe(1050);
+    expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
+      [{ bucket: "read_budget", outcome: "would_refuse", planSlug: "pro" }]
+    ]);
+
+    held.forEach((request) => request.finish());
+    expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
   });
 
   test("admits a read it has seen before on the size it had last time", async () => {

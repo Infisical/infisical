@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { compressZstd } from "@app/lib/compression";
 import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { ForbiddenRequestError, ServerBusyError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretImportServiceFactory } from "./secret-import-service";
@@ -58,6 +58,7 @@ const createRacingKeyStore = async () => {
       return 1;
     }),
     setExpiry: vi.fn().mockResolvedValue(1),
+    deleteItem: vi.fn().mockResolvedValue(1),
     getItemBuffer: vi.fn(async () => {
       const readVersion = state.version;
       if (state.writeCommitsDuringNextRead) {
@@ -183,6 +184,17 @@ describe("getRawSecretsFromImports read slot", () => {
 
     expect(reported).toEqual([3]);
     expect(sizeKeys[0]?.startsWith("project-1:")).toBe(true);
+  });
+
+  test("passes on a refusal from the read slot on a cache hit instead of treating it as a cache miss", async () => {
+    const { keyStore, read } = await buildCachedService();
+    const secretReadSlot: TConcurrencySlot = (work) =>
+      work(() => {
+        throw new ServerBusyError({ message: "busy" });
+      });
+
+    await expect(read(undefined, secretReadSlot)).rejects.toBeInstanceOf(ServerBusyError);
+    expect(keyStore.deleteItem).not.toHaveBeenCalled();
   });
 
   test("takes a slot for a read the cache cannot answer", async () => {

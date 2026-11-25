@@ -31,7 +31,13 @@ import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  ServerBusyError,
+  throwIfClientDisconnected
+} from "@app/lib/errors";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -1510,6 +1516,7 @@ export const secretV2BridgeServiceFactory = ({
           recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
           return { ...payload, etag: cachedEtag };
         } catch (err) {
+          if (err instanceof ServerBusyError) throw err;
           logger.error(err, "Secret service layer cache miss");
           await keyStore.deleteItem(cacheKey);
         }
