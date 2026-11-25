@@ -164,7 +164,19 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
         if (!edit?.isHeld) return "none";
         const target = getUnsavedDraftKey(environment, secretPath, to);
         edits.delete(key);
-        if (edits.has(target)) {
+        const existing = edits.get(target);
+        if (existing) {
+          if (existing.isHeld) {
+            const [moved] = edit.getChanges();
+            hold(
+              target,
+              existing.getChanges().map((change) => ({
+                ...change,
+                isCreate: false,
+                originalValue: moved?.originalValue ?? null
+              }))
+            );
+          }
           sync();
           return "conflict";
         }
