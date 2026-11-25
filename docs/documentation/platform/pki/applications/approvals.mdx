@@ -57,7 +57,7 @@ If an **Issuance** policy covers the certificate's profile, a [renewal](/documen
 
 If a **Renewal** policy covers the profile, every renewal waits for approval, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued. If both kinds of policy cover the profile, the Renewal policy's approvers review the renewals.
 
-The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
+The machine identity bypass applies to renewals the same way it applies to issuance. If a **Renewal** policy lets machine identities bypass approval and an **Issuance** policy also covers the profile, a machine identity's renewal that the **Issuance** policy would hold, such as one that changes the certificate, still waits for the **Issuance** policy's approvers unless that policy lets machine identities bypass approval too. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
 
 #### Pending, rejected, expired, and failed renewals
 
