@@ -3,7 +3,7 @@ import { stringify } from "yaml";
 import { z } from "zod";
 
 import { FragmentSchema, FRAGMENTS_DIR, isFragmentPath } from "./fragments.js";
-import { getFileAtRef, runGit } from "./git.js";
+import { getFileAtRef, getFileDiff, runGit } from "./git.js";
 
 const MODEL = "gpt-5.4";
 export const COMMENT_MARKER = "<!-- upgrade-impact-review -->";
@@ -214,7 +214,7 @@ export const reviewPullRequest = async (input: PullRequestReviewInput): Promise<
           return { error: `File is not changed by this pull request: ${file}` };
         }
 
-        const diff = runGit(["diff", `--unified=${contextLines ?? 40}`, mergeBase, input.head, "--", file]);
+        const diff = getFileDiff(mergeBase, input.head, file, contextLines ?? 40);
         const truncated = truncateText(diff, limits.maxDiffCharsPerFile);
 
         return { file, truncated: truncated.truncated, diff: truncated.value };

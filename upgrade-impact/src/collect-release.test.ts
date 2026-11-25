@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { collectFragmentRelease } from "./fragments.js";
+import { getFileDiff } from "./git.js";
 
 const fragmentYaml = (title: string) =>
   `category: config\nimpactLevel: medium\ntitle: ${title}\ndescription: D\naction: A\n`;
@@ -68,6 +69,10 @@ describe("collectFragmentRelease", () => {
   afterAll(async () => {
     process.chdir(originalCwd);
     await fs.rm(repo, { recursive: true, force: true });
+  });
+
+  it("diffs a repo-root path when run from the package directory", () => {
+    expect(getFileDiff("v1.0.0", "v1.0.1", "backend/src/db/migrations/1_a.ts", 3)).toContain("+export {};");
   });
 
   it("collects the fragments a release added, from the tag, after main deleted them", () => {
