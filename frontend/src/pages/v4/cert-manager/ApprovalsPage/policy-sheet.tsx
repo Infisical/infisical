@@ -218,17 +218,13 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
   const review: DataListItem[] = [
     ["Policy name", draft.name || "Not set"],
     ...(application
-      ? ([["Policy type", policyTypeLabel(draft.policyType), { span: "half" }]] as DataListItem[])
+      ? ([["Policy type", policyTypeLabel(draft.policyType)]] as DataListItem[])
       : []),
-    ["Max. request TTL", draft.maxRequestTtl || "Not set", { span: "half" }],
+    ["Max. request TTL", draft.maxRequestTtl || "Not set"],
     ...(isRevocation
       ? []
       : ([
-          [
-            "Machine identity bypass",
-            draft.bypassForMachineIdentities ? "Enabled" : "Disabled",
-            { span: "half" }
-          ]
+          ["Machine identity bypass", draft.bypassForMachineIdentities ? "Enabled" : "Disabled"]
         ] as DataListItem[])),
     ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"],
     ...draft.steps.map((entry, index): DataListItem => [

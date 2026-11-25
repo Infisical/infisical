@@ -37,10 +37,10 @@ import { orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeletePolicyDialog } from "../components/delete-dialogs";
+import { ExtensionName } from "../components/extension-name";
 import {
   CRITICALITY_LABELS,
   domainComponentChain,
-  extensionLabel,
   formatValidity,
   hasEnforcement,
   POLICY_DOCS,
@@ -249,12 +249,7 @@ const ExtensionsCard = ({
         items={rules.map(
           (rule) =>
             [
-              <Stack key={`label-${ruleId(rule)}`} gap={2}>
-                {extensionLabel(rule.oid, rule.label)}
-                <SmallText muted>
-                  <code>{rule.oid}</code>
-                </SmallText>
-              </Stack>,
+              <ExtensionName key={`label-${ruleId(rule)}`} oid={rule.oid} label={rule.label} />,
               <Stack key={`value-${ruleId(rule)}`} gap={8}>
                 {rule.critical && (
                   <div>

@@ -418,7 +418,7 @@ export const CrlList = ({ ca, plan }: { ca: TInternalCertificateAuthority; plan?
               actions={
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" icon="more" iconOnly>
+                    <Button variant="ghost" size="icon-row" icon="more" iconOnly>
                       CRL options
                     </Button>
                   </DropdownMenuTrigger>
