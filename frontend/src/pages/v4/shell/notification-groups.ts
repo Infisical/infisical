@@ -109,5 +109,3 @@ export const shortTime = (iso: string, now = Date.now()) => {
   if (elapsed < 7 * DAY) return `${Math.floor(elapsed / DAY)}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
-
-export const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();

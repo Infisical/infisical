@@ -28,7 +28,7 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Media } from "@infisical/cipher/ui/item";
-import { List, ListRow, ListSection } from "@infisical/cipher/ui/list";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 import { PopoverContent } from "@infisical/cipher/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@infisical/cipher/ui/sheet";
 import { Tabs } from "@infisical/cipher/ui/tabs";
@@ -43,7 +43,6 @@ import { useV4Adapter } from "../data/adapters";
 import { useGo } from "../links";
 import {
   groupNotifications,
-  isToday,
   type NotificationGroup,
   notificationIcon,
   shortTime
@@ -157,8 +156,6 @@ const InboxBody = ({
   const unread = notifications.filter((notification) => !notification.isRead).length;
   const visible = filter === "unread" ? groups.filter((group) => group.unread > 0) : groups;
   const shown = visible.slice(0, shownCount);
-  const today = shown.filter((group) => isToday(group.latest.createdAt));
-  const earlier = shown.filter((group) => !isToday(group.latest.createdAt));
 
   const readGroup = (group: NotificationGroup) => {
     const notificationIds = group.items
@@ -345,8 +342,7 @@ const InboxBody = ({
             )
           }
         >
-          {today.length > 0 && <ListSection label="Today">{today.map(row)}</ListSection>}
-          {earlier.length > 0 && <ListSection label="Earlier">{earlier.map(row)}</ListSection>}
+          {shown.map(row)}
         </List>
       </div>
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
