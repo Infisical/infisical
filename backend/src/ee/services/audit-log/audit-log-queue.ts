@@ -49,7 +49,9 @@ export const auditLogQueueServiceFactory = ({
           auditConfigSource.findProjectConfig(projectId)
         )
       : null;
-    if (projectId && !project) {
+    // With the org known, a hard-deleted project's logs (its deletion included) are still recorded, under the plan's
+    // retention. Without it there is no org to record them in.
+    if (projectId && !project && !data.orgId) {
       logger.error(
         `audit-log-queue: Skipping entry, project was deleted [projectId=${projectId}] [event=${data.event?.type}]`
       );
@@ -70,7 +72,7 @@ export const auditLogQueueServiceFactory = ({
 
     return {
       orgId,
-      ...(projectId && project ? { project: { id: projectId, name: project.name } } : {}),
+      ...(projectId ? { project: { id: projectId, name: project?.name } } : {}),
       policy: {
         retentionDays: orgConfig.retentionDays,
         projectRetentionDays: project?.retentionDays,

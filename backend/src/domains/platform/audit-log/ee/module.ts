@@ -14,7 +14,7 @@ import { OtelMetricsClient } from "./clients/otel-metrics/client";
 import { AuditLogStore } from "./data-access/audit-log-store";
 import { AuditLogIngestionService, TAuditLogIngestionService } from "./services/audit-log-ingestion/service";
 import type { TAuditLogConsumer, TAuditLogStores, TAuditLogWriter } from "./services/dependencies";
-import { PostgresAuditLogWriter } from "./services/helpers/postgres-audit-log-writer";
+import { PostgresAuditLogStorageService } from "./services/postgres-audit-log-storage/service";
 
 export type { TAuditLogIngestionService } from "./services/audit-log-ingestion/service";
 export type { TAuditLogConsumer } from "./services/dependencies";
@@ -54,7 +54,7 @@ export class AuditLogEeModule {
   constructor(private readonly deps: TAuditLogEeDeps) {
     const writer: TAuditLogWriter = deps.clickhouse
       ? new ClickHouseClient(deps.clickhouse.driver, deps.clickhouse.tableName, deps.clickhouse.insertSettings)
-      : new PostgresAuditLogWriter(
+      : new PostgresAuditLogStorageService(
           new TransactionRunner<TAuditLogStores>(deps.db, (trx, locks) => ({
             auditLogStore: new AuditLogStore(singleStoreConnection(trx)),
             locks

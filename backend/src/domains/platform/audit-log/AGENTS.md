@@ -26,7 +26,9 @@ Two services, split by who calls them, like Events:
   ClickHouse). `AuditLogEntry.create` returns `null` for a dropped event. Management and data-access events never read
   the switches.
 - **A project id from another org is refused** (counted as `recording_refused`), so a wrong id can't write into
-  another tenant's log.
+  another tenant's log. So is a hard-deleted project's; a soft-deleted one still resolves, so a deletion is logged
+  under its project. The legacy adapter, which has the org from the request, still records a hard-deleted project's
+  logs, under the plan's retention.
 - **Record after your transaction commits**, outside `run`: an entry for a write that rolled back is a false record,
   and appending is a Redis call.
 - **The catalog owns its payloads.** `ce/models/catalog/` holds every event's metadata type with no imports from
@@ -61,6 +63,12 @@ Two services, split by who calls them, like Events:
   retention and settings move to their owners.
 - **This domain writes `audit_logs`; legacy code still reads it** (`audit-log-dal.ts`, `audit-log-clickhouse-dal.ts`:
   listing, insights, the daily prune) until the query path moves here.
+- **Ingestion starts from `routes/index.ts`, not `main()`**: `start()` seals the consumers, and the legacy outbox
+  registers there. It moves to `main()` with the outbox.
+- **Shapes that aren't one-field-per-property models:** `AuditLogActor` wraps its record, a union with a different
+  metadata shape per actor type. `models/event-type.ts`, `event-class.ts` and `catalog/` are the event vocabulary
+  (enums, the class tables, payload types), like `models/permissions/` elsewhere. `AuditLogBuffer` is neither a store
+  nor a cache: a Redis stream other pods drain.
 - **Collapsed recording and permission-denied recording stay legacy** (`audit-log-service.ts`) and go through the
   adapter.
 

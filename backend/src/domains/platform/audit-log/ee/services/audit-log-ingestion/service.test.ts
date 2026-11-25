@@ -10,7 +10,7 @@ import { FakeAuditLogIngestionMetrics } from "../../testing/fake-audit-log-inges
 import { buildInMemoryAuditLogTransactions } from "../../testing/in-memory-audit-log-store";
 import { InMemoryAuditLogWriter } from "../../testing/in-memory-audit-log-writer";
 import type { TAuditLogConsumer, TAuditLogWriter } from "../dependencies";
-import { PostgresAuditLogWriter } from "../helpers/postgres-audit-log-writer";
+import { PostgresAuditLogStorageService } from "../postgres-audit-log-storage/service";
 import { AuditLogIngestionService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
@@ -236,7 +236,7 @@ describe("AuditLogIngestionService.drain with the Postgres writer", () => {
   const setupPostgres = (disabled: boolean) => {
     const { auditLogStore, transactionRunner } = buildInMemoryAuditLogTransactions();
     const instanceConfig = new FakeInstanceConfigService({ env: { DISABLE_POSTGRES_AUDIT_LOG_STORAGE: disabled } });
-    const writer = new PostgresAuditLogWriter(transactionRunner, instanceConfig);
+    const writer = new PostgresAuditLogStorageService(transactionRunner, instanceConfig);
     return { ...setup({ writer }), auditLogStore };
   };
 

@@ -1,5 +1,5 @@
 import {
-  ACTOR_TYPE_TO_METADATA_ID_KEY,
+  AuditLogActor,
   EventType,
   SecretApprovalEvent,
   UserAgentType
@@ -157,7 +157,9 @@ interface BaseAuthData {
   userAgentType?: UserAgentType;
 }
 
-export { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, SecretApprovalEvent, UserAgentType };
+export { EventType, SecretApprovalEvent, UserAgentType };
+
+export const ACTOR_TYPE_TO_METADATA_ID_KEY = AuditLogActor.METADATA_ID_KEYS;
 export type {
   PermissionDeniedEvent,
   SecretFolderAccessEventMetadata,

@@ -21,7 +21,7 @@ export type TAuditConfigSource = {
 export class AuditConfigSource implements TAuditConfigSource {
   constructor(
     private readonly licenseService: Pick<TLicenseService, "getPlan">,
-    private readonly projectDAL: Pick<TProjectDALFactory, "findById">,
+    private readonly projectDAL: Pick<TProjectDALFactory, "findByIdIncludingExpired">,
     private readonly auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">,
     private readonly keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">
   ) {}
@@ -37,8 +37,8 @@ export class AuditConfigSource implements TAuditConfigSource {
     return { name: project.name, retentionDays: project.retentionDays };
   }
 
-  // A project's own settings replace the org's for its events, falling back to the defaults, as the legacy writer
-  // decided. Settings that can't be read record every class.
+  // A project's own settings replace the org's for its events, falling back to the defaults. Settings that can't be
+  // read record every class: losing an audit log is worse than recording one an admin switched off.
   async eventClasses(orgId: string, projectId?: string): Promise<TAuditEventClassSwitches> {
     const settings = await this.auditLogSettingsService.getEffectiveSettings(orgId, projectId);
     if (!settings) return { authentication: true, authorization: true };
@@ -50,7 +50,9 @@ export class AuditConfigSource implements TAuditConfigSource {
     };
   }
 
-  // Cleared when the project's name or retention changes (project-service).
+  // Cleared when the project's name or retention changes (project-service). A miss reads the primary, soft-deleted
+  // projects included: the reload right after an update or a create must not cache what a lagging replica says, and
+  // a project being deleted still owns the logs about its deletion.
   async findProjectConfig(projectId: string): Promise<TProjectAuditConfigWithOrg | null> {
     const key = KeyStorePrefixes.AuditLogProjectConfig(projectId);
     const cached = await this.keyStore.getItem(key).catch((error: unknown) => {
@@ -59,7 +61,7 @@ export class AuditConfigSource implements TAuditConfigSource {
     });
     if (cached) return JSON.parse(cached) as TProjectAuditConfigWithOrg;
 
-    const project = await this.projectDAL.findById(projectId);
+    const project = await this.projectDAL.findByIdIncludingExpired(projectId);
     if (!project) return null;
     const config: TProjectAuditConfigWithOrg = {
       orgId: project.orgId,

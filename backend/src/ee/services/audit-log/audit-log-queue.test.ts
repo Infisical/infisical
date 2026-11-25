@@ -166,6 +166,20 @@ describe("auditLogQueueServiceFactory pushToLog", () => {
     expect(await appended()).toEqual([]);
   });
 
+  test("records a hard-deleted project's entry under the plan's retention when the org is known", async () => {
+    // Setup
+    const { service, appended } = setup();
+
+    // Action
+    await service.pushToLog(dto({ orgId: "org-1", projectId: "gone" }));
+
+    // Assert
+    const [entry] = await appended();
+    expect(entry).toMatchObject({ orgId: "org-1", projectId: "gone" });
+    expect(entry.projectName).toBeUndefined();
+    expect((new Date(entry.expiresAt).getTime() - new Date(entry.createdAt).getTime()) / MS_IN_DAY).toBe(30);
+  });
+
   test("drops an entry when the plan's audit log retention is 0", async () => {
     // Setup
     const { service, appended, auditConfigSource } = setup();

@@ -47,7 +47,7 @@ export class AuditLogPolicy {
     if (!this.keepsLogs) return false;
     const eventClass = getAuditLogEventClass(eventType);
     if (isAlwaysRecordedEventClass(eventClass)) return true;
-    // No switches given: record it, as the legacy writer did when it couldn't read the settings.
+    // No switches given: record it. Losing an audit log is worse than recording one an admin switched off.
     if (!this.eventClasses) return true;
     return eventClass === AuditLogEventClass.Authorization
       ? this.eventClasses.authorization

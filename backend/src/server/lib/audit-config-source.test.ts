@@ -15,7 +15,7 @@ type TSettings = {
 
 const fakeProjectDAL = () => {
   const rows = new Map<string, TProjectRow>();
-  return { rows, findById: async (id: string) => rows.get(id) };
+  return { rows, findByIdIncludingExpired: async (id: string) => rows.get(id) };
 };
 
 const fakeSettingsService = () => {

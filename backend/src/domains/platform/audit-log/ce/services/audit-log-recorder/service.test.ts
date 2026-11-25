@@ -223,6 +223,27 @@ describe("AuditLogRecorderService.record", () => {
   });
 });
 
+describe("AuditLogRecorderService.record for an unscoped context", () => {
+  test("should count the drop and not throw when the context has no organization", async () => {
+    // Setup
+    const { auditLogRecorderService, audit, principal, appended, metrics } = setup();
+    const unscoped = Object.defineProperty({ principal, audit }, "org", {
+      enumerable: false,
+      get: () => {
+        throw new Error("This request is not scoped to an organization.");
+      }
+    }) as unknown as TActorContext;
+
+    // Action
+    const result = auditLogRecorderService.record(unscoped, { event: managementEvent() });
+
+    // Assert
+    await expect(result).resolves.toBeUndefined();
+    expect(await appended()).toEqual([]);
+    expect(metrics.dropped).toHaveLength(1);
+  });
+});
+
 describe("AuditLogRecorderService.recordOrThrow", () => {
   test("should throw when the buffer fails", async () => {
     // Setup

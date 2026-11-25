@@ -53,7 +53,8 @@ export class AuditLogRecorderService implements TAuditLogRecorderService {
     try {
       await this.recordOrThrow(actor, input);
     } catch (error) {
-      const orgId = actor.org.id;
+      // An unscoped context's org throws when read, which is likely why recording failed.
+      const orgId = AuditLogRecorderService.orgIdOf(actor);
       this.metrics.recordDropped({
         eventType: input.event.type,
         actorType: input.actor?.type ?? actor.principal.type,
@@ -112,6 +113,14 @@ export class AuditLogRecorderService implements TAuditLogRecorderService {
       ...(project ? { projectId: project.id, ...(project.name ? { projectName: project.name } : {}) } : {})
     });
     await this.append(entry);
+  }
+
+  private static orgIdOf(actor: TActorContext): string | undefined {
+    try {
+      return actor.org.id;
+    } catch {
+      return undefined;
+    }
   }
 
   private async append(entry: AuditLogEntry | null): Promise<void> {

@@ -4,7 +4,10 @@ import type { TInstanceConfigService } from "@app/domains/platform/instance-conf
 
 import type { TAuditLogStores, TAuditLogWriter } from "../dependencies";
 
-export class PostgresAuditLogWriter implements TAuditLogWriter {
+// Ingestion stores through any TAuditLogWriter; this is the Postgres one.
+export type TPostgresAuditLogStorageService = TAuditLogWriter;
+
+export class PostgresAuditLogStorageService implements TPostgresAuditLogStorageService {
   readonly backend = "postgres" as const;
 
   constructor(
