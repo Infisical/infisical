@@ -138,9 +138,10 @@ export const EditPkiSyncSheet = ({
   const connection = useWatch({ control: form.control, name: "connection" }) as
     | { id?: string; app?: AppConnection }
     | undefined;
-  const { data: paloAltoDevice, isPending: detectingPaloAlto } = adapter.usePaloAltoTemplates(
+  const detectsPaloAlto = isPaloAltoNetworksPkiSync(sync.destination) && Boolean(connection?.id);
+  const { data: paloAltoDevice, isPending: paloAltoPending } = adapter.usePaloAltoTemplates(
     connection?.id ?? "",
-    { enabled: isPaloAltoNetworksPkiSync(sync.destination) && Boolean(connection?.id) }
+    { enabled: detectsPaloAlto }
   );
   const [pending, setPending] = useState(false);
   const [pendingUnlink, setPendingUnlink] = useState<PendingUnlink>();
@@ -305,7 +306,7 @@ export const EditPkiSyncSheet = ({
               <Button
                 loading={pending}
                 disabledReason={
-                  (detectingPaloAlto && Boolean(connection?.id) && "Checking the device") ||
+                  (detectsPaloAlto && paloAltoPending && "Checking the device") ||
                   (isDirty ? undefined : "No changes to save")
                 }
                 onClick={save}

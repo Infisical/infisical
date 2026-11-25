@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Combobox } from "@infisical/cipher/ui/combobox";
@@ -9,7 +10,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
-import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { TagsInput } from "@infisical/cipher/ui/tags-input";
@@ -611,25 +611,21 @@ const JobSheet = ({
             summary: type ? PKI_DISCOVERY_TYPE_MAP[type].name : undefined,
             disabledReason: type ? undefined : "Choose a discovery type",
             render: ({ next }: { next: () => void }) => (
-              <RadioGroup
-                columns={3}
-                aria-label="Discovery type"
-                value={type ?? ""}
-                onValueChange={(value) => {
+              <TilePicker
+                layout="list"
+                searchable={false}
+                value={type}
+                items={Object.values(PkiDiscoveryType).map((entry) => ({
+                  value: entry,
+                  title: PKI_DISCOVERY_TYPE_MAP[entry].name,
+                  description: PKI_DISCOVERY_TYPE_MAP[entry].description,
+                  media: <DiscoveryTypeIcon type={entry} />
+                }))}
+                onSelect={(value) => {
                   if (value !== type) pickType(value as PkiDiscoveryType);
                   next();
                 }}
-              >
-                {Object.values(PkiDiscoveryType).map((entry) => (
-                  <RadioGroupCard
-                    key={entry}
-                    value={entry}
-                    media={<DiscoveryTypeIcon type={entry} />}
-                    title={PKI_DISCOVERY_TYPE_MAP[entry].name}
-                    description={PKI_DISCOVERY_TYPE_MAP[entry].description}
-                  />
-                ))}
-              </RadioGroup>
+              />
             )
           } satisfies MultiStepStep
         ]),
@@ -648,6 +644,10 @@ const JobSheet = ({
         ]
       : [])
   ];
+
+  let completeLabel = "Continue";
+  if (isEdit) completeLabel = "Save changes";
+  else if (type) completeLabel = "Create job";
 
   const title = discovery
     ? `Edit ${discovery.name}`
@@ -672,7 +672,8 @@ const JobSheet = ({
           setStep(step);
           requestDiscard();
         }}
-        completeLabel={isEdit ? "Save changes" : "Create job"}
+        description={type ? undefined : "Choose where to look for certificates."}
+        completeLabel={completeLabel}
         onComplete={async () => {
           if (!draft) return;
           if (discovery)
