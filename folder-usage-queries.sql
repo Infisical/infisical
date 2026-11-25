@@ -815,3 +815,153 @@ LEFT JOIN org_users u ON u.org_id = pp.org_id
 LEFT JOIN org_identities i ON i.org_id = pp.org_id
 GROUP BY 1
 ORDER BY 1;
+
+
+-- =====================================================================================
+-- FOLLOW-UP: reruns without orgs that create projects by script
+-- Q17 showed 17 orgs owning ~156k projects with almost no folders. These reruns drop every
+-- org with more than 2000 Secrets Management projects. Run Q0 first to see what that removes.
+-- =====================================================================================
+
+-- Q0. Orgs by Secrets Management project count (pick the cutoff)
+SET statement_timeout = 0;
+WITH per_org AS (
+  SELECT "orgId", count(*) AS projects FROM analytics.projects
+  WHERE type = 'secret-manager' GROUP BY "orgId"
+)
+SELECT
+  CASE
+    WHEN projects <= 10 THEN '1 1-10'
+    WHEN projects <= 100 THEN '2 11-100'
+    WHEN projects <= 500 THEN '3 101-500'
+    WHEN projects <= 2000 THEN '4 501-2000'
+    WHEN projects <= 10000 THEN '5 2001-10000'
+    ELSE '6 10000+'
+  END AS projects_per_org,
+  count(*) AS orgs,
+  sum(projects) AS projects
+FROM per_org
+GROUP BY 1
+ORDER BY 1;
+
+-- Q1x. Overview, outlier orgs excluded
+SET statement_timeout = 0;
+WITH
+outlier_orgs AS (
+  SELECT "orgId" FROM analytics.projects WHERE type = 'secret-manager'
+  GROUP BY "orgId" HAVING count(*) > 2000
+),
+sm_envs AS (
+  SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id, p.version AS project_version
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
+  WHERE p.type = 'secret-manager'
+    AND p."orgId" NOT IN (SELECT o."orgId" FROM outlier_orgs o)
+),
+folders AS (
+  SELECT f.id, e.env_id, e.project_id, e.org_id, e.project_version,
+         f."parentId" IS NULL AS is_root, COALESCE(f."isReserved", false) AS reserved
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+),
+secret_counts AS (
+  SELECT s."folderId", count(*) AS n FROM analytics.secrets_v2 s WHERE s.type = 'shared' GROUP BY s."folderId"
+)
+SELECT
+  count(DISTINCT f.org_id)                                                        AS orgs,
+  count(DISTINCT f.project_id)                                                    AS projects,
+  count(DISTINCT f.project_id) FILTER (WHERE f.project_version = 3)               AS projects_v3,
+  count(DISTINCT f.env_id)                                                        AS environments,
+  count(*) FILTER (WHERE NOT f.is_root AND NOT f.reserved)                        AS user_folders,
+  count(*) FILTER (WHERE f.reserved)                                              AS replication_reserved_folders,
+  count(DISTINCT f.org_id) FILTER (WHERE NOT f.is_root AND NOT f.reserved)        AS orgs_using_folders,
+  count(DISTINCT f.project_id) FILTER (WHERE NOT f.is_root AND NOT f.reserved)    AS projects_using_folders,
+  round(100.0 * count(DISTINCT f.project_id) FILTER (WHERE NOT f.is_root AND NOT f.reserved)
+        / NULLIF(count(DISTINCT f.project_id), 0), 2)                             AS pct_projects_using_folders,
+  sum(COALESCE(sc.n, 0))                                                          AS total_secrets,
+  sum(COALESCE(sc.n, 0)) FILTER (WHERE f.is_root)                                 AS secrets_in_root,
+  sum(COALESCE(sc.n, 0)) FILTER (WHERE NOT f.is_root AND NOT f.reserved)          AS secrets_in_user_folders,
+  round(100.0 * sum(COALESCE(sc.n, 0)) FILTER (WHERE NOT f.is_root AND NOT f.reserved)
+        / NULLIF(sum(COALESCE(sc.n, 0)), 0), 2)                                   AS pct_secrets_in_folders
+FROM folders f
+LEFT JOIN secret_counts sc ON sc."folderId" = f.id;
+
+-- Q2x. Folders per project histogram, outlier orgs excluded
+SET statement_timeout = 0;
+WITH
+outlier_orgs AS (
+  SELECT "orgId" FROM analytics.projects WHERE type = 'secret-manager'
+  GROUP BY "orgId" HAVING count(*) > 2000
+),
+sm_envs AS (
+  SELECT e.id AS env_id, e."projectId" AS project_id
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
+  WHERE p.type = 'secret-manager'
+    AND p."orgId" NOT IN (SELECT o."orgId" FROM outlier_orgs o)
+),
+per_project AS (
+  SELECT e.project_id,
+         count(*) FILTER (WHERE f."parentId" IS NOT NULL AND NOT COALESCE(f."isReserved", false)) AS folders,
+         count(DISTINCT e.env_id) AS envs
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  GROUP BY e.project_id
+)
+SELECT
+  CASE
+    WHEN folders = 0 THEN '0'
+    WHEN folders <= 2 THEN '1-2'
+    WHEN folders <= 5 THEN '3-5'
+    WHEN folders <= 10 THEN '6-10'
+    WHEN folders <= 25 THEN '11-25'
+    WHEN folders <= 50 THEN '26-50'
+    WHEN folders <= 100 THEN '51-100'
+    WHEN folders <= 500 THEN '101-500'
+    WHEN folders <= 1000 THEN '501-1000'
+    ELSE '1000+'
+  END AS folders_per_project_bucket,
+  count(*) AS projects,
+  round(avg(folders::numeric / NULLIF(envs, 0)), 1) AS avg_folders_per_env
+FROM per_project
+GROUP BY 1
+ORDER BY min(folders);
+
+-- Q6x. Root vs folders per project, outlier orgs excluded
+SET statement_timeout = 0;
+WITH
+outlier_orgs AS (
+  SELECT "orgId" FROM analytics.projects WHERE type = 'secret-manager'
+  GROUP BY "orgId" HAVING count(*) > 2000
+),
+sm_envs AS (
+  SELECT e.id AS env_id, e."projectId" AS project_id
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
+  WHERE p.type = 'secret-manager'
+    AND p."orgId" NOT IN (SELECT o."orgId" FROM outlier_orgs o)
+),
+secret_counts AS (
+  SELECT s."folderId" AS id, count(*) AS n FROM analytics.secrets_v2 s WHERE s.type = 'shared' GROUP BY 1
+),
+per_project AS (
+  SELECT e.project_id,
+         sum(sc.n) AS secrets,
+         COALESCE(sum(sc.n) FILTER (WHERE f."parentId" IS NOT NULL), 0) AS in_folders
+  FROM analytics.secret_folders f
+  JOIN sm_envs e ON e.env_id = f."envId"
+  JOIN secret_counts sc ON sc.id = f.id
+  WHERE NOT COALESCE(f."isReserved", false)
+  GROUP BY e.project_id
+)
+SELECT
+  CASE
+    WHEN in_folders = 0 THEN '1 all secrets in root'
+    WHEN in_folders::numeric / secrets < 0.25 THEN '2 mostly root (<25% in folders)'
+    WHEN in_folders::numeric / secrets < 0.75 THEN '3 mixed (25-75%)'
+    WHEN in_folders < secrets THEN '4 mostly folders (>75%)'
+    ELSE '5 all secrets in folders'
+  END AS layout,
+  count(*) AS projects,
+  percentile_cont(0.5) WITHIN GROUP (ORDER BY secrets) AS p50_project_secrets
+FROM per_project
+GROUP BY 1
+ORDER BY 1;
