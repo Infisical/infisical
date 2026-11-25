@@ -1100,14 +1100,16 @@ throws and must not slow the read), and the table is pruned by dropping partitio
 ### Secrets Org Budget
 
 A route that returns a list of secret values to API callers must charge the organization's read budget: take
-`const chargeOrgBudget = await server.secretsOrgBudget(req, reply)` before the service call and call
-`chargeOrgBudget(countReturnedSecrets({ secrets, imports }))` after it. A read costs one credit per
+`const orgBudget = server.secretsOrgBudget(req, reply)`, call `await orgBudget.check()` inside the `secretReadSlot` it
+passes to the service (before `readSlot(work, opts)`), and call `orgBudget.charge(countReturnedSecrets({ secrets, imports }))`
+after the service returns. The service takes the slot only after its ETag check, so a 304 is never refused for a spent
+budget; a route whose service takes no slot calls `check()` before the read. A read costs one credit per
 `SECRETS_PER_BUDGET_CREDIT` secrets, rounded up, against `SECRET_READ_ORG_BUDGET` credits per root organization per minute, so
 the limit follows how much an organization reads rather than how often it asks. The check runs before the read and the
 charge after it, because the cost is unknown until the secrets are loaded: one read may overshoot the budget and it is the
 next one that is refused. Do not move the charge ahead of the read or skip it for a 304, which already costs nothing.
-`SECRET_READ_ORG_BUDGET_MODE` is `observe` by default (count and record `would_refuse`, refuse nothing), `enforce` to refuse
-with a 429 and `Retry-After`, or `off`; it runs only where the rate limiter is registered (cloud production). A key store
+`SECRET_READ_ORG_BUDGET_MODE` is `off` by default; set `observe` to count and record `would_refuse` while refusing nothing,
+or `enforce` to refuse with a 429 and `Retry-After`. It runs only where the rate limiter is registered (cloud production). A key store
 failure allows the read. Only the v3 and v4 routes that list secrets are charged. Routes that return a single secret are
 left out on purpose, since they cannot return a large number of secrets, and so are the dashboard and secret import routes.
 

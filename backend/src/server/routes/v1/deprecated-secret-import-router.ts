@@ -468,16 +468,18 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req, reply) => {
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await readSlot(() =>
-        server.services.secretImport.getSecretsFromImports({
+      const importedSecrets = await readSlot(async (reportSize) => {
+        const secrets = await server.services.secretImport.getSecretsFromImports({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           ...req.query,
           projectId: req.query.workspaceId
-        })
-      );
+        });
+        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
+        return secrets;
+      });
       return { secrets: importedSecrets };
     }
   });

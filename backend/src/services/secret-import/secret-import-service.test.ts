@@ -139,7 +139,7 @@ describe("getRawSecretsFromImports read slot", () => {
       slotTaken();
       return work(() => {});
     };
-    const read = (ifNoneMatch?: string) =>
+    const read = (ifNoneMatch?: string, slot: TConcurrencySlot = secretReadSlot) =>
       service.getRawSecretsFromImports({
         projectId: "project-1",
         environment: "dev",
@@ -149,7 +149,7 @@ describe("getRawSecretsFromImports read slot", () => {
         actorAuthMethod: null,
         actorOrgId: "org-1",
         ifNoneMatch,
-        secretReadSlot
+        secretReadSlot: slot
       });
     return { keyStore, read, slotTaken };
   };
@@ -162,6 +162,27 @@ describe("getRawSecretsFromImports read slot", () => {
 
     expect((await read(etag)).notModified).toBe(true);
     expect(slotTaken).toHaveBeenCalledTimes(1);
+  });
+
+  test("reports how many secrets a cache hit returns, keyed by the request", async () => {
+    const { keyStore, read } = await buildCachedService();
+    const secret = { secretKey: "A", createdAt: new Date(0), updatedAt: new Date(0) };
+    keyStore.getItemBuffer.mockResolvedValue(
+      await compressZstd(
+        Buffer.from(JSON.stringify({ secrets: [{ secrets: [secret, secret] }, { secrets: [secret] }] }))
+      )
+    );
+    const reported: number[] = [];
+    const sizeKeys: (string | undefined)[] = [];
+    const secretReadSlot: TConcurrencySlot = (work, opts) => {
+      sizeKeys.push(opts?.sizeKey);
+      return work((secretCount) => reported.push(secretCount));
+    };
+
+    await read(undefined, secretReadSlot);
+
+    expect(reported).toEqual([3]);
+    expect(sizeKeys[0]?.startsWith("project-1:")).toBe(true);
   });
 
   test("takes a slot for a read the cache cannot answer", async () => {

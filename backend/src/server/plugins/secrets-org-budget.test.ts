@@ -49,7 +49,7 @@ const createKeyStore = () => {
     startFailing: () => {
       isFailing = true;
     },
-    getItem: vi.fn(async (key: string) => {
+    getItemPrimary: vi.fn(async (key: string) => {
       const counter = read(key);
       return counter ? String(counter.value) : null;
     }),
@@ -92,8 +92,14 @@ const buildServer = async ({ withRateLimiter = true }: { withRateLimiter?: boole
   await app.register(secretsOrgBudget, { keyStore });
 
   app.get("/secrets", { config: { rateLimit: secretsLimit } }, async (req, reply) => {
-    const chargeOrgBudget = await app.secretsOrgBudget(req, reply);
-    chargeOrgBudget(Number(req.headers["x-secret-count"] ?? 1));
+    const orgBudget = app.secretsOrgBudget(req, reply);
+    await orgBudget.check();
+    orgBudget.charge(Number(req.headers["x-secret-count"] ?? 1));
+    return { ok: true };
+  });
+
+  app.get("/not-modified", { config: { rateLimit: secretsLimit } }, async (req, reply) => {
+    app.secretsOrgBudget(req, reply);
     return { ok: true };
   });
 
@@ -162,6 +168,22 @@ describe("secrets org budget", () => {
     expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
       [{ bucket: "org_budget", outcome: "refused", planSlug: "pro" }]
     ]);
+  });
+
+  test("refuses nothing until the route checks the budget", async () => {
+    const built = await buildServer();
+    app = built.app;
+
+    await read(built.app, 10_000);
+    built.keyStore.getItemPrimary.mockClear();
+
+    const notModified = await built.app.inject({
+      method: "GET",
+      url: "/not-modified",
+      headers: { "x-org-id": "org-a" }
+    });
+    expect(notModified.statusCode).toBe(200);
+    expect(built.keyStore.getItemPrimary).not.toHaveBeenCalled();
   });
 
   test("lets one read larger than the whole budget through and refuses the next", async () => {
@@ -262,7 +284,7 @@ describe("secrets org budget", () => {
     const server = built.app;
 
     expect(await statusesOf(BUDGET + 2, () => read(server, 100, {}))).toEqual(allOk(BUDGET + 2));
-    expect(built.keyStore.getItem).not.toHaveBeenCalled();
+    expect(built.keyStore.getItemPrimary).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -275,7 +297,7 @@ describe("secrets org budget", () => {
     const server = built.app;
 
     expect(await statusesOf(BUDGET + 2, () => read(server, 100))).toEqual(allOk(BUDGET + 2));
-    expect(built.keyStore.getItem).not.toHaveBeenCalled();
+    expect(built.keyStore.getItemPrimary).not.toHaveBeenCalled();
     expect(built.keyStore.incrementByWithFixedExpiry).not.toHaveBeenCalled();
   });
 });

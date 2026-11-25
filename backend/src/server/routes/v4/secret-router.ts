@@ -204,7 +204,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const chargeOrgBudget = await server.secretsOrgBudget(req, reply);
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
 
       // References expanded with the reader's own overrides are credited to the secrets they resolved to.
       const referencedSecretIds: string[] = [];
@@ -230,11 +231,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
         abortSignal: getClientDisconnectSignal(reply),
-        secretReadSlot: server.secretReadSlot(req, reply)
+        // The service takes the slot only after its ETag check, so a 304 is never refused for a spent budget.
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
 
       const { secrets, imports, etag, notModified } = result;
-      chargeOrgBudget(countReturnedSecrets({ secrets, imports }));
+      orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
       if (req.query.viewSecretValue) {

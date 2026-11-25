@@ -19,8 +19,13 @@ const FAILURE_LOG_INTERVAL_MS = 10_000;
 
 export type TChargeSecretsOrgBudget = (secretCount: number) => void;
 
+export type TSecretsOrgBudget = {
+  check: () => Promise<void>;
+  charge: TChargeSecretsOrgBudget;
+};
+
 type TSecretsOrgBudgetOptions = {
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "ttl" | "incrementByWithFixedExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "ttl" | "incrementByWithFixedExpiry">;
 };
 
 export const countReturnedSecrets = ({
@@ -33,12 +38,12 @@ export const countReturnedSecrets = ({
 
 export const secretsOrgBudgetCost = (secretCount: number) => Math.ceil(secretCount / SECRETS_PER_BUDGET_CREDIT);
 
-const chargeNothing: TChargeSecretsOrgBudget = () => {};
+const noBudget: TSecretsOrgBudget = { check: async () => {}, charge: () => {} };
 
 export const secretsOrgBudget = fp<TSecretsOrgBudgetOptions>(async (server, { keyStore }) => {
   const { SECRET_READ_ORG_BUDGET_MODE: mode, SECRET_READ_ORG_BUDGET: budget } = getConfig();
   if (mode === "off" || !server.hasDecorator("createRateLimit")) {
-    server.decorate("secretsOrgBudget", async () => chargeNothing);
+    server.decorate("secretsOrgBudget", () => noBudget);
     return;
   }
 
@@ -49,51 +54,53 @@ export const secretsOrgBudget = fp<TSecretsOrgBudgetOptions>(async (server, { ke
     logger.warn(error, `secretsOrgBudget: failed to ${step} the secret read budget [orgId=${orgId}]`);
   };
 
-  server.decorate(
-    "secretsOrgBudget",
-    async (req: FastifyRequest, reply: FastifyReply): Promise<TChargeSecretsOrgBudget> => {
-      const orgId = req.auth?.rootOrgId;
-      if (!orgId) return chargeNothing;
+  server.decorate("secretsOrgBudget", (req: FastifyRequest, reply: FastifyReply): TSecretsOrgBudget => {
+    const orgId = req.auth?.rootOrgId;
+    if (!orgId) return noBudget;
 
-      const key = KeyStorePrefixes.SecretsOrgBudget(orgId);
-      const planSlug = req.rateLimitPlanSlug;
+    const key = KeyStorePrefixes.SecretsOrgBudget(orgId);
+    const planSlug = req.rateLimitPlanSlug;
 
+    const check = async () => {
       let usedCredits = 0;
       try {
-        usedCredits = Number(await keyStore.getItem(key)) || 0;
+        // Read from the primary, which every charge writes to, so replica lag can't hide credits already spent.
+        usedCredits = Number(await keyStore.getItemPrimary(key)) || 0;
       } catch (error) {
         logFailure(error, "read", orgId);
       }
 
-      if (usedCredits >= budget) {
-        if (mode === "enforce") {
-          recordSecretRateLimitExceededMetric({
-            bucket: SecretRateLimitBucket.OrgBudget,
-            outcome: SecretRateLimitOutcome.Refused,
-            planSlug
-          });
-          const ttl = await keyStore.ttl(key).catch(() => 0);
-          const retryAfterInSeconds = ttl > 0 ? ttl : 1;
-          void reply.header("Retry-After", retryAfterInSeconds);
-          throw new RateLimitError({
-            message: `Your organization read more secrets in the last minute than its limit allows. Please try again in ${retryAfterInSeconds} seconds`
-          });
-        }
+      if (usedCredits < budget) return;
+
+      if (mode === "enforce") {
         recordSecretRateLimitExceededMetric({
           bucket: SecretRateLimitBucket.OrgBudget,
-          outcome: SecretRateLimitOutcome.WouldRefuse,
+          outcome: SecretRateLimitOutcome.Refused,
           planSlug
         });
+        const ttl = await keyStore.ttl(key).catch(() => 0);
+        const retryAfterInSeconds = ttl > 0 ? ttl : 1;
+        void reply.header("Retry-After", retryAfterInSeconds);
+        throw new RateLimitError({
+          message: `Your organization read more secrets in the last minute than its limit allows. Please try again in ${retryAfterInSeconds} seconds`
+        });
       }
+      recordSecretRateLimitExceededMetric({
+        bucket: SecretRateLimitBucket.OrgBudget,
+        outcome: SecretRateLimitOutcome.WouldRefuse,
+        planSlug
+      });
+    };
 
-      return (secretCount) => {
-        const cost = secretsOrgBudgetCost(secretCount);
-        if (cost <= 0) return;
-        void keyStore
-          .incrementByWithFixedExpiry(key, cost, BUDGET_WINDOW_IN_SECONDS)
-          .then((total) => recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug }))
-          .catch((error) => logFailure(error, "charge", orgId));
-      };
-    }
-  );
+    const charge: TChargeSecretsOrgBudget = (secretCount) => {
+      const cost = secretsOrgBudgetCost(secretCount);
+      if (cost <= 0) return;
+      void keyStore
+        .incrementByWithFixedExpiry(key, cost, BUDGET_WINDOW_IN_SECONDS)
+        .then((total) => recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug }))
+        .catch((error) => logFailure(error, "charge", orgId));
+    };
+
+    return { check, charge };
+  });
 });

@@ -334,7 +334,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
 
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const chargeOrgBudget = await server.secretsOrgBudget(req, reply);
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const result = await server.services.secret.getSecretsRaw({
         secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
         personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
@@ -353,11 +354,15 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
         abortSignal: getClientDisconnectSignal(reply),
-        secretReadSlot: server.secretReadSlot(req, reply)
+        // The service takes the slot only after its ETag check, so a 304 is never refused for a spent budget.
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
 
       const { secrets, imports, etag, notModified } = result;
-      chargeOrgBudget(countReturnedSecrets({ secrets, imports }));
+      orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
       if (req.query.viewSecretValue) {
@@ -1126,7 +1131,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       AuthMode.OAUTH
     ]),
     handler: async (req, reply) => {
-      const chargeOrgBudget = await server.secretsOrgBudget(req, reply);
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      await orgBudget.check();
       const readSlot = server.secretReadSlot(req, reply);
       const { secrets, imports } = await readSlot(() =>
         server.services.secret.getSecrets({
@@ -1141,7 +1147,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           recursive: req.query.recursive
         })
       );
-      chargeOrgBudget(countReturnedSecrets({ secrets, imports }));
+      orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       await server.services.auditLog.createAuditLog({
         projectId: req.query.workspaceId,

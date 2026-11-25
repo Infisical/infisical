@@ -1046,7 +1046,10 @@ export const secretImportServiceFactory = ({
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     };
 
-    const loadSecrets = async () => {
+    const countSecrets = (folders: TRawSecretsV2FromImports) =>
+      folders.reduce((count, folder) => count + folder.secrets.length, 0);
+
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
       const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
       if (encryptedCachedSecrets) {
         try {
@@ -1062,6 +1065,7 @@ export const secretImportServiceFactory = ({
               secret.updatedAt = new Date(secret.updatedAt);
             }
           }
+          reportSize(countSecrets(secrets));
           await storeEtag(cachedEtag);
           recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
           return { secrets, etag: cachedEtag };
@@ -1102,6 +1106,7 @@ export const secretImportServiceFactory = ({
         orgDAL,
         kmsDataKeyService
       });
+      reportSize(countSecrets(importedSecrets));
 
       const serializedPayload = Buffer.from(JSON.stringify({ secrets: importedSecrets }));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
@@ -1119,7 +1124,9 @@ export const secretImportServiceFactory = ({
       return { secrets: importedSecrets, etag: computedEtag };
     };
 
-    return secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets();
+    return secretReadSlot
+      ? secretReadSlot(loadSecrets, { sizeKey: `${projectId}:${requestParamsHash}` })
+      : loadSecrets();
   };
 
   const $getRawSecretsV1FromImports = async ({
@@ -1196,7 +1203,11 @@ export const secretImportServiceFactory = ({
     // refuses it.
     const project = await projectDAL.findById(dto.projectId);
     if (project && project.version !== 3) {
-      const loadSecrets = () => $getRawSecretsV1FromImports(dto);
+      const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const secrets = await $getRawSecretsV1FromImports(dto);
+        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
+        return secrets;
+      };
       return { secrets: await (dto.secretReadSlot ? dto.secretReadSlot(loadSecrets) : loadSecrets()) };
     }
     return $getRawSecretsV2FromImports(dto);
