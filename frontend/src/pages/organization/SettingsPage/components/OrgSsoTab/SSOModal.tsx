@@ -248,6 +248,16 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     });
   };
 
+  const clearTagErrors = () => {
+    setAuthnContextTagError(null);
+    setAttributeValueTagError(null);
+  };
+
+  const discardEdits = () => {
+    reset();
+    clearTagErrors();
+  };
+
   const onSSOModalSubmit = async ({
     authProvider,
     entryPoint,
@@ -290,6 +300,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     }
 
     handlePopUpClose("addSSO");
+    clearTagErrors();
 
     createNotification({
       text: `Successfully ${!data ? "added" : "updated"} SAML SSO configuration`,
@@ -319,7 +330,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         open={popUp?.addSSO?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addSSO", isOpen);
-          reset();
+          discardEdits();
         }}
       >
         <SheetContent className="sm:max-w-2xl">
@@ -530,7 +541,14 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 <Button type="submit" variant="org" isPending={isPending}>
                   {!data?.isActive ? "Configure SAML" : "Update Configuration"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addSSO")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handlePopUpClose("addSSO");
+                    discardEdits();
+                  }}
+                >
                   Cancel
                 </Button>
               </div>

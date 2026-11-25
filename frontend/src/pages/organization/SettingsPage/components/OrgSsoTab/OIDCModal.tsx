@@ -205,6 +205,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const isExistingConfig = Boolean(data?.isActive);
   const hasStoredSecret = Boolean(data?.clientSecret);
 
+  const discardEdits = () => {
+    reset();
+    setAmrValueTagError(null);
+  };
+
   const onOIDCModalSubmit = async ({
     issuer,
     authorizationEndpoint,
@@ -271,6 +276,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     }
 
     handlePopUpClose("addOIDC");
+    setAmrValueTagError(null);
 
     createNotification({
       text: `Successfully ${data?.isActive ? "updated" : "added"} OIDC SSO configuration`,
@@ -311,7 +317,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         open={popUp?.addOIDC?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addOIDC", isOpen);
-          reset();
+          discardEdits();
           setIsClientSecretRevealed(false);
         }}
       >
@@ -561,7 +567,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <Button type="submit" variant="org" isPending={isPending}>
                   {isExistingConfig ? "Update Configuration" : "Configure OIDC"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addOIDC")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handlePopUpClose("addOIDC");
+                    discardEdits();
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
