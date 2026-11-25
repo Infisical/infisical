@@ -124,8 +124,10 @@ export const billingPaymentNoticeServiceFactory = ({
     const appCfg = getConfig();
     cronJob.register({
       name: CronJobName.BillingPaymentFailureNotice,
-      pattern: "0 * * * *",
-      runHashTtlS: 60 * 60,
+      // 15:07 UTC is inside working hours for the Americas and Europe and the evening in India, so the email is
+      // seen the day it arrives. Minute 7 avoids the jobs that fire on the hour and on every fifth minute.
+      pattern: "7 15 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
       // Self-hosted licenses are invoiced out of band: there is no Stripe subscription to fail.
       enabled: appCfg.isCloud && !appCfg.isSecondaryInstance && licenseBilling.isEnabled(),
       handler: notifyPaymentFailures

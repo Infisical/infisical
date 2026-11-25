@@ -205,7 +205,7 @@ describe("billingPaymentNoticeService.notifyPaymentFailures", () => {
 });
 
 describe("billingPaymentNoticeService.init", () => {
-  test("should register the hourly job on a cloud instance", () => {
+  test("should register the daily job on a cloud instance", () => {
     // Setup
     const { service, cronJob } = build([]);
 
@@ -216,7 +216,7 @@ describe("billingPaymentNoticeService.init", () => {
     expect(cronJob.register).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "billing-payment-failure-notice",
-        pattern: "0 * * * *",
+        pattern: "7 15 * * *",
         enabled: true
       })
     );

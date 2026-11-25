@@ -99,7 +99,7 @@ Rules:
   `licenseBilling` and passed only to subscription code.
 - **A failed renewal reaches the org two ways, both pulled from the License Server**, which never calls us. The
   `subscription_payment_failed` plan notice drives the org-wide banner; it carries no payment link because every
-  member reads the plan. The hourly `billing-payment-failure-notice` cron
+  member reads the plan. The daily `billing-payment-failure-notice` cron
   (`src/ee/services/billing-payment-notice/`) emails the root org's admins from `listPaymentFailures`, because
   Stripe emails only the billing contact, who may have left. Don't add a second payment mailer.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).
