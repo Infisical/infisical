@@ -9,6 +9,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   PageLoader,
   Table,
@@ -105,68 +108,76 @@ export const LegacyProjectsSection = () => {
             </AlertDescription>
           </Alert>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-full">Project</TableHead>
-              <TableHead className="whitespace-nowrap">Status</TableHead>
-              <TableHead className="w-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {projects.map((project) => {
-              const isActive = project.id === instanceState?.activeProjectId;
-              const canOpen = isMember(project.id) || isOrgAdmin;
+        {projects.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No Secret Scanning projects</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-full">Project</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((project) => {
+                const isActive = project.id === instanceState?.activeProjectId;
+                const canOpen = isMember(project.id) || isOrgAdmin;
 
-              return (
-                <TableRow key={project.id}>
-                  <TableCell className="w-full">
-                    <div className="flex items-center gap-x-2">
-                      <BoxIcon className="size-4 shrink-0 text-project" />
-                      <span className="font-mono">{project.name}</span>
-                      <span className="font-mono text-xs text-accent">{project.slug}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {isActive ? <Badge variant="success">Active</Badge> : null}
-                  </TableCell>
-                  <TableCell>
-                    {canOpen ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          {isMember(project.id) ? (
-                            <IconButton variant="ghost" size="xs" asChild>
-                              <Link
-                                {...getProjectDataSourcesLink(project.id)}
+                return (
+                  <TableRow key={project.id}>
+                    <TableCell className="w-full">
+                      <div className="flex items-center gap-x-2">
+                        <BoxIcon className="size-4 shrink-0 text-project" />
+                        <span className="font-mono">{project.name}</span>
+                        <span className="font-mono text-xs text-accent">{project.slug}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {isActive ? <Badge variant="success">Active</Badge> : null}
+                    </TableCell>
+                    <TableCell>
+                      {canOpen ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {isMember(project.id) ? (
+                              <IconButton variant="ghost" size="xs" asChild>
+                                <Link
+                                  {...getProjectDataSourcesLink(project.id)}
+                                  aria-label={`Open ${project.name}`}
+                                >
+                                  <ExternalLinkIcon />
+                                </Link>
+                              </IconButton>
+                            ) : (
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
                                 aria-label={`Open ${project.name}`}
+                                isPending={
+                                  orgAdminAccessProject.isPending &&
+                                  orgAdminAccessProject.variables?.projectId === project.id
+                                }
+                                onClick={() => handleJoinAndOpen(project)}
                               >
                                 <ExternalLinkIcon />
-                              </Link>
-                            </IconButton>
-                          ) : (
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label={`Open ${project.name}`}
-                              isPending={
-                                orgAdminAccessProject.isPending &&
-                                orgAdminAccessProject.variables?.projectId === project.id
-                              }
-                              onClick={() => handleJoinAndOpen(project)}
-                            >
-                              <ExternalLinkIcon />
-                            </IconButton>
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>Open project</TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                              </IconButton>
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>Open project</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
