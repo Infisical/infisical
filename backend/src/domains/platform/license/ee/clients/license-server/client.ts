@@ -20,7 +20,6 @@ import {
   entitlementsResponseSchema,
   MAX_USAGE_EVENTS_PER_REQUEST,
   orgDeletedResultSchema,
-  paymentFailuresResponseSchema,
   sessionResponseSchema,
   subscriptionPreviewResponseSchema,
   subscriptionResponseSchema,
@@ -32,7 +31,6 @@ import {
   TEntitlementOrg,
   TEntitlementsResponse,
   TLicenseServerBilling,
-  TPaymentFailure,
   trialCancelResultSchema,
   trialResultSchema,
   trialsResponseSchema,
@@ -111,8 +109,6 @@ const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 const ORG_DELETED_TIMEOUT_MS = 30_000;
-const PAYMENT_FAILURES_PAGE_SIZE = 500;
-const PAYMENT_FAILURES_MAX_PAGES = 200;
 
 // Short-lived RS256 JWT the license server checks with our public key, so the private key is never sent.
 const mintServiceToken = (signingKey: string): string =>
@@ -306,34 +302,6 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
   // An org with no Stripe customer gets 200 with everything empty; a 404 means it has no license at all.
   getBillingProfile(orgId: string) {
     return this.billingRead(orgId, "/billing/profile", billingProfileResponseSchema, null);
-  }
-
-  // A 404 is a License Server that predates the endpoint, so it reads as nobody failing rather than an error.
-  async listPaymentFailures(): Promise<TPaymentFailure[]> {
-    const conn = this.billingConnection();
-    const failures: TPaymentFailure[] = [];
-    let after: string | undefined;
-    for (let page = 0; page < PAYMENT_FAILURES_MAX_PAGES; page += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      const res = await send(conn, "GET", "/v1/billing/payment-failures", {
-        query: { after, limit: String(PAYMENT_FAILURES_PAGE_SIZE) }
-      });
-      if (res.status === 404) return failures;
-      // eslint-disable-next-line no-await-in-loop
-      const body = await parseBody(res, paymentFailuresResponseSchema);
-      body.items.forEach((item) =>
-        failures.push({
-          orgId: item.org_id,
-          invoiceId: item.invoice_id || null,
-          needsAction: item.state === "needs_action",
-          since: item.since ?? null
-        })
-      );
-      if (!body.next_after) return failures;
-      after = body.next_after;
-    }
-    logger.warn(`license-client: stopped listing payment failures after ${PAYMENT_FAILURES_MAX_PAGES} pages`);
-    return failures;
   }
 
   getTrials(orgId: string) {

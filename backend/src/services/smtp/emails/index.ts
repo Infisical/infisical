@@ -9,7 +9,6 @@ export * from "./AgentVaultFreeUsageWarningTemplate";
 export * from "./AlertNotificationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./AuditReportTemplate";
-export * from "./BillingPaymentFailedTemplate";
 export * from "./CredentialRotationFailedTemplate";
 export * from "./EmailChangeExistingAccountTemplate";
 export * from "./EmailChangeRequestNotificationTemplate";

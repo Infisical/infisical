@@ -470,31 +470,6 @@ export const billingProfileResponseSchema = z
   })
   .passthrough();
 
-// Not org-scoped: one page lists every org whose renewal Stripe could not collect.
-export const paymentFailuresResponseSchema = z
-  .object({
-    items: z.array(
-      z
-        .object({
-          org_id: z.string(),
-          invoice_id: z.string().nullish(),
-          state: z.string().nullish(),
-          since: z.string().nullish()
-        })
-        .passthrough()
-    ),
-    next_after: z.string().nullish()
-  })
-  .passthrough();
-
-// invoiceId is null when the License Server missed the invoice event and only knows the subscription is unpaid.
-export type TPaymentFailure = {
-  orgId: string;
-  invoiceId: string | null;
-  needsAction: boolean;
-  since: string | null;
-};
-
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
@@ -669,7 +644,6 @@ export type TLicenseServerBilling = {
   getSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   getCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   getBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
-  listPaymentFailures: () => Promise<TPaymentFailure[]>;
   createPortal: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
   buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;

@@ -76,7 +76,6 @@ import { auditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit
 import { auditReportDALFactory } from "@app/ee/services/audit-report/audit-report-dal";
 import { auditReportQueueServiceFactory } from "@app/ee/services/audit-report/audit-report-queue";
 import { auditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
-import { billingPaymentNoticeServiceFactory } from "@app/ee/services/billing-payment-notice/billing-payment-notice-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
@@ -3493,14 +3492,6 @@ export const registerRoutes = async (
     telemetryService
   });
 
-  const billingPaymentNoticeService = billingPaymentNoticeServiceFactory({
-    licenseBilling: domains.licenseBilling,
-    orgDAL,
-    smtpService,
-    keyStore,
-    cronJob
-  });
-
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
@@ -5003,7 +4994,6 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   honeyTokenCleanupQueue.init();
   healthAlert.init();
-  billingPaymentNoticeService.init();
   secretReadActivityQueue.init();
   alertQueue.init();
   domains.events.start();

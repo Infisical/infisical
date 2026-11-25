@@ -55,8 +55,7 @@ export const CronJobName = {
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check",
   SecretReadActivityFlush: "secret-read-activity-flush",
-  SecretReadActivityPrune: "secret-read-activity-prune",
-  BillingPaymentFailureNotice: "billing-payment-failure-notice"
+  SecretReadActivityPrune: "secret-read-activity-prune"
 } as const;
 
 const JITTER_INTERVAL_FRACTION = 0.25; // keep below ~0.48 so 30s retry fits before next 1-min fire

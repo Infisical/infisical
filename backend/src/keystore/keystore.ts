@@ -211,8 +211,6 @@ export const KeyStorePrefixes = {
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
-  BillingPaymentNoticeSent: (orgId: string, episode: string, stage: string) =>
-    `billing-payment-notice-sent:${orgId}:${episode}:${stage}` as const,
   AgentVaultOauthAuthorization: (authorizationId: string) =>
     `agent-vault-oauth-authorization:${authorizationId}` as const,
   AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>

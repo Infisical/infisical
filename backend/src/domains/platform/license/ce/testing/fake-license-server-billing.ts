@@ -18,8 +18,6 @@ export class FakeLicenseServerBilling implements TLicenseServerBilling {
 
   getTrials: TLicenseServerBilling["getTrials"] = async () => ({ trials: [] });
 
-  listPaymentFailures: TLicenseServerBilling["listPaymentFailures"] = async () => [];
-
   createPortal: TLicenseServerBilling["createPortal"] = notConfigured;
 
   previewSubscriptionChange: TLicenseServerBilling["previewSubscriptionChange"] = notConfigured;
