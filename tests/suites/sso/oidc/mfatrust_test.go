@@ -88,7 +88,7 @@ func selectAfterLogin(t *testing.T, o *sso.OIDC, p oidcidp.Person) *api.SelectOr
 
 func updateConfig(t *testing.T, o *sso.OIDC, body api.UpdateOidcConfigJSONRequestBody) {
 	t.Helper()
-	body.OrganizationId = new(o.Tenant.OrgID.String())
+	body.OrganizationId = new(o.Tenant.OrgID)
 	res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the OIDC config: %s", apierr.Body(res.Body))

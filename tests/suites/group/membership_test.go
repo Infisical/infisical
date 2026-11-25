@@ -21,7 +21,7 @@ func oidcManagedGroups(t *testing.T, tn *harness.Tenant) *sso.OIDC {
 	t.Helper()
 	oidc := sso.NewOIDC(t, tn)
 	res, err := tn.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-		OrganizationId:         new(tn.OrgID.String()),
+		OrganizationId:         new(tn.OrgID),
 		ManageGroupMemberships: new(true),
 	})
 	require.NoError(t, err)
