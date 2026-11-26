@@ -487,7 +487,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
               actions={
                 !isPersonal && canCreate ? (
                   <ClassicVariablesLink projectId={projectId}>
-                    Add an OAuth variable on the classic page
+                    Add an OAuth variable in classic
                   </ClassicVariablesLink>
                 ) : undefined
               }
