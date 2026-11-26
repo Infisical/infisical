@@ -133,6 +133,7 @@ import {
 } from "./secrets/batch/pending";
 import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
 import {
+  draftKey,
   type UnsavedChange,
   UnsavedEditsContext,
   useUnsavedEdits
@@ -351,8 +352,11 @@ export const OverviewPage = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [discardingPending, setDiscardingPending] = useState(false);
   const unsavedEdits = useUnsavedEdits();
+  const [unsavedReviewOpen, setUnsavedReviewOpen] = useState(false);
+  const [discardingUnsaved, setDiscardingUnsaved] = useState(false);
   const [saveStage, setSaveStage] = useState<
-    { stage: "lookup"; changes: UnsavedChange[] } | { stage: "confirm"; dependents: Dependent[] }
+    | { stage: "lookup"; changes: UnsavedChange[]; message: string }
+    | { stage: "confirm"; dependents: Dependent[]; message: string }
   >();
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
@@ -994,7 +998,7 @@ export const OverviewPage = () => {
   useEffect(() => {
     unsavedEdits.registry.dropHeldDrafts();
   }, [projectId, path]);
-  const saveUnsaved = async () => {
+  const saveUnsaved = async (message: string) => {
     const edits = unsavedEdits.registry
       .getEdits()
       .map((edit) => ({ edit, changes: edit.getChanges() }));
@@ -1043,7 +1047,7 @@ export const OverviewPage = () => {
             projectId,
             environment,
             secretPath: path,
-            message: "",
+            message,
             pendingChanges: toUnsavedPendingChanges(
               savable.filter((change) => change.environment === environment),
               current.get(environment) ?? [],
@@ -1113,16 +1117,69 @@ export const OverviewPage = () => {
       unsavedEdits.setCommitting(false);
     }
   };
-  const startSave = () => {
+  const startSave = (message: string) => {
     if (unsavedEdits.committing || saveStage) return;
     const updates = unsavedEdits.changes().filter((change) => !change.isCreate);
-    if (updates.length) setSaveStage({ stage: "lookup", changes: updates });
-    else saveUnsaved();
+    if (updates.length) setSaveStage({ stage: "lookup", changes: updates, message });
+    else saveUnsaved(message);
   };
   const discardAllEdits = () => {
     if (unsavedEdits.committing) return;
     unsavedEdits.registry.getEdits().forEach((edit) => edit.discard());
   };
+  const unsavedId = (change: UnsavedChange) =>
+    draftKey(change.environment, change.secretPath, change.secretKey);
+  const discardUnsaved = (id: string) => {
+    if (unsavedEdits.committing) return;
+    const edit = unsavedEdits.registry
+      .getEdits()
+      .find((entry) => entry.getChanges().some((change) => unsavedId(change) === id));
+    if (!edit) return;
+    const others = edit.getChanges().filter((change) => unsavedId(change) !== id);
+    edit.discard();
+    if (others.length) unsavedEdits.registry.holdDrafts(others);
+  };
+  const unsavedChanges = unsavedReviewOpen || discardingUnsaved ? unsavedEdits.changes() : [];
+  const unsavedEnvironments = [...new Set(unsavedChanges.map((change) => change.environment))];
+  const unsavedWhere =
+    unsavedEnvironments.length === 1
+      ? `in ${environmentLabel(unsavedEnvironments[0])}`
+      : `across ${unsavedEnvironments.length} environments`;
+  const unsavedPending = unsavedChanges.map((change): PendingChange => {
+    const id = unsavedId(change);
+    const timestamp = new Date().toISOString();
+    const base: Secret = resources.find(
+      (resource): resource is Secret =>
+        resource.kind === "secret" &&
+        resource.environment === change.environment &&
+        resource.path === change.secretPath &&
+        resource.name === change.secretKey
+    ) ?? {
+      kind: "secret",
+      id,
+      project,
+      environment: change.environment,
+      path: change.secretPath,
+      name: change.secretKey,
+      value: { status: "present", value: change.secretValue },
+      version: 1,
+      comment: "",
+      tags: [],
+      metadata: [],
+      ...change.annotations,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    const next: Secret = { ...base, value: { status: "present", value: change.secretValue } };
+    return change.isCreate
+      ? { id, type: "create", next }
+      : {
+          id,
+          type: "update",
+          original: { ...base, value: { status: "present", value: change.originalValue } },
+          next
+        };
+  });
   const expandableKeysOnPage = windowRows
     .filter(([, entries]) => entries[0].kind !== "folder")
     .map(([key]) => key);
@@ -2498,22 +2555,25 @@ export const OverviewPage = () => {
               data-active={
                 selected.length > 0 ||
                 (pendingHere.length > 0 && !reviewOpen) ||
-                unsavedCount > 0 ||
+                (unsavedCount > 0 && !unsavedReviewOpen) ||
                 undefined
               }
             >
               <FloatingActionBar
                 label="Pending change actions"
-                count={selected.length ? 0 : unsavedCount}
+                count={selected.length || unsavedReviewOpen ? 0 : unsavedCount}
                 noun={unsavedCount === 1 ? "pending change" : "pending changes"}
-                onClear={discardAllEdits}
+                onClear={() => {
+                  if (!unsavedEdits.committing) setDiscardingUnsaved(true);
+                }}
                 actions={[
+                  { label: "Review", icon: "eye", onClick: () => setUnsavedReviewOpen(true) },
                   {
-                    label: "Save",
+                    label: commitLabel(unsavedCount),
                     icon: "check",
                     disabled: unsavedEdits.committing || Boolean(saveStage),
                     loading: unsavedEdits.committing || saveStage?.stage === "lookup",
-                    onClick: startSave
+                    onClick: () => startSave("")
                   }
                 ]}
               />
@@ -2522,12 +2582,13 @@ export const OverviewPage = () => {
                   project={project}
                   changes={saveStage.changes}
                   onDone={(dependents) => {
+                    const { message } = saveStage;
                     if (dependents.length) {
-                      setSaveStage({ stage: "confirm", dependents });
+                      setSaveStage({ stage: "confirm", dependents, message });
                       return;
                     }
                     setSaveStage(undefined);
-                    saveUnsaved();
+                    saveUnsaved(message);
                   }}
                 />
               )}
@@ -2540,7 +2601,7 @@ export const OverviewPage = () => {
                 }}
                 onConfirm={() => {
                   setSaveStage(undefined);
-                  saveUnsaved();
+                  saveUnsaved(saveStage?.message ?? "");
                 }}
               />
               {pendingHere.length ? (
@@ -2830,6 +2891,41 @@ export const OverviewPage = () => {
             }
             onCommit={(message) => commitChanges(pendingHere, message)}
           />
+          <ReviewSheet
+            open={unsavedReviewOpen && unsavedCount > 0}
+            pending={unsavedPending}
+            groups={unsavedEnvironments.map((environment) => ({
+              label: environmentLabel(environment),
+              icon: <Icon name="layers" />,
+              changes: unsavedPending.filter(
+                (_, index) => unsavedChanges[index].environment === environment
+              )
+            }))}
+            onOpenChange={setUnsavedReviewOpen}
+            onDiscard={(change) => discardUnsaved(change.id)}
+            onCommit={(message) => {
+              setUnsavedReviewOpen(false);
+              startSave(message);
+            }}
+          />
+          <AlertDialog open={discardingUnsaved} onOpenChange={setDiscardingUnsaved}>
+            <AlertDialogContent tone="danger">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard unsaved changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {unsavedChanges.length === 1
+                    ? `Discards the unsaved change ${unsavedWhere}. It can't be recovered.`
+                    : `Discards all ${unsavedChanges.length} unsaved changes ${unsavedWhere}. They can't be recovered.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={discardAllEdits}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <AlertDialog open={discardingPending} onOpenChange={setDiscardingPending}>
             <AlertDialogContent tone="danger">
               <AlertDialogHeader>
