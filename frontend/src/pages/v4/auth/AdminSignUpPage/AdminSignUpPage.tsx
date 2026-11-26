@@ -18,7 +18,7 @@ import {
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
-import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { SuperAdminErrorCode, TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -30,14 +30,21 @@ import styles from "../auth.module.css";
 
 const STEPS = ["Account", "Organization", "Sign-up", "Email"];
 
-const createAdminSignUpSchema = (passwordPolicy: TPasswordPolicy) =>
+const createAdminSignUpSchema = (passwordPolicy: TPasswordPolicy, isSetupTokenRequired: boolean) =>
   z
     .object({
       firstName: z.string().trim().min(1, "First name is required"),
       lastName: z.string().trim().optional(),
       email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
       password: createPasswordSchema(passwordPolicy),
-      confirmPassword: z.string().min(1, "Please confirm your password")
+      confirmPassword: z.string().min(1, "Please confirm your password"),
+      setupToken: isSetupTokenRequired
+        ? z
+            .string()
+            .trim()
+            .min(1, "Setup token is required")
+            .max(32, "Setup token must be at most 32 characters")
+        : z.string().trim().optional()
     })
     .refine(({ confirmPassword, password }) => confirmPassword === password, {
       message: "Passwords do not match",
@@ -52,11 +59,13 @@ const AccountStep = ({
   defaultValues,
   onContinue,
   passwordError,
+  setupTokenError,
   progress
 }: {
   defaultValues?: AdminSignUpFormData;
   onContinue: (values: AdminSignUpFormData) => void;
   passwordError?: string;
+  setupTokenError?: string;
   progress: React.ReactNode;
 }) => {
   const { config } = useServerConfig();
@@ -67,7 +76,9 @@ const AccountStep = ({
     setError,
     watch
   } = useForm<AdminSignUpFormData>({
-    resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
+    resolver: zodResolver(
+      createAdminSignUpSchema(config.passwordPolicy, Boolean(config.isInstanceSetupTokenRequired))
+    ),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: defaultValues ?? {
@@ -75,7 +86,8 @@ const AccountStep = ({
       lastName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      setupToken: ""
     }
   });
   const password = watch("password");
@@ -86,6 +98,12 @@ const AccountStep = ({
   useEffect(() => {
     if (passwordError) setError("password", { type: "server", message: passwordError });
   }, [passwordError, setError]);
+
+  useEffect(() => {
+    if (setupTokenError) {
+      setError("setupToken", { type: "server", message: setupTokenError }, { shouldFocus: true });
+    }
+  }, [setupTokenError, setError]);
 
   return (
     <AuthPage
@@ -123,6 +141,18 @@ const AccountStep = ({
             policy={config.passwordPolicy}
             submitCount={submitCount}
           />
+          {config.isInstanceSetupTokenRequired && (
+            <Field
+              label="Setup token"
+              error={
+                showDangerState || errors.setupToken?.type === "server"
+                  ? errors.setupToken?.message
+                  : undefined
+              }
+            >
+              <Input {...register("setupToken")} size="lg" type="password" autoComplete="off" />
+            </Field>
+          )}
           <Button
             type="submit"
             variant="accent"
@@ -149,6 +179,7 @@ export const AdminSignUpPage = () => {
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
+  const [setupTokenError, setSetupTokenError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const {
@@ -177,7 +208,8 @@ export const AdminSignUpPage = () => {
         password: accountData.password,
         firstName: accountData.firstName,
         lastName: accountData.lastName || undefined,
-        organizationName
+        organizationName,
+        setupToken: accountData.setupToken || undefined
       });
       SecurityClient.setToken(result.token);
       await selectOrganization({ organizationId: result.organization.id });
@@ -191,10 +223,15 @@ export const AdminSignUpPage = () => {
         setActiveStep(0);
         return;
       }
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message
+      const responseData = axios.isAxiosError<{ message?: string; error?: string }>(error)
+        ? error.response?.data
         : undefined;
-      setFormError(message || "Unable to create the instance. Please try again.");
+      if (responseData?.error === SuperAdminErrorCode.InvalidSetupToken) {
+        setSetupTokenError(responseData.message || "The setup token is missing or incorrect.");
+        setActiveStep(0);
+        return;
+      }
+      setFormError(responseData?.message || "Unable to create the instance. Please try again.");
     }
   });
 
@@ -204,10 +241,12 @@ export const AdminSignUpPage = () => {
         defaultValues={accountData}
         progress={progress}
         passwordError={passwordError}
+        setupTokenError={setupTokenError}
         onContinue={(values) => {
           setAccountData(values);
           setFormError(undefined);
           setPasswordError(undefined);
+          setSetupTokenError(undefined);
           setActiveStep(1);
         }}
       />
