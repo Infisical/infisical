@@ -165,7 +165,7 @@ const syncBlock = (cert: TCertificate, isInventoryView: boolean) => {
   if (isInventoryView) return "Open it from its application to manage syncs";
   if (cert.status !== CertStatus.ACTIVE || cert.renewedByCertificateId)
     return "Only active certificates sync";
-  if (cert.source !== CertSource.Issued) return "Only managed certificates sync";
+  if (cert.source === CertSource.Discovered) return "Discovered certificates don't sync";
   return undefined;
 };
 

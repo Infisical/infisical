@@ -18,9 +18,25 @@ export const enrollmentLabel: Record<EnrollmentType, string> = {
   [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
 };
 
+type InventoryMetadata = NonNullable<TListCertificatesDTO["metadataFilter"]>;
+
+export const metadataToText = (metadata: InventoryMetadata) =>
+  metadata.map(({ key, value }) => (value ? `${key}=${value}` : key)).join(", ");
+
+export const textToMetadata = (text: string): InventoryMetadata =>
+  text
+    .split(",")
+    .map((pair) => {
+      const [key, ...rest] = pair.split("=");
+      const value = rest.join("=").trim();
+      return { key: key.trim(), ...(value ? { value } : {}) };
+    })
+    .filter(({ key }) => key);
+
 export const inventoryFields = (
   authorities: TUnifiedCertificateAuthority[],
-  profiles: { value: string; label: string }[]
+  profiles: { value: string; label: string }[],
+  applications?: { value: string; label: string }[]
 ): FilterBarField[] => [
   {
     key: "status",
@@ -77,7 +93,19 @@ export const inventoryFields = (
     type: "multi-select",
     options: authorities.map((ca) => ({ value: ca.id, label: ca.name || ca.id }))
   },
-  { key: "profileId", label: "Profile", type: "multi-select", options: profiles }
+  { key: "profileId", label: "Profile", type: "multi-select", options: profiles },
+  ...(applications
+    ? [
+        {
+          key: "applicationId",
+          label: "Application",
+          type: "multi-select",
+          searchable: true,
+          options: applications
+        } satisfies FilterBarField
+      ]
+    : []),
+  { key: "metadata", label: "Metadata", type: "text", placeholder: "key or key=value", verb: "is" }
 ];
 
 export const filterParams = (filters: FilterBarFilter[]): Partial<TListCertificatesDTO> => {
@@ -97,6 +125,8 @@ export const filterParams = (filters: FilterBarFilter[]): Partial<TListCertifica
     if (field === "source") params.source = values;
     if (field === "caId") params.caIds = values;
     if (field === "profileId") params.profileIds = values;
+    if (field === "applicationId") params.applicationIds = values;
+    if (field === "metadata") params.metadataFilter = textToMetadata(values[0]);
   });
   return params;
 };

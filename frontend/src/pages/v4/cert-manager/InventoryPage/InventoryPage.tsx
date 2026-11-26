@@ -33,9 +33,13 @@ import type { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import type { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
-import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
+import {
+  getApplicationCertificateAccess,
+  getCertSourceLabel
+} from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { useProjectPermission } from "../../access/permissions";
+import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
@@ -53,12 +57,13 @@ import {
   useCertManagerProjectId
 } from "../components/certificate";
 import { ExportCertificateDialog } from "../components/certificate-export";
+import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
 import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { AssignApplicationDialog } from "./assign-application-dialog";
 import { certificatesToCsv } from "./csv-export";
 import { enrollmentLabel, filterParams, inventoryFields } from "./inventory-filters";
-import { type InventoryView, InventoryViewsMenu, type InventoryViewScope } from "./inventory-views";
+import { type InventoryView, InventoryViewsMenu } from "./inventory-views";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
@@ -120,7 +125,9 @@ const optionalColumns = [
   { id: "enrollment", label: "Enrollment" },
   { id: "issued", label: "Issued" },
   { id: "profile", label: "Profile" },
-  { id: "algorithm", label: "Algorithm" }
+  { id: "application", label: "Application" },
+  { id: "algorithm", label: "Algorithm" },
+  { id: "source", label: "Source" }
 ];
 
 const algorithmLabel = (algorithm?: string | null) =>
@@ -217,14 +224,27 @@ const inventoryColumns = (orgId: string): DataTableColumn<TCertificate>[] => [
     render: (r) => (r.profileName ? <code>{r.profileName}</code> : "None")
   },
   {
+    id: "application",
+    header: "Application",
+    width: 160,
+    text: (r) => r.applicationName ?? "",
+    render: (r) => r.applicationName ?? "None"
+  },
+  {
     id: "algorithm",
     header: "Algorithm",
     width: 104,
     render: (r) => algorithmLabel(r.keyAlgorithm)
+  },
+  {
+    id: "source",
+    header: "Source",
+    width: 104,
+    render: (r) => getCertSourceLabel(r.source ?? null)
   }
 ];
 
-type RowActionKind = "export" | "renew" | "sync" | "assign" | "revoke" | "delete";
+type RowActionKind = "export" | "renew" | "autoRenew" | "sync" | "assign" | "revoke" | "delete";
 type RowAction = { kind: RowActionKind; cert: TCertificate };
 
 const InventoryRowMenu = ({
@@ -241,6 +261,16 @@ const InventoryRowMenu = ({
   onAction: (kind: RowActionKind) => void;
 }) => {
   const blocks = certificateBlocks(cert, { isInventoryView: !cert.applicationName, caType });
+  const updateRenewal = useV4Adapter("certificates").useUpdateRenewalConfig();
+  const isAutoRenewalEnabled = Boolean(cert.renewBeforeDays && cert.renewBeforeDays > 0);
+  const disableAutoRenewal = async () => {
+    try {
+      await updateRenewal.mutateAsync({ certificateId: cert.id, enableAutoRenewal: false });
+      saved(`Auto renewal disabled for ${certificateName(cert)}`);
+    } catch (error) {
+      failed("Failed to disable auto renewal", error);
+    }
+  };
   return (
     <>
       <DropdownMenuItem onSelect={onView}>
@@ -255,6 +285,16 @@ const InventoryRowMenu = ({
         <Icon name="sync" />
         Renew now
       </DropdownMenuItem>
+      <DropdownMenuItem disabledReason={blocks.autoRenew} onSelect={() => onAction("autoRenew")}>
+        <Icon name="clock" />
+        {isAutoRenewalEnabled ? "Manage auto renewal" : "Enable auto renewal"}
+      </DropdownMenuItem>
+      {isAutoRenewalEnabled && !blocks.autoRenew && (
+        <DropdownMenuItem onSelect={disableAutoRenewal}>
+          <Icon name="x" />
+          Disable auto renewal
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem disabledReason={blocks.sync} onSelect={() => onAction("sync")}>
         <Icon name="link" />
         Manage certificate syncs
@@ -334,6 +374,8 @@ const InventoryRowDialogs = ({
       return <ExportCertificateDialog cert={cert} projectId={projectId} onClose={onClose} />;
     case "renew":
       return <InventoryRenewSheet cert={cert} projectId={projectId} onClose={onClose} />;
+    case "autoRenew":
+      return <AutoRenewalDialog cert={cert} onClose={onClose} />;
     case "sync":
       return (
         <CertificateSyncsDialog
@@ -414,7 +456,7 @@ const ColumnsMenu = ({
   </DropdownMenu>
 );
 
-const ExportCsvButton = ({ rows }: { rows: TCertificate[] }) => {
+export const ExportCsvButton = ({ rows }: { rows: TCertificate[] }) => {
   const button = (
     <Button
       variant="outline"
@@ -447,7 +489,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const certificates = useV4Adapter("certificates");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>(() => filtersFromSearch(search));
-  const [hidden, setHidden] = useState<string[]>(["issued", "algorithm"]);
+  const [hidden, setHidden] = useState<string[]>(["issued", "application", "algorithm", "source"]);
   const hiddenSet = new Set(hidden);
   const [sort, setSort] = useState<{
     columnId: string;
@@ -461,7 +503,6 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const [importing, setImporting] = useState(false);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [activeViewId, setActiveViewId] = useState<string | null>(search.viewId ?? null);
-  const [viewScope, setViewScope] = useState<InventoryViewScope>();
   const [action, setAction] = useState<RowAction>();
 
   const { data, isPending } = certificates.useCertificates({
@@ -471,8 +512,6 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
     search: query.trim() || undefined,
     ...filterParams(filters),
     includeDeleted: includeDeleted || undefined,
-    applicationIds: viewScope?.applicationIds,
-    metadataFilter: viewScope?.metadata,
     sortBy: sortKeys[sort.columnId],
     sortOrder: sort.direction
   });
@@ -482,6 +521,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const { data: profiles } = certificates.useCertificateProfiles({
     limit: 100
   });
+  const { data: applications } = useV4Adapter("pkiApplications").useApplications({ limit: 100 });
 
   const rows = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -498,14 +538,12 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
     setFilters([]);
     setIncludeDeleted(false);
     setActiveViewId(null);
-    setViewScope(undefined);
     setPage(1);
   };
   const applyView = (viewId: string | null, view: InventoryView) => {
     setActiveViewId(viewId);
     setFilters(view.filters);
     setIncludeDeleted(view.includeDeleted);
-    setViewScope(view.scope);
     setPage(1);
   };
   return (
@@ -533,13 +571,13 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
             (profiles?.certificateProfiles ?? []).map((entry) => ({
               value: entry.id,
               label: entry.slug
-            }))
+            })),
+            (applications?.applications ?? []).map((app) => ({ value: app.id, label: app.name }))
           )}
           value={filters}
           onChange={(next) => {
             setFilters(next);
             setActiveViewId(null);
-            setViewScope(undefined);
             setPage(1);
           }}
           search={
@@ -560,7 +598,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               <InventoryViewsMenu
                 projectId={projectId}
                 activeViewId={activeViewId}
-                current={{ filters, includeDeleted, scope: viewScope }}
+                current={{ filters, includeDeleted }}
                 onSelect={applyView}
               />
               <ColumnsMenu hidden={hidden} onChange={setHidden} />

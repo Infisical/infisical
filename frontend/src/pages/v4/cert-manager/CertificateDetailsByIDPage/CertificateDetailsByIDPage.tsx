@@ -155,6 +155,12 @@ const DownloadMenu = ({
           <DropdownMenuItem onSelect={() => exporter.download(cert, "chain")}>
             {exportFormatLabel.chain}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            disabledReason={pkcs12Block}
+            onSelect={() => exporter.download(cert, "key")}
+          >
+            {exportFormatLabel.key}
+          </DropdownMenuItem>
           <DropdownMenuItem disabledReason={pkcs12Block} onSelect={() => setExportingPkcs12(true)}>
             {exportFormatLabel.pkcs12}
           </DropdownMenuItem>
