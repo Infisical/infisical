@@ -1004,6 +1004,7 @@ export const OverviewPage = () => {
       .map((edit) => ({ edit, changes: edit.getChanges() }));
     const changes = edits.flatMap((entry) => entry.changes);
     if (!changes.length || unsavedEdits.committing) return;
+    const generation = unsavedEdits.registry.generation();
     unsavedEdits.setCommitting(true);
     try {
       const updateEnvironments = [
@@ -1064,12 +1065,13 @@ export const OverviewPage = () => {
         ...unreadable,
         ...environments.filter((_, index) => results[index].status === "rejected")
       ];
-      edits.forEach(({ edit, changes: editChanges }) => {
-        const committed = editChanges.filter(
-          (change) => savable.includes(change) && !unsaved.includes(change.environment)
-        );
-        if (committed.length) edit.settle(committed, review, editChanges);
-      });
+      if (unsavedEdits.registry.generation() === generation)
+        edits.forEach(({ edit, changes: editChanges }) => {
+          const committed = editChanges.filter(
+            (change) => savable.includes(change) && !unsaved.includes(change.environment)
+          );
+          if (committed.length) edit.settle(committed, review, editChanges);
+        });
       unreadable.forEach((environment) =>
         toast({
           tone: "bad",

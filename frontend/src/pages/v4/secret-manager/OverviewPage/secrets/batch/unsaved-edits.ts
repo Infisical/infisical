@@ -130,9 +130,10 @@ export const useUnsavedEdits = () => {
         return edit.getChanges();
       },
       holdDrafts: (changes) => {
-        changes.forEach((change) =>
-          hold(draftKey(change.environment, change.secretPath, change.secretKey), [change])
-        );
+        changes.forEach((change) => {
+          const key = draftKey(change.environment, change.secretPath, change.secretKey);
+          if (!all.has(key)) hold(key, [change]);
+        });
         sync();
       },
       dropHeldDrafts: () => {
