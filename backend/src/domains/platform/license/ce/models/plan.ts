@@ -132,7 +132,6 @@ export type TPlanFeatures = {
   smWebhooksPerProjectLimit?: number | null;
   smServiceTokensPerProjectLimit?: number | null;
   smIntegrationAuthsPerProjectLimit?: number | null;
-  smApprovalPoliciesPerProjectLimit?: number | null;
   smApprovalPoliciesPerEnvironmentLimit?: number | null;
   smProjectTemplatesPerOrgLimit?: number | null;
   smSecretValidationRulesPerEnvironmentLimit?: number | null;
@@ -228,7 +227,6 @@ export enum PlanLimit {
   SmWebhooksPerProject = "smWebhooksPerProjectLimit",
   SmServiceTokensPerProject = "smServiceTokensPerProjectLimit",
   SmIntegrationAuthsPerProject = "smIntegrationAuthsPerProjectLimit",
-  SmApprovalPoliciesPerProject = "smApprovalPoliciesPerProjectLimit",
   SmApprovalPoliciesPerEnvironment = "smApprovalPoliciesPerEnvironmentLimit",
   SmProjectTemplatesPerOrg = "smProjectTemplatesPerOrgLimit",
   SmSecretValidationRulesPerEnvironment = "smSecretValidationRulesPerEnvironmentLimit"

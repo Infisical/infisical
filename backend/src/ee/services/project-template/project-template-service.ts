@@ -447,16 +447,16 @@ export const projectTemplateServiceFactory = ({
         : environments;
 
     const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
-      if (resourceLimits.max(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
+      if (type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
         const [{ count: orgTemplateCount }] = await projectTemplateDAL.find(
-          { orgId: actor.orgId },
+          { orgId: actor.orgId, type: ProjectType.SecretManager },
           { countDistinct: "id", tx }
         );
         resourceLimits.assertWithin({
           limit: ResourceLimit.ProjectTemplatesPerOrg,
           used: Number(orgTemplateCount),
           describe: (max) =>
-            `Organization already has the maximum of ${max} project templates. Delete templates you no longer use before creating another.`
+            `Organization already has the maximum of ${max} Secrets Management project templates. Delete templates you no longer use before creating another.`
         });
       }
 

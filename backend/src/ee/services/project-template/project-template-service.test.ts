@@ -28,6 +28,8 @@ const actor = {
   authMethod: null
 } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[1];
 
+const templateCountQuery = vi.fn();
+
 // Without orgTemplateCount the transaction refuses before its callback runs, so the cap is never consulted.
 const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {}) =>
   projectTemplateServiceFactory({
@@ -52,7 +54,7 @@ const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {})
         environments: [],
         projectManagedIdentities: [{ name: LEGACY_NAME, roles: [] }]
       }),
-      find: vi.fn().mockResolvedValue([{ count: String(orgTemplateCount) }]),
+      find: templateCountQuery.mockReset().mockResolvedValue([{ count: String(orgTemplateCount) }]),
       create: vi.fn().mockRejectedValue(REACHED_TRANSACTION),
       transaction:
         orgTemplateCount === undefined
@@ -61,13 +63,13 @@ const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {})
     }
   } as unknown as Parameters<typeof projectTemplateServiceFactory>[0]);
 
-const create = (name: string, service = createService()) =>
+const create = (name: string, service = createService(), type = ProjectType.SecretManager) =>
   service.createProjectTemplate(
     {
       name: "template",
-      type: ProjectType.SecretManager,
+      type,
       roles: [],
-      environments: [],
+      environments: type === ProjectType.SecretManager ? [] : undefined,
       projectManagedIdentities: [{ name, roles: [] }]
     } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[0],
     actor
@@ -108,7 +110,34 @@ describe("project template cap on Infisical Cloud", () => {
     try {
       const result = create("deploy-bot", createService({ orgTemplateCount: 100 }));
       await expect(result).rejects.toBeInstanceOf(BadRequestError);
-      await expect(result).rejects.toThrow("Organization already has the maximum of 100 project templates");
+      await expect(result).rejects.toThrow(
+        "Organization already has the maximum of 100 Secrets Management project templates"
+      );
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
+  });
+
+  test("create counts only Secrets Management templates", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      await expect(create("deploy-bot", createService({ orgTemplateCount: 5 }))).rejects.toBe(REACHED_TRANSACTION);
+      expect(templateCountQuery).toHaveBeenCalledWith(
+        { orgId: ORG_ID, type: ProjectType.SecretManager },
+        expect.objectContaining({ countDistinct: "id" })
+      );
+    } finally {
+      mockConfig.INFISICAL_CLOUD = false;
+    }
+  });
+
+  test("create does not cap templates of other products", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    try {
+      await expect(create("deploy-bot", createService({ orgTemplateCount: 100 }), ProjectType.KMS)).rejects.toBe(
+        REACHED_TRANSACTION
+      );
+      expect(templateCountQuery).not.toHaveBeenCalled();
     } finally {
       mockConfig.INFISICAL_CLOUD = false;
     }

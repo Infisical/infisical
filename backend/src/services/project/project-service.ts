@@ -361,16 +361,16 @@ export const projectServiceFactory = ({
         }
       }
 
-      if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
+      if (type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
         const [{ count: orgProjectCount }] = await projectDAL.find(
-          { orgId: organization.id },
+          { orgId: organization.id, type: ProjectType.SecretManager },
           { countDistinct: "id", tx }
         );
         resourceLimits.assertWithin({
           limit: ResourceLimit.ProjectsPerOrg,
           used: Number(orgProjectCount),
           describe: (max) =>
-            `Organization already has the maximum of ${max} projects. Delete projects you no longer use before creating another.`
+            `Organization already has the maximum of ${max} Secrets Management projects. Delete projects you no longer use before creating another.`
         });
       }
 
@@ -1088,8 +1088,10 @@ export const projectServiceFactory = ({
         }
 
         const resourceLimits = await getResourceLimits(licenseService, project.orgId);
+        const isProjectCapped =
+          project.type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null;
         const restored = await projectDAL.transaction(async (tx) => {
-          if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
+          if (isProjectCapped) {
             await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
           }
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
@@ -1104,16 +1106,16 @@ export const projectServiceFactory = ({
             }
           }
 
-          if (resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
+          if (isProjectCapped) {
             const [{ count: orgProjectCount }] = await projectDAL.find(
-              { orgId: project.orgId },
+              { orgId: project.orgId, type: ProjectType.SecretManager },
               { countDistinct: "id", tx }
             );
             resourceLimits.assertWithin({
               limit: ResourceLimit.ProjectsPerOrg,
               used: Number(orgProjectCount),
               describe: (max) =>
-                `Organization already has the maximum of ${max} projects. Delete a project before restoring this one.`
+                `Organization already has the maximum of ${max} Secrets Management projects. Delete a project before restoring this one.`
             });
           }
 

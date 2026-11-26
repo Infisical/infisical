@@ -188,39 +188,61 @@ describe("secret scanning project uniqueness", () => {
 });
 
 describe("projects per organization cap", () => {
-  const createProject = (service: ReturnType<typeof setup>["service"]) =>
+  const createProject = (service: ReturnType<typeof setup>["service"], type: ProjectType) =>
     service.createProject({
       actor: ActorType.USER,
       actorId: "user",
       actorOrgId: "root",
       actorAuthMethod: null,
-      projectName: "Scanning",
-      type: ProjectType.SecretScanning
+      projectName: "Capped",
+      type
     });
 
-  test("refuses a new project once the organization is at the cap on Infisical Cloud", async () => {
+  const onCloud = async (run: () => Promise<void>) => {
     config.INFISICAL_CLOUD = true;
     try {
+      await run();
+    } finally {
+      config.INFISICAL_CLOUD = false;
+    }
+  };
+
+  test("refuses a Secrets Management project once the organization is at the cap on Infisical Cloud", () =>
+    onCloud(async () => {
       const { service, projectDAL, tx, licenseService } = setup();
       licenseService.setPlan("root", { smProjectsPerOrgLimit: 1000 });
       projectDAL.find.mockResolvedValue([{ count: "1000" }]);
 
-      await expect(createProject(service)).rejects.toThrow(
-        "Organization already has the maximum of 1000 projects. Delete projects you no longer use before creating another."
+      await expect(createProject(service, ProjectType.SecretManager)).rejects.toThrow(
+        "Organization already has the maximum of 1000 Secrets Management projects. Delete projects you no longer use before creating another."
       );
-      expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith({ orgId: "root" }, { countDistinct: "id", tx });
-    } finally {
-      config.INFISICAL_CLOUD = false;
-    }
-  });
+      expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith(
+        { orgId: "root", type: ProjectType.SecretManager },
+        { countDistinct: "id", tx }
+      );
+    }));
+
+  test("does not cap or count projects of other products", () =>
+    onCloud(async () => {
+      const { service, projectDAL, licenseService } = setup();
+      licenseService.setPlan("root", { smProjectsPerOrgLimit: 1000 });
+      projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
+
+      await expect(createProject(service, ProjectType.SecretScanning)).rejects.toThrow(
+        "Secret Scanning is limited to one project per organization at this time."
+      );
+      expect(projectDAL.find).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ countDistinct: "id" })
+      );
+    }));
 
   test("does not count projects on self-hosted instances", async () => {
     const { service, projectDAL } = setup();
-    projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
+    projectDAL.find.mockResolvedValue([{ count: "1000" }]);
 
-    await expect(createProject(service)).rejects.toThrow(
-      "Secret Scanning is limited to one project per organization at this time."
-    );
+    await createProject(service, ProjectType.SecretManager).catch(() => undefined);
+
     expect(projectDAL.find).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ countDistinct: "id" })

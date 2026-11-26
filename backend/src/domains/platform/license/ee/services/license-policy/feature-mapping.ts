@@ -262,10 +262,6 @@ const secretManagerMappings: TFeatureMapping[] = [
     v1Field: "smIntegrationAuthsPerProjectLimit"
   },
   {
-    v2Key: "sm_approval_policies_per_project_limit",
-    v1Field: "smApprovalPoliciesPerProjectLimit"
-  },
-  {
     v2Key: "sm_approval_policies_per_environment_limit",
     v1Field: "smApprovalPoliciesPerEnvironmentLimit"
   },

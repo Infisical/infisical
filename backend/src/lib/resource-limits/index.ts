@@ -13,7 +13,6 @@ export enum ResourceLimit {
   WebhooksPerProject = "webhooksPerProject",
   ServiceTokensPerProject = "serviceTokensPerProject",
   IntegrationAuthsPerProject = "integrationAuthsPerProject",
-  ApprovalPoliciesPerProject = "approvalPoliciesPerProject",
   ApprovalPoliciesPerEnvironment = "approvalPoliciesPerEnvironment",
   ProjectTemplatesPerOrg = "projectTemplatesPerOrg",
   SecretValidationRulesPerEnvironment = "secretValidationRulesPerEnvironment"
@@ -28,7 +27,6 @@ const PLAN_LIMITS: Record<ResourceLimit, PlanLimit> = {
   [ResourceLimit.WebhooksPerProject]: PlanLimit.SmWebhooksPerProject,
   [ResourceLimit.ServiceTokensPerProject]: PlanLimit.SmServiceTokensPerProject,
   [ResourceLimit.IntegrationAuthsPerProject]: PlanLimit.SmIntegrationAuthsPerProject,
-  [ResourceLimit.ApprovalPoliciesPerProject]: PlanLimit.SmApprovalPoliciesPerProject,
   [ResourceLimit.ApprovalPoliciesPerEnvironment]: PlanLimit.SmApprovalPoliciesPerEnvironment,
   [ResourceLimit.ProjectTemplatesPerOrg]: PlanLimit.SmProjectTemplatesPerOrg,
   [ResourceLimit.SecretValidationRulesPerEnvironment]: PlanLimit.SmSecretValidationRulesPerEnvironment
