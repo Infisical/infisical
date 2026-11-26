@@ -633,7 +633,7 @@ const demoUser = (
 });
 
 const orgUsers = [
-  demoUser(uuid("a1", 1), "Sarah", "Lin"),
+  demoUser(DEMO_SELF_USER_ID, "Sarah", "Lin"),
   demoUser(uuid("a1", 2), "Marcus", "Webb"),
   demoUser(uuid("a1", 3), "Priya", "Raman", true),
   demoUser(uuid("a1", 4), "Diego", "Alvarez"),

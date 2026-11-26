@@ -252,7 +252,7 @@ const BundleSkills = ({
         open={Boolean(removing)}
         onOpenChange={(open) => !open && setRemoving(undefined)}
       >
-        <AlertDialogContent tone="danger" confirmText={removing?.name}>
+        <AlertDialogContent tone="danger" confirmText={removing?.name} pending={remove.isPending}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {`Remove ${removing?.name ?? ""} from ${accessBundleName}?`}
