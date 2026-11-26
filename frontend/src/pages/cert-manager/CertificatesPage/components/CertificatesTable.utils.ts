@@ -230,6 +230,9 @@ export const getCertificateActionApproval = ({
   return {
     isApprovalRequired,
     isPending,
+    // Coverage is unknown while the policy list loads or when it can't be read, and the server may still hold the
+    // action then, so the note stays until the list shows no policy covers the certificate.
+    showsPendingNote: isPending && (isApprovalRequired || policyProfileNames === undefined),
     pendingLabel: action.pendingLabel,
     blockedReason: blocksAction && !isReplaceable ? action.pendingReason : undefined,
     replacesRequestReason: isReplaceable ? action.replaceableReason : undefined

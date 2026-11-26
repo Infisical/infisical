@@ -291,6 +291,7 @@ describe.each([
       ).toEqual({
         isApprovalRequired: true,
         isPending: true,
+        showsPendingNote: true,
         pendingLabel,
         blockedReason: pendingReason,
         replacesRequestReason: undefined
@@ -330,6 +331,21 @@ describe.each([
           });
         });
       });
+    });
+
+    it.each([
+      ["a policy covers the certificate", coveringProfiles, true],
+      ["coverage isn't known yet", undefined, true],
+      ["no policy covers the certificate", new Set(["api"]), false]
+    ])("shows the pending note when %s", (_label, policyProfileNames, showsPendingNote) => {
+      expect(
+        getCertificateActionApproval({
+          policyType,
+          certificate,
+          pendingRequest: decidable,
+          policyProfileNames
+        })
+      ).toMatchObject({ isPending: true, showsPendingNote });
     });
 
     it("doesn't require approval for a certificate without a profile", () => {

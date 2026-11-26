@@ -279,10 +279,8 @@ const Page = () => {
   const shownPendingActions = [revocation, deletion].flatMap(({ requestLink, ...action }) =>
     requestLink ? [{ ...action, requestLink }] : []
   );
-  // Once no policy covers the certificate, its pending request no longer holds the action back, so only the badge
-  // stays.
   const blockingPendingActions = shownPendingActions.filter(
-    ({ isApprovalRequired }) => isApprovalRequired
+    ({ showsPendingNote }) => showsPendingNote
   );
   const applicationAccess = certificate?.applicationId
     ? getApplicationCertificateAccess({
