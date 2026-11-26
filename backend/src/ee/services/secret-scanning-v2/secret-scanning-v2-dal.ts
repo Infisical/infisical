@@ -1081,6 +1081,12 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       case SecretScanningFindingOrderBy.CreatedAt:
         void query.orderBy(`${TableName.SecretScanningFinding}.createdAt`, direction);
         break;
+      case SecretScanningFindingOrderBy.LocationCount:
+        void query.orderByRaw(`(SELECT count(*) FROM ?? AS l WHERE l."findingId" = ??) ${direction}`, [
+          TableName.SecretScanningFindingLocation,
+          `${TableName.SecretScanningFinding}.id`
+        ]);
+        break;
       case SecretScanningFindingOrderBy.LastDetectedAt:
       default:
         void query.orderBy(`${TableName.SecretScanningFinding}.lastDetectedAt`, direction);

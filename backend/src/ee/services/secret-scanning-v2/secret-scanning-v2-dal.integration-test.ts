@@ -384,6 +384,30 @@ describe("secretScanningV2DAL findings", () => {
       expect(found?.description).toBe("Detected a Generic API Key");
     });
 
+    test("should sort findings by how many places they were found in", async () => {
+      // Setup
+      const s = await setup();
+      const repo = await s.resource();
+      const scan = await s.scan(repo.id);
+      const once = await s.finding({ resourceId: repo.id, scanId: scan.id, blindIndex: "value-a" });
+      await s.location({ findingId: once.id, resourceId: repo.id, scanId: scan.id });
+      const twice = await s.finding({ resourceId: repo.id, scanId: scan.id, blindIndex: "value-b" });
+      await s.location({ findingId: twice.id, resourceId: repo.id, scanId: scan.id });
+      await s.location({ findingId: twice.id, resourceId: repo.id, scanId: scan.id });
+
+      // Action
+      const { findings } = await s.dal.findings.findByProjectId(s.projectId, {
+        resourceId: repo.id,
+        orderBy: SecretScanningFindingOrderBy.LocationCount,
+        orderDirection: OrderByDirection.DESC,
+        offset: 0,
+        limit: 100
+      });
+
+      // Assert
+      expect(findings.map(({ id }) => id)).toEqual([twice.id, once.id]);
+    });
+
     test("should list the resource a list was filtered by first", async () => {
       // Setup
       const s = await setup();

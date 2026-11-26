@@ -258,7 +258,8 @@ export const SecretScanningFindingsTable = ({
         return {
           orderBy,
           orderDirection:
-            orderBy === SecretScanningFindingOrderBy.LastDetectedAt
+            orderBy === SecretScanningFindingOrderBy.LastDetectedAt ||
+            orderBy === SecretScanningFindingOrderBy.LocationCount
               ? OrderByDirection.DESC
               : OrderByDirection.ASC
         };
@@ -493,7 +494,11 @@ export const SecretScanningFindingsTable = ({
                     />
                   </TableHead>
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
-                  <TableHead className="w-36">Locations</TableHead>
+                  {renderSortableHead(
+                    SecretScanningFindingOrderBy.LocationCount,
+                    "Locations",
+                    "w-36"
+                  )}
                   {renderSortableHead(
                     SecretScanningFindingOrderBy.LastDetectedAt,
                     "Last Detected",
