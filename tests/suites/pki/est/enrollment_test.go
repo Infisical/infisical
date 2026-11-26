@@ -1,7 +1,9 @@
 package est_test
 
 import (
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/hex"
 	"net/http"
@@ -314,9 +316,14 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 		key, name := newKey(t), id.Short()+".est.test"
 		issued := p.mustEnroll(t, key, name)
 		before := pki.Requests(t, p.Project, p.Profile)
+		csr, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
+			Subject:  pkix.Name{CommonName: "other-" + name},
+			DNSNames: issued.DNSNames,
+		}, key)
+		require.NoError(t, err)
 
 		// Action
-		res := p.reenroll(t, newCSR(t, key, "other-"+name), enrollOpts{clientCert: issued})
+		res := p.reenroll(t, csr, enrollOpts{clientCert: issued})
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
@@ -342,7 +349,7 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
-		require.Equal(t, "Client certificate with serial number '"+derSerialHex(issued)+"' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.", apierr.Message(res.Body))
+		require.Equal(t, "Client certificate with serial number '"+hex.EncodeToString(issued.SerialNumber.Bytes())+"' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.", apierr.Message(res.Body))
 		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
 	})
 }
@@ -356,14 +363,4 @@ func enrolledCertificateID(t *testing.T, p estProfile) uuid.UUID {
 	certID, err := uuid.Parse(requests[0].Certificate.Id)
 	require.NoError(t, err)
 	return certID
-}
-
-// derSerialHex is the certificate's serial as the hex of its DER integer, which keeps
-// the leading zero byte a serial with its high bit set needs.
-func derSerialHex(cert *x509.Certificate) string {
-	b := cert.SerialNumber.Bytes()
-	if len(b) == 0 || b[0]&0x80 != 0 {
-		b = append([]byte{0}, b...)
-	}
-	return hex.EncodeToString(b)
 }

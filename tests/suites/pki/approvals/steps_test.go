@@ -89,6 +89,32 @@ func TestCertificateApproval_Steps(t *testing.T) {
 		require.Equalf(t, http.StatusOK, first.StatusCode(), "the first-step approver approving afterwards: %s", apierr.Body(first.Body))
 	})
 
+	t.Run("should refuse a second-step approver rejecting the first step and keep the request on it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := newTwoStep(t, tn)
+		reqID := g.request(t).JSON200.CertificateRequestId
+		approval := pki.ApprovalFor(t, g.App, reqID)
+
+		// Action
+		res, err := g.second.API.RejectCertRequestApprovalRequestWithResponse(t.Context(), approval, api.RejectCertRequestApprovalRequestJSONRequestBody{})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, "You are not an eligible approver for this step", apierr.Message(res.Body))
+		pending := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "pending", pending.Status)
+		require.EqualValues(t, 1, pending.CurrentStep)
+		require.Empty(t, pending.Steps[0].Approvals)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
+		first, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "the first-step approver approving afterwards: %s", apierr.Body(first.Body))
+	})
+
 	t.Run("should hold a step that needs two approvals after one and issue once both approvers approve", func(t *testing.T) {
 		t.Parallel()
 

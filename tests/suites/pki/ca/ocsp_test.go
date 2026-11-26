@@ -157,7 +157,7 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		require.Equal(t, ocsp.Good, askOcsp(t, tn, g.CA, leaf, pki.CACertificate(t, tn.Admin, g.CA.ID)).Status)
 
 		// Action
-		got := askOcsp(t, tn, other, leaf, pki.CACertificate(t, tn.Admin, other.ID))
+		got := askOcsp(t, tn, other, &x509.Certificate{SerialNumber: leaf.SerialNumber}, pki.CACertificate(t, tn.Admin, other.ID))
 
 		// Assert
 		require.Equal(t, ocsp.Unknown, got.Status)

@@ -105,7 +105,10 @@ func TestCertificateApproval_Request(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Equal(t, "You are not an eligible approver for this step", apierr.Message(res.Body))
-		require.Equal(t, "pending", g.approvalRequest(t, approval).JSON200.Request.Status)
+		pending := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "pending", pending.Status)
+		require.Len(t, pending.Steps, 1)
+		require.Empty(t, pending.Steps[0].Approvals)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
 		approved, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
 		require.NoError(t, err)
