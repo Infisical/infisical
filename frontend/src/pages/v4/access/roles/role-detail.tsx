@@ -47,7 +47,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useCustomRoleGate } from "../org/custom-role-gate";
 import { useOrgPermission, useProjectPermission } from "../permissions";
-import { useProjectPlanGates } from "../project/plan-gates";
+import { useProjectPlanGates } from "../plan-gate";
 import { useProjectScope } from "../project/scope";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
