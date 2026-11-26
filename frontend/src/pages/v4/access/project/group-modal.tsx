@@ -67,7 +67,8 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
   const assigned = new Set((projectGroups.data ?? []).map((membership) => membership.group.id));
   const totalOrgGroups = orgGroups.data?.totalCount ?? 0;
   const available = (orgGroups.data?.groups ?? []).filter((group) => !assigned.has(group.id));
-  const searching = orgGroups.isPending || searchInput.trim() !== debouncedSearch;
+  const searching =
+    orgGroups.isPending || Boolean(orgGroups.isFetching) || searchInput.trim() !== debouncedSearch;
 
   const submit = async () => {
     setSubmitted(true);
@@ -112,7 +113,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
         </Button>
       </>
     );
-  } else if (!hasSearchTerm && assigned.size >= totalOrgGroups) {
+  } else if (!orgGroups.error && !hasSearchTerm && assigned.size >= totalOrgGroups) {
     body = (
       <p className={styles.notice}>
         {totalOrgGroups === 0
@@ -134,6 +135,9 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     );
   } else {
     const groupError = submitted && !groupId ? REQUIRED : undefined;
+    let groupsEmptyText = `The first ${GROUP_PAGE_SIZE} groups are already added. Search by name to find others.`;
+    if (hasSearchTerm) groupsEmptyText = "No groups match your search";
+    if (orgGroups.error) groupsEmptyText = "Couldn't load groups. Change the search to try again.";
     const roleError = submitted && !role ? REQUIRED : undefined;
     body = (
       <form
@@ -156,11 +160,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
             <Combobox
               label="Group"
               placeholder="Select group..."
-              emptyText={
-                hasSearchTerm
-                  ? "No groups match your search"
-                  : `The first ${GROUP_PAGE_SIZE} groups are already added. Search by name to find others.`
-              }
+              emptyText={groupsEmptyText}
               loading={searching}
               options={
                 searching ? [] : available.map((group) => ({ value: group.id, label: group.name }))

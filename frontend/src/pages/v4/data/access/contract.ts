@@ -333,7 +333,9 @@ export type AccessAdapter = {
     options?: { enabled?: boolean }
   ) => V4QueryResult<IdentityAuthTemplate[]>;
 
-  useOrgGroups: QueryOf<typeof useSearchOrganizationGroups>;
+  useOrgGroups: (
+    ...args: Parameters<typeof useSearchOrganizationGroups>
+  ) => ReturnType<QueryOf<typeof useSearchOrganizationGroups>> & { isFetching?: boolean };
   useGroup: QueryOf<typeof useGetGroupById>;
   useGroupMembers: QueryOf<typeof useListGroupMembers>;
   useGroupProjects: (groupId: string) => V4QueryResult<TGroupProject[]>;
