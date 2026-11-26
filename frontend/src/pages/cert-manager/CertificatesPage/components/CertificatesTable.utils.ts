@@ -178,7 +178,7 @@ export const CERTIFICATE_ACTION_APPROVALS: Record<
     pendingLabel: "Revocation Pending",
     pendingReason: "A revocation of this certificate is already waiting for approval.",
     replaceableReason:
-      "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.",
+      "Not enough of the approvers on this certificate's revocation request can still approve it. Once every step of the revocation policy has as many approvers who can approve as it requires, revoking the certificate again replaces the request.",
     isDone: (certificate) => certificate.status === CertStatus.REVOKED
   },
   [ApprovalPolicyType.CertDeletion]: {
@@ -187,7 +187,7 @@ export const CERTIFICATE_ACTION_APPROVALS: Record<
     pendingLabel: "Deletion Pending",
     pendingReason: "A deletion of this certificate is already waiting for approval.",
     replaceableReason:
-      "Not enough of the approvers on this certificate's deletion request can still approve it. Once the deletion policy has approvers who can approve, deleting the certificate again replaces the request.",
+      "Not enough of the approvers on this certificate's deletion request can still approve it. Once every step of the deletion policy has as many approvers who can approve as it requires, deleting the certificate again replaces the request.",
     isDone: (certificate) => Boolean(certificate.deletedAt)
   }
 };
