@@ -10,7 +10,6 @@ import { FakeLicenseServer } from "./fake-license-server";
 export const ROOT = { id: "11111111-1111-4111-8111-111111111111" };
 export const SUB_ORG_ID = "22222222-2222-4222-8222-222222222222";
 export const OTHER_ROOT = { id: "33333333-3333-4333-8333-333333333333" };
-export const WORKSPACES_USED = 3;
 
 export type TBuildLicenseOptions = {
   licenseServer?: FakeLicenseServer;
@@ -21,14 +20,14 @@ export type TBuildLicenseOptions = {
 };
 
 // resolveRootOrgId reads findRootOrgId, so overriding findRootOrgId changes both.
-const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) => {
-  const organizations = new FakeOrganizationsProjectsService()
-    .setRoot(ROOT.id, ROOT.id)
-    .setRoot(SUB_ORG_ID, ROOT.id)
-    .setRoot(OTHER_ROOT.id, OTHER_ROOT.id);
-  organizations.workspaces = WORKSPACES_USED;
-  return Object.assign(organizations, overrides);
-};
+const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) =>
+  Object.assign(
+    new FakeOrganizationsProjectsService()
+      .setRoot(ROOT.id, ROOT.id)
+      .setRoot(SUB_ORG_ID, ROOT.id)
+      .setRoot(OTHER_ROOT.id, OTHER_ROOT.id),
+    overrides
+  );
 
 export const buildLicense = async ({
   licenseServer = new FakeLicenseServer(),
@@ -56,6 +55,7 @@ export const buildLicense = async ({
     licensePolicyService: licenseServer,
     licenseServer,
     organizationsProjectsService: buildOrganizations(organizations),
+    now,
     usageCounters: counters
   });
   module.start();

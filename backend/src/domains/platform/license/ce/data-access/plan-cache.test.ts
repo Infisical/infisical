@@ -1,9 +1,10 @@
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 
+import { Plan } from "../models/plan";
+import { testFeatures } from "../testing/test-features";
 import { PlanCache } from "./plan-cache";
 
 const ROOT_ID = "11111111-1111-4111-8111-111111111111";
-const LOCK_KEY = `license-cache-revalidate-lock-${ROOT_ID}`;
 
 describe("PlanCache revalidate lock", () => {
   test("should hand the lock to one caller at a time", async () => {
@@ -19,34 +20,44 @@ describe("PlanCache revalidate lock", () => {
     // Assert
     expect([first, second].filter(Boolean)).toHaveLength(1);
   });
+});
 
-  test("should not release a lock taken after the holder's own expired", async () => {
+describe("PlanCache read and write", () => {
+  const plan = Plan.restore({ ...testFeatures(), slug: "pro" });
+  const build = () => {
+    const clock = { now: 1_000_000 };
+    const keyStore = new InMemoryKeyStore(() => clock.now);
+    return { clock, keyStore, cache: new PlanCache(keyStore, () => clock.now) };
+  };
+
+  test("should serve a written plan as fresh, then stale before it expires, then not at all", async () => {
     // Setup
-    let now = 1_000_000;
-    const keyStore = new InMemoryKeyStore(() => now);
-    const cache = new PlanCache(keyStore);
-    const slowHolder = await cache.acquireRevalidateLock(ROOT_ID);
-    now += 11_000;
-    const nextHolder = await cache.acquireRevalidateLock(ROOT_ID);
+    const { clock, cache } = build();
+    await cache.write(ROOT_ID, plan);
 
     // Action
-    await cache.releaseRevalidateLock(ROOT_ID, slowHolder as string);
+    clock.now += 18 * 60_000;
+    const fresh = await cache.read(ROOT_ID);
+    clock.now += 4 * 60_000;
+    const stale = await cache.read(ROOT_ID);
+    clock.now += 9 * 60_000;
+    const expired = await cache.read(ROOT_ID);
 
     // Assert
-    expect(nextHolder).not.toBeNull();
-    expect(await keyStore.getItem(LOCK_KEY)).toBe(nextHolder);
-    expect(await cache.acquireRevalidateLock(ROOT_ID)).toBeNull();
+    expect([fresh.plan?.slug, fresh.stale]).toEqual(["pro", false]);
+    expect([stale.plan?.slug, stale.stale]).toEqual(["pro", true]);
+    expect(expired.plan).toBeNull();
   });
 
-  test("should release the holder's own lock", async () => {
+  test("should read a plan an old pod wrote, with no refresh time, as stale", async () => {
     // Setup
-    const cache = new PlanCache(new InMemoryKeyStore());
-    const token = await cache.acquireRevalidateLock(ROOT_ID);
+    const { keyStore, cache } = build();
+    await keyStore.setItemWithExpiry(`infisical-cloud-plan-${ROOT_ID}`, 900, JSON.stringify(plan.toJSON()));
 
     // Action
-    await cache.releaseRevalidateLock(ROOT_ID, token as string);
+    const { plan: read, stale } = await cache.read(ROOT_ID);
 
     // Assert
-    expect(await cache.acquireRevalidateLock(ROOT_ID)).not.toBeNull();
+    expect([read?.slug, stale]).toEqual(["pro", true]);
   });
 });

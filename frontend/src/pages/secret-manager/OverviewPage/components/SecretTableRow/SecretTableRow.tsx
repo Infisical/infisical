@@ -65,6 +65,7 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { getUnsavedDraftKey, useUnsavedDraftKeys } from "../UnsavedEditsBar";
 import { EnvironmentSecretAction, SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -305,6 +306,8 @@ export const SecretTableRow = ({
   const sortedEnvironments = [...environments];
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const unsavedDraftKeys = useUnsavedDraftKeys();
+
   const renderEnvironmentAnnotations = (slug: string) => {
     const secret = getSecretByKey(slug, secretKey);
     if (!secret) return null;
@@ -684,6 +687,9 @@ export const SecretTableRow = ({
 
             const isSecretPresent = Boolean(secret);
             const isSecretEmpty = secret?.isEmpty;
+            const pendingDraftAction = isSecretPresent
+              ? PendingAction.Update
+              : PendingAction.Create;
 
             let status: EnvironmentStatus;
 
@@ -702,6 +708,11 @@ export const SecretTableRow = ({
                 key={`sec-overview-${slug}-${i + 1}-value`}
                 status={status}
                 hasOverride={Boolean(secret?.idOverride)}
+                pendingAction={
+                  unsavedDraftKeys.has(getUnsavedDraftKey(slug, secretPath, secretKey))
+                    ? pendingDraftAction
+                    : undefined
+                }
                 className="group/cell cursor-pointer"
                 onClick={(event) => {
                   event.stopPropagation();

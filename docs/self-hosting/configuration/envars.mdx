@@ -39,6 +39,16 @@ Used to configure platform-specific security and operational settings.
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="INSTANCE_SETUP_TOKEN" type="string" optional>
+  A token that the first super admin must enter to set up the instance. The token must be
+  6 to 32 characters long. If the token is shorter or longer, Infisical doesn't start.
+  To generate a token, run `openssl rand -hex 16`.
+  If you set the token, the super admin signup page asks for it, and the
+  [Bootstrap instance](/api-reference/endpoints/admin/bootstrap-instance) endpoint rejects
+  requests without it.
+  Infisical ignores the token once the instance is set up.
+</ParamField>
+
 <ParamField query="PORT" type="int" default="8080" optional>
   Specifies the internal port on which the application listens.
 </ParamField>

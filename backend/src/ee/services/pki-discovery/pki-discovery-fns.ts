@@ -209,7 +209,8 @@ export const scanEndpoint = async (
   host: string,
   port: number,
   timeout = TLS_SCAN_TIMEOUT,
-  sniHostname?: string
+  sniHostname?: string,
+  sigalgs?: string
 ): Promise<TScanEndpointResult> => {
   return new Promise((resolve) => {
     const certificates: TScanCertificateResult[] = [];
@@ -227,7 +228,8 @@ export const scanEndpoint = async (
         servername,
         rejectUnauthorized: false,
         timeout,
-        minVersion: "TLSv1.2"
+        minVersion: "TLSv1.2",
+        ...(sigalgs && { sigalgs })
       },
       () => {
         try {

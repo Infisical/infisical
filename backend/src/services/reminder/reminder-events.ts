@@ -4,7 +4,7 @@ import { Knex } from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 
 export const SECRET_REMINDER_RESOURCE_TYPE = "secret.reminder";
 export const SECRET_REMINDER_DUE_EVENT = "secret.reminder.due";

@@ -13,6 +13,7 @@ import {
   TSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
@@ -22,11 +23,10 @@ import {
 } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
-import { EventModificationType } from "../event-outbox/event-definition";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";

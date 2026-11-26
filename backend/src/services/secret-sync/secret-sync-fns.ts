@@ -44,6 +44,7 @@ import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
+import { PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE } from "./aws-secrets-manager/aws-secrets-manager-sync-schemas";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import {
@@ -103,7 +104,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_NAME_MAP, SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { getKeyWithSchema, setSecretMapEntry, TSecretSyncPayload } from "./secret-sync-payload";
+import { getKeyWithSchema, getMirroredFolder, setSecretMapEntry, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -277,8 +278,59 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
+// Destinations that can write each secret under its folder. Each entry returns why its destination
+// config can't, or undefined when it can: Secrets Manager's many-to-one mapping writes every secret
+// into one AWS secret.
+const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
+  Record<SecretSync, (destinationConfig: Record<string, unknown>) => string | undefined>
+> = {
+  [SecretSync.AWSParameterStore]: () => undefined,
+  [SecretSync.AWSSecretsManager]: (destinationConfig) =>
+    destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne
+      ? undefined
+      : PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE
+};
+
+export const getFolderStructureUnsupportedReason = (destination: SecretSync, destinationConfig: unknown) => {
+  const getReason = FOLDER_STRUCTURE_DESTINATION_MAP[destination];
+  if (!getReason) return `Preserving folder structure is not supported for ${SECRET_SYNC_NAME_MAP[destination]} syncs.`;
+
+  return getReason(destinationConfig as Record<string, unknown>);
+};
+
+// The save-time duplicate check and the sync jobs both ask this, so they agree on whether a sync
+// flattens its folders.
+export const preservesFolderStructure = ({
+  destination,
+  destinationConfig,
+  includeAllSubFolders,
+  syncOptions
+}: {
+  destination: SecretSync;
+  destinationConfig: unknown;
+  includeAllSubFolders: boolean;
+  syncOptions?: Record<string, unknown>;
+}) =>
+  includeAllSubFolders &&
+  Boolean(syncOptions?.preserveFolderStructure) &&
+  !getFolderStructureUnsupportedReason(destination, destinationConfig);
+
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
+export const matchesSchema = (
+  key: string,
+  environment: string,
+  schema?: string,
+  { mirroredFolders }: { mirroredFolders?: Set<string> } = {}
+): boolean => {
+  // With folders preserved, a name belongs to the sync only in a folder it mirrors (see
+  // mirroredFolders() in secret-sync-payload.ts), and the key schema only names the last segment.
+  if (mirroredFolders) {
+    return (
+      mirroredFolders.has(getMirroredFolder(key)) &&
+      matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema)
+    );
+  }
+
   if (!schema) return true;
 
   const compiledSchemaPattern = handlebars.compile(schema)({
@@ -360,7 +412,12 @@ export const SecretSyncFns = {
           instanceConfigService
         });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.syncSecrets(secretSync, payload, instanceConfigService);
+        return GcpSyncFns.syncSecrets(secretSync, payload, {
+          appConnectionDAL,
+          kmsDataKeyService,
+          oidcIssuerService,
+          instanceConfigService
+        });
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
@@ -529,7 +586,12 @@ export const SecretSyncFns = {
         secretMap = await GithubSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GCPSecretManager:
-        secretMap = await GcpSyncFns.getSecrets(secretSync, instanceConfigService);
+        secretMap = await GcpSyncFns.getSecrets(secretSync, {
+          appConnectionDAL,
+          kmsDataKeyService,
+          oidcIssuerService,
+          instanceConfigService
+        });
         break;
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSyncFactory({
@@ -749,7 +811,12 @@ export const SecretSyncFns = {
           instanceConfigService
         });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.removeSecrets(secretSync, payload, instanceConfigService);
+        return GcpSyncFns.removeSecrets(secretSync, payload, {
+          appConnectionDAL,
+          kmsDataKeyService,
+          oidcIssuerService,
+          instanceConfigService
+        });
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,

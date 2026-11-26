@@ -214,12 +214,6 @@ export const agentVaultSessionLogServiceFactory = ({
         message: getSessionLogNotOnPlanMessage(config.storage.type)
       });
     }
-    // A 5xx, so the proxy holds the chunk and retries instead of switching session logs off.
-    if (entitlement === "unknown") {
-      throw new InternalServerError({
-        message: "Infisical couldn't confirm this organization's plan right now. The proxy keeps the chunk and retries."
-      });
-    }
 
     const aheadMs = chunk.endedAt.getTime() - now.getTime();
     if (aheadMs > AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS) {
@@ -327,8 +321,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     // Reads return no logs while session logs are off, or while the plan doesn't include the storage in use. Unlike
     // most paid features, which read from Infisical's database, each read here is a billed S3 request for whoever owns
-    // the bucket, so reading needs the same plan as recording. While the License Server can't confirm the plan,
-    // reading is still allowed, so an outage doesn't hide logs.
+    // the bucket, so reading needs the same plan as recording.
     let disabledReason: TAgentVaultSessionLogDisabledReason | null = null;
     if (!config?.enabled) disabledReason = "off";
     else if (
@@ -502,13 +495,13 @@ export const agentVaultSessionLogServiceFactory = ({
     );
   };
 
-  // Health and the CORS probe only run for external storage that's on and on the plan, or whose plan can't be confirmed
-  // right now. Otherwise nothing is recorded or shown, so a storage problem isn't something an admin needs to fix.
+  // Health and the CORS probe only run for external storage that's on and on the plan. Otherwise nothing is recorded or
+  // shown, so a storage problem isn't something an admin needs to fix.
   // Default storage belongs to whoever runs the instance, so its problems are logged at boot and never shown to an org.
   const $isExternalStorageInUse = async (config: TEffectiveSessionLogConfig, orgId: string) =>
     config.storage.type === ObjectStorageType.External &&
     config.enabled &&
-    (await getSessionLogEntitlement(licenseService, orgId, config.storage.type)).entitlement !== "unlicensed";
+    (await getSessionLogEntitlement(licenseService, orgId, config.storage.type)).entitlement === "licensed";
 
   const getSessionLogHealth = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireSettingsPermission({ projectId, ctx }, ProjectPermissionActions.Read);
@@ -595,11 +588,6 @@ export const agentVaultSessionLogServiceFactory = ({
     const isTurningOn = !(current?.isSaved && current.enabled);
     if (isStorageChange || isTurningOn) {
       const { entitlement } = await getSessionLogEntitlement(licenseService, ctx.actorOrgId, nextStorage.type);
-      if (entitlement === "unknown") {
-        throw new InternalServerError({
-          message: "Infisical couldn't confirm your plan right now. Try again in a few minutes."
-        });
-      }
       if (entitlement === "unlicensed")
         throw new BadRequestError({ message: getSessionLogNotOnPlanMessage(nextStorage.type) });
     }

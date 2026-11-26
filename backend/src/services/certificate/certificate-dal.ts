@@ -28,7 +28,7 @@ import {
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { keySizeToAlgorithms } from "./certificate-fns";
+import { keySizeToAlgorithms, toMinimalSerialNumber } from "./certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
 
 // Scoped to UI-surfaced algorithms; intentionally narrower than pqc-utils.PQC_ALGORITHMS.
@@ -51,30 +51,25 @@ export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
 const CA_TYPES_WITHOUT_CSR_ISSUANCE = Object.values(CaType).filter((caType) => !caIssuesFromCsr(caType));
 
+const ORIGINATING_REQUEST_SUBQUERY = (column: string) => `(
+  SELECT originating."${column}" FROM certificate_requests originating
+  WHERE originating."certificateId" = certificates.id
+  ORDER BY originating."createdAt" ASC LIMIT 1
+)`;
+
 // Whether renewal can reuse the key pair from a CSR Infisical holds, by the same rules renewal enforces:
 // a CSR on the originating request or from import, an API-enrolled certificate (ACME, EST and SCEP
 // clients renew themselves), and a profile CA that issues from a CSR. One definition, so responses, the
 // auto-renewal toggle and the daily job can't disagree.
-const CAN_RENEW_FROM_CSR_CONDITION = `(
+const buildCanRenewFromCsrCondition = (originatingCsr: string, originatingEnrollmentType: string) => `(
   (
-    (
-      SELECT originating."csr" FROM certificate_requests originating
-      WHERE originating."certificateId" = certificates.id
-      ORDER BY originating."createdAt" ASC LIMIT 1
-    ) IS NOT NULL
+    ${originatingCsr} IS NOT NULL
     OR EXISTS (
       SELECT 1 FROM certificate_bodies body
       WHERE body."certId" = certificates.id AND body."importedCsr" IS NOT NULL
     )
   )
-  AND COALESCE(
-    (
-      SELECT originating."enrollmentType" FROM certificate_requests originating
-      WHERE originating."certificateId" = certificates.id
-      ORDER BY originating."createdAt" ASC LIMIT 1
-    ),
-    '${EnrollmentType.API}'
-  ) = '${EnrollmentType.API}'
+  AND COALESCE(${originatingEnrollmentType}, '${EnrollmentType.API}') = '${EnrollmentType.API}'
   AND EXISTS (
     SELECT 1 FROM pki_certificate_profiles profile
     LEFT JOIN external_certificate_authorities external_ca ON external_ca."caId" = profile."caId"
@@ -88,6 +83,11 @@ const CAN_RENEW_FROM_CSR_CONDITION = `(
   )
 )`;
 
+const CAN_RENEW_FROM_CSR_CONDITION = buildCanRenewFromCsrCondition(
+  ORIGINATING_REQUEST_SUBQUERY("csr"),
+  ORIGINATING_REQUEST_SUBQUERY("enrollmentType")
+);
+
 const CAN_RENEW_FROM_CSR_SELECT = `${CAN_RENEW_FROM_CSR_CONDITION} as "canRenewFromCsr"`;
 
 const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
@@ -97,6 +97,25 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
     return usage;
   }
 };
+
+const ORIGINATING_REQUEST_LATERAL_JOIN = `LEFT JOIN LATERAL (
+  SELECT originating."csr", originating."enrollmentType" FROM certificate_requests originating
+  WHERE originating."certificateId" = certificates.id
+  ORDER BY originating."createdAt" ASC LIMIT 1
+) originating_request ON true`;
+
+const INVENTORY_RENEWAL_SELECTS = [
+  `${buildCanRenewFromCsrCondition('originating_request."csr"', 'originating_request."enrollmentType"')} as "canRenewFromCsr"`,
+  `COALESCE(
+    originating_request."enrollmentType",
+    pki_certificate_profiles."enrollmentType",
+    CASE
+      WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
+      ELSE '${EnrollmentType.API}'
+    END
+  ) as "enrollmentType"`,
+  `COALESCE(originating_request."enrollmentType", '${EnrollmentType.API}') <> '${EnrollmentType.API}' as "isRenewedByClient"`
+];
 
 export type TOriginatingCertificateRequest = {
   exists: boolean;
@@ -592,6 +611,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
         .select(selectAllTableCols(TableName.Certificate));
 
       if (limit) void query.limit(limit);
@@ -599,6 +619,65 @@ export const certificateDALFactory = (db: TDbClient) => {
       return await query;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate by thumbprint in org" });
+    }
+  };
+
+  const findBySerialNumberInOrg = async (
+    { orgId, serialNumber }: { orgId: string; serialNumber?: string },
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    if (!serialNumber) return undefined;
+    try {
+      const certificate = await (tx || db.replicaNode())(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Certificate}.serialNumber`, serialNumber)
+        .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate))
+        .first();
+      return certificate as TCertificates | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by serial number in org" });
+    }
+  };
+
+  const findSameCertificateRecords = async (
+    {
+      serialNumbers,
+      caId,
+      fingerprintSha256,
+      orgId
+    }: { serialNumbers: string[]; caId: string; fingerprintSha256?: string | null; orgId?: string },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
+    try {
+      const records = await (tx || db.replicaNode())(TableName.Certificate)
+        .whereIn("serialNumber", serialNumbers)
+        .where((sameCertificate) => {
+          void sameCertificate.where((onCa) => {
+            void onCa.where("caId", caId);
+            if (fingerprintSha256) {
+              void onCa.where((fingerprint) => {
+                void fingerprint.whereNull("fingerprintSha256").orWhere("fingerprintSha256", fingerprintSha256);
+              });
+            }
+          });
+          if (fingerprintSha256 && orgId) {
+            void sameCertificate.orWhere((withoutCa) => {
+              void withoutCa
+                .whereNull("caId")
+                .where("fingerprintSha256", fingerprintSha256)
+                .whereIn("projectId", (projectQuery) => {
+                  void projectQuery.select("id").from(TableName.Project).where("orgId", orgId);
+                });
+            });
+          }
+        })
+        .orderBy("deletedAt", "desc", "first")
+        .select(selectAllTableCols(TableName.Certificate));
+      return records as TCertificates[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find records of the same certificate" });
     }
   };
 
@@ -1035,6 +1114,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
+    isRenewedByClient: boolean;
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
@@ -1068,29 +1148,12 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
+        .joinRaw(ORIGINATING_REQUEST_LATERAL_JOIN)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
-        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(
-          db.raw(
-            `COALESCE(
-              (
-                SELECT certificate_requests."enrollmentType"
-                FROM certificate_requests
-                WHERE certificate_requests."certificateId" = certificates.id
-                ORDER BY certificate_requests."createdAt" ASC
-                LIMIT 1
-              ),
-              pki_certificate_profiles."enrollmentType",
-              CASE
-                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
-                ELSE 'api'
-              END
-            ) as "enrollmentType"`
-          )
-        )
+        .select(INVENTORY_RENEWAL_SELECTS.map((select) => db.raw(select)))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
@@ -1183,7 +1246,8 @@ export const certificateDALFactory = (db: TDbClient) => {
       return results.map((row) => ({
         ...row,
         hasPrivateKey: row.privateKeyRef !== null,
-        canRenewFromCsr: Boolean((row as { canRenewFromCsr?: boolean }).canRenewFromCsr)
+        canRenewFromCsr: Boolean((row as { canRenewFromCsr?: boolean }).canRenewFromCsr),
+        isRenewedByClient: Boolean((row as { isRenewedByClient?: boolean }).isRenewedByClient)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
@@ -1197,9 +1261,13 @@ export const certificateDALFactory = (db: TDbClient) => {
     caType?: "internal" | "external" | null;
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
+    enrollmentType?: string | null;
+    isRenewedByClient: boolean;
   };
 
-  type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
+  type TCertificateLookupFilter =
+    | { id: string; serialNumber?: never; orgId?: never }
+    | { id?: never; serialNumber: string; orgId: string };
 
   const findByIdForUpdate = async (id: string, tx: Knex) => {
     try {
@@ -1233,6 +1301,26 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneLiveFirst = async (
+    filter: Parameters<typeof certificateOrm.find>[0],
+    tx?: Knex
+  ): Promise<TCertificates | undefined> => {
+    const [certificate] = await certificateOrm.find(filter, { limit: 1, sort: [["deletedAt", "desc", "first"]], tx });
+    return certificate;
+  };
+
+  const toSerialNumberLockKey = (serialNumber: string) => `certificate-serial:${toMinimalSerialNumber(serialNumber)}`;
+
+  const lockSerialNumber = async (serialNumber: string, tx: Knex) => {
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [toSerialNumberLockKey(serialNumber)]);
+  };
+
+  const lockSerialNumbers = async (serialNumbers: string[], tx: Knex) => {
+    const keys = [...new Set(serialNumbers.map(toSerialNumberLockKey))];
+    if (!keys.length) return;
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
+  };
+
   const findWithFullDetails = async (
     filter: TCertificateLookupFilter,
     tx?: Knex
@@ -1256,18 +1344,24 @@ export const certificateDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .joinRaw(ORIGINATING_REQUEST_LATERAL_JOIN)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
         .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
-        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT));
+        .select(INVENTORY_RENEWAL_SELECTS.map((select) => db.raw(select)));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
-        query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
+        query = query
+          .whereIn(`${TableName.Certificate}.projectId`, (projectQuery) => {
+            void projectQuery.select("id").from(TableName.Project).where("orgId", filter.orgId);
+          })
+          .where(`${TableName.Certificate}.serialNumber`, filter.serialNumber)
+          .orderBy(`${TableName.Certificate}.deletedAt`, "desc", "first");
       }
 
       const result = (await query.first()) as
@@ -1289,7 +1383,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         ...rest,
         caType,
         hasPrivateKey: Boolean(privateKeyRef),
-        canRenewFromCsr: Boolean(rest.canRenewFromCsr)
+        canRenewFromCsr: Boolean(rest.canRenewFromCsr),
+        isRenewedByClient: Boolean(rest.isRenewedByClient)
       } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });
@@ -1659,6 +1754,9 @@ export const certificateDALFactory = (db: TDbClient) => {
   return {
     primaryNode,
     ...certificateOrm,
+    findOneLiveFirst,
+    lockSerialNumber,
+    lockSerialNumbers,
     findByIdForUpdate,
     findByIdForShare,
     create,
@@ -1672,6 +1770,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
+    findBySerialNumberInOrg,
+    findSameCertificateRecords,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesMatchingSyncFilters,

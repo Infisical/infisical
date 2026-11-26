@@ -69,7 +69,7 @@ You can use break-glass access when you file a request, or later while the reque
   </Tab>
 </Tabs>
 
-You get the access that the request asked for. If you used break-glass access on a session request, you can launch sessions, and if you used it on a credential request, you can view the credential. The access expires at the end of the requested duration, an Admin of the folder can [revoke it](/documentation/platform/pam/access-requests/overview#revoke-access), and Infisical records your sessions like any other session.
+The access expires at the end of the requested duration, or at the template's **Max Access Duration** if an Admin lowered it below that while the request was pending. If you used break-glass access on a session request, you can launch sessions, and if you used it on a credential request, you can view the credential. An Admin of the folder can [revoke the access](/documentation/platform/pam/access-requests/overview#revoke-access) at any time. Infisical records your sessions like any other session.
 
 ## What Infisical records
 

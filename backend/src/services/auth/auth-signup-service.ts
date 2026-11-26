@@ -101,7 +101,7 @@ export const authSignupServiceFactory = ({
       throw err;
     }
 
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    const isEmailInvalid = isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
     }

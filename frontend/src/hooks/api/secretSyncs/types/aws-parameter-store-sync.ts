@@ -17,5 +17,6 @@ export type TAwsParameterStoreSync = TRootSecretSync & {
     keyId?: string;
     tags?: { key: string; value?: string }[];
     syncSecretMetadataAsTags?: boolean;
+    preserveFolderStructure?: boolean;
   };
 };

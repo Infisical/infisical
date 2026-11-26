@@ -75,7 +75,7 @@ func TestGroup_Lifecycle(t *testing.T) {
 		tn.SetPlan(t, license.Enterprise().Without(license.Groups))
 
 		// Action
-		res, err := tn.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID.String(), api.UpdateGroupJSONRequestBody{
+		res, err := tn.Admin.API.UpdateGroupWithResponse(t.Context(), group.ID, api.UpdateGroupJSONRequestBody{
 			Name: new("renamed"),
 		})
 
@@ -95,7 +95,7 @@ func TestGroup_Lifecycle(t *testing.T) {
 		tn.SetPlan(t, license.Enterprise().Without(license.Groups))
 
 		// Action
-		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID.String())
+		res, err := tn.Admin.API.DeleteGroupWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestGroup_Membership(t *testing.T) {
 		group := fixture.NewGroup(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), other.Admin.Email)
+		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, other.Admin.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestGroup_Membership(t *testing.T) {
 		group := fixture.NewGroup(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID.String(), outsider.ID.String())
+		res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID, outsider.ID)
 
 		// Assert
 		require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestGroup_Membership(t *testing.T) {
 		group := fixture.NewGroup(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), addr)
+		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, addr)
 
 		// Assert
 		require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestGroup_Membership(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "dev", "FROM_GROUP", "value")
 		addr := invite(t, tn, "invitee")
 		group := fixture.NewGroup(t, tn)
-		added, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), addr)
+		added, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, addr)
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, added.StatusCode(), added.Body)
 		proj.GrantGroup(t, group, "viewer")
@@ -193,7 +193,7 @@ func TestGroup_Membership(t *testing.T) {
 		group.AddUser(t, member)
 
 		// Action
-		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), member.Email)
+		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, member.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestGroup_Membership(t *testing.T) {
 		group.AddUser(t, member)
 
 		// Action
-		res, err := tn.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID.String(), outsider.Email)
+		res, err := tn.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID, outsider.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -231,7 +231,7 @@ func TestGroup_Membership(t *testing.T) {
 		oidcManagedGroups(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), member.Email)
+		res, err := tn.Admin.API.AddUserToGroupWithResponse(t.Context(), group.ID, member.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -251,7 +251,7 @@ func TestGroup_Membership(t *testing.T) {
 		oidcManagedGroups(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID.String(), member.Email)
+		res, err := tn.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID, member.Email)
 
 		// Assert
 		require.NoError(t, err)
@@ -270,7 +270,7 @@ func TestGroup_Membership(t *testing.T) {
 		oidcManagedGroups(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID.String(), identity.ID.String())
+		res, err := tn.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID, identity.ID)
 
 		// Assert
 		require.NoError(t, err)

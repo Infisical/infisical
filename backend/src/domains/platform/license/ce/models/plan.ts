@@ -1,13 +1,19 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
-export type TPlanNotice = {
-  type: "trial_payment_failed";
-  productKey: string;
-  trialPlanKey: string | null;
-  accessEndsAt: string;
-  nextAttemptAt: string | null;
-  cause: string | null;
-};
+export type TPlanNotice =
+  | {
+      type: "trial_payment_failed";
+      productKey: string;
+      trialPlanKey: string | null;
+      accessEndsAt: string;
+      nextAttemptAt: string | null;
+      cause: string | null;
+    }
+  | {
+      type: "subscription_payment_failed";
+      cause: string | null;
+      since: string | null;
+    };
 
 export type TPlanFeatures = {
   _id: null;
@@ -24,7 +30,6 @@ export type TPlanFeatures = {
   isOffline?: boolean;
   tier: number;
   workspaceLimit: number | null;
-  workspacesUsed: number;
   dynamicSecret: boolean;
   memberLimit: number | null;
   identityLimit: number | null;
@@ -87,6 +92,7 @@ export type TPlanFeatures = {
   pkiAcme: boolean;
   pkiEst: boolean;
   pkiScep: boolean;
+  pkiMicrosoftAutoenrollment: boolean;
   pkiPqc: boolean;
   // On by default so self-hosted OSS keeps it; on cloud the License Server's free-plan default withholds it.
   caCrl: boolean;
@@ -162,6 +168,7 @@ export enum PlanFeature {
   AgentVaultHooks = "agentVaultHooks",
   PkiEst = "pkiEst",
   PkiScep = "pkiScep",
+  PkiMicrosoftAutoenrollment = "pkiMicrosoftAutoenrollment",
   PkiPqc = "pkiPqc",
   PkiOcsp = "pkiOcsp",
   PkiAwsKmsSigning = "pkiAwsKmsSigning",
@@ -254,6 +261,7 @@ export class Plan {
     [PlanFeature.AgentVaultHooks]: "Agent Vault Hooks",
     [PlanFeature.PkiEst]: "EST Enrollment",
     [PlanFeature.PkiScep]: "SCEP Enrollment",
+    [PlanFeature.PkiMicrosoftAutoenrollment]: "Microsoft Autoenrollment",
     [PlanFeature.PkiPqc]: "Post-quantum Certificates",
     [PlanFeature.PkiOcsp]: "OCSP",
     [PlanFeature.PkiAwsKmsSigning]: "AWS KMS Certificate Signing",
@@ -273,11 +281,7 @@ export class Plan {
   // Cloned so freezing never reaches the caller's object (the instance features, a test's fixture).
   private readonly features: TPlanFeatures;
 
-  private constructor(
-    features: TPlanFeatures,
-    // Not part of the features, so it never reaches the cache or an API response.
-    private readonly fallback = false
-  ) {
+  private constructor(features: TPlanFeatures) {
     this.features = deepFreeze(structuredClone(features));
   }
 
@@ -289,19 +293,9 @@ export class Plan {
     return this.features.slug;
   }
 
-  // No slug means community edition, or the fallback served while the License Server is down.
+  // No slug means community edition, or the free plan served while no plan can be fetched.
   get isPaid(): boolean {
     return Boolean(this.features.slug);
-  }
-
-  // A stand-in served because the License Server, the database or the key store couldn't answer, not the org's
-  // real plan. Decisions that would stop something the org pays for should look at its last known plan instead.
-  get isFallback(): boolean {
-    return this.fallback;
-  }
-
-  asFallback(): Plan {
-    return new Plan(this.features, true);
   }
 
   get isOffline(): boolean {
@@ -381,10 +375,6 @@ export class Plan {
   // Whether the plan explicitly includes this product, as a purchase or an override does. Null proves nothing.
   grants(product: PlanProduct): boolean {
     return this.features[product] === true;
-  }
-
-  withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.features, workspacesUsed }, this.fallback);
   }
 
   // A mutable copy, for the cache and API responses.

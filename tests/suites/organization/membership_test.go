@@ -193,7 +193,7 @@ func projectMemberEmails(t *testing.T, tn *harness.Tenant, proj *fixture.Project
 
 func groupMemberIDs(t *testing.T, tn *harness.Tenant, g *fixture.Group) []uuid.UUID {
 	t.Helper()
-	res, err := fresh(t, tn, tn.Admin).ListGroupUsersWithResponse(t.Context(), g.ID.String(), nil)
+	res, err := fresh(t, tn, tn.Admin).ListGroupUsersWithResponse(t.Context(), g.ID, nil)
 	require.NoError(t, err)
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	var ids []uuid.UUID

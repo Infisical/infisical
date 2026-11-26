@@ -21,6 +21,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
 | `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                   |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
 | `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
@@ -191,6 +192,10 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**Max Access Duration caps the approved access window, not a session**: it resolves only with Require Approval
+on (`resolveAccessControls`), `assertCanCreateRequest` rejects longer requests, and `postApprovalTxRoutine`
+clamps every grant, break glass included, to the template's current max.
+
 **Output masking fails closed**: an older gateway would silently ignore the rule, so
 `assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
 gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
@@ -268,6 +273,13 @@ resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Adm
 read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
 playback), as it does for scope-less audit-log rows. `getSessionCredentials` still refuses — no account
 means no credentials to mint.
+
+**Recordings are also read server-side.** `pam-session-activity/` decrypts each newly stored chunk and
+maps its events in `buildPamSessionActivityEvents` for log streams with `filters.pamSessionActivity`, so
+a change to the recording event format (database entries, terminal events, HTTP events) needs the
+same change there as in the session viewer. Only a PAM product admin can create or change a stream
+that receives session activity (`assertCanStreamPamSessionActivity`), since org-level stream access
+would otherwise hand session content to people PAM never let view it.
 
 ## Conventions
 

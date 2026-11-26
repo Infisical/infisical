@@ -26,11 +26,11 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
@@ -2728,6 +2728,7 @@ export const approvalPolicyServiceFactory = ({
         ...request,
         grantId: grant?.id ?? null,
         grantExpiresAt: grant?.expiresAt ?? null,
+        grantCreatedAt: grant?.createdAt ?? null,
         grantStatus: grant?.status ?? null,
         isBreakGlass: Boolean(grant?.isBreakGlass),
         bypassReason: grant?.bypassReason ?? null,

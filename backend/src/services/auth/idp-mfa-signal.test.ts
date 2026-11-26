@@ -54,7 +54,12 @@ describe("matchIdpMfaSignal for OIDC", () => {
 const saml = (
   authnContextClassRefs: string[],
   attributes?: Record<string, unknown>,
-  config?: { authProvider?: string; mfaSignalAttribute?: string; mfaAuthnContexts?: string[] }
+  config?: {
+    authProvider?: string;
+    mfaSignalAttribute?: string;
+    mfaAuthnContexts?: string[];
+    mfaAttributeValues?: string[];
+  }
 ) => matchIdpMfaSignal({ kind: "saml", authnContextClassRefs, attributes, config });
 
 describe("matchIdpMfaSignal for SAML", () => {
@@ -131,6 +136,22 @@ describe("matchIdpMfaSignal for SAML", () => {
       verified: true,
       evidence: [custom]
     });
+  });
+
+  test("accepts extra attribute values from the configuration on top of the defaults", () => {
+    const passwordOnly = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";
+    const oktaPasskey = { amr: ["pwd", "swk"] };
+    expect(saml([passwordOnly], oktaPasskey).verified).toBe(false);
+    expect(saml([passwordOnly], oktaPasskey, { mfaAttributeValues: ["SWK"] })).toMatchObject({
+      verified: true,
+      evidence: ["amr=swk"]
+    });
+    expect(saml([], { amr: ["mfa"] }, { mfaAttributeValues: ["swk"] }).verified).toBe(true);
+  });
+
+  test("does not accept extra attribute values as context classes, or the reverse", () => {
+    expect(saml(["swk"], undefined, { mfaAttributeValues: ["swk"] }).verified).toBe(false);
+    expect(saml([], { amr: ["swk"] }, { mfaAuthnContexts: ["swk"] }).verified).toBe(false);
   });
 
   test("rejects a password-only assertion with unrelated attributes", () => {

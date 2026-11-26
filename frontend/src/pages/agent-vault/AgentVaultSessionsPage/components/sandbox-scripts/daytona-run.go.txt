@@ -1,0 +1,215 @@
+// run_agent.go
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	apiclient "github.com/daytona/clients/api-client-go"
+	"github.com/daytona/clients/sdk-go/pkg/daytona"
+	"github.com/daytona/clients/sdk-go/pkg/options"
+	"github.com/daytona/clients/sdk-go/pkg/types"
+)
+
+const (
+	infisicalURL = "https://app.infisical.com"
+	projectID    = "<project-id>"
+	accessBundle = "<access-bundle-name>"
+)
+
+// Prints the proxy's address on the network it shares with the agent's sandbox.
+// The address appears shortly after the agent's sandbox is linked.
+const getLinkAddress = "for i in $(seq 60); do " +
+	"ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; " +
+	"sleep 0.5; done; exit 1"
+
+const stopProxy = "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; " +
+	"for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1"
+
+var agentEnv = map[string]string{
+	// Claude Code won't start without a key; the proxy replaces this one.
+	"ANTHROPIC_API_KEY": "agent-vault",
+	// Makes the fetch built into Node.js send requests through the proxy.
+	"NODE_USE_ENV_PROXY": "1",
+	// Skips Claude Code's update checks and telemetry, which fail without internet access.
+	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+	"DISABLE_AUTOUPDATER":                      "1",
+}
+
+func infisical(ctx context.Context, path, token string, body, out any) error {
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		reader = bytes.NewReader(encoded)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, infisicalURL+path, reader)
+	if err != nil {
+		return err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		text, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("infisical returned %d: %s", resp.StatusCode, text)
+	}
+	if out == nil {
+		return nil
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func runAgent(ctx context.Context, client *daytona.Client, prompt string) (output string, err error) {
+	// The machine identity's credentials stay here and never enter a sandbox.
+	var login struct {
+		AccessToken string `json:"accessToken"`
+	}
+	err = infisical(ctx, "/api/v1/auth/universal-auth/login", "", map[string]string{
+		"clientId":     os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"),
+		"clientSecret": os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"),
+	}, &login)
+	if err != nil {
+		return "", err
+	}
+
+	// One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
+	// agent can't lose access mid-run.
+	var created struct {
+		Session struct {
+			ID    string `json:"id"`
+			Token string `json:"token"`
+		} `json:"session"`
+	}
+	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
+		"projectId":    projectID,
+		"accessBundle": accessBundle,
+		"ttl":          "20m",
+	}, &created)
+	if err != nil {
+		return "", err
+	}
+	session := created.Session
+
+	var proxySandbox *daytona.Sandbox
+	// Deferred calls run in reverse order: stop the proxy, revoke the session, then delete the sandbox.
+	defer func() {
+		if proxySandbox != nil {
+			err = errors.Join(err, proxySandbox.Delete(context.Background()))
+		}
+	}()
+	defer func() {
+		revokeErr := infisical(context.Background(), "/api/v1/agent-vault/sessions/"+session.ID+"/revoke", login.AccessToken, nil, nil)
+		err = errors.Join(err, revokeErr)
+	}()
+	defer func() {
+		if proxySandbox != nil {
+			_, _ = proxySandbox.Process.ExecuteCommand(context.Background(), stopProxy)
+		}
+	}()
+
+	// Deleting this sandbox also deletes the agent's sandbox linked to it.
+	ttl := 15
+	proxySandbox, err = client.Create(ctx, types.SnapshotParams{
+		Snapshot: snapshot,
+		SandboxBaseParams: types.SandboxBaseParams{
+			Ephemeral:  true,
+			TtlMinutes: &ttl,
+			EnvVars: map[string]string{
+				"INFISICAL_AGENT_VAULT_PROXY_TOKEN": os.Getenv("INFISICAL_AGENT_VAULT_PROXY_TOKEN"),
+				"INFISICAL_DOMAIN":                  infisicalURL,
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	startProxy := "nohup infisical agent-vault proxy > /tmp/proxy.log 2>&1 & echo $! > /tmp/proxy.pid"
+	if _, err := proxySandbox.Process.ExecuteCommand(ctx, startProxy); err != nil {
+		return "", err
+	}
+
+	agentSandbox, err := client.Create(ctx, types.SnapshotParams{
+		Snapshot: snapshot,
+		SandboxBaseParams: types.SandboxBaseParams{
+			LinkedSandbox:   proxySandbox.ID,
+			Ephemeral:       true,
+			NetworkBlockAll: true,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	link, err := proxySandbox.Process.ExecuteCommand(ctx, getLinkAddress)
+	if err != nil {
+		return "", err
+	}
+	if link.ExitCode != 0 {
+		return "", errors.New("the proxy's sandbox didn't get an address on the linked network")
+	}
+	proxyIP := strings.TrimSpace(link.Result)
+	// Blocking all traffic also blocks the proxy, so allow only the proxy's address.
+	allow := apiclient.NewUpdateSandboxNetworkSettings()
+	allow.SetNetworkAllowList(proxyIP + "/32")
+	if err := agentSandbox.UpdateNetworkSettings(ctx, *allow); err != nil {
+		return "", err
+	}
+	proxyAddress := proxyIP + ":17323"
+
+	// The proxy serves only after it has loaded its settings from Infisical.
+	wait, err := agentSandbox.Process.ExecuteCommand(ctx, "for i in $(seq 60); do "+
+		"curl -fs http://"+proxyAddress+"/_agent-vault/ca > /dev/null && exit 0; "+
+		"sleep 0.5; done; exit 1")
+	if err != nil {
+		return "", err
+	}
+	if wait.ExitCode != 0 {
+		log, _ := proxySandbox.Process.ExecuteCommand(ctx, "cat /tmp/proxy.log")
+		return "", fmt.Errorf("the Agent Vault proxy didn't start:\n%s", log.Result)
+	}
+
+	if err := agentSandbox.FileSystem.UploadFile(ctx, []byte(prompt), "/tmp/prompt.txt"); err != nil {
+		return "", err
+	}
+	env := map[string]string{"INFISICAL_AGENT_VAULT_SESSION_TOKEN": session.Token}
+	for key, value := range agentEnv {
+		env[key] = value
+	}
+	// Claude Code won't skip its permission prompts as root, so the agent
+	// runs as the image's node user.
+	agent, err := agentSandbox.Process.ExecuteCommand(ctx,
+		"runuser -u node -- sh -c '"+
+			"infisical agent-vault run --telemetry=false --proxy "+proxyAddress+
+			" -- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
+		options.WithCwd("/home/node"),
+		options.WithCommandEnv(env),
+		options.WithExecuteTimeout(14*time.Minute),
+	)
+	if err != nil {
+		return "", err
+	}
+	if agent.ExitCode != 0 {
+		return "", fmt.Errorf("the agent failed with exit code %d:\n%s", agent.ExitCode, agent.Result)
+	}
+	return agent.Result, nil
+}

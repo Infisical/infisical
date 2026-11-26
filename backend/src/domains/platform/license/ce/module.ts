@@ -49,6 +49,8 @@ export type TLicenseDeps = {
   licensePolicyService: TLicensePolicyService;
   licenseServer: TLicenseServer;
   organizationsProjectsService: TOrganizationsProjectsService;
+  // The plan cache's clock; tests pass the key store's.
+  now?: () => number;
   // One per product meter, from the domain that owns the data. Seat meters are built here.
   usageCounters: TUsageCounter[];
 };
@@ -83,7 +85,7 @@ export class LicenseModule {
 
     this.licenseService = new LicenseService(
       new InstanceEntitlementsCache(instanceEntitlements),
-      new PlanCache(keyStore),
+      new PlanCache(keyStore, deps.now),
       usageQueue,
       organizationsProjectsService,
       licensePolicyService,
