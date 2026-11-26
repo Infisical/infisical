@@ -6212,6 +6212,7 @@ interface UpdateOidcConfigEvent {
     oidcConfigId: string;
     organizationName: string;
     clientCredentialsUpdated: boolean;
+    ssoEnforcementDisabled: boolean;
   } & Partial<TOidcConfigAuditFields>;
 }
 

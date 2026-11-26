@@ -365,7 +365,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             oidcConfigId: oidc.id,
             organizationName: oidc.organizationName,
             ...sanitizeOidcConfigAuditUrls(pick(req.body, [...OIDC_CONFIG_AUDIT_FIELDS])),
-            clientCredentialsUpdated: req.body.clientId !== undefined || req.body.clientSecret !== undefined
+            clientCredentialsUpdated: req.body.clientId !== undefined || req.body.clientSecret !== undefined,
+            ssoEnforcementDisabled: oidc.ssoEnforcementDisabled
           }
         }
       });

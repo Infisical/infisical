@@ -44,6 +44,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
+  normalizeAllowedEmailDomains,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -705,7 +706,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -733,21 +734,32 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const isMfaSignalOnlyUpdate = [
-      allowedEmailDomains,
-      configurationType,
-      discoveryURL,
-      issuer,
-      authorizationEndpoint,
-      tokenEndpoint,
-      userinfoEndpoint,
-      jwksUri,
-      isActive,
-      clientId,
-      clientSecret,
-      manageGroupMemberships,
-      jwtSignatureAlgorithm
-    ].every((value) => value === undefined);
+    const hasChanged = (next: unknown, current: unknown) => next !== undefined && next !== (current ?? null);
+    const normalizeDomains = (domains?: string | null) =>
+      normalizeAllowedEmailDomains(domains ?? "")
+        .split(", ")
+        .sort()
+        .join(", ");
+    const decrypt = (cipherTextBlob?: Buffer | null) =>
+      cipherTextBlob ? decryptor({ cipherTextBlob }).toString() : "";
+
+    // Any change to OIDC config should not lock users out, if auth/scim is enforced prior to it
+    const isConnectionChanged =
+      hasChanged(configurationType, existingCfg.configurationType) ||
+      hasChanged(discoveryURL, existingCfg.discoveryURL) ||
+      hasChanged(issuer, existingCfg.issuer) ||
+      hasChanged(authorizationEndpoint, existingCfg.authorizationEndpoint) ||
+      hasChanged(tokenEndpoint, existingCfg.tokenEndpoint) ||
+      hasChanged(userinfoEndpoint, existingCfg.userinfoEndpoint) ||
+      hasChanged(jwksUri, existingCfg.jwksUri) ||
+      hasChanged(jwtSignatureAlgorithm, existingCfg.jwtSignatureAlgorithm) ||
+      (allowedEmailDomains !== undefined &&
+        normalizeDomains(allowedEmailDomains) !== normalizeDomains(existingCfg.allowedEmailDomains)) ||
+      (clientId !== undefined && clientId !== decrypt(existingCfg.encryptedOidcClientId)) ||
+      (clientSecret !== undefined && clientSecret !== decrypt(existingCfg.encryptedOidcClientSecret)) ||
+      hasChanged(isActive, existingCfg.isActive);
+
+    const shouldDisableEnforcement = isConnectionChanged && Boolean(org.authEnforced || org.scimEnabled);
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -759,7 +771,7 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
+      ...(isConnectionChanged && { lastUsed: null }),
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -774,12 +786,15 @@ export const oidcConfigServiceFactory = ({
       updateQuery.encryptedOidcClientSecret = encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob;
     }
 
-    const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    if (!isMfaSignalOnlyUpdate) {
-      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
-    }
+    const ssoConfig = await oidcConfigDAL.transaction(async (tx) => {
+      const [cfg] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery, tx);
+      if (shouldDisableEnforcement) {
+        await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false }, tx);
+      }
+      return cfg;
+    });
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
-    return { ...ssoConfig, organizationName: org.name };
+    return { ...ssoConfig, organizationName: org.name, ssoEnforcementDisabled: shouldDisableEnforcement };
   };
 
   const createOidcCfg = async ({
