@@ -47,6 +47,7 @@ import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemet
 import type { EnvironmentSecretAction } from "../SecretTableRow/SecretEditTableRow";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { TUnsavedChange, useUnsavedEdit } from "../UnsavedEditsBar";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
@@ -314,11 +315,25 @@ export const QuickAddSecretRow = ({
     submitDraft().catch(() => undefined);
   };
 
-  const resetDraft = () => {
+  const clearDraft = () => {
     setKey("");
     setValue("");
     setComment("");
     setError(undefined);
+  };
+
+  const draftPathRef = useRef(secretPath);
+  useEffect(() => {
+    if (draftPathRef.current === secretPath) return;
+    draftPathRef.current = secretPath;
+    setKey("");
+    setValue("");
+    setComment("");
+    setError(undefined);
+  }, [secretPath]);
+
+  const resetDraft = () => {
+    clearDraft();
     setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
@@ -357,6 +372,50 @@ export const QuickAddSecretRow = ({
   };
 
   const isDraftActive = Boolean(key || value || comment);
+  const pendingKey = key.trim();
+  const getPendingChanges = (): TUnsavedChange[] =>
+    environments.map((environment) => ({
+      environment,
+      environmentName:
+        currentProject.environments.find((env) => env.slug === environment)?.name ?? environment,
+      secretPath,
+      secretKey: pendingKey,
+      secretValue: value,
+      originalValue: null,
+      secretValueHidden: false,
+      isCreate: true,
+      isReferenced: false,
+      secretComment: comment || undefined
+    }));
+  const { isCommitting: isCommittingEdits, holdDrafts } = useUnsavedEdit(
+    "quick-add",
+    isMultiEnvironmentView && Boolean(pendingKey) && !duplicateError && !isSubmitting,
+    {
+      getChanges: getPendingChanges,
+      settle: (committed) => {
+        holdDrafts(
+          getPendingChanges().filter(
+            (change) => !committed.some(({ environment }) => environment === change.environment)
+          )
+        );
+        clearDraft();
+      },
+      discard: clearDraft,
+      restore: (draft) => {
+        if (
+          draft.length !== environments.length ||
+          draft.some(({ environment }) => !environments.includes(environment))
+        ) {
+          holdDrafts(draft);
+          return;
+        }
+        setKey(draft[0].secretKey);
+        setValue(draft[0].secretValue);
+        setComment(draft[0].secretComment ?? "");
+      }
+    },
+    environments.length
+  );
   const requestSave = () => formRef.current?.requestSubmit();
   const handleActionShortcut = useSecretInputActionShortcuts({
     isActive: isDraftActive,
@@ -420,7 +479,7 @@ export const QuickAddSecretRow = ({
               aria-label="New secret name"
               autoComplete="off"
               className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCommittingEdits}
               isError={Boolean(displayedError)}
               placeholder="Add a secret name or paste a .env"
               spellCheck={false}
@@ -464,7 +523,7 @@ export const QuickAddSecretRow = ({
                         className="-mr-1"
                         variant="ghost-muted"
                         size="2xs"
-                        isDisabled={isSubmitting}
+                        isDisabled={isSubmitting || isCommittingEdits}
                       >
                         <PencilLineIcon />
                       </IconButton>
@@ -564,7 +623,7 @@ export const QuickAddSecretRow = ({
               aria-label="New secret value"
               environment={environments[0]}
               form="quick-add-secret-form"
-              isDisabled={isSubmitting}
+              isDisabled={isSubmitting || isCommittingEdits}
               placeholder={
                 isMultiEnvironmentView
                   ? "Add a secret value (applies to all)"
@@ -591,10 +650,10 @@ export const QuickAddSecretRow = ({
           {isDraftActive && (
             <SecretInputActions
               className={
-                isMultiEnvironmentView ? "absolute top-1.5 right-0" : "absolute top-0 -right-1.5"
+                isMultiEnvironmentView ? "absolute top-1.5 right-2" : "absolute top-0 -right-1.5"
               }
-              isSaveDisabled={isSubmitting || Boolean(duplicateError)}
-              isUndoDisabled={isSubmitting}
+              isSaveDisabled={isSubmitting || isCommittingEdits || Boolean(duplicateError)}
+              isUndoDisabled={isSubmitting || isCommittingEdits}
               saveLabel={saveLabel}
               onSave={requestSave}
               onUndo={resetDraft}

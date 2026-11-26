@@ -216,7 +216,8 @@ import {
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
-import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
+import { useCreateCommit, useCreateCommits } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
@@ -310,6 +311,12 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
+import {
+  TUnsavedChange,
+  UnsavedEditsBar,
+  UnsavedEditsScope,
+  useUnsavedEdits
+} from "./components/UnsavedEditsBar";
 import {
   createOverviewTelemetry,
   observeOverviewRequest,
@@ -832,6 +839,24 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const {
+    count: unsavedEditsCount,
+    getEdits: getUnsavedEdits,
+    isCommitting: isCommittingUnsavedEdits,
+    setCommitting: setCommittingUnsavedEdits,
+    dropHeldDrafts
+  } = useUnsavedEdits();
+
+  useEffect(() => {
+    dropHeldDrafts();
+  }, [projectId, secretPath, dropHeldDrafts]);
+  const isCommittingUnsavedEditsRef = useRef(false);
+  const { mutateAsync: createCommits } = useCreateCommits();
+  const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
+  }, []);
   const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
     (rowId, isActive) => {
       setActiveTableRows((current) => {
@@ -2303,6 +2328,28 @@ const OverviewPageContent = () => {
     });
   };
 
+  const ensureSecretFolder = async (env: string) => {
+    if (secretPath === "/") return;
+    const pathSegment = secretPath.split("/").filter(Boolean);
+    const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+    const folderName = pathSegment.at(-1);
+    const canCreateFolder = permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretFolders, {
+        environment: env,
+        secretPath: parentPath
+      })
+    );
+    if (folderName && parentPath && canCreateFolder) {
+      await getOrCreateFolder({
+        projectId,
+        path: parentPath,
+        environment: env,
+        name: folderName
+      });
+    }
+  };
+
   const createSecretInEnvironment = async (
     env: string,
     key: string,
@@ -2311,28 +2358,7 @@ const OverviewPageContent = () => {
     comment: string,
     source: "row" | "quick-add"
   ) => {
-    // create folder if not existing
-    if (secretPath !== "/") {
-      // /hello/world -> [hello","world"]
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: env,
-          secretPath: parentPath
-        })
-      );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment: env,
-          name: folderName
-        });
-      }
-    }
+    await ensureSecretFolder(env);
     return observeOverviewRequest(
       overviewTelemetry,
       { action: "create", resourceType: "secret", source, countBucket: "1" },
@@ -2615,6 +2641,144 @@ const OverviewPageContent = () => {
         type: "success",
         text: "Successfully updated secret"
       });
+    }
+  };
+
+  const getUnsavedChanges = () => getUnsavedEdits().flatMap((edit) => edit.getChanges());
+
+  const handleCommitUnsavedEdits = async (message: string) => {
+    const edits = getUnsavedEdits().map((edit) => ({ edit, changes: edit.getChanges() }));
+    const changes = edits.flatMap((edit) => edit.changes);
+    if (!changes.length || isCommittingUnsavedEditsRef.current) return false;
+
+    isCommittingUnsavedEditsRef.current = true;
+    setCommittingUnsavedEdits(true);
+    try {
+      const createEnvironments = [
+        ...new Set(changes.filter((change) => change.isCreate).map((change) => change.environment))
+      ];
+      const preparedFolders = await Promise.allSettled(createEnvironments.map(ensureSecretFolder));
+      const folderFailures = createEnvironments.flatMap((environment, index) => {
+        const result = preparedFolders[index];
+        return result.status === "rejected"
+          ? [{ environment, commit: undefined, error: result.reason as unknown }]
+          : [];
+      });
+      const sendableChanges = changes.filter(
+        (change) => !folderFailures.some(({ environment }) => environment === change.environment)
+      );
+      const updateEnvironments = [
+        ...new Set(
+          sendableChanges.filter((change) => !change.isCreate).map((change) => change.environment)
+        )
+      ];
+      const fetchedSecrets = await Promise.allSettled(
+        updateEnvironments.map((environment) =>
+          fetchProjectSecrets({ projectId, environment, secretPath, viewSecretValue: false })
+        )
+      );
+      const currentSecrets = new Map(
+        updateEnvironments.flatMap((environment, index) => {
+          const result = fetchedSecrets[index];
+          return result.status === "fulfilled"
+            ? [[environment, result.value.secrets] as const]
+            : [];
+        })
+      );
+      const isDeleted = (change: TUnsavedChange) =>
+        !change.isCreate &&
+        currentSecrets.has(change.environment) &&
+        !currentSecrets
+          .get(change.environment)
+          ?.some(({ secretKey }) => secretKey === change.secretKey);
+      const deletedChanges = sendableChanges.filter(isDeleted);
+      const savableChanges = sendableChanges.filter((change) => !isDeleted(change));
+      if (deletedChanges.length) {
+        createNotification({
+          type: "warning",
+          text: `${deletedChanges.length} change${deletedChanges.length === 1 ? " wasn't" : "s weren't"} saved because the secret wasn't found. Discard ${deletedChanges.length === 1 ? "it" : "them"} if the secret was deleted.`
+        });
+      }
+      const { commits: sentCommits } = savableChanges.length
+        ? await createCommits({
+            projectId,
+            secretPath,
+            message,
+            secrets: savableChanges.map((change) => {
+              if (change.isCreate) return change;
+              const current = currentSecrets
+                .get(change.environment)
+                ?.find(({ secretKey }) => secretKey === change.secretKey);
+              return current
+                ? {
+                    ...change,
+                    secretComment: current.secretComment,
+                    tagIds: current.tags?.map((tag) => tag.id)
+                  }
+                : change;
+            })
+          })
+        : { commits: [] };
+      const commits = [...sentCommits, ...folderFailures];
+      const failedEnvironments = commits
+        .filter(({ commit }) => !commit)
+        .map(({ environment }) => environment);
+      const reviewEnvironments = commits
+        .filter(({ commit }) => commit?.approval)
+        .map(({ environment }) => environment);
+      edits.forEach(({ edit, changes: editChanges }) => {
+        const committed = editChanges.filter(
+          (change) =>
+            !failedEnvironments.includes(change.environment) && !deletedChanges.includes(change)
+        );
+        if (committed.length) edit.settle(committed, reviewEnvironments);
+      });
+      showSecretWriteErrors(
+        commits.flatMap(({ environment, error }) =>
+          error
+            ? [
+                {
+                  error,
+                  environmentName: changes.find((change) => change.environment === environment)
+                    ?.environmentName
+                }
+              ]
+            : []
+        )
+      );
+
+      const reviewEnvironmentNames = [
+        ...new Set(
+          changes
+            .filter((change) => reviewEnvironments.includes(change.environment))
+            .map((change) => change.environmentName)
+        )
+      ];
+      const committedCount = savableChanges.filter(
+        (change) =>
+          !reviewEnvironments.includes(change.environment) &&
+          !failedEnvironments.includes(change.environment)
+      ).length;
+
+      if (committedCount > 0) {
+        createNotification({
+          type: "success",
+          text: `Committed ${committedCount} change${committedCount === 1 ? "" : "s"}`
+        });
+      }
+      if (reviewEnvironmentNames.length > 0) {
+        createNotification({
+          type: "info",
+          text: `Change request opened for ${reviewEnvironmentNames.join(", ")}`
+        });
+      }
+      return failedEnvironments.length < commits.length;
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+      return false;
+    } finally {
+      isCommittingUnsavedEditsRef.current = false;
+      setCommittingUnsavedEdits(false);
     }
   };
 
@@ -3404,6 +3568,9 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
   const hasSelectedEntriesOnPage =
     mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
     secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
@@ -5710,10 +5877,7 @@ const OverviewPageContent = () => {
       <SecretsActivationNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
-        isLifted={
-          hasPendingBatchChanges ||
-          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
-        }
+        isLifted={hasPendingBatchChanges || hasSelectedEntries || unsavedEditsCount > 0}
       />
       {isSingleEnvView && singleVisibleEnv && (
         <CommitForm
@@ -5728,12 +5892,24 @@ const OverviewPageContent = () => {
           onReviewOpenChange={setIsReviewOpen}
         />
       )}
+      {!isSingleEnvView && (
+        <UnsavedEditsBar
+          count={hasSelectedEntries ? 0 : unsavedEditsCount}
+          isCommitting={isCommittingUnsavedEdits}
+          portalContainer={layoutContainer}
+          getChanges={getUnsavedChanges}
+          onCommit={handleCommitUnsavedEdits}
+          onDiscardAll={() => getUnsavedEdits().forEach((edit) => edit.discard())}
+        />
+      )}
     </div>
   );
 };
 
 export const OverviewPage = () => (
   <StoreProvider>
-    <OverviewPageContent />
+    <UnsavedEditsScope>
+      <OverviewPageContent />
+    </UnsavedEditsScope>
   </StoreProvider>
 );
