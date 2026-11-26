@@ -851,10 +851,20 @@ export const handBuiltDocsLinks = (text: string) => {
   const opened = [...text.matchAll(/\bwindow\.open\(\s*([^,)]+)/g)]
     .filter((match) => readsDocs(match[1]))
     .map((match) => ({ index: match.index ?? 0, text: match[0] }));
+  const passed = [...text.matchAll(/[(,]\s*[`"']https?:\/\/(?:www\.)?infisical\.com\/docs[^`"']*/g)]
+    .filter(
+      (match) =>
+        !opened.some(
+          (open) =>
+            open.index <= (match.index ?? 0) &&
+            (match.index ?? 0) < open.index + open.text.length + 2
+        )
+    )
+    .map((match) => ({ index: match.index ?? 0, text: match[0] }));
   const labels = [
     ...text.matchAll(/>\s*(?:Docs|Documentation|Read (?:the )?docs|View docs)\s*(?:↗\s*)?</g)
   ].map((match) => ({ index: match.index ?? 0, text: match[0] }));
-  return [...links, ...opened, ...labels];
+  return [...links, ...opened, ...passed, ...labels];
 };
 
 export const v4Checks: readonly V4Check[] = [
