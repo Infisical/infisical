@@ -145,18 +145,27 @@ export const InternalInstallForm = ({
       }, onPendingChange)}
     >
       <Stack gap={16}>
-        <Field label="Parent CA" error={errors.parent}>
+        <Field
+          label="Parent CA"
+          error={errors.parent}
+          description={
+            !isPending && parents.length === 0
+              ? "No active CA can sign this one. Create a root CA first."
+              : undefined
+          }
+        >
           {isPending ? (
             <Skeleton height={32} />
           ) : (
             <Select
               aria-label="Parent CA"
               placeholder="Select a parent CA"
+              descriptionLayout="stacked"
               value={parent?.id ?? ""}
               invalid={Boolean(errors.parent)}
               options={parents.map((entry) => ({
                 value: entry.id,
-                label: entry.friendlyName || entry.commonName || entry.id,
+                label: entry.name,
                 description: `${caTypeToNameMap[entry.type]}: ${entry.dn}`
               }))}
               onValueChange={(next) => {
