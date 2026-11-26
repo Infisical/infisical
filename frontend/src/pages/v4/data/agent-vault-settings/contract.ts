@@ -27,11 +27,13 @@ export type AgentVaultSettingsAdapter = {
   useSessionLogPlan: (orgId: string) => V4QueryResult<TSessionLogPlan>;
   useSessionLogSettings: (
     orgId: string,
-    projectId: string
+    projectId: string,
+    enabled?: boolean
   ) => V4QueryResult<TAgentVaultSessionLogSettingsState>;
   useSessionLogHealth: (
     orgId: string,
-    projectId: string
+    projectId: string,
+    enabled?: boolean
   ) => V4QueryResult<TAgentVaultSessionLogHealth>;
   useSessionLogReadCheck: (
     orgId: string,

@@ -79,6 +79,12 @@ export type TAgentVaultSessionLogs = {
   isLiveGapUnfilled: boolean;
 };
 
+export const GRANTED_SERVICES_REQUIRING_SETUP = {
+  requiresSetup: true,
+  granted: true,
+  limit: 1
+} as const;
+
 export type TAgentVaultCreatedIdentity = { id: string; name: string; authAttachFailed: boolean };
 
 export type AgentVaultAdapter = {
@@ -145,6 +151,11 @@ export type AgentVaultAdapter = {
     projectId: string
   ) => ReturnType<V4Mutation<TAddAgentVaultMembersDTO>>;
   useIdentityUniversalAuth: (identityId: string) => V4QueryResult<IdentityUniversalAuth>;
+  useGrantedServicesRequiringSetupCount: (
+    orgId: string,
+    projectId: string,
+    enabled: boolean
+  ) => V4QueryResult<number>;
   useMembers: <T extends AgentVaultMemberType>(
     projectId: string,
     params: TListAgentVaultMembersDTO & { actorType: T },
@@ -184,7 +195,10 @@ export type AgentVaultAdapter = {
     projectId: string,
     machineIdentityId: string,
     enabled?: boolean
-  ) => V4QueryResult<TAgentVaultDelegationDetail | null>;
+  ) => V4QueryResult<TAgentVaultDelegationDetail | null> & {
+    isFetching: boolean;
+    refetch: () => Promise<unknown>;
+  };
   useAvailableDelegationSubjects: (
     projectId: string,
     machineIdentityId: string,

@@ -214,7 +214,7 @@ export const AddBundleSkillsDialog = ({
   projectId: string;
   accessBundleId: string;
   bundleSkillIds: readonly string[];
-  onCreateNew?: () => void;
+  onCreateNew?: (name: string) => void;
   onOpenChange: (open: boolean) => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -251,7 +251,7 @@ export const AddBundleSkillsDialog = ({
         onCreateNew
           ? () => {
               onOpenChange(false);
-              onCreateNew();
+              onCreateNew(search.trim());
             }
           : undefined
       }

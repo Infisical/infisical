@@ -69,6 +69,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   type AgentVaultAdapter,
+  GRANTED_SERVICES_REQUIRING_SETUP,
   isNoUniversalAuthError,
   type TAgentVaultAccessBundleList,
   type TAgentVaultSessionLogs
@@ -488,6 +489,19 @@ export const agentVaultLive: AgentVaultAdapter = {
       }
     });
   },
+  useGrantedServicesRequiringSetupCount: (orgId, projectId, enabled) =>
+    useQuery({
+      queryKey: agentVaultKeys.serviceList(orgId, projectId, GRANTED_SERVICES_REQUIRING_SETUP),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ services: unknown[]; totalCount: number }>(
+          "/api/v1/agent-vault/services",
+          { params: { ...GRANTED_SERVICES_REQUIRING_SETUP, projectId } }
+        );
+        return data;
+      },
+      enabled,
+      select: (data) => data.totalCount
+    }),
   useIdentityUniversalAuth: (identityId) =>
     useGetIdentityUniversalAuth(identityId, {
       retry: (failureCount, error) => !isNoUniversalAuthError(error) && failureCount < 1,

@@ -64,6 +64,7 @@ type QueryOf<H extends QueryHook> = (...args: Parameters<H>) => V4QueryResult<
   NonNullable<ReturnType<H>["data"]>
 > & {
   isFetching?: boolean;
+  isPlaceholderData?: boolean;
   refetch?: () => unknown;
 };
 

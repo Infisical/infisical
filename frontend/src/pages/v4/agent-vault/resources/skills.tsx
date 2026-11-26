@@ -218,11 +218,13 @@ const OlderVersionAlert = ({
 export const CreateSkillDialog = ({
   projectId,
   initialName = "",
+  notify = true,
   onCreated,
   onOpenChange
 }: {
   projectId: string;
   initialName?: string;
+  notify?: boolean;
   onCreated?: (skill: { id: string; name: string }) => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
 }) => {
@@ -340,7 +342,7 @@ export const CreateSkillDialog = ({
       return readableFailure("Failed to create skill")(error);
     }
     const { skill } = created;
-    saved(`Skill ${skill.name} created`);
+    if (notify) saved(`Skill ${skill.name} created`);
     completed.current = true;
     await onCreated?.(skill);
     return undefined;

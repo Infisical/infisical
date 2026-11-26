@@ -33,6 +33,10 @@ export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLo
   sections: location.sections.map((section) => ({
     ...section,
     items: section.items.filter((item) => item.id !== itemId)
+  })),
+  settings: location.settings?.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => item.id !== itemId)
   }))
 });
 

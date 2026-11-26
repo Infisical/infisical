@@ -18,6 +18,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, type TProjectPermission } from "@app/hooks/api/roles/types";
@@ -65,8 +66,27 @@ const AddIdentityForm = ({
 }) => {
   const scope = useProjectScope();
   const access = useV4Adapter("access");
+  const agentVault = useV4Adapter("agentVault");
   const go = useGo();
-  const { data: roles } = access.useProjectRoles(projectId, scope.projectType);
+  const isAgentVault = scope.projectType === ProjectType.AgentVault;
+  const { data: projectRoles } = access.useProjectRoles(projectId, scope.projectType);
+  const roles = useMemo(() => {
+    if (!isAgentVault) return projectRoles;
+    return (projectRoles ?? []).flatMap((item) => {
+      const productRole = AGENT_VAULT_PRODUCT_ROLE_OPTIONS.find(
+        (option) => option.value === item.slug
+      );
+      return productRole
+        ? [{ ...item, name: productRole.label, description: productRole.description }]
+        : [];
+    });
+  }, [projectRoles, isAgentVault]);
+  const { data: agentVaultAssignable } = agentVault.useAssignableIdentities(
+    projectId,
+    isAgentVault
+  );
+  const createAgentVaultIdentity = agentVault.useCreateManagedIdentity(projectId);
+  const addAgentVaultMembers = agentVault.useAddMembers(projectId);
   const { data: availableIdentities } = access.useAvailableProjectIdentities({
     projectId,
     projectType: scope.projectType
@@ -96,16 +116,17 @@ const AddIdentityForm = ({
   const [templateIds, setTemplateIds] = useState<string[]>([]);
 
   const assignable = useMemo(() => {
+    if (isAgentVault) return agentVaultAssignable ?? [];
     const existing = new Set(members?.identityMemberships.map((entry) => entry.identity.id));
     return (availableIdentities ?? []).filter((identity) => !existing.has(identity.id));
-  }, [availableIdentities, members]);
+  }, [isAgentVault, agentVaultAssignable, availableIdentities, members]);
 
   const [mode, setMode] = useState<AddIdentityMode>();
   const currentMode = mode ?? (assignable.length > 0 ? "assign" : "create");
   const [name, setName] = useState("");
   const [identityId, setIdentityId] = useState("");
   const [role, setRole] = useState<string>(
-    scope.projectType === ProjectType.CertificateManager
+    isAgentVault || scope.projectType === ProjectType.CertificateManager
       ? ProjectMembershipRole.Member
       : ProjectMembershipRole.NoAccess
   );
@@ -142,6 +163,25 @@ const AddIdentityForm = ({
         description: "You can add it from the identity page."
       });
     try {
+      if (isAgentVault) {
+        if (currentMode === "assign") {
+          await addAgentVaultMembers.mutateAsync({ machineIdentityIds: [identityId], role });
+          saved("Successfully added machine identity");
+          onClose();
+          return;
+        }
+        const created = await createAgentVaultIdentity.mutateAsync({ name: name.trim(), role });
+        if (created.authAttachFailed)
+          toast({
+            tone: "bad",
+            title: "Machine identity created, but attaching Universal Auth failed",
+            description: "Add an auth method from the identity page."
+          });
+        else saved("Successfully created machine identity");
+        onClose();
+        go(accessLinks.projectIdentity(scope, created.id));
+        return;
+      }
       if (currentMode === "assign") {
         await addMembership.mutateAsync({
           projectId,

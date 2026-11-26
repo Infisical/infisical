@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import type { SidebarSection } from "@infisical/cipher/ui/sidebar";
 import type { LinkOptions } from "@tanstack/react-router";
@@ -40,7 +40,8 @@ const shellLevel = (
   label: string,
   sections: readonly ShellNavSection[],
   opens: Record<string, V4ShellLevel> = {},
-  counts: Record<string, number> = {}
+  counts: Record<string, number> = {},
+  badges: Record<string, ReactNode> = {}
 ): V4ShellLevel => {
   const first = sections[0].items[0];
   return {
@@ -54,6 +55,7 @@ const shellLevel = (
         label: item.label,
         icon: item.icon,
         count: counts[item.id] || item.count,
+        badge: badges[item.id],
         ...(opens[item.id]
           ? { drillIn: true, link: opens[item.id].landing }
           : { link: navLink(linkTo, item) })
@@ -115,6 +117,7 @@ export const shellTrail = ({
   nested = [],
   linkTo,
   projectCounts,
+  projectBadges,
   productCounts
 }: {
   at: ShellLocation;
@@ -125,6 +128,8 @@ export const shellTrail = ({
   linkTo: LinkTo;
   /** Count badges on the project level's links, by item id. */
   projectCounts?: Record<string, number>;
+  /** Badges on the project level's links, by item id. */
+  projectBadges?: Record<string, ReactNode>;
   /** Count badges on an org-scoped product level's links, by item id. */
   productCounts?: Record<string, number>;
 }): V4ShellLevel[] => {
@@ -153,7 +158,15 @@ export const shellTrail = ({
   const opens = projectSettings ? { settings: projectSettings } : undefined;
   if (at.projectId)
     trail.push(
-      shellLevel(linkTo, at.level, projectName ?? "Project", at.sections, opens, projectCounts)
+      shellLevel(
+        linkTo,
+        at.level,
+        projectName ?? "Project",
+        at.sections,
+        opens,
+        projectCounts,
+        projectBadges
+      )
     );
   else if (at.level === "pki" || at.level === "scanning" || at.level === "pam")
     trail.push(

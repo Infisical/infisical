@@ -46,7 +46,7 @@ export const AgentVaultIdentityDelegationSection = ({
   });
   const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
   const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
-  const { data, isPending, error } = av.useDelegation(
+  const { data, isPending, error, isFetching, refetch } = av.useDelegation(
     projectId,
     machineIdentityId,
     canReadDelegation
@@ -110,7 +110,20 @@ export const AgentVaultIdentityDelegationSection = ({
   ];
 
   let body = <EmptyState size="sm" icon="user" title="No users or groups yet" />;
-  if (loadFailed) body = <EmptyState size="sm" icon="alert" title="Couldn't load the delegation" />;
+  if (loadFailed)
+    body = (
+      <EmptyState
+        size="sm"
+        icon="alert"
+        title="Couldn't load the delegation"
+        description="Reload to see its users and groups before you add or remove any."
+        actions={
+          <Button variant="outline" size="sm" loading={isFetching} onClick={() => refetch()}>
+            Reload
+          </Button>
+        }
+      />
+    );
   else if (rows.length || isPending)
     body = (
       <DataTable
@@ -129,6 +142,7 @@ export const AgentVaultIdentityDelegationSection = ({
       <Card
         variant="framed"
         title="Delegation"
+        hint="Lets this machine identity start sessions on behalf of these users and groups, using each user's personal values."
         badges={<DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />}
         action={
           canEditDelegation &&
