@@ -108,7 +108,7 @@ export const registerSecretManagerTools = ({
         projectId,
         environment: environmentSlug,
         secretPath,
-        channel: UserAgentType.MCP,
+        channel: UserAgentType.REMOTE_MCP,
         ...auditLogInfo,
         actorType: req.permission.type
       }

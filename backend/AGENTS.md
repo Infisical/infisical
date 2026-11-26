@@ -450,7 +450,7 @@ applications using the REST API still only get `secrets:read`. `inject-identity.
 authenticator rejects any `aud`, and the MCP route rejects OAuth tokens without it; keep all three, or an MCP client
 becomes a delegated client of the whole API. The MCP route accepts user logins only (`AuthMode.OAUTH`), so a tool may
 only do what a route accepting `AuthMode.OAUTH` does. The tools call services directly, so each does what its REST
-route does (audit log with `UserAgentType.MCP`, secret read activity, the same PostHog event). Each product's tools
+route does (audit log with `UserAgentType.REMOTE_MCP`, secret read activity, the same PostHog event). Each product's tools
 live in `server/routes/mcp/tools/<product>.ts` and are registered in `PRODUCT_TOOLS` (`mcp-server.ts`) with that
 product's scopes, so a connection only lists the tools of products it was granted; register through the context's
 `registerTool`, which applies the scope check and denial audit every tool needs. `/api/mcp`

@@ -235,7 +235,7 @@ export enum UserAgentType {
   OTHER = "other",
   PYTHON_SDK = "InfisicalPythonSDK",
   NODE_SDK = "InfisicalNodeSDK",
-  MCP = "mcp"
+  REMOTE_MCP = "remote-mcp"
 }
 
 export enum EventType {

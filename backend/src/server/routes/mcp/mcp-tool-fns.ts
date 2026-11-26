@@ -61,7 +61,7 @@ export const createMcpToolContext = (
     actorOrgId: req.permission.orgId,
     actorAuthMethod: req.permission.authMethod
   };
-  const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.MCP };
+  const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.REMOTE_MCP };
 
   // Analytics must never turn a tool call that already succeeded into an error.
   const sendEvent = async (event: TPostHogEvent) => {

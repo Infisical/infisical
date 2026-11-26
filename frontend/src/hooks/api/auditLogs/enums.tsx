@@ -18,7 +18,7 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   NODE_SDK = "InfisicalNodeSDK",
   PYTHON_SDK = "InfisicalPythonSDK",
-  MCP = "mcp",
+  REMOTE_MCP = "remote-mcp",
   OTHER = "other"
 }
 
