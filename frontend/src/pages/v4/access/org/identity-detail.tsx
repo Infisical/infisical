@@ -37,18 +37,19 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
+import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
-import { IdentityAlertAction } from "../project/identity-alerts";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, EditDetailsButton, Gate, RESTRICTED } from "../ui";
@@ -206,7 +207,13 @@ const IdentityHeaderActions = ({
   onDelete: () => void;
 }) => (
   <Inline gap={8} wrap={false}>
-    {showAlerts && <IdentityAlertAction identityId={identity.id} canEdit={canEdit} />}
+    {showAlerts && (
+      <ResourceAlertAction
+        resourceType={AlertResourceType.IdentityAuthentication}
+        resourceId={identity.id}
+        canEdit={canEdit}
+      />
+    )}
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" iconRight="more">

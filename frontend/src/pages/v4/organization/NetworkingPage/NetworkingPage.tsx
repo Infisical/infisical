@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { Stack } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -12,9 +12,11 @@ import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 
 import { useOrgPermission } from "../../access/permissions";
 import { Gate } from "../../access/ui";
+import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { GatewaysPanel } from "./gateways";
@@ -97,6 +99,18 @@ export const NetworkingPage = () => {
           Create relay
         </Button>
       </Gate>
+    );
+
+  const canEditGateways = permission.can(
+    OrgGatewayPermissionActions.EditGateways,
+    OrgPermissionSubjects.Gateway
+  );
+  if (!isRelays)
+    create = (
+      <Inline gap={8} wrap={false}>
+        <ResourceAlertAction resourceType={AlertResourceType.Gateway} canEdit={canEditGateways} />
+        {create}
+      </Inline>
     );
 
   const closeDialog = () => setDialog(undefined);
