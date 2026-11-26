@@ -67,7 +67,15 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { EditDetailsButton, Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
+import {
+  AccessRestricted,
+  EditDetailsButton,
+  Gate,
+  ListToolbar,
+  Muted,
+  RESTRICTED,
+  type Sort
+} from "../ui";
 import { GroupDialog } from "./group-dialog";
 import { ProjectMembershipsSection } from "./project-memberships";
 import { useDebounced } from "./use-debounced";
@@ -437,14 +445,16 @@ export const OrgGroupDetail = () => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
   const go = useGo();
-  const { permission } = useOrgPermission();
+  const { permission, isPending: permissionPending } = useOrgPermission();
   const { data, isPending } = access.useGroup(groupId);
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const remove = access.useDeleteGroup();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const back = () => go(accessLinks.org(orgId, OrgAccessControlTabSections.Groups));
-  if (isPending) return <Loader size="page" label="Loading group" />;
+  if (permissionPending || isPending) return <Loader size="page" label="Loading group" />;
+  if (!permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups))
+    return <AccessRestricted requirement="read Groups" />;
   const group = data?.group;
   if (!group)
     return (

@@ -48,6 +48,7 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
+import { useCustomRoleGate } from "./custom-role-gate";
 
 import styles from "../access.module.css";
 
@@ -70,6 +71,7 @@ const RoleDialog = ({
   const orgId = useOrgId();
   const go = useGo();
   const createRole = useV4Adapter("access").useCreateOrgRole();
+  const rbacGate = useCustomRoleGate("organization.org-role");
   const initialName = source ? `${source.name} Duplicate` : "";
   const [name, setName] = useState(initialName);
   const [slug, setSlug] = useState(toSlug(initialName));
@@ -87,7 +89,7 @@ const RoleDialog = ({
       slugIssue = "A role with this slug already exists";
     const next = { name: name.trim() ? undefined : "Name required", slug: slugIssue };
     setErrors(next);
-    if (next.name || next.slug) return;
+    if (next.name || next.slug || rbacGate.blockedAny()) return;
     setPending(true);
     try {
       const role = await createRole.mutateAsync({
@@ -161,6 +163,7 @@ const RoleDialog = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {rbacGate.upgradeGate}
     </Dialog>
   );
 };
@@ -173,6 +176,7 @@ export const OrgRolesTab = () => {
   const { data: roles = [], isPending } = access.useOrgRoles(orgId);
   const { data: org } = access.useOrganization(orgId);
   const updateOrg = access.useUpdateOrganization();
+  const rbacGate = useCustomRoleGate("organization.org-role");
   const deleteRole = access.useDeleteOrgRole();
   const [dialog, setDialog] = useState<{ source?: TOrgRole }>();
   const [deleting, setDeleting] = useState<TOrgRole>();
@@ -198,6 +202,7 @@ export const OrgRolesTab = () => {
   const openRole = (role: TOrgRole) => go(accessLinks.orgRole(orgId, role.id));
 
   const setDefault = async (role: TOrgRole) => {
+    if (rbacGate.blocked(role.slug)) return;
     try {
       await updateOrg.mutateAsync({ orgId, defaultMembershipRoleSlug: role.slug });
       saved("Successfully updated default membership role");
@@ -372,6 +377,7 @@ export const OrgRolesTab = () => {
           onOpenChange={(open) => !open && setDialog(undefined)}
         />
       )}
+      {rbacGate.upgradeGate}
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}

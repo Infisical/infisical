@@ -43,6 +43,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -61,6 +62,7 @@ import {
   RemoveAuthMethodDialog,
   sortedMethods
 } from "./auth-methods";
+import { useCustomRoleGate } from "./custom-role-gate";
 import { Dash, MetadataBadges } from "./detail-parts";
 import { DeleteIdentityLabel, lastUsedLabel, RemoveIdentityDialog } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
@@ -81,11 +83,14 @@ const EditIdentityDialog = ({
   const orgId = useOrgId();
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const updateIdentity = access.useUpdateOrgIdentity();
+  const rbacGate = useCustomRoleGate("organization.org-identity");
   const { identity } = membership;
+  const initialRole = orgRoleSlug(roles, {
+    role: membership.role,
+    roleId: membership.customRole?.id
+  });
   const [name, setName] = useState(identity.name);
-  const [role, setRole] = useState(() =>
-    orgRoleSlug(roles, { role: membership.role, roleId: membership.customRole?.id })
-  );
+  const [role, setRole] = useState(initialRole);
   const [protectedFlag, setProtected] = useState(identity.hasDeleteProtection);
   const [metadata, setMetadata] = useState<MetadataEntry[]>(() =>
     membership.metadata.map(({ key, value }) => ({ key, value }))
@@ -101,6 +106,7 @@ const EditIdentityDialog = ({
     const next = { name: name.trim() ? undefined : "Required", metadata: metaErrors };
     setErrors(next);
     if (next.name || metaErrors.some((entry) => entry.key || entry.value)) return;
+    if (role !== initialRole && rbacGate.blocked(role)) return;
     setPending(true);
     try {
       await updateIdentity.mutateAsync({
@@ -121,61 +127,64 @@ const EditIdentityDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>Update machine identity</DialogTitle>
-        </DialogHeader>
-        <form
-          id="update-org-identity"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field label="Name" error={errors.name}>
-              <Input
-                autoComplete="off"
-                placeholder="Machine 1"
-                value={name}
-                invalid={Boolean(errors.name)}
-                onChange={(event) => setName(event.target.value)}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>Update machine identity</DialogTitle>
+          </DialogHeader>
+          <form
+            id="update-org-identity"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <Field label="Name" error={errors.name}>
+                <Input
+                  autoComplete="off"
+                  placeholder="Machine 1"
+                  value={name}
+                  invalid={Boolean(errors.name)}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </Field>
+              <Field label="Update role">
+                <Select
+                  label="Update role"
+                  value={role}
+                  options={roleOptions(roles)}
+                  onChange={setRole}
+                />
+              </Field>
+              <Switch
+                layout="row"
+                label="Delete protection"
+                checked={protectedFlag}
+                onChange={setProtected}
               />
-            </Field>
-            <Field label="Update role">
-              <Select
-                label="Update role"
-                value={role}
-                options={roleOptions(roles)}
-                onChange={setRole}
+              <MetadataEditor
+                boxed
+                addLabel="Add entry"
+                entries={metadata}
+                errors={errors.metadata}
+                onChange={setMetadata}
               />
-            </Field>
-            <Switch
-              layout="row"
-              label="Delete protection"
-              checked={protectedFlag}
-              onChange={setProtected}
-            />
-            <MetadataEditor
-              boxed
-              addLabel="Add entry"
-              entries={metadata}
-              errors={errors.metadata}
-              onChange={setMetadata}
-            />
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="update-org-identity" loading={pending}>
-            Update
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="update-org-identity" loading={pending}>
+              Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {rbacGate.upgradeGate}
+    </>
   );
 };
 
@@ -237,6 +246,7 @@ export const OrgIdentityDetail = () => {
   const { permission, isPending: permissionPending } = useOrgPermission();
   const { data: membership, isPending } = access.useOrgIdentity(identityId);
   const { data: roles } = access.useOrgRoles(orgId);
+  const isSubOrg = useV4Session().organization.isSubOrganization;
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [authForm, setAuthForm] = useState<{ method?: IdentityAuthMethod }>();
@@ -391,11 +401,14 @@ export const OrgIdentityDetail = () => {
                     "Managed by",
                     <Badge key="managed" tone="outline">
                       <Icon name="building" />
-                      Organization
+                      {isSubOrg && isOwnIdentity ? "Sub-organization" : "Organization"}
                     </Badge>
                   ],
                   ["Organization role", orgRoleName(roles, roleRef)],
-                  ["Created", formatDateTime(membership.createdAt)],
+                  [
+                    isSubOrg && !isOwnIdentity ? "Joined sub-organization" : "Created",
+                    formatDateTime(membership.createdAt)
+                  ],
                   [
                     "Delete protection",
                     identity.hasDeleteProtection ? (

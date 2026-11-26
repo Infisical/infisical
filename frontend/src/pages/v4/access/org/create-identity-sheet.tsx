@@ -28,6 +28,7 @@ import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { roleOptions } from "../roles";
 import { failed, readableFailure, saved } from "../toast";
+import { useCustomRoleGate } from "./custom-role-gate";
 
 const RootCreateIdentitySheet = ({
   open,
@@ -43,6 +44,7 @@ const RootCreateIdentitySheet = ({
   const { data: organization } = access.useOrganization(orgId);
   const create = access.useCreateOrgIdentity();
   const addUniversalAuth = access.useAddIdentityUniversalAuth();
+  const rbacGate = useCustomRoleGate("organization.org-identity");
   const defaultRole = organization
     ? (findOrgMembershipRole(roles, organization.defaultMembershipRole)?.slug ?? "")
     : "";
@@ -65,6 +67,7 @@ const RootCreateIdentitySheet = ({
       setError("Required");
       return;
     }
+    if (selectedRole && rbacGate.blocked(selectedRole)) return;
     setPending(true);
     try {
       const identity = await create.mutateAsync({
@@ -89,57 +92,60 @@ const RootCreateIdentitySheet = ({
   };
 
   return (
-    <Sheet open={open} onOpenChange={close}>
-      <SheetContent pending={pending}>
-        <SheetHeader>
-          <SheetTitle>Create organization machine identity</SheetTitle>
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id="create-org-identity"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <Stack gap={16}>
-              <Field label="Name" error={error}>
-                <Input
-                  autoFocus
-                  autoComplete="off"
-                  placeholder="Machine 1"
-                  value={name}
-                  invalid={Boolean(error)}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setError(undefined);
-                  }}
-                />
-              </Field>
-              <Field label="Role">
-                <Select
-                  label="Role"
-                  placeholder="Select role..."
-                  value={selectedRole}
-                  options={roleOptions(roles)}
-                  onChange={setRole}
-                />
-              </Field>
-            </Stack>
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <Inline gap={8} justify="end">
-            <Button variant="outline" onClick={() => close(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" form="create-org-identity" loading={pending}>
-              Create
-            </Button>
-          </Inline>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={open} onOpenChange={close}>
+        <SheetContent pending={pending}>
+          <SheetHeader>
+            <SheetTitle>Create organization machine identity</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <form
+              id="create-org-identity"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submit();
+              }}
+            >
+              <Stack gap={16}>
+                <Field label="Name" error={error}>
+                  <Input
+                    autoFocus
+                    autoComplete="off"
+                    placeholder="Machine 1"
+                    value={name}
+                    invalid={Boolean(error)}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      setError(undefined);
+                    }}
+                  />
+                </Field>
+                <Field label="Role">
+                  <Select
+                    label="Role"
+                    placeholder="Select role..."
+                    value={selectedRole}
+                    options={roleOptions(roles)}
+                    onChange={setRole}
+                  />
+                </Field>
+              </Stack>
+            </form>
+          </SheetBody>
+          <SheetFooter>
+            <Inline gap={8} justify="end">
+              <Button variant="outline" onClick={() => close(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" form="create-org-identity" loading={pending}>
+                Create
+              </Button>
+            </Inline>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      {rbacGate.upgradeGate}
+    </>
   );
 };
 
@@ -174,6 +180,7 @@ const SubOrgAddIdentitySheet = ({
   const addUniversalAuth = access.useAddIdentityUniversalAuth();
   const link = access.useCreateOrgIdentityMembership();
   const [draft, setDraft] = useState(EMPTY_SUB_ORG_IDENTITY);
+  const rbacGate = useCustomRoleGate("organization.org-identity");
   const { data: available = [], isPending: availablePending } = access.useAvailableOrgIdentities({
     enabled: open && draft.mode === "assign"
   });
@@ -224,6 +231,7 @@ const SubOrgAddIdentitySheet = ({
         completeLabel={draft.mode === "assign" ? "Assign" : "Create"}
         onOpenChange={(next) => !next && requestDiscard()}
         onComplete={async () => {
+          if (draft.mode === "create" && role && rbacGate.blocked(role)) return;
           const identityId = draft.mode === "assign" ? await assign() : await createNew();
           close();
           go(accessLinks.orgIdentity(orgId, identityId));
@@ -283,6 +291,7 @@ const SubOrgAddIdentitySheet = ({
           }
         ]}
       />
+      {rbacGate.upgradeGate}
       <DiscardChangesAlertDialog {...discardDialogProps} title="Discard this machine identity?" />
     </>
   );

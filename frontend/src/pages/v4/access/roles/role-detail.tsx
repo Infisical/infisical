@@ -45,6 +45,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
+import { useCustomRoleGate } from "../org/custom-role-gate";
 import { useOrgPermission, useProjectPermission } from "../permissions";
 import { useProjectPlanGates } from "../project/plan-gates";
 import { useProjectScope } from "../project/scope";
@@ -502,6 +503,7 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   const updateRole = access.useUpdateOrgRole();
   const createRole = access.useCreateOrgRole();
   const deleteRole = access.useDeleteOrgRole();
+  const rbacGate = useCustomRoleGate("organization.org-role");
   const backHref = accessLinks.org(orgId, OrgAccessControlTabSections.Roles);
 
   const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
@@ -512,60 +514,67 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   const isCustom = isCustomOrgRole(role.slug);
   const isSubOrganization = Boolean(org?.rootOrgId) && org?.rootOrgId !== org?.id;
   return (
-    <RoleEditor
-      key={role.id}
-      scope="org"
-      role={role}
-      subjects={isSubOrganization ? SUB_ORG_SUBJECTS : undefined}
-      isCustom={isCustom}
-      isDefault={org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug}
-      taken={(roles ?? []).map((item) => item.slug)}
-      backHref={backHref}
-      can={{
-        edit: permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role),
-        create: permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Role),
-        delete: permission.can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role)
-      }}
-      references={{}}
-      vaultConnections={[]}
-      savePermissions={async (permissions) => {
-        await updateRole.mutateAsync({ orgId, id: role.id, permissions: orgToApi(permissions) });
-      }}
-      update={async (draft) => {
-        try {
-          await updateRole.mutateAsync({ orgId, id: role.id, ...draft });
-          saved("Successfully updated role");
-          return true;
-        } catch (error) {
-          failed("Failed to update role", error);
-          return false;
+    <>
+      <RoleEditor
+        key={role.id}
+        scope="org"
+        role={role}
+        subjects={isSubOrganization ? SUB_ORG_SUBJECTS : undefined}
+        isCustom={isCustom}
+        isDefault={
+          org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug
         }
-      }}
-      duplicate={async (draft) => {
-        try {
-          const created = await createRole.mutateAsync({
-            orgId,
-            ...draft,
-            permissions: role.permissions
-          });
-          saved("Role duplicated successfully");
-          go(accessLinks.orgRole(orgId, created.id));
-          return true;
-        } catch (error) {
-          failed("Failed to duplicate role", error);
-          return false;
-        }
-      }}
-      remove={async () => {
-        try {
-          await deleteRole.mutateAsync({ orgId, id: role.id });
-          saved("Successfully deleted organization role");
-          go(backHref);
-        } catch (error) {
-          failed("Failed to delete organization role", error);
-        }
-      }}
-    />
+        taken={(roles ?? []).map((item) => item.slug)}
+        backHref={backHref}
+        can={{
+          edit: permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role),
+          create: permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Role),
+          delete: permission.can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role)
+        }}
+        references={{}}
+        vaultConnections={[]}
+        savePermissions={async (permissions) => {
+          await updateRole.mutateAsync({ orgId, id: role.id, permissions: orgToApi(permissions) });
+        }}
+        update={async (draft) => {
+          if (rbacGate.blockedAny()) return false;
+          try {
+            await updateRole.mutateAsync({ orgId, id: role.id, ...draft });
+            saved("Successfully updated role");
+            return true;
+          } catch (error) {
+            failed("Failed to update role", error);
+            return false;
+          }
+        }}
+        duplicate={async (draft) => {
+          if (rbacGate.blockedAny()) return false;
+          try {
+            const created = await createRole.mutateAsync({
+              orgId,
+              ...draft,
+              permissions: role.permissions
+            });
+            saved("Role duplicated successfully");
+            go(accessLinks.orgRole(orgId, created.id));
+            return true;
+          } catch (error) {
+            failed("Failed to duplicate role", error);
+            return false;
+          }
+        }}
+        remove={async () => {
+          try {
+            await deleteRole.mutateAsync({ orgId, id: role.id });
+            saved("Successfully deleted organization role");
+            go(backHref);
+          } catch (error) {
+            failed("Failed to delete organization role", error);
+          }
+        }}
+      />
+      {rbacGate.upgradeGate}
+    </>
   );
 };
 

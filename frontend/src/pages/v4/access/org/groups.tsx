@@ -26,6 +26,7 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
 
+import { GroupsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects
@@ -39,6 +40,7 @@ import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
+import { usePlanGate } from "../plan-gate";
 import { failed, saved, toast } from "../toast";
 import { Gate, RESTRICTED, type Sort } from "../ui";
 import { type GroupDraft, GroupDialog } from "./group-dialog";
@@ -174,6 +176,7 @@ export const OrgGroupsTab = () => {
   const go = useGo();
   const { permission } = useOrgPermission();
   const isSubOrg = useV4Session().organization.isSubOrganization;
+  const groupsGate = usePlanGate("groups", GroupsUpgradeIntent, "organization.org-groups");
   const orgWord = isSubOrg ? "sub-organization" : "organization";
   const can = (action: OrgPermissionGroupActions) =>
     permission.can(action, OrgPermissionSubjects.Groups);
@@ -316,7 +319,7 @@ export const OrgGroupsTab = () => {
               variant="accent"
               icon="plus"
               disabled={!canCreate}
-              onClick={() => setDialog({})}
+              onClick={() => !groupsGate.blocked() && setDialog({})}
             >
               {isSubOrg ? "Add" : "Create"}
             </Button>
@@ -375,6 +378,7 @@ export const OrgGroupsTab = () => {
           onOpenChange={(open) => !open && setDialog(undefined)}
         />
       )}
+      {groupsGate.upgradeGate}
       <RemoveGroupDialog group={deleting} onClose={() => setDeleting(undefined)} />
     </Stack>
   );
