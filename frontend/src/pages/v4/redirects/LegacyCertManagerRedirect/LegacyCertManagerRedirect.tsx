@@ -20,7 +20,6 @@ export const LegacyPoliciesRedirect = () => {
         replace
         to={v4Path("/organizations/$orgId/cert-manager/requests")}
         params={{ orgId }}
-        search={{ selectedTab }}
       />
     );
   return (
