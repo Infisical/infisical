@@ -3,6 +3,7 @@ import {
   BanIcon,
   BookOpenTextIcon,
   BoxesIcon,
+  CheckIcon,
   InfoIcon,
   PackageIcon,
   PlusIcon,
@@ -20,33 +21,38 @@ import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Combobox,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
   DocumentationLinkBadge,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldTitle,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Toggle
+  TableRow
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useDebounce } from "@app/hooks";
 import {
   AgentVaultServiceType,
@@ -88,6 +94,11 @@ import { LevelSelect, TLevelOption } from "./LevelSelect";
 
 const PICKER_LIMIT = 100;
 const CREATE_KEY = "create";
+// Creating new ones counts as part of Full Control over every one of them, the only level that holds it.
+const FULL_CONTROL_LEVEL = "manage";
+const ALL_OPTION = "all";
+// Every one of them starts at Use when added from the picker, as a picked item does.
+const ADDED_ALL_LEVEL = "use";
 
 export type TPolicyResourceItem = {
   id: string;
@@ -210,6 +221,151 @@ const ItemIcon = ({ item, rowKey }: { item?: TPolicyResourceItem; rowKey: TResou
   return <ServiceIcon hostPattern={hostPatternOf(item.service)} serviceType={item.service.type} />;
 };
 
+type TAddPopoverProps = {
+  rowKey: TResourceRowKey;
+  canAddAll: boolean;
+  addedIds: Set<string>;
+  searchResults: TPolicyResourceItem[];
+  isSearching: boolean;
+  hasMoreResults: boolean;
+  onSearchChange: (search: string) => void;
+  onAdd: (picked: { isAll: boolean; ids: string[] }) => void;
+};
+
+// Holds its place when hidden, so names don't shift as items are picked.
+const PickedCheck = ({ isPicked }: { isPicked: boolean }) => (
+  <CheckIcon className={cn("ml-auto text-foreground", isPicked ? "opacity-100" : "opacity-0")} />
+);
+
+const AddResourcesPopover = ({
+  rowKey,
+  canAddAll,
+  addedIds,
+  searchResults,
+  isSearching,
+  hasMoreResults,
+  onSearchChange,
+  onAdd
+}: TAddPopoverProps) => {
+  const { label, plural } = RESOURCE_NOUNS[rowKey];
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    onSearchChange(value);
+  };
+  const close = () => {
+    setIsOpen(false);
+    changeSearch("");
+    setPicked(new Set());
+  };
+  const toggle = (id: string) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const isAllListed = canAddAll && !search.trim();
+  const pickedItemCount = picked.size - (picked.has(ALL_OPTION) ? 1 : 0);
+  const itemsLabel = `${pickedItemCount} ${pickedItemCount === 1 ? COLUMN_LABELS[rowKey] : label}`;
+  let addLabel = pickedItemCount ? `Add ${itemsLabel}` : `Add ${label}`;
+  if (picked.has(ALL_OPTION)) {
+    addLabel = pickedItemCount
+      ? `Add All ${label} and ${pickedItemCount} More`
+      : `Add All ${label}`;
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={(open) => (open ? setIsOpen(true) : close())}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          <PlusIcon />
+          Add {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            value={search}
+            onValueChange={changeSearch}
+            placeholder={`Search ${plural}...`}
+            aria-label={`Search ${plural}`}
+          />
+          {/* The editor can sit in a sheet, whose scroll lock would otherwise swallow the wheel over this portaled list */}
+          <CommandList
+            className="max-h-72 overscroll-contain"
+            onWheel={(event) => event.stopPropagation()}
+          >
+            {!isSearching && !isAllListed && (
+              <CommandEmpty>
+                {search ? `No ${plural} match that search` : `No ${plural} in this project`}
+              </CommandEmpty>
+            )}
+            {isAllListed && (
+              <CommandGroup>
+                <CommandItem value={ALL_OPTION} onSelect={() => toggle(ALL_OPTION)}>
+                  <BoxesIcon className="text-muted" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate">All {label}</span>
+                    <span className="truncate text-xs text-muted">Including ones added later</span>
+                  </div>
+                  <PickedCheck isPicked={picked.has(ALL_OPTION)} />
+                </CommandItem>
+              </CommandGroup>
+            )}
+            <CommandGroup>
+              {searchResults.map((option) => {
+                const isAdded = addedIds.has(option.id);
+                return (
+                  <CommandItem
+                    key={option.id}
+                    value={option.id}
+                    disabled={isAdded}
+                    onSelect={() => toggle(option.id)}
+                  >
+                    <ItemIcon item={option} rowKey={rowKey} />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate">{option.name}</span>
+                      {option.description && (
+                        <span className="truncate text-xs text-muted">{option.description}</span>
+                      )}
+                    </div>
+                    <PickedCheck isPicked={isAdded || picked.has(option.id)} />
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+          {hasMoreResults && (
+            <div className="border-t border-border px-3 py-2 text-xs text-muted">
+              Search by name to find {plural} that aren&apos;t listed.
+            </div>
+          )}
+          <div className="flex justify-end border-t border-border p-2">
+            <Button
+              variant="outline"
+              size="xs"
+              isDisabled={!picked.size}
+              onClick={() => {
+                onAdd({
+                  isAll: picked.has(ALL_OPTION),
+                  ids: [...picked].filter((id) => id !== ALL_OPTION)
+                });
+                close();
+              }}
+            >
+              {addLabel}
+            </Button>
+          </div>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const ResourceAccessCardView = ({
   rowKey,
   noun,
@@ -229,15 +385,10 @@ const ResourceAccessCardView = ({
   const row = getPermissionRow(rowKey);
   const { label, singular, plural } = RESOURCE_NOUNS[rowKey];
   const resource = policy[rowKey];
-  const [picked, setPicked] = useState<TPolicyResourceItem[]>([]);
-  const [search, setSearch] = useState("");
+  // Every one of them shows once the role holds a rule for all of them, or once it's added from the picker.
+  const [isAllAdded, setIsAllAdded] = useState(false);
 
-  const itemIds = useMemo(() => new Set(resource.items.map((item) => item.id)), [resource.items]);
-  const pickerOptions = useMemo(
-    () => searchResults.filter((item) => !itemIds.has(item.id)),
-    [searchResults, itemIds]
-  );
-
+  const addedIds = new Set(resource.items.map((item) => item.id));
   const nameOf = (itemId: string) => itemsById.get(itemId)?.name ?? itemId;
   const items = [...resource.items].sort((a, b) => nameOf(a.id).localeCompare(nameOf(b.id)));
   const warnings = getRowWarnings(policy, rowKey, noun);
@@ -247,14 +398,32 @@ const ResourceAccessCardView = ({
     .join(" ");
   const inherited = getEffectiveAllow(policy, { rowKey }).filter((key) => key !== CREATE_KEY);
   const createState = getActionState(policy, { rowKey }, CREATE_KEY);
+  const canCreate = createState.isAllowed && !createState.isDenied;
 
-  const allLevel = getRowLevel(policy, rowKey);
+  // Create isn't a level of its own: Full Control holds it, and anything else with it, or Full Control without it, is
+  // custom.
+  const rowLevel = getRowLevel(policy, rowKey);
+  const allLevel = canCreate === (rowLevel === FULL_CONTROL_LEVEL) ? rowLevel : CUSTOM_LEVEL;
   const isAllOpen = allLevel === CUSTOM_LEVEL || isScopeOpen(allScopeKey(rowKey));
-  const allOptions: TLevelOption[] = row.levels.map((level) => ({
-    value: level.value,
-    label: level.label,
-    description: LEVEL_DESCRIPTIONS[rowKey][level.value]
-  }));
+  const isAllShown =
+    isAllAdded || isAllOpen || resource.allow.length > 0 || resource.deny.length > 0;
+  const allOptions: TLevelOption[] = row.levels
+    .filter((level) => level.value !== NONE_LEVEL)
+    .map((level) => ({
+      value: level.value,
+      label: level.label,
+      description:
+        level.value === FULL_CONTROL_LEVEL
+          ? `Also delete it, and create new ${plural}`
+          : LEVEL_DESCRIPTIONS[rowKey][level.value]
+    }));
+  const setAllLevel = (next: TAgentVaultPolicy, level: string) =>
+    setActionAllowed(
+      setRowLevel(next, rowKey, level),
+      { rowKey },
+      CREATE_KEY,
+      level === FULL_CONTROL_LEVEL
+    );
   const itemOptions: TLevelOption[] = [
     ...row.levels
       .filter((level) => level.value !== NONE_LEVEL)
@@ -282,18 +451,18 @@ const ResourceAccessCardView = ({
     }
   ];
 
-  const addPicked = () => {
-    onChange(
-      addResourceItems(
-        policy,
-        rowKey,
-        picked.map(({ id }) => id)
-      )
-    );
-    setPicked([]);
+  // Every one of them goes first, so the items picked with it start at a level above it, as they would if it had been
+  // added before them.
+  const addPicked = ({ isAll, ids }: { isAll: boolean; ids: string[] }) => {
+    if (isAll) setIsAllAdded(true);
+    const withAll = isAll ? setAllLevel(policy, ADDED_ALL_LEVEL) : policy;
+    onChange(ids.length ? addResourceItems(withAll, rowKey, ids) : withAll);
   };
-
-  const columnCount = 3;
+  const removeAll = () => {
+    setIsAllAdded(false);
+    onScopeOpenChange(allScopeKey(rowKey), false);
+    onChange(setAllLevel(policy, NONE_LEVEL));
+  };
 
   return (
     <Card>
@@ -303,236 +472,201 @@ const ResourceAccessCardView = ({
           <DocumentationLinkBadge href={DOCS_URLS[rowKey]} />
         </CardTitle>
         <CardDescription>{row.description}</CardDescription>
+        {!isReadOnly && (
+          <CardAction>
+            <AddResourcesPopover
+              rowKey={rowKey}
+              canAddAll={!isAllShown}
+              addedIds={addedIds}
+              searchResults={searchResults}
+              isSearching={isSearching}
+              hasMoreResults={hasMoreResults}
+              onSearchChange={onSearchChange}
+              onAdd={addPicked}
+            />
+          </CardAction>
+        )}
       </CardHeader>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead isTruncatable className="w-full">
-              {COLUMN_LABELS[rowKey]}
-            </TableHead>
-            <TableHead>Access</TableHead>
-            <TableHead variant="action" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell isTruncatable className="min-w-56">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <BoxesIcon className="size-4 shrink-0 text-muted" />
-                <div className="min-w-0">
-                  <div className="truncate">All {label}</div>
-                  {allWarning ? (
-                    <div className="truncate text-xs leading-4 text-warning" title={allWarning}>
-                      {allWarning}
-                    </div>
-                  ) : (
-                    <div className="truncate text-xs leading-4 text-muted">
-                      Including ones added later
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <LevelSelect
-                value={isAllOpen ? CUSTOM_LEVEL : allLevel}
-                options={allOptions}
-                ariaLabel={`Access to all ${plural}`}
-                isDisabled={isReadOnly}
-                onLevelChange={(level) => {
-                  onScopeOpenChange(allScopeKey(rowKey), false);
-                  onChange(setRowLevel(policy, rowKey, level));
-                }}
-                onCustom={() => onScopeOpenChange(allScopeKey(rowKey), true)}
-              />
-            </TableCell>
-            <TableCell variant="action" />
-          </TableRow>
-          {isAllOpen && (
-            <ActionRows
-              policy={policy}
-              scope={{ rowKey }}
-              scopeLabel={`all ${plural}`}
-              isReadOnly={isReadOnly}
-              onChange={onChange}
-              hasTrailingCell
-            />
-          )}
-
-          {items.map((item) => {
-            const known = itemsById.get(item.id);
-            const name = nameOf(item.id);
-            const level = getItemLevel(policy, rowKey, item.id);
-            const scopeKey = itemScopeKey(rowKey, item.id);
-            const isOpen = level === CUSTOM_LEVEL || isScopeOpen(scopeKey);
-            const warning = warnings.find(({ itemId }) => itemId === item.id)?.message;
-            let subtitle: string | null = known?.description || null;
-            if (!known && !isCatalogPending) {
-              subtitle = isCatalogCutShort
-                ? `Not loaded, since the project has more ${plural} than this page lists`
-                : `Deleted ${singular}, or one you can't see`;
-            }
-            if (isItemRedundant(policy, rowKey, item.id))
-              subtitle = `Already covered by All ${label}`;
-
-            return (
-              <Fragment key={item.id}>
-                <TableRow>
-                  <TableCell isTruncatable className="min-w-56">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <ItemIcon item={known} rowKey={rowKey} />
-                      <div className="min-w-0">
-                        {!known && isCatalogPending ? (
-                          <Skeleton className="h-4 w-28" />
-                        ) : (
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <span
-                              className={known ? "truncate" : "truncate font-mono text-xs"}
-                              title={name}
-                            >
-                              {name}
-                            </span>
-                            {known?.service && (
-                              <ServiceDetailsHoverCard service={known.service} name={name} />
-                            )}
-                          </div>
-                        )}
-                        {warning ? (
-                          <div className="truncate text-xs leading-4 text-warning" title={warning}>
-                            {warning}
-                          </div>
-                        ) : (
-                          subtitle && (
-                            <div className="truncate text-xs leading-4 text-muted" title={subtitle}>
-                              {subtitle}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <LevelSelect
-                      value={isOpen ? CUSTOM_LEVEL : level}
-                      placeholder="No Access"
-                      options={itemOptions}
-                      ariaLabel={`Access to ${name}`}
-                      isDisabled={isReadOnly}
-                      onLevelChange={(next) => {
-                        onScopeOpenChange(scopeKey, false);
-                        onChange(setItemLevel(policy, rowKey, item.id, next));
-                      }}
-                      onCustom={() => onScopeOpenChange(scopeKey, true)}
-                    />
-                  </TableCell>
-                  <TableCell variant="action">
-                    {!isReadOnly && (
-                      <IconButton
-                        variant="ghost"
-                        size="xs"
-                        aria-label={`Remove ${name}`}
-                        onClick={() => {
-                          onScopeOpenChange(scopeKey, false);
-                          onChange(removeResourceItem(policy, rowKey, item.id));
-                        }}
-                      >
-                        <XIcon />
-                      </IconButton>
-                    )}
-                  </TableCell>
-                </TableRow>
-                {isOpen && (
-                  <ActionRows
-                    policy={policy}
-                    scope={{ rowKey, itemId: item.id }}
-                    scopeLabel={name}
-                    isReadOnly={isReadOnly}
-                    onChange={onChange}
-                    hasTrailingCell
-                  />
-                )}
-              </Fragment>
-            );
-          })}
-          {!items.length && (
-            <TableRow>
-              <TableCell colSpan={columnCount} className="text-xs text-muted">
-                {isReadOnly
-                  ? `No specific ${plural}.`
-                  : `Add specific ${plural} below to give them a different level, or deny them.`}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      {!isReadOnly && (
-        <CardContent className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <Combobox<TPolicyResourceItem>
-              multiple
-              options={pickerOptions}
-              value={picked}
-              onValueChange={setPicked}
-              onSearchChange={(value) => {
-                setSearch(value);
-                onSearchChange(value);
-              }}
-              isLoading={isSearching}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-              getOptionKeywords={(option) => [
-                option.description ?? "",
-                (option.service && hostPatternOf(option.service)) ?? ""
-              ]}
-              renderOption={(option) => (
-                <div className="flex min-w-0 items-center gap-2">
-                  <ItemIcon item={option} rowKey={rowKey} />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm">{option.name}</span>
-                    {option.description && (
-                      <span className="truncate text-xs text-muted">{option.description}</span>
-                    )}
-                  </div>
-                </div>
-              )}
-              placeholder={`Pick ${plural} to add`}
-              searchAriaLabel={`Search ${plural}`}
-              clearAriaLabel={`Clear picked ${plural}`}
-              emptyMessage={search ? `No ${plural} match that search` : `No more ${plural} to add`}
-              listFooter={
-                hasMoreResults ? `Search by name to find ${plural} that aren't listed.` : null
-              }
-            />
+      {!isAllShown && !items.length ? (
+        <CardContent>
+          <div className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+            This role has no access to {plural}.
           </div>
-          <Button variant="outline" isDisabled={!picked.length} onClick={addPicked}>
-            <PlusIcon />
-            {picked.length > 1 ? `Add ${picked.length} ${label}` : `Add ${COLUMN_LABELS[rowKey]}`}
-          </Button>
         </CardContent>
-      )}
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead isTruncatable className="w-full">
+                {COLUMN_LABELS[rowKey]}
+              </TableHead>
+              <TableHead>Access</TableHead>
+              <TableHead variant="action" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isAllShown && (
+              <TableRow>
+                <TableCell isTruncatable className="min-w-56">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <BoxesIcon className="size-4 shrink-0 text-muted" />
+                    <div className="min-w-0">
+                      <div className="truncate">All {label}</div>
+                      {allWarning ? (
+                        <div className="truncate text-xs leading-4 text-warning" title={allWarning}>
+                          {allWarning}
+                        </div>
+                      ) : (
+                        <div className="truncate text-xs leading-4 text-muted">
+                          Including ones added later
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <LevelSelect
+                    value={isAllOpen ? CUSTOM_LEVEL : allLevel}
+                    placeholder="No Access"
+                    options={allOptions}
+                    ariaLabel={`Access to all ${plural}`}
+                    isDisabled={isReadOnly}
+                    onLevelChange={(level) => {
+                      onScopeOpenChange(allScopeKey(rowKey), false);
+                      onChange(setAllLevel(policy, level));
+                    }}
+                    onCustom={() => onScopeOpenChange(allScopeKey(rowKey), true)}
+                  />
+                </TableCell>
+                <TableCell variant="action">
+                  {!isReadOnly && (
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      aria-label={`Remove all ${plural}`}
+                      onClick={removeAll}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+            {isAllShown && isAllOpen && (
+              <ActionRows
+                policy={policy}
+                scope={{ rowKey }}
+                scopeLabel={`all ${plural}`}
+                isReadOnly={isReadOnly}
+                onChange={onChange}
+                hasTrailingCell
+              />
+            )}
+            {items.map((item) => {
+              const known = itemsById.get(item.id);
+              const name = nameOf(item.id);
+              const level = getItemLevel(policy, rowKey, item.id);
+              const scopeKey = itemScopeKey(rowKey, item.id);
+              const isOpen = level === CUSTOM_LEVEL || isScopeOpen(scopeKey);
+              const warning = warnings.find(({ itemId }) => itemId === item.id)?.message;
+              let subtitle: string | null = known?.description || null;
+              if (!known && !isCatalogPending) {
+                subtitle = isCatalogCutShort
+                  ? `Not loaded, since the project has more ${plural} than this page lists`
+                  : `Deleted ${singular}, or one you can't see`;
+              }
+              if (isItemRedundant(policy, rowKey, item.id))
+                subtitle = `Already covered by All ${label}`;
 
-      <CardContent>
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldTitle>Can Create New {label}</FieldTitle>
-            <FieldDescription>
-              Add {plural} to this project. This also allows viewing every {singular}, so new ones
-              can be seen once added.
-            </FieldDescription>
-          </FieldContent>
-          <Toggle
-            variant="av"
-            aria-label={`Can create new ${plural}`}
-            checked={createState.isAllowed && !createState.isDenied}
-            disabled={isReadOnly}
-            onCheckedChange={(isAllowed) =>
-              onChange(setActionAllowed(policy, { rowKey }, CREATE_KEY, isAllowed))
-            }
-          />
-        </Field>
-      </CardContent>
+              return (
+                <Fragment key={item.id}>
+                  <TableRow>
+                    <TableCell isTruncatable className="min-w-56">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <ItemIcon item={known} rowKey={rowKey} />
+                        <div className="min-w-0">
+                          {!known && isCatalogPending ? (
+                            <Skeleton className="h-4 w-28" />
+                          ) : (
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <span
+                                className={known ? "truncate" : "truncate font-mono text-xs"}
+                                title={name}
+                              >
+                                {name}
+                              </span>
+                              {known?.service && (
+                                <ServiceDetailsHoverCard service={known.service} name={name} />
+                              )}
+                            </div>
+                          )}
+                          {warning ? (
+                            <div
+                              className="truncate text-xs leading-4 text-warning"
+                              title={warning}
+                            >
+                              {warning}
+                            </div>
+                          ) : (
+                            subtitle && (
+                              <div
+                                className="truncate text-xs leading-4 text-muted"
+                                title={subtitle}
+                              >
+                                {subtitle}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <LevelSelect
+                        value={isOpen ? CUSTOM_LEVEL : level}
+                        placeholder="No Access"
+                        options={itemOptions}
+                        ariaLabel={`Access to ${name}`}
+                        isDisabled={isReadOnly}
+                        onLevelChange={(next) => {
+                          onScopeOpenChange(scopeKey, false);
+                          onChange(setItemLevel(policy, rowKey, item.id, next));
+                        }}
+                        onCustom={() => onScopeOpenChange(scopeKey, true)}
+                      />
+                    </TableCell>
+                    <TableCell variant="action">
+                      {!isReadOnly && (
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          aria-label={`Remove ${name}`}
+                          onClick={() => {
+                            onScopeOpenChange(scopeKey, false);
+                            onChange(removeResourceItem(policy, rowKey, item.id));
+                          }}
+                        >
+                          <XIcon />
+                        </IconButton>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {isOpen && (
+                    <ActionRows
+                      policy={policy}
+                      scope={{ rowKey, itemId: item.id }}
+                      scopeLabel={name}
+                      isReadOnly={isReadOnly}
+                      onChange={onChange}
+                      hasTrailingCell
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
     </Card>
   );
 };
