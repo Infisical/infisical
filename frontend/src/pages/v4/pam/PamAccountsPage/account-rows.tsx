@@ -1,8 +1,9 @@
-import { useState, useSyncExternalStore } from "react";
+import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -26,7 +27,6 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { toast } from "../../access/toast";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
-import { v4Path } from "../../links";
 import { AccountSheet } from "./account-sheet";
 import { CreateAccountSheet } from "./create-account-sheet";
 import {
@@ -38,7 +38,8 @@ import {
   type FolderTarget,
   JoinFolderDialog
 } from "./folder-dialogs";
-import { LaunchSessionDialog } from "./launch-session";
+import { launchState, needsAccessRequest } from "./launch-command";
+import { LaunchSessionSheet } from "./launch-session";
 import { CredentialsDialog, RequestAccessSheet } from "./request-access";
 import { FOLDER_TABS, visibleAccountTabs } from "./sheet-tabs";
 
@@ -106,6 +107,8 @@ export const AccessState = ({ account }: { account: TPamAccountListItem }) => {
         </StatusText>
       </Tooltip>
     );
+  if (launchState(account).needsApproval)
+    return <StatusText icon="key">Approval required</StatusText>;
   if (account.accessStatus !== PamAccessStatus.Granted || !account.grantExpiresAt) return null;
   if (new Date(account.grantExpiresAt).getTime() <= now)
     return <StatusText icon="clock">Expired</StatusText>;
@@ -171,23 +174,6 @@ const AccountBadges = ({
   );
 };
 
-const launchState = (account: TPamAccountListItem) => {
-  const canLaunch = buildPamAccountCan(account.permissions)(
-    PamResourcePermissionActions.LaunchSessions
-  );
-  const isGranted = account.accessStatus === PamAccessStatus.Granted;
-  const canLaunchNow =
-    account.isAccessible && canLaunch && (!account.requiresApproval || isGranted);
-  let launchReason: string | undefined;
-  if (!canLaunch) launchReason = "You don't have permission to launch sessions";
-  else if (!canLaunchNow) launchReason = "This account is not ready to launch";
-  return {
-    needsApproval: account.requiresApproval && !isGranted && canLaunch && account.isAccessible,
-    canLaunchNow,
-    launchReason
-  };
-};
-
 const SessionMenuItem = ({
   account,
   onRequestAccess,
@@ -215,55 +201,71 @@ const SessionMenuItem = ({
 };
 
 export const AccountName = ({
-  orgId,
   account,
   meta,
-  showFolder = false
+  showFolder = false,
+  onRequestAccess
 }: {
-  orgId: string;
   account: TPamAccountListItem;
   meta?: TPamAccountTypeMetadata;
   showFolder?: boolean;
+  onRequestAccess?: () => void;
 }) => {
   const canEdit = buildPamAccountCan(account.permissions)(
     PamResourcePermissionActions.EditAccounts
   );
   const { canLaunchNow } = launchState(account);
+  const requestable = needsAccessRequest(account);
+  const tail = (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "var(--cipher-space-8)",
+        marginInlineStart: "var(--cipher-space-8)",
+        verticalAlign: "middle"
+      }}
+    >
+      <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
+      {showFolder && account.folderName && <Meta mono={false}>{account.folderName}</Meta>}
+      <AccountBadges account={account} canEdit={canEdit} />
+    </span>
+  );
+  let name: ReactNode = (
+    <InlineItem truncate>
+      {account.name}
+      {tail}
+    </InlineItem>
+  );
+  if (canLaunchNow)
+    name = (
+      <RowLink
+        link={{
+          to: ".",
+          search: (prev: Record<string, unknown>) => ({
+            ...prev,
+            accountId: account.id,
+            tab: PamSheetTab.Launch
+          })
+        }}
+      >
+        {account.name}
+        {tail}
+      </RowLink>
+    );
+  else if (requestable && onRequestAccess)
+    name = (
+      <InlineItem truncate>
+        <Button variant="link" underline="hover" onClick={onRequestAccess}>
+          {account.name}
+        </Button>
+        {tail}
+      </InlineItem>
+    );
   return (
     <Inline gap={8} align="center" wrap={false}>
       {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
-      <RowLink
-        link={
-          canLaunchNow
-            ? {
-                to: ".",
-                search: (prev: Record<string, unknown>) => ({
-                  ...prev,
-                  accountId: account.id,
-                  tab: PamSheetTab.Launch
-                })
-              }
-            : {
-                to: v4Path("/organizations/$orgId/pam/accounts/$accountType/$accountId/access"),
-                params: { orgId, accountType: account.accountType, accountId: account.id }
-              }
-        }
-      >
-        {account.name}
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "var(--cipher-space-8)",
-            marginInlineStart: "var(--cipher-space-8)",
-            verticalAlign: "middle"
-          }}
-        >
-          <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
-          {showFolder && account.folderName && <Meta mono={false}>{account.folderName}</Meta>}
-          <AccountBadges account={account} canEdit={canEdit} />
-        </span>
-      </RowLink>
+      {name}
     </Inline>
   );
 };
@@ -493,7 +495,7 @@ export const useAccountOverlays = ({
           else accountSheet.openSheet(account.id, PamSheetTab.Launch);
         }}
       />
-      <LaunchSessionDialog
+      <LaunchSessionSheet
         accountId={launchId}
         onOpenChange={(open) => {
           if (!open) accountSheet.closeSheet();

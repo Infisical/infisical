@@ -473,20 +473,22 @@ export const DeleteSkillDialog = ({
 };
 
 const SkillVersionsTable = ({
+  projectId,
   skill,
-  versions,
-  loading,
   viewed,
   disabled,
   onView
 }: {
-  skill: { name: string; latestVersion: number };
-  versions: TAgentVaultSkillVersion[];
-  loading: boolean;
+  projectId: string;
+  skill: { id: string; name: string; latestVersion: number };
   viewed: number | null;
   disabled: boolean;
   onView: (version: number) => void;
 }) => {
+  const { data: versions = [], isPending } = useV4Adapter("agentVaultResources").useSkillVersions(
+    projectId,
+    skill.id
+  );
   const columns: DataTableColumn<TAgentVaultSkillVersion>[] = [
     {
       id: "version",
@@ -531,7 +533,7 @@ const SkillVersionsTable = ({
       columns={columns}
       getRowId={(version) => version.id}
       rowLabel={(version) => `v${version.version}`}
-      loading={loading}
+      loading={isPending}
       loadingRows={2}
       focusedRowId={
         versions.find((version) => version.version === (viewed ?? skill.latestVersion))?.id
@@ -677,10 +679,6 @@ const SkillSheetEditor = ({
 }: TSkillSheetProps & { skill: TAgentVaultSkillDetail }) => {
   const resources = useV4Adapter("agentVaultResources");
   const skillId = skill.id;
-  const { data: versions = [], isPending: isVersionsPending } = resources.useSkillVersions(
-    projectId,
-    skillId
-  );
   const update = resources.useUpdateSkill(projectId);
   const [viewed, setViewed] = useState<number | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(SKILL_ENTRY_FILE);
@@ -816,19 +814,20 @@ const SkillSheetEditor = ({
               />
             )}
           </Stack>
-          <Stack gap={8}>
-            <Heading level={3} size="subsection">
-              Versions
-            </Heading>
-            <SkillVersionsTable
-              skill={skill}
-              versions={versions}
-              loading={isVersionsPending}
-              viewed={viewed}
-              disabled={hasChanges}
-              onView={setViewed}
-            />
-          </Stack>
+          {canEdit && (
+            <Stack gap={8}>
+              <Heading level={3} size="subsection">
+                Versions
+              </Heading>
+              <SkillVersionsTable
+                skill={skill}
+                projectId={projectId}
+                viewed={viewed}
+                disabled={hasChanges}
+                onView={setViewed}
+              />
+            </Stack>
+          )}
         </Stack>
       </SheetBody>
       <SheetFooter>

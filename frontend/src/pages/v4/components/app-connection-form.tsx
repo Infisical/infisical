@@ -56,6 +56,10 @@ export type AppConnectionMethodPreset = {
   fields: readonly AppConnectionFieldPreset[];
   /** The method sends the person to the provider instead of taking credentials. */
   redirect?: AppConnectionRedirectPreset;
+  /** Turns the form's credentials into what the API takes, when the two differ. */
+  toPayload?: (credentials: Record<string, unknown>) => Record<string, unknown>;
+  /** Turns stored credentials back into the form's, the inverse of toPayload. */
+  fromStored?: (credentials: Record<string, unknown>) => Record<string, unknown>;
 };
 
 export type AppConnectionPreset = {
@@ -130,6 +134,19 @@ const storedKeys = (stored: unknown, keys: readonly string[]) => {
   );
 };
 
+export const storedFormCredentials = (
+  method: AppConnectionMethodPreset,
+  stored: unknown
+): Record<string, unknown> =>
+  method.fromStored
+    ? method.fromStored((stored ?? {}) as Record<string, unknown>)
+    : (stored as Record<string, unknown>);
+
+export const credentialsPayload = (
+  method: AppConnectionMethodPreset,
+  credentials: Record<string, unknown> = {}
+) => (method.toPayload ? method.toPayload(credentials) : credentials);
+
 const editDefaults = (method: AppConnectionMethodPreset, values: Record<string, unknown>) => ({
   ...storedKeys(values, [
     "name",
@@ -138,7 +155,7 @@ const editDefaults = (method: AppConnectionMethodPreset, values: Record<string, 
   ]),
   credentials: {
     ...method.credentials,
-    ...storedKeys(values.credentials, [
+    ...storedKeys(storedFormCredentials(method, values.credentials), [
       ...Object.keys(method.credentials),
       ...method.fields
         .filter((spec) => spec.name.startsWith("credentials."))
@@ -218,7 +235,10 @@ export function AppConnectionForm({
       return;
     }
     try {
-      await onSubmit(submitted as AppConnectionFormValues);
+      await onSubmit({
+        ...(submitted as AppConnectionFormValues),
+        credentials: credentialsPayload(method, submitted.credentials)
+      });
     } catch (cause) {
       if (cause instanceof Error && cause.message) setFailure(cause.message);
       else if (editing) setFailure("Couldn't update these credentials. Try again.");

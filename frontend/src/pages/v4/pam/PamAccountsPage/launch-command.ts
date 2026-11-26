@@ -1,4 +1,12 @@
-import { PamAccountType, type TPamAccount, type TPamAccountTypeMetadata } from "@app/hooks/api/pam";
+import {
+  buildPamAccountCan,
+  PamAccessStatus,
+  PamAccountType,
+  PamResourcePermissionActions,
+  type TPamAccount,
+  type TPamAccountListItem,
+  type TPamAccountTypeMetadata
+} from "@app/hooks/api/pam";
 
 export const accountHosts = (account?: Pick<TPamAccount, "accountType" | "connectionDetails">) => {
   const hosts =
@@ -31,3 +39,23 @@ export const browserUnavailableReason = (
     return "Couldn't check whether this account opens in the browser. Connect with the Infisical CLI.";
   return undefined;
 };
+
+export const launchState = (account: TPamAccountListItem) => {
+  const canLaunch = buildPamAccountCan(account.permissions)(
+    PamResourcePermissionActions.LaunchSessions
+  );
+  const isGranted = account.accessStatus === PamAccessStatus.Granted;
+  const canLaunchNow =
+    account.isAccessible && canLaunch && (!account.requiresApproval || isGranted);
+  let launchReason: string | undefined;
+  if (!canLaunch) launchReason = "You don't have permission to launch sessions";
+  else if (!canLaunchNow) launchReason = "This account is not ready to launch";
+  return {
+    needsApproval: account.requiresApproval && !isGranted && canLaunch && account.isAccessible,
+    canLaunchNow,
+    launchReason
+  };
+};
+
+export const needsAccessRequest = (account: TPamAccountListItem) =>
+  launchState(account).needsApproval || account.accessStatus === PamAccessStatus.Pending;

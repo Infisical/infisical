@@ -409,7 +409,7 @@ export const OrgMembersTab = () => {
             <Icon name="settings" />
             Edit user
           </DropdownMenuItem>
-          {pending && (
+          {pending && !isSubOrg && (
             <DropdownMenuItem
               disabled={!can(OrgPermissionMemberActions.Create)}
               description={can(OrgPermissionMemberActions.Create) ? undefined : RESTRICTED}

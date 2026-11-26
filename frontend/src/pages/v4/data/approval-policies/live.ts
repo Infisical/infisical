@@ -15,7 +15,10 @@ import {
   useDeleteSecretApprovalPolicy,
   useUpdateSecretApprovalPolicy
 } from "@app/hooks/api/secretApproval/mutation";
-import { useGetSecretApprovalPolicies } from "@app/hooks/api/secretApproval/queries";
+import {
+  fetchSecretApprovalPolicyImports,
+  useGetSecretApprovalPolicies
+} from "@app/hooks/api/secretApproval/queries";
 import { useGetSecretApprovalRequestCount } from "@app/hooks/api/secretApprovalRequest/queries";
 import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
 
@@ -59,6 +62,8 @@ export const approvalPoliciesLive: ApprovalPoliciesAdapter = {
   },
   useCreateChangePolicy: useCreateSecretApprovalPolicy,
   useUpdateChangePolicy: useUpdateSecretApprovalPolicy,
+  useDirectImports: () => (policyId) =>
+    fetchSecretApprovalPolicyImports({ policyId, isReplication: false }),
   useDeleteChangePolicy: useDeleteSecretApprovalPolicy,
   useCreateAccessPolicy: useCreateAccessApprovalPolicy,
   useUpdateAccessPolicy: useUpdateAccessApprovalPolicy,

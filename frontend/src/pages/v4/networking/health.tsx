@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef } from "react";
+import { type ComponentPropsWithRef, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -6,6 +6,9 @@ import { format } from "date-fns";
 
 import type { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+
+import { toast } from "../access/toast";
+import { useV4Adapter } from "../data/adapters";
 
 type GatewayProbe = {
   heartbeat?: string | null;
@@ -44,7 +47,39 @@ const HealthLabel = ({
     <StatusText {...props} tone={tone} icon={icon} />
   );
 
-export const GatewayHealth = ({ gateway, size }: { gateway: GatewayProbe; size?: HealthSize }) => {
+export const CheckingHealth = () => <StatusText loading>Checking…</StatusText>;
+
+export const useGatewayHealthCheck = () => {
+  const heartbeat = useV4Adapter("networking").useTriggerGatewayHeartbeat();
+  const [checking, setChecking] = useState<ReadonlySet<string>>(new Set());
+  const run = async ({ id }: { id: string }) => {
+    setChecking((current) => new Set(current).add(id));
+    try {
+      await heartbeat.mutateAsync(id);
+      toast({ tone: "ok", title: "Health check successful, the gateway is healthy" });
+    } catch {
+      toast({ tone: "bad", title: "Health check failed, the gateway is unreachable" });
+    } finally {
+      setChecking((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+  return { isChecking: (id: string) => checking.has(id), run };
+};
+
+export const GatewayHealth = ({
+  gateway,
+  size,
+  checking
+}: {
+  gateway: GatewayProbe;
+  size?: HealthSize;
+  checking?: boolean;
+}) => {
+  if (checking) return <CheckingHealth />;
   if (!isGatewayRegistered(gateway))
     return (
       <HealthLabel tone="warn" icon="alert-c" size={size}>

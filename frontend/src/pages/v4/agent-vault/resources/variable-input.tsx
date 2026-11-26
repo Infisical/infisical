@@ -41,6 +41,7 @@ export const VariableSecretInput = ({
   placeholder,
   multiline,
   allowsVariables = true,
+  scope = AgentVaultVariableScope.Global,
   onChange
 }: {
   projectId: string;
@@ -51,6 +52,7 @@ export const VariableSecretInput = ({
   placeholder?: string;
   multiline?: boolean;
   allowsVariables?: boolean;
+  scope?: AgentVaultVariableScope;
   onChange: (value: string) => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -69,7 +71,7 @@ export const VariableSecretInput = ({
   const { data } = resources.useVariables(
     projectId,
     {
-      scope: AgentVaultVariableScope.Global,
+      scope,
       search: debouncedQuery || undefined,
       limit: SUGGESTION_LIMIT
     },
@@ -77,7 +79,8 @@ export const VariableSecretInput = ({
   );
   const { existing } = resources.useVariableKeyStatus(
     projectId,
-    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : []
+    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
+    { scope }
   );
 
   const keyExists =
@@ -258,7 +261,7 @@ export const VariableSecretInput = ({
       {creating && (
         <VariableDialog
           projectId={projectId}
-          scope={AgentVaultVariableScope.Global}
+          scope={scope}
           initialKey={creating.key}
           onCreated={(variable) => insert(variable.key, creating.before, creating.after)}
           onOpenChange={(open) => {

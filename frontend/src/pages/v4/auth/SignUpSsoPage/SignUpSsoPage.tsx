@@ -4,6 +4,7 @@ import { toast } from "@infisical/cipher/ui/sonner";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -96,6 +97,7 @@ export const SignUpSsoPage = () => {
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    captureSignupCompleted("sso");
 
     navigate({ to: v4Path("/organizations/onboarding"), search: { callback_port: callbackPort } });
   };

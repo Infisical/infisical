@@ -19,7 +19,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
-import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, type TProjectPermission } from "@app/hooks/api/roles/types";
 import { RoleTemplates } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
@@ -54,13 +53,11 @@ const templatePermissions = (projectType: ProjectType, templateIds: readonly str
 };
 
 const AddIdentityForm = ({
-  orgId,
   projectId,
   pending,
   setPending,
   onClose
 }: {
-  orgId: string;
   projectId: string;
   pending: boolean;
   setPending: (pending: boolean) => void;
@@ -70,12 +67,9 @@ const AddIdentityForm = ({
   const access = useV4Adapter("access");
   const go = useGo();
   const { data: roles } = access.useProjectRoles(projectId, scope.projectType);
-  const { data: orgIdentities } = access.useSearchOrgIdentities({
-    orgId,
-    offset: 0,
-    limit: 100,
-    scope: [SearchIdentitiesScope.OrganizationScope],
-    search: {}
+  const { data: availableIdentities } = access.useAvailableProjectIdentities({
+    projectId,
+    projectType: scope.projectType
   });
   const { data: members } = access.useProjectIdentities({
     projectId,
@@ -103,14 +97,18 @@ const AddIdentityForm = ({
 
   const assignable = useMemo(() => {
     const existing = new Set(members?.identityMemberships.map((entry) => entry.identity.id));
-    return (orgIdentities?.identities ?? []).filter((row) => !existing.has(row.identity.id));
-  }, [orgIdentities, members]);
+    return (availableIdentities ?? []).filter((identity) => !existing.has(identity.id));
+  }, [availableIdentities, members]);
 
   const [mode, setMode] = useState<AddIdentityMode>();
   const currentMode = mode ?? (assignable.length > 0 ? "assign" : "create");
   const [name, setName] = useState("");
   const [identityId, setIdentityId] = useState("");
-  const [role, setRole] = useState<string>(ProjectMembershipRole.NoAccess);
+  const [role, setRole] = useState<string>(
+    scope.projectType === ProjectType.CertificateManager
+      ? ProjectMembershipRole.Member
+      : ProjectMembershipRole.NoAccess
+  );
   const [errors, setErrors] = useState<{ name?: string; identity?: string }>({});
 
   const submit = async () => {
@@ -251,9 +249,9 @@ const AddIdentityForm = ({
                   label="Machine identity"
                   placeholder="Select machine identity..."
                   emptyText="No machine identities available"
-                  options={assignable.map((row) => ({
-                    value: row.identity.id,
-                    label: row.identity.name
+                  options={assignable.map((identity) => ({
+                    value: identity.id,
+                    label: identity.name
                   }))}
                   value={identityId}
                   invalid={Boolean(errors.identity)}
@@ -311,12 +309,10 @@ const AddIdentityForm = ({
 };
 
 export const AddProjectIdentitySheet = ({
-  orgId,
   projectId,
   open,
   onOpenChange
 }: {
-  orgId: string;
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -331,7 +327,6 @@ export const AddProjectIdentitySheet = ({
         </SheetHeader>
         {open && (
           <AddIdentityForm
-            orgId={orgId}
             projectId={projectId}
             pending={pending}
             setPending={setPending}

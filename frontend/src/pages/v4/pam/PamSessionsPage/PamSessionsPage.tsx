@@ -20,7 +20,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { RowLink } from "@infisical/cipher/ui/row-link";
+import { CellLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
@@ -56,7 +56,7 @@ const AccountCell = ({ session, orgId }: { session: TPamSession; orgId: string }
     <Inline gap={8} align="center" wrap={false}>
       {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
       {session.accountId && can(PamResourcePermissionActions.ReadAccounts) ? (
-        <RowLink
+        <CellLink
           link={{
             to: v4Path("/organizations/$orgId/$"),
             params: {
@@ -66,7 +66,7 @@ const AccountCell = ({ session, orgId }: { session: TPamSession; orgId: string }
           }}
         >
           {session.accountName}
-        </RowLink>
+        </CellLink>
       ) : (
         <span>{session.accountName}</span>
       )}
@@ -82,14 +82,14 @@ const FolderCell = ({ session, orgId }: { session: TPamSession; orgId: string })
   if (!session.folderName) return <Meta>-</Meta>;
   if (session.folderId && can(PamResourcePermissionActions.ReadFolder))
     return (
-      <RowLink
+      <CellLink
         link={{
           to: v4Path("/organizations/$orgId/$"),
           params: { orgId, _splat: `pam/accounts/${session.folderId}` }
         }}
       >
         {session.folderName}
-      </RowLink>
+      </CellLink>
     );
   return <span>{session.folderName}</span>;
 };

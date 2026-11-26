@@ -22,7 +22,7 @@ import {
   VARIABLE_KEY_RE,
   VARIABLE_VALUE_MAX_LENGTH
 } from "@app/helpers/agentVaultVariables";
-import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
+import { AgentVaultVariableScope, AgentVaultVariableType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, type TApiErrors } from "@app/hooks/api/types";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -71,6 +71,7 @@ export const VariableDialog = ({
   const create = resources.useCreateVariable(projectId);
   const update = resources.useUpdateVariable(projectId);
   const isPersonal = scope === AgentVaultVariableScope.Personal;
+  const isOAuth = variable?.type === AgentVaultVariableType.OAuth;
   const [key, setKey] = useState(variable?.key ?? initialKey);
   const [value, setValue] = useState("");
   const [errors, setErrors] = useState<{ key?: string; value?: string }>({});
@@ -106,9 +107,10 @@ export const VariableDialog = ({
             autoComplete="off"
             onSubmit={async (event) => {
               event.preventDefault();
+              event.stopPropagation();
               const next = {
                 key: keyError(key, isTaken, isPersonal),
-                value: valueError(value, !variable)
+                value: isOAuth ? undefined : valueError(value, !variable)
               };
               setErrors(next);
               if (next.key || next.value) return;
@@ -164,21 +166,23 @@ export const VariableDialog = ({
                   }}
                 />
               </Field>
-              <Field
-                label="Value"
-                description={variable ? "Leave blank to keep the current value." : undefined}
-                error={errors.value}
-              >
-                <SecretInput
-                  aria-label="Value"
-                  value={value}
-                  invalid={Boolean(errors.value)}
-                  onChange={(next) => {
-                    setValue(next);
-                    setErrors((current) => ({ ...current, value: undefined }));
-                  }}
-                />
-              </Field>
+              {!isOAuth && (
+                <Field
+                  label="Value"
+                  description={variable ? "Leave blank to keep the current value." : undefined}
+                  error={errors.value}
+                >
+                  <SecretInput
+                    aria-label="Value"
+                    value={value}
+                    invalid={Boolean(errors.value)}
+                    onChange={(next) => {
+                      setValue(next);
+                      setErrors((current) => ({ ...current, value: undefined }));
+                    }}
+                  />
+                </Field>
+              )}
             </Stack>
           </form>
           <DialogFooter>

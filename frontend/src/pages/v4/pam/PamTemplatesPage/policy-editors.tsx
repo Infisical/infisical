@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { Field } from "@infisical/cipher/ui/field";
+import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -142,15 +143,17 @@ export const OutputMaskingPolicyEditor = ({
   value,
   draft,
   onDraft,
-  onSave,
-  pending
+  onSave
 }: PolicyEditorProps) => {
-  const { presets, patterns } = parseMasking(value);
+  const stored = parseMasking(value);
+  const [pendingPresets, setPendingPresets] = useState<PamOutputMaskingPreset[]>();
+  const presets = pendingPresets ?? stored.presets;
+  const { patterns } = stored;
   const save = (next: TOutputMasking) =>
     onSave(next.presets.length > 0 || next.patterns.trim() ? next : null);
 
   return (
-    <Field group label={policy.label} description={policy.description}>
+    <FieldSet legend={policy.label} legendVariant="label" description={policy.description}>
       <Stack gap={16}>
         <Field label="Presets">
           <Combobox
@@ -159,10 +162,14 @@ export const OutputMaskingPolicyEditor = ({
             placeholder="Select presets..."
             clearable
             clearLabel="Clear all presets"
-            disabled={pending}
             options={PRESETS}
             value={presets}
-            onValueChange={(next) => save({ patterns, presets: next as PamOutputMaskingPreset[] })}
+            onValueChange={async (selection) => {
+              const next = selection as PamOutputMaskingPreset[];
+              setPendingPresets(next);
+              await save({ patterns, presets: next });
+              setPendingPresets((current) => (current === next ? undefined : current));
+            }}
           />
         </Field>
         <Field
@@ -187,6 +194,6 @@ export const OutputMaskingPolicyEditor = ({
           A user who wants to see them can get around it, for example by encoding the data first.
         </Alert>
       </Stack>
-    </Field>
+    </FieldSet>
   );
 };

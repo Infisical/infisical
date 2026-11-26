@@ -63,7 +63,7 @@ const ManagedByBadge = ({ identity }: { identity: IdentityMember }) => {
 export const AgentVaultIdentitiesTab = () => {
   const go = useGo();
   const scope = useProjectScope();
-  const { orgId, projectId } = scope;
+  const { projectId } = scope;
   const av = useV4Adapter("agentVault");
   const { permission } = useProjectPermission(projectId);
   const revoke = av.useRevokeMembers(projectId);
@@ -194,12 +194,7 @@ export const AgentVaultIdentitiesTab = () => {
         }
         pagination={list.pagination}
       />
-      <AddProjectIdentitySheet
-        orgId={orgId}
-        projectId={projectId}
-        open={adding}
-        onOpenChange={setAdding}
-      />
+      <AddProjectIdentitySheet projectId={projectId} open={adding} onOpenChange={setAdding} />
       <ChangeRoleDialog
         projectId={projectId}
         member={editing}

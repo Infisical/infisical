@@ -26,7 +26,11 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import type { TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
-import { getGatewayTransportHealth, getLastSeenHeartbeat } from "@app/hooks/api/gateways-v2/utils";
+import {
+  formatGatewayCliVersion,
+  getGatewayTransportHealth,
+  getLastSeenHeartbeat
+} from "@app/hooks/api/gateways-v2/utils";
 
 import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
@@ -49,6 +53,31 @@ import { ConnectedResourcesCard } from "./resources";
 const backHref = (orgId: string) => orgHref(orgId, "/networking?selectedTab=gateways");
 
 const dateTime = (value: string) => format(new Date(value), "PPpp");
+
+const CliVersion = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
+  if (gateway.cliVersionReportedAt && gateway.cliVersion)
+    return (
+      <Tooltip content={`Reported by the gateway on ${dateTime(gateway.cliVersionReportedAt)}.`}>
+        <span>{formatGatewayCliVersion(gateway.cliVersion)}</span>
+      </Tooltip>
+    );
+  if (gateway.cliVersionReportedAt)
+    return (
+      <Tooltip content="This gateway runs an Infisical CLI release that doesn't report its version. Upgrade it to v0.43.131 or later to see the exact version here.">
+        <span>
+          <Muted>Older than v0.43.131</Muted>
+        </span>
+      </Tooltip>
+    );
+  if (!isGatewayRegistered(gateway)) return <Dash />;
+  return (
+    <Tooltip content="The gateway hasn't reported its Infisical CLI version yet.">
+      <span>
+        <Dash />
+      </span>
+    </Tooltip>
+  );
+};
 
 const Connection = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
   const transports = getGatewayTransportHealth(gateway);
@@ -252,6 +281,7 @@ export const GatewayDetailsByIDPage = () => {
                 ],
                 ["Health", <GatewayHealth key="health" gateway={gateway} size="md" />],
                 ["Connection", <Connection key="connection" gateway={gateway} />],
+                ["CLI version", <CliVersion key="cli-version" gateway={gateway} />],
                 [
                   "Last seen",
                   lastSeen ? (

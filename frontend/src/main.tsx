@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { setWasmUrl } from "@lottiefiles/dotlottie-react";
 import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm?url";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { createRouter, RouterProvider, useRouterState } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
 import { PageTitle } from "./components/PageTitle";
@@ -73,21 +73,29 @@ window.addEventListener("vite:preloadError", async (event) => {
   window.location.reload(); // for example, refresh the page
 });
 
-const router = createRouter({
-  routeTree,
-  context: { serverConfig: null, queryClient },
-  defaultPendingComponent: () => (
+const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
+
+// v4 routes lazy-load their own pending component, so this one is the Suspense fallback while that
+// chunk arrives; on a v4 path it stays blank over the v4 ground index.html already painted.
+const DefaultPendingPage = () => {
+  const isV4 = useRouterState({ select: (state) => isV4Path(state.location.pathname) });
+  if (isV4) return null;
+  return (
     <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-dvh">
       <PageTitle title="Loading" />
       <Loader variant="brand" className="h-32 w-32" label="Loading page" />
     </div>
-  ),
+  );
+};
+
+const router = createRouter({
+  routeTree,
+  context: { serverConfig: null, queryClient },
+  defaultPendingComponent: DefaultPendingPage,
   defaultNotFoundComponent: NotFoundPage,
   defaultErrorComponent: ErrorPage
 });
 registerV4BridgeRouter(router);
-
-const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 

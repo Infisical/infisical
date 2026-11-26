@@ -8,6 +8,7 @@ import { toast } from "@infisical/cipher/ui/sonner";
 import { Text } from "@infisical/cipher/ui/text";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
+import axios from "axios";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { waitForMinimumAuthVerificationLoading } from "@app/components/auth/authTiming";
@@ -32,11 +33,18 @@ import styles from "../auth.module.css";
 const MAX_MFA_ATTEMPTS = 5;
 const CLIENT_RESEND_DELAY_SECONDS = 20;
 
+const isMfaTokenExpiredError = (error: unknown) =>
+  axios.isAxiosError(error) &&
+  error.response?.status === 403 &&
+  error.response?.data?.error === "TokenError";
+
 type Props = {
   successCallback: (options?: { needsFactorSetup?: boolean }) => void | Promise<void>;
+  closeMfa?: () => void;
   email: string;
   method: MfaMethod;
   onChangeAccount?: () => void | Promise<void>;
+  onSessionExpired?: () => void | Promise<void>;
   preview?: "code" | "recovery" | "passkey" | "codes";
 };
 
@@ -55,7 +63,15 @@ const PREVIEW_RECOVERY_CODES = [
 
 const PREVIEW_USABLE_METHODS = [MfaMethod.TOTP, MfaMethod.EMAIL, MfaMethod.WEBAUTHN];
 
-export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }: Props) => {
+export const Mfa = ({
+  successCallback,
+  closeMfa,
+  email,
+  method,
+  onChangeAccount,
+  onSessionExpired,
+  preview
+}: Props) => {
   const navigate = useNavigate();
   const [mfaCode, setMfaCode] = useState("");
   const [showRecoveryCodeInput, setShowRecoveryCodeInput] = useState(preview === "recovery");
@@ -123,6 +139,17 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     loadMethods();
   }, [method]);
 
+  const handleMfaTokenExpired = async () => {
+    setIsLoading(false);
+    SecurityClient.setMfaToken("");
+    if (onSessionExpired) {
+      await onSessionExpired();
+      return;
+    }
+    toast.info("Your verification session expired. Try again to get a new code.");
+    closeMfa?.();
+  };
+
   const expectedCodeLength = showRecoveryCodeInput ? 8 : 6;
   const isLockedOut = typeof triesLeft === "number" && triesLeft <= 0;
 
@@ -141,6 +168,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
 
   const completeLogin = async () => {
     await successCallback({ needsFactorSetup: isRecoveringFromSetup });
+    closeMfa?.();
     if (isRecoveringFromSetup) {
       const requiredLabels = (enrollableMethods.length ? enrollableMethods : [activeMethod])
         .map((requiredMethod) => MFA_METHOD_LABELS[requiredMethod].toLowerCase())
@@ -207,7 +235,11 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
         ? await verifyRecoveryCode(mfaCode.trim())
         : await verifyMfaToken({ email, mfaCode: mfaCode.trim(), mfaMethod: activeMethod });
       sessionToken = result.token;
-    } catch {
+    } catch (error) {
+      if (isMfaTokenExpiredError(error)) {
+        await handleMfaTokenExpired();
+        return;
+      }
       const isLocked = await countFailedAttempt(
         "User is temporary locked due to multiple failed login attempts. Try again later. You can also reset your password now to proceed."
       );
@@ -230,6 +262,11 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
       await sendMfaToken.mutateAsync({ email });
       setResendDelayEnd(Date.now() + CLIENT_RESEND_DELAY_SECONDS * 1000);
     } catch (err) {
+      if (isMfaTokenExpiredError(err)) {
+        setIsLoadingResend(false);
+        await handleMfaTokenExpired();
+        return;
+      }
       console.error(err);
     } finally {
       setIsLoadingResend(false);
@@ -254,6 +291,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     const mfaToken = getMfaTempToken();
 
     let sessionToken: string;
+    let verifyingMfaToken = false;
     try {
       SecurityClient.setMfaToken("");
       const options = await generateWebAuthnAuthenticationOptions();
@@ -264,6 +302,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
         return;
       }
       SecurityClient.setMfaToken(mfaToken);
+      verifyingMfaToken = true;
       const mfaResult = await verifyMfaToken({
         email,
         mfaCode: result.sessionToken,
@@ -271,6 +310,10 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
       });
       sessionToken = mfaResult.token;
     } catch (error: any) {
+      if (verifyingMfaToken && isMfaTokenExpiredError(error)) {
+        await handleMfaTokenExpired();
+        return;
+      }
       console.error("WebAuthn verification failed:", error);
       let errorMessage = "Failed to verify passkey";
       if (error.name === "NotAllowedError") {

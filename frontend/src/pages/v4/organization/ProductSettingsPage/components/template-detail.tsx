@@ -278,14 +278,15 @@ export const TemplateDetail = ({
   projectType: ProjectType;
   links: Links;
 }) => {
-  const orgId = useOrgId();
   const { role } = useSearch({ strict: false }) as { role?: string };
   const { permission, isPending: permissionPending } = useOrgPermission();
   const productSettings = useV4Adapter("productSettings");
-  const { data: subscription } = productSettings.useSubscription(orgId);
+  const { data: subscription, isPending: subscriptionPending } =
+    productSettings.useSubscription(useOrgId());
+  const inPlan = Boolean(subscription?.projectTemplates);
   const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   const { data: templates, isPending } = productSettings.useProjectTemplates({
-    enabled: canRead && Boolean(subscription?.projectTemplates)
+    enabled: canRead && inPlan
   });
   const template = useMemo(() => {
     const found = templates?.find((item) => item.id === templateId && item.type === projectType);
@@ -305,9 +306,21 @@ export const TemplateDetail = ({
   );
 
   let body;
-  if (permissionPending || (canRead && isPending && subscription?.projectTemplates))
+  if (permissionPending || subscriptionPending || (canRead && inPlan && isPending))
     body = <PageLoader label="Loading project template" />;
   else if (!canRead) body = <AccessRestricted requirement="read Project Templates" />;
+  else if (!inPlan)
+    body = (
+      <EmptyState
+        icon="layout-grid"
+        title="Your plan doesn't include project templates"
+        actions={
+          <Button variant="outline" icon="chev-left" asChild>
+            <a href={links.back}>{links.backLabel}</a>
+          </Button>
+        }
+      />
+    );
   else if (!template)
     body = (
       <EmptyState

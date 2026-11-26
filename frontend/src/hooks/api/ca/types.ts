@@ -228,6 +228,7 @@ export type TDeleteCertificateAuthorityDTO = {
 
 export type TCertificateAuthority = {
   id: string;
+  name: string;
   parentCaId?: string;
   projectId: string;
   type: InternalCaType;

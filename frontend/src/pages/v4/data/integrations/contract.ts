@@ -48,6 +48,7 @@ export type IntegrationsAdapter = {
   useGitHubApps: (orgId?: string, projectId?: string | null) => V4QueryResult<TGitHubApp[]>;
   useWorkflowIntegrations: (orgId?: string) => V4QueryResult<WorkflowIntegration[]>;
   useSlackIntegration: (id?: string) => V4QueryResult<SlackIntegration>;
+  useSlackIntegrationAlertCount: (id?: string) => V4QueryResult<number>;
   useMicrosoftTeamsIntegration: (id?: string) => V4QueryResult<MicrosoftTeamsIntegration>;
   useMicrosoftTeamsClientId: () => V4QueryResult<{ clientId: string }>;
   fetchSlackInstallUrl: typeof fetchSlackInstallUrl;

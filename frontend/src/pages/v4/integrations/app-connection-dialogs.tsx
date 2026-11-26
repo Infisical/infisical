@@ -54,11 +54,16 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistanceToNowStrict } from "date-fns";
 
+import { EnterpriseAppConnectionsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { APP_CONNECTION_MAP, POPULAR_APP_CONNECTIONS } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  isFederatedAppConnection,
+  POPULAR_APP_CONNECTIONS
+} from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
@@ -71,7 +76,9 @@ import {
   type AppConnectionFormHandle,
   type AppConnectionFormValues,
   type AppConnectionMethodPreset,
-  type AppConnectionPreset
+  type AppConnectionPreset,
+  credentialsPayload,
+  storedFormCredentials
 } from "@app/pages/v4/components/app-connection-form";
 
 import { useOrgId, useOrgPermission } from "../access/permissions";
@@ -84,21 +91,22 @@ import {
   startConnectionRedirect
 } from "../data/integrations/connection-redirect";
 import { rotateAtLocal, rotateAtOptions } from "../data/integrations/presets/shared";
+import { useUpgradeGate } from "../license";
 import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
 import {
   DatabricksScopesField,
-  FederatedCredentialDetails,
+  FederatedSetup,
   useConnectionPreset,
+  usePlatformManagedConfirmation,
   useRotationConfirmation
 } from "./app-connection-extras";
 import {
   appName,
   credentialsBlock,
-  federatedCredentialOf,
-  isManagedIdentity,
   methodName,
   methodPreset,
-  storedScopes
+  storedScopes,
+  verifyCredentials
 } from "./app-connection-model";
 import {
   clearDeletedGitHubApp,
@@ -191,8 +199,11 @@ const AppPicker = ({
   projectType?: ProjectType;
   onPick: (app: AppConnection) => void;
 }) => {
+  const orgId = useOrgId();
   const { data: options = [], isPending } =
     useV4Adapter("integrations").useConnectionOptions(projectType);
+  const { data: subscription } = useV4Adapter("networking").useSubscription(orgId);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   if (isPending) return <Loader label="Loading apps" />;
   const items = options
     .map((option) => option.app)
@@ -209,17 +220,33 @@ const AppPicker = ({
       };
     });
   return (
-    <TilePicker
-      items={items}
-      onSelect={(app) => onPick(app as AppConnection)}
-      searchLabel="Search apps"
-      searchPlaceholder="Search apps..."
-      noun="apps"
-    />
+    <>
+      <TilePicker
+        items={items}
+        onSelect={(app) => {
+          if (
+            APP_CONNECTION_MAP[app as AppConnection].enterprise &&
+            subscription &&
+            !subscription.enterpriseAppConnections
+          ) {
+            openUpgradeGate({
+              paywallKey: "organization.app-connection-list",
+              intent: EnterpriseAppConnectionsUpgradeIntent
+            });
+            return;
+          }
+          onPick(app as AppConnection);
+        }}
+        searchLabel="Search apps"
+        searchPlaceholder="Search apps..."
+        noun="apps"
+      />
+      {upgradeGate}
+    </>
   );
 };
 
-/** The Azure managed identity step after creating the connection: verify it, or close and verify later. */
+/** The federated connection step after creating it: verify it, or close and verify later. */
 const VerifyConnectionStep = ({
   connection,
   pending,
@@ -234,14 +261,13 @@ const VerifyConnectionStep = ({
   const updateConnection = useV4Adapter("integrations").useUpdateConnection();
   const [failure, setFailure] = useState("");
   const verify = async () => {
-    const { tenantId, clientId } = connection.credentials as { tenantId: string; clientId: string };
     setFailure("");
     onPendingChange(true);
     try {
       await updateConnection.mutateAsync({
         connectionId: connection.id,
         app: connection.app,
-        credentials: { tenantId, clientId } as TAppConnection["credentials"]
+        credentials: verifyCredentials(connection) as TAppConnection["credentials"]
       });
       saved(`${connection.name} verified`);
       onClose();
@@ -255,7 +281,7 @@ const VerifyConnectionStep = ({
     <>
       <SheetBody>
         <Stack gap={16}>
-          <FederatedCredentialDetails credential={federatedCredentialOf(connection)} />
+          <FederatedSetup connection={connection} />
           {failure && (
             <Alert variant="destructive">
               <AlertDescription>{failure}</AlertDescription>
@@ -328,6 +354,7 @@ const ConnectionExtras = ({
 const usePresetCreation = (projectId?: string) => {
   const createConnection = useV4Adapter("integrations").useCreateConnection();
   const rotation = useRotationConfirmation();
+  const platformManaged = usePlatformManagedConfirmation();
   const create = async ({
     name,
     values,
@@ -345,6 +372,7 @@ const usePresetCreation = (projectId?: string) => {
       onGatewayMissing();
       throw new Error(`${name} is only reachable through a gateway.`);
     }
+    if (values.isPlatformManagedCredentials && !(await platformManaged.confirm())) return undefined;
     if (values.isAutoRotationEnabled && !(await rotation.confirm())) return undefined;
     return createConnection
       .mutateAsync({
@@ -357,7 +385,15 @@ const usePresetCreation = (projectId?: string) => {
         throw new Error(errorMessage(error));
       });
   };
-  return { create, dialog: rotation.dialog };
+  return {
+    create,
+    dialog: (
+      <>
+        {rotation.dialog}
+        {platformManaged.dialog}
+      </>
+    )
+  };
 };
 
 const addSheetTitle = (created?: TAppConnection, preset?: AppConnectionPreset) => {
@@ -440,7 +476,7 @@ const PresetStep = ({
             onGatewayMissing: () => setGatewayError(GATEWAY_REQUIRED)
           });
           if (!connection) return;
-          if (isManagedIdentity(connection)) {
+          if (isFederatedAppConnection(connection)) {
             onCreated(connection);
             return;
           }
@@ -803,8 +839,8 @@ const CredentialField = ({
   />
 );
 
-const storedCredentials = (row: TAppConnection, keys: readonly string[]) => {
-  const stored = (row.credentials ?? {}) as Record<string, unknown>;
+const pickStored = (credentials: unknown, keys: readonly string[]) => {
+  const stored = (credentials ?? {}) as Record<string, unknown>;
   return Object.fromEntries(
     keys
       .filter((key) => stored[key] !== undefined && stored[key] !== null)
@@ -832,13 +868,13 @@ const credentialsDefaults = ({
   name: connection.name,
   description: connection.description ?? "",
   method: method.value,
-  ...storedCredentials(
-    connection,
+  ...pickStored(
+    connection.credentials,
     method.fields.map((spec) => spec.name).filter((name) => !name.includes("."))
   ),
   credentials: {
     ...method.credentials,
-    ...storedCredentials(connection, [
+    ...pickStored(storedFormCredentials(method, connection.credentials), [
       ...Object.keys(method.credentials),
       ...method.fields
         .filter((spec) => spec.name.startsWith("credentials."))
@@ -894,9 +930,18 @@ const startReconnect = ({
   return undefined;
 };
 
-const submitLabel = (redirect: AppConnectionMethodPreset["redirect"], managedIdentity: boolean) => {
+const submitLabel = ({
+  redirect,
+  federated,
+  failed: hasFailed
+}: {
+  redirect: AppConnectionMethodPreset["redirect"];
+  federated: boolean;
+  failed: boolean;
+}) => {
   if (redirect) return redirect.submitLabel.replace(/^Connect/, "Reconnect");
-  return managedIdentity ? "Verify connection" : "Update credentials";
+  if (!federated) return "Update credentials";
+  return hasFailed ? "Retry verification" : "Verify connection";
 };
 
 type ReconnectTarget = { returnTo: string; projectId?: string; projectType?: ProjectType };
@@ -943,7 +988,7 @@ const CredentialsForm = ({
     rotateAtUtc: connection.rotation?.rotateAtUtc ?? { hours: 0, minutes: 0 }
   };
   const initialRotateAt = rotateAtLocal(schedule.rotateAtUtc);
-  const managedIdentity = isManagedIdentity(connection);
+  const federated = isFederatedAppConnection(connection);
   const fields = method.fields
     .filter(
       (spec) =>
@@ -1002,16 +1047,17 @@ const CredentialsForm = ({
       await updateConnection.mutateAsync({
         connectionId: connection.id,
         app: connection.app,
-        credentials: { ...submitted.credentials, ...scopesPayload(scopes) },
+        credentials: {
+          ...credentialsPayload(method, submitted.credentials),
+          ...scopesPayload(scopes)
+        } as TAppConnection["credentials"],
         ...gatewayValues,
         ...(hasRotation && {
           isAutoRotationEnabled: submitted.isAutoRotationEnabled,
           rotation: submitted.rotation
         })
       });
-      saved(
-        managedIdentity ? `${connection.name} verified` : `${connection.name} credentials updated`
-      );
+      saved(federated ? `${connection.name} verified` : `${connection.name} credentials updated`);
       onClose();
     } catch (error) {
       setFailure(errorMessage(error) ?? "Couldn't update these credentials. Try again.");
@@ -1033,8 +1079,8 @@ const CredentialsForm = ({
                   .map((spec) => (
                     <CredentialField key={spec.name} control={form.control} spec={spec} />
                   ))}
-                {managedIdentity && (
-                  <FederatedCredentialDetails credential={federatedCredentialOf(connection)} />
+                {federated && (
+                  <FederatedSetup connection={connection} editedCredentials={values.credentials} />
                 )}
                 <ConnectionExtras
                   app={connection.app}
@@ -1068,7 +1114,7 @@ const CredentialsForm = ({
           </SheetBody>
           <SheetFooter>
             <Button variant="primary" type="submit" form={formId} loading={pending}>
-              {submitLabel(redirect, managedIdentity)}
+              {submitLabel({ redirect, federated, failed: Boolean(failure) })}
             </Button>
             <Button variant="outline" onClick={requestDiscard} disabled={pending}>
               Cancel

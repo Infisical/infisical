@@ -434,6 +434,19 @@ const useGetAgentVaultSkillVersion = (projectId: string, skillId: string, versio
   });
 };
 
+const useFetchAgentVaultSkillVersion = (projectId: string) => {
+  const orgId = useOrgId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillId, version }: { skillId: string; version: number }) =>
+      queryClient.fetchQuery({
+        queryKey: agentVaultKeys.skillVersion(orgId, projectId, skillId, version),
+        queryFn: () => fetchAgentVaultSkillVersion(skillId, version),
+        staleTime: Infinity
+      })
+  });
+};
+
 const useListAgentVaultAccessBundleSkills = (
   projectId: string,
   accessBundleId: string,
@@ -1184,6 +1197,7 @@ export const agentVaultResourcesLive: AgentVaultResourcesAdapter = {
   useSkill: useGetAgentVaultSkill,
   useSkillVersions: useListAgentVaultSkillVersions,
   useSkillVersion: useGetAgentVaultSkillVersion,
+  useFetchSkillVersion: useFetchAgentVaultSkillVersion,
   useAccessBundleSkills: useListAgentVaultAccessBundleSkills,
   useCreateSkill: useCreateAgentVaultSkill,
   useUpdateSkill: useUpdateAgentVaultSkill,

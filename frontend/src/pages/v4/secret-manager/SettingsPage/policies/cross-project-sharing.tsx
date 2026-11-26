@@ -18,6 +18,7 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 
+import { CrossProjectSecretSharingUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   ProjectPermissionProjectFolderGrantActions,
   type ProjectPermissionSet,
@@ -29,6 +30,7 @@ import type { Project } from "@app/hooks/api/projects/types";
 import { saved } from "../../../access/toast";
 import { AccessRestricted } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
+import { useUpgradeGate } from "../../../license";
 import { FolderChips } from "./folder-chips";
 import { GrantRevocationImpact } from "./grant-revocation-impact";
 import { type ShareSecretsEditData, ShareSecretsSheet } from "./share-secrets-sheet";
@@ -189,10 +191,7 @@ export const CrossProjectSharingSection = ({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editData, setEditData] = useState<ShareSecretsEditData | null>(null);
   const [revoking, setRevoking] = useState<ProjectGroup | null>(null);
-
-  let shareBlocked: string | undefined;
-  if (!canCreateAnyGrant) shareBlocked = RESTRICTED;
-  else if (!inPlan) shareBlocked = NOT_IN_PLAN;
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const editBlocked = (group: ProjectGroup) => {
     if (!inPlan) return NOT_IN_PLAN;
@@ -220,8 +219,15 @@ export const CrossProjectSharingSection = ({
           <Button
             variant="accent"
             icon="plus"
-            disabledReason={shareBlocked}
+            disabledReason={canCreateAnyGrant ? undefined : RESTRICTED}
             onClick={() => {
+              if (!inPlan) {
+                openUpgradeGate({
+                  intent: CrossProjectSecretSharingUpgradeIntent,
+                  paywallKey: "project.cross-project-sharing"
+                });
+                return;
+              }
               setEditData(null);
               setSheetOpen(true);
             }}
@@ -301,6 +307,7 @@ export const CrossProjectSharingSection = ({
         sourceProjectId={project.id}
         onClose={() => setRevoking(null)}
       />
+      {upgradeGate}
     </>
   );
 };

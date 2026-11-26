@@ -1,21 +1,19 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
-import { DataTable } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { DataList } from "@infisical/cipher/ui/list";
+import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
 import {
   Sheet,
+  SheetAside,
   SheetBody,
   SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SheetFooter
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Heading, Highlight, Meta } from "@infisical/cipher/ui/text";
@@ -29,11 +27,14 @@ import {
   type TPamSessionLog
 } from "@app/hooks/api/pam";
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { formatDuration, isMachineSession } from "./session-format";
 import { SessionStatus } from "./session-status";
+
+import styles from "./session-logs.module.css";
 
 const decodeBase64Utf8 = (b64: string) => {
   try {
@@ -115,28 +116,75 @@ const DESTRUCTIVE_PREFIXES = ["DROP ", "DELETE ", "TRUNCATE ", "ALTER "];
 const isDestructive = (text: string) =>
   DESTRUCTIVE_PREFIXES.some((prefix) => text.trimStart().toUpperCase().startsWith(prefix));
 
-type LogRow =
-  | { kind: "marker"; id: string; message: string }
-  | { kind: "log"; id: string; time: string; text: string; body: string | null };
+type LogLine = { id: string; time: string; text: string; body: string | null };
+
+type LogMarker = { kind: "marker"; id: string; message: string };
+
+type LogGroup = LogMarker | { kind: "group"; id: string; time: string; lines: LogLine[] };
+
+const LogEntry = ({ line, query }: { line: LogLine; query: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const measure = useCallback((node: HTMLElement | null) => {
+    if (!node) return undefined;
+    const observer = new ResizeObserver(() => setOverflows(node.scrollWidth > node.clientWidth));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const term = query.trim().toLowerCase();
+  const bodyMatch = Boolean(term && line.body?.toLowerCase().includes(term));
+  const showBody = Boolean(line.body) && (expanded || bodyMatch);
+  const expandable = overflows || expanded || Boolean(line.body) || line.text.includes("\n");
+  const destructive = isDestructive(line.text);
+  const content = (
+    <>
+      <Icon name="chev-right" className={styles.chevron} data-hidden={!expandable || undefined} />
+      <code ref={measure} className={styles.text} data-expanded={expanded || undefined}>
+        <Highlight text={line.text} query={query} />
+      </code>
+      {destructive && <Badge tone="bad">Destructive</Badge>}
+    </>
+  );
+  return (
+    <div className={styles.entry}>
+      {expandable ? (
+        <button
+          type="button"
+          className={styles.line}
+          aria-expanded={showBody || expanded}
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {content}
+        </button>
+      ) : (
+        <div className={styles.line}>{content}</div>
+      )}
+      {showBody && line.body && <Code block code={line.body} wrap maxHeight={384} />}
+    </div>
+  );
+};
 
 const SessionLogs = ({ session }: { session: TPamSession }) => {
-  const isActive = session.status === PamSessionStatus.Active;
   const {
     data: events = [],
     isPending,
     error
-  } = useV4Adapter("pam").useSessionLogs(session.id, true, isActive);
+  } = useV4Adapter("pam").useSessionLogs(
+    session.id,
+    true,
+    session.status === PamSessionStatus.Active
+  );
   const [search, setSearch] = useState("");
-  const rows = useMemo<LogRow[]>(
+  const entries = useMemo(
     () =>
-      events.flatMap((event, index): LogRow[] => {
+      events.flatMap((event, index): (LogMarker | (LogLine & { kind: "line" }))[] => {
         if (isBrokenChunkMarker(event))
           return [{ kind: "marker", id: `marker-${event.chunkIndex}`, message: event.message }];
         const text = logText(event);
         if (!text) return [];
         return [
           {
-            kind: "log",
+            kind: "line",
             id: `log-${event.timestamp}-${index}`,
             time: format(new Date(event.timestamp), "MMM d, h:mm:ss a"),
             text,
@@ -147,11 +195,21 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
     [events]
   );
   const term = search.trim().toLowerCase();
-  const visible = term
-    ? rows.filter(
-        (row) => row.kind === "log" && `${row.text}\n${row.body ?? ""}`.toLowerCase().includes(term)
-      )
-    : rows;
+  const groups: LogGroup[] = [];
+  entries.forEach((entry) => {
+    if (
+      term &&
+      (entry.kind === "marker" ||
+        !`${entry.text}\n${entry.body ?? ""}`.toLowerCase().includes(term))
+    )
+      return;
+    const last = groups.at(-1);
+    if (entry.kind === "line" && last?.kind === "group" && last.time === entry.time)
+      last.lines.push(entry);
+    else if (entry.kind === "line")
+      groups.push({ kind: "group", id: entry.id, time: entry.time, lines: [entry] });
+    else groups.push(entry);
+  });
 
   if (error)
     return (
@@ -169,42 +227,9 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      <DataTable
-        ghost={false}
+      <List
         label="Session logs"
-        rows={visible}
-        loading={isPending && rows.length === 0}
-        getRowId={(row) => row.id}
-        rowLabel={(row) => (row.kind === "log" ? row.text : row.message)}
-        isRowMuted={(row) => row.kind === "marker"}
-        columns={[
-          {
-            id: "time",
-            header: "Time",
-            width: 168,
-            render: (row) => (row.kind === "log" ? <Meta>{row.time}</Meta> : null)
-          },
-          {
-            id: "entry",
-            header: "Entry",
-            grow: true,
-            wrap: true,
-            primary: true,
-            render: (row) => {
-              if (row.kind === "marker") return <Alert tone="warn">{row.message}</Alert>;
-              const destructive = isDestructive(row.text);
-              return (
-                <Stack gap={8}>
-                  <Inline gap={8} align="start" wrap={false}>
-                    {destructive && <Badge tone="bad">Destructive</Badge>}
-                    <Code>{Highlight({ text: row.text, query: search })}</Code>
-                  </Inline>
-                  {row.body && <Code block code={row.body} wrap maxHeight={240} />}
-                </Stack>
-              );
-            }
-          }
-        ]}
+        loading={isPending && entries.length === 0}
         empty={
           <EmptyState
             size="sm"
@@ -213,47 +238,70 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
             title={term ? "No logs match your search" : "No logs recorded for this session"}
           />
         }
-      />
+      >
+        {groups.map((group) =>
+          group.kind === "marker" ? (
+            <ListRow
+              key={group.id}
+              value={group.id}
+              label={group.message}
+              title={<Alert tone="warn">{group.message}</Alert>}
+            />
+          ) : (
+            <ListRow
+              key={group.id}
+              value={group.id}
+              label={group.time}
+              title={<Meta>{group.time}</Meta>}
+            >
+              <Stack gap={4}>
+                {group.lines.map((line) => (
+                  <LogEntry key={line.id} line={line} query={search} />
+                ))}
+              </Stack>
+            </ListRow>
+          )
+        )}
+      </List>
     </Stack>
   );
 };
 
-const SessionBody = ({ session }: { session: TPamSession }) => {
-  const { data: accountTypes = [] } = useV4Adapter("pam").useAccountTypes();
-  const isActive = session.status === PamSessionStatus.Active;
-  const isRdp =
-    session.accountType === PamAccountType.Windows ||
-    session.accountType === PamAccountType.WindowsAd;
+const SessionSummary = ({ session }: { session: TPamSession }) => {
   const duration = formatDuration(session, Date.now());
   const dateOf = (value?: string | null) =>
     value ? format(new Date(value), "MMM d, yyyy h:mm a") : undefined;
-
   return (
-    <Stack gap={24}>
-      <DataList
-        variant="meta"
-        items={[
-          ["Status", <SessionStatus key="status" status={session.status} />],
-          [
-            "Account type",
-            accountTypes.find((meta) => meta.type === session.accountType)?.name ??
-              session.accountType
-          ],
-          isMachineSession(session) ? ["Actor", "Machine identity"] : ["Email", session.actorEmail],
-          ["Folder", session.folderName || "-"],
-          ["Started", dateOf(session.startedAt) ?? "-"],
-          ["Ended", dateOf(session.endedAt) ?? "Ongoing"],
-          ["Duration", duration ?? "-"],
-          ["IP address", <Meta key="ip">{session.actorIp}</Meta>],
-          ...(session.reason ? ([["Reason", session.reason]] as const) : [])
-        ]}
-      />
+    <DataList
+      variant="props"
+      items={[
+        ["Status", <SessionStatus key="status" status={session.status} />],
+        isMachineSession(session) ? ["Actor", "Machine identity"] : ["Email", session.actorEmail],
+        ["Folder", session.folderName || "-"],
+        ["Started", dateOf(session.startedAt) ?? "-"],
+        ["Ended", dateOf(session.endedAt) ?? "Ongoing"],
+        ["Duration", duration ?? "-"],
+        ["IP address", <Meta key="ip">{session.actorIp}</Meta>],
+        ...(session.reason ? ([["Reason", session.reason]] as const) : [])
+      ]}
+    />
+  );
+};
+
+const isRdpSession = (session?: TPamSession) =>
+  session?.accountType === PamAccountType.Windows ||
+  session?.accountType === PamAccountType.WindowsAd;
+
+const SessionMain = ({ session, error }: { session?: TPamSession; error: unknown }) => {
+  if (session) {
+    const isRdp = isRdpSession(session);
+    return (
       <Stack gap={12}>
         <Inline gap={8} align="center">
           <Heading level={3} size="subsection">
             {isRdp ? "Session recording" : "Session logs"}
           </Heading>
-          {isActive && (
+          {session.status === PamSessionStatus.Active && (
             <Badge tone="accent" dot>
               Live
             </Badge>
@@ -261,6 +309,21 @@ const SessionBody = ({ session }: { session: TPamSession }) => {
         </Inline>
         {isRdp ? <SessionRecording session={session} /> : <SessionLogs session={session} />}
       </Stack>
+    );
+  }
+  if (error)
+    return (
+      <EmptyState
+        size="sm"
+        icon="alert"
+        title="Could not load this session"
+        description={errorMessage(error) || "Please try again."}
+      />
+    );
+  return (
+    <Stack gap={16}>
+      <Skeleton height={32} width={240} />
+      <Skeleton lines={6} />
     </Stack>
   );
 };
@@ -276,45 +339,36 @@ export const SessionSheet = ({
 }) => {
   const pam = useV4Adapter("pam");
   const { data: session, error } = pam.useSession(sessionId ?? "");
+  const { data: accountTypes = [] } = pam.useAccountTypes();
   const { can } = pam.useAccountActions(session?.accountId ?? "", Boolean(session?.accountId));
+  const meta = accountTypes.find((entry) => entry.type === session?.accountType);
+  const isRdp = isRdpSession(session);
   const canTerminate =
     session?.status === PamSessionStatus.Active &&
     (!session.accountId || can(PamResourcePermissionActions.TerminateSessions));
 
   return (
     <Sheet open={Boolean(sessionId)} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle>{session?.accountName ?? "Session"}</SheetTitle>
-          {session && <SheetDescription>{session.actorName}</SheetDescription>}
-        </SheetHeader>
+      <SheetContent size="xl">
+        <SheetAside
+          mainLabel={isRdp ? "Recording" : "Logs"}
+          media={meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="md" />}
+          title={session?.accountName ?? "Session"}
+          description={session?.actorName}
+          badges={meta && <Badge tone="outline">{meta.name}</Badge>}
+        >
+          {session ? <SessionSummary session={session} /> : <Skeleton lines={6} />}
+        </SheetAside>
         <SheetBody>
-          {session && <SessionBody session={session} />}
-          {!session && error ? (
-            <EmptyState
-              size="sm"
-              icon="alert"
-              title="Could not load this session"
-              description={errorMessage(error) || "Please try again."}
-            />
-          ) : null}
-          {!session && !error && (
-            <Stack gap={16}>
-              <Skeleton height={32} width={240} />
-              <Skeleton lines={6} />
-            </Stack>
-          )}
+          <SessionMain session={session} error={error} />
         </SheetBody>
-        <SheetFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-          {session && canTerminate && (
+        {session && canTerminate && (
+          <SheetFooter>
             <Button variant="destructive" icon="x" onClick={() => onTerminate(session)}>
               Terminate session
             </Button>
-          )}
-        </SheetFooter>
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );

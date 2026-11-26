@@ -369,6 +369,7 @@ const internalById = (caId: string) => byId(caId) as TInternalCertificateAuthori
 
 const toProjectCa = (ca: TInternalCertificateAuthority): TCertificateAuthority => ({
   id: ca.id,
+  name: ca.name,
   parentCaId: ca.configuration.parentCaId,
   projectId: ca.projectId,
   type: ca.configuration.type,
