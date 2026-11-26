@@ -307,6 +307,7 @@ const AssignAccessDialog = ({
                 <Field label="Role">
                   <Select
                     label="Role"
+                    descriptionLayout="stacked"
                     value={effectiveRole}
                     options={roles.map(({ slug, name, description }) => ({
                       value: slug,

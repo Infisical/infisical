@@ -63,6 +63,7 @@ export const GatewayPicker = ({
       invalid={invalid}
       disabled={disabled || gatewaysPending || (showPools && poolsPending)}
       placeholder="Select gateway"
+      descriptionLayout="stacked"
       options={[
         ...(required ? [] : [{ value: "internet", label: noGatewayLabel }]),
         ...(showPools ? (pools ?? []) : []).map((pool) => ({

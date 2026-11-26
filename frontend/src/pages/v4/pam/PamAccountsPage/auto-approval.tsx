@@ -1,5 +1,5 @@
 import { type Dispatch, Fragment, type SetStateAction, useState } from "react";
-import { Alert } from "@infisical/cipher/ui/alert";
+import { Alert, AlertAction, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Badge, BadgeGroup } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -354,10 +354,10 @@ const AiConditionRow = ({
             placeholder="Connections the AI can read from..."
           />
         </Field>
-        <Alert
-          tone="warn"
-          title="Requesters write the reason and form fields, and can try to instruct the AI through them. Keep the assignee and reuse checks in this rule."
-        />
+        <Alert tone="warn">
+          Requesters write the reason and form fields, and can try to instruct the AI through them.
+          Keep the assignee and reuse checks in this rule.
+        </Alert>
       </Stack>
     </Item>
   );
@@ -554,18 +554,22 @@ const RuleCard = ({
                 <Alert
                   key={`${condition.connectionId}:${condition.subject}:${constraint}`}
                   tone="warn"
-                  title={message(
-                    subjectDisplayLabel(
-                      inputs,
-                      catalog,
-                      condition.connectionId,
-                      condition.subject
-                    ) ?? "record"
-                  )}
-                  actions={
+                >
+                  <Icon name="alert" />
+                  <AlertDescription>
+                    {message(
+                      subjectDisplayLabel(
+                        inputs,
+                        catalog,
+                        condition.connectionId,
+                        condition.subject
+                      ) ?? "record"
+                    )}
+                  </AlertDescription>
+                  <AlertAction>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       onClick={() =>
                         addCondition({
                           connectionId: condition.connectionId,
@@ -576,8 +580,8 @@ const RuleCard = ({
                     >
                       {action}
                     </Button>
-                  }
-                />
+                  </AlertAction>
+                </Alert>
               ))}
               <Inline gap={12} align="center">
                 <DropdownMenu>
@@ -743,13 +747,7 @@ const RulesSection = ({
         />
       )}
       {draft.rules.length === 0 ? (
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="zap"
-          title="No rules"
-          description="Every request waits for the approvers below."
-        />
+        <SmallText muted>No rules yet. Every request waits for the approvers below.</SmallText>
       ) : (
         draft.rules.map((rule, index) => (
           <Stack key={rule.key} gap={8}>
@@ -823,17 +821,11 @@ const InputList = ({
 }) => {
   if (inputs.length === 0)
     return (
-      <EmptyState
-        size="sm"
-        media="bare"
-        icon="file-text"
-        title="No request form fields"
-        description={
-          hasAiModel
-            ? "Rules can only use AI until you add one."
-            : "Rules have nothing to check until you add one."
-        }
-      />
+      <SmallText muted>
+        {hasAiModel
+          ? "No fields yet. Rules can only use AI until you add one."
+          : "No fields yet. Rules have nothing to check until you add one."}
+      </SmallText>
     );
   return inputs.map((input) => (
     <InputRow
