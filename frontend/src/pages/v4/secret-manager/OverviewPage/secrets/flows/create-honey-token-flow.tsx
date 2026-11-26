@@ -462,6 +462,7 @@ export function CreateHoneyTokenFlow({
                 error={errors.managedBy}
               >
                 <Select
+                  descriptionLayout="stacked"
                   label="AWS account"
                   placeholder="Select an AWS account..."
                   options={accountChoices}
