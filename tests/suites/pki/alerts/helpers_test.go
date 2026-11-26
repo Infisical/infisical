@@ -1,6 +1,7 @@
 package alerts_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -50,9 +51,11 @@ func requireAlert(t *testing.T, actor *harness.Principal, alertID uuid.UUID) *ap
 	return res
 }
 
-// requireNoAlert requires reading the alert as actor to answer 404.
+// requireNoAlert requires reading the alert as actor to answer the alert lookup's own
+// 404, so a 404 from resolving a deleted application cannot pass for a removed alert.
 func requireNoAlert(t *testing.T, actor *harness.Principal, alertID uuid.UUID) {
 	t.Helper()
 	res := readAlert(t, actor, alertID)
 	require.Equalf(t, http.StatusNotFound, res.StatusCode(), "reading the alert answered: %s", apierr.Body(res.Body))
+	require.Equal(t, fmt.Sprintf("Alert with ID '%s' not found", alertID), apierr.Message(res.Body))
 }

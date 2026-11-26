@@ -73,6 +73,30 @@ func TestCertificateAlert_Manage(t *testing.T) {
 		require.Equal(t, after.URL, got.Channels[0].Config["url"])
 	})
 
+	t.Run("should read back a Slack channel without its webhook URL", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		slack := fixture.NewWebhookSink(t, tn, webhook.Slack)
+		alertID := fixture.NewAlert(t, tn.Admin, map[string]any{
+			"name": "issued", "resourceType": certManagerResource, "eventType": certManagerIssuance,
+			"condition": map[string]any{"applicationIds": []string{app.ID.String()}},
+			"channels":  []map[string]any{{"name": "slack", "channelType": "slack", "config": map[string]any{"webhookUrl": slack.URL}}},
+		})
+
+		// Action
+		res := requireAlert(t, tn.Admin, alertID)
+
+		// Assert
+		require.NotContains(t, string(res.Body), slack.URL)
+		require.Len(t, res.JSON200.Alert.Channels, 1)
+		config := res.JSON200.Alert.Channels[0].Config
+		require.NotContains(t, config, "webhookUrl")
+		require.Equal(t, true, config["hasWebhookUrl"])
+	})
+
 	t.Run("should remove a deleted alert from reads and lists", func(t *testing.T) {
 		t.Parallel()
 
@@ -149,6 +173,46 @@ func TestCertificateAlert_Manage(t *testing.T) {
 		require.NoError(t, err)
 		require.Containsf(t, []int{http.StatusForbidden, http.StatusNotFound}, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Equal(t, name, requireAlert(t, owner.Admin, alertID).JSON200.Alert.Name)
+	})
+
+	t.Run("should refuse an application auditor's update and keep the alert's name", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		alertID := applicationIssuanceAlert(t, tn.Admin, app, sink.URL)
+		auditor := pki.NewMember(t, app, "auditor", "auditor")
+		name := requireAlert(t, auditor, alertID).JSON200.Alert.Name
+
+		// Action
+		res, err := auditor.API.UpdateAlertWithBodyWithResponse(t.Context(), alertID, "application/json", strings.NewReader(`{"name": "renamed"}`))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, name, requireAlert(t, tn.Admin, alertID).JSON200.Alert.Name)
+	})
+
+	t.Run("should refuse an application auditor's delete and keep the alert", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		alertID := applicationIssuanceAlert(t, tn.Admin, app, sink.URL)
+		auditor := pki.NewMember(t, app, "auditor", "auditor")
+		requireAlert(t, auditor, alertID)
+
+		// Action
+		res, err := auditor.API.DeleteAlertWithResponse(t.Context(), alertID)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		requireAlert(t, tn.Admin, alertID)
 	})
 }
 

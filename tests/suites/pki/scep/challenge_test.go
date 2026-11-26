@@ -60,6 +60,28 @@ func TestScepEnrollment_DynamicChallenge(t *testing.T) {
 		require.Equal(t, issued, p.certificates(t))
 	})
 
+	t.Run("should refuse a challenge from another application's SCEP endpoint for the same profile with badRequest and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newScepProfile(t, tn, dynamicChallenge(10))
+		other := p
+		other.app = pki.NewApplication(t, p.project, p.profile)
+		pki.EnableSCEP(t, other.app, p.profile, dynamicChallenge(10))
+		challenge := p.mustChallenge(t, pki.NewMember(t, p.app, "app-operator", "operator"))
+
+		// Action
+		got, _ := other.enroll(t, newDevice(t, "cross-app.example.com"), "cross-app.example.com", challenge)
+
+		// Assert
+		require.Equal(t, scep.FAILURE, got.status)
+		require.Equal(t, scep.BadRequest, got.failInfo)
+		require.Empty(t, p.certificates(t))
+		other.mustEnroll(t, "other-app.example.com", other.mustChallenge(t, pki.NewMember(t, other.app, "other-operator", "operator")))
+		p.mustEnroll(t, "own-app.example.com", challenge)
+	})
+
 	t.Run("should refuse an application auditor a challenge without using a pending slot", func(t *testing.T) {
 		t.Parallel()
 

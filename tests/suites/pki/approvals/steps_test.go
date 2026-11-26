@@ -88,4 +88,48 @@ func TestCertificateApproval_Steps(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, first.StatusCode(), "the first-step approver approving afterwards: %s", apierr.Body(first.Body))
 	})
+
+	t.Run("should hold a step that needs two approvals after one and issue once both approvers approve", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := newTwoOfTwo(t, tn)
+		reqID := g.request(t).JSON200.CertificateRequestId
+		approval := pki.ApprovalFor(t, g.App, reqID)
+		approve := func(approver *harness.Principal) *api.ApproveCertRequestApprovalRequestResponse {
+			res, err := approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
+			require.NoError(t, err)
+			return res
+		}
+
+		// Action
+		first := approve(g.approver)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "approving as the first approver: %s", apierr.Body(first.Body))
+		pending := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "pending", pending.Status)
+		require.EqualValues(t, 1, pending.CurrentStep)
+		require.Len(t, pending.Steps, 1)
+		require.Equal(t, "in-progress", pending.Steps[0].Status)
+		require.Len(t, pending.Steps[0].Approvals, 1)
+		held := g.certificateRequest(t, reqID).JSON200
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, held.Status)
+		require.Nil(t, held.CertificateId)
+		again := approve(g.approver)
+		require.Equal(t, http.StatusBadRequest, again.StatusCode())
+		require.Equal(t, "You have already approved this request", apierr.Message(again.Body))
+		repeated := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "pending", repeated.Status)
+		require.Equal(t, pending.Steps, repeated.Steps)
+		second := approve(g.second)
+		require.Equalf(t, http.StatusOK, second.StatusCode(), "approving as the second approver: %s", apierr.Body(second.Body))
+		approved := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "approved", approved.Status)
+		require.Equal(t, "completed", approved.Steps[0].Status)
+		require.Len(t, approved.Steps[0].Approvals, 2)
+		issued := g.waitStatus(t, reqID, api.GetCertificateRequest200JSONResponseBodyStatusIssued)
+		require.NotNil(t, issued.JSON200.Certificate)
+	})
 }

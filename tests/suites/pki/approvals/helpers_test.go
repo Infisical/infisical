@@ -1,8 +1,6 @@
 package approvals_test
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -47,30 +45,40 @@ func newGated(t *testing.T, tn *harness.Tenant, set approverSet) gated {
 	return gated{Graph: g, tn: tn, approver: approver, policyID: pki.NewApprovalPolicy(t, g.App, g.Profile, approvers...)}
 }
 
-// twoStep is a gated graph whose policy needs the approver's approval and then the
-// second approver's.
-type twoStep struct {
+// twoApprovers is a gated graph with a second approver; its constructor decides how the
+// policy's steps use the approver and the second approver.
+type twoApprovers struct {
 	gated
 	second *harness.Principal
 }
 
-func newTwoStep(t *testing.T, tn *harness.Tenant) twoStep {
+// newTwoStep needs the approver's approval and then, in a second step, the second
+// approver's.
+func newTwoStep(t *testing.T, tn *harness.Tenant) twoApprovers {
+	t.Helper()
+	return newTwoApprovers(t, tn, func(first, second pki.Approver) []pki.ApprovalStep {
+		return []pki.ApprovalStep{
+			{RequiredApprovals: 1, Approvers: []pki.Approver{first}},
+			{RequiredApprovals: 1, Approvers: []pki.Approver{second}},
+		}
+	})
+}
+
+// newTwoOfTwo has one step that needs both the approver's and the second approver's
+// approval.
+func newTwoOfTwo(t *testing.T, tn *harness.Tenant) twoApprovers {
+	t.Helper()
+	return newTwoApprovers(t, tn, func(first, second pki.Approver) []pki.ApprovalStep {
+		return []pki.ApprovalStep{{RequiredApprovals: 2, Approvers: []pki.Approver{first, second}}}
+	})
+}
+
+func newTwoApprovers(t *testing.T, tn *harness.Tenant, steps func(first, second pki.Approver) []pki.ApprovalStep) twoApprovers {
 	t.Helper()
 	g := pki.NewGraph(t, tn)
 	first, second := pki.NewMember(t, g.App, "first", "admin"), pki.NewMember(t, g.App, "second", "admin")
-	var body api.CreateCertRequestApprovalPolicyJSONRequestBody
-	require.NoError(t, json.Unmarshal(fmt.Appendf(nil, `{
-		"name": "policy-%s", "scope": "pki-application", "scopeId": %q,
-		"conditions": [{"profileNames": [%q]}],
-		"steps": [
-			{"requiredApprovals": 1, "approvers": [{"type": "user", "id": %q}]},
-			{"requiredApprovals": 1, "approvers": [{"type": "user", "id": %q}]}
-		]
-	}`, id.Short(), g.App.ID, g.Profile.Slug, first.ID, second.ID), &body))
-	res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithResponse(t.Context(), body)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the approval policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return twoStep{gated: gated{Graph: g, tn: tn, approver: first, policyID: res.JSON200.Policy.Id}, second: second}
+	policyID := pki.NewStepsApprovalPolicy(t, g.App, g.Profile, steps(pki.UserApprover(first.ID), pki.UserApprover(second.ID))...)
+	return twoApprovers{gated: gated{Graph: g, tn: tn, approver: first, policyID: policyID}, second: second}
 }
 
 // request asks for a certificate as the operator and returns the certificate request.

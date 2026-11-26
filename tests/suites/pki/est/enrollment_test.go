@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -282,5 +283,29 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "Invalid client certificate: unable to build a valid certificate chain", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, p.Project, p.Profile))
+	})
+	t.Run("should refuse a revoked client certificate with 401 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		requests := pki.ProfileRequests(t, p.Project, p.Profile).JSON200.CertificateRequests
+		require.Len(t, requests, 1)
+		require.NotNil(t, requests[0].Certificate, "the enrollment issued no certificate")
+		certID, err := uuid.Parse(requests[0].Certificate.Id)
+		require.NoError(t, err)
+		pki.Revoke(t, tn.Admin, pki.Certificate{ID: certID}, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
+		before := pki.Requests(t, p.Project, p.Profile)
+
+		// Action
+		res := p.reenroll(t, newCSR(t, key, name), enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
+		require.Equal(t, "Client certificate has been revoked", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
 	})
 }
