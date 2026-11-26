@@ -165,6 +165,21 @@ const done = <TData>(state: AccessState, result: TData) => ({ state, result });
 const stamp = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 
+type DemoProjectIdentityChange = {
+  identityId: string;
+  projectId?: string;
+  name?: string;
+  removed?: boolean;
+};
+const projectIdentityListeners = new Set<(change: DemoProjectIdentityChange) => void>();
+export const onDemoProjectIdentityChange = (
+  listener: (change: DemoProjectIdentityChange) => void
+) => {
+  projectIdentityListeners.add(listener);
+};
+const notifyProjectIdentityChange = (change: DemoProjectIdentityChange) =>
+  projectIdentityListeners.forEach((listener) => listener(change));
+
 export const useAddDemoProjectIdentity = () => {
   const store = storeFor(useAccessScenario());
   return (identity: { id: string; name: string; projectId: string; role: string }) =>
@@ -2210,6 +2225,11 @@ export const accessDemo: AccessAdapter = {
     const membership = membershipsOf(state, "identity", dto.projectId).find(
       (entry) => entry.identityId === dto.identityId
     )!;
+    notifyProjectIdentityChange({
+      identityId: dto.identityId,
+      projectId: dto.projectId,
+      removed: true
+    });
     return done(
       {
         ...state,
@@ -2262,6 +2282,7 @@ export const accessDemo: AccessAdapter = {
   }),
   useDeleteProjectManagedIdentity: demoMutation((dto, state) => {
     const removed = identityOf(state, dto.identityId)!;
+    notifyProjectIdentityChange({ identityId: dto.identityId, removed: true });
     return done(
       {
         ...state,
@@ -2284,6 +2305,7 @@ export const accessDemo: AccessAdapter = {
         : current.metadata,
       updatedAt: stamp()
     };
+    notifyProjectIdentityChange({ identityId: next.id, name: next.name });
     return done(
       {
         ...state,

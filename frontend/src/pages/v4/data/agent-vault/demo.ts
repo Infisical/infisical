@@ -34,7 +34,7 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
-import { useAddDemoProjectIdentity } from "../access/demo";
+import { onDemoProjectIdentityChange, useAddDemoProjectIdentity } from "../access/demo";
 import { DEMO_SELF_USER_ID } from "../access/fixtures";
 import {
   agentVaultDemoStore,
@@ -733,6 +733,21 @@ const memberStore = createFixtureStore<DemoMember[]>([
     projectId: "agent-platform"
   }
 ]);
+
+onDemoProjectIdentityChange(({ identityId, projectId, name, removed }) =>
+  memberStore.update((members) =>
+    members.flatMap((member) => {
+      if (
+        member.type !== AgentVaultMemberType.MachineIdentity ||
+        member.id !== identityId ||
+        (projectId && member.projectId !== projectId)
+      )
+        return [member];
+      if (removed) return [];
+      return [name ? { ...member, name } : member];
+    })
+  )
+);
 
 const delegations = createFixtureStore<Record<string, TAgentVaultDelegationDetail | null>>({});
 const delegationKey = (projectId: string, identityId: string) => `${projectId}:${identityId}`;
