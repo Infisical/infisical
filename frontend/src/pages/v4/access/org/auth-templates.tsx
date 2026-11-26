@@ -35,6 +35,8 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 
+import { MachineIdentityTemplatesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
+import { INFISICAL_SCHEDULE_DEMO_LINK } from "@app/const/links";
 import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
@@ -48,9 +50,11 @@ import {
 
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
+import { useBillingSubscription } from "../../license/product-icon";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
+import { usePlanGate } from "../plan-gate";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED, type Sort } from "../ui";
 import { Section } from "./detail-parts";
@@ -414,6 +418,13 @@ export const AuthTemplatesSection = () => {
   const canCreate = can(OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates);
   const canEdit = can(OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates);
   const canDelete = can(OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates);
+  const subscription = useBillingSubscription();
+  const licensed = !subscription || subscription.machineIdentityAuthTemplates;
+  const templatesGate = usePlanGate(
+    "machineIdentityAuthTemplates",
+    MachineIdentityTemplatesUpgradeIntent,
+    "organization.identity"
+  );
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = usePageSize("templatesTable", 20);
@@ -424,7 +435,7 @@ export const AuthTemplatesSection = () => {
     limit: perPage,
     offset: (page - 1) * perPage,
     search: debouncedSearch,
-    isDisabled: !canList
+    isDisabled: !canList || !licensed
   });
   const remove = access.useDeleteIdentityAuthTemplate();
   const [editing, setEditing] = useState<{ template?: IdentityAuthTemplate }>();
@@ -432,7 +443,7 @@ export const AuthTemplatesSection = () => {
   const [deleting, setDeleting] = useState<IdentityAuthTemplate>();
   const totalCount = data?.totalCount ?? 0;
   const searching = Boolean(debouncedSearch);
-  const loading = canList && isPending;
+  const loading = canList && licensed && isPending;
   const rows = useMemo(
     () =>
       [...(data?.templates ?? [])].sort(
@@ -512,14 +523,30 @@ export const AuthTemplatesSection = () => {
             variant="outline"
             icon="plus"
             disabled={!canCreate}
-            onClick={() => setEditing({})}
+            onClick={() => !templatesGate.blocked() && setEditing({})}
           >
             Create
           </Button>
         </Gate>
       }
     >
-      {canList && (loading || searching || totalCount > 0) && (
+      {canList && !licensed && (
+        <EmptyState
+          size="sm"
+          icon="lock"
+          title="This feature has not been activated for your license."
+          description="Contact us to learn more."
+          actions={
+            <Button variant="outline" asChild>
+              <a href={INFISICAL_SCHEDULE_DEMO_LINK} target="_blank" rel="noopener noreferrer">
+                Talk to us
+              </a>
+            </Button>
+          }
+        />
+      )}
+      {templatesGate.upgradeGate}
+      {canList && licensed && (loading || searching || totalCount > 0) && (
         <>
           <Input
             icon="search"

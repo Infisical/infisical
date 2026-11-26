@@ -8,6 +8,10 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { TagsInput } from "@infisical/cipher/ui/tags-input";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
+import { IdentityAuthUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
+
+import { usePlanGate } from "../plan-gate";
+
 import css from "./identity-auth.module.css";
 
 type TextProps = {
@@ -98,6 +102,20 @@ export const ListField = ({
     />
   </Field>
 );
+
+export const TrustedIpsField = ({ onChange, ...props }: React.ComponentProps<typeof ListField>) => {
+  const gate = usePlanGate(
+    "ipAllowlisting",
+    IdentityAuthUpgradeIntent,
+    "organization.identity-auth"
+  );
+  return (
+    <>
+      <ListField {...props} onChange={(values) => !gate.blocked() && onChange(values)} />
+      {gate.upgradeGate}
+    </>
+  );
+};
 
 export const SwitchField = ({
   name,

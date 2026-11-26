@@ -46,7 +46,8 @@ import {
   SwitchField,
   TextAreaField,
   TextField,
-  TextListField
+  TextListField,
+  TrustedIpsField
 } from "./fields";
 import { ipTagError, splitList } from "./lists";
 
@@ -211,7 +212,7 @@ const TokenFields = <D extends TokenDraft>({
     </Group>
     <Group legend="Trusted IPs">
       {extraIps}
-      <ListField
+      <TrustedIpsField
         name="accessTokenTrustedIps"
         label="Access token trusted IPs"
         placeholder="0.0.0.0/0"
@@ -560,7 +561,7 @@ const universal = define<IdentityUniversalAuth, UniversalDraft>({
           />
         }
         extraIps={
-          <ListField
+          <TrustedIpsField
             name="clientSecretTrustedIps"
             label="Client secret trusted IPs"
             placeholder="0.0.0.0/0"

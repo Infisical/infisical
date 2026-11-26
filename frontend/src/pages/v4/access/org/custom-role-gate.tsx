@@ -1,16 +1,10 @@
 import { CustomRolesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { isCustomOrgRole } from "@app/helpers/roles";
 
-import { useUpgradeGate } from "../../license";
-import { useBillingSubscription } from "../../license/product-icon";
+import { usePlanGate } from "../plan-gate";
 
 export const useCustomRoleGate = (paywallKey: string) => {
-  const subscription = useBillingSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const blocked = (roleSlug: string) => {
-    if (!isCustomOrgRole(roleSlug) || !subscription || subscription.rbac) return false;
-    openUpgradeGate({ intent: CustomRolesUpgradeIntent, paywallKey });
-    return true;
-  };
-  return { blocked, upgradeGate };
+  const gate = usePlanGate("rbac", CustomRolesUpgradeIntent, paywallKey);
+  const blocked = (roleSlug: string) => isCustomOrgRole(roleSlug) && gate.blocked();
+  return { blocked, blockedAny: gate.blocked, upgradeGate: gate.upgradeGate };
 };
