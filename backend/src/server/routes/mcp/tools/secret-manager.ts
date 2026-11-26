@@ -138,7 +138,7 @@ export const registerSecretManagerTools = ({
 
     return {
       approval: { id: approval.id, slug: approval.slug, status: approval.status },
-      message: "This environment has a change policy, so the change was submitted for approval and is not applied yet."
+      message: `${secretPath} in ${environmentSlug} has a secret change policy, so the change was submitted for approval. It applies once the request is approved and merged.`
     };
   };
 
