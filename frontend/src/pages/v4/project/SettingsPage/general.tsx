@@ -142,7 +142,7 @@ const ProjectDetails = ({ project, canEdit }: { project: Project; canEdit: boole
         <Field label="Project ID">
           <Input
             mono
-            readOnly
+            disabledReason="Project IDs can't be changed"
             value={project.id}
             trailing={
               <CopyTrailing value={project.id} label="Copy project ID" done="Project ID copied" />
