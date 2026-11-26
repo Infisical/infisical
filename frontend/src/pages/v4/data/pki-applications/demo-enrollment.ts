@@ -123,13 +123,16 @@ const microsoftAutoenrollmentConfig = (
   applicationId: string,
   profileId: string,
   input: Omit<TSetMicrosoftAutoenrollmentEnrollmentDTO, "applicationId" | "profileId">,
-  current: TMicrosoftAutoenrollmentEnrollment | null
+  current: TMicrosoftAutoenrollmentEnrollment | null,
+  reused?: TMicrosoftAutoenrollmentEnrollment | null
 ): TMicrosoftAutoenrollmentEnrollment => {
   const renewBeforeDays = input.renewBeforeDays ?? current?.renewBeforeDays ?? 42;
   const allowedGroups = input.allowedGroupSids
     ? DEMO_AD_GROUPS.filter((group) => input.allowedGroupSids?.includes(group.sid))
     : (current?.allowedGroups ?? []);
-  const rotated = Boolean(input.keytab || input.reuseKeytab);
+  let keyVersion = current?.keyVersion ?? 3;
+  if (reused) keyVersion = reused.keyVersion;
+  else if (input.keytab) keyVersion += 1;
   return {
     id: current?.id ?? `microsoft-autoenrollment-${applicationId}-${profileId}`,
     policyUrl: `${SITE_URL}/api/v1/cert-manager/microsoft-autoenrollment/${pathOf(applicationId, profileId)}/policy`,
@@ -139,8 +142,11 @@ const microsoftAutoenrollmentConfig = (
     allowedGroups,
     renewBeforeDays,
     effectiveRenewBeforeSeconds: renewBeforeDays * 86400,
-    servicePrincipalName: `${SERVICE_PRINCIPAL_NAME}@CORP.EXAMPLE.COM`,
-    keyVersion: rotated ? (current?.keyVersion ?? 2) + 1 : (current?.keyVersion ?? 3),
+    servicePrincipalName:
+      reused?.servicePrincipalName ??
+      current?.servicePrincipalName ??
+      `${SERVICE_PRINCIPAL_NAME}@CORP.EXAMPLE.COM`,
+    keyVersion,
     connectionId: input.connectionId ?? current?.connectionId ?? LDAP_CONNECTION_ID,
     allowAnyChannelBinding:
       input.allowAnyChannelBinding ?? current?.allowAnyChannelBinding ?? false,
@@ -227,7 +233,9 @@ const withOtherProfiles = (
 ): TPkiApplicationEnrollmentState => ({
   ...state,
   microsoftAutoenrollmentOtherProfiles: Object.values(all).flatMap((entry) =>
-    entry.microsoftAutoenrollment && entry.profileId !== state.profileId
+    entry.microsoftAutoenrollment &&
+    entry.applicationId === state.applicationId &&
+    entry.profileId !== state.profileId
       ? [
           {
             profileId: entry.profileId,
@@ -390,7 +398,9 @@ export const enrollmentDemo: PkiApplicationsEnrollmentAdapter = {
           applicationId,
           profileId,
           input,
-          current.microsoftAutoenrollment
+          current.microsoftAutoenrollment,
+          input.reuseKeytab &&
+            states.get()[keyOf(applicationId, input.reuseKeytab.profileId)]?.microsoftAutoenrollment
         ),
         microsoftAutoenrollmentConfigured: true
       }))

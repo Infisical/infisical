@@ -111,6 +111,7 @@ export const demoProfiles = createFixtureStore<TPkiApplicationProfile[]>([
     { acme: true, "microsoft-autoenrollment": true },
     "2026-05-02T09:45:00Z"
   ),
+  attachment(PLATFORM, MTLS_CLIENT, {}, "2026-05-06T14:20:00Z"),
   attachment(IOT, MTLS_CLIENT, { scep: true }, "2026-08-19T21:10:00Z")
 ]);
 
