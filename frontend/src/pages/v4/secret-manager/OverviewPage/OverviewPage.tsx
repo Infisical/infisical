@@ -1135,6 +1135,7 @@ export const OverviewPage = () => {
       .getEdits()
       .find((entry) => entry.getChanges().some((change) => unsavedId(change) === id));
     if (!edit) return;
+    if (unsavedEdits.changes().length === 1) setUnsavedReviewOpen(false);
     const others = edit.getChanges().filter((change) => unsavedId(change) !== id);
     edit.discard();
     if (others.length) unsavedEdits.registry.holdDrafts(others);
