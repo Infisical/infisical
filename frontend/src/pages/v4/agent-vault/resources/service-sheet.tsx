@@ -982,9 +982,7 @@ export const ServiceSheet = ({
           const hook = savedHooks.data?.hooks.find((entry) => entry.id === next);
           set(
             "hook",
-            hook
-              ? { ...form.hook, hookId: hook.id, hookName: hook.name }
-              : serviceHookDraftOf()
+            hook ? { ...form.hook, hookId: hook.id, hookName: hook.name } : serviceHookDraftOf()
           );
           setErrors({});
         }}
@@ -1167,6 +1165,13 @@ export const ServiceSheet = ({
     {
       title: "Review",
       validate: async () => {
+        const invalidStep = stepKeys.find(
+          (key) => key !== ServiceStep.Template && key !== ServiceStep.Review && !validateStep(key)
+        );
+        if (invalidStep) {
+          goTo(invalidStep);
+          return false;
+        }
         const pending = membersClearedNotice(form, service);
         if (pending) {
           setNotice(pending);
