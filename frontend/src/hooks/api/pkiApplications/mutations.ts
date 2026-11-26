@@ -57,7 +57,10 @@ export const useUpdatePkiApplication = () => {
       );
       return data.application;
     },
-    onSuccess: () => invalidateAll(qc)
+    onSuccess: (application) => {
+      qc.setQueryData(pkiApplicationKeys.byName(application.name), { application });
+      invalidateAll(qc);
+    }
   });
 };
 

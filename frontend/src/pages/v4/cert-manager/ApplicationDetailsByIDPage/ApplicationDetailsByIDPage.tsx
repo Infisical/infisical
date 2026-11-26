@@ -25,7 +25,7 @@ import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import { isAxiosError } from "axios";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -266,11 +266,20 @@ const ApplicationDetail = ({
   );
 };
 
+const useApplicationAcrossRename = (applicationName: string) => {
+  const lookup = useV4Adapter("pkiApplications").useApplicationByName(applicationName);
+  const isNavigating = useRouterState({ select: (state) => state.status === "pending" });
+  const [lastShown, setLastShown] = useState<TPkiApplication>();
+  if (lookup.data && lookup.data !== lastShown) setLastShown(lookup.data);
+  if (lookup.data || !isNavigating || !lastShown) return lookup;
+  return { data: lastShown, isPending: false, error: null };
+};
+
 const Page = () => {
   const { orgId, applicationName } = useParams({ from: routeId });
   const { projectId, isPending: isResolving } = useCertManagerProjectId(orgId);
   const adapter = useV4Adapter("pkiApplications");
-  const { data: application, isPending, error } = adapter.useApplicationByName(applicationName);
+  const { data: application, isPending, error } = useApplicationAcrossRename(applicationName);
   const permissions = adapter.useApplicationPermissions(application?.id ?? "");
 
   if (isResolving) return <Loader size="page" label="Loading application" />;

@@ -24,6 +24,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useCertManagerProjectId } from "../components/certificate";
 import { canCreateAttachableProfile } from "../components/profile-model";
 import { CertificateProfileSheet } from "../components/profile-sheet";
+import { useUpdateApplication } from "./use-update-application";
 
 const nameSchema = z
   .string()
@@ -90,7 +91,7 @@ const ApplicationForm = ({
 }) => {
   const adapter = useV4Adapter("pkiApplications");
   const create = adapter.useCreateApplication();
-  const update = adapter.useUpdateApplication();
+  const update = useUpdateApplication();
   const { options: profileOptions } = useProfileOptions();
   const initialName = application?.name ?? "";
   const initialDescription = application?.description ?? "";
@@ -118,7 +119,7 @@ const ApplicationForm = ({
     setPending(true);
     try {
       if (application) {
-        await update.mutateAsync({
+        await update({
           applicationId: application.id,
           name: name.trim(),
           description: description.trim() || null
