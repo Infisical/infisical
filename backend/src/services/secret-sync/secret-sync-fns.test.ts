@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BadRequestError } from "@app/lib/errors";
 
 import { SecretSync } from "./secret-sync-enums";
-import { assertKeySchemaProducesValidNames } from "./secret-sync-fns";
+import { assertKeySchemaProducesValidNames, matchesSchema } from "./secret-sync-fns";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 
@@ -76,5 +76,28 @@ describe("assertKeySchemaProducesValidNames", () => {
         environment: "prod-eu"
       })
     ).not.toThrow();
+  });
+});
+
+describe("matchesSchema with mirrored folders", () => {
+  const mirroredFolders = new Set(["", "api"]);
+
+  it("matches names in a mirrored folder", () => {
+    expect(matchesSchema("DB_URL", "dev", undefined, { mirroredFolders })).toBe(true);
+    expect(matchesSchema("api/DB_URL", "dev", undefined, { mirroredFolders })).toBe(true);
+  });
+
+  it("leaves names in other folders alone, even without a key schema", () => {
+    expect(matchesSchema("team-a/DB_URL", "dev", undefined, { mirroredFolders })).toBe(false);
+    expect(matchesSchema("api/nested/DB_URL", "dev", undefined, { mirroredFolders })).toBe(false);
+  });
+
+  it("applies the key schema to the last segment only", () => {
+    expect(matchesSchema("api/INF_DB_URL", "dev", "INF_{{secretKey}}", { mirroredFolders })).toBe(true);
+    expect(matchesSchema("api/DB_URL", "dev", "INF_{{secretKey}}", { mirroredFolders })).toBe(false);
+  });
+
+  it("leaves a name matching the key schema alone when its folder is not mirrored", () => {
+    expect(matchesSchema("team-a/INF_DB_URL", "dev", "INF_{{secretKey}}", { mirroredFolders })).toBe(false);
   });
 });

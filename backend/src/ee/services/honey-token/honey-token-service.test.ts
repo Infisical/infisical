@@ -1,4 +1,10 @@
+import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
+
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 
 import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { HONEY_TOKEN_RESOURCE_TYPE, HONEY_TOKEN_TRIGGERED_EVENT } from "./honey-token-events";
@@ -286,4 +292,80 @@ describe("honey token trigger", () => {
 
     expect(harness.notifications).toHaveLength(0);
   });
+});
+
+describe("honey token delete", () => {
+  const buildDeleteService = (status: HoneyTokenStatus) => {
+    const deletedIn: object[] = [];
+    const reapedIn: { filter: unknown; tx: object }[] = [];
+    const tx = { id: "tx-1" };
+
+    const service = honeyTokenServiceFactory({
+      honeyTokenDAL: {
+        findLiveById: async () => ({ ...HONEY_TOKEN, status, config: { managedBy: "organization" } }),
+        transaction: async <T>(fn: (trx: object) => Promise<T>) => fn(tx),
+        delete: async (filter: { id: string; status: HoneyTokenStatus }, trx: object) => {
+          if (filter.status !== status) return [];
+          deletedIn.push(trx);
+          return [{ id: filter.id }];
+        }
+      },
+      folderDAL: {
+        findSecretPathByFolderIds: async () => [{ path: "/app", environmentSlug: "prod" }]
+      },
+      permissionService: {
+        getProjectPermission: async () => ({
+          permission: createMongoAbility([
+            {
+              action: [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Revoke],
+              subject: ProjectPermissionSub.HoneyTokens
+            }
+          ])
+        })
+      },
+      alertService: {
+        deleteAlertsForDeletedResource: async (filter: unknown, trx: object) => {
+          reapedIn.push({ filter, tx: trx });
+          return 0;
+        }
+      }
+    } as never);
+
+    const deleteHoneyToken = () =>
+      service.deleteHoneyToken({ honeyTokenId: HONEY_TOKEN.id }, {
+        type: "user",
+        id: "user-1",
+        orgId: "org-1",
+        authMethod: null
+      } as never);
+
+    return { deleteHoneyToken, deletedIn, reapedIn, tx };
+  };
+
+  test("deletes a revoked token and reaps its alerts in the same transaction", async () => {
+    const harness = buildDeleteService(HoneyTokenStatus.Revoked);
+
+    const { honeyToken, folderInfo } = await harness.deleteHoneyToken();
+
+    expect(honeyToken.id).toBe(HONEY_TOKEN.id);
+    expect(folderInfo).toMatchObject({ environmentSlug: "prod", path: "/app" });
+    expect(harness.deletedIn).toEqual([harness.tx]);
+    expect(harness.reapedIn).toEqual([
+      { filter: { resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceId: HONEY_TOKEN.id }, tx: harness.tx }
+    ]);
+  });
+
+  test.each([HoneyTokenStatus.Active, HoneyTokenStatus.Triggered])(
+    "refuses to delete a %s token and leaves it in place",
+    async (status) => {
+      const harness = buildDeleteService(status);
+
+      await expect(harness.deleteHoneyToken()).rejects.toThrow(
+        'Honey token "prod-aws-decoy" must be revoked before it can be deleted'
+      );
+
+      expect(harness.deletedIn).toHaveLength(0);
+      expect(harness.reapedIn).toHaveLength(0);
+    }
+  );
 });

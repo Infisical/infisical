@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
+import { auditSafeText } from "@app/server/lib/schemas";
 
 import {
   BaseApprovalPolicySchema,
@@ -30,6 +31,8 @@ export const SigningWindowDurationSchema = z.string().refine(
 );
 
 export const MAX_SIGNING_COMMAND_LENGTH = 32767;
+
+const MAX_SIGNING_JUSTIFICATION_LENGTH = 2048;
 
 const SHA256_HEX_RE = new RE2("^[a-fA-F0-9]{64}$");
 
@@ -90,7 +93,7 @@ export const CodeSigningPolicyRequestDataSchema = z.object({
   signerId: z.string().uuid(),
   approvalPolicyId: z.string().uuid(),
   signerName: z.string(),
-  justification: z.string().max(512).optional(),
+  justification: z.string().max(MAX_SIGNING_JUSTIFICATION_LENGTH).optional(),
   requestedWindowDuration: SigningWindowDurationSchema.optional(),
   requestedSignings: z.number().int().positive().optional(),
   scope: CodeSigningScopeSchema.optional()
@@ -124,10 +127,20 @@ export const CodeSigningRequestSchema = BaseApprovalRequestSchema.extend({
   })
 });
 
+export const signingJustificationSchema = ({ required = false }: { required?: boolean } = {}) => {
+  const text = z.string().trim().max(MAX_SIGNING_JUSTIFICATION_LENGTH);
+  return auditSafeText(required ? text.min(1) : text, { allowMultiline: true });
+};
+
 export const CreateCodeSigningRequestSchema = BaseCreateApprovalRequestSchema.extend({
+  justification: signingJustificationSchema().nullable().optional(),
   requestData: CodeSigningPolicyRequestDataSchema.extend({
+    justification: signingJustificationSchema().optional(),
     scope: CodeSigningScopeInputSchema.optional()
   })
+}).transform((body) => {
+  const justification = body.justification || body.requestData.justification || undefined;
+  return { ...body, justification, requestData: { ...body.requestData, justification } };
 });
 
 export const CodeSigningRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({

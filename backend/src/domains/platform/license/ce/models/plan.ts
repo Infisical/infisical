@@ -30,7 +30,6 @@ export type TPlanFeatures = {
   isOffline?: boolean;
   tier: number;
   workspaceLimit: number | null;
-  workspacesUsed: number;
   dynamicSecret: boolean;
   memberLimit: number | null;
   identityLimit: number | null;
@@ -282,11 +281,7 @@ export class Plan {
   // Cloned so freezing never reaches the caller's object (the instance features, a test's fixture).
   private readonly features: TPlanFeatures;
 
-  private constructor(
-    features: TPlanFeatures,
-    // Not part of the features, so it never reaches the cache or an API response.
-    private readonly fallback = false
-  ) {
+  private constructor(features: TPlanFeatures) {
     this.features = deepFreeze(structuredClone(features));
   }
 
@@ -298,19 +293,9 @@ export class Plan {
     return this.features.slug;
   }
 
-  // No slug means community edition, or the fallback served while the License Server is down.
+  // No slug means community edition, or the free plan served while no plan can be fetched.
   get isPaid(): boolean {
     return Boolean(this.features.slug);
-  }
-
-  // A stand-in served because the License Server, the database or the key store couldn't answer, not the org's
-  // real plan. Decisions that would stop something the org pays for should look at its last known plan instead.
-  get isFallback(): boolean {
-    return this.fallback;
-  }
-
-  asFallback(): Plan {
-    return new Plan(this.features, true);
   }
 
   get isOffline(): boolean {
@@ -390,10 +375,6 @@ export class Plan {
   // Whether the plan explicitly includes this product, as a purchase or an override does. Null proves nothing.
   grants(product: PlanProduct): boolean {
     return this.features[product] === true;
-  }
-
-  withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.features, workspacesUsed }, this.fallback);
   }
 
   // A mutable copy, for the cache and API responses.

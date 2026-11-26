@@ -7,5 +7,6 @@ export const AWS_SECRETS_MANAGER_SYNC_LIST_OPTION: TSecretSyncListItem = {
   destination: SecretSync.AWSSecretsManager,
   connection: AppConnection.AWS,
   canRemoveSecretsOnDeletion: true,
-  canImportSecrets: true
+  canImportSecrets: true,
+  supportsPreserveFolderStructure: true
 };

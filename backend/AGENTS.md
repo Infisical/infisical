@@ -917,7 +917,8 @@ outside system, where the CA hasn't revoked yet, calls `certificateService.revok
 upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
 audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
 `revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
-DigiCert revocation sync) keeps writing `status` directly.
+DigiCert revocation sync) writes `status` through `signerService.revokeWithCertificate`, never directly, so every
+signer on the certificate is revoked, its open requests canceled and its revocation settled in the same transaction.
 
 **A revoke someone asks for goes through `certificateService.revokeCert`**, never straight to
 `$performRevocation` or a CA's revoke call, because `revokeCert` is where an Application's revocation

@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { formatDuration, ms } from "@app/lib/ms";
+import { formatDuration, formatDurationSeconds, ms, toExactDurationString } from "@app/lib/ms";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -33,6 +33,8 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
+  effectivePamAccessDurationMs,
+  exceedsPamMaxAccessDuration,
   matchesPamAccessSubject,
   matchPamAccessGrants,
   PAM_DEFAULT_ACCESS_TYPE,
@@ -105,6 +107,7 @@ type TPamRequestDecoration = {
   accountType: string | null;
   folderName: string | null;
   accessType: PamAccessType;
+  maxAccessDurationSeconds: number | null;
 };
 
 export type TPamAccessApprovalResource = TApprovalResource<
@@ -280,7 +283,9 @@ export const pamAccessApprovalResourceFactory = ({
     breakGlass
   ) => {
     const inputs = request.requestData.requestData as TPamAccessRequestData;
-    const durationMs = parsePamAccessDuration(inputs.duration);
+    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId, tx);
+    const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
+    const durationMs = effectivePamAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
     const grant = await approvalRequestGrantsDAL.create(
       {
@@ -447,6 +452,16 @@ export const pamAccessApprovalResourceFactory = ({
       if (!hasRevealableCredential(account.accountType as PamAccountType, credentials)) {
         throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
       }
+    }
+
+    if (
+      accessControls.maxAccessDurationSeconds !== null &&
+      exceedsPamMaxAccessDuration(inputs.duration, accessControls.maxAccessDurationSeconds)
+    ) {
+      throw new BadRequestError({
+        name: "PAM_ACCESS_DURATION_EXCEEDED",
+        message: `Access duration must be at most ${formatDurationSeconds(accessControls.maxAccessDurationSeconds)}, the maximum set on this account's template`
+      });
     }
 
     if (accessControls.requireReason && !inputs.reason) {
@@ -736,6 +751,25 @@ export const pamAccessApprovalResourceFactory = ({
     return getSlackSendTargets(configs, event);
   };
 
+  const $grantedDurationMs = (duration: string, templatePolicies: unknown) =>
+    effectivePamAccessDurationMs(duration, resolveAccessControls(templatePolicies).maxAccessDurationSeconds);
+
+  const $exactDurationLabel = (durationMs: number | null, fallback: string) =>
+    durationMs !== null && durationMs % 1000 === 0
+      ? formatDurationSeconds(durationMs / 1000)
+      : formatDuration(fallback);
+
+  const $requestedDurationLabel = (duration: string) => $exactDurationLabel(parsePamAccessDuration(duration), duration);
+
+  const $grantedDurationString = (duration: string | undefined, templatePolicies: unknown) => {
+    if (!duration) return "";
+    const grantedMs = $grantedDurationMs(duration, templatePolicies);
+    return grantedMs && grantedMs % 1000 === 0 ? toExactDurationString(grantedMs / 1000) : duration;
+  };
+
+  const $grantedDurationLabel = (duration: string, templatePolicies: unknown) =>
+    $exactDurationLabel($grantedDurationMs(duration, templatePolicies), duration);
+
   const buildNotification: NonNullable<TPamAccessApprovalResource["buildNotification"]> = async ({
     event,
     request,
@@ -783,7 +817,7 @@ export const pamAccessApprovalResourceFactory = ({
                   requesterEmail,
                   accountName,
                   folderName: folder?.name ?? undefined,
-                  accessDuration: formatDuration(inputs.duration),
+                  accessDuration: $requestedDurationLabel(inputs.duration),
                   accessTypeLabel,
                   reason: inputs.reason,
                   approvalUrl
@@ -798,7 +832,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail,
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $requestedDurationLabel(inputs.duration),
               accessTypeLabel,
               reason: inputs.reason,
               approvalUrl
@@ -824,7 +858,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail: request.requesterEmail ?? "",
             resourceName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
             bypassReason
           }
         },
@@ -837,7 +871,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail: request.requesterEmail ?? "",
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
               bypassReason: bypassReason ?? ""
             }
           }
@@ -866,7 +900,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail,
             folderName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $requestedDurationLabel(inputs.duration),
             accessTypeLabel,
             ruleName,
             linkedRecords: linkedRecords || undefined,
@@ -963,17 +997,19 @@ export const pamAccessApprovalResourceFactory = ({
 
     const templateIds = [...new Set(accounts.map((a) => a.templateId).filter(Boolean))];
     const templates = templateIds.length > 0 ? await pamAccountTemplateDAL.find({ $in: { id: templateIds } }) : [];
-    const templateTypeById = new Map(templates.map((t) => [t.id, t.type]));
+    const templateById = new Map(templates.map((t) => [t.id, t]));
 
     return requests.map((request, i) => {
       const account = inputs[i]?.accountId ? accountById.get(inputs[i]!.accountId) : null;
       const folder = inputs[i]?.folderId ? folderById.get(inputs[i]!.folderId) : null;
+      const template = account?.templateId ? templateById.get(account.templateId) : undefined;
       return {
         ...request,
         accountName: account?.name ?? null,
-        accountType: account?.templateId ? (templateTypeById.get(account.templateId) ?? null) : null,
+        accountType: template?.type ?? null,
         folderName: folder?.name ?? null,
-        accessType: inputs[i]?.accessType ?? PamAccessType.Session
+        accessType: inputs[i]?.accessType ?? PamAccessType.Session,
+        maxAccessDurationSeconds: resolveAccessControls(template?.policies).maxAccessDurationSeconds
       };
     });
   };
@@ -1111,7 +1147,7 @@ export const pamAccessApprovalResourceFactory = ({
         granteeEmail: request.requesterEmail ?? undefined,
         ...scope,
         resourceName: folder?.name,
-        accessDuration: inputs?.duration ?? "",
+        accessDuration: $grantedDurationString(inputs?.duration, account?.templatePolicies),
         bypassReason: bypassReason ?? "",
         approverCount: new Set(steps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))).size
       }

@@ -358,6 +358,18 @@ export const SECRET_SYNC_MAP: Record<
   }
 };
 
+// A folder's path relative to a sync's source folder, eg "api/payments" for "/backend/api/payments"
+// synced from "/backend", and "" for the source folder itself.
+export const getSecretSyncRelativeFolder = (path: string, secretPath: string) =>
+  path.split("/").filter(Boolean).slice(secretPath.split("/").filter(Boolean).length).join("/");
+
+export const applySecretSyncKeySchema = (
+  schema: string | undefined,
+  key: string,
+  environment: string
+) =>
+  schema ? schema.replaceAll("{{secretKey}}", key).replaceAll("{{environment}}", environment) : key;
+
 export const POPULAR_SECRET_SYNCS: SecretSync[] = [
   SecretSync.AWSParameterStore,
   SecretSync.GCPSecretManager,

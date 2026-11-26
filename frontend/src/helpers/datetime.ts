@@ -34,6 +34,19 @@ export const parseDurationMs = (duration?: string | null): number | null => {
   }
 };
 
+export const capDurationOptions = <T extends { value: string }>(
+  presets: T[],
+  maxMs: number,
+  capOption: T
+): T[] => {
+  const withinMax = presets.filter((option) => {
+    const optionMs = parseDurationMs(option.value);
+    return optionMs !== null && optionMs <= maxMs;
+  });
+  if (withinMax.some((option) => parseDurationMs(option.value) === maxMs)) return withinMax;
+  return [...withinMax, capOption];
+};
+
 export const SECONDS_PER_DAY = 86400;
 
 // Helper function to convert seconds to value and unit

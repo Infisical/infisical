@@ -192,6 +192,10 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**Max Access Duration caps the approved access window, not a session**: it resolves only with Require Approval
+on (`resolveAccessControls`), `assertCanCreateRequest` rejects longer requests, and `postApprovalTxRoutine`
+clamps every grant, break glass included, to the template's current max.
+
 **Output masking fails closed**: an older gateway would silently ignore the rule, so
 `assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
 gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
