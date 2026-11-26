@@ -224,7 +224,7 @@ describe("runScript server errors", () => {
     const conn = createConnection([
       (req, c) => {
         c.emit("errorMessage", { message: "Divide by zero error encountered.", number: 8134, class: 16, state: 1 });
-        selectRows(MAX_ROWS + 1)(req, c);
+        return selectRows(MAX_ROWS + 1)(req, c);
       }
     ]);
     const result = await runScript(asConn(conn), "SELECT 1/0; SELECT n FROM nums");
