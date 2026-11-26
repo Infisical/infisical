@@ -1,29 +1,43 @@
 import { useState } from "react";
-import { Link, useRouteContext, useSearch } from "@tanstack/react-router";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { useNavigate, useRouteContext, useSearch } from "@tanstack/react-router";
+import { addSeconds, formatISO } from "date-fns";
+import {
+  ArrowLeftRightIcon,
+  CheckCircle2,
+  CheckIcon,
+  Loader2,
+  TriangleAlertIcon,
+  XIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertDescription,
+  AnimatedCollapse,
+  Badge,
   Button,
   Card,
-  CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-  FieldTitle,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  OrgIcon,
   RadioGroup,
-  RadioGroupItem,
   Skeleton
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import { SessionStorageKeys } from "@app/const";
+import { useUser } from "@app/context";
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
-import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
+import {
+  useGetOrganizationById,
+  useGetOrganizationsWithSubOrgs
+} from "@app/hooks/api/organization/queries";
 
 // The user picks one access level per product rather than individual scopes. A level is offered when the application
 // asked for the scope it is named by (`requires`), and only scopes the application asked for are ever granted.
@@ -35,35 +49,58 @@ const PRODUCT_ACCESS = [
       {
         level: "describe",
         title: "Describe Only",
+        dotClassName: "bg-neutral",
         requires: "secrets:describe",
         scopes: ["secrets:describe"],
-        description: "See projects, folders and secrets, without their values"
+        description:
+          "See projects, environments, folders, and metadata about secrets. Secret values are never readable."
       },
       {
         level: "read",
         title: "Read Only",
+        dotClassName: "bg-info",
         requires: "secrets:read",
         scopes: ["secrets:read"],
-        description: "See projects, folders and secrets, including their values"
+        description:
+          "Everything in Describe Only, plus the ability to read secrets, including their values."
       },
       {
         level: "full",
         title: "Full Access",
+        dotClassName: "bg-warning",
         requires: "secrets:write",
         scopes: ["secrets:describe", "secrets:read", "secrets:write"],
         description:
-          "Everything in Read Only, plus create, change and delete secrets, create folders, and create projects"
+          "Everything in Read Only, plus create, change and delete secrets, create folders, and create projects."
       }
+    ],
+    // A capability is granted when any one of its scopes is. The MCP tools accept read in place of describe.
+    capabilities: [
+      {
+        label: "List projects, environments and folders",
+        anyOf: ["secrets:describe", "secrets:read"]
+      },
+      { label: "See secret keys and metadata", anyOf: ["secrets:describe", "secrets:read"] },
+      { label: "Read secret values", anyOf: ["secrets:read"], isSensitive: true },
+      { label: "Create and change secrets", anyOf: ["secrets:write"] },
+      { label: "Delete secrets", anyOf: ["secrets:write"] },
+      { label: "Create folders and projects", anyOf: ["secrets:write"] }
     ]
   }
 ];
 
-// Preselected when offered: read access is what most requests need, and writes are opted into.
-const DEFAULT_LEVEL_ORDER = ["read", "describe", "full"];
+// Preselected when offered, least access first: reading secret values and writes are opted into.
+const DEFAULT_LEVEL_ORDER = ["describe", "read", "full"];
+
+// Long enough to pick an organization and pass its MFA or SSO before returning here.
+const ORG_SWITCH_RETURN_TTL_SECONDS = 300;
 
 export const OauthConsentPage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [accessLevels, setAccessLevels] = useState<Record<string, string>>({});
+
+  const navigate = useNavigate();
+  const { user } = useUser();
 
   const search = useSearch({
     from: "/_authenticate/organization/oauth-consent"
@@ -85,11 +122,21 @@ export const OauthConsentPage = () => {
     search.resource
   );
 
-  // A public client is granted the organization the user is signed in to, so name it.
-  const { data: organization } = useGetOrganizationById(organizationId ?? "", {
-    enabled: Boolean(authorizeInfo?.publicClientHost && organizationId)
-  });
-
+  // A public client is granted the organization the user is signed in to, so name it. A registered client is granted
+  // the organization it belongs to, which this page does not know.
+  const isPublicClient = Boolean(authorizeInfo?.publicClientHost);
+  const { data: organization, isPending: isOrganizationPending } = useGetOrganizationById(
+    organizationId ?? "",
+    { enabled: isPublicClient && Boolean(organizationId) }
+  );
+  const { data: userOrganizations } = useGetOrganizationsWithSubOrgs();
+  const canSwitchOrganization =
+    isPublicClient &&
+    Boolean(
+      userOrganizations &&
+      (userOrganizations.length > 1 ||
+        userOrganizations.some(({ subOrganizations }) => subOrganizations.length > 0))
+    );
   const requestedScopes = (authorizeInfo?.requestedScopes ?? []).map(({ scope }) => scope);
   const requestedProducts = PRODUCT_ACCESS.map((productAccess) => ({
     ...productAccess,
@@ -99,17 +146,15 @@ export const OauthConsentPage = () => {
     accessLevels[key] ??
     DEFAULT_LEVEL_ORDER.find((level) => levels.some((offered) => offered.level === level)) ??
     levels[0].level;
-  const grantedScopes = requestedProducts.flatMap((productAccess) =>
+  const getGrantedScopes = (productAccess: (typeof requestedProducts)[number]) =>
     (
       productAccess.levels.find(({ level }) => level === getAccessLevel(productAccess))?.scopes ??
       []
-    ).filter((scope) => requestedScopes.includes(scope))
-  );
+    ).filter((scope) => requestedScopes.includes(scope));
+  const grantedScopes = requestedProducts.flatMap(getGrantedScopes);
   const isNothingGranted = requestedScopes.length > 0 && grantedScopes.length === 0;
 
-  const isGrantingSecretValues = Boolean(
-    authorizeInfo?.publicClientHost && grantedScopes.includes("secrets:read")
-  );
+  const isGrantingSecretValues = isPublicClient && grantedScopes.includes("secrets:read");
 
   const { mutateAsync: consentOauth, isPending: isConsenting } = useOauthConsent();
 
@@ -121,27 +166,21 @@ export const OauthConsentPage = () => {
   // before the user consents instead of failing the authorize call afterwards.
   const isPkceMissing = Boolean(authorizeInfo?.requirePkce) && !search.code_challenge;
 
-  const handleAuthorize = async () => {
-    try {
-      const { callbackUrl } = await consentOauth({
-        clientId: search.client_id,
-        redirectUri: search.redirect_uri,
-        state: search.state,
-        codeChallenge: search.code_challenge,
-        codeChallengeMethod: search.code_challenge_method,
-        scope: grantedScopes.join(" "),
-        resource: search.resource
-      });
+  const clientName = authorizeInfo?.clientName ?? "Application";
 
-      setIsRedirecting(true);
-      window.location.href = callbackUrl;
-    } catch (error) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      createNotification({
-        text: axiosError?.response?.data?.message || "Failed to authorize application",
-        type: "error"
-      });
-    }
+  const handleAuthorize = async () => {
+    const { callbackUrl } = await consentOauth({
+      clientId: search.client_id,
+      redirectUri: search.redirect_uri,
+      state: search.state,
+      codeChallenge: search.code_challenge,
+      codeChallengeMethod: search.code_challenge_method,
+      scope: grantedScopes.join(" "),
+      resource: search.resource
+    });
+
+    setIsRedirecting(true);
+    window.location.href = callbackUrl;
   };
 
   const handleDeny = () => {
@@ -152,6 +191,19 @@ export const OauthConsentPage = () => {
     denyUrl.searchParams.set("error", "access_denied");
     if (search.state) denyUrl.searchParams.set("state", search.state);
     window.location.href = denyUrl.toString();
+  };
+
+  // Selecting an organization issues a new session token, and the organization picker returns to the stored URL
+  // once it has one, so the user comes back to this request signed in to the organization they picked.
+  const handleSwitchOrganization = () => {
+    sessionStorage.setItem(
+      SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+      JSON.stringify({
+        expiry: formatISO(addSeconds(new Date(), ORG_SWITCH_RETURN_TTL_SECONDS)),
+        data: window.location.href
+      })
+    );
+    navigate({ to: "/login/select-organization", search: { force: true } });
   };
 
   if (isRedirecting) {
@@ -174,108 +226,268 @@ export const OauthConsentPage = () => {
     );
   }
 
+  const renderApplicationSummary = () => {
+    if (isInfoPending) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      );
+    }
+
+    let description = "An external application is requesting access to your Infisical account.";
+    if (authorizeInfo && organization && isPublicClient) {
+      description = `${clientName} wants to access the ${organization.name} organization and act on your behalf.`;
+    } else if (authorizeInfo) {
+      description = `${clientName} wants to access your Infisical account and act on your behalf.`;
+    }
+
+    return (
+      <div className="flex flex-col gap-1.5">
+        <h1 className="font-alliance text-2xl font-normal text-foreground">
+          {authorizeInfo ? `Authorize ${clientName}` : "Authorize Application"}
+        </h1>
+        <p className="text-sm leading-5.5 text-label">{description}</p>
+      </div>
+    );
+  };
+
+  const renderAccess = () => {
+    if (isInfoPending) {
+      return (
+        <div className="flex flex-col gap-2.5">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-60 w-full" />
+        </div>
+      );
+    }
+
+    if (!authorizeInfo) return null;
+
+    if (requestedProducts.length === 0) {
+      return (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-sm font-medium text-foreground">Account access</p>
+            <p className="text-xs text-accent">Within your existing permissions</p>
+          </div>
+          <p className="text-sm text-label">
+            {clientName} will be able to act on your behalf with your existing Infisical permissions
+            until you revoke its session.
+          </p>
+        </div>
+      );
+    }
+
+    return requestedProducts.map((productAccess) => {
+      const selectedLevel = productAccess.levels.find(
+        ({ level }) => level === getAccessLevel(productAccess)
+      );
+      const productScopes = getGrantedScopes(productAccess);
+      const capabilities = productAccess.capabilities.map((capability) => ({
+        ...capability,
+        isGranted: capability.anyOf.some((scope) => productScopes.includes(scope))
+      }));
+      const grantedCount = capabilities.filter(({ isGranted }) => isGranted).length;
+
+      return (
+        <div key={productAccess.key} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-4">
+              <p
+                id={`oauth-access-${productAccess.key}`}
+                className="text-sm font-medium text-foreground"
+              >
+                {productAccess.product} access
+              </p>
+              <p className="text-xs text-accent">Within your existing permissions</p>
+            </div>
+            <RadioGroup
+              aria-labelledby={`oauth-access-${productAccess.key}`}
+              orientation="horizontal"
+              className="flex gap-1 rounded-lg border border-border bg-container p-1"
+              value={getAccessLevel(productAccess)}
+              onValueChange={(level) =>
+                setAccessLevels((prev) => ({
+                  ...prev,
+                  [productAccess.key]: level
+                }))
+              }
+            >
+              {productAccess.levels.map(({ level, title, dotClassName }) => (
+                <RadioGroupPrimitive.Item
+                  key={level}
+                  value={level}
+                  className={cn(
+                    "flex h-8.5 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-transparent px-3",
+                    "text-sm whitespace-nowrap text-label transition-colors outline-none hover:text-foreground",
+                    "focus-visible:ring-2 focus-visible:ring-ring",
+                    "data-[state=checked]:border-foreground/10 data-[state=checked]:bg-foreground/5 data-[state=checked]:text-foreground"
+                  )}
+                >
+                  <span className={cn("size-1.5 shrink-0 rounded-full", dotClassName)} />
+                  {title}
+                </RadioGroupPrimitive.Item>
+              ))}
+            </RadioGroup>
+            {/* Every description shares one grid cell, so the block keeps the height of the longest one and the
+                card does not resize when the level changes. */}
+            <div className="grid">
+              {productAccess.levels.map(({ level, description }) => (
+                <p
+                  key={level}
+                  aria-hidden={level !== selectedLevel?.level}
+                  className={cn(
+                    "col-start-1 row-start-1 text-sm text-label transition-opacity duration-200 motion-reduce:transition-none",
+                    level === selectedLevel?.level ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  {description}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-border bg-container">
+            <div className="flex h-9.5 items-center justify-between gap-4 border-b border-border/50 px-4 text-xs text-accent">
+              <span>{clientName} will be able to</span>
+              <span>
+                {grantedCount} of {capabilities.length}
+              </span>
+            </div>
+            <ul className="divide-y divide-border/50">
+              {capabilities.map(({ label, isGranted, isSensitive }) => (
+                <li
+                  key={label}
+                  className={cn(
+                    "flex min-h-9.5 items-center gap-2.5 px-4 text-sm",
+                    isGranted ? "text-foreground" : "text-muted"
+                  )}
+                >
+                  {isGranted ? (
+                    <CheckIcon aria-hidden className="size-3.5 shrink-0 text-success" />
+                  ) : (
+                    <XIcon aria-hidden className="size-3.5 shrink-0 text-muted" />
+                  )}
+                  <span className="sr-only">{isGranted ? "Allowed:" : "Not allowed:"}</span>
+                  <span className="min-w-0 flex-1">{label}</span>
+                  {isGranted && isSensitive && <Badge variant="warning">Sensitive</Badge>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+    });
+  };
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-page">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-page px-4 py-10">
       <PageTitle title="Authorize Application" />
       <link rel="icon" href="/infisical.ico" />
 
-      <Card className="w-full max-w-md">
-        <Link to="/" className="block">
-          <img src="/images/gradientLogo.svg" className="mx-auto h-16" alt="Infisical logo" />
-        </Link>
-
-        <CardHeader className="text-center">
-          <CardTitle className="justify-center">
-            {authorizeInfo ? `Authorize ${authorizeInfo.clientName}` : "Authorize Application"}
-          </CardTitle>
-          <CardDescription>
-            An external application is requesting access to your Infisical account.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="flex flex-col gap-6">
-          {isInfoPending && (
-            <div className="flex flex-col gap-2 rounded-md border border-border bg-container p-4">
-              <Skeleton className="h-4 w-1/3" />
-              <Skeleton className="h-3 w-2/3" />
+      <Card className="w-full max-w-210 gap-0 overflow-hidden p-0 md:grid md:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="flex flex-col gap-5 border-b border-border bg-popover px-7 py-8 md:border-r md:border-b-0">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-lg border border-border bg-container text-xl text-foreground">
+              {isInfoPending ? (
+                <Skeleton className="size-5" />
+              ) : (
+                clientName.trim().charAt(0).toUpperCase()
+              )}
             </div>
-          )}
-          {!isInfoPending && authorizeInfo && (
-            <div className="rounded-md border border-border bg-container p-4">
-              <p className="text-xs text-accent">Application</p>
-              <p className="mt-1 font-medium text-foreground">{authorizeInfo.clientName}</p>
-              {authorizeInfo.publicClientHost && (
-                <p className="mt-1 text-sm text-accent">{authorizeInfo.publicClientHost}</p>
-              )}
-              {authorizeInfo.clientDescription && (
-                <p className="mt-1 text-sm text-accent">{authorizeInfo.clientDescription}</p>
-              )}
-              {organization && (
-                <p className="mt-3 text-xs text-muted">
-                  Access applies to the {organization.name} organization.
-                </p>
-              )}
-              <p className="mt-3 text-xs text-muted">
-                {requestedScopes.length
-                  ? "Choose what this application can do on your behalf. It is limited to your existing Infisical permissions until you revoke its session."
-                  : "This application will be able to act on your behalf with your existing Infisical permissions until you revoke its session."}
-              </p>
-              {requestedProducts.map((productAccess) => (
-                <div key={productAccess.key} className="mt-3 flex flex-col gap-2">
-                  <p className="text-sm font-medium text-foreground">{productAccess.product}</p>
-                  <RadioGroup
-                    value={getAccessLevel(productAccess)}
-                    onValueChange={(level) =>
-                      setAccessLevels((prev) => ({
-                        ...prev,
-                        [productAccess.key]: level
-                      }))
-                    }
-                  >
-                    {productAccess.levels.map(({ level, title, description }) => (
-                      <FieldLabel
-                        key={level}
-                        htmlFor={`oauth-access-${productAccess.key}-${level}`}
-                        variant="org"
-                      >
-                        <Field orientation="horizontal">
-                          <FieldContent>
-                            <FieldTitle>{title}</FieldTitle>
-                            <FieldDescription>{description}</FieldDescription>
-                          </FieldContent>
-                          <RadioGroupItem
-                            value={level}
-                            id={`oauth-access-${productAccess.key}-${level}`}
-                          />
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                  </RadioGroup>
-                </div>
-              ))}
+            <ArrowLeftRightIcon aria-hidden className="size-4 text-muted" />
+            <div className="flex size-12 items-center justify-center rounded-lg border border-border bg-container">
+              <img src="/images/gradientLogo.svg" className="w-7" alt="Infisical" />
             </div>
-          )}
-          {/* The name comes from the application's own metadata document, so any site can claim any name. */}
-          {authorizeInfo?.publicClientHost && (
-            <Alert variant="warning">
-              <AlertDescription>
-                <p>
-                  This application identifies itself as{" "}
-                  <span className="font-medium">{authorizeInfo.clientName}</span>. Continue only if
-                  you started this sign-in from{" "}
-                  <span className="font-medium">{authorizeInfo.clientName}</span>.
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
-          {isGrantingSecretValues && (
-            <Alert variant="warning">
-              <AlertDescription>
-                This allows the application to read secret values. Any value it reads is sent to the
-                application, and to the AI model it uses.
-              </AlertDescription>
-            </Alert>
-          )}
+          </div>
+
+          {renderApplicationSummary()}
+
+          <DetailGroup className="mt-1">
+            {isPublicClient && (
+              <Detail className="gap-y-1.5">
+                <DetailLabel className="text-accent">Organization</DetailLabel>
+                <DetailValue className="flex items-center gap-2">
+                  <OrgIcon aria-hidden className="size-3.5 shrink-0 text-org" />
+                  {isOrganizationPending ? (
+                    <Skeleton className="h-4 w-24" />
+                  ) : (
+                    <span className="min-w-0 truncate">{organization?.name}</span>
+                  )}
+                  {canSwitchOrganization && (
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="ml-auto text-org"
+                      onClick={handleSwitchOrganization}
+                      isDisabled={isConsenting}
+                    >
+                      Switch
+                    </Button>
+                  )}
+                </DetailValue>
+              </Detail>
+            )}
+
+            <Detail className="gap-y-1.5">
+              <DetailLabel className="text-accent">Signed in as</DetailLabel>
+              <DetailValue>{user.email || user.username}</DetailValue>
+            </Detail>
+
+            {authorizeInfo && (
+              <Detail className="gap-y-1.5">
+                <DetailLabel className="text-accent">Application</DetailLabel>
+                <DetailValue className="flex flex-wrap items-center gap-2">
+                  {clientName}
+                  {/* The name comes from the application's own metadata document, so any site can claim any name. */}
+                  {isPublicClient && <Badge variant="warning">Self-reported</Badge>}
+                </DetailValue>
+                {isPublicClient ? (
+                  <p className="text-xs text-muted">
+                    {authorizeInfo.publicClientHost} provides this name, and Infisical can&apos;t
+                    verify it. Continue only if you started this sign-in from {clientName}.
+                  </p>
+                ) : (
+                  authorizeInfo.clientDescription && (
+                    <p className="text-xs text-muted">{authorizeInfo.clientDescription}</p>
+                  )
+                )}
+              </Detail>
+            )}
+
+            {isRequestValidated && (
+              <Detail className="gap-y-1.5">
+                <DetailLabel className="text-accent">Redirects to</DetailLabel>
+                <code className="flex min-h-8 items-center rounded-md border border-border bg-container px-2.5 py-1.5 font-mono text-xs break-all text-foreground">
+                  {search.redirect_uri}
+                </code>
+              </Detail>
+            )}
+          </DetailGroup>
+        </div>
+
+        <div className="flex flex-col gap-5 px-7 py-8">
+          <div>
+            {renderAccess()}
+            <AnimatedCollapse isOpen={isGrantingSecretValues} variant="subtle">
+              <div className="pt-5">
+                <Alert
+                  variant="warning"
+                  className="rounded-lg px-4 [&_[data-slot=alert-description]]:text-foreground"
+                >
+                  <TriangleAlertIcon />
+                  <AlertDescription>
+                    {clientName} will have access to read secret values. Use Describe Only access to
+                    avoid secret values leaving Infisical.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </AnimatedCollapse>
+          </div>
           {!isInfoPending && authorizeInfoError && (
             <Alert variant="danger">
               <AlertDescription>
@@ -293,33 +505,32 @@ export const OauthConsentPage = () => {
             </Alert>
           )}
 
-          {isRequestValidated && (
-            <div className="flex flex-col gap-1 text-xs text-accent">
-              <p>After you authorize, you&apos;ll be sent to</p>
-              <p className="font-mono break-all text-foreground">{search.redirect_uri}</p>
+          <div className="mt-auto flex flex-wrap items-center justify-end gap-4">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-5"
+                onClick={handleDeny}
+                isDisabled={isConsenting || !isRequestValidated}
+              >
+                Deny
+              </Button>
+              <Button
+                variant="org"
+                size="lg"
+                className="px-5"
+                onClick={handleAuthorize}
+                isPending={isConsenting}
+                isDisabled={
+                  isConsenting || !isRequestValidated || isPkceMissing || isNothingGranted
+                }
+              >
+                Authorize
+              </Button>
             </div>
-          )}
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleDeny}
-              isDisabled={isConsenting || !isRequestValidated}
-            >
-              Deny
-            </Button>
-            <Button
-              variant="org"
-              className="flex-1"
-              onClick={handleAuthorize}
-              isPending={isConsenting}
-              isDisabled={isConsenting || !isRequestValidated || isPkceMissing || isNothingGranted}
-            >
-              Authorize
-            </Button>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );
