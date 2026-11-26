@@ -1569,6 +1569,14 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       return found as NonNullable<typeof found>;
     }
   ),
+  useFetchSkillVersion: mutation(
+    ({ skillId: id, version }: { skillId: string; version: number }, state) => {
+      const found = state.skills
+        .find((entry) => entry.skill.id === id)
+        ?.versions.find((entry) => entry.version === version);
+      return { state, result: found ?? notFound("Version") };
+    }
+  ),
   useAccessBundleSkills: query(
     "accessBundleSkills",
     (state, _projectId: string, accessBundleId: string) =>
