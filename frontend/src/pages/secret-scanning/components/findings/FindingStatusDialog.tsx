@@ -74,11 +74,24 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
     }
 
     const names = findings[0].resources.map((resource) => resource.name);
-    const foundIn =
-      names.length > 2
-        ? `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`
-        : names.join(" and ");
-    return `This secret was found in ${foundIn}. The status applies to all of them.`;
+    const renderName = (resourceName: string) => (
+      <span className="font-medium text-foreground">{resourceName}</span>
+    );
+
+    // one paragraph, so the names stay inline instead of becoming rows of the description's grid
+    return (
+      <p>
+        This secret was found in {renderName(names[0])}
+        {names.length > 2 ? (
+          <>
+            , {renderName(names[1])} and {names.length - 2} more
+          </>
+        ) : (
+          <> and {renderName(names[1])}</>
+        )}
+        . The status applies to all of them.
+      </p>
+    );
   };
 
   const onSubmit = ({ comment }: TFormData) => {
