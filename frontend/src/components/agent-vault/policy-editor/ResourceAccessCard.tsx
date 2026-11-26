@@ -1,12 +1,22 @@
 import { Fragment, useMemo, useState } from "react";
-import { BanIcon, BookOpenTextIcon, BoxesIcon, PackageIcon, PlusIcon, XIcon } from "lucide-react";
-
 import {
+  BanIcon,
+  BookOpenTextIcon,
+  BoxesIcon,
+  InfoIcon,
+  PackageIcon,
+  PlusIcon,
+  XIcon
+} from "lucide-react";
+
+import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
+import {
+  displayHostPattern,
   hostPatternOf,
+  isNativeService,
   SERVICE_TYPE_LABELS
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
-import { TargetCell } from "@app/components/agent-vault/ServicesCard";
 import {
   Button,
   Card,
@@ -15,11 +25,18 @@ import {
   CardHeader,
   CardTitle,
   Combobox,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
   DocumentationLinkBadge,
   Field,
   FieldContent,
   FieldDescription,
   FieldTitle,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   IconButton,
   Skeleton,
   Table,
@@ -32,6 +49,7 @@ import {
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultServiceType,
   useListAgentVaultAccessBundles,
   useListAgentVaultServices,
   useListAgentVaultSkills
@@ -83,7 +101,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
     [NONE_LEVEL]: "Only the access bundles picked below",
     view: "See it and what it holds",
     use: "Start sessions from it, with every service and skill in it",
-    edit: "Also change what it holds",
+    edit: "Also change what it holds, adding only services and skills they can use",
     manage: "Also delete it",
     [DENIED_LEVEL]: "Overrides every other role"
   },
@@ -93,7 +111,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
     use: "Put it in a session",
     edit: "Also change it, including where it sends its credential",
     manage: "Also delete it",
-    [DENIED_LEVEL]: "Overrides every other role"
+    [DENIED_LEVEL]: "Overrides other roles, but not an access bundle that holds it"
   },
   skills: {
     [NONE_LEVEL]: "Only the skills picked below",
@@ -101,7 +119,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
     use: "Put it in a session",
     edit: "Also change its files",
     manage: "Also delete it",
-    [DENIED_LEVEL]: "Overrides every other role"
+    [DENIED_LEVEL]: "Overrides other roles, but not an access bundle that holds it"
   }
 };
 
@@ -109,6 +127,52 @@ const DOCS_URLS: Record<TResourceRowKey, string> = {
   accessBundles: AgentVaultDocsUrls.accessBundles,
   services: AgentVaultDocsUrls.services,
   skills: AgentVaultDocsUrls.skills
+};
+
+const serviceTargetsOf = (service: TAgentVaultService) => {
+  if (isNativeService(service)) return [nativeTargetText(service)];
+  if (service.type === AgentVaultServiceType.Mcp) return [service.serverUrl];
+  return displayHostPattern(service.hostPattern).split(", ");
+};
+
+// A service's type and where it connects, kept out of the table so the name and access columns have the room.
+const ServiceDetailsHoverCard = ({
+  service,
+  name
+}: {
+  service: TAgentVaultService;
+  name: string;
+}) => {
+  const targets = serviceTargetsOf(service);
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Details of ${name}`}
+          className="inline-flex shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <InfoIcon className="size-3" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-auto max-w-96">
+        <DetailGroup className="gap-y-3">
+          <Detail>
+            <DetailLabel>Type</DetailLabel>
+            <DetailValue>{SERVICE_TYPE_LABELS[service.type]}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>{targets.length === 1 ? "Target" : "Targets"}</DetailLabel>
+            <DetailValue>
+              {targets.map((target) => (
+                <div key={target}>{target}</div>
+              ))}
+            </DetailValue>
+          </Detail>
+        </DetailGroup>
+      </HoverCardContent>
+    </HoverCard>
+  );
 };
 
 const COLUMN_LABELS: Record<TResourceRowKey, string> = {
@@ -164,7 +228,6 @@ const ResourceAccessCardView = ({
 }: TViewProps) => {
   const row = getPermissionRow(rowKey);
   const { label, singular, plural } = RESOURCE_NOUNS[rowKey];
-  const isServices = rowKey === "services";
   const resource = policy[rowKey];
   const [picked, setPicked] = useState<TPolicyResourceItem[]>([]);
   const [search, setSearch] = useState("");
@@ -230,8 +293,7 @@ const ResourceAccessCardView = ({
     setPicked([]);
   };
 
-  const labelColSpan = isServices ? 3 : 1;
-  const columnCount = labelColSpan + 2;
+  const columnCount = 3;
 
   return (
     <Card>
@@ -246,11 +308,9 @@ const ResourceAccessCardView = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead isTruncatable className={isServices ? "w-2/5" : "w-full"}>
+            <TableHead isTruncatable className="w-full">
               {COLUMN_LABELS[rowKey]}
             </TableHead>
-            {isServices && <TableHead>Type</TableHead>}
-            {isServices && <TableHead>Target</TableHead>}
             <TableHead>Access</TableHead>
             <TableHead variant="action" />
           </TableRow>
@@ -274,8 +334,6 @@ const ResourceAccessCardView = ({
                 </div>
               </div>
             </TableCell>
-            {isServices && <TableCell />}
-            {isServices && <TableCell />}
             <TableCell>
               <LevelSelect
                 value={isAllOpen ? CUSTOM_LEVEL : allLevel}
@@ -298,7 +356,6 @@ const ResourceAccessCardView = ({
               scopeLabel={`all ${plural}`}
               isReadOnly={isReadOnly}
               onChange={onChange}
-              labelColSpan={labelColSpan}
               hasTrailingCell
             />
           )}
@@ -329,11 +386,16 @@ const ResourceAccessCardView = ({
                         {!known && isCatalogPending ? (
                           <Skeleton className="h-4 w-28" />
                         ) : (
-                          <div
-                            className={known ? "truncate" : "truncate font-mono text-xs"}
-                            title={name}
-                          >
-                            {name}
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className={known ? "truncate" : "truncate font-mono text-xs"}
+                              title={name}
+                            >
+                              {name}
+                            </span>
+                            {known?.service && (
+                              <ServiceDetailsHoverCard service={known.service} name={name} />
+                            )}
                           </div>
                         )}
                         {warning ? (
@@ -350,16 +412,6 @@ const ResourceAccessCardView = ({
                       </div>
                     </div>
                   </TableCell>
-                  {isServices && (
-                    <TableCell className="text-sm text-accent">
-                      {known?.service ? SERVICE_TYPE_LABELS[known.service.type] : null}
-                    </TableCell>
-                  )}
-                  {isServices && (
-                    <TableCell>
-                      {known?.service ? <TargetCell service={known.service} /> : null}
-                    </TableCell>
-                  )}
                   <TableCell>
                     <LevelSelect
                       value={isOpen ? CUSTOM_LEVEL : level}
@@ -397,7 +449,6 @@ const ResourceAccessCardView = ({
                     scopeLabel={name}
                     isReadOnly={isReadOnly}
                     onChange={onChange}
-                    labelColSpan={labelColSpan}
                     hasTrailingCell
                   />
                 )}
