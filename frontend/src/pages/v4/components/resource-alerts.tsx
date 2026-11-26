@@ -23,7 +23,7 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
   Popover,
@@ -437,49 +437,51 @@ const AlertRow = ({
           {channels ? `${eventLabel(alert)} via ${channels}` : eventLabel(alert)}
         </SmallText>
       </Stack>
-      {editable ? (
-        <Inline gap={4} wrap={false}>
-          <Switch
-            size="sm"
-            aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
-            checked={alert.enabled}
-            disabledReason={canEdit ? undefined : RESTRICTED}
-            onCheckedChange={(enabled) =>
-              updateAlert
-                .mutateAsync({ alertId: alert.id, enabled })
-                .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
-                .catch((error) => failed("Failed to update the alert", error))
-            }
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                icon="more"
-                iconOnly
-                disabledReason={canEdit ? undefined : RESTRICTED}
-              >
-                {`Options for ${alert.name}`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onEdit}>
-                <Icon name="settings" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={onRemove}>
-                <Icon name="trash" />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Inline>
-      ) : (
-        <Badge tone={alert.enabled ? "ok" : "outline"}>
-          {alert.enabled ? "Active" : "Disabled"}
-        </Badge>
-      )}
+      <InlineItem shrink={false}>
+        {editable ? (
+          <Inline gap={4} wrap={false}>
+            <Switch
+              size="sm"
+              aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
+              checked={alert.enabled}
+              disabledReason={canEdit ? undefined : RESTRICTED}
+              onCheckedChange={(enabled) =>
+                updateAlert
+                  .mutateAsync({ alertId: alert.id, enabled })
+                  .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
+                  .catch((error) => failed("Failed to update the alert", error))
+              }
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  icon="more"
+                  iconOnly
+                  disabledReason={canEdit ? undefined : RESTRICTED}
+                >
+                  {`Options for ${alert.name}`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={onEdit}>
+                  <Icon name="settings" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                  <Icon name="trash" />
+                  Remove
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Inline>
+        ) : (
+          <Badge tone={alert.enabled ? "ok" : "outline"}>
+            {alert.enabled ? "Active" : "Disabled"}
+          </Badge>
+        )}
+      </InlineItem>
     </Inline>
   );
 };
