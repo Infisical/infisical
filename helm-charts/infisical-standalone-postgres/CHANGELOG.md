@@ -1,3 +1,11 @@
+## 1.12.7
+Changes:
+* The bootstrap job reads `INSTANCE_SETUP_TOKEN` from the `infisical.kubeSecretRef` secret, when that key is set, and passes it to `infisical bootstrap`. Only that key is read; the job doesn't load the rest of the secret.
+
+Upgrade notes:
+* The setup token is sent only by CLI versions that support `--setup-token`. If your instance sets `INSTANCE_SETUP_TOKEN`, set `infisical.autoBootstrap.image.tag` to such a version, or the bootstrap request is refused.
+* CLI versions that support `--setup-token` also exit with status `1` when bootstrap fails, for example on a missing or wrong setup token. Earlier versions logged the error and exited `0`, so the install succeeded without creating `infisical.autoBootstrap.secretDestination.name`. With those versions, a failed bootstrap now fails the post-install hook and `helm install`. An instance that is already bootstrapped is still skipped, because the job passes `--ignore-if-bootstrapped`.
+
 ## 1.12.6
 Changes:
 * Updated the default Infisical image (`appVersion`) from `v0.167.15` to `v0.167.16`.
