@@ -1,5 +1,6 @@
 import { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { readCacheFingerprint, withCacheFingerprint } from "@app/lib/cache/with-cache";
+import { logger } from "@app/lib/logger";
 
 import { ActorGrants, TActorGrantsRecord } from "../models/actor-grants";
 import { TActorGrantsCache, TGrantActor } from "../services/dependencies";
@@ -46,10 +47,13 @@ export class ActorGrantsCache implements TActorGrantsCache {
     const grants = ActorGrants.restore(record);
     // Never cache a refusal: someone just added (SCIM group push, accepted invite) must get in on their next request.
     if (!grants.hasMembership) {
-      await Promise.all([
-        this.keyStore.deleteItem(GrantKeys.data(projectId, actor)),
-        this.keyStore.deleteItem(GrantKeys.marker(projectId, actor))
-      ]);
+      await Promise.all(
+        [GrantKeys.data(projectId, actor), GrantKeys.marker(projectId, actor)].map((key) =>
+          this.keyStore.deleteItem(key).catch((err: unknown) => {
+            logger.warn({ key, err }, `ActorGrantsCache: refusal delete failed [key=${key}]`);
+          })
+        )
+      );
     }
     return grants;
   }

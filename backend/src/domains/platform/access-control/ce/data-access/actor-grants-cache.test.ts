@@ -15,7 +15,8 @@ const arrange = (markerTtlSeconds?: number) => {
   let clock = Date.parse("2026-01-01T00:00:00Z");
   const store = new InMemoryGrantStore();
   const seed = new InMemoryGrantSeeder(store);
-  const cache = new ActorGrantsCache(new InMemoryKeyStore(() => clock), markerTtlSeconds);
+  const keyStore = new InMemoryKeyStore(() => clock);
+  const cache = new ActorGrantsCache(keyStore, markerTtlSeconds);
   const orgId = randomUUID();
   const projectId = randomUUID();
   const actor: TGrantActor = { type: ActorType.USER, id: randomUUID() };
@@ -54,6 +55,7 @@ const arrange = (markerTtlSeconds?: number) => {
   };
   return {
     cache,
+    keyStore,
     store,
     read,
     addMembership,
@@ -182,6 +184,20 @@ describe("ActorGrantsCache.getOrLoad", () => {
     // Assert
     expect(cached.active().map((grant) => grant.builtInSlug())).toEqual([ProjectMembershipRole.Member]);
     expect(cached.active(new Date(Date.now() + 7_200_000))).toEqual([]);
+  });
+
+  test("should still refuse a non-member when the cache cannot be cleared", async () => {
+    // Setup
+    const { read, keyStore } = arrange(0);
+    keyStore.deleteItem = async () => {
+      throw new Error("Redis is down");
+    };
+
+    // Action
+    const grants = await read();
+
+    // Assert
+    expect(grants.hasMembership).toBe(false);
   });
 });
 
