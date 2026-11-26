@@ -18,6 +18,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { errorMessage } from "../../access/toast";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
+import { updatesIn } from "./insights.utils";
 import { UnusedAccessSheet } from "./unused-access-sheet";
 import {
   ACTOR_TYPE,
@@ -52,6 +53,7 @@ export const UnusedAccessCard = ({
   const totalCount = data?.totalCount ?? 0;
 
   const isJudging = !data || new Date(data.unusedAccessFrom) <= new Date();
+  const refresh = updatesIn(data?.remainingTtl);
 
   const columns: DataTableColumn<TUnusedAccessActor>[] = [
     {
@@ -177,6 +179,7 @@ export const UnusedAccessCard = ({
     <Card
       variant="framed"
       title="Overprivileged Access"
+      badges={refresh ? <Badge tone="soft">{refresh}</Badge> : undefined}
       hint="Users and machine identities with access to secrets they haven't read in the last 30 days."
       flush
       action={
