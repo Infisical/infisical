@@ -418,7 +418,7 @@ const GatewayCard = ({ template }: { template: TPamAccountTemplateDetail }) => {
   const { run, status } = useTemplateUpdate(template);
   return (
     <SettingsCard title="Gateway" saveStatus={status}>
-      <Field label="Gateway" description="Used to reach accounts unless overridden on the account.">
+      <Field description="Used to reach accounts unless overridden on the account.">
         <GatewayPicker
           label="Gateway"
           noGatewayLabel="No gateway"
@@ -672,33 +672,35 @@ const MaskingCard = ({ template, drafts, setDraft }: CardProps) => {
 type Details = { name: string; description: string };
 
 const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
-  const { run } = useTemplateUpdate(template);
+  const { run, status } = useTemplateUpdate(template);
+  const stored = { name: template.name, description: template.description ?? "" };
   const draft = drafts.details as Details | undefined;
-  const values = draft ?? { name: template.name, description: template.description ?? "" };
-  const edit = (patch: Partial<Details>) => setDraft("details", { ...values, ...patch });
+  const values = draft ?? stored;
+  const edit = (patch: Partial<Details>) => {
+    const next = { ...values, ...patch };
+    setDraft(
+      "details",
+      next.name === stored.name && next.description === stored.description ? undefined : next
+    );
+  };
   const errors = {
     name: values.name.trim() ? undefined : "Name is required",
     description:
       values.description.length > 256 ? "Keep the description under 256 characters" : undefined
   };
   if (!errors.name && values.name.length > 64) errors.name = "Keep the name under 64 characters";
+  const commit = async () => {
+    if (!draft || errors.name || errors.description) return;
+    const result = await run(
+      { name: values.name.trim(), description: values.description || null },
+      "Template updated",
+      "Could not update the template"
+    );
+    if (result) setDraft("details");
+  };
 
   return (
-    <SettingsCard
-      title="Details"
-      dirty={Boolean(draft)}
-      saveDisabledReason={errors.name ?? errors.description}
-      onDiscard={() => setDraft("details")}
-      onSave={async () => {
-        const result = await run(
-          { name: values.name.trim(), description: values.description || null },
-          "Template updated",
-          "Could not update the template"
-        );
-        if (!result) throw new Error("Could not update the template");
-        setDraft("details");
-      }}
-    >
+    <SettingsCard title="Details" saveStatus={status}>
       <Stack gap={16}>
         <Field label="Name" error={errors.name}>
           <Input
@@ -706,6 +708,8 @@ const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
             invalid={Boolean(errors.name)}
             autoComplete="off"
             onChange={(event) => edit({ name: event.target.value })}
+            onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+            onBlur={commit}
           />
         </Field>
         <Field label="Description" optional error={errors.description}>
@@ -714,6 +718,7 @@ const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
             value={values.description}
             aria-invalid={Boolean(errors.description) || undefined}
             onChange={(event) => edit({ description: event.target.value })}
+            onBlur={commit}
           />
         </Field>
       </Stack>

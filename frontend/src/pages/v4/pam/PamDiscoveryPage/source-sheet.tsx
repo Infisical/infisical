@@ -6,9 +6,9 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Link } from "@infisical/cipher/ui/link";
 import { DataList } from "@infisical/cipher/ui/list";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
@@ -147,13 +147,22 @@ const StagedTab = ({
 
   return (
     <Stack gap={16}>
-      <Input
-        icon="search"
-        aria-label="Search staged accounts"
-        placeholder="Search accounts..."
-        value={paging.search}
-        onChange={(event) => paging.setSearch(event.target.value)}
-      />
+      <Inline gap={8} wrap={false}>
+        <Input
+          icon="search"
+          aria-label="Search staged accounts"
+          placeholder="Search accounts..."
+          value={paging.search}
+          onChange={(event) => paging.setSearch(event.target.value)}
+        />
+        <Button
+          variant="outline"
+          disabledReason={selectedAccounts.length ? undefined : "Select accounts to import"}
+          onClick={() => setImporting(true)}
+        >
+          {selectedAccounts.length ? `Import ${selectedAccounts.length}` : "Import"}
+        </Button>
+      </Inline>
       <DataTable
         ghost={false}
         label="Staged accounts"
@@ -188,19 +197,6 @@ const StagedTab = ({
           />
         }
         pagination={paging.pagination(data?.totalCount ?? 0, "Staged account pages")}
-        actionBar={
-          selectedAccounts.length > 0 ? (
-            <FloatingActionBar
-              label="Selected account actions"
-              count={selectedAccounts.length}
-              onClear={() => setSelected({})}
-              noun={selectedAccounts.length === 1 ? "account" : "accounts"}
-              actions={[
-                { label: "Import accounts", icon: "download", onClick: () => setImporting(true) }
-              ]}
-            />
-          ) : undefined
-        }
       />
       <ImportDialog
         open={importing}
@@ -461,7 +457,7 @@ const SourceBody = ({
           [
             "Credential account",
             credential ? (
-              <RowLink
+              <Link
                 key="credential"
                 link={{
                   to: v4Path("/organizations/$orgId/$"),
@@ -472,7 +468,7 @@ const SourceBody = ({
                 }}
               >
                 {accountLabel(credential)}
-              </RowLink>
+              </Link>
             ) : (
               "None"
             )
