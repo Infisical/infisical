@@ -20,7 +20,6 @@ import {
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { format } from "date-fns";
 
 import {
@@ -51,6 +50,7 @@ import type {
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { PersonalOAuthConnection } from "./service-oauth";
+import { VariableSecretInput } from "./variable-input";
 
 const MAX_USERNAME_LENGTH = 256;
 const MAX_LENGTH = 8192;
@@ -216,8 +216,11 @@ const PersonalValuesForm = ({
                     label={`${providerName} ${label.toLowerCase()}`}
                     error={errors[field]}
                   >
-                    <SecretInput
-                      aria-label={label}
+                    <VariableSecretInput
+                      projectId={projectId}
+                      label={label}
+                      scope={AgentVaultVariableScope.Personal}
+                      hasStored={false}
                       placeholder={
                         savedFields.has(field)
                           ? "Leave blank to keep your saved value"
