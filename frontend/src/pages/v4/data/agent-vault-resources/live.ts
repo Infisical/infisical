@@ -241,7 +241,8 @@ const useListAgentVaultVariables = (
     queryFn: () => fetchAgentVaultVariables(projectId, params),
     placeholderData: keepPreviousInProject(projectId),
     enabled,
-    refetchOnWindowFocus
+    refetchOnWindowFocus,
+    ...(refetchOnWindowFocus ? { staleTime: 0 } : {})
   });
 };
 
