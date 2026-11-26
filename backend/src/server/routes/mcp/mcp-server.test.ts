@@ -23,6 +23,7 @@ const callMcp = async <T>(
         createAuditLog: vi.fn().mockResolvedValue(undefined)
       },
       telemetry: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
+      permission: { getOrgPermission: vi.fn().mockResolvedValue({}) },
       ...services
     }
   };
@@ -86,6 +87,35 @@ describe("MCP tools", () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("Reconnect and choose Full Access");
   });
+
+  test.each([
+    {
+      secretPath: "/app",
+      recursive: true,
+      folders: [
+        { id: "a", name: "db", relativePath: "/db" },
+        { id: "b", name: "db", relativePath: "/other/db" }
+      ],
+      paths: ["/app/db", "/app/other/db"]
+    },
+    { secretPath: "/", recursive: false, folders: [{ id: "c", name: "app" }], paths: ["/app"] }
+  ])(
+    "list-folders returns each folder's full path (recursive: $recursive)",
+    async ({ secretPath, recursive, folders, paths }) => {
+      const result = await callMcp<TToolResult>(
+        [OauthScope.SecretsDescribe],
+        "tools/call",
+        {
+          name: "list-folders",
+          arguments: { projectId: "project-id", environmentSlug: "dev", secretPath, recursive }
+        },
+        { folder: { getFolders: vi.fn().mockResolvedValue(folders) } }
+      );
+
+      const output = JSON.parse(result.content[0].text) as { path: string }[];
+      expect(output.map(({ path }) => path)).toEqual(paths);
+    }
+  );
 
   // The service returns the user's own personal values unmasked even when values weren't requested.
   test("list-secrets shows no values on a secrets:describe connection, even personal ones", async () => {

@@ -280,7 +280,17 @@ export const registerSecretManagerTools = ({
         recursive
       });
 
-      return folders.map(({ id, name, description }) => ({ id, name, description }));
+      // The other tools take a path, not an ID. A recursive listing gives each folder's path below secretPath; a flat one
+      // gives only its name.
+      return folders.map((folder) => {
+        const pathBelow = "relativePath" in folder ? folder.relativePath : `/${folder.name}`;
+        return {
+          id: folder.id,
+          name: folder.name,
+          description: folder.description,
+          path: secretPath === "/" ? pathBelow : `${secretPath}${pathBelow}`
+        };
+      });
     }
   );
 
