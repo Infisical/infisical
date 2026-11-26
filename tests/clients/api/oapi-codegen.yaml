@@ -179,6 +179,7 @@ output-options:
     - deleteDynamicSecret
     - deleteEnvironment
     - deleteGroup
+    - deleteHoneyToken
     - deleteIdentityFolderAccess
     - deleteIdentityProjectAdditionalPrivilege
     - deleteIdentityProjectAdditionalPrivilegeV1

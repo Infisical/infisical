@@ -10,6 +10,18 @@ export const parsePamAccessDuration = (duration: string): number | null => {
   return !parsed || parsed <= 0 ? null : parsed;
 };
 
+export const exceedsPamMaxAccessDuration = (duration: string, maxAccessDurationSeconds: number | null) => {
+  const requestedMs = parsePamAccessDuration(duration);
+  return maxAccessDurationSeconds !== null && requestedMs !== null && requestedMs > maxAccessDurationSeconds * 1000;
+};
+
+// The template max can be lowered while a request is pending, so the grant never outlasts the current max.
+export const effectivePamAccessDurationMs = (duration: string, maxAccessDurationSeconds: number | null) => {
+  const requestedMs = parsePamAccessDuration(duration);
+  if (requestedMs === null || maxAccessDurationSeconds === null) return requestedMs;
+  return Math.min(requestedMs, maxAccessDurationSeconds * 1000);
+};
+
 export const matchesPamAccessSubject = (payload: unknown, inputs: TPamAccessPolicyInputs) => {
   const attributes = payload as TPamAccessGrantAttributes | null;
   if (attributes?.accountId !== inputs.accountId) return false;

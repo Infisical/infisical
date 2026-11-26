@@ -376,6 +376,62 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    url: "/:id",
+    method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "deleteHoneyToken",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          honeyToken: HoneyTokenResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { honeyToken, folderInfo } = await server.services.honeyToken.deleteHoneyToken(
+        { honeyTokenId: req.params.id },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.DELETE_HONEY_TOKEN,
+          metadata: {
+            honeyTokenId: honeyToken.id,
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            environment: folderInfo.environmentSlug,
+            secretPath: folderInfo.path
+          }
+        }
+      });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
+
+      return { honeyToken };
+    }
+  });
+
+  server.route({
     url: "/:id/credentials",
     method: "GET",
     config: {

@@ -235,6 +235,7 @@ export const useUpdatePamAccountTemplate = ({ skipValidationToast = false } = {}
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.template() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };

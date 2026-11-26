@@ -23,7 +23,11 @@ import {
   Field,
   FieldContent,
   FieldError,
-  FieldLabel
+  FieldLabel,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionMemberActions,
@@ -49,6 +53,7 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { TAvailableProjectUser } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
+import { useProjectRoleCreation } from "@app/pages/project/RoleDetailsBySlugPage/components/useProjectRoleCreation";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -106,6 +111,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const {
     data: roles,
     isPending: isRolesLoading,
+    isFetching: isRolesFetching,
     isError: isRolesError,
     refetch: refetchRoles
   } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
@@ -152,6 +158,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+
+  const { creation: roleCreation, upgradeGate: roleUpgradeGate } =
+    useProjectRoleCreation<TAddMemberForm["projectRoleSlugs"][number]>();
 
   useEffect(() => {
     if (requesterEmail) {
@@ -346,7 +355,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel className="sr-only">Select roles</FieldLabel>
-                <FieldContent>
+                <FieldContent className="flex-row items-center gap-2">
                   <Combobox
                     options={filteredRoles}
                     renderOption={(option) => <RoleOptionContent role={option} />}
@@ -358,10 +367,24 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     getOptionValue={(option) => option.slug}
                     getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
+                    creation={roleCreation}
                     isError={Boolean(error)}
                     isLoading={isReferenceDataLoading}
                     isDisabled={!canAddMembers || hasReferenceDataError}
                   />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        variant="outline"
+                        aria-label="Refresh roles"
+                        isDisabled={isRolesFetching}
+                        onClick={() => refetchRoles()}
+                      >
+                        <RefreshCwIcon className={isRolesFetching ? "animate-spin" : undefined} />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh Roles</TooltipContent>
+                  </Tooltip>
                 </FieldContent>
                 <FieldError>{error?.message}</FieldError>
               </Field>
@@ -411,6 +434,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
           </DialogFooter>
         </form>
+        {roleUpgradeGate}
       </DialogContent>
     </Dialog>
   );

@@ -44,6 +44,7 @@ import { twMerge } from "tailwind-merge";
 
 import {
   CreateHoneyTokenModal,
+  DeleteHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
@@ -1630,6 +1631,7 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "editHoneyToken",
     "revokeHoneyToken",
+    "deleteHoneyToken",
     "createEnvironment",
     "createSharedSecret"
   ] as const);
@@ -2301,6 +2303,52 @@ const OverviewPageContent = () => {
     });
   };
 
+  const createSecretInEnvironment = async (
+    env: string,
+    key: string,
+    value: string,
+    type: SecretType,
+    comment: string,
+    source: "row" | "quick-add"
+  ) => {
+    // create folder if not existing
+    if (secretPath !== "/") {
+      // /hello/world -> [hello","world"]
+      const pathSegment = secretPath.split("/").filter(Boolean);
+      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+      const folderName = pathSegment.at(-1);
+      const canCreateFolder = permission.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment: env,
+          secretPath: parentPath
+        })
+      );
+      if (folderName && parentPath && canCreateFolder) {
+        await getOrCreateFolder({
+          projectId,
+          path: parentPath,
+          environment: env,
+          name: folderName
+        });
+      }
+    }
+    return observeOverviewRequest(
+      overviewTelemetry,
+      { action: "create", resourceType: "secret", source, countBucket: "1" },
+      () =>
+        createSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue: value,
+          secretComment: comment,
+          type
+        })
+    );
+  };
+
   const handleSecretCreate = async (
     env: string,
     key: string,
@@ -2333,42 +2381,7 @@ const OverviewPageContent = () => {
       return;
     }
 
-    // create folder if not existing
-    if (secretPath !== "/") {
-      // /hello/world -> [hello","world"]
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: env,
-          secretPath: parentPath
-        })
-      );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment: env,
-          name: folderName
-        });
-      }
-    }
-    const result = await observeOverviewRequest(
-      overviewTelemetry,
-      { action: "create", resourceType: "secret", source, countBucket: "1" },
-      () =>
-        createSecretV3({
-          environment: env,
-          projectId,
-          secretPath,
-          secretKey: key,
-          secretValue: value,
-          secretComment: comment,
-          type
-        })
-    );
+    const result = await createSecretInEnvironment(env, key, value, type, comment, source);
 
     if ("approval" in result) {
       createNotification({
@@ -2381,6 +2394,66 @@ const OverviewPageContent = () => {
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
     }
+  };
+
+  const handleQuickAddSecretCreate = async (
+    environments: string[],
+    key: string,
+    value: string,
+    comment: string,
+    isDirectSave: boolean
+  ) => {
+    if (isSingleEnvView) {
+      setRecentQuickAddKeys((prev) => [key, ...prev.filter((recentKey) => recentKey !== key)]);
+      if (!isDirectSave)
+        return Promise.allSettled([
+          handleSecretCreate(
+            environments[0],
+            key,
+            value,
+            SecretType.Shared,
+            comment,
+            "quick-add",
+            isDirectSave
+          )
+        ]);
+    }
+
+    const results = await Promise.allSettled(
+      environments.map((env) =>
+        createSecretInEnvironment(env, key, value, SecretType.Shared, comment, "quick-add")
+      )
+    );
+    const envsWithOutcome = (isApproval: boolean) =>
+      environments.filter((_, index) => {
+        const result = results[index];
+        return result.status === "fulfilled" && "approval" in result.value === isApproval;
+      });
+    const approvalEnvs = envsWithOutcome(true);
+    const createdEnvs = envsWithOutcome(false);
+
+    if (approvalEnvs.length) {
+      createNotification({
+        type: "info",
+        text:
+          environments.length === 1
+            ? "Requested change has been sent for review"
+            : `Change request submitted for ${
+                approvalEnvs.length > 1 ? "environments" : "environment"
+              }: ${approvalEnvs.join(", ")}`
+      });
+    }
+
+    if (createdEnvs.length) {
+      notifySecretsCreated(
+        1,
+        createdEnvs.map((environment) => ({ environment, key, value })),
+        createdEnvs.length > 1 ? `Added to ${createdEnvs.length} environments` : undefined
+      );
+      checkSecretsActivation();
+    }
+
+    return results;
   };
 
   const handleSecretUpdate = async ({
@@ -4710,22 +4783,7 @@ const OverviewPageContent = () => {
                               existingSecretKeys={quickAddReservedKeys}
                               onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
-                              onCreateSecret={(environment, key, value, comment, isDirectSave) => {
-                                if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) => [
-                                    key,
-                                    ...prev.filter((recentKey) => recentKey !== key)
-                                  ]);
-                                return handleSecretCreate(
-                                  environment,
-                                  key,
-                                  value,
-                                  SecretType.Shared,
-                                  comment,
-                                  "quick-add",
-                                  isDirectSave
-                                );
-                              }}
+                              onCreateSecret={handleQuickAddSecretCreate}
                               onQueuedSecretConflict={(draft) => {
                                 const pendingCreate = batchStoreApi
                                   .getState()
@@ -4979,6 +5037,7 @@ const OverviewPageContent = () => {
                         {honeyTokenNames.map((honeyTokenName) => (
                           <HoneyTokenTableRow
                             honeyTokenName={honeyTokenName}
+                            secretPath={secretPath}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
@@ -4995,6 +5054,9 @@ const OverviewPageContent = () => {
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
+                            }
+                            onDelete={(honeyToken) =>
+                              handlePopUpOpen("deleteHoneyToken", honeyToken)
                             }
                             onViewDetails={(honeyToken) =>
                               setDetailsDrawerHoneyTokenId(honeyToken.id)
@@ -5451,6 +5513,11 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
+      />
+      <DeleteHoneyTokenModal
+        isOpen={popUp.deleteHoneyToken.isOpen}
+        honeyToken={popUp.deleteHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteHoneyToken", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet
