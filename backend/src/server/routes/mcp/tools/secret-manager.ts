@@ -79,7 +79,7 @@ export const registerSecretManagerTools = ({
   sendEvent,
   registerTool
 }: TMcpToolContext) => {
-  // Describe only grants names and metadata; values also need the user's consent to secrets:read.
+  // Describe Only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
 
   // The services behind list-projects and list-folders check membership but no ability, so the scopes never narrow
@@ -88,7 +88,7 @@ export const registerSecretManagerTools = ({
     if (!canReadSecretValues && !scopes.includes(OauthScope.SecretsDescribe)) {
       throw new ForbiddenRequestError({
         message:
-          "This connection wasn't granted access to see projects and folders. Reconnect and choose Describe only, Read-only or Full access."
+          "This connection wasn't granted access to see projects and folders. Reconnect and choose Describe Only, Read Only or Full Access."
       });
     }
   };

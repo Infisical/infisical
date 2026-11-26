@@ -16,7 +16,7 @@ import {
 //
 // The delegated use cases are `infisical run` fetching secrets at runtime (e.g. via Coder External Auth) and
 // the MCP server's tools. Each product gets describe, read and write scopes, which the consent page offers as
-// Describe only, Read-only and Full access. Add further scopes only when a route or MCP tool accepting
+// Describe Only, Read Only and Full Access. Add further scopes only when a route or MCP tool accepting
 // AuthMode.OAUTH needs them.
 export enum OauthScope {
   SecretsDescribe = "secrets:describe",
@@ -174,7 +174,7 @@ const splitLegacySecretRead = (actions: string[]) =>
 // Inverted ("cannot") rules are kept because they only further restrict access.
 const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: Map<string, Set<string>>): T[] => {
   // When the scope allows only part of the legacy secrets "read" action, it is split on every rule that covers secrets,
-  // so Describe only still lists names for a role that has only "read". Denies are split too: a whole "read" deny would
+  // so Describe Only still lists names for a role that has only "read". Denies are split too: a whole "read" deny would
   // not match the describeSecret allow the split creates, and the user would see names they are denied.
   const secretActions = allowed.get(ProjectPermissionSub.Secrets);
   const splitsLegacyRead = Boolean(

@@ -34,22 +34,22 @@ const PRODUCT_ACCESS = [
     levels: [
       {
         level: "full",
-        title: "Full access",
+        title: "Full Access",
         requires: "secrets:write",
         scopes: ["secrets:describe", "secrets:read", "secrets:write"],
         description:
-          "Everything in Read-only, plus create, change and delete secrets, create folders, and create projects"
+          "Everything in Read Only, plus create, change and delete secrets, create folders, and create projects"
       },
       {
         level: "read",
-        title: "Read-only",
+        title: "Read Only",
         requires: "secrets:read",
         scopes: ["secrets:read"],
         description: "See projects, folders and secrets, including their values"
       },
       {
         level: "describe",
-        title: "Describe only",
+        title: "Describe Only",
         requires: "secrets:describe",
         scopes: ["secrets:describe"],
         description: "See projects, folders and secrets, without their values"
