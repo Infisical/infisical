@@ -33,6 +33,7 @@ import {
   FolderMenu,
   useAccountOverlays
 } from "./account-rows";
+import { needsAccessRequest } from "./launch-command";
 
 const route = v4Path("/organizations/$orgId/pam/accounts/");
 export const PAM_ACCOUNTS_DOCS =
@@ -170,9 +171,9 @@ export const PamAccountsPage = () => {
         }
         return (
           <AccountName
-            orgId={orgId}
             account={row.account}
             meta={typeMap.get(row.account.accountType)}
+            onRequestAccess={() => overlays.openLaunch(row.account)}
           />
         );
       }
@@ -180,6 +181,8 @@ export const PamAccountsPage = () => {
     {
       id: "access",
       header: "Access",
+      hideHeader: true,
+      dropFirst: true,
       render: (row) => (row.kind === "account" ? <AccessState account={row.account} /> : null)
     }
   ];
@@ -282,6 +285,8 @@ export const PamAccountsPage = () => {
           loadingRows={5}
           getRowId={(row) => `${row.kind}-${row.id}`}
           getRowChildren={childrenOf}
+          onRowActivate={(row) => row.kind === "account" && overlays.openLaunch(row.account)}
+          isRowActivatable={(row) => row.kind === "account" && needsAccessRequest(row.account)}
           rowLabel={(row) => {
             if (row.kind === "my-accounts") return "My accounts";
             return row.kind === "folder" ? row.folder.name : row.account.name;

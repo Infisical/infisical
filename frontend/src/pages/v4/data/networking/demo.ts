@@ -306,7 +306,10 @@ export const networkingDemo: NetworkingAdapter = {
       }))
     );
   }),
-  useTriggerGatewayHeartbeat: fixtureMutation((gatewayId: string) => {
+  useTriggerGatewayHeartbeat: fixtureMutation(async (gatewayId: string) => {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 1500);
+    });
     const gw = gateways.get().find((entry) => entry.id === gatewayId);
     if (!gw || !healthy(gw)) throw new Error("Gateway is unreachable");
   }),

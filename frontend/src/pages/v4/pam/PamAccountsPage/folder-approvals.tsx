@@ -141,7 +141,7 @@ const ApproverCard = ({
           label={`Add ${label}`}
           width="sm"
           placeholder="Add user or group"
-          emptyText="No folder members left. Add them under Permissions first."
+          emptyText="No users or groups left. Add them to this folder under Permissions first."
           options={options}
           value=""
           onChange={(value) => {
@@ -350,7 +350,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  icon="lock"
+                  icon="x"
                   iconOnly
                   aria-label="Revoke access"
                   onClick={(event) => {

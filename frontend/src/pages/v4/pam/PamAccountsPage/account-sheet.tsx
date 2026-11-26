@@ -295,11 +295,6 @@ const AccountForm = ({
                     keepsSecrets
                     onChange={changeField("credentials")}
                   />
-                  <SshCaNotice
-                    accountType={account.accountType}
-                    authMethod={draft.values.credentials.authMethod as string | undefined}
-                    accountId={account.id}
-                  />
                   <CredentialHealth
                     accountId={account.id}
                     canCheck={canCheckHealth}
@@ -504,7 +499,16 @@ export const AccountSheet = ({
             }
           >
             {account ? (
-              <AccountSummary account={account} metadata={metadata} />
+              <Stack gap={16}>
+                <AccountSummary account={account} metadata={metadata} />
+                {can(PamResourcePermissionActions.EditAccounts) && (
+                  <SshCaNotice
+                    accountType={account.accountType}
+                    authMethod={account.credentials.authMethod as string | undefined}
+                    accountId={account.id}
+                  />
+                )}
+              </Stack>
             ) : (
               <Skeleton lines={6} />
             )}

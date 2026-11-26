@@ -7,7 +7,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inset } from "@infisical/cipher/ui/inset";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineGrow, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
@@ -246,6 +246,23 @@ export const CreateAccountSheet = ({
   else if (!template) templateStepBlocker = "Select a template";
   else templateStepBlocker = unusableReason(template) ?? undefined;
 
+  const manageTemplates = isProductAdmin ? (
+    <Button variant="ghost" size="sm" iconRight="external" asChild>
+      <Link {...go.link(orgHref(orgId, "/pam/templates"))} target="_blank">
+        Manage templates
+      </Link>
+    </Button>
+  ) : (
+    <Button
+      variant="ghost"
+      size="sm"
+      iconRight="external"
+      disabledReason="Only product admins can manage templates"
+    >
+      Manage templates
+    </Button>
+  );
+
   const templateStep = (
     <Stack gap={16}>
       {!folderLocked && (
@@ -265,68 +282,51 @@ export const CreateAccountSheet = ({
           />
         </Field>
       )}
-      <FieldSet
-        legend="Account template"
-        actions={
-          isProductAdmin ? (
-            <Button variant="ghost" size="sm" iconRight="external" asChild>
-              <Link {...go.link(orgHref(orgId, "/pam/templates"))} target="_blank">
-                Manage templates
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              iconRight="external"
-              disabledReason="Only product admins can manage templates"
-            >
-              Manage templates
-            </Button>
-          )
-        }
-      >
-        <Stack gap={12}>
-          <Input
-            icon="search"
-            aria-label="Search templates"
-            placeholder="Search templates..."
-            value={templateSearch}
-            onChange={(event) => setTemplateSearch(event.target.value)}
-          />
-          {visibleTemplates.length === 0 ? (
-            <EmptyState
-              size="sm"
-              media="bare"
-              icon={templates.length ? "search" : "file"}
-              title={templates.length ? "No templates match your search" : "No templates yet"}
+      <Stack gap={12}>
+        <Inline gap={8} align="center" wrap={false}>
+          <InlineGrow>
+            <Input
+              icon="search"
+              aria-label="Search templates"
+              placeholder="Search templates..."
+              value={templateSearch}
+              onChange={(event) => setTemplateSearch(event.target.value)}
             />
-          ) : (
-            <RadioGroup value={templateId} onValueChange={pickTemplate}>
-              {visibleTemplates.map((candidate) => {
-                const meta = typeMap.get(candidate.type);
-                const reason = unusableReason(candidate);
-                const typeName = meta?.name ?? candidate.type;
-                return (
-                  <RadioGroupCard
-                    key={candidate.id}
-                    value={candidate.id}
-                    disabled={Boolean(reason)}
-                    media={meta && <ProviderIcon icon={meta.icon} alt="" size="sm" />}
-                    title={
-                      <Inline gap={8} align="center">
-                        {candidate.name}
-                        <Badge tone="outline">{typeName}</Badge>
-                      </Inline>
-                    }
-                    description={reason ?? candidate.description ?? undefined}
-                  />
-                );
-              })}
-            </RadioGroup>
-          )}
-        </Stack>
-      </FieldSet>
+          </InlineGrow>
+          {manageTemplates}
+        </Inline>
+        {visibleTemplates.length === 0 ? (
+          <EmptyState
+            size="sm"
+            media="bare"
+            icon={templates.length ? "search" : "file"}
+            title={templates.length ? "No templates match your search" : "No templates yet"}
+          />
+        ) : (
+          <RadioGroup aria-label="Account template" value={templateId} onValueChange={pickTemplate}>
+            {visibleTemplates.map((candidate) => {
+              const meta = typeMap.get(candidate.type);
+              const reason = unusableReason(candidate);
+              const typeName = meta?.name ?? candidate.type;
+              return (
+                <RadioGroupCard
+                  key={candidate.id}
+                  value={candidate.id}
+                  disabled={Boolean(reason)}
+                  media={meta && <ProviderIcon icon={meta.icon} alt="" size="sm" />}
+                  title={
+                    <Inline gap={8} align="center">
+                      {candidate.name}
+                      <Badge tone="outline">{typeName}</Badge>
+                    </Inline>
+                  }
+                  description={reason ?? candidate.description ?? undefined}
+                />
+              );
+            })}
+          </RadioGroup>
+        )}
+      </Stack>
     </Stack>
   );
 
@@ -451,6 +451,7 @@ export const CreateAccountSheet = ({
         steps={[
           {
             title: "Template",
+            heading: folderLocked ? "Template" : "Folder and template",
             content: templateStep,
             disabledReason: templateStepBlocker,
             validate: () => {

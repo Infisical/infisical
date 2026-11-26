@@ -89,7 +89,9 @@ const detailValue = (field: TPamFieldDescriptor, value: unknown) => {
   return <MiddleTruncate text={String(value)} mono />;
 };
 
-const useAccountDetails = (account: TPamAccountListItem | null, meta?: TPamAccountTypeMetadata) => {
+type AccountIdentity = Pick<TPamAccountListItem, "id" | "name" | "description" | "accountType">;
+
+const useAccountDetails = (account: AccountIdentity | null, meta?: TPamAccountTypeMetadata) => {
   const { data: full } = useV4Adapter("pam").useAccount(account?.id);
   if (!account) return [];
   const rows = (fields: TPamFieldDescriptor[] = [], source: Record<string, unknown> = {}) =>
@@ -118,6 +120,42 @@ const AccessTypeBadge = ({ accessType }: { accessType: PamAccessType }) =>
       Session
     </Badge>
   );
+
+export const AccessSheetTitle = ({
+  account,
+  meta,
+  accessType
+}: {
+  account: AccountIdentity | null;
+  meta?: TPamAccountTypeMetadata;
+  accessType?: PamAccessType;
+}) => (
+  <Inline gap={8} align="center">
+    <Inline gap={8} align="center" wrap={false}>
+      {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
+      <span style={{ overflowWrap: "anywhere" }}>{account?.name ?? "Account"}</span>
+    </Inline>
+    {meta && <Badge tone="outline">{meta.name}</Badge>}
+    {accessType && <AccessTypeBadge accessType={accessType} />}
+  </Inline>
+);
+
+export const AccountOverview = ({
+  account,
+  meta
+}: {
+  account: AccountIdentity | null;
+  meta?: TPamAccountTypeMetadata;
+}) => {
+  const details = useAccountDetails(account, meta);
+  if (!account?.description && !details.length) return null;
+  return (
+    <Stack gap={12}>
+      {account?.description && <Text muted>{account.description}</Text>}
+      {details.length > 0 && <DataList variant="props" items={details} />}
+    </Stack>
+  );
+};
 
 const ApprovalWorkflow = ({
   steps,
@@ -698,7 +736,6 @@ export const RequestAccessSheet = ({
   const isCredential = accessType === PamAccessType.Credential;
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const meta = accountTypes.find(({ type }) => type === account?.accountType);
-  const details = useAccountDetails(account, meta);
   const { data: approvers, isPending: approversPending } = useV4Adapter(
     "pamAccess"
   ).useAccountApprovers(account?.id, accessType);
@@ -716,22 +753,8 @@ export const RequestAccessSheet = ({
     pendingRequestId: isCredential
       ? account?.credentialPendingRequestId
       : account?.pendingRequestId,
-    title: (
-      <Inline gap={8} align="center">
-        <Inline gap={8} align="center" wrap={false}>
-          {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
-          <span>{account?.name ?? "Account"}</span>
-        </Inline>
-        {meta && <Badge tone="outline">{meta.name}</Badge>}
-        <AccessTypeBadge accessType={accessType} />
-      </Inline>
-    ),
-    overview: (account?.description || details.length > 0) && (
-      <Stack gap={12}>
-        {account?.description && <Text muted>{account.description}</Text>}
-        {details.length > 0 && <DataList variant="props" items={details} />}
-      </Stack>
-    )
+    title: <AccessSheetTitle account={account} meta={meta} accessType={accessType} />,
+    overview: <AccountOverview account={account} meta={meta} />
   };
   const close = () => onOpenChange(false);
 
