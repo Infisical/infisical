@@ -11,6 +11,7 @@ import {
   XIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -25,6 +26,10 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   OrgIcon,
   RadioGroup,
   Skeleton
@@ -34,9 +39,11 @@ import { SessionStorageKeys } from "@app/const";
 import { useUser } from "@app/context";
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
 import {
+  TOrgWithSubOrgs,
   useGetOrganizationById,
   useGetOrganizationsWithSubOrgs
 } from "@app/hooks/api/organization/queries";
+import { getSsoEnforcementError } from "@app/pages/auth/SelectOrgPage/SelectOrg.utils";
 
 // The user picks one access level per product rather than individual scopes. A level is offered when the application
 // asked for the scope it is named by (`requires`), and only scopes the application asked for are ever granted.
@@ -128,14 +135,17 @@ export const OauthConsentPage = () => {
     organizationId ?? "",
     { enabled: isPublicClient && Boolean(organizationId) }
   );
-  const { data: userOrganizations } = useGetOrganizationsWithSubOrgs();
-  const canSwitchOrganization =
+  // The backend refuses consent for a public client from a sub-organization session, so the switcher offers only
+  // parent organizations, and a request opened from a sub-organization must switch before it can be authorized.
+  const isSubOrganizationSession =
     isPublicClient &&
-    Boolean(
-      userOrganizations &&
-      (userOrganizations.length > 1 ||
-        userOrganizations.some(({ subOrganizations }) => subOrganizations.length > 0))
-    );
+    Boolean(organization?.rootOrgId) &&
+    organization?.id !== organization?.rootOrgId;
+  const { data: userOrganizations } = useGetOrganizationsWithSubOrgs();
+  const switchableOrganizations = (userOrganizations ?? []).filter(
+    ({ id }) => id !== organizationId
+  );
+  const canSwitchOrganization = isPublicClient && switchableOrganizations.length > 0;
   const requestedScopes = (authorizeInfo?.requestedScopes ?? []).map(({ scope }) => scope);
   const requestedProducts = PRODUCT_ACCESS.map((productAccess) => ({
     ...productAccess,
@@ -192,9 +202,16 @@ export const OauthConsentPage = () => {
     window.location.href = denyUrl.toString();
   };
 
-  // Selecting an organization issues a new session token, and the organization picker returns to the stored URL
-  // once it has one, so the user comes back to this request signed in to the organization they picked.
-  const handleSwitchOrganization = () => {
+  // The organization picker selects `org_id` as it loads, which issues a session token for that organization (after
+  // MFA when required) and then returns to the stored URL. Naming the organization keeps the picker's list, which
+  // includes sub-organizations, out of the way. SSO enforcement is checked first because it would open that list.
+  const handleSwitchOrganization = (targetOrganization: TOrgWithSubOrgs) => {
+    const ssoEnforcementError = getSsoEnforcementError(targetOrganization);
+    if (ssoEnforcementError) {
+      createNotification({ text: ssoEnforcementError, type: "error" });
+      return;
+    }
+
     sessionStorage.setItem(
       SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
       JSON.stringify({
@@ -202,7 +219,7 @@ export const OauthConsentPage = () => {
         data: window.location.href
       })
     );
-    navigate({ to: "/login/select-organization", search: { force: true } });
+    navigate({ to: "/login/select-organization", search: { org_id: targetOrganization.id } });
   };
 
   if (isRedirecting) {
@@ -418,15 +435,29 @@ export const OauthConsentPage = () => {
                     <span className="min-w-0 truncate">{organization?.name}</span>
                   )}
                   {canSwitchOrganization && (
-                    <Button
-                      variant="link"
-                      size="xs"
-                      className="ml-auto text-org"
-                      onClick={handleSwitchOrganization}
-                      isDisabled={isConsenting}
-                    >
-                      Switch
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="link"
+                          size="xs"
+                          className="ml-auto text-org"
+                          isDisabled={isConsenting}
+                        >
+                          Switch
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="max-w-72 min-w-48">
+                        {switchableOrganizations.map((switchableOrganization) => (
+                          <DropdownMenuItem
+                            key={switchableOrganization.id}
+                            onClick={() => handleSwitchOrganization(switchableOrganization)}
+                          >
+                            <OrgIcon className="text-org" />
+                            <span className="min-w-0 truncate">{switchableOrganization.name}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </DetailValue>
               </Detail>
@@ -476,7 +507,7 @@ export const OauthConsentPage = () => {
               <div className="pt-5">
                 <Alert
                   variant="warning"
-                  className="rounded-lg px-4 [&_[data-slot=alert-description]]:text-foreground"
+                  className="[&_[data-slot=alert-description]]:text-foreground"
                 >
                   <TriangleAlertIcon />
                   <AlertDescription>
@@ -492,6 +523,14 @@ export const OauthConsentPage = () => {
               <AlertDescription>
                 {(authorizeInfoError as { response?: { data?: { message?: string } } })?.response
                   ?.data?.message || "This authorization request is invalid."}
+              </AlertDescription>
+            </Alert>
+          )}
+          {isRequestValidated && isSubOrganizationSession && (
+            <Alert variant="danger">
+              <AlertDescription>
+                You can authorize {clientName} only from a parent organization. Switch to a parent
+                organization to continue.
               </AlertDescription>
             </Alert>
           )}
@@ -522,7 +561,11 @@ export const OauthConsentPage = () => {
                 onClick={handleAuthorize}
                 isPending={isConsenting}
                 isDisabled={
-                  isConsenting || !isRequestValidated || isPkceMissing || isNothingGranted
+                  isConsenting ||
+                  !isRequestValidated ||
+                  isPkceMissing ||
+                  isNothingGranted ||
+                  isSubOrganizationSession
                 }
               >
                 Authorize
