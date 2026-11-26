@@ -148131,10 +148131,10 @@ type GetIdentityProjectAdditionalPrivilegeBySlugV1500JSONResponseBodyStatusCode 
 
 // AdminBootstrapJSONBody defines parameters for AdminBootstrap.
 type AdminBootstrapJSONBody struct {
-	ActivationToken *string             `json:"activationToken,omitempty"`
-	Email           openapi_types.Email `json:"email"`
-	Organization    string              `json:"organization"`
-	Password        string              `json:"password"`
+	Email        openapi_types.Email `json:"email"`
+	Organization string              `json:"organization"`
+	Password     string              `json:"password"`
+	SetupToken   *string             `json:"setupToken,omitempty"`
 }
 
 // AdminBootstrap400JSONResponseBodyStatusCode defines parameters for AdminBootstrap.
@@ -148515,12 +148515,12 @@ type ResendAdminOrganizationInvite500JSONResponseBodyStatusCode float32
 
 // AdminSignUpJSONBody defines parameters for AdminSignUp.
 type AdminSignUpJSONBody struct {
-	ActivationToken  *string             `json:"activationToken,omitempty"`
 	Email            openapi_types.Email `json:"email"`
 	FirstName        string              `json:"firstName"`
 	LastName         *string             `json:"lastName,omitempty"`
 	OrganizationName *string             `json:"organizationName,omitempty"`
 	Password         string              `json:"password"`
+	SetupToken       *string             `json:"setupToken,omitempty"`
 }
 
 // AdminSignUp400JSONResponseBodyStatusCode defines parameters for AdminSignUp.
@@ -343366,7 +343366,7 @@ type GetAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-			IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+			IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -343468,7 +343468,7 @@ func (r GetAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-		IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+		IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -343621,7 +343621,7 @@ type UpdateAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-			IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+			IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -343723,7 +343723,7 @@ func (r UpdateAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-		IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+		IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -515206,10 +515206,17 @@ type ListSecretImportsResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id        string  `json:"id"`
-				Name      string  `json:"name"`
-				ProjectId *string `json:"projectId,omitempty"`
-				Slug      string  `json:"slug"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
+				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
+				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
 			IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -515277,10 +515284,17 @@ func (r ListSecretImportsResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id        string  `json:"id"`
-			Name      string  `json:"name"`
-			ProjectId *string `json:"projectId,omitempty"`
-			Slug      string  `json:"slug"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
+			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
+			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
 		IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -515399,8 +515413,16 @@ type CreateSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -515468,8 +515490,16 @@ func (r CreateSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -515807,8 +515837,16 @@ type DeleteSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -515876,8 +515914,16 @@ func (r DeleteSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -516000,8 +516046,16 @@ type GetSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -516075,8 +516129,16 @@ func (r GetSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -516197,8 +516259,16 @@ type UpdateSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -516266,8 +516336,16 @@ func (r UpdateSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -552133,7 +552211,7 @@ func ParseGetAdminConfigResponse(rsp *http.Response) (*GetAdminConfigResponse, e
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-				IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+				IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -552287,7 +552365,7 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
-				IsInitialSetupActivationTokenRequired  *bool               `json:"isInitialSetupActivationTokenRequired,omitempty"`
+				IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -662069,10 +662147,17 @@ func ParseListSecretImportsResponse(rsp *http.Response) (*ListSecretImportsRespo
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id        string  `json:"id"`
-					Name      string  `json:"name"`
-					ProjectId *string `json:"projectId,omitempty"`
-					Slug      string  `json:"slug"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
+					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
+					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
 				IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -662192,8 +662277,16 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -662449,8 +662542,16 @@ func ParseDeleteSecretImportResponse(rsp *http.Response) (*DeleteSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -662574,8 +662675,16 @@ func ParseGetSecretImportResponse(rsp *http.Response) (*GetSecretImportResponse,
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -662697,8 +662806,16 @@ func ParseUpdateSecretImportResponse(rsp *http.Response) (*UpdateSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`

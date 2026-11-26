@@ -85,12 +85,12 @@ type Props = {
   environments: string[];
   existingSecretKeys: string[];
   onCreateSecret: (
-    environment: string,
+    environments: string[],
     key: string,
     value: string,
-    comment?: string,
-    isDirectSave?: boolean
-  ) => Promise<void>;
+    comment: string,
+    isDirectSave: boolean
+  ) => Promise<PromiseSettledResult<unknown>[]>;
   onPasteSecrets: (env: TParsedEnv) => void;
   onQueuedSecretConflict?: (draft: { key: string; value: string; comment: string }) => boolean;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
@@ -239,10 +239,12 @@ export const QuickAddSecretRow = ({
         }
       }
 
-      const results = await Promise.allSettled(
-        environments.map((environment) =>
-          onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
-        )
+      const results = await onCreateSecret(
+        environments,
+        normalizedKey,
+        value,
+        comment,
+        isDirectSave
       );
       const failures = environments.flatMap((environment, index) => {
         const result = results[index];

@@ -263,9 +263,10 @@ func SelectOrganization(tt *testing.T, tn *harness.Tenant, login *http.Response,
 // skips the challenge.
 func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust) {
 	tt.Helper()
+	methods := []api.UpdateOrganizationJSONBodyAllowedMfaMethods{api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail}
 	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
 		EnforceMfa:        new(true),
-		AllowedMfaMethods: &[]api.UpdateOrganizationJSONBodyAllowedMfaMethods{api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail},
+		AllowedMfaMethods: &methods,
 	})
 	require.NoError(tt, err)
 	require.Equalf(tt, http.StatusOK, res.StatusCode(), "enforcing MFA: %s", apierr.Body(res.Body))

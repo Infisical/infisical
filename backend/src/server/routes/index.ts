@@ -4551,19 +4551,6 @@ export const registerRoutes = async (
     certificateAlertEventEmitter
   });
 
-  const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
-    cronJob,
-    certificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    appConnectionDAL,
-    kmsDataKeyService,
-    kmsKeyService,
-    auditLogService,
-    pkiAlertV2Queue,
-    certificateAlertEventEmitter
-  });
-
   const scepIntuneRevocationSyncQueue = scepIntuneRevocationSyncQueueFactory({
     cronJob,
     scepEnrollmentConfigDAL,
@@ -4832,6 +4819,20 @@ export const registerRoutes = async (
     notificationService,
     userDAL,
     auditLogService
+  });
+
+  const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
+    cronJob,
+    certificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    appConnectionDAL,
+    kmsDataKeyService,
+    kmsKeyService,
+    auditLogService,
+    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
+    signerService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
