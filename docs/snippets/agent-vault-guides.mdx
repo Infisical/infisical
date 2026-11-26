@@ -1,0 +1,29 @@
+{/* The Agent Vault guide catalog. AgentVaultGuides reads this table, so keep its columns in this order. Separate
+    several names with commas, and leave Agent or Compute empty when the guide works with any.
+    Kind is Example for a complete agent built for a job, or Setup for a guide that sets up one agent or platform.
+    Services names the services the guide has you add to Agent Vault. Leave it empty when you pick your own.
+    Use case names the job an example does, such as On-call. Leave it empty for a setup guide.
+    Give each row its own Guide name. A guide that runs on several platforms gets a row, and a card, for each. */}
+
+{/* TODO: The on-call, coding, OpenClaw, and Hermes links are placeholders until slack-agents/ and telegram-agents/ are in Infisical/agent-reference-architectures. */}
+
+| Guide | Kind | Agent | Compute | Services | Use case | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| [On-call Slack agent on Docker](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call/docker) | Example | Claude Code | Docker | Slack, Sentry, GitHub | On-call | Investigate production errors from Slack |
+| [On-call Slack agent on a VM](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call/vm) | Example | Claude Code | VM | Slack, Sentry, GitHub | On-call | Investigate production errors from Slack |
+| [Coding Slack agent on a VM](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/coding/vm) | Example | Claude Code | VM | Slack, GitHub | Coding | Open pull requests from Slack |
+| [OpenClaw on a DigitalOcean Droplet](https://github.com/Infisical/agent-reference-architectures/tree/main/telegram-agents/openclaw/digitalocean) | Example | OpenClaw | VM | Telegram | Personal assistant | Message your own OpenClaw on Telegram |
+| [Hermes on a DigitalOcean Droplet](https://github.com/Infisical/agent-reference-architectures/tree/main/telegram-agents/hermes/digitalocean) | Example | Hermes | VM | Telegram | Personal assistant | Message your own Hermes Agent on Telegram |
+| [Cursor Cloud Agents](/documentation/platform/agent-vault/guides/cursor) | Example | Cursor | Kubernetes | | Coding | Run Cursor Cloud Agents in your own cluster |
+| [Claude Code](/documentation/platform/agent-vault/guides/claude-code) | Setup | Claude Code | | | | Start Claude Code with brokered credentials |
+| [Codex](/documentation/platform/agent-vault/guides/codex) | Setup | Codex | | | | Start Codex with brokered credentials |
+| [OpenCode](/documentation/platform/agent-vault/guides/opencode) | Setup | OpenCode | | | | Start OpenCode with brokered credentials |
+| [OpenClaw](/documentation/platform/agent-vault/guides/openclaw) | Setup | OpenClaw | | | | Start OpenClaw with brokered credentials |
+| [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) | Setup | OpenClaw | | Telegram | | Reach OpenClaw from a messaging platform |
+| [Hermes Agent](/documentation/platform/agent-vault/guides/hermes) | Setup | Hermes | | | | Start Hermes Agent with brokered credentials |
+| [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) | Setup | Hermes | | Telegram | | Reach Hermes Agent from a messaging platform |
+| [Kubernetes](/documentation/platform/agent-vault/guides/kubernetes) | Setup | | Kubernetes | | | Run agents in pods that can reach only the proxy |
+| [Docker](/documentation/platform/agent-vault/guides/docker) | Setup | | Docker | | | Run the proxy beside each agent container |
+| [Modal](/documentation/platform/agent-vault/guides/modal) | Setup | | Modal | | | Run the proxy inside each Modal sandbox |
+| [Daytona](/documentation/platform/agent-vault/guides/daytona) | Setup | | Daytona | | | Run the proxy beside each Daytona sandbox |
+| [E2B](/documentation/platform/agent-vault/guides/e2b) | Setup | | E2B | | | Send each E2B sandbox's traffic to the proxy |
