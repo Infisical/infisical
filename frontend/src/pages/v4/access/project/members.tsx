@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DataTable,
@@ -35,6 +36,8 @@ import { AddMemberDialog } from "./member-add-dialog";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 import { accessLabel, accessNoun, accessThis, canAssumeUserIn, memberDetailId } from "./product";
 import { useProjectScope } from "./scope";
+
+import accessStyles from "../access.module.css";
 
 const SELF_REASON = "You cannot modify your own membership";
 
@@ -119,9 +122,14 @@ export const ProjectMembersTab = () => {
           link={go.link(
             accessLinks.projectMember(scope, memberDetailId(scope.projectType, member))
           )}
-          title={personName(member.user) ?? undefined}
+          title={personName(member.user) ?? (member.user.email || member.inviteEmail) ?? undefined}
         >
-          {personName(member.user) ?? <Muted>-</Muted>}
+          {personName(member.user) ?? (member.user.email || member.inviteEmail || <Muted>-</Muted>)}
+          {member.user.isOrgMembershipPending && (
+            <span className={accessStyles.linkBadges}>
+              <Badge>Pending</Badge>
+            </span>
+          )}
         </RowLink>
       )
     },
