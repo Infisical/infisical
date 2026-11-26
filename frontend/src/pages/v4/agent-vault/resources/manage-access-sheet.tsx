@@ -87,7 +87,11 @@ const ManageAccessContent = ({
   const searchParam = debouncedSearch.trim() || undefined;
   const actorType = type === ALL ? undefined : type;
 
-  const { data, isPending, error } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
+  const {
+    data,
+    isPending,
+    error: membersError
+  } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
     actorType,
     search: searchParam,
     limit: PER_PAGE,
@@ -251,7 +255,7 @@ const ManageAccessContent = ({
               loadingRows={3}
               rowActions={revokeActions}
               empty={
-                error ? (
+                membersError ? (
                   <EmptyState
                     size="sm"
                     media="bare"

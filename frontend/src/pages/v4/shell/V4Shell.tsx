@@ -240,7 +240,7 @@ export const V4Shell = ({
       ]
     : [];
   const at = agentVaultHidden.reduce(
-    (location, [itemId, allowed]) => (allowed ? location : withoutNavItem(location, itemId)),
+    (shown, [itemId, allowed]) => (allowed ? shown : withoutNavItem(shown, itemId)),
     located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located
   );
   const go = (href: string) => navigate({ href: resolve(href) });
