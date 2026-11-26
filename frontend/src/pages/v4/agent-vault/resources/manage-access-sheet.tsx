@@ -61,13 +61,13 @@ const memberKey = (member: TActor) => `${member.type}:${member.id}`;
 const MemberCell = ({ member }: { member: TActor }) => (
   <Inline gap={8} align="center" wrap={false}>
     <Icon icon={MEMBER_KIND[member.type].icon} />
-    <Stack gap={0} style={{ minWidth: 0 }}>
+    <Stack gap={0} align="start" style={{ minWidth: 0 }}>
       <span title={memberDisplayName(member)}>{memberDisplayName(member)}</span>
       <Meta mono={false}>{memberSubtitle(member)}</Meta>
+      {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
+        <PendingInvitationBadge />
+      )}
     </Stack>
-    {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
-      <PendingInvitationBadge />
-    )}
   </Inline>
 );
 

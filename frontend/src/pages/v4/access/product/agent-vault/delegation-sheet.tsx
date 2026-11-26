@@ -204,7 +204,7 @@ const Content = ({ identity }: { identity: Identity }) => {
       header: "User or group",
       grow: true,
       render: (member) => (
-        <Inline gap={8} wrap={false}>
+        <Stack gap={4} align="start">
           <SubjectName
             name={memberDisplayName(member)}
             subtitle={
@@ -214,7 +214,7 @@ const Content = ({ identity }: { identity: Identity }) => {
           {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
             <PendingInvitationBadge />
           )}
-        </Inline>
+        </Stack>
       )
     },
     {
