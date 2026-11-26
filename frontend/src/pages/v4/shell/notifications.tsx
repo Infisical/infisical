@@ -268,7 +268,7 @@ const InboxBody = ({
     <Button
       variant="ghost"
       size="icon-sm"
-      icon="check"
+      icon="check-check"
       iconOnly
       className={styles.markAll}
       loading={markAll.isPending}
@@ -343,6 +343,7 @@ const InboxBody = ({
         <List
           label="Notifications"
           variant="bare"
+          inset
           loading={isPending}
           empty={<EmptyState size="sm" icon="bell" title={EMPTY_TITLES[filter]} />}
           footer={

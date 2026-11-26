@@ -65,11 +65,6 @@
   padding-inline: 0;
 }
 
-.scroll [data-list-row] {
-  margin-inline: var(--cipher-space-8);
-  padding: var(--cipher-space-8);
-}
-
 .tile,
 .tile + [aria-hidden] {
   translate: 0 -0.2em;
@@ -79,7 +74,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-block: var(--cipher-space-8);
 }
 
 .body {
