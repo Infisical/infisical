@@ -37,6 +37,7 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { useMemberRoleAccess } from "./member-access";
+import { useProjectPlanGates } from "./plan-gates";
 import { accessLabel, linksMemberRoles, memberDetailId } from "./product";
 import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
@@ -61,7 +62,7 @@ const EditRoleDialog = ({
   onSave: (next: GrantDraft) => void;
 }) => {
   const { canEdit, optionsFor } = useMemberRoleAccess(projectId, member.user.email);
-  const [draft, setDraft] = useState(draftOf(grant));
+  const [draft, setDraft] = useState(() => draftOf(grant));
   const dirty = JSON.stringify(draft) !== JSON.stringify(draftOf(grant));
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -98,6 +99,7 @@ export const MemberRolesSection = ({
   const scope = useProjectScope();
   const updateRoles = useV4Adapter("access").useUpdateProjectUserRoles();
   const { canEdit, assignable } = useMemberRoleAccess(projectId, member.user.email);
+  const gates = useProjectPlanGates();
   const [adding, setAdding] = useState<number>();
   const [editing, setEditing] = useState<Grant>();
   const [removing, setRemoving] = useState<Grant>();
@@ -106,6 +108,13 @@ export const MemberRolesSection = ({
   );
 
   const setRoles = async (drafts: GrantDraft[], message: string) => {
+    if (
+      gates.customRolesBlocked(
+        drafts.map((draft) => draft.role),
+        "project.member-details-by-id"
+      )
+    )
+      return false;
     try {
       await updateRoles.mutateAsync({
         membershipId: memberDetailId(scope.projectType, member),
@@ -257,6 +266,7 @@ export const MemberRolesSection = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {gates.upgradeGate}
     </>
   );
 };

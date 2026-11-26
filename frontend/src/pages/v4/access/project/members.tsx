@@ -74,8 +74,8 @@ export const ProjectMembersTab = () => {
     ProjectPermissionMemberActions.Delete,
     ProjectPermissionSub.Member
   );
+  const assumable = canAssumeUserIn(scope.projectType);
   const canAssume = (member: TWorkspaceUser) =>
-    canAssumeUserIn(scope.projectType) &&
     permission.can(
       ProjectPermissionMemberActions.AssumePrivileges,
       subject(ProjectPermissionSub.Member, { userEmail: member.user.email })
@@ -88,12 +88,19 @@ export const ProjectMembersTab = () => {
     rows,
     initialSort: { columnId: "name", direction: "asc" },
     matches: (member, needle) =>
-      [member.user.firstName, member.user.lastName, member.user.username, member.user.email].some(
-        (value) => value?.toLowerCase().includes(needle)
-      ),
+      [
+        member.user.firstName,
+        member.user.lastName,
+        member.user.username,
+        member.user.email,
+        member.inviteEmail
+      ].some((value) => value?.toLowerCase().includes(needle)),
     compare: (a, b, column) => {
       const value = (member: TWorkspaceUser) =>
-        (column === "email" ? member.user.email : member.user.firstName)?.toLowerCase();
+        (column === "email"
+          ? member.user.email || member.inviteEmail
+          : member.user.firstName
+        )?.toLowerCase();
       const [left, right] = [value(a), value(b)];
       if (!left) return 1;
       if (!right) return -1;
@@ -123,7 +130,7 @@ export const ProjectMembersTab = () => {
       header: "Email",
       sortable: true,
       grow: true,
-      render: (member) => <span>{member.user.email}</span>
+      render: (member) => <span>{member.user.email || member.inviteEmail}</span>
     },
     {
       id: "role",
@@ -136,14 +143,19 @@ export const ProjectMembersTab = () => {
     menuDisabledReason: (member) => (isSelf(member) ? SELF_REASON : undefined),
     renderMenu: (member) => (
       <>
-        <DropdownMenuItem
-          disabled={!canAssume(member)}
-          onSelect={() => setAssuming({ id: member.user.id, type: ActorType.USER })}
-        >
-          <Icon name="user" />
-          Assume privileges
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {assumable && (
+          <>
+            <DropdownMenuItem
+              disabled={!canAssume(member)}
+              description={canAssume(member) ? undefined : RESTRICTED}
+              onSelect={() => setAssuming({ id: member.user.id, type: ActorType.USER })}
+            >
+              <Icon name="user" />
+              Assume privileges
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           variant="destructive"
           disabled={!canDelete}

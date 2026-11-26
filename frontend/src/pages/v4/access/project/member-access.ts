@@ -11,6 +11,7 @@ import {
   canModifyByGrantConditions,
   filterByGrantConditions,
   getGroupAssignRoleConditions,
+  getIdentityAssignRoleConditions,
   getMemberAssignRoleConditions
 } from "@app/lib/fn/permission";
 
@@ -74,6 +75,32 @@ export const useMemberRoleAccess = (projectId: string, email?: string) => {
     canEdit:
       permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member) &&
       targetAllowed
+  };
+};
+
+export const useIdentityRoleAccess = (projectId: string, identityId: string) => {
+  const scope = useProjectScope();
+  const { permission } = useProjectPermission(projectId);
+  const roles = useV4Adapter("access").useProjectRoles(projectId, scope.projectType);
+  const conditions = useMemo(() => getIdentityAssignRoleConditions(permission), [permission]);
+  const all = useMemo(() => roles.data ?? [], [roles.data]);
+  const assignable = useMemo(
+    () =>
+      filterByGrantConditions(all, {
+        getKey: (role) => role.slug,
+        allowed: conditions?.roles,
+        forbidden: conditions?.forbiddenRoles
+      }),
+    [all, conditions]
+  );
+  return {
+    assignable,
+    optionsFor: (slug: string) => withCurrent(assignable, all, slug),
+    targetAllowed: canModifyByGrantConditions({
+      targetValue: identityId,
+      allowed: conditions?.identityIds,
+      forbidden: conditions?.forbiddenIdentityIds
+    })
   };
 };
 
