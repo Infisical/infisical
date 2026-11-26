@@ -15,7 +15,7 @@ import { DetailLayout, Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList, type DataListItem, List, ListRow } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
@@ -24,17 +24,18 @@ import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import {
   certKeyAlgorithmToNameMap,
   certSignatureAlgorithmToNameMap,
-  EXTENDED_KEY_USAGE_LABELS,
+  EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertKeyAlgorithm, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import type { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
+import { camelCaseToSpaces, toTitleCase } from "@app/lib/fn/string";
 import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import {
   altNamesOf,
@@ -62,14 +63,24 @@ import { RenewCertificateSheet } from "../components/certificate-requests/renew-
 import { CertificateMetadataCard } from "./certificate-metadata";
 import { CertificateSyncsDialog } from "./certificate-syncs";
 
-const routeId = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
+const usageKey = (usage: string) => usage.replace(/_/g, "").toLowerCase();
 
-const keyUsageLabel = Object.fromEntries(
-  KEY_USAGES_OPTIONS.map(({ value, label }) => [value, label])
-) as Record<CertKeyUsage, string>;
+const usageLabels: Record<string, string> = Object.fromEntries(
+  [...KEY_USAGES_OPTIONS, ...EXTENDED_KEY_USAGES_OPTIONS].map(({ value, label }) => [
+    usageKey(value),
+    label
+  ])
+);
 
-const listOf = <T extends string>(values: T[] | undefined, names: Record<T, string>) =>
-  values?.length ? values.map((value) => names[value] ?? value).join(", ") : "None";
+const usagesOf = (usages?: string[]) =>
+  usages?.length
+    ? usages
+        .map(
+          (usage) =>
+            usageLabels[usageKey(usage)] ?? toTitleCase(camelCaseToSpaces(usage).replace(/_/g, " "))
+        )
+        .join(", ")
+    : "None";
 
 const algorithmLabel = (algorithm?: string | null) =>
   (algorithm && certKeyAlgorithmToNameMap[algorithm as CertKeyAlgorithm]) || algorithm || "None";
@@ -101,11 +112,19 @@ const endpointOf = ({ locationDetails: details }: TPkiInstallation) => {
   return details.port ? `${host}:${details.port}` : host;
 };
 
-const LinkedCertificate = ({ orgId, certificateId }: { orgId: string; certificateId: string }) => {
+const LinkedCertificate = ({
+  orgId,
+  certificateId,
+  applicationName
+}: {
+  orgId: string;
+  certificateId: string;
+  applicationName?: string;
+}) => {
   const { data } = useV4Adapter("certificates").useCertificate(certificateId);
   return (
     <Button variant="link" asChild>
-      <a href={orgHref(orgId, `/cert-manager/certificates/${certificateId}`)}>
+      <a href={certificateHref(orgId, certificateId, { applicationName })}>
         {data?.certificate ? certificateName(data.certificate) : certificateId}
       </a>
     </Button>
@@ -166,12 +185,16 @@ const DownloadMenu = ({
   );
 };
 
-const backCrumbOf = (org: string, parentApplication?: string, fromHsmConnector?: string) => {
-  if (parentApplication)
-    return {
-      label: parentApplication,
-      href: `${org}/applications/${parentApplication}?selectedTab=certificates`
-    };
+const applicationHref = (orgId: string, applicationName: string) =>
+  orgHref(
+    orgId,
+    `/cert-manager/applications/${encodeURIComponent(applicationName)}?selectedTab=certificates`
+  );
+
+const backCrumbOf = (orgId: string, applicationName?: string, fromHsmConnector?: string) => {
+  const org = orgHref(orgId, "/cert-manager");
+  if (applicationName)
+    return { label: applicationName, href: applicationHref(orgId, applicationName) };
   if (fromHsmConnector)
     return { label: "HSM connector", href: `${org}/hsm-connectors/${fromHsmConnector}` };
   return { label: "Inventory", href: `${org}/inventory` };
@@ -179,7 +202,11 @@ const backCrumbOf = (org: string, parentApplication?: string, fromHsmConnector?:
 
 const when = (condition: unknown, item: DataListItem): DataListItem[] => (condition ? [item] : []);
 
-const overviewItems = (cert: TCertificate, orgId: string): DataListItem[] => [
+const overviewItems = (
+  cert: TCertificate,
+  orgId: string,
+  applicationName?: string
+): DataListItem[] => [
   ["Common name", cert.commonName || "None"],
   [
     "Serial number",
@@ -217,6 +244,7 @@ const overviewItems = (cert: TCertificate, orgId: string): DataListItem[] => [
       key="renewed-from"
       orgId={orgId}
       certificateId={cert.renewedFromCertificateId ?? ""}
+      applicationName={applicationName}
     />
   ]),
   ...when(cert.renewedByCertificateId, [
@@ -225,6 +253,7 @@ const overviewItems = (cert: TCertificate, orgId: string): DataListItem[] => [
       key="renewed-by"
       orgId={orgId}
       certificateId={cert.renewedByCertificateId ?? ""}
+      applicationName={applicationName}
     />
   ])
 ];
@@ -249,13 +278,21 @@ const issuanceItems = (cert: TCertificate, org: string): DataListItem[] => [
   ["Auto renewal", cert.renewBeforeDays ? `${cert.renewBeforeDays} days before expiry` : "Off"]
 ];
 
-const CertificateAside = ({ cert, orgId }: { cert: TCertificate; orgId: string }) => (
+const CertificateAside = ({
+  cert,
+  orgId,
+  applicationName
+}: {
+  cert: TCertificate;
+  orgId: string;
+  applicationName?: string;
+}) => (
   <Card variant="framed" title="Details">
     <DataList
       variant="props"
       density="compact"
       items={[
-        ...overviewItems(cert, orgId),
+        ...overviewItems(cert, orgId, applicationName),
         ...issuanceItems(cert, orgHref(orgId, "/cert-manager"))
       ]}
     />
@@ -269,7 +306,7 @@ const CertificateActionsMenu = ({
   caType,
   blocks,
   revocation,
-  parentApplication
+  applicationName
 }: {
   cert: TCertificate;
   orgId: string;
@@ -277,9 +314,9 @@ const CertificateActionsMenu = ({
   caType?: CaType;
   blocks: ReturnType<typeof certificateBlocks>;
   revocation: CertificateRevocation;
-  parentApplication?: string;
+  applicationName?: string;
 }) => {
-  const navigate = useNavigate();
+  const go = useGo();
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [renewing, setRenewing] = useState(false);
@@ -386,7 +423,7 @@ const CertificateActionsMenu = ({
       {renewing && (
         <RenewCertificateSheet
           cert={cert}
-          applicationName={parentApplication}
+          applicationName={applicationName}
           canRevoke={canDelete}
           onClose={() => setRenewing(false)}
         />
@@ -412,10 +449,11 @@ const CertificateActionsMenu = ({
         projectId={projectId}
         onClose={() => setDeleting(false)}
         onDeleted={() =>
-          navigate({
-            to: v4Path("/organizations/$orgId/cert-manager/inventory"),
-            params: { orgId }
-          })
+          go(
+            applicationName
+              ? applicationHref(orgId, applicationName)
+              : orgHref(orgId, "/cert-manager/inventory")
+          )
         }
       />
     </>
@@ -426,13 +464,13 @@ const CertificateDetail = ({
   cert,
   orgId,
   projectId,
-  fromApplication,
+  applicationName,
   fromHsmConnector
 }: {
   cert: TCertificate;
   orgId: string;
   projectId: string;
-  fromApplication?: string;
+  applicationName?: string;
   fromHsmConnector?: string;
 }) => {
   const certificates = useV4Adapter("certificates");
@@ -442,7 +480,7 @@ const CertificateDetail = ({
     certificateId: cert.id
   });
   const org = orgHref(orgId, "/cert-manager");
-  const parentApplication = cert.applicationName ?? fromApplication;
+  const parentApplication = applicationName ?? cert.applicationName;
   const caType = authorities.find((ca) => ca.id === cert.caId)?.type;
   const revocation = useRevocationApprovals(cert.applicationId)(cert);
   const blocks = certificateBlocks(cert, {
@@ -457,7 +495,7 @@ const CertificateDetail = ({
   return (
     <Stack gap={24}>
       <PageHeader
-        breadcrumb={[backCrumbOf(org, parentApplication, fromHsmConnector)]}
+        breadcrumb={[backCrumbOf(orgId, applicationName, fromHsmConnector)]}
         title={name}
         badges={<CertificateStatusBadge cert={cert} revocation={revocation} size="control-sm" />}
         actions={
@@ -469,7 +507,7 @@ const CertificateDetail = ({
               caType={caType}
               blocks={blocks}
               revocation={revocation}
-              parentApplication={parentApplication}
+              applicationName={applicationName}
             />
             <DownloadMenu cert={cert} projectId={projectId} block={blocks.export} />
           </>
@@ -477,7 +515,7 @@ const CertificateDetail = ({
       />
       <DetailLayout
         asideLabel="Certificate details"
-        aside={<CertificateAside cert={cert} orgId={orgId} />}
+        aside={<CertificateAside cert={cert} orgId={orgId} applicationName={applicationName} />}
       >
         {revocation.isPending && revocation.requestId && (
           <Alert tone="warn">
@@ -486,7 +524,7 @@ const CertificateDetail = ({
               <a
                 href={orgHref(
                   orgId,
-                  `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&from=root-requests`
+                  `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&${applicationName ? `applicationName=${encodeURIComponent(applicationName)}` : "from=root-requests"}`
                 )}
               >
                 revocation request
@@ -511,17 +549,18 @@ const CertificateDetail = ({
               ]}
             />
           </Card>
-          <Card variant="framed" title="Key usage">
+          <Card variant="framed" title="Extensions">
             <DataList
               variant="props"
               density="compact"
               items={[
-                ["Key usage", listOf(cert.keyUsages, keyUsageLabel)],
-                ["Extended key usage", listOf(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_LABELS)],
                 [
                   "Basic constraints",
                   cert.basicConstraints?.isCA ? "Certificate authority" : "Not a CA"
                 ],
+                ["Path length", cert.basicConstraints?.pathLength ?? "None"],
+                ["Key usage", usagesOf(cert.keyUsages)],
+                ["Extended key usage", usagesOf(cert.extendedKeyUsages)],
                 ["Key algorithm", algorithmLabel(cert.keyAlgorithm)],
                 [
                   "Signature algorithm",
@@ -604,8 +643,12 @@ const CertificateDetail = ({
 };
 
 export const CertificateDetailsByIDPage = () => {
-  const { orgId, certificateId } = useParams({ from: routeId });
-  const { fromApplication, fromHsmConnector } = useSearch({ from: routeId });
+  const { orgId, certificateId, applicationName } = useParams({ strict: false }) as {
+    orgId: string;
+    certificateId: string;
+    applicationName?: string;
+  };
+  const { fromHsmConnector } = useSearch({ strict: false });
   const { projectId, isPending: isResolving } = useCertManagerProjectId(orgId);
   const { data, isPending } = useV4Adapter("certificates").useCertificate(certificateId);
   if (isResolving || isPending) return <Loader size="page" label="Loading certificate" />;
@@ -617,7 +660,11 @@ export const CertificateDetailsByIDPage = () => {
         description="It may have been deleted, or you may not have access to it."
         actions={
           <Button variant="outline" asChild>
-            <a href={orgHref(orgId, "/cert-manager/inventory")}>Back to inventory</a>
+            {applicationName ? (
+              <a href={applicationHref(orgId, applicationName)}>Back to {applicationName}</a>
+            ) : (
+              <a href={orgHref(orgId, "/cert-manager/inventory")}>Back to inventory</a>
+            )}
           </Button>
         }
       />
@@ -627,7 +674,7 @@ export const CertificateDetailsByIDPage = () => {
       cert={data.certificate}
       orgId={orgId}
       projectId={projectId}
-      fromApplication={fromApplication}
+      applicationName={applicationName}
       fromHsmConnector={fromHsmConnector}
     />
   );

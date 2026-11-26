@@ -40,7 +40,7 @@ import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, useGo, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { useCertManagerProjectId } from "../components/certificate";
 import { EditHsmConnectorSheet } from "../SettingsPage/hsm-connector-edit-sheet";
@@ -112,9 +112,7 @@ const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: s
       grow: true,
       render: (cert) => (
         <RowLink
-          link={go.link(
-            orgHref(orgId, `/cert-manager/certificates/${cert.id}?fromHsmConnector=${connectorId}`)
-          )}
+          link={go.link(`${certificateHref(orgId, cert.id)}?fromHsmConnector=${connectorId}`)}
           title={cert.commonName}
         >
           {cert.commonName}

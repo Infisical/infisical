@@ -21,7 +21,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import FileSaver from "file-saver";
 
 import {
@@ -43,7 +43,7 @@ import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
-import { v4Path } from "../../links";
+import { certificateHref, useGo, v4Path } from "../../links";
 import { CertificateSyncsDialog } from "../CertificateDetailsByIDPage/certificate-syncs";
 import {
   certificateBlocks,
@@ -137,7 +137,10 @@ const algorithmLabel = (algorithm?: string | null) =>
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-const inventoryColumns = (orgId: string): DataTableColumn<TCertificate>[] => [
+const inventoryColumns = (
+  orgId: string,
+  go: ReturnType<typeof useGo>
+): DataTableColumn<TCertificate>[] => [
   {
     id: "cn",
     header: "SAN / CN",
@@ -149,12 +152,7 @@ const inventoryColumns = (orgId: string): DataTableColumn<TCertificate>[] => [
       const extra = (r.altNames?.split(",").filter(Boolean).length ?? 0) - 1;
       return (
         <Inline gap={8} align="center" wrap={false}>
-          <RowLink
-            link={{
-              to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
-              params: { orgId, certificateId: r.id }
-            }}
-          >
+          <RowLink link={go.link(certificateHref(orgId, r.id))}>
             {certificateName(r)}
             {extra > 0 && (
               <span
@@ -359,14 +357,7 @@ const InventoryRenewSheet = ({
         permission: appAccess?.permission
       }).canDelete
     : permission.can(ProjectPermissionCertificateActions.Delete, ProjectPermissionSub.Certificates);
-  return (
-    <RenewCertificateSheet
-      cert={cert}
-      applicationName={cert.applicationName ?? undefined}
-      canRevoke={canRevoke}
-      onClose={onClose}
-    />
-  );
+  return <RenewCertificateSheet cert={cert} canRevoke={canRevoke} onClose={onClose} />;
 };
 
 const InventoryRowDialogs = ({
@@ -503,7 +494,7 @@ export const ExportCsvButton = ({ rows }: { rows: TCertificate[] }) => {
 
 const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const search = useSearch({ from: routeId });
-  const navigate = useNavigate();
+  const go = useGo();
   const certificates = useV4Adapter("certificates");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>(() => filtersFromSearch(search));
@@ -545,11 +536,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const totalCount = data?.totalCount ?? 0;
   const total = stats?.totals.total ?? totalCount;
   const caType = (cert: TCertificate) => authorities.find((ca) => ca.id === cert.caId)?.type;
-  const open = (id: string) =>
-    navigate({
-      to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
-      params: { orgId, certificateId: id }
-    });
+  const open = (id: string) => go(certificateHref(orgId, id));
   const filtered = Boolean(query.trim()) || filters.some((filter) => filter.values.length > 0);
   const clear = () => {
     setQuery("");
@@ -629,7 +616,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
           label="Certificates"
           rows={rows}
           loading={isPending}
-          columns={inventoryColumns(orgId).filter((column) => !hiddenSet.has(column.id))}
+          columns={inventoryColumns(orgId, go).filter((column) => !hiddenSet.has(column.id))}
           getRowId={(r) => r.id}
           rowLabel={(r) => certificateName(r)}
           rowActions={{

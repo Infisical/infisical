@@ -14,7 +14,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { useNavigate } from "@tanstack/react-router";
 
 import { CertificateRequestStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
@@ -30,11 +29,9 @@ import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
-import { orgHref, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo } from "../../links";
 import { RequestCertificateSheet } from "../components/certificate-requests/request-sheet";
 import { appCan, plural } from "./shared";
-
-const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
 type StatusFilter = "pending" | "issued" | "failed";
 
@@ -133,7 +130,7 @@ export const RequestsTab = ({
     PkiApplicationResourceActions.Create,
     PkiApplicationResourceSub.Certificates
   );
-  const navigate = useNavigate();
+  const go = useGo();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
   const trigger = adapter.useTriggerRequestValidation();
@@ -309,11 +306,11 @@ export const RequestsTab = ({
                 {request.status === CertificateRequestStatus.ISSUED && request.certificateId && (
                   <DropdownMenuItem
                     onSelect={() =>
-                      navigate({
-                        to: certificatePath,
-                        params: { orgId, certificateId: request.certificateId ?? "" },
-                        search: { fromApplication: application.name }
-                      })
+                      go(
+                        certificateHref(orgId, request.certificateId ?? "", {
+                          applicationName: application.name
+                        })
+                      )
                     }
                   >
                     <Icon name="eye" />
