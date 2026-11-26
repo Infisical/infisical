@@ -161,40 +161,40 @@ const ScanRuns = ({
       id: "started",
       header: "Started",
       primary: true,
-      width: 168,
+      width: 152,
       render: (scan) => timestamp(scan.startedAt)
     },
     {
       id: "status",
       header: "Status",
-      width: 120,
+      width: 116,
       render: (scan) => <ScanStatusBadge status={scan.status} />
     },
     {
       id: "targets",
       header: "Targets",
-      width: 104,
+      width: 88,
       align: "end",
       render: (scan) => scan.targetsScannedCount
     },
     {
       id: "certs",
       header: "Certs found",
-      width: 136,
+      width: 128,
       align: "end",
       render: (scan) => scan.certificatesFoundCount
     },
     {
       id: "installations",
       header: "Installations",
-      width: 144,
+      width: 124,
       align: "end",
       render: (scan) => scan.installationsFoundCount
     },
     {
       id: "duration",
       header: "Duration",
-      width: 112,
+      width: 92,
       align: "end",
       render: (scan) =>
         scan.completedAt
@@ -205,7 +205,7 @@ const ScanRuns = ({
       id: "message",
       header: "Message",
       grow: true,
-      minWidth: 160,
+      minWidth: 96,
       render: (scan) =>
         scan.errorMessage ? (
           <Tooltip content={scan.errorMessage}>

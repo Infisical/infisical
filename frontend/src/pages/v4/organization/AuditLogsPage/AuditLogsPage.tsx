@@ -256,6 +256,8 @@ const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => voi
 export type AuditLogsProject = { id: string; type: ProjectType };
 
 const productsWithoutSecrets = new Set<ProjectType>([
+  ProjectType.CertificateManager,
+  ProjectType.SecretScanning,
   ProjectType.PAM,
   ProjectType.AgentVault,
   ProjectType.KMS

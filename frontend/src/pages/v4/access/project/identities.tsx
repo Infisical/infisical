@@ -168,7 +168,7 @@ export const ProjectIdentitiesTab = () => {
                 Manage auth methods
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {identity.authMethods.map((method) => (
+                {(identity.authMethods ?? []).map((method) => (
                   <DropdownMenuItem
                     key={method}
                     onSelect={() => {
@@ -176,7 +176,7 @@ export const ProjectIdentitiesTab = () => {
                       flows.view(method);
                     }}
                   >
-                    {identity.activeLockoutAuthMethods.includes(method) ? (
+                    {identity.activeLockoutAuthMethods?.includes(method) ? (
                       <Icon name="lock" />
                     ) : (
                       <Icon name="key" />

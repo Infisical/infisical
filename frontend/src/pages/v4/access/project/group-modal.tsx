@@ -153,7 +153,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
               options={(roles.data ?? []).map((item) => ({
                 value: item.slug,
                 label: item.name,
-                meta: item.description ?? undefined
+                description: item.description ?? undefined
               }))}
               value={role ?? ""}
               invalid={Boolean(roleError)}

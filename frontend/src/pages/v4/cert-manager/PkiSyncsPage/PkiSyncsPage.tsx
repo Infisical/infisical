@@ -4,7 +4,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
@@ -100,7 +100,18 @@ const Syncs = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
 
 export const PkiSyncsPage = () => {
   const { orgId } = useParams({ from: routeId });
+  const { selectedTab } = useSearch({ from: routeId });
   const { projectId, isPending } = useCertManagerProjectId(orgId);
+
+  if (selectedTab === "app-connections")
+    return (
+      <Navigate
+        replace
+        to={v4Path("/organizations/$orgId/cert-manager/settings")}
+        params={{ orgId }}
+        search={{ selectedTab: "app-connections" }}
+      />
+    );
 
   return (
     <TooltipProvider>
