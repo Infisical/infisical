@@ -108,11 +108,6 @@ func (a *ApiAuthenticator) validateUserTokenClaims(ctx context.Context, claims *
 		return nil, errutil.Unauthorized("This token was issued for the removed Agent Sentinel (MCP) product and is no longer accepted").WithErrf("validateUserTokenClaims: rejected mcp-scoped token")
 	}
 
-	// A token bound to a resource (RFC 8707) works only there. The one such resource is the Node server's MCP endpoint.
-	if len(claims.Audience) > 0 {
-		return nil, errutil.Unauthorized("This token was issued for the Infisical MCP server and can only be used there").WithErrf("validateUserTokenClaims: rejected token bound to %v", claims.Audience)
-	}
-
 	// 1. Find session by tokenVersionId + userId.
 	session, err := a.findSessionByIDAndUserID(ctx, claims.TokenVersionID, claims.UserID)
 	if err != nil {

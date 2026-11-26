@@ -446,9 +446,8 @@ public client such as Claude, described by an OAuth Client ID Metadata Document 
 authorization request: no row, no secret, PKCE required, and it is granted the consenting session's org. A public client
 can only be granted the MCP endpoint (`resource` = `getMcpOauthUrls().mcpResource`), and the token carries that
 resource as `aud`. Scopes marked `mcpOnly` in `OAUTH_SCOPE_DEFINITIONS` are only granted with that resource, so OAuth
-applications using the REST API still only get `secrets:read`. `inject-identity.ts` rejects a token with `aud` everywhere but `MCP_ENDPOINT_PATH`, the Go
-authenticator rejects any `aud`, and the MCP route rejects OAuth tokens without it; keep all three, or an MCP client
-becomes a delegated client of the whole API. The MCP route accepts user logins only (`AuthMode.OAUTH`), so a tool may
+applications using the REST API still only get `secrets:read`. `inject-identity.ts` rejects a token with `aud` everywhere but `MCP_ENDPOINT_PATH`, and
+the MCP route rejects OAuth tokens without it; keep both, or an MCP client becomes a delegated client of the whole API. The MCP route accepts user logins only (`AuthMode.OAUTH`), so a tool may
 only do what a route accepting `AuthMode.OAUTH` does. The tools call services directly, so each does what its REST
 route does (audit log with `UserAgentType.REMOTE_MCP`, secret read activity, the same PostHog event). Each product's tools
 live in `server/routes/mcp/tools/<product>.ts` and are registered in `PRODUCT_TOOLS` (`mcp-server.ts`) with that
