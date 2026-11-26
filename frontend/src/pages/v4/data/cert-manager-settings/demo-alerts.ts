@@ -11,7 +11,8 @@ import {
   type TAlert,
   type TAlertChannelEmbedded,
   type TAlertChannelInput,
-  type TAlertFilterValue
+  type TAlertFilterValue,
+  type TCreateAlertDTO
 } from "@app/hooks/api/alerts/types";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 import type { TPkiApplicationListItem } from "@app/hooks/api/pkiApplications/types";
@@ -541,6 +542,28 @@ const alerts = createFixtureStore<TAlert[]>([
 
 const byId = (alertId: string) => alerts.get().find((entry) => entry.id === alertId) as TAlert;
 
+export const addDemoAlert = (dto: TCreateAlertDTO) => {
+  const now = new Date().toISOString();
+  const condition = (dto.condition ?? null) as TAlert["condition"];
+  const created = alert({
+    id: crypto.randomUUID(),
+    name: dto.name,
+    description: dto.description ?? null,
+    eventType: dto.eventType,
+    resourceType: dto.resourceType,
+    resourceId: dto.resourceId ?? null,
+    enabled: dto.enabled ?? true,
+    projectId:
+      dto.projectId ?? (ORG_SCOPED_RESOURCE_TYPES.includes(dto.resourceType) ? null : PROJECT_ID),
+    condition,
+    channels: dto.channels.map((channel) => toStoredChannel(channel)),
+    createdAt: now,
+    updatedAt: now
+  });
+  alerts.update((entries) => [...entries, created]);
+  return created;
+};
+
 export const alertsDemo: CertManagerAlertsAdapter = {
   useAlerts: ({ resourceType, projectId, resourceId }) => ({
     data: alerts
@@ -554,27 +577,7 @@ export const alertsDemo: CertManagerAlertsAdapter = {
     isPending: false,
     error: null
   }),
-  useCreateAlert: fixtureMutation((dto) => {
-    const now = new Date().toISOString();
-    const condition = (dto.condition ?? null) as TAlert["condition"];
-    const created = alert({
-      id: crypto.randomUUID(),
-      name: dto.name,
-      description: dto.description ?? null,
-      eventType: dto.eventType,
-      resourceType: dto.resourceType,
-      resourceId: dto.resourceId ?? null,
-      enabled: dto.enabled ?? true,
-      projectId:
-        dto.projectId ?? (ORG_SCOPED_RESOURCE_TYPES.includes(dto.resourceType) ? null : PROJECT_ID),
-      condition,
-      channels: dto.channels.map((channel) => toStoredChannel(channel)),
-      createdAt: now,
-      updatedAt: now
-    });
-    alerts.update((entries) => [...entries, created]);
-    return created;
-  }),
+  useCreateAlert: fixtureMutation(addDemoAlert),
   useUpdateAlert: fixtureMutation(({ alertId, channels, condition, ...patch }) => {
     alerts.update((entries) =>
       entries.map((entry) => {

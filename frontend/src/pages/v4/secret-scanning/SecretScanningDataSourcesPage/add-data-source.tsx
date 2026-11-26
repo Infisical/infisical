@@ -390,7 +390,14 @@ export const AddDataSourceSheet = ({
     if (!stored) return;
     let saved: Draft;
     try {
-      saved = JSON.parse(stored) as Draft;
+      const parsed = JSON.parse(stored) as {
+        draft: Draft;
+        alerts: TAlertDrafts;
+        alertsDirty: boolean;
+      };
+      saved = parsed.draft;
+      setAlerts(parsed.alerts);
+      setAlertsDirty(parsed.alertsDirty);
     } catch {
       return;
     }
@@ -524,7 +531,9 @@ export const AddDataSourceSheet = ({
                 draft={draft}
                 errors={fieldErrors}
                 onChange={change}
-                onRedirect={() => sessionStorage.setItem(draftKey, JSON.stringify(draft))}
+                onRedirect={() =>
+                  sessionStorage.setItem(draftKey, JSON.stringify({ draft, alerts, alertsDirty }))
+                }
               />
             )
           },

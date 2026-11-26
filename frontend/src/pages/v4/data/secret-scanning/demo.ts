@@ -1,5 +1,11 @@
 import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
+import {
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  AlertResourceType
+} from "@app/hooks/api/alerts/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
@@ -27,6 +33,7 @@ import type {
 } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
+import { addDemoAlert } from "../cert-manager-settings/demo-alerts";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import { demoConnections, integrationsDemo } from "../integrations/demo";
 import type { SecretScanningAdapter } from "./contract";
@@ -678,7 +685,7 @@ export const secretScanningDemo: SecretScanningAdapter = {
     isPending: false,
     error: null
   }),
-  useCreateDataSource: fixtureMutation(({ connectionId, ...dto }) => {
+  useCreateDataSource: fixtureMutation(({ connectionId, alerts, ...dto }) => {
     created += 1;
     const connection = [...Object.values(connections).flat(), ...demoConnections()].find(
       (entry) => entry?.id === connectionId
@@ -707,6 +714,37 @@ export const secretScanningDemo: SecretScanningAdapter = {
     } as TSecretScanningDataSourceWithDetails;
     unlisted[entry.name] = ["api", "web", "infra"].map((repo) => `${entry.name}/${repo}`);
     dataSourceStore.update((entries) => [...entries, entry]);
+    const chosen =
+      alerts ??
+      [AlertEventType.SecretScanningSecretsDetected, AlertEventType.SecretScanningScanFailed].map(
+        (eventType) => ({
+          eventType,
+          channels: [
+            {
+              name: "Email",
+              channelType: AlertChannelType.Email,
+              enabled: true,
+              config: {},
+              recipients: [
+                { principalType: AlertPrincipalType.ProjectAdmins, principalId: dto.projectId }
+              ]
+            }
+          ]
+        })
+      );
+    chosen.forEach(({ eventType, channels }) =>
+      addDemoAlert({
+        name:
+          eventType === AlertEventType.SecretScanningSecretsDetected
+            ? "Secrets detected"
+            : "Scan failure",
+        eventType,
+        resourceType: AlertResourceType.SecretScanning,
+        resourceId: entry.id,
+        projectId: dto.projectId,
+        channels
+      })
+    );
     return entry;
   }),
   useConfig: () => ({ data: configStore.use(), isPending: false, error: null }),
