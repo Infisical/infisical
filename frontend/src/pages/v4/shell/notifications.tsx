@@ -1,4 +1,11 @@
-import { type MouseEvent, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import ReactMarkdown from "react-markdown";
 import {
   AlertDialog,
@@ -10,21 +17,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Media } from "@infisical/cipher/ui/item";
 import { List, ListRow } from "@infisical/cipher/ui/list";
 import { PopoverContent } from "@infisical/cipher/ui/popover";
-import { formatDistanceToNow } from "date-fns";
+import { Sheet, SheetContent, SheetTitle } from "@infisical/cipher/ui/sheet";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useAppShell } from "@infisical/cipher/ui/top-bar";
 
-import { isCriticalNotification, type TUserNotification } from "@app/hooks/api/notifications/types";
+import type { TUserNotification } from "@app/hooks/api/notifications/types";
 
-import { failed } from "../access/toast";
+import { failed, toast } from "../access/toast";
 import { ShowMoreFooter } from "../components/show-more-footer";
 import { useV4Adapter } from "../data/adapters";
 import { useGo } from "../links";
+import {
+  groupNotifications,
+  type NotificationGroup,
+  notificationIcon,
+  shortTime
+} from "./notification-groups";
 
-import styles from "./shell.module.css";
+import styles from "./notifications.module.css";
 
 const PAGE_SIZE = 20;
 
@@ -40,6 +64,13 @@ const toHref = (link?: string | null) => {
   } catch {
     return undefined;
   }
+};
+
+type Filter = "all" | "unread";
+
+const EMPTY_TITLES: Record<Filter, string> = {
+  all: "No notifications",
+  unread: "No unread notifications"
 };
 
 export const useNotificationInbox = (orgId: string) => {
@@ -63,56 +94,185 @@ export const useNotificationInbox = (orgId: string) => {
   };
 };
 
-const InboxPanel = ({
+const SWIPE_CLOSE_PX = 80;
+
+const useSwipeDown = (onClose: () => void) => {
+  const drag = useRef<{ startY: number; pointerId: number } | null>(null);
+  const reset = (element: HTMLElement) => {
+    drag.current = null;
+    element.style.removeProperty("translate");
+    element.style.removeProperty("transition");
+  };
+  return {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement;
+      if (event.pointerType === "mouse" || target.closest("button, a, [role='tab']")) return;
+      const scroller = target.closest<HTMLElement>("[data-swipe-scroll]");
+      if (scroller && scroller.scrollTop > 0) return;
+      drag.current = { startY: event.clientY, pointerId: event.pointerId };
+    },
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
+      if (drag.current?.pointerId !== event.pointerId) return;
+      const offset = Math.max(0, event.clientY - drag.current.startY);
+      const { style } = event.currentTarget;
+      style.setProperty("transition", "none");
+      style.setProperty("translate", `0 ${offset}px`);
+    },
+    onPointerUp: (event: PointerEvent<HTMLElement>) => {
+      if (drag.current?.pointerId !== event.pointerId) return;
+      const offset = event.clientY - drag.current.startY;
+      reset(event.currentTarget);
+      if (offset > SWIPE_CLOSE_PX) onClose();
+    },
+    onPointerCancel: (event: PointerEvent<HTMLElement>) => reset(event.currentTarget)
+  };
+};
+
+const InboxBody = ({
   orgId,
   notifications,
   isPending,
-  onClose
+  onClose,
+  title
 }: {
   orgId: string;
   notifications: TUserNotification[];
   isPending: boolean;
   onClose: () => void;
+  title: ReactNode;
 }) => {
   const shell = useV4Adapter("shell");
   const go = useGo();
   const markAll = shell.useMarkAllNotificationsRead();
-  const markRead = shell.useMarkNotificationRead();
-  const remove = shell.useDeleteNotification();
+  const markRead = shell.useMarkNotificationsRead();
+  const remove = shell.useDeleteNotifications();
   const clearAll = shell.useDeleteAllNotifications();
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const [filter, setFilter] = useState<Filter>("all");
   const [confirmClear, setConfirmClear] = useState(false);
-  const unread = notifications.filter((notification) => !notification.isRead).length;
-  const critical = notifications.filter(
-    (notification) => !notification.isRead && isCriticalNotification(notification.type)
-  ).length;
+  const [expanded, setExpanded] = useState<string>();
 
-  const read = (notification: TUserNotification) => {
-    if (notification.isRead) return;
+  const groups = groupNotifications(notifications);
+  const unread = notifications.filter((notification) => !notification.isRead).length;
+  const visible = filter === "unread" ? groups.filter((group) => group.unread > 0) : groups;
+  const shown = visible.slice(0, shownCount);
+
+  const readGroup = (group: NotificationGroup) => {
+    const notificationIds = group.items
+      .filter((notification) => !notification.isRead)
+      .map((notification) => notification.id);
+    if (!notificationIds.length) return;
     markRead
-      .mutateAsync({ orgId, notificationId: notification.id })
-      .catch((error) => failed("Failed to mark notification as read", error));
+      .mutateAsync({ orgId, notificationIds })
+      .catch((error) => failed("Failed to mark notifications as read", error));
   };
-  const openNotification = (event: MouseEvent, notification: TUserNotification, href?: string) => {
-    read(notification);
-    if (
-      !href ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    )
+
+  const deleteGroup = (group: NotificationGroup) =>
+    remove
+      .mutateAsync({ orgId, notificationIds: group.items.map((notification) => notification.id) })
+      .then(() =>
+        toast({
+          tone: "ok",
+          title:
+            group.items.length > 1
+              ? `Deleted ${group.items.length} notifications`
+              : "Notification deleted"
+        })
+      )
+      .catch((error) => failed("Failed to delete notifications", error));
+
+  const openGroup = (event: MouseEvent, group: NotificationGroup, href?: string) => {
+    readGroup(group);
+    if (!href) {
+      setExpanded(expanded === group.key ? undefined : group.key);
+      return;
+    }
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
     event.preventDefault();
     onClose();
     go(href);
   };
-  const headerAction = unread ? (
+
+  const row = (group: NotificationGroup) => {
+    const { latest, items } = group;
+    const href = toHref(latest.link);
+    return (
+      <ListRow
+        key={group.key}
+        value={group.key}
+        label={plainText(latest.title)}
+        href={href}
+        onClick={(event) => openGroup(event, group, href)}
+        media={
+          <Media
+            size="sm"
+            icon={notificationIcon(latest.type)}
+            tone={group.tone}
+            className={styles.tile}
+          />
+        }
+        unread={group.unread > 0}
+        title={<ReactMarkdown components={inline}>{latest.title}</ReactMarkdown>}
+        badge={
+          items.length > 1 && (
+            <Count tone="neutral" aria-label={`${items.length} times`}>
+              {`×${items.length > 99 ? "99+" : items.length}`}
+            </Count>
+          )
+        }
+        description={
+          latest.body && (
+            <span className={styles.body} data-expanded={expanded === group.key || undefined}>
+              <ReactMarkdown components={inline}>{latest.body}</ReactMarkdown>
+            </span>
+          )
+        }
+        meta={
+          <span className={styles.meta}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  icon="more"
+                  iconOnly
+                  className={styles.rowMenu}
+                >
+                  Notification actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {group.unread > 0 && (
+                  <DropdownMenuItem onSelect={() => readGroup(group)}>
+                    <Icon name="check" />
+                    Mark as read
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem variant="destructive" onSelect={() => deleteGroup(group)}>
+                  <Icon name="trash" />
+                  {items.length > 1 ? `Delete all ${items.length}` : "Delete"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <time dateTime={latest.createdAt} title={new Date(latest.createdAt).toLocaleString()}>
+              {shortTime(latest.createdAt)}
+            </time>
+          </span>
+        }
+      />
+    );
+  };
+
+  const markAllButton = (
     <Button
       variant="ghost"
-      size="sm"
+      size="icon-sm"
+      icon="check-check"
+      iconOnly
+      className={styles.markAll}
       loading={markAll.isPending}
+      disabledReason={unread ? undefined : "No unread notifications"}
       onClick={() =>
         markAll
           .mutateAsync({ orgId })
@@ -121,102 +281,89 @@ const InboxPanel = ({
     >
       Mark all as read
     </Button>
-  ) : (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={!notifications.length}
-      onClick={() => setConfirmClear(true)}
-    >
-      Clear all
-    </Button>
   );
 
   return (
-    <PopoverContent
-      align="end"
-      side="bottom"
-      className={styles.inbox}
-      onAuxClick={(event) => {
-        if (event.button !== 1) return;
-        const id = (event.target as HTMLElement)
-          .closest("[data-list-row]")
-          ?.getAttribute("data-list-row");
-        const notification = notifications.find((entry) => entry.id === id);
-        if (notification) read(notification);
-      }}
-      onInteractOutside={(event) => {
-        if (confirmClear) event.preventDefault();
-      }}
-    >
-      <List
-        label="Notifications"
-        variant="bare"
-        title="Notifications"
-        count={
-          critical ? (
-            <Badge tone="bad">{`${critical > 99 ? "99+" : critical} critical`}</Badge>
-          ) : undefined
-        }
-        action={headerAction}
-        loading={isPending}
-        empty={<EmptyState size="sm" icon="bell" title="No notifications" />}
-        footer={
-          notifications.length > shownCount && (
-            <ShowMoreFooter
-              status={`Showing ${shownCount.toLocaleString()} of ${notifications.length.toLocaleString()}`}
-              onShowMore={() => setShownCount(shownCount + PAGE_SIZE)}
-            />
-          )
-        }
+    <div className={styles.inbox}>
+      <div className={styles.head}>
+        {title}
+        {notifications.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+                More actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                variant="destructive"
+                disabledReason={
+                  notifications.some((notification) => notification.isRead)
+                    ? undefined
+                    : "Nothing has been read yet"
+                }
+                onSelect={() => setConfirmClear(true)}
+              >
+                <Icon name="trash" />
+                Clear read
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {unread ? <Tooltip content="Mark all as read">{markAllButton}</Tooltip> : markAllButton}
+      </div>
+      {groups.length > 0 && (
+        <Tabs
+          className={styles.filters}
+          label="Filter notifications"
+          value={filter}
+          onChange={(value) => {
+            setFilter(value as Filter);
+            setShownCount(PAGE_SIZE);
+          }}
+          tabs={[
+            { value: "all", label: "All" },
+            { value: "unread", label: "Unread", count: unread || undefined }
+          ]}
+        />
+      )}
+      <div
+        className={styles.scroll}
+        data-scroll-fade="y"
+        data-swipe-scroll
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
+          const key = (event.target as HTMLElement)
+            .closest("[data-list-row]")
+            ?.getAttribute("data-list-row");
+          const group = shown.find((entry) => entry.key === key);
+          if (group && toHref(group.latest.link)) readGroup(group);
+        }}
       >
-        {notifications.slice(0, shownCount).map((notification) => {
-          const href = toHref(notification.link);
-          return (
-            <ListRow
-              key={notification.id}
-              value={notification.id}
-              label={plainText(notification.title)}
-              title={<ReactMarkdown components={inline}>{notification.title}</ReactMarkdown>}
-              description={
-                notification.body && (
-                  <ReactMarkdown components={inline}>{notification.body}</ReactMarkdown>
-                )
-              }
-              meta={`${formatDistanceToNow(new Date(notification.createdAt))} ago`}
-              badge={
-                isCriticalNotification(notification.type) &&
-                !notification.isRead && <Badge tone="bad">Critical</Badge>
-              }
-              unread={!notification.isRead}
-              href={href}
-              onClick={(event) => openNotification(event, notification, href)}
-              actions={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  icon="trash"
-                  iconOnly
-                  onClick={() =>
-                    remove
-                      .mutateAsync({ orgId, notificationId: notification.id })
-                      .catch((error) => failed("Failed to delete notification", error))
-                  }
-                >
-                  Delete notification
-                </Button>
-              }
-            />
-          );
-        })}
-      </List>
+        <List
+          label="Notifications"
+          variant="bare"
+          inset
+          loading={isPending}
+          empty={<EmptyState size="sm" icon="bell" title={EMPTY_TITLES[filter]} />}
+          footer={
+            visible.length > shownCount && (
+              <ShowMoreFooter
+                status={`Showing ${shownCount.toLocaleString()} of ${visible.length.toLocaleString()}`}
+                onShowMore={() => setShownCount(shownCount + PAGE_SIZE)}
+              />
+            )
+          }
+        >
+          {shown.map(row)}
+        </List>
+      </div>
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent tone="danger" pending={clearAll.isPending}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+            <AlertDialogTitle>Clear read notifications?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes all your read notifications for this organization, including account
-              notifications. This can&apos;t be undone.
+              This removes your read notifications for this organization. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -229,17 +376,18 @@ const InboxPanel = ({
                 try {
                   await clearAll.mutateAsync({ orgId });
                   setConfirmClear(false);
+                  toast({ tone: "ok", title: "Read notifications cleared" });
                 } catch (error) {
                   failed("Failed to clear notifications", error);
                 }
               }}
             >
-              Clear all
+              Clear
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PopoverContent>
+    </div>
   );
 };
 
@@ -249,12 +397,44 @@ export const NotificationInbox = ({
 }: {
   orgId: string;
   inbox: ReturnType<typeof useNotificationInbox>;
-}) =>
-  inbox.open && (
-    <InboxPanel
+}) => {
+  const shell = useAppShell();
+  const narrow = Boolean(shell?.narrow);
+  const setNavigationOpen = shell?.setNavigationOpen;
+  useEffect(() => {
+    if (narrow && inbox.open) setNavigationOpen?.(false);
+  }, [narrow, inbox.open, setNavigationOpen]);
+  const close = () => inbox.onOpenChange(false);
+  const swipe = useSwipeDown(close);
+  const body = (title: ReactNode) => (
+    <InboxBody
       orgId={orgId}
       notifications={inbox.notifications}
       isPending={inbox.isPending}
-      onClose={() => inbox.onOpenChange(false)}
+      onClose={close}
+      title={title}
     />
   );
+  if (narrow)
+    return (
+      <Sheet open={inbox.open} onOpenChange={inbox.onOpenChange}>
+        <SheetContent
+          side="bottom"
+          aria-describedby={undefined}
+          showCloseButton={false}
+          className={styles.sheet}
+          {...swipe}
+        >
+          <span className={styles.grabber} aria-hidden />
+          {inbox.open && body(<SheetTitle className={styles.heading}>Notifications</SheetTitle>)}
+        </SheetContent>
+      </Sheet>
+    );
+  return (
+    inbox.open && (
+      <PopoverContent align="end" side="bottom" className={styles.popover}>
+        {body(<h2 className={styles.heading}>Notifications</h2>)}
+      </PopoverContent>
+    )
+  );
+};

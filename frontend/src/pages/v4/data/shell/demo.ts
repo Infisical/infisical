@@ -46,97 +46,137 @@ const notification = (
   ...extra
 });
 
-const OPTIMAL_NOTIFICATIONS: TUserNotification[] = [
+const repeated = (count: number, make: (index: number) => TUserNotification) =>
+  Array.from({ length: count }, (_, index) => make(index));
+
+const gatewayAlert = (id: string, gateways: string, minutes: number, isRead = false) =>
+  notification(id, NotificationType.GATEWAY_HEALTH_ALERT, "Gateway Health Alert", minutes, {
+    body: `The following gateway(s) in your organization may be offline or unreachable: ${gateways}. Please check their status.`,
+    link: org("/networking"),
+    isRead
+  });
+
+const relayAlert = (id: string, relays: string, minutes: number, isRead = false) =>
+  notification(id, NotificationType.RELAY_HEALTH_ALERT, "Relay Health Alert", minutes, {
+    body: `The following relay(s) in your organization may be offline or unreachable: ${relays}. Please check their status.`,
+    link: org("/networking"),
+    isRead
+  });
+
+const syncFailed = (
+  id: string,
+  destination: string,
+  name: string,
+  error: string,
+  minutes: number,
+  isRead = false
+) =>
   notification(
-    "n-gateway",
-    NotificationType.GATEWAY_HEALTH_ALERT,
-    "Gateway **edge-eu-1** is unreachable",
-    4,
+    id,
+    NotificationType.SECRET_SYNC_FAILED,
+    "Secret Sync Failed to Sync Secrets",
+    minutes,
     {
-      body: "No heartbeat for 12 minutes. Resources behind it can't be reached.",
-      link: org("/networking")
+      body: `Your **${destination}** sync **${name}** failed to complete: \`${error}\``,
+      link: org("/projects/secret-management/payments-api/integrations"),
+      isRead
     }
-  ),
+  );
+
+const changeRequest = (id: string, project: string, minutes: number, isRead = false) =>
+  notification(id, NotificationType.SECRET_CHANGE_REQUEST, "Secret Change Request", minutes, {
+    body: `You have a new secret change request pending your review for the project **${project}** in the organization **Acme Corp**.`,
+    link: org(`/projects/secret-management/${project}/approval`),
+    isRead
+  });
+
+const OPTIMAL_NOTIFICATIONS: TUserNotification[] = [
+  ...repeated(3, (index) => gatewayAlert(`n-gateway-${index}`, '"edge-eu-1"', 4 + index * 60)),
+  changeRequest("n-change", "payments-api", 38),
   notification(
-    "n-change",
-    NotificationType.SECRET_CHANGE_REQUEST,
-    "Priya Patel requested a change in **payments-api**",
-    38,
+    "n-access",
+    NotificationType.ACCESS_APPROVAL_REQUEST,
+    "Access Approval Request",
+    95,
     {
-      body: "3 secrets in production need your approval.",
+      body: "**Priya Patel** (priya@acme.dev) has requested temporary access to **/stripe** in the **prod** environment for project **payments-api**.",
       link: org("/projects/secret-management/payments-api/approval")
     }
   ),
+  syncFailed("n-sync", "Vercel", "vercel-prod", "401 Unauthorized", 190, true),
   notification(
-    "n-sync",
-    NotificationType.SECRET_SYNC_FAILED,
-    "Secret sync **vercel-prod** failed",
-    190,
+    "n-rotation",
+    NotificationType.SECRET_ROTATION_FAILED,
+    "Secret Rotation Failed",
+    1300,
     {
-      body: "Vercel rejected the token. Update the app connection and retry.",
-      link: org("/projects/secret-management/payments-api/integrations"),
+      body: "Your **PostgreSQL Credentials** rotation **orders-db-rotation** failed to rotate secrets.",
+      link: org("/projects/secret-management/payments-api/overview"),
       isRead: true
     }
   ),
-  notification(
-    "n-invite",
-    NotificationType.PROJECT_INVITATION,
-    "You were added to **kms-keys**",
-    1500,
-    {
-      link: org("/projects/kms/kms-keys/overview"),
-      isRead: true
-    }
-  ),
-  notification(
-    "n-device",
-    NotificationType.LOGIN_FROM_NEW_DEVICE,
-    "New sign-in from Firefox on Linux",
-    4300,
-    {
-      body: "If this wasn't you, change your password and revoke your sessions.",
-      isRead: true
-    }
-  )
+  notification("n-invite", NotificationType.PROJECT_INVITATION, "Project Invitation", 1500, {
+    body: "You've been invited to join the project **kms-keys**.",
+    link: org("/projects/kms/kms-keys/overview"),
+    isRead: true
+  }),
+  notification("n-device", NotificationType.LOGIN_FROM_NEW_DEVICE, "Login From New Device", 4300, {
+    body: "A new device with IP **203.0.113.24** and User Agent **Firefox 132 on Linux** has logged into your account.",
+    isRead: true
+  })
 ];
 
-const STRESSED_TYPES = [
-  NotificationType.RELAY_HEALTH_ALERT,
-  NotificationType.ACCESS_APPROVAL_REQUEST,
-  NotificationType.SECRET_ROTATION_FAILED,
-  NotificationType.SECRET_SCANNING_SECRETS_DETECTED,
-  NotificationType.PKI_SYNC_FAILED,
-  NotificationType.IMPORT_SUCCESSFUL
-];
+const LONG_GATEWAY =
+  '"andrey-aws-gw-us-east-1-production-primary-ingress-cluster-with-a-very-long-name"';
+const LONG_RELAY =
+  '"relay-us-east-1-production-primary-ingress-cluster-a", "relay-us-west-2-fallback"';
 
 const STRESSED_NOTIFICATIONS: TUserNotification[] = [
-  notification(
-    "n-relay-long",
-    NotificationType.RELAY_HEALTH_ALERT,
-    "Relay **relay-us-east-1-production-primary-ingress-cluster-a** has not sent a heartbeat in over an hour and every gateway routed through it is unreachable",
-    1,
-    {
-      body: "Gateways edge-us-east-1a, edge-us-east-1b, edge-us-east-1c, edge-us-east-1d and 14 more depend on this relay. Check the relay host, its firewall rules and its enrollment token, then restart the relay service so it reconnects.",
-      link: org("/networking")
-    }
+  ...repeated(48, (index) =>
+    gatewayAlert(`n-gw-long-${index}`, LONG_GATEWAY, 2 + index * 60, index > 43)
   ),
-  ...Array.from({ length: 59 }, (_, index) =>
+  ...repeated(36, (index) => relayAlert(`n-relay-${index}`, LONG_RELAY, 7 + index * 60)),
+  ...repeated(18, (index) =>
+    syncFailed(
+      `n-sync-${index}`,
+      "AWS Secrets Manager",
+      "platform-core-with-a-very-long-project-name-production-us-east-1",
+      "AccessDeniedException: User is not authorized to perform secretsmanager:PutSecretValue",
+      15 + index * 90,
+      index > 12
+    )
+  ),
+  ...repeated(9, (index) =>
+    changeRequest(
+      `n-change-${index}`,
+      index === 0
+        ? "customer-billing-reconciliation-service-with-a-very-long-name"
+        : `service-${index + 1}`,
+      30 + index * 170,
+      index > 5
+    )
+  ),
+  ...repeated(6, (index) =>
     notification(
-      `n-stress-${index}`,
-      STRESSED_TYPES[index % STRESSED_TYPES.length],
-      `Rotation **db-credentials-${index + 1}** in **platform-core-with-a-very-long-project-name** failed`,
-      5 + index * 47,
+      `n-access-${index}`,
+      NotificationType.ACCESS_APPROVAL_REQUEST,
+      "Access Approval Request",
+      50 + index * 400,
       {
-        body:
-          index % 3 === 0
-            ? "The database rejected the new password. Infisical will retry in 10 minutes."
-            : undefined,
-        link:
-          index % 2 === 0 ? org("/projects/secret-management/platform-core/overview") : undefined,
-        isRead: index > 14
+        body: `**Alexandria Montgomery-Whitfield** (alexandria.montgomery-whitfield@acme-international.dev) has requested permanent access to **/platform/services/billing/stripe/webhooks/${index + 1}** in the **production-eu-central** environment for project **customer-billing-reconciliation-service**.`,
+        link: org("/projects/secret-management/payments-api/approval"),
+        isRead: index > 2
       }
     )
-  )
+  ),
+  notification("n-honey", NotificationType.HONEY_TOKEN_TRIGGERED, "Honey Token Triggered", 300, {
+    body: "Honey token **aws-canary-prod** was used from IP **198.51.100.7**.",
+    link: org("/networking")
+  }),
+  notification("n-sso", NotificationType.ADMIN_SSO_BYPASS, "Security Alert: SSO Bypass", 2900, {
+    body: "**Sarah Lin** signed in with an admin account and bypassed SSO.",
+    isRead: true
+  })
 ];
 
 const notifications = createFixtureStore<Record<ShellScenario, TUserNotification[]>>({
@@ -347,26 +387,26 @@ export const shellDemo: ShellAdapter = {
       isPending: false
     };
   },
-  useMarkNotificationRead: () => {
+  useMarkNotificationsRead: () => {
     const scenario = useShellScenario();
     return {
-      mutateAsync: async ({ notificationId }) =>
+      mutateAsync: async ({ notificationIds }) =>
         notifications.update((current) => ({
           ...current,
           [scenario]: current[scenario].map((entry) =>
-            entry.id === notificationId ? { ...entry, isRead: true } : entry
+            notificationIds.includes(entry.id) ? { ...entry, isRead: true } : entry
           )
         })),
       isPending: false
     };
   },
-  useDeleteNotification: () => {
+  useDeleteNotifications: () => {
     const scenario = useShellScenario();
     return {
-      mutateAsync: async ({ notificationId }) =>
+      mutateAsync: async ({ notificationIds }) =>
         notifications.update((current) => ({
           ...current,
-          [scenario]: current[scenario].filter((entry) => entry.id !== notificationId)
+          [scenario]: current[scenario].filter((entry) => !notificationIds.includes(entry.id))
         })),
       isPending: false
     };
