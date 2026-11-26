@@ -829,7 +829,7 @@ With `--output=k8-secret`, the command writes the result to a Kubernetes secret 
 
 - `--domain <string>` (required): The URL of the Infisical instance to bootstrap. Can also be set with `INFISICAL_DOMAIN`, or the older `INFISICAL_API_URL`.
 - `--email <string>` (required): The email address of the admin user to create. Can also be set with `INFISICAL_ADMIN_EMAIL`.
-- `--ignore-if-bootstrapped`: Exit without an error message if bootstrapping fails, for example because the instance is already bootstrapped. Use it to make scripts safe to run twice.
+- `--ignore-if-bootstrapped`: Exit successfully without bootstrapping when the instance is already bootstrapped. Any other failure, such as a missing or wrong setup token, still exits with status `1`. Use it to make scripts safe to run twice.
 - `--k8-secret-name <string>`: The name of the Kubernetes secret to create or update. Required with `--output=k8-secret`.
 - `--k8-secret-namespace <string>`: The namespace of the Kubernetes secret. Required with `--output=k8-secret`.
 - `--k8-secret-template <string>` (default `{"data":{"token":"{{.Identity.Credentials.Token}}"}}`): A Go template that renders the secret's `data` and `stringData` as JSON, for `--output=k8-secret`. It can read the response fields, such as `.Identity.Credentials.Token`, `.Organization.ID`, and `.User.Email`, and use the `encodeBase64` function.
