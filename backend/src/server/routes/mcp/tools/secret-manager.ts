@@ -30,7 +30,9 @@ const PathSchema = z
   .default("/")
   .transform(prefixWithSlash)
   .transform(removeTrailingSlash)
-  .describe("The folder path, such as / or /app/database.");
+  .describe(
+    "The folder path. / is the root folder, which every environment has, and every other folder, such as /app/database, sits under it."
+  );
 const SecretValueSchema = z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()));
 const SecretCommentSchema = z.string().trim().max(10_000);
 
