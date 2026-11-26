@@ -2,9 +2,13 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { TableName } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OcspCertStatus } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
+import { CaStatus } from "../certificate-authority-enums";
 import { digicertRevocationSyncQueueFactory } from "./digicert-revocation-sync-queue";
 
 const getCertificateOcspStatus = vi.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -72,20 +76,50 @@ beforeAll(async () => {
   };
 });
 
+const TX = { tx: true };
+
+type TRevokedSigner = { id: string; name: string; previousStatus: string; status: string };
+
 const runSync = async ({
   active,
   revokedOrderCertificates = [],
-  storedBody = certificateBody
+  storedBody = certificateBody,
+  lockedCertificateStatus = CertStatus.ACTIVE,
+  revokedSigners = [],
+  isSignerLockHeld = false,
+  failCertificateAudit = false
 }: {
   active: (ReturnType<typeof activeCertificate> & { externalMetadata?: unknown })[];
   revokedOrderCertificates?: ReturnType<typeof activeCertificate>[];
   storedBody?: typeof certificateBody | null;
+  lockedCertificateStatus?: CertStatus;
+  revokedSigners?: TRevokedSigner[];
+  isSignerLockHeld?: boolean;
+  failCertificateAudit?: boolean;
 }) => {
   let handler: (() => Promise<void>) | undefined;
   const certificateDAL = {
     findActiveDigiCertCertsByOrderIds: vi.fn().mockResolvedValue(revokedOrderCertificates),
     findActiveDigiCertCertsByCaId: vi.fn().mockResolvedValue(active),
+    findByIdForUpdate: vi.fn().mockResolvedValue({ status: lockedCertificateStatus }),
     updateById: vi.fn()
+  };
+  const auditLogService = {
+    createAuditLog: vi.fn(async (log: { event: { type: string } }) => {
+      if (failCertificateAudit && log.event.type === EventType.REVOKE_CERT) throw new Error("audit stream down");
+    })
+  };
+  const certificateAlertEventEmitter = { notify: vi.fn() };
+  const certificateAuthorityDAL = { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) };
+  const pkiAlertV2Queue = { queueCertificateEvent: vi.fn() };
+  const signerService = {
+    revokeWithCertificate: vi.fn(
+      async (_certificateId: string, revokeCertificate: (tx: unknown) => Promise<boolean>) => {
+        if (isSignerLockHeld) return null;
+        const isCertificateRevoked = await revokeCertificate(TX);
+        return { isCertificateRevoked, revokedSigners: isCertificateRevoked ? revokedSigners : [] };
+      }
+    )
   };
   listOrderStatusChanges.mockResolvedValue({
     orders: revokedOrderCertificates.length ? [{ order_id: 7001, status: "revoked" }] : []
@@ -97,7 +131,8 @@ const runSync = async ({
         handler = registered;
       }
     },
-    certificateAuthorityDAL: { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) },
+    certificateAuthorityDAL,
+    pkiAlertV2Queue,
     certificateDAL,
     certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
     appConnectionDAL: {},
@@ -105,12 +140,13 @@ const runSync = async ({
     kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
-    auditLogService: { createAuditLog: vi.fn() },
-    certificateAlertEventEmitter: { notify: vi.fn() }
+    auditLogService,
+    certificateAlertEventEmitter,
+    signerService
   } as unknown as Parameters<typeof digicertRevocationSyncQueueFactory>[0]).init();
 
   await handler!();
-  return certificateDAL;
+  return { ...certificateDAL, auditLogService, certificateAlertEventEmitter, certificateAuthorityDAL, pkiAlertV2Queue };
 };
 
 describe("DigiCert revocation sync, OCSP check of active certificates", () => {
@@ -125,7 +161,8 @@ describe("DigiCert revocation sync, OCSP check of active certificates", () => {
 
     expect(certificateDAL.updateById).toHaveBeenCalledWith(
       "cert-1",
-      expect.objectContaining({ status: CertStatus.REVOKED, revokedAt: REVOKED_AT })
+      expect.objectContaining({ status: CertStatus.REVOKED, revokedAt: REVOKED_AT }),
+      TX
     );
   });
 
@@ -147,7 +184,7 @@ describe("DigiCert revocation sync, OCSP check of active certificates", () => {
     });
 
     expect(certificateDAL.updateById).toHaveBeenCalledTimes(1);
-    expect(certificateDAL.updateById).toHaveBeenCalledWith("cert-2", expect.any(Object));
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("cert-2", expect.any(Object), TX);
   });
 
   test("skips certificates already revoked with their order", async () => {
@@ -177,7 +214,95 @@ describe("DigiCert revocation sync, OCSP check of active certificates", () => {
     expect(downloadCertificatePem).toHaveBeenCalledWith(50001);
     expect(certificateDAL.updateById).toHaveBeenCalledWith(
       "cert-1",
-      expect.objectContaining({ status: CertStatus.REVOKED, revokedAt: REVOKED_AT })
+      expect.objectContaining({ status: CertStatus.REVOKED, revokedAt: REVOKED_AT }),
+      TX
     );
+  });
+});
+
+describe("DigiCert revocation sync, signers of a revoked certificate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("audits each signer the CA revocation revoked", async () => {
+    const certificateDAL = await runSync({
+      active: [],
+      revokedOrderCertificates: [activeCertificate("cert-1")],
+      revokedSigners: [
+        { id: "signer-1", name: "release-signer", previousStatus: "disabled", status: "revoked" },
+        { id: "signer-2", name: "backup-signer", previousStatus: "active", status: "revoked" }
+      ]
+    });
+
+    const signerAudits = certificateDAL.auditLogService.createAuditLog.mock.calls
+      .map(([log]) => log as { actor: { type: string }; event: { type: string; metadata: Record<string, unknown> } })
+      .filter((log) => log.event.type === EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA);
+    expect(signerAudits.map((log) => [log.actor.type, log.event.metadata])).toEqual([
+      [
+        ActorType.PLATFORM,
+        expect.objectContaining({
+          signerId: "signer-1",
+          certificateId: "cert-1",
+          previousStatus: "disabled",
+          status: "revoked"
+        })
+      ],
+      [ActorType.PLATFORM, expect.objectContaining({ signerId: "signer-2", previousStatus: "active" })]
+    ]);
+  });
+
+  test("audits the signers even when the certificate audit fails", async () => {
+    const certificateDAL = await runSync({
+      active: [],
+      revokedOrderCertificates: [activeCertificate("cert-1")],
+      revokedSigners: [{ id: "signer-1", name: "release-signer", previousStatus: "active", status: "revoked" }],
+      failCertificateAudit: true
+    });
+
+    expect(certificateDAL.auditLogService.createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({ type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA }) as unknown
+      })
+    );
+    expect(certificateDAL.pkiAlertV2Queue.queueCertificateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: "cert-1" })
+    );
+  });
+
+  test("checks disabled DigiCert CAs too, since their certificates stay valid upstream", async () => {
+    const certificateDAL = await runSync({ active: [] });
+
+    expect(certificateDAL.certificateAuthorityDAL.findWithAssociatedCa).toHaveBeenCalledWith(
+      expect.objectContaining({
+        $in: { [`${TableName.CertificateAuthority}.status`]: [CaStatus.ACTIVE, CaStatus.DISABLED] }
+      })
+    );
+  });
+
+  test("leaves the certificate for the next run while a signer of it is being changed", async () => {
+    getCertificateOcspStatus.mockResolvedValue({ status: OcspCertStatus.Revoked, revokedAt: REVOKED_AT });
+
+    const certificateDAL = await runSync({
+      active: [activeCertificate("cert-1")],
+      revokedOrderCertificates: [activeCertificate("cert-1")],
+      isSignerLockHeld: true
+    });
+
+    expect(getCertificateOcspStatus).toHaveBeenCalledTimes(1);
+    expect(certificateDAL.updateById).not.toHaveBeenCalled();
+    expect(certificateDAL.auditLogService.createAuditLog).not.toHaveBeenCalled();
+    expect(certificateDAL.certificateAlertEventEmitter.notify).not.toHaveBeenCalled();
+  });
+
+  test("does not revoke or audit again a certificate revoked since it was listed", async () => {
+    const certificateDAL = await runSync({
+      active: [],
+      revokedOrderCertificates: [activeCertificate("cert-1")],
+      lockedCertificateStatus: CertStatus.REVOKED
+    });
+
+    expect(certificateDAL.updateById).not.toHaveBeenCalled();
+    expect(certificateDAL.auditLogService.createAuditLog).not.toHaveBeenCalled();
   });
 });

@@ -146,34 +146,6 @@ describe("Plan.isPaid", () => {
   });
 });
 
-describe("Plan.withWorkspacesUsed", () => {
-  test("should carry the count without changing the plan it came from", () => {
-    // Setup
-    const plan = Plan.restore({ ...testFeatures(), slug: "pro" });
-
-    // Action
-    const counted = plan.withWorkspacesUsed(4);
-
-    // Assert
-    expect([counted.toJSON().workspacesUsed, plan.toJSON().workspacesUsed, counted.isPaid]).toEqual([4, 0, true]);
-  });
-});
-
-describe("Plan.isFallback", () => {
-  test("should mark only the copy, keep the mark through withWorkspacesUsed, and leave it out of the JSON", () => {
-    // Setup
-    const plan = Plan.restore(testFeatures());
-
-    // Action
-    const fallback = plan.asFallback();
-    const counted = fallback.withWorkspacesUsed(4);
-
-    // Assert
-    expect([plan.isFallback, fallback.isFallback, counted.isFallback]).toEqual([false, true, true]);
-    expect(fallback.toJSON()).toEqual(plan.toJSON());
-  });
-});
-
 describe("Plan.allows", () => {
   test("should keep a product available unless the plan explicitly switches it off", () => {
     // Setup

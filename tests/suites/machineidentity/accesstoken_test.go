@@ -365,7 +365,7 @@ func TestAccessToken_CrossOrg(t *testing.T) {
 		group := fixture.NewGroup(t, x.b)
 
 		// Action
-		res, err := x.identity.API.GetGroupByIdWithResponse(t.Context(), group.ID.String())
+		res, err := x.identity.API.GetGroupByIdWithResponse(t.Context(), group.ID)
 
 		// Assert
 		require.NoError(t, err)

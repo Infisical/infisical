@@ -40,7 +40,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
-import { useCreateSecretImport } from "@app/hooks/api";
+import { useCreateSecretImport, useGetSecretApprovalPolicyOfABoard } from "@app/hooks/api";
 import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
 
 const typeSchema = z.object({
@@ -95,6 +95,21 @@ export const CreateSecretImportForm = ({
   const { subscription } = useSubscription();
 
   const { mutateAsync: createSecretImport, isPending: isCreatingImport } = useCreateSecretImport();
+
+  const {
+    data: destinationPolicy,
+    isLoading: isLoadingPolicy,
+    isError: isPolicyError
+  } = useGetSecretApprovalPolicyOfABoard({
+    projectId,
+    environment,
+    secretPath,
+    options: { enabled: Boolean(isOpen) }
+  });
+  const enforcingPolicy = destinationPolicy?.enforceOnSecretImports ? destinationPolicy : undefined;
+  // the choice only matters where a change policy covers the destination. when the lookup fails, offer it anyway
+  // and let the server refuse an import the policy does not allow.
+  const isReplicationChoiceShown = Boolean(destinationPolicy) || isPolicyError;
 
   const canCrossProjectShare =
     subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
@@ -161,8 +176,10 @@ export const CreateSecretImportForm = ({
   const handleFormSubmit = async ({
     environment: importedEnv,
     secretPath: importedSecPath,
-    isReplication
+    isReplication: isReplicationSelected
   }: TFormSchema) => {
+    const isReplication =
+      Boolean(enforcingPolicy) || (isReplicationChoiceShown && isReplicationSelected);
     try {
       if (isReplication && !subscription?.secretApproval) {
         onUpgradePlan();
@@ -180,6 +197,13 @@ export const CreateSecretImportForm = ({
         }
       });
       handleClose();
+      if (enforcingPolicy) {
+        createNotification({
+          type: "success",
+          text: `Import created. The policy ${enforcingPolicy.name} requires approval for imported secrets, so its values arrive as a change request.`
+        });
+        return;
+      }
       createNotification({
         type: "success",
         text: `Successfully linked. ${isReplication ? "Please refresh the dashboard to view changes" : ""}`
@@ -237,15 +261,17 @@ export const CreateSecretImportForm = ({
           </Field>
         )}
       />
-      <Controller
-        name="isReplication"
-        control={control}
-        render={({ field: { value, onChange } }) => (
-          <Field>
-            <FieldContent>
+      {isReplicationChoiceShown && (
+        <Controller
+          name="isReplication"
+          control={control}
+          render={({ field: { value, onChange } }) => {
+            const isRespectingPolicies = Boolean(enforcingPolicy) || value;
+            const replicationSelect = (
               <Select
-                value={value ? "true" : "false"}
+                value={isRespectingPolicies ? "true" : "false"}
                 onValueChange={(val) => onChange(val === "true")}
+                disabled={Boolean(enforcingPolicy)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -255,20 +281,53 @@ export const CreateSecretImportForm = ({
                   <SelectItem value="true">Respect secret approval policies</SelectItem>
                 </SelectContent>
               </Select>
-            </FieldContent>
-            <FieldDescription>
-              {value
-                ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
-                : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
-            </FieldDescription>
-          </Field>
-        )}
-      />
+            );
+
+            const getDescription = () => {
+              if (enforcingPolicy)
+                return "Secrets from the source are sent to the destination as change requests. Nothing is imported until a request is approved.";
+
+              if (!value)
+                return "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination.";
+
+              return destinationPolicy
+                ? `Secrets from the source are sent to the destination as change requests for the policy ${destinationPolicy.name}. Nothing is imported until a request is approved.`
+                : "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.";
+            };
+
+            return (
+              <Field>
+                <FieldContent>
+                  {enforcingPolicy ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="block w-full">{replicationSelect}</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The policy {enforcingPolicy.name} requires approval for imported secrets in
+                        this folder.
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    replicationSelect
+                  )}
+                </FieldContent>
+                <FieldDescription>{getDescription()}</FieldDescription>
+              </Field>
+            );
+          }}
+        />
+      )}
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={handleClose}>
           Cancel
         </Button>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting || isLoadingPolicy}
+        >
           Create Import
         </Button>
       </DialogFooter>

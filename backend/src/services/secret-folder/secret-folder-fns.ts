@@ -18,7 +18,7 @@ import {
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -512,6 +512,37 @@ export const assertFolderDeleteAllowed = (
   throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, permission));
 };
 
+// A folder is deleted with every folder below it and the folder access set on them. Only an explicit deny refuses the
+// delete: a role that allows folder delete on the parent path alone says nothing about the folders below. The refusal
+// is a PermissionBoundaryError because a plain ForbiddenRequestError is not recorded as a permission-denied audit event.
+export const assertFolderSubtreeDeleteAllowed = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  environment: string,
+  [folderToDelete, ...foldersBelow]: { path: string }[]
+) => {
+  const deniedFolder = [folderToDelete, ...foldersBelow].find(
+    (folder) =>
+      permission.relevantRuleFor(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: folder.path })
+      )?.inverted
+  );
+  if (!deniedFolder) return;
+
+  throw new PermissionBoundaryError({
+    message: `Deleting the folder '${folderToDelete.path}' requires permission to delete folders in it and in every folder below it in environment with slug '${environment}'. Your access on '${deniedFolder.path}' does not allow deleting folders. Ask someone who can delete folders there to delete it.`,
+    details: {
+      missingPermissions: [
+        {
+          action: ProjectPermissionActions.Delete,
+          subject: ProjectPermissionSub.SecretFolders,
+          conditions: { environment, secretPath: deniedFolder.path }
+        }
+      ]
+    }
+  });
+};
+
 export const assertFolderRenameAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
   scope: TFolderRenameScope,
@@ -530,6 +561,83 @@ export const assertFolderRenameAllowed = (
   }
 
   throwFolderChangeBlockedByPolicy("rename", protectedFolder, visibleContent);
+};
+
+export type TEnforcedImportDestination = {
+  environment: string;
+  path: string;
+  contentPath: string;
+  policyName: string;
+};
+
+// returns the first folder, in `folders` order, holding a direct same-project import that the rename would carry into
+// the scope of a policy requiring approval for imported secrets that does not govern it today. unlike
+// findPolicyProtectedFolder the actor is ignored: the import keeps passing every later change to its source into the
+// governed folder, including changes by people the policy applies to. an import that predates its policy's
+// enforcement stays movable within that policy or out of it, since enforcement never converts existing imports, but
+// not into another enforcing policy, which never had it.
+export const findDirectImportEnteringEnforcedPath = async (
+  {
+    folders,
+    directImportFolderIds,
+    projectId,
+    environment
+  }: {
+    folders: { id: string; path: string; contentPath: string }[];
+    directImportFolderIds: Set<string>;
+    projectId: string;
+    environment: string;
+  },
+  {
+    secretChangePolicyService
+  }: { secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicyByPaths"> },
+  tx: Knex
+): Promise<TEnforcedImportDestination | null> => {
+  const candidates = folders.filter((folder) => directImportFolderIds.has(folder.id));
+  if (!candidates.length) return null;
+
+  const policyByPath = await secretChangePolicyService.getSecretApprovalPolicyByPaths(
+    projectId,
+    environment,
+    [...new Set(candidates.flatMap((folder) => [folder.path, folder.contentPath]))],
+    tx
+  );
+
+  for (const folder of candidates) {
+    const destinationPolicy = policyByPath.get(folder.path);
+    if (
+      destinationPolicy?.enforceOnSecretImports &&
+      policyByPath.get(folder.contentPath)?.id !== destinationPolicy.id
+    ) {
+      return {
+        environment,
+        path: folder.path,
+        contentPath: folder.contentPath,
+        policyName: destinationPolicy.name
+      };
+    }
+  }
+
+  return null;
+};
+
+export const assertNoDirectImportEnteringEnforcedPath = (
+  destination: TEnforcedImportDestination | null,
+  permission: MongoAbility<ProjectPermissionSet>
+) => {
+  if (!destination) return;
+
+  const { environment, path, contentPath, policyName } = destination;
+  if (canActorReadBlock(permission, environment, "secret_import", contentPath)) {
+    throw new BadRequestError({
+      message: `You cannot rename the selected folder because its secret imports would move to folder path "${path}", where the change policy "${policyName}" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Choose a different name and try again.`,
+      name: "RenameFolderImportIntoEnforcedPath"
+    });
+  }
+  throw new BadRequestError({
+    message: `You cannot rename the selected folder because its resources would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
+    name: "RenameFolderIntoProtectedPath"
+  });
 };
 
 export const assertNoOverlappingFolderEntries = (entries: { environment: string; path: string }[]) => {

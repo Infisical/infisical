@@ -24,7 +24,7 @@ const entitlementProductSchema = z
   })
   .passthrough();
 
-export const trialPaymentFailedNoticeSchema = z.object({
+const trialPaymentFailedNoticeSchema = z.object({
   type: z.literal("trial_payment_failed"),
   product_key: z.string(),
   trial_plan_key: z.string().nullish(),
@@ -32,6 +32,18 @@ export const trialPaymentFailedNoticeSchema = z.object({
   next_attempt_at: z.string().datetime({ offset: true }).nullish(),
   cause: z.string().nullish()
 });
+
+// A renewal Stripe could not collect. It carries no payment link: every member of the org reads the plan.
+const subscriptionPaymentFailedNoticeSchema = z.object({
+  type: z.literal("subscription_payment_failed"),
+  cause: z.string().nullish(),
+  since: z.string().datetime({ offset: true }).nullish()
+});
+
+export const planNoticeSchema = z.discriminatedUnion("type", [
+  trialPaymentFailedNoticeSchema,
+  subscriptionPaymentFailedNoticeSchema
+]);
 
 // `features` and `products` are load-bearing; passthrough tolerates the rest of the payload so
 // cloud/self-hosted version skew doesn't break reads. Notices stay unknown here and are validated one

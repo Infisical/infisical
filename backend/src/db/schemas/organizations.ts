@@ -22,7 +22,6 @@ export const OrganizationsSchema = z.object({
   kmsEncryptedDataKey: zodBuffer.nullable().optional(),
   defaultMembershipRole: z.string().default("member"),
   enforceMfa: z.boolean().default(false),
-  selectedMfaMethod: z.string().nullable().optional(),
   allowSecretSharingOutsideOrganization: z.boolean().default(true).nullable().optional(),
   shouldUseNewPrivilegeSystem: z.boolean().default(true),
   privilegeUpgradeInitiatedByUsername: z.string().nullable().optional(),

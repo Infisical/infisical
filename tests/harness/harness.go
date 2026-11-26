@@ -18,7 +18,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fakes/azure"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -116,9 +118,11 @@ func run(m *testing.M, profile Profile, cfg *config, mainFile string) (int, erro
 	defer stopAll(ctx, owned)
 
 	// Opened before any test runs, so nothing a test triggers can happen before it is
-	// listening.
+	// listening. Key Vault and GCP are scoped by ids derived from the credential (a
+	// client UUID, a service account email), which cannot carry the binary's prefix.
 	if fn, ok := stack.modules[fakenet.Key].(*fakenet.Handle); ok {
-		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary(), license.Host); err != nil {
+		wholeHosts := []string{license.Host, azure.KeyVault.Host(), oauth.GCPIAMCredentials.Host(), oauth.GCPCertificateManager.Host()}
+		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary(), wholeHosts...); err != nil {
 			return 0, err
 		}
 	}

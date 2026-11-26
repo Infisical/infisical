@@ -257,7 +257,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         // eslint-disable-next-line no-await-in-loop
         const created = await tx(TableName.SecretScanningFinding)
           .insert(
-            // the first location is kept on the finding too, for the release before locations existed
+            // The first location is kept on the finding too, for the release before locations existed. Its scanId is
+            // also how countUnresolvedCreatedByScanId knows which scan created the finding.
             chunk.map(({ secretFindingBlindIndex, rule, severity, fingerprint, details }) => ({
               resourceId,
               secretFindingBlindIndex,
@@ -693,8 +694,44 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary: the caller writes these rows straight after, and a replica that still shows
-  // a just-completed scan as in-progress would have it reaped.
+  // Both transitions are guarded on the scan's current status, so a scan something else already closed keeps its
+  // outcome. They return whether this call closed it.
+  const markScanCompleted = async ({ scanId, metadata }: { scanId: string; metadata?: unknown }, tx?: Knex) => {
+    const completed = await scanOrm.update(
+      { id: scanId, status: SecretScanningScanStatus.Scanning },
+      {
+        status: SecretScanningScanStatus.Completed,
+        statusMessage: null,
+        completedAt: new Date(),
+        ...(metadata === undefined ? {} : { metadata })
+      },
+      tx
+    );
+
+    return completed.length > 0;
+  };
+
+  const markScanFailed = async (
+    {
+      scanId,
+      statusMessage,
+      fromStatuses
+    }: { scanId: string; statusMessage: string; fromStatuses: SecretScanningScanStatus[] },
+    tx?: Knex
+  ) => {
+    const failed = await scanOrm.update(
+      { id: scanId, $in: { status: fromStatuses } },
+      {
+        status: SecretScanningScanStatus.Failed,
+        statusMessage,
+        completedAt: new Date()
+      },
+      tx
+    );
+
+    return failed.length > 0;
+  };
+
   const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
@@ -975,6 +1012,22 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // A finding's scanId is written once, by the scan that inserts it under the resource's advisory lock, so it names the
+  // creating scan however many batches or attempts that scan took. Location timestamps can't tell: now() is when a
+  // transaction began, so a scan that began earlier but took the lock later would sort first on a finding it didn't
+  // create.
+  const countUnresolvedCreatedByScanId = async (scanId: string, tx?: Knex) => {
+    try {
+      const [result] = (await (tx || db)(TableName.SecretScanningFinding)
+        .where({ scanId, status: SecretScanningFindingStatus.Unresolved })
+        .count("* as count")) as { count: string }[];
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Unresolved Created By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
   // A pull request check that ran before findings were merged saved ids of findings that are now locations of another
   // finding, under the same ids.
   const findFindingsByIdsOrLocationIds = async (resourceId: string, ids: string[], tx?: Knex) => {
@@ -1035,6 +1088,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans,
+      markCompleted: markScanCompleted,
+      markFailed: markScanFailed,
       findQueuedHistorical: findQueuedHistoricalScans
     },
     findings: {
@@ -1042,6 +1097,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       persistLocations: persistFindingLocations,
       findByIdsOrLocationIds: findFindingsByIdsOrLocationIds,
       countByScanId: countFindingsByScanId,
+      countUnresolvedCreatedByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
       countByProjectId: countFindingsByProjectId

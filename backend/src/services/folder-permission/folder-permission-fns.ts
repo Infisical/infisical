@@ -139,30 +139,31 @@ export const assertManageFolderAccess = (
   );
 };
 
-export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
-  if (folder.path !== "/") {
-    throw new BadRequestError({
-      message: `Folder access on '${folder.path}' in environment with slug '${folder.environmentSlug}' cannot apply to subfolders. Only folder access on the root folder '/' can apply to subfolders. Grant access on this folder only, or grant it on '/'.`
-    });
-  }
-};
-
 export const assertManageFolderSubtree = (
   callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
   folder: TResolvedFolder,
   operation: "apply" | "remove" = "apply"
 ) => {
-  const subtreeManageAccess = createMongoAbility<ProjectPermissionSet>(
-    [
-      {
-        action: ProjectPermissionSecretFolderActions.ManageAccess,
-        subject: ProjectPermissionSub.SecretFolders,
-        conditions: { environment: folder.environmentSlug, secretPath: { $glob: recursiveFolderPathGlob(folder.path) } }
-      }
-    ] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-    { conditionsMatcher }
-  );
-  const { isValid } = validatePermissionBoundary(callerPermission, subtreeManageAccess);
+  const subtreeRule = {
+    action: ProjectPermissionSecretFolderActions.ManageAccess,
+    subject: ProjectPermissionSub.SecretFolders,
+    conditions: { environment: folder.environmentSlug, secretPath: { $glob: recursiveFolderPathGlob(folder.path) } }
+  };
+  const abilityOf = (rules: object[]) =>
+    createMongoAbility<ProjectPermissionSet>(rules as RawRuleOf<MongoAbility<ProjectPermissionSet>>[], {
+      conditionsMatcher
+    });
+  const subtreeManageAccess = abilityOf([subtreeRule]);
+
+  const decidingRule = callerPermission
+    .possibleRulesFor(ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionSub.SecretFolders)
+    .find((rule) => {
+      const callerRule = { ...subtreeRule, conditions: rule.conditions, inverted: rule.inverted };
+      return rule.inverted
+        ? !validatePermissionBoundary(abilityOf([subtreeRule, callerRule]), subtreeManageAccess).isValid
+        : validatePermissionBoundary(abilityOf([callerRule]), subtreeManageAccess).isValid;
+    });
+  const isValid = Boolean(decidingRule) && !decidingRule?.inverted;
   if (!isValid) {
     logger.warn({ callerPermission, subtreeManageAccess }, "assertManageFolderSubtree: invalid permission boundary");
     throw new ForbiddenRequestError({

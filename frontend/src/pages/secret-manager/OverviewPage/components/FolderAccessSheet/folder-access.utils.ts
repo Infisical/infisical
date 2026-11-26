@@ -21,7 +21,7 @@ export type TFolderAccessActor = {
   // with access: only the roles granting access on this folder; without access: every role
   roles: TFolderAccessRole[];
   access: TFolderAccess | null;
-  // the active recursive grant on the environment's root folder, when this is a nested folder
+  // the active grant that applies to subfolders on the nearest folder above this one
   inheritedAccess: TFolderAccess | null;
 };
 
@@ -169,3 +169,30 @@ export const normalizeFolderPath = (path: string) => {
 };
 
 export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";
+
+export const subfolderToggleLabelOf = (path: string) =>
+  isRootFolderPath(path) ? "Apply to Environment" : "Apply to Subfolders";
+
+const isStrictAncestorPath = (ancestor: string, path: string) =>
+  ancestor !== path && (ancestor === "/" || path.startsWith(`${ancestor}/`));
+
+const folderDepthOf = (path: string) => path.split("/").filter(Boolean).length;
+
+export const findInheritedGrant = (
+  grants: TFolderAccess[],
+  environment: string,
+  folderPath: string
+) => {
+  const path = normalizeFolderPath(folderPath);
+  return (
+    grants
+      .filter(
+        (grant) =>
+          grant.environment === environment &&
+          grant.isPermissionRecursive &&
+          grantStateOf(grant) !== "expired" &&
+          isStrictAncestorPath(normalizeFolderPath(grant.secretPath), path)
+      )
+      .sort((a, b) => folderDepthOf(b.secretPath) - folderDepthOf(a.secretPath))[0] ?? null
+  );
+};

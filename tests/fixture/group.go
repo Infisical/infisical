@@ -51,7 +51,7 @@ func (g *Group) AddUser(tt *testing.T, users ...*harness.Principal) {
 
 	for _, user := range users {
 		require.Equalf(tt, harness.User, user.Kind, "%s is not a user", user.Name)
-		res, err := g.tn.Admin.API.AddUserToGroupWithResponse(tt.Context(), g.ID.String(), user.Email)
+		res, err := g.tn.Admin.API.AddUserToGroupWithResponse(tt.Context(), g.ID, user.Email)
 		require.NoErrorf(tt, err, "adding %s to group %s", user.Email, g.Name)
 		require.Equalf(tt, http.StatusOK, res.StatusCode(), "adding %s to group %s: %s",
 			user.Email, g.Name, apierr.Body(res.Body))
@@ -64,7 +64,7 @@ func (g *Group) RemoveUser(tt *testing.T, users ...*harness.Principal) {
 
 	for _, user := range users {
 		require.Equalf(tt, harness.User, user.Kind, "%s is not a user", user.Name)
-		res, err := g.tn.Admin.API.RemoveUserFromGroupWithResponse(tt.Context(), g.ID.String(), user.Email)
+		res, err := g.tn.Admin.API.RemoveUserFromGroupWithResponse(tt.Context(), g.ID, user.Email)
 		require.NoErrorf(tt, err, "removing %s from group %s", user.Email, g.Name)
 		require.Equalf(tt, http.StatusOK, res.StatusCode(), "removing %s from group %s: %s",
 			user.Email, g.Name, apierr.Body(res.Body))
@@ -77,7 +77,7 @@ func (g *Group) AddIdentity(tt *testing.T, identities ...*harness.Principal) {
 
 	for _, identity := range identities {
 		require.Equalf(tt, harness.MachineIdentity, identity.Kind, "%s is not a machine identity", identity.Name)
-		res, err := g.tn.Admin.API.AddMachineIdentityToGroupWithResponse(tt.Context(), g.ID.String(), identity.ID.String())
+		res, err := g.tn.Admin.API.AddMachineIdentityToGroupWithResponse(tt.Context(), g.ID, identity.ID)
 		require.NoErrorf(tt, err, "adding identity %s to group %s", identity.Name, g.Name)
 		require.Equalf(tt, http.StatusOK, res.StatusCode(), "adding identity %s to group %s: %s",
 			identity.Name, g.Name, apierr.Body(res.Body))
@@ -89,7 +89,7 @@ func (g *Group) RemoveIdentity(tt *testing.T, identities ...*harness.Principal) 
 	tt.Helper()
 
 	for _, identity := range identities {
-		res, err := g.tn.Admin.API.RemoveMachineIdentityFromGroupWithResponse(tt.Context(), g.ID.String(), identity.ID.String())
+		res, err := g.tn.Admin.API.RemoveMachineIdentityFromGroupWithResponse(tt.Context(), g.ID, identity.ID)
 		require.NoErrorf(tt, err, "removing identity %s from group %s", identity.Name, g.Name)
 		require.Equalf(tt, http.StatusOK, res.StatusCode(), "removing identity %s from group %s: %s",
 			identity.Name, g.Name, apierr.Body(res.Body))

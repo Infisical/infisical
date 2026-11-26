@@ -151,6 +151,16 @@ export const KeyStorePrefixes = {
   ProjectFolderAccessRosterVersion: (projectId: string) => `project-folder-access-roster-version:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  MicrosoftAutoenrollmentReplay: (servicePrincipalName: string, replayKey: string) =>
+    `microsoft-autoenrollment-replay:${servicePrincipalName}:${replayKey}` as const,
+  MicrosoftAutoenrollmentServerChannelBindings: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLock: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-refresh-lock:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailed: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-learn-failed:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailure: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-last-failure:${instanceEndpoint}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
@@ -345,6 +355,11 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
+  MicrosoftAutoenrollmentReplayInSeconds: 600, // 10 minutes
+  MicrosoftAutoenrollmentServerChannelBindingsInSeconds: 86400,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailureInSeconds: 86400,
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle

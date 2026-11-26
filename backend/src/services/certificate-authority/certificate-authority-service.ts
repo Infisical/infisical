@@ -156,7 +156,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOne" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;

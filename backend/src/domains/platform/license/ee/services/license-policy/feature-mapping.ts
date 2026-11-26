@@ -262,6 +262,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiScep"
   },
   {
+    v2Key: "pki_microsoft_autoenrollment",
+    v1Field: "pkiMicrosoftAutoenrollment"
+  },
+  {
     v2Key: "pki_pqc",
     v1Field: "pkiPqc"
   },
@@ -407,7 +411,6 @@ export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "status",
   "trial_end",
   "has_used_trial",
-  "workspacesUsed",
   "environmentsUsed",
   "workspaceLimit",
   "memberLimit",

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -32,6 +33,25 @@ func (r *txtRecords) remove(name string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.byName, canonicalName(name))
+}
+
+// replaceIf answers name with values only while it still answers with previous, in
+// any order, so a publisher removing its own records leaves a later publisher's answer
+// in place. No values removes the name.
+func (r *txtRecords) replaceIf(name string, previous, values []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	current, want := slices.Clone(r.byName[canonicalName(name)]), slices.Clone(previous)
+	slices.Sort(current)
+	slices.Sort(want)
+	if !slices.Equal(current, want) {
+		return
+	}
+	if len(values) == 0 {
+		delete(r.byName, canonicalName(name))
+		return
+	}
+	r.byName[canonicalName(name)] = values
 }
 
 func (r *txtRecords) lookup(name string) []string {

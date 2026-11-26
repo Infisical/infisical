@@ -18,6 +18,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -28,7 +29,6 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange

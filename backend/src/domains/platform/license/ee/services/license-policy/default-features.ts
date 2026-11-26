@@ -55,6 +55,7 @@ type TDefaultOnPremFeatures = TInstanceFeatures & {
   pkiAcme: true;
   pkiEst: false;
   pkiScep: false;
+  pkiMicrosoftAutoenrollment: false;
   pkiPqc: false;
   caCrl: true;
   pkiOcsp: false;
@@ -90,7 +91,6 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   slug: null,
   tier: -1,
   workspaceLimit: null,
-  workspacesUsed: 0,
   dynamicSecret: false,
   memberLimit: null,
   identityLimit: null,
@@ -154,6 +154,7 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
+  pkiMicrosoftAutoenrollment: false,
   pkiPqc: false,
   caCrl: true,
   pkiOcsp: false,

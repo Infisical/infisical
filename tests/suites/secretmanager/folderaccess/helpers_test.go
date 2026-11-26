@@ -209,7 +209,7 @@ type holder struct {
 	IsProjectAdmin bool
 	Roles          []string
 	Grant          *grant
-	// Inherited is the recursive root grant reaching a nested folder.
+	// Inherited is the recursive grant on the nearest folder above reaching a nested folder.
 	Inherited *grant
 }
 

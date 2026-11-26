@@ -6,12 +6,14 @@ export type TAdminSignUpDTO = {
   organizationName?: string;
   ip: string;
   userAgent: string;
+  setupToken?: string;
 };
 
 export type TAdminBootstrapInstanceDTO = {
   email: string;
   password: string;
   organizationName: string;
+  setupToken?: string;
 };
 
 export type TAdminGetUsersDTO = {
@@ -59,7 +61,9 @@ export type TResendOrgInviteDTO = {
 };
 
 export enum SuperAdminErrorCode {
-  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT",
+  InvalidSetupToken = "SUPER_ADMIN_INVALID_SETUP_TOKEN",
+  InstanceAlreadySetUp = "SUPER_ADMIN_INSTANCE_ALREADY_SET_UP"
 }
 
 export enum CacheType {

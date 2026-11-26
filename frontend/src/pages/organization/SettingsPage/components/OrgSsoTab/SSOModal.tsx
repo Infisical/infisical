@@ -17,12 +17,17 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Code,
   CodeBlock,
   DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
+  FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
   Input,
   Select,
   SelectContent,
@@ -174,6 +179,10 @@ const schema = z
     mfaAuthnContexts: z
       .array(z.string().trim().min(1).max(512, "Context value is too long"))
       .max(20, "At most 20 contexts")
+      .default([]),
+    mfaAttributeValues: z
+      .array(z.string().trim().min(1).max(512, "Value is too long"))
+      .max(20, "At most 20 values")
       .default([])
   })
   .required();
@@ -196,13 +205,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateSSOConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
   const [authnContextTagError, setAuthnContextTagError] = useState<string | null>(null);
+  const [attributeValueTagError, setAttributeValueTagError] = useState<string | null>(null);
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML,
       mfaSignalAttribute: "",
-      mfaAuthnContexts: []
+      mfaAuthnContexts: [],
+      mfaAttributeValues: []
     },
     resolver: zodResolver(schema)
   });
@@ -215,7 +226,8 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         issuer: data?.issuer ?? "",
         cert: data?.cert ?? "",
         mfaSignalAttribute: data?.mfaSignalAttribute ?? "",
-        mfaAuthnContexts: data?.mfaAuthnContexts ?? []
+        mfaAuthnContexts: data?.mfaAuthnContexts ?? [],
+        mfaAttributeValues: data?.mfaAttributeValues ?? []
       });
     }
   }, [data]);
@@ -231,7 +243,8 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
       issuer: "",
       cert: "",
       mfaSignalAttribute: null,
-      mfaAuthnContexts: null
+      mfaAuthnContexts: null,
+      mfaAttributeValues: null
     });
 
     createNotification({
@@ -240,19 +253,31 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     });
   };
 
+  const clearTagErrors = () => {
+    setAuthnContextTagError(null);
+    setAttributeValueTagError(null);
+  };
+
+  const discardEdits = () => {
+    reset();
+    clearTagErrors();
+  };
+
   const onSSOModalSubmit = async ({
     authProvider,
     entryPoint,
     issuer,
     cert,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }: AddSSOFormData) => {
     if (!currentOrg) return;
 
     const mfaSignal = {
       mfaSignalAttribute: mfaSignalAttribute || null,
-      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
+      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null,
+      mfaAttributeValues: mfaAttributeValues.length > 0 ? mfaAttributeValues : null
     };
     const payload = {
       organizationId: currentOrg.id,
@@ -280,6 +305,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     }
 
     handlePopUpClose("addSSO");
+    clearTagErrors();
 
     createNotification({
       text: `Successfully ${!data ? "added" : "updated"} SAML SSO configuration`,
@@ -309,7 +335,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         open={popUp?.addSSO?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addSSO", isOpen);
-          reset();
+          discardEdits();
         }}
       >
         <SheetContent className="sm:max-w-2xl">
@@ -439,55 +465,94 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
                 badge={isMfaSignalInUse ? <Badge variant="success">In Use</Badge> : undefined}
               >
-                <Controller
-                  control={control}
-                  name="mfaSignalAttribute"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="sso-mfa-signal-attribute">
-                        MFA Attribute Name (Optional)
-                      </FieldLabel>
-                      <Input
-                        id="sso-mfa-signal-attribute"
-                        className="font-mono"
-                        placeholder={providerMfaSignalAttribute(authProvider)}
-                        autoComplete="off"
-                        isError={Boolean(error)}
-                        {...field}
-                      />
-                      <FieldDescription>
-                        Attribute in the {providerName} SAML assertion that lists the authentication
-                        methods the user completed. Leave empty to use the {providerName} default.
-                      </FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="mfaAuthnContexts"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="sso-mfa-authn-contexts">
-                        Additional MFA Authentication Contexts (Optional)
-                      </FieldLabel>
-                      <TagsInput
-                        id="sso-mfa-authn-contexts"
-                        placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
-                        value={value}
-                        onValueChange={onChange}
-                        validateTag={rejectDuplicateTag}
-                        onValidationError={setAuthnContextTagError}
-                        isError={Boolean(authnContextTagError || error)}
-                      />
-                      <FieldDescription>
-                        AuthnContextClassRef values counted as MFA, in addition to the standard
-                        two-factor classes. Press Enter to add.
-                      </FieldDescription>
-                      <FieldError>{authnContextTagError ?? error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+                <FieldSet>
+                  <FieldLegend variant="label">Attribute</FieldLegend>
+                  <FieldDescription>
+                    An attribute in the {providerName} assertion that lists the authentication
+                    methods the user completed.
+                  </FieldDescription>
+                  <FieldGroup>
+                    <Controller
+                      control={control}
+                      name="mfaSignalAttribute"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="sso-mfa-signal-attribute">
+                            Attribute Name (Optional)
+                          </FieldLabel>
+                          <Input
+                            id="sso-mfa-signal-attribute"
+                            className="font-mono"
+                            placeholder={providerMfaSignalAttribute(authProvider)}
+                            autoComplete="off"
+                            isError={Boolean(error)}
+                            {...field}
+                          />
+                          <FieldDescription>
+                            Leave empty to use the {providerName} default.
+                          </FieldDescription>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="mfaAttributeValues"
+                      render={({ field: { value, onChange }, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="sso-mfa-attribute-values">
+                            Additional Values (Optional)
+                          </FieldLabel>
+                          <TagsInput
+                            id="sso-mfa-attribute-values"
+                            placeholder="Type a value, press Enter"
+                            value={value}
+                            onValueChange={onChange}
+                            validateTag={rejectDuplicateTag}
+                            onValidationError={setAttributeValueTagError}
+                            isError={Boolean(attributeValueTagError || error)}
+                          />
+                          <FieldDescription>
+                            Counted as MFA in addition to <Code>mfa</Code> and the Entra ID{" "}
+                            <Code>multipleauthn</Code> URI.
+                          </FieldDescription>
+                          <FieldError>{attributeValueTagError ?? error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                  </FieldGroup>
+                </FieldSet>
+                <FieldSeparator>or</FieldSeparator>
+                <FieldSet>
+                  <FieldLegend variant="label">Authentication Context</FieldLegend>
+                  <FieldDescription>
+                    The <Code>AuthnContextClassRef</Code> {providerName} sets on the assertion.
+                  </FieldDescription>
+                  <Controller
+                    control={control}
+                    name="mfaAuthnContexts"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor="sso-mfa-authn-contexts">
+                          Additional Contexts (Optional)
+                        </FieldLabel>
+                        <TagsInput
+                          id="sso-mfa-authn-contexts"
+                          placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
+                          value={value}
+                          onValueChange={onChange}
+                          validateTag={rejectDuplicateTag}
+                          onValidationError={setAuthnContextTagError}
+                          isError={Boolean(authnContextTagError || error)}
+                        />
+                        <FieldDescription>
+                          Counted as MFA in addition to the standard two-factor classes.
+                        </FieldDescription>
+                        <FieldError>{authnContextTagError ?? error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                </FieldSet>
               </FormSection>
             </div>
             <SheetFooter className="justify-between border-t">
@@ -495,7 +560,14 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 <Button type="submit" variant="org" isPending={isPending}>
                   {!data?.isActive ? "Configure SAML" : "Update Configuration"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addSSO")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handlePopUpClose("addSSO");
+                    discardEdits();
+                  }}
+                >
                   Cancel
                 </Button>
               </div>

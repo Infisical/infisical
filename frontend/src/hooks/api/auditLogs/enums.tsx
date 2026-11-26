@@ -7,6 +7,7 @@ export enum ActorType {
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
+  MICROSOFT_AUTOENROLLMENT_ACCOUNT = "microsoftAutoenrollmentAccount",
   AGENT_VAULT_PROXY = "agentVaultProxy",
   UNKNOWN_USER = "unknownUser"
 }
@@ -127,6 +128,9 @@ export enum EventType {
   ROTATE_PKI_APPLICATION_ACME_EAB_SECRET = "rotate-pki-application-acme-eab-secret",
   SET_PKI_APPLICATION_SCEP_ENROLLMENT = "set-pki-application-scep-enrollment",
   CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT = "clear-pki-application-scep-enrollment",
+  SET_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT = "set-pki-application-microsoft-autoenrollment-enrollment",
+  CLEAR_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_ENROLLMENT = "clear-pki-application-microsoft-autoenrollment-enrollment",
+  REENROLL_PKI_APPLICATION_MICROSOFT_AUTOENROLLMENT_COMPUTERS = "reenroll-pki-application-microsoft-autoenrollment-computers",
   GET_CERT_MANAGER_INSTANCE_STATE = "get-cert-manager-instance-state",
   SET_CERT_MANAGER_ACTIVE_PROJECT = "set-cert-manager-active-project",
   GET_CERT_BODY = "get-cert-body",
@@ -141,6 +145,9 @@ export enum EventType {
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
+  CREATE_AUDIT_LOG_STREAM = "create-audit-log-stream",
+  UPDATE_AUDIT_LOG_STREAM = "update-audit-log-stream",
+  DELETE_AUDIT_LOG_STREAM = "delete-audit-log-stream",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -406,6 +413,10 @@ export enum EventType {
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
   SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
+
+  MICROSOFT_AUTOENROLLMENT_ISSUANCE = "microsoft-autoenrollment-issuance",
+  MICROSOFT_AUTOENROLLMENT_RENEWAL = "microsoft-autoenrollment-renewal",
+  MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED = "microsoft-autoenrollment-request-refused",
 
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",

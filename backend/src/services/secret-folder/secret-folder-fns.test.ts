@@ -1,8 +1,11 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
-import { TSecretFolders } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, SecretFolderRole, TSecretFolders } from "@app/db/schemas";
+import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
+import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
@@ -11,7 +14,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -22,11 +25,14 @@ import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   assertFolderDeleteAllowed,
   assertFolderRenameAllowed,
+  assertFolderSubtreeDeleteAllowed,
+  assertNoDirectImportEnteringEnforcedPath,
   assertNoOverlappingFolderEntries,
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
   checkFolderHasRbacPolicies,
+  findDirectImportEnteringEnforcedPath,
   findFoldersWithContent,
   findPolicyProtectedFolder,
   resolveBatchFolderEntries,
@@ -573,6 +579,113 @@ describe("findPolicyProtectedFolder", () => {
   });
 });
 
+describe("findDirectImportEnteringEnforcedPath", () => {
+  const tx = {} as Knex;
+  const enforcing = { id: "import-guard-id", name: "import-guard", enforceOnSecretImports: true };
+  const otherEnforcing = { id: "other-guard-id", name: "other-guard", enforceOnSecretImports: true };
+  const notEnforcing = { id: "prod-guard-id", name: "prod-guard", enforceOnSecretImports: false };
+  const folders = [
+    { id: "app-id", path: "/prod", contentPath: "/staging" },
+    { id: "api-id", path: "/prod/api", contentPath: "/staging/api" }
+  ];
+
+  const makeService = (policies: [string, { id: string; name: string; enforceOnSecretImports: boolean }][]) => {
+    const getSecretApprovalPolicyByPaths = vi.fn().mockResolvedValue(new Map(policies));
+    return {
+      deps: {
+        secretChangePolicyService: { getSecretApprovalPolicyByPaths } as unknown as Pick<
+          TSecretChangePolicyServiceFactory,
+          "getSecretApprovalPolicyByPaths"
+        >
+      },
+      getSecretApprovalPolicyByPaths
+    };
+  };
+
+  const find = (
+    directImportFolderIds: string[],
+    deps: ReturnType<typeof makeService>["deps"],
+    candidates: typeof folders = folders
+  ) =>
+    findDirectImportEnteringEnforcedPath(
+      {
+        folders: candidates,
+        directImportFolderIds: new Set(directImportFolderIds),
+        projectId: "project-1",
+        environment: "dev"
+      },
+      deps,
+      tx
+    );
+
+  test("returns null without a policy lookup when no folder holds a direct import", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([["/prod", enforcing]]);
+
+    await expect(find([], deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).not.toHaveBeenCalled();
+  });
+
+  test("looks up the old and new path of each carrying folder once, in the transaction", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([]);
+
+    await expect(find(["api-id"], deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledTimes(1);
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledWith("project-1", "dev", ["/prod/api", "/staging/api"], tx);
+  });
+
+  test("reports a direct import moving from an unenforced path into an enforced one", async () => {
+    const { deps } = makeService([["/prod/api", enforcing]]);
+
+    await expect(find(["api-id"], deps)).resolves.toEqual({
+      environment: "dev",
+      path: "/prod/api",
+      contentPath: "/staging/api",
+      policyName: "import-guard"
+    });
+  });
+
+  test("reports a direct import leaving a policy that does not enforce imports", async () => {
+    const { deps } = makeService([
+      ["/staging", notEnforcing],
+      ["/prod", enforcing]
+    ]);
+
+    await expect(find(["app-id"], deps)).resolves.toMatchObject({ path: "/prod", policyName: "import-guard" });
+  });
+
+  test("allows a move into a path whose policy does not enforce imports", async () => {
+    const { deps } = makeService([["/prod", notEnforcing]]);
+
+    await expect(find(["app-id"], deps)).resolves.toBeNull();
+  });
+
+  test("allows a direct import that is already under enforcement to move within that policy or out of it", async () => {
+    const within = makeService([
+      ["/staging", enforcing],
+      ["/prod", enforcing]
+    ]);
+    const out = makeService([["/staging", enforcing]]);
+
+    await expect(find(["app-id"], within.deps)).resolves.toBeNull();
+    await expect(find(["app-id"], out.deps)).resolves.toBeNull();
+  });
+
+  test("reports a direct import moving from one enforcing policy into another", async () => {
+    const { deps } = makeService([
+      ["/staging", enforcing],
+      ["/prod", otherEnforcing]
+    ]);
+
+    await expect(find(["app-id"], deps)).resolves.toMatchObject({ path: "/prod", policyName: "other-guard" });
+  });
+
+  test("ignores folders that only hold other content", async () => {
+    const { deps } = makeService([["/prod", enforcing]]);
+
+    await expect(find(["api-id"], deps, [folders[0]])).resolves.toBeNull();
+  });
+});
+
 const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) =>
   createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
 
@@ -653,6 +766,128 @@ describe("assertFolderDeleteAllowed", () => {
 
   test("allows a delete when nothing is protected", () => {
     expect(assertFolderDeleteAllowed(null, canReadNothing)).toBeUndefined();
+  });
+});
+
+describe("assertFolderSubtreeDeleteAllowed", () => {
+  const folderGrant = (
+    role: SecretFolderRole,
+    secretPath: string,
+    appliesToSubfolders = false
+  ): TProjectFolderScopedPrivilege => ({
+    id: `grant-${secretPath}`,
+    folderId: `folder-${secretPath}`,
+    role,
+    environmentSlug: "dev",
+    secretPath,
+    appliesToSubfolders
+  });
+
+  const folderDeleteRole = (conditions: object, inverted = false) => ({
+    role: ProjectMembershipRole.Custom,
+    permissions: packRules([
+      { action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretFolders, conditions, inverted }
+    ])
+  });
+
+  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: TProjectFolderScopedPrivilege[] = []) =>
+    buildAccess(
+      buildProjectPermissionRules(roles, ProjectType.SecretManager, grants) as RawRuleOf<
+        MongoAbility<ProjectPermissionSet>
+      >[]
+    );
+
+  const noAccess = [{ role: ProjectMembershipRole.NoAccess, permissions: [] }];
+  const member = [{ role: ProjectMembershipRole.Member, permissions: [] }];
+  const scratchTree = [{ path: "/apps/scratch" }, { path: "/apps/scratch/x" }, { path: "/apps/scratch/x/y" }];
+
+  test("refuses a caller held to a lower role on the folder under full access applied from above", () => {
+    const caller = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.List, "/apps/scratch", true)
+    ]);
+
+    const error = thrown(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree));
+
+    expect(error).toBeInstanceOf(PermissionBoundaryError);
+    expect(error).toMatchObject({
+      message:
+        "Deleting the folder '/apps/scratch' requires permission to delete folders in it and in every folder below it in environment with slug 'dev'. Your access on '/apps/scratch' does not allow deleting folders. Ask someone who can delete folders there to delete it.",
+      details: {
+        missingPermissions: [
+          {
+            action: ProjectPermissionActions.Delete,
+            subject: ProjectPermissionSub.SecretFolders,
+            conditions: { environment: "dev", secretPath: "/apps/scratch" }
+          }
+        ]
+      }
+    });
+  });
+
+  test.each([SecretFolderRole.List, SecretFolderRole.Read, SecretFolderRole.Edit, SecretFolderRole.Manage])(
+    "refuses a project member held to %s on the folder only",
+    (role) => {
+      const caller = accessOf(member, [folderGrant(role, "/apps/scratch")]);
+
+      expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).toThrow(ForbiddenRequestError);
+    }
+  );
+
+  test("refuses when the lower role sits on a folder below the one being deleted and names that folder", () => {
+    const caller = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.Read, "/apps/scratch/x/y")
+    ]);
+
+    const error = thrown(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree));
+
+    expect(error).toBeInstanceOf(ForbiddenRequestError);
+    expect((error as Error).message).toContain("Your access on '/apps/scratch/x/y' does not allow deleting folders.");
+  });
+
+  test("refuses a custom role that denies folder delete below the folder being deleted", () => {
+    const caller = accessOf([
+      folderDeleteRole({ environment: "dev" }),
+      folderDeleteRole({ environment: "dev", secretPath: { $glob: "/apps/scratch/x/**" } }, true)
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).toThrow(ForbiddenRequestError);
+  });
+
+  test("allows full access applied to subfolders with nothing lower inside, and full access restored below", () => {
+    const unrestricted = accessOf(noAccess, [folderGrant(SecretFolderRole.FullAccess, "/apps", true)]);
+    const restoredBelow = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.FullAccess, "/apps/scratch/x")
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(unrestricted, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(restoredBelow, "dev", scratchTree)).not.toThrow();
+  });
+
+  test("allows a caller whose access does not reach below the folder being deleted", () => {
+    const fullAccessOnParentOnly = accessOf(noAccess, [folderGrant(SecretFolderRole.FullAccess, "/apps")]);
+    const customRoleOnParentOnly = accessOf([folderDeleteRole({ environment: "dev", secretPath: "/apps" })]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(fullAccessOnParentOnly, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(customRoleOnParentOnly, "dev", scratchTree)).not.toThrow();
+  });
+
+  test("allows a project admin and a project member with no folder access of their own", () => {
+    const admin = accessOf([{ role: ProjectMembershipRole.Admin, permissions: [] }]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(admin, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(accessOf(member), "dev", scratchTree)).not.toThrow();
+  });
+
+  test("ignores a lower role held in another environment or on a sibling folder", () => {
+    const caller = accessOf(member, [
+      { ...folderGrant(SecretFolderRole.List, "/apps/scratch", true), environmentSlug: "prod" },
+      folderGrant(SecretFolderRole.List, "/apps/web", true)
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).not.toThrow();
   });
 });
 
@@ -741,6 +976,46 @@ describe("assertFolderRenameAllowed", () => {
   test("allows a rename when nothing is protected on either side", () => {
     expect(assertFolderRenameAllowed(null, "source", canReadNothing)).toBeUndefined();
     expect(assertFolderRenameAllowed(null, "destination", canReadNothing)).toBeUndefined();
+  });
+});
+
+describe("assertNoDirectImportEnteringEnforcedPath", () => {
+  const destination = {
+    environment: "dev",
+    path: "/prod/api",
+    contentPath: "/staging/api",
+    policyName: "import-guard"
+  };
+
+  test("refuses a rename that would move a direct import under import enforcement", () => {
+    const error = thrown(() => assertNoDirectImportEnteringEnforcedPath(destination, canReadAll));
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "RenameFolderImportIntoEnforcedPath",
+      message:
+        'You cannot rename the selected folder because its secret imports would move to folder path "/prod/api", where the change policy "import-guard" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Choose a different name and try again.'
+    });
+  });
+
+  test("names the imports only where the caller can read them now", () => {
+    const access = buildAccess([
+      {
+        action: ProjectPermissionActions.Read,
+        subject: ProjectPermissionSub.SecretImports,
+        conditions: { secretPath: { $glob: "/prod/**" } }
+      }
+    ]);
+
+    expect(thrown(() => assertNoDirectImportEnteringEnforcedPath(destination, access))).toMatchObject({
+      name: "RenameFolderIntoProtectedPath",
+      message:
+        'You cannot rename the selected folder because its resources would move to folder path "/prod/api", which is protected by the change policy "import-guard". Choose a different name and try again.'
+    });
+  });
+
+  test("allows a rename when no direct import enters an enforced path", () => {
+    expect(assertNoDirectImportEnteringEnforcedPath(null, canReadNothing)).toBeUndefined();
   });
 });
 

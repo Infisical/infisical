@@ -13,6 +13,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import { extractScepAttributes } from "./pki-scep-attributes";
+import { CmsSignedAttributesEncoding, CmsSignedAttributesFailure, verifyCmsSignedAttributes } from "./pki-scep-cms-fns";
 import { rsaOaepDecrypt, rsaPkcs1Decrypt, rsaVerify, symmetricDecrypt } from "./pki-scep-crypto";
 import {
   CIPHER_OID_MAP,
@@ -62,31 +63,35 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
 
   const scepAttrs = extractScepAttributes(signerInfo.signedAttrs.attributes);
 
-  // RFC 5652 §11.2: messageDigest MUST be present when signedAttrs is present
-  const messageDigestAttr = signerInfo.signedAttrs.attributes.find((a) => a.type === "1.2.840.113549.1.9.4");
-  if (!messageDigestAttr || messageDigestAttr.values.length === 0) {
-    throw new BadRequestError({ message: "Missing required messageDigest attribute in signed attributes" });
-  }
-
   const digestAlgoOid = signerInfo.digestAlgorithm.algorithmId;
   const hashAlgo = DIGEST_OID_TO_HASH[digestAlgoOid];
   if (!hashAlgo) {
     throw new BadRequestError({ message: `Unsupported digest algorithm OID: ${digestAlgoOid}` });
   }
 
+  let eContentBytes: Buffer | null = null;
   if (signedData.encapContentInfo?.eContent) {
-    const claimedDigest = Buffer.from((messageDigestAttr.values[0] as asn1js.OctetString).valueBlock.valueHexView);
     const eContentBer = signedData.encapContentInfo.eContent.toBER(false);
     const eContentParsed = asn1js.fromBER(Buffer.from(eContentBer));
-    const eContentBytes =
+    eContentBytes =
       eContentParsed.result instanceof asn1js.OctetString
         ? Buffer.from(eContentParsed.result.getValue())
         : Buffer.from(eContentBer);
-    const computedDigest = crypto.nativeCrypto.createHash(hashAlgo).update(eContentBytes).digest();
+  }
 
-    if (!claimedDigest.equals(computedDigest)) {
-      throw new BadRequestError({ message: "SCEP message integrity check failed: messageDigest mismatch" });
-    }
+  const signedAttributesCheck = verifyCmsSignedAttributes({
+    signedAttributes: signerInfo.signedAttrs,
+    hash: hashAlgo,
+    content: eContentBytes,
+    encoding: CmsSignedAttributesEncoding.Reencoded
+  });
+  if ("failure" in signedAttributesCheck) {
+    throw new BadRequestError({
+      message:
+        signedAttributesCheck.failure === CmsSignedAttributesFailure.MissingMessageDigest
+          ? "Missing required messageDigest attribute in signed attributes"
+          : "SCEP message integrity check failed: messageDigest mismatch"
+    });
   }
 
   // RFC 5652 §5.3: signature field is mandatory in SignerInfo
@@ -94,9 +99,7 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
     throw new BadRequestError({ message: "Missing signature in SCEP SignerInfo" });
   }
 
-  const signedAttrsDer = Buffer.from(signerInfo.signedAttrs.toSchema().toBER(false));
-  // CMS spec (RFC 5652 §5.4): signed attributes are encoded as SET (0x31) for verification
-  signedAttrsDer[0] = 0x31;
+  const signedAttrsDer = signedAttributesCheck.signedBytes;
   const signatureBytes = Buffer.from(signerInfo.signature.valueBlock.valueHexView);
 
   if (!rsaVerify(signedAttrsDer, signatureBytes, signerCertDer, digestAlgoOid)) {

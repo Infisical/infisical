@@ -259,13 +259,14 @@ func SelectOrganization(tt *testing.T, tn *harness.Tenant, login *http.Response,
 	return selected
 }
 
-// EnforceMFA turns on email MFA. With api.Signal, an SSO login the IdP flagged as MFA
+// EnforceMFA turns on email MFA. With api.UpdateOrganizationJSONBodySsoMfaTrustSignal, an SSO login the IdP flagged as MFA
 // skips the challenge.
 func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationJSONBodySsoMfaTrust) {
 	tt.Helper()
+	methods := []api.UpdateOrganizationJSONBodyAllowedMfaMethods{api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail}
 	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
 		EnforceMfa:        new(true),
-		SelectedMfaMethod: new(api.UpdateOrganizationJSONBodySelectedMfaMethodEmail),
+		AllowedMfaMethods: &methods,
 		SsoMfaTrust:       &trust,
 	})
 	require.NoError(tt, err)

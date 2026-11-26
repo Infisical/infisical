@@ -105,7 +105,7 @@ import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { withSignerCertificateLock } from "./signer-certificate-lock";
+import { withSignerCertificateLock, withSignerCertificateLocks } from "./signer-certificate-lock";
 import { TSignerDALFactory, TSignerWithCertificate } from "./signer-dal";
 import {
   CertKeySource,
@@ -192,6 +192,10 @@ const assertCaTypeSupportsCodeSigning = (caType: CaType): void => {
     });
   }
 };
+
+class SignerAttachedDuringRevocationError extends Error {}
+
+type TSignerRevokedByCa = { id: string; name: string; previousStatus: string; status: string };
 
 const revokedCertificateMessage = (signerName: string) =>
   `Signer '${signerName}' can't be used because its certificate was revoked. Reissue it with a new key from the signer's options to keep signing.`;
@@ -952,6 +956,9 @@ export const signerServiceFactory = ({
             throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
           }
           assertCertificateNotDeleted(lockedCertificate, "It can't be used by a signer.");
+          if (lockedCertificate.status === CertStatus.REVOKED) {
+            throw new BadRequestError({ message: "Certificate has been revoked" });
+          }
         }
 
         const importedCertificateId = importedCertificate
@@ -2065,34 +2072,39 @@ export const signerServiceFactory = ({
     }
   };
 
+  type TRevocationOutcome =
+    | { status: SignerRevocationStatus.Completed }
+    | { status: SignerRevocationStatus.Rejected | SignerRevocationStatus.Failed; failureReason: string };
+
+  const $settleRevocationInTx = async (
+    revocation: Pick<TPkiSignerCertificateRevocations, "id" | "signerId">,
+    outcome: TRevocationOutcome,
+    tx: Knex
+  ) => {
+    const lockedSigner = await signerDAL.findByIdForUpdate(revocation.signerId, tx);
+    const settledRevocation = await signerRevocationDAL.updateIfUnsettled(
+      revocation.id,
+      {
+        status: outcome.status,
+        failureReason: outcome.status === SignerRevocationStatus.Completed ? null : outcome.failureReason.slice(0, 1000)
+      },
+      tx
+    );
+    if (!lockedSigner || !settledRevocation) return null;
+    if (outcome.status === SignerRevocationStatus.Failed) return lockedSigner;
+    let settledStatus = SignerStatus.Revoked;
+    if (outcome.status === SignerRevocationStatus.Rejected) {
+      settledStatus =
+        settledRevocation.previousSignerStatus === SignerStatus.Disabled ? SignerStatus.Disabled : SignerStatus.Active;
+    }
+    return signerDAL.updateById(lockedSigner.id, { status: settledStatus, certificateFailureReason: null }, tx);
+  };
+
   const $settleRevocation = async (
     revocation: Pick<TPkiSignerCertificateRevocations, "id" | "signerId">,
-    outcome:
-      | { status: SignerRevocationStatus.Completed }
-      | { status: SignerRevocationStatus.Rejected | SignerRevocationStatus.Failed; failureReason: string }
+    outcome: TRevocationOutcome
   ) => {
-    const settled = await signerDAL.transaction(async (tx) => {
-      const lockedSigner = await signerDAL.findByIdForUpdate(revocation.signerId, tx);
-      const settledRevocation = await signerRevocationDAL.updateIfUnsettled(
-        revocation.id,
-        {
-          status: outcome.status,
-          failureReason:
-            outcome.status === SignerRevocationStatus.Completed ? null : outcome.failureReason.slice(0, 1000)
-        },
-        tx
-      );
-      if (!lockedSigner || !settledRevocation) return null;
-      if (outcome.status === SignerRevocationStatus.Failed) return lockedSigner;
-      let settledStatus = SignerStatus.Revoked;
-      if (outcome.status === SignerRevocationStatus.Rejected) {
-        settledStatus =
-          settledRevocation.previousSignerStatus === SignerStatus.Disabled
-            ? SignerStatus.Disabled
-            : SignerStatus.Active;
-      }
-      return signerDAL.updateById(lockedSigner.id, { status: settledStatus, certificateFailureReason: null }, tx);
-    });
+    const settled = await signerDAL.transaction((tx) => $settleRevocationInTx(revocation, outcome, tx));
     if (settled && outcome.status === SignerRevocationStatus.Rejected) {
       await $notifyRevokeRefused(settled, outcome.failureReason);
     }
@@ -2230,6 +2242,67 @@ export const signerServiceFactory = ({
         }
       }
     }
+  };
+
+  const $revokeSignerOfRevokedCertificate = async (
+    signer: TPkiSigners,
+    certificateId: string,
+    tx: Knex
+  ): Promise<TSignerRevokedByCa | null> => {
+    const revocation =
+      (await signerRevocationDAL.findUnsettledForSigner(signer.id, tx)) ??
+      (await signerRevocationDAL.create(
+        {
+          signerId: signer.id,
+          certificateId,
+          status: SignerRevocationStatus.Submitting,
+          revocationReason: CrlReason.UNSPECIFIED,
+          previousSignerStatus: signer.status
+        },
+        tx
+      ));
+    await signerIssuanceService.cancelOpenRequests(signer.id, SignerIssuanceJobCancelReason.Revoked, {}, tx);
+    const settledSigner = await $settleRevocationInTx(revocation, { status: SignerRevocationStatus.Completed }, tx);
+    return settledSigner
+      ? { id: signer.id, name: signer.name, previousStatus: signer.status, status: settledSigner.status }
+      : null;
+  };
+
+  const revokeWithCertificate = async (certificateId: string, revokeCertificate: (tx: Knex) => Promise<boolean>) => {
+    const signerIds = (await signerDAL.transaction((tx) => signerDAL.find({ certificateId }, { tx })))
+      .map((signer) => signer.id)
+      .sort();
+
+    return withSignerCertificateLocks(
+      keyStore,
+      signerIds,
+      () => null,
+      () =>
+        signerDAL.transaction(async (tx) => {
+          /* eslint-disable no-await-in-loop */
+          const lockedSigners: TPkiSigners[] = [];
+          for (const signerId of signerIds) {
+            const lockedSigner = await signerDAL.findByIdForUpdate(signerId, tx);
+            if (lockedSigner?.certificateId === certificateId && lockedSigner.status !== SignerStatus.Revoked) {
+              lockedSigners.push(lockedSigner);
+            }
+          }
+          if (!(await revokeCertificate(tx))) return { isCertificateRevoked: false, revokedSigners: [] };
+          const currentSigners = await signerDAL.find({ certificateId }, { tx });
+          if (currentSigners.some(({ id }) => !signerIds.includes(id))) throw new SignerAttachedDuringRevocationError();
+
+          const revokedSigners: TSignerRevokedByCa[] = [];
+          for (const signer of lockedSigners) {
+            const revokedSigner = await $revokeSignerOfRevokedCertificate(signer, certificateId, tx);
+            if (revokedSigner) revokedSigners.push(revokedSigner);
+          }
+          /* eslint-enable no-await-in-loop */
+          return { isCertificateRevoked: true, revokedSigners };
+        })
+    ).catch((err: unknown) => {
+      if (err instanceof SignerAttachedDuringRevocationError) return null;
+      throw err;
+    });
   };
 
   const $resumeDigiCertRevocation = async (
@@ -3197,6 +3270,7 @@ export const signerServiceFactory = ({
     listOperations,
     getOperationById,
     autoRenewCertificate,
-    syncPendingRevocations
+    syncPendingRevocations,
+    revokeWithCertificate
   };
 };

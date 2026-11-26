@@ -1,5 +1,6 @@
 import { UnrecoverableError } from "bullmq";
 
+import { EventResultStatus } from "@app/domains/platform/events/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -27,7 +28,6 @@ import {
   getDelegatedApprovalDispatchDetailsBuilder,
   getDelegatedApprovalProvider
 } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-fns";
-import { EventResultStatus } from "@app/services/event-outbox/event-outbox-types";
 
 import {
   DELEGATED_APPROVAL_DECISION_RETRY_HINT,

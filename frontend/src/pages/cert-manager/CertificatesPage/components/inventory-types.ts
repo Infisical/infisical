@@ -1,4 +1,5 @@
 import type { TInventoryViewFilters } from "@app/hooks/api/certificateInventoryViews/types";
+import { enrollmentTypeToNameMap } from "@app/hooks/api/certificates/constants";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 
 export type FilterRule = {
@@ -53,12 +54,9 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
     label: "Enrollment Method",
     operators: [{ value: "in", label: "in" }],
     valueType: "multi-select",
-    options: [
-      { value: "acme", label: "ACME" },
-      { value: "api", label: "API" },
-      { value: "est", label: "EST" },
-      { value: "scep", label: "SCEP" }
-    ]
+    options: Object.entries(enrollmentTypeToNameMap)
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
   },
   {
     key: "keyAlgorithm",

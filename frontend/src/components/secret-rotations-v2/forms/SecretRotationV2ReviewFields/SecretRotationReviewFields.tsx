@@ -5,16 +5,9 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
-import {
-  ALERT_EVENT_TYPE_LABELS,
-  ALERT_PROJECT_RECIPIENT_LABELS,
-  AlertChannelType,
-  AlertEventType,
-  AlertPrincipalType,
-  TAlertChannelRecipient,
-  TChannelForm
-} from "@app/hooks/api/alerts";
+import { ALERT_EVENT_TYPE_LABELS, AlertEventType, TChannelForm } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { describeChannel } from "@app/views/Alerts";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
@@ -76,54 +69,6 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields,
   [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
-};
-
-const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
-const describeRecipientType = (principalType: AlertPrincipalType, count: number) => {
-  switch (principalType) {
-    case AlertPrincipalType.ProjectMembers:
-    case AlertPrincipalType.ProjectAdmins:
-      return ALERT_PROJECT_RECIPIENT_LABELS[principalType];
-    case AlertPrincipalType.User:
-      return pluralize(count, "user");
-    case AlertPrincipalType.Group:
-      return pluralize(count, "group");
-    case AlertPrincipalType.Email:
-      return pluralize(count, "email");
-    default:
-      return "";
-  }
-};
-
-const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
-  Object.values(AlertPrincipalType)
-    .map((principalType) => ({
-      principalType,
-      count: recipients.filter((recipient) => recipient.principalType === principalType).length
-    }))
-    .filter(({ count }) => count > 0)
-    .map(({ principalType, count }) => describeRecipientType(principalType, count))
-    .join(", ");
-
-const describeSlackChannels = (channels: { name: string }[] = []) =>
-  channels.map((slackChannel) => `#${slackChannel.name}`).join(", ");
-
-const describeChannel = (channel: TChannelForm) => {
-  switch (channel.channelType) {
-    case AlertChannelType.Email:
-      return describeRecipients(channel.recipients);
-    case AlertChannelType.SlackApp:
-      return describeSlackChannels(channel.slackChannels);
-    case AlertChannelType.Slack:
-      return "Slack incoming webhook";
-    case AlertChannelType.Webhook:
-      return channel.url;
-    case AlertChannelType.PagerDuty:
-      return "PagerDuty Events API v2";
-    default:
-      return "";
-  }
 };
 
 const FailureAlertReview = ({

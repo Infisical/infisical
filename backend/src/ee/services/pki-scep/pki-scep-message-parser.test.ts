@@ -150,8 +150,21 @@ const buildEnvelopedData = (plainText: Buffer, recipient: TIdentity, keyEncrypti
   );
 };
 
-const buildPkcsReq = (plainText: Buffer, client: TIdentity, ra: TIdentity, keyEncryption: TKeyEncryption) => {
+type TPkcsReqOptions = {
+  messageDigest?: Buffer | null;
+  sendsSignedAttributesWithIndefiniteLength?: boolean;
+};
+
+const buildPkcsReq = (
+  plainText: Buffer,
+  client: TIdentity,
+  ra: TIdentity,
+  keyEncryption: TKeyEncryption,
+  { messageDigest, sendsSignedAttributesWithIndefiniteLength = false }: TPkcsReqOptions = {}
+) => {
   const envelopedDataDer = buildEnvelopedData(plainText, ra, keyEncryption);
+  const claimedDigest =
+    messageDigest === undefined ? crypto.createHash("sha256").update(envelopedDataDer).digest() : messageDigest;
 
   const signedAttrs = new SignedAndUnsignedAttributes({
     type: 0,
@@ -160,10 +173,14 @@ const buildPkcsReq = (plainText: Buffer, client: TIdentity, ra: TIdentity, keyEn
         type: "1.2.840.113549.1.9.3",
         values: [new asn1js.ObjectIdentifier({ value: "1.2.840.113549.1.7.1" })]
       }),
-      new Attribute({
-        type: "1.2.840.113549.1.9.4",
-        values: [new asn1js.OctetString({ valueHex: crypto.createHash("sha256").update(envelopedDataDer).digest() })]
-      }),
+      ...(claimedDigest
+        ? [
+            new Attribute({
+              type: "1.2.840.113549.1.9.4",
+              values: [new asn1js.OctetString({ valueHex: claimedDigest })]
+            })
+          ]
+        : []),
       new Attribute({
         type: SCEP_OIDS.messageType,
         values: [new asn1js.PrintableString({ value: ScepMessageType.PKCSReq })]
@@ -205,9 +222,18 @@ const buildPkcsReq = (plainText: Buffer, client: TIdentity, ra: TIdentity, keyEn
     ]
   });
 
+  const signedDataSchema = signedData.toSchema() as asn1js.Sequence;
+  if (sendsSignedAttributesWithIndefiniteLength) {
+    const [signerInfoSchema] = (signedDataSchema.valueBlock.value.at(-1) as asn1js.Set).valueBlock.value;
+    const signedAttributesSchema = (signerInfoSchema as asn1js.Sequence).valueBlock.value.find(
+      (block) => block.idBlock.tagClass === 3 && block.idBlock.tagNumber === 0
+    ) as asn1js.Constructed;
+    signedAttributesSchema.lenBlock.isIndefiniteForm = true;
+  }
+
   return Buffer.from(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    new ContentInfo({ contentType: "1.2.840.113549.1.7.2", content: signedData.toSchema() }).toSchema().toBER(false)
+    new ContentInfo({ contentType: "1.2.840.113549.1.7.2", content: signedDataSchema }).toSchema().toBER(false)
   );
 };
 
@@ -301,5 +327,40 @@ describe("parseScepMessage key transport", () => {
     }
 
     expect(decryptedCsr?.equals(csr) ?? false).toBe(false);
+  });
+});
+
+describe("parseScepMessage signed attributes", () => {
+  let ra: TIdentity;
+  let client: TIdentity;
+  const csr = Buffer.from("certificate request bytes");
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(globalThis.crypto);
+    ra = await createIdentity("Infisical SCEP RA");
+    client = await createIdentity("SCEP Protocol Certificate");
+  });
+
+  test("checks the signature over the signed attributes as re-encoded in DER, not as the sender encoded them", () => {
+    const message = buildPkcsReq(csr, client, ra, PKCS1_V15, { sendsSignedAttributesWithIndefiniteLength: true });
+
+    expect(message.includes(Buffer.from([0xa0, 0x80]))).toBe(true);
+    expect(parseScepMessage(message, exportPkcs8(ra)).csr?.equals(csr)).toBe(true);
+  });
+
+  test("rejects a message whose messageDigest does not match its content", () => {
+    const message = buildPkcsReq(csr, client, ra, PKCS1_V15, { messageDigest: Buffer.alloc(32, 0xab) });
+
+    expect(() => parseScepMessage(message, exportPkcs8(ra))).toThrow(
+      "SCEP message integrity check failed: messageDigest mismatch"
+    );
+  });
+
+  test("rejects a message without a messageDigest attribute", () => {
+    const message = buildPkcsReq(csr, client, ra, PKCS1_V15, { messageDigest: null });
+
+    expect(() => parseScepMessage(message, exportPkcs8(ra))).toThrow(
+      "Missing required messageDigest attribute in signed attributes"
+    );
   });
 });

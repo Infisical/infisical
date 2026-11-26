@@ -6,10 +6,10 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which renews a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which renews a certificate on a schedule with the same names and settings. It issues a new key pair, unless Infisical holds only a CSR for the certificate, in which case it reuses that key pair. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
-  A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
+  A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here. Windows renews certificates obtained through [Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) itself.
 </Note>
 
 ## How a renewal is built
@@ -59,7 +59,7 @@ AWS Certificate Manager can't issue from a CSR, so its certificates renew only w
 
 On a private CA, Reuse works for any certificate whose private key Infisical holds. It also works without the key when Infisical holds a CSR generated from it, either the one the certificate was issued from or one you supplied at [import](/documentation/platform/pki/applications/certificates#keeping-your-private-key-on-your-own-servers). An external CA can reuse a key pair only this way.
 
-If Infisical holds a CSR but not the private key, a Reuse renewal works like **Use a CSR**. The CSR sets the subject and names, as [Renewing from a signing request](#renewing-from-a-signing-request) describes.
+If Infisical holds a CSR but not the private key, a Reuse renewal works like **Use a CSR**, as [Renewing from a signing request](#renewing-from-a-signing-request) describes. The CSR sets the subject, and the renewed certificate keeps the SANs the current certificate has, except on Microsoft AD CS and Venafi TPP, which sign the CSR as sent.
 
 ## What you can change
 
@@ -153,7 +153,7 @@ Automatic renewal always places a new order. To reissue on the existing order, r
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
 
-    If Infisical holds a CSR for the certificate but not its private key, a `reuse` renewal accepts only `ttl`, `basicConstraints`, and `customExtensions` in `attributes`, because the CSR sets everything else.
+    If Infisical holds a CSR for the certificate but not its private key, a `reuse` renewal accepts only `ttl`, `basicConstraints`, and `customExtensions` in `attributes`, because the CSR and the current certificate set everything else.
 
     To reissue a DigiCert certificate on its current order, send `"externalConfiguration": { "reissue": true }` and leave out `ttl`.
 
