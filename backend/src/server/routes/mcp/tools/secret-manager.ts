@@ -36,8 +36,11 @@ const PathSchema = z
 const SecretValueSchema = z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()));
 const SecretCommentSchema = z.string().trim().max(10_000);
 
-const EnvironmentSchema = z.object({ projectId: ProjectIdSchema, environmentSlug: EnvironmentSlugSchema });
-const SecretLocationSchema = EnvironmentSchema.extend({ secretPath: PathSchema });
+const SecretLocationSchema = z.object({
+  projectId: ProjectIdSchema,
+  environmentSlug: EnvironmentSlugSchema,
+  secretPath: PathSchema
+});
 
 type TRawSecret = {
   id: string;
@@ -241,19 +244,18 @@ export const registerSecretManagerTools = ({
     "list-folders",
     {
       description: "List the folders in a folder.",
-      inputSchema: EnvironmentSchema.extend({
-        path: PathSchema,
+      inputSchema: SecretLocationSchema.extend({
         recursive: z.boolean().default(false).describe("Include folders in all subfolders.")
       }),
       annotations: { readOnlyHint: true }
     },
-    async ({ projectId, environmentSlug, path, recursive }) => {
+    async ({ projectId, environmentSlug, secretPath, recursive }) => {
       assertCanSeeProjectContents();
       const folders = await server.services.folder.getFolders({
         ...actor,
         projectId,
         environment: environmentSlug,
-        path,
+        path: secretPath,
         recursive
       });
 
@@ -265,8 +267,8 @@ export const registerSecretManagerTools = ({
     "create-folder",
     {
       description: "Create a folder.",
-      inputSchema: EnvironmentSchema.extend({
-        path: PathSchema.describe("The folder to create it in, such as / or /app."),
+      inputSchema: SecretLocationSchema.extend({
+        secretPath: PathSchema.describe("The folder to create it in, such as / or /app."),
         name: z
           .string()
           .trim()
@@ -277,12 +279,12 @@ export const registerSecretManagerTools = ({
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
-    async ({ projectId, environmentSlug, path, name, description }) => {
+    async ({ projectId, environmentSlug, secretPath, name, description }) => {
       const folder = await server.services.folder.createFolder({
         ...actor,
         projectId,
         environment: environmentSlug,
-        path,
+        path: secretPath,
         name,
         description
       });
@@ -296,7 +298,7 @@ export const registerSecretManagerTools = ({
             environment: environmentSlug,
             folderId: folder.id,
             folderName: folder.name,
-            folderPath: path,
+            folderPath: secretPath,
             ...(description ? { description } : {})
           }
         }
@@ -306,7 +308,7 @@ export const registerSecretManagerTools = ({
         event: PostHogEventTypes.SecretFolderCreated,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
-        properties: { projectId, environment: environmentSlug, folderPath: path, folderId: folder.id }
+        properties: { projectId, environment: environmentSlug, folderPath: secretPath, folderId: folder.id }
       });
 
       return { id: folder.id, name: folder.name };
