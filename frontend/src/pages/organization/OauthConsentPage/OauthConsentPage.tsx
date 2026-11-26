@@ -11,7 +11,6 @@ import {
   XIcon
 } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
