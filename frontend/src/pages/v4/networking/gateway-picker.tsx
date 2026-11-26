@@ -73,7 +73,8 @@ export const GatewayPicker = ({
   const showPools = Boolean(subscription?.gatewayPool) || requireGatewayPools;
   const { data: connected, isPending: gatewaysPending } = networking.useConnectedGateways();
   const { data: allGateways } = networking.useGateways();
-  const { data: pools, isPending: poolsPending } = networking.usePools({ enabled: showPools });
+  const loadPools = showPools || Boolean(value.gatewayPoolId);
+  const { data: pools, isPending: poolsPending } = networking.usePools({ enabled: loadPools });
 
   const listed = (connected ?? []).filter((gateway) => gateway.id !== excludeGatewayId);
   const unlistedSelected =
@@ -92,13 +93,13 @@ export const GatewayPicker = ({
       label={label}
       value={selected}
       invalid={invalid}
-      disabled={disabled || gatewaysPending || (showPools && poolsPending)}
+      disabled={disabled || gatewaysPending || (loadPools && poolsPending)}
       placeholder="Select gateway"
       descriptionLayout="stacked"
       options={[
         ...(required ? [] : [{ value: "internet", label: noGatewayLabel }]),
         ...gatewayRouteOptions({
-          pools: showPools ? (pools ?? []) : [],
+          pools: (pools ?? []).filter((pool) => showPools || pool.id === value.gatewayPoolId),
           gateways,
           isBlocked: (gatewayId) => isPoolRequired && gatewayId !== value.gatewayId
         })
