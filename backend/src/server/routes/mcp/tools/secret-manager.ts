@@ -36,6 +36,12 @@ const PathSchema = z
   );
 const SecretValueSchema = z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()));
 const SecretCommentSchema = z.string().trim().max(10_000);
+const SecretTypeSchema = z
+  .nativeEnum(SecretType)
+  .default(SecretType.Shared)
+  .describe(
+    "shared is the secret everyone with access uses. personal is your own value for the shared secret with the same name, which only you can see."
+  );
 
 const SecretLocationSchema = z.object({
   projectId: ProjectIdSchema,
@@ -46,6 +52,7 @@ const SecretLocationSchema = z.object({
 type TRawSecret = {
   id: string;
   secretKey: string;
+  type: string;
   secretValue?: string;
   secretValueHidden?: boolean;
   secretComment?: string;
@@ -56,6 +63,7 @@ type TRawSecret = {
 const $toSecretOutput = ({
   id,
   secretKey,
+  type,
   secretValue,
   secretValueHidden,
   secretComment,
@@ -64,6 +72,7 @@ const $toSecretOutput = ({
 }: TRawSecret) => ({
   id,
   secretKey,
+  type,
   ...(secretValueHidden ? { secretValueHidden } : { secretValue }),
   secretComment,
   secretPath,
@@ -93,6 +102,16 @@ export const registerSecretManagerTools = ({
       throw new ForbiddenRequestError({
         message:
           "This connection wasn't granted access to see projects and folders. Reconnect and choose Describe Only, Read Only or Full Access."
+      });
+    }
+  };
+
+  // The service lets users manage their own personal secrets with describe access alone, which Describe Only and Read
+  // Only connections are granted, so only the scope stops those connections from changing them.
+  const $assertCanWritePersonalSecret = (type: SecretType) => {
+    if (type === SecretType.Personal && !scopes.includes(OauthScope.SecretsWrite)) {
+      throw new ForbiddenRequestError({
+        message: "This connection wasn't granted access to change personal secrets. Reconnect and choose Full Access."
       });
     }
   };
@@ -326,13 +345,25 @@ export const registerSecretManagerTools = ({
       inputSchema: SecretLocationSchema.extend({
         recursive: z.boolean().default(false).describe(RAW_SECRETS.LIST.recursive),
         expandSecretReferences: z.boolean().default(true).describe(RAW_SECRETS.LIST.expand),
-        includeImports: z.boolean().default(true).describe(RAW_SECRETS.LIST.includeImports)
+        includeImports: z.boolean().default(true).describe(RAW_SECRETS.LIST.includeImports),
+        includePersonalOverrides: z.boolean().default(false).describe(RAW_SECRETS.LIST.includePersonalOverrides)
       }),
       annotations: { readOnlyHint: true }
     },
-    async ({ projectId, environmentSlug, secretPath, recursive, expandSecretReferences, includeImports }) => {
+    async ({
+      projectId,
+      environmentSlug,
+      secretPath,
+      recursive,
+      expandSecretReferences,
+      includeImports,
+      includePersonalOverrides
+    }) => {
+      // References expanded with the reader's own overrides are credited to the secrets they resolved to.
+      const referencedSecretIds: string[] = [];
       const { secrets, imports, etag, notModified } = await server.services.secret.getSecretsRaw({
         ...actor,
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         projectId,
         environment: environmentSlug,
         path: secretPath,
@@ -342,7 +373,10 @@ export const registerSecretManagerTools = ({
         viewSecretValue: canReadSecretValues,
         // A secret whose value the user can't read comes back with its value hidden instead of failing the whole list.
         throwOnMissingReadValuePermission: false,
-        personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
+        personalOverridesBehavior: includePersonalOverrides
+          ? PersonalOverridesBehavior.Priority
+          : PersonalOverridesBehavior.NeverInclude,
+        expandPersonalOverrides: includePersonalOverrides,
         secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative
       });
 
@@ -357,11 +391,12 @@ export const registerSecretManagerTools = ({
           isFiltered: false,
           includeImports,
           expandSecretReferences,
-          includesPersonalOverrides: false,
+          includesPersonalOverrides: includePersonalOverrides,
           notModified,
           etag,
           secrets,
-          imports
+          imports,
+          referencedSecretIds: includePersonalOverrides && expandSecretReferences ? referencedSecretIds : undefined
         });
       }
 
@@ -400,18 +435,21 @@ export const registerSecretManagerTools = ({
       inputSchema: SecretLocationSchema.extend({
         secretName: SecretLookupNameSchema.describe(RAW_SECRETS.GET.secretName),
         expandSecretReferences: z.boolean().default(true).describe(RAW_SECRETS.GET.expand),
-        includeImports: z.boolean().default(true).describe(RAW_SECRETS.GET.includeImports)
+        includeImports: z.boolean().default(true).describe(RAW_SECRETS.GET.includeImports),
+        type: SecretTypeSchema
       }),
       annotations: { readOnlyHint: true }
     },
-    async ({ projectId, environmentSlug, secretPath, secretName, expandSecretReferences, includeImports }) => {
+    async ({ projectId, environmentSlug, secretPath, secretName, expandSecretReferences, includeImports, type }) => {
+      const referencedSecretIds: string[] = [];
       const secret = await server.services.secret.getSecretByNameRaw({
         ...actor,
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         projectId,
         environment: environmentSlug,
         path: secretPath,
         secretName,
-        type: SecretType.Shared,
+        type,
         expandSecretReferences,
         expandPersonalOverrides: true,
         includeImports,
@@ -419,12 +457,15 @@ export const registerSecretManagerTools = ({
       });
 
       if (canReadSecretValues) {
+        // A personal secret expands through the reader's own overrides, so the secrets its references resolved to are
+        // credited in place of matching references by key.
+        const usesOverrides = type === SecretType.Personal && expandSecretReferences;
         void server.services.secretReadActivity.recordRead({
           actor: req.permission.type,
           actorId: req.permission.id,
           projectId,
-          secretIds: [secret.id],
-          referencesExpanded: expandSecretReferences
+          secretIds: usesOverrides ? [secret.id, ...referencedSecretIds] : [secret.id],
+          referencesExpanded: usesOverrides ? false : expandSecretReferences
         });
       }
 
@@ -461,12 +502,14 @@ export const registerSecretManagerTools = ({
       inputSchema: SecretLocationSchema.extend({
         secretName: NewSecretNameSchema.describe(RAW_SECRETS.CREATE.secretName),
         secretValue: SecretValueSchema.describe(RAW_SECRETS.CREATE.secretValue),
-        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.CREATE.secretComment)
+        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.CREATE.secretComment),
+        type: SecretTypeSchema
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
     async (args) => {
-      const { projectId, environmentSlug, secretPath, secretName, secretValue, secretComment } = args;
+      const { projectId, environmentSlug, secretPath, secretName, secretValue, secretComment, type } = args;
+      $assertCanWritePersonalSecret(type);
       const secretOperation = await server.services.secret.createSecretRaw({
         ...actor,
         projectId,
@@ -475,7 +518,7 @@ export const registerSecretManagerTools = ({
         secretName,
         secretValue,
         secretComment,
-        type: SecretType.Shared
+        type
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
@@ -495,12 +538,15 @@ export const registerSecretManagerTools = ({
         secretName: SecretLookupNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
         newSecretName: NewSecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
         secretValue: SecretValueSchema.optional().describe(RAW_SECRETS.UPDATE.secretValue),
-        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.UPDATE.secretComment)
+        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.UPDATE.secretComment),
+        type: SecretTypeSchema
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
     async (args) => {
-      const { projectId, environmentSlug, secretPath, secretName, newSecretName, secretValue, secretComment } = args;
+      const { projectId, environmentSlug, secretPath, secretName, newSecretName, secretValue, secretComment, type } =
+        args;
+      $assertCanWritePersonalSecret(type);
       const secretOperation = await server.services.secret.updateSecretRaw({
         ...actor,
         projectId,
@@ -510,7 +556,7 @@ export const registerSecretManagerTools = ({
         newSecretName,
         secretValue,
         secretComment,
-        type: SecretType.Shared
+        type
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
@@ -527,19 +573,21 @@ export const registerSecretManagerTools = ({
     {
       description: "Delete a secret from one environment and folder.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretLookupNameSchema.describe(RAW_SECRETS.DELETE.secretName)
+        secretName: SecretLookupNameSchema.describe(RAW_SECRETS.DELETE.secretName),
+        type: SecretTypeSchema
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
     async (args) => {
-      const { projectId, environmentSlug, secretPath, secretName } = args;
+      const { projectId, environmentSlug, secretPath, secretName, type } = args;
+      $assertCanWritePersonalSecret(type);
       const secretOperation = await server.services.secret.deleteSecretRaw({
         ...actor,
         projectId,
         environment: environmentSlug,
         secretPath,
         secretName,
-        type: SecretType.Shared
+        type
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
