@@ -628,7 +628,7 @@ The command needs `--project-id`, even if you've set the project in an environme
     { name: "--organization", value: "<string>", type: "string", required: true, description: "The name of the organization to create. Can also be set with `INFISICAL_ADMIN_ORGANIZATION`." },
     { name: "--output", value: "<string>", type: "string", description: "Where to send the result. `k8-secret` writes it to a Kubernetes secret. Any other value, or none, prints it as JSON." },
     { name: "--password", value: "<string>", type: "string", required: true, description: "The password of the admin user to create. Can also be set with `INFISICAL_ADMIN_PASSWORD`." },
-    { name: "--setup-token", value: "<string>", type: "string", description: "The setup token of the instance. Required when the instance sets [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token). Can also be set with `INFISICAL_INSTANCE_SETUP_TOKEN`." },
+    { name: "--setup-token", value: "<string>", type: "string", description: "The setup token of the instance. Required when the instance sets [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token). Can also be set with `INSTANCE_SETUP_TOKEN`." },
   ]}
   examples={[
     { title: "Bootstrap an instance", code: "infisical bootstrap \\\n  --domain=https://infisical.example.com \\\n  --email=admin@example.com \\\n  --password=<password> \\\n  --organization=<organization>" },
