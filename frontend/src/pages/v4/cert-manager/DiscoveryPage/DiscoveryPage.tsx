@@ -51,6 +51,7 @@ const Page = () => {
     <Stack gap={24}>
       <PageHeader
         title="Certificate discovery"
+        description="Discovery scans networks and servers for certificates in use, including ones issued outside Infisical, and adds them to your inventory."
         badges={<DocumentationLink href={DISCOVERY_DOCS} subject="Certificate discovery" />}
         tabs={
           <Tabs
