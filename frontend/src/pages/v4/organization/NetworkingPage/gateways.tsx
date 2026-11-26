@@ -164,6 +164,7 @@ export const GatewaysPanel = ({
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
       text: (gateway) => gateway.name,
       render: (gateway) => (
@@ -181,6 +182,7 @@ export const GatewaysPanel = ({
             id: "pools",
             header: "Pools",
             width: 240,
+            dropFirst: true,
             render: (gateway: TGatewayV2) => {
               const memberOf = poolsByGateway.get(gateway.id) ?? [];
               if (!memberOf.length) return <span aria-label="No pools">-</span>;
@@ -208,6 +210,7 @@ export const GatewaysPanel = ({
       header: "Connected",
       sortable: true,
       width: 140,
+      dropFirst: true,
       render: (gateway) =>
         gateway.connectedResourcesCount > 0 ? (
           resourcesLabel(gateway.connectedResourcesCount)
