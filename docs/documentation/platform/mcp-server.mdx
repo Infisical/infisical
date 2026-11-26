@@ -25,7 +25,7 @@ Connect your client to the URL of your Infisical instance:
 | --- | --- |
 | Infisical Cloud (US) | `https://app.infisical.com/api/mcp` |
 | Infisical Cloud (EU) | `https://eu.infisical.com/api/mcp` |
-| Self-hosted | Your instance's URL followed by `/api/mcp`, such as `https://infisical.example.com/api/mcp` |
+| Self-hosted | Your instance's URL followed by `/api/mcp`, such as `https://infisical.example.com/api/mcp`. If your instance sets [`MCP_SERVER_URL`](/self-hosting/configuration/envars), use that URL instead. |
 
 ### Self-hosted instances
 
@@ -34,6 +34,7 @@ If you self-host Infisical, check that:
 - [`SITE_URL`](/self-hosting/configuration/envars) is set to the URL your MCP clients use to reach the instance
 - Your MCP client can reach the instance (Claude on the web connects from Anthropic's servers, so the instance has to be reachable from the internet)
 - `INFISICAL_RUN_MODES` is either unset or includes `mcp`
+- If a proxy serves the MCP server at its own URL, such as `https://mcp.example.com/mcp`, `MCP_SERVER_URL` is set to that URL and the proxy forwards requests for it to `/api/mcp` on Infisical
 
 ## Connect a client
 

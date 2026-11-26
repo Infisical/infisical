@@ -176,9 +176,10 @@ export const OauthClientMetadataDocumentSchema = z
 export const MCP_ENDPOINT_PATH = "/api/mcp";
 
 // The MCP endpoint is the only resource (RFC 8707) a token can be bound to. A bound token carries it as `aud`, and
-// is accepted there and nowhere else.
+// is accepted there and nowhere else. Its address is MCP_SERVER_URL when a proxy serves it under another name; the
+// metadata stays on SITE_URL, because clients find it through the WWW-Authenticate header the endpoint sends.
 export const getMcpOauthUrls = () => {
-  const { SITE_URL } = getConfig();
+  const { SITE_URL, MCP_SERVER_URL } = getConfig();
   if (!SITE_URL) {
     throw new BadRequestError({
       message:
@@ -188,7 +189,7 @@ export const getMcpOauthUrls = () => {
 
   return {
     issuer: `${SITE_URL}/api/v1/oauth`,
-    mcpResource: `${SITE_URL}${MCP_ENDPOINT_PATH}`,
+    mcpResource: MCP_SERVER_URL ?? `${SITE_URL}${MCP_ENDPOINT_PATH}`,
     mcpResourceMetadata: `${SITE_URL}/.well-known/oauth-protected-resource${MCP_ENDPOINT_PATH}`
   };
 };
