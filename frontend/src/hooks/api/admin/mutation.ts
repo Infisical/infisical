@@ -33,7 +33,7 @@ export const useCreateAdminUser = () => {
     TCreateAdminUserDTO
   >({
     meta: {
-      handledErrorCodes: [BREACHED_PASSWORD_ERROR, SuperAdminErrorCode.InvalidActivationToken]
+      handledErrorCodes: [BREACHED_PASSWORD_ERROR, SuperAdminErrorCode.InvalidSetupToken]
     },
     mutationFn: async (opt) => {
       const { data } = await apiRequest.post("/api/v1/admin/signup", opt);

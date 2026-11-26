@@ -1,13 +1,19 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
-export type TPlanNotice = {
-  type: "trial_payment_failed";
-  productKey: string;
-  trialPlanKey: string | null;
-  accessEndsAt: string;
-  nextAttemptAt: string | null;
-  cause: string | null;
-};
+export type TPlanNotice =
+  | {
+      type: "trial_payment_failed";
+      productKey: string;
+      trialPlanKey: string | null;
+      accessEndsAt: string;
+      nextAttemptAt: string | null;
+      cause: string | null;
+    }
+  | {
+      type: "subscription_payment_failed";
+      cause: string | null;
+      since: string | null;
+    };
 
 export type TPlanFeatures = {
   _id: null;

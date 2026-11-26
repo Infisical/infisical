@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Select } from "@infisical/cipher/ui/select";
@@ -89,12 +89,8 @@ const MfaCard = ({ organization, canEdit }: { organization: Organization; canEdi
   };
   return (
     <SettingsCard
-      title={
-        <Inline gap={8} wrap={false}>
-          Multi-factor authentication
-          {value.enforced && <Badge tone="ok">Enforced</Badge>}
-        </Inline>
-      }
+      title="Multi-factor authentication"
+      badges={value.enforced && <Badge tone="ok">Enforced</Badge>}
       saveStatus={status}
     >
       <Stack gap={16}>

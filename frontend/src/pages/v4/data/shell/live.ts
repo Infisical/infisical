@@ -20,10 +20,12 @@ import { relayQueryKeys } from "@app/hooks/api/relays/queries";
 import type { TRelay } from "@app/hooks/api/relays/types";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import type { ShellAdapter } from "./contract";
+
+const PLAN_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const useNotificationMutation = <TVariables extends { orgId: string }>(
   run: (variables: TVariables) => Promise<unknown>
@@ -69,7 +71,14 @@ const eachPaced = async (ids: string[], run: (id: string) => Promise<unknown>) =
 export const shellLive: ShellAdapter = {
   useServerStatus: useFetchServerStatus,
   useServerConfig: () => useGetServerConfig(),
-  useSubscription: (orgId) => useGetOrgSubscription({ orgID: orgId }),
+  useSubscription: (orgId) =>
+    useQuery({
+      queryKey: subscriptionQueryKeys.getOrgSubsription(orgId),
+      queryFn: () => fetchOrgSubscription(orgId),
+      enabled: Boolean(orgId),
+      refetchInterval: PLAN_REFRESH_INTERVAL_MS,
+      refetchOnWindowFocus: true
+    }),
   useAuditLogStreams: (enabled) => useListAuditLogStreams({ enabled }),
   useConnectedGateways: (enabled) => useQuery({ ...gatewaysQueryKeys.list(), enabled }),
   useRelays: (enabled) =>

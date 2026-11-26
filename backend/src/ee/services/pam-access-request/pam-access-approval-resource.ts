@@ -769,21 +769,26 @@ export const pamAccessApprovalResourceFactory = ({
           body: `**${requesterName}** requested ${accessTypeLabel} to **${accountName}**.`,
           link: approvalUrl
         },
-        email: {
-          subjectLine:
-            inputs.accessType === PamAccessType.Credential ? "PAM Credential Access Request" : "PAM Access Request",
-          template: SmtpTemplates.AccessPamRequest,
-          substitutions: {
-            requesterFullName: requesterName,
-            requesterEmail,
-            accountName,
-            folderName: folder?.name ?? undefined,
-            accessDuration: formatDuration(inputs.duration),
-            accessTypeLabel,
-            reason: inputs.reason,
-            approvalUrl
-          }
-        },
+        email:
+          folder?.emailApproversOnRequest === false
+            ? undefined
+            : {
+                subjectLine:
+                  inputs.accessType === PamAccessType.Credential
+                    ? "PAM Credential Access Request"
+                    : "PAM Access Request",
+                template: SmtpTemplates.AccessPamRequest,
+                substitutions: {
+                  requesterFullName: requesterName,
+                  requesterEmail,
+                  accountName,
+                  folderName: folder?.name ?? undefined,
+                  accessDuration: formatDuration(inputs.duration),
+                  accessTypeLabel,
+                  reason: inputs.reason,
+                  approvalUrl
+                }
+              },
         chat: (await $chatDeliveries(PamNotificationEvent.AccessRequested, inputs.folderId)).map((target) => ({
           ...target,
           notification: {

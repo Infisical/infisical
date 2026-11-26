@@ -3028,6 +3028,7 @@
                     "group": "Secret imports",
                     "pages": [
                       "api-reference/endpoints/secret-imports/list",
+                      "api-reference/endpoints/secret-imports/get-by-id",
                       "api-reference/endpoints/secret-imports/create",
                       "api-reference/endpoints/secret-imports/update",
                       "api-reference/endpoints/secret-imports/delete",
@@ -4937,7 +4938,8 @@
                   {
                     "group": "Instance",
                     "pages": [
-                      "api-reference/endpoints/instance/status"
+                      "api-reference/endpoints/instance/status",
+                      "api-reference/endpoints/instance/aws-deployment-metadata"
                     ]
                   }
                 ]

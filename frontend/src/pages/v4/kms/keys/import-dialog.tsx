@@ -8,6 +8,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +20,7 @@ import {
 } from "@infisical/cipher/ui/dialog";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@infisical/cipher/ui/table";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import slugify from "@sindresorhus/slugify";
 
@@ -42,8 +35,6 @@ import {
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { algorithmLabel, base64ByteLength, isBase64, usageLabel } from "./shared";
-
-import styles from "./import-dialog.module.css";
 
 type ParsedKey = {
   name: string;
@@ -168,53 +159,75 @@ const InvalidKeysAlert = ({
   </Alert>
 );
 
+type ReviewRow = { index: number; entry: Partial<ParsedKey>; error?: string };
+
+const rowName = ({ entry }: ReviewRow) =>
+  typeof entry.name === "string" && entry.name ? entry.name : "Unnamed";
+
+const REVIEW_COLUMNS: DataTableColumn<ReviewRow>[] = [
+  {
+    id: "name",
+    header: "Name",
+    primary: true,
+    grow: true,
+    text: rowName,
+    render: (row) => (
+      <Inline gap={8} align="center" wrap={false}>
+        {row.error && (
+          <InlineItem shrink={false}>
+            <Tooltip content={row.error} side="top">
+              <span aria-label={row.error} role="img">
+                <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
+              </span>
+            </Tooltip>
+          </InlineItem>
+        )}
+        <InlineItem truncate>{rowName(row)}</InlineItem>
+      </Inline>
+    ),
+    badges: ({ entry }) =>
+      entry.isExportable === false && (
+        <Tooltip content="Not exportable" side="top">
+          <span aria-label="Not exportable" role="img">
+            <Icon name="lock" size="var(--cipher-size-icon-small)" />
+          </span>
+        </Tooltip>
+      )
+  },
+  {
+    id: "usage",
+    header: "Usage",
+    grow: true,
+    text: ({ entry }) => {
+      const usage = typeof entry.keyType === "string" ? entry.keyType : "";
+      return Object.prototype.hasOwnProperty.call(usageLabel, usage)
+        ? usageLabel[usage as KmsKeyUsage]
+        : usage;
+    }
+  },
+  {
+    id: "algorithm",
+    header: "Algorithm",
+    width: 144,
+    text: ({ entry }) =>
+      typeof entry.algorithm === "string" ? algorithmLabel(entry.algorithm) : ""
+  }
+];
+
 const ReviewTable = ({ keys, errors }: { keys: ParsedKey[]; errors: (string | undefined)[] }) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Name</TableHead>
-        <TableHead>Key usage</TableHead>
-        <TableHead>Algorithm</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {keys.map((raw, index) => {
-        const entry: Partial<ParsedKey> = raw && typeof raw === "object" ? raw : {};
-        const error = errors[index];
-        let usage = typeof entry.keyType === "string" ? entry.keyType : "";
-        if (Object.prototype.hasOwnProperty.call(usageLabel, usage))
-          usage = usageLabel[usage as KmsKeyUsage];
-        return (
-          // oxlint-disable-next-line react/no-array-index-key
-          <TableRow key={index}>
-            <TableCell>
-              <Inline gap={8} align="center" wrap={false}>
-                {error && (
-                  <Tooltip content={error} side="top">
-                    <span aria-label={error} role="img" className={styles.invalid}>
-                      <Icon name="alert-c" size="var(--cipher-size-icon-small)" />
-                    </span>
-                  </Tooltip>
-                )}
-                {typeof entry.name === "string" && entry.name ? entry.name : "Unnamed"}
-                {entry.isExportable === false && (
-                  <Tooltip content="Not exportable" side="top">
-                    <span aria-label="Not exportable" role="img">
-                      <Icon name="lock" size="var(--cipher-size-icon-small)" />
-                    </span>
-                  </Tooltip>
-                )}
-              </Inline>
-            </TableCell>
-            <TableCell>{usage}</TableCell>
-            <TableCell>
-              {typeof entry.algorithm === "string" ? algorithmLabel(entry.algorithm) : ""}
-            </TableCell>
-          </TableRow>
-        );
-      })}
-    </TableBody>
-  </Table>
+  <DataTable
+    label="Keys to import"
+    rows={keys.map((raw, index) => ({
+      index,
+      entry: raw && typeof raw === "object" ? raw : {},
+      error: errors[index]
+    }))}
+    columns={REVIEW_COLUMNS}
+    getRowId={(row) => String(row.index)}
+    rowLabel={rowName}
+    rowTone={(row) => (row.error ? "bad" : undefined)}
+    ghost={false}
+  />
 );
 
 export const ImportKeysDialog = ({

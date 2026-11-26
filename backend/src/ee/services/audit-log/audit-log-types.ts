@@ -972,6 +972,7 @@ export enum EventType {
   RENEW_PKI_SIGNER_CERTIFICATE = "renew-pki-signer-certificate",
   REVOKE_PKI_SIGNER_CERTIFICATE = "revoke-pki-signer-certificate",
   PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED = "pki-signer-certificate-revocation-decided",
+  PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA = "pki-signer-certificate-revoked-by-ca",
   IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
@@ -5443,6 +5444,19 @@ interface PkiSignerCertificateRevocationDecidedEvent {
   };
 }
 
+interface PkiSignerCertificateRevokedByCaEvent {
+  type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    previousStatus: string;
+    status: string;
+  };
+}
+
 interface ImportPkiSignerCertificateEvent {
   type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
   metadata: {
@@ -7680,6 +7694,7 @@ interface PamApprovalConfigUpdateEvent {
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
     autoApprovalRuleCount?: number;
+    emailApproversOnRequest?: boolean;
   };
 }
 
@@ -9419,6 +9434,7 @@ export type Event =
   | RenewPkiSignerCertificateEvent
   | RevokePkiSignerCertificateEvent
   | PkiSignerCertificateRevocationDecidedEvent
+  | PkiSignerCertificateRevokedByCaEvent
   | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
