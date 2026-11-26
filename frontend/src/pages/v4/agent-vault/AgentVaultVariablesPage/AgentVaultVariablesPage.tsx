@@ -28,7 +28,7 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -63,6 +63,7 @@ import { DateCell } from "../resources/shared";
 import { VariableDialog } from "../resources/variable-dialog";
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/variables");
+const servicesRoute = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/services");
 const TABLE = "agentVaultVariablesTable";
 const MASK = "\u2022".repeat(8);
 const SERVICES_SHOWN = 2;
@@ -73,16 +74,35 @@ const isOAuthVariable = (variable: TAgentVaultVariable) =>
   variable.type === AgentVaultVariableType.OAuth;
 
 const UsedBy = ({ variable }: { variable: TAgentVaultVariable }) => {
+  const { orgId, projectId } = useParams({ from: route });
   const services = variable.usedByServices;
-  if (!services.length) return <Meta>-</Meta>;
+  if (!services.length) return <Meta>Unused</Meta>;
   const hidden = services.slice(SERVICES_SHOWN);
   return (
     <Inline gap={4} align="center" wrap={false}>
-      {services.slice(0, SERVICES_SHOWN).map((service) => (
-        <Badge key={service.id} tone="outline">
-          {service.name}
-        </Badge>
-      ))}
+      {services.slice(0, SERVICES_SHOWN).map((service) => {
+        const bundles = service.accessBundles ?? [];
+        return (
+          <Tooltip
+            key={service.id}
+            content={
+              bundles.length
+                ? `In ${bundles.map((bundle) => bundle.name).join(", ")}`
+                : "Not in an access bundle yet"
+            }
+          >
+            <Badge tone="outline" asChild>
+              <Link
+                to={servicesRoute}
+                params={{ orgId, projectId }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {service.name}
+              </Link>
+            </Badge>
+          </Tooltip>
+        );
+      })}
       {hidden.length > 0 && (
         <Tooltip content={hidden.map((service) => service.name).join(", ")}>
           <Meta tabIndex={0}>+{hidden.length}</Meta>
