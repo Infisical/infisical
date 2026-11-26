@@ -13,7 +13,6 @@ import {
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { Select } from "@infisical/cipher/ui/select";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
 import type {
@@ -22,6 +21,7 @@ import type {
 } from "@app/hooks/api/pkiApplications/types";
 
 import { failed, saved, toast } from "../../access/toast";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { APP_ROLES } from "./shared";
 
@@ -162,13 +162,7 @@ export const AddMemberDialog = ({
                 />
               </Field>
               <Field label="Role">
-                <Select
-                  label="Role"
-                  options={APP_ROLES}
-                  descriptionLayout="stacked"
-                  value={role}
-                  onChange={setRole}
-                />
+                <RoleSelect label="Role" options={APP_ROLES} value={role} onChange={setRole} />
               </Field>
             </Stack>
           </form>

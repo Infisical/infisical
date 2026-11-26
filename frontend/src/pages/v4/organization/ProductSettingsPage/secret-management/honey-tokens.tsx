@@ -40,6 +40,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
 import { copyText } from "../../../clipboard";
+import { RegionCombobox } from "../../../components/region-combobox";
 import { useV4Adapter } from "../../../data/adapters";
 import type { HoneyTokenConnectionTest } from "../../../data/product-settings/contract";
 
@@ -258,15 +259,10 @@ const HoneyTokenSheet = ({
                           />
                         </Field>
                         <Field label="AWS region" error={issues?.awsRegion?.[0]}>
-                          <Combobox
+                          <RegionCombobox
                             label="AWS region"
                             placeholder="Select a region..."
                             invalid={Boolean(issues?.awsRegion)}
-                            options={AWS_REGIONS.map((region) => ({
-                              value: region.slug,
-                              label: region.name,
-                              meta: region.slug
-                            }))}
                             value={draft.awsRegion}
                             onChange={(awsRegion) => setDraft({ ...draft, awsRegion })}
                           />

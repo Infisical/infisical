@@ -3,20 +3,17 @@ import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { Select } from "@infisical/cipher/ui/select";
 import { StatusText, SmallText } from "@infisical/cipher/ui/text";
 
 import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import type { TAwsListener } from "@app/hooks/api/pkiSyncs/types";
 
+import { RegionCombobox } from "../../../../components/region-combobox";
 import { useV4Adapter } from "../../../../data/adapters";
 import { PkiSyncConnectionField } from "../connection-field";
 import { errorOf } from "../fields";
 import { fetchErrorOf, ListField } from "./list-field";
-
-const REGION_OPTIONS = AWS_REGIONS.map(({ name, slug }) => ({ value: slug, label: name }));
 
 type TAwsRegionForm = TPkiSyncForm & {
   destination: PkiSync.AwsCertificateManager | PkiSync.AwsSecretsManager;
@@ -30,11 +27,10 @@ function RegionSelect({ help, disabled }: { help: string; disabled?: boolean }) 
       name="destinationConfig.region"
       render={({ field, fieldState: { error } }) => (
         <Field label="AWS region" help={help} error={errorOf(error)}>
-          <Select
-            aria-label="AWS region"
+          <RegionCombobox
+            label="AWS region"
             value={field.value ?? ""}
             onValueChange={field.onChange}
-            options={REGION_OPTIONS}
             placeholder="Select an AWS region"
             disabled={disabled}
             invalid={Boolean(error)}
@@ -175,11 +171,10 @@ export function AwsElasticLoadBalancerFields() {
             help="The AWS region where your Elastic Load Balancers are located."
             error={errorOf(error)}
           >
-            <Select
-              aria-label="AWS region"
+            <RegionCombobox
+              label="AWS region"
               value={field.value ?? ""}
               onValueChange={field.onChange}
-              options={REGION_OPTIONS}
               placeholder="Select an AWS region"
               disabled={!connectionId}
               invalid={Boolean(error)}

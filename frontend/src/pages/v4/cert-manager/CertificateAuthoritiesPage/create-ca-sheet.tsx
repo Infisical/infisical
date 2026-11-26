@@ -15,7 +15,6 @@ import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { InternalCaType } from "@app/hooks/api/ca/enums";
 import type {
@@ -28,9 +27,11 @@ import { CertKeySource } from "@app/hooks/api/signers/types";
 
 import { duplicateNameMessage, readableFailure, saved } from "../../access/toast";
 import { useConnectionCreation } from "../../components/connection-creation";
+import { RegionCombobox } from "../../components/region-combobox";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
+import { hsmKeySourceReason, keySourceOptions } from "../components/key-source";
 import { AddHsmConnectorSheet } from "../SettingsPage/hsm-connector-wizard";
 import {
   type CaDraft,
@@ -113,39 +114,23 @@ const SubjectStep = ({ draft, errors, patch }: StepProps) => (
   </Stack>
 );
 
-const hsmOptionReason = (plan: CaPlan | undefined, canAttach: boolean) => {
-  if (!plan?.hsm) return "Enterprise plan";
-  return canAttach ? undefined : "Requires permission to attach HSM connectors";
-};
-
 const KeySourceField = ({ draft, patch, plan }: StepProps & { plan?: CaPlan }) => {
   const { permission } = useCaScope();
   const canAttach = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
     ProjectPermissionSub.HsmConnectors
   );
-  const hsmReason = hsmOptionReason(plan, canAttach);
+  const hsmReason = hsmKeySourceReason(Boolean(plan?.hsm), canAttach);
   return (
     <Field label="Key source" description={KEY_SOURCE_DESCRIPTIONS[draft.keySource]} wide>
       <Select
         descriptionLayout="stacked"
         aria-label="Key source"
         value={draft.keySource}
-        options={[
-          { value: CertKeySource.Infisical, label: "Infisical" },
-          {
-            value: CertKeySource.Hsm,
-            label: "HSM",
-            disabled: Boolean(hsmReason),
-            description: hsmReason
-          },
-          {
-            value: CertKeySource.AwsKms,
-            label: "AWS KMS",
-            disabled: !plan?.pkiAwsKmsSigning,
-            description: plan?.pkiAwsKmsSigning ? undefined : "Enterprise plan"
-          }
-        ]}
+        options={keySourceOptions({
+          hsmReason,
+          awsKms: { available: Boolean(plan?.pkiAwsKmsSigning) }
+        })}
         onValueChange={(next) => {
           const source = next as CertKeySource;
           patch({
@@ -254,16 +239,11 @@ const AwsKeyFields = ({ draft, errors, set, projectId }: StepProps & { projectId
         error={errors.region}
         wide
       >
-        <Combobox
+        <RegionCombobox
           label="Region"
           value={draft.region}
           invalid={Boolean(errors.region)}
           placeholder="Select a region"
-          options={AWS_REGIONS.map((region) => ({
-            value: region.slug,
-            label: region.name,
-            meta: region.slug
-          }))}
           onValueChange={(next) => set("region", next)}
         />
       </Field>

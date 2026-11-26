@@ -14,18 +14,18 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { isAxiosError } from "axios";
 
 import { findOrgMembershipRole } from "@app/helpers/roles";
 
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
-import { roleOptions, slugify } from "../roles";
+import { slugify } from "../roles";
 import { failed, readableFailure, saved } from "../toast";
 
 export type GroupDraft = { id: string; name: string; slug: string; roleSlug: string };
@@ -81,12 +81,11 @@ const RoleField = ({
   const { roles, defaultRole } = useGroupRoles();
   return (
     <Field label={label}>
-      <Select
+      <RoleSelect
         label={label}
         placeholder="Select role..."
         value={value ?? defaultRole}
-        options={roleOptions(roles)}
-        descriptionLayout="stacked"
+        roles={roles}
         onChange={onChange}
       />
     </Field>

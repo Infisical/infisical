@@ -16,12 +16,12 @@ import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Select } from "@infisical/cipher/ui/select";
 
 import { SignerMemberRole, type TSignerMember } from "@app/hooks/api/signers/types";
 
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import {
   type PickedSignerMembers,
@@ -133,11 +133,10 @@ export const MembersTab = ({
       header: "Role",
       width: 180,
       render: (member) => (
-        <Select
+        <RoleSelect
           size="sm"
           aria-label={`Role for ${memberLabel(member)}`}
           options={SIGNER_ROLE_OPTIONS}
-          descriptionLayout="stacked"
           menuWidth={320}
           align="end"
           value={member.role}

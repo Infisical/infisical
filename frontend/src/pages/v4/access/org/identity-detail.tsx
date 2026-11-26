@@ -29,7 +29,6 @@ import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { useParams } from "@tanstack/react-router";
 
@@ -44,13 +43,14 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
 import { ResourceAlertAction } from "../../components/resource-alerts";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
-import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
+import { formatDateTime, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, EditDetailsButton, Gate, RESTRICTED } from "../ui";
 import {
@@ -152,13 +152,7 @@ const EditIdentityDialog = ({
                 />
               </Field>
               <Field label="Update role">
-                <Select
-                  label="Update role"
-                  value={role}
-                  options={roleOptions(roles)}
-                  descriptionLayout="stacked"
-                  onChange={setRole}
-                />
+                <RoleSelect label="Update role" value={role} roles={roles} onChange={setRole} />
               </Field>
               <Switch
                 layout="row"

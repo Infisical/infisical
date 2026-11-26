@@ -30,6 +30,7 @@ import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { GCP_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
+import { RegionCombobox } from "../../../../components/region-combobox";
 import { useV4Adapter } from "../../../../data/adapters";
 import {
   ConnectionField,
@@ -56,15 +57,10 @@ function AwsRegionField() {
       name="destinationConfig.region"
       render={({ field, fieldState: { error } }) => (
         <SyncField label="Region" tooltip={STS_REGION_TIP} error={error?.message}>
-          <Combobox
+          <RegionCombobox
             label="Region"
             value={field.value ?? ""}
             onValueChange={field.onChange}
-            options={AWS_REGIONS.map((region) => ({
-              value: region.slug,
-              label: region.name,
-              meta: region.slug
-            }))}
             placeholder="Select a region..."
             invalid={Boolean(error)}
           />

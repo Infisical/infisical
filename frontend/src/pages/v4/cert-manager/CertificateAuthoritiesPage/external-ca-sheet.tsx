@@ -24,7 +24,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ExternalCertificateAuthoritiesUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { isValidEmail } from "@app/helpers/email";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -42,6 +41,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
+import { RegionCombobox } from "../../components/region-combobox";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
 import { ConnectionField } from "./install/forms";
@@ -727,16 +727,11 @@ const RegionField = ({
   onChange: (value: string) => void;
 }) => (
   <Field label="Region" error={error} wide>
-    <Combobox
+    <RegionCombobox
       label="Region"
       value={value}
       invalid={Boolean(error)}
       placeholder="Select a region"
-      options={AWS_REGIONS.map((region) => ({
-        value: region.slug,
-        label: region.name,
-        meta: region.slug
-      }))}
       onValueChange={onChange}
     />
   </Field>

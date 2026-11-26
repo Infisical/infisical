@@ -19,6 +19,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { environmentOptions } from "../environment-picker";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -142,7 +143,7 @@ export function CreateImportFlow({
           <Field label="Environment" error={error}>
             <Combobox
               label="Environment"
-              options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
+              options={environmentOptions(scope.environments)}
               value={environment}
               placeholder="Select environment..."
               invalid={Boolean(error)}

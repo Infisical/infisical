@@ -11,7 +11,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep, type MultiStepResult } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import { CaType } from "@app/hooks/api/ca/enums";
@@ -25,6 +24,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { duplicateNameMessage, errorMessage, readableFailure } from "../../access/toast";
 import { Muted } from "../../access/ui";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -352,8 +352,7 @@ const CreateSheet = ({
                         member.id === user.id && member.kind === "user" ? (
                           <Muted>{signerMemberRoleLabels[SignerMemberRole.Administrator]}</Muted>
                         ) : (
-                          <Select
-                            descriptionLayout="stacked"
+                          <RoleSelect
                             size="sm"
                             aria-label={`Role for ${member.label}`}
                             options={SIGNER_ROLE_OPTIONS}

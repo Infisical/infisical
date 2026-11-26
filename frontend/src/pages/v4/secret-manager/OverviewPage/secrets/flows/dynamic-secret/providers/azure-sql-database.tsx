@@ -19,9 +19,9 @@ import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynami
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { GatewayPicker } from "../../../../../../networking/gateway-picker";
 import {
   fieldError,
-  GatewayPicker,
   numberInput,
   ProviderFields,
   ProviderGroup,
@@ -235,6 +235,7 @@ const AzureSqlFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) => {
           render={({ field, fieldState: { error } }) => (
             <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
+                label="Gateway"
                 invalid={Boolean(error)}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {

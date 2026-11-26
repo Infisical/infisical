@@ -45,8 +45,6 @@ import type {
   TGetIbmApiConnectOrgCatalogsDTO,
   TGetIbmApiConnectOrgsDTO
 } from "@app/hooks/api/dynamicSecret/types";
-import type { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
 import type { V4QueryResult } from "../contract";
 
@@ -66,8 +64,6 @@ export type SecretsOptionsAdapter = {
     apps: AppConnection[],
     projectId: string
   ) => { connections: ConnectionWithApp[]; isPending: boolean };
-  useGateways: () => V4QueryResult<TGatewayV2[]>;
-  useGatewayPools: () => V4QueryResult<TGatewayPool[]>;
   useAwsKmsKeys: (
     dto: TListAwsConnectionKmsKeys,
     options?: QueryOptions

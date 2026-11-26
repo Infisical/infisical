@@ -27,6 +27,7 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
+import { roleOptions } from "../roles";
 import { failed, saved } from "../toast";
 import { personName, useMemberRoleAccess } from "./member-access";
 import { accessNoun, accessThe, accessThis } from "./product";
@@ -215,11 +216,7 @@ export const AddMemberDialog = ({
               label="Select roles"
               placeholder="Select roles..."
               searchable
-              options={assignable.map((role) => ({
-                value: role.slug,
-                label: role.name,
-                description: role.description ?? undefined
-              }))}
+              options={roleOptions(assignable)}
               value={roles}
               onChange={setRoles}
             />

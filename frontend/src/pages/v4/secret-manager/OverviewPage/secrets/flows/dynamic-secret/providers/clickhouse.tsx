@@ -17,7 +17,8 @@ import {
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";
+import { GatewayPicker } from "../../../../../../networking/gateway-picker";
+import { fieldError, ProviderFields, ProviderGroup } from "../fields";
 import { defineFlowProvider } from "../types";
 
 const connectionFields = [
@@ -180,6 +181,7 @@ const ClickHouseFields = () => {
           render={({ fieldState: { error } }) => (
             <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
+                label="Gateway"
                 invalid={Boolean(error)}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {

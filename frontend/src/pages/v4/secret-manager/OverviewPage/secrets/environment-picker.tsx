@@ -314,3 +314,6 @@ export function EnvironmentPicker({
     </>
   );
 }
+
+export const environmentOptions = (environments: readonly { value: string; label: string }[]) =>
+  environments.map((environment) => ({ ...environment, meta: environment.value }));

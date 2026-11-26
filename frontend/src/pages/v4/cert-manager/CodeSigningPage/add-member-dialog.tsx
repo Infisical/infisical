@@ -5,12 +5,12 @@ import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
 import { SignerMemberRole } from "@app/hooks/api/signers/types";
 
 import { readableFailure } from "../../access/toast";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { SIGNER_MEMBER_KINDS, SIGNER_ROLE_OPTIONS, type SignerMemberKind } from "./signer-shared";
 
@@ -123,10 +123,9 @@ export const SignerAddMemberDialog = ({
                   />
                 </Field>
                 <Field label="Role">
-                  <Select
+                  <RoleSelect
                     label="Role"
                     options={SIGNER_ROLE_OPTIONS}
-                    descriptionLayout="stacked"
                     value={role}
                     onChange={(next) => setRole(next as SignerMemberRole)}
                   />

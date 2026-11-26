@@ -39,7 +39,6 @@ import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Select } from "@infisical/cipher/ui/select";
 import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { useParams } from "@tanstack/react-router";
 import { BanIcon, MailIcon, UserCheckIcon } from "lucide-react";
@@ -54,6 +53,7 @@ import type { OrgUser } from "@app/hooks/api/users/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
@@ -61,7 +61,7 @@ import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
-import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
+import { formatDateTime, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
 import {
   AccessRestricted,
@@ -140,12 +140,11 @@ const EditMembershipDialog = ({
         >
           <Stack gap={24}>
             <Field label="Update organization role">
-              <Select
+              <RoleSelect
                 label="Update organization role"
                 placeholder="Select role..."
                 value={role}
-                options={roleOptions(roles)}
-                descriptionLayout="stacked"
+                roles={roles}
                 onChange={(next) => !customRoleGate.blocked(next) && setRole(next)}
               />
             </Field>
