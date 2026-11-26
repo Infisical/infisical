@@ -523,6 +523,7 @@ export const OrgMemberDetail = () => {
               username={user.username}
               canEdit={canEdit}
               canAdd={!self}
+              addAllowed
             />
             <UserGroupsSection username={user.username} />
             <MemberAuditLogs userId={user.id} />
