@@ -60,6 +60,7 @@ declare module "@tanstack/react-table" {
     label?: string;
     typeLabel?: string;
     cell?: CellOpts;
+    readOnly?: boolean;
     columnIndicator?: {
       type: "pk" | "fk";
       tooltip?: string;

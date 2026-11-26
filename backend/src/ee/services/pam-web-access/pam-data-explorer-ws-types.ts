@@ -134,7 +134,8 @@ export const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   transactionOpen: z.boolean().optional(),
   error: z.string(),
   detail: z.string().optional(),
-  hint: z.string().optional()
+  hint: z.string().optional(),
+  messages: z.array(z.string()).optional()
 });
 
 export const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({

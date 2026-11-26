@@ -32,7 +32,14 @@ const MSSQL_TEXT_TYPES = new Set([
   "xml",
   "sysname"
 ]);
-const MSSQL_BINARY_TYPES = new Set(["binary", "varbinary", "image", "timestamp", "rowversion"]);
+const MSSQL_BINARY_TYPES = new Set([
+  "binary",
+  "varbinary",
+  "image",
+  "timestamp",
+  "rowversion",
+  "hierarchyid"
+]);
 const MSSQL_NON_UNICODE_TYPES = new Set(["char", "varchar", "text"]);
 const MSSQL_SOURCE_ALIAS = "[__src]";
 
@@ -49,6 +56,31 @@ function isHexLiteral(str: string): boolean {
   return [...str.slice(2)].every((ch) => "0123456789abcdefABCDEF".includes(ch));
 }
 
+// T-SQL drops a backslash that ends a line inside a string literal, so the literal is split after each one
+function splitAfterLineEndingBackslashes(str: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && (str[i + 1] === "\n" || (str[i + 1] === "\r" && str[i + 2] === "\n"))) {
+      parts.push(str.slice(start, i + 1));
+      start = i + 1;
+    }
+  }
+  parts.push(str.slice(start));
+  return parts;
+}
+
+// The first part is cast to max, or + would truncate the joined value at 4,000 or 8,000 characters
+function mssqlStringLiteral(str: string, unicode: boolean): string {
+  const prefix = unicode ? "N" : "";
+  const parts = splitAfterLineEndingBackslashes(str).map(
+    (part) => `${prefix}'${part.replaceAll("'", "''")}'`
+  );
+  if (parts.length === 1) return parts[0];
+  const [first, ...rest] = parts;
+  return [`CAST(${first} AS ${unicode ? "nvarchar" : "varchar"}(max))`, ...rest].join(" + ");
+}
+
 function quoteLiteral(
   value: unknown,
   dialect: SqlDialect = "postgres",
@@ -63,7 +95,7 @@ function quoteLiteral(
     }
     // N'' makes SQL Server convert a varchar column (seeks become scans); only ASCII survives every code page unprefixed
     if (MSSQL_NON_UNICODE_TYPES.has(type) && typeof value === "string" && isAscii(value)) {
-      return `'${value.replaceAll("'", "''")}'`;
+      return mssqlStringLiteral(value, false);
     }
   }
   if (value === null || value === undefined) return "NULL";
@@ -76,7 +108,7 @@ function quoteLiteral(
     return value ? "TRUE" : "FALSE";
   }
   const str = String(value);
-  if (dialect === "mssql") return `N'${str.replaceAll("'", "''")}'`;
+  if (dialect === "mssql") return mssqlStringLiteral(str, true);
   if (dialect === "postgres" && str.includes("'") && !str.includes("$")) {
     return `$$${str}$$`;
   }

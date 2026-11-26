@@ -50,6 +50,8 @@ export function QueryPanel({
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const messages = error ? errorMessages : (result?.messages ?? []);
   const [isDragging, setIsDragging] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const sqlToRunRef = useRef<string>(tab.sql);
@@ -67,6 +69,7 @@ export function QueryPanel({
   const runSql = async (sqlToRun: string) => {
     setIsRunning(true);
     setError(null);
+    setErrorMessages([]);
     try {
       const res = await executeQuery(tab.connectionId, sqlToRun);
       onTransactionStateChange(res.transactionOpen);
@@ -75,6 +78,7 @@ export function QueryPanel({
       // The server reports transactionOpen on errors; without it (WS drop, timeout) assume the transaction is gone
       onTransactionStateChange((err as { transactionOpen?: boolean })?.transactionOpen ?? false);
       setError(err instanceof Error ? err.message : String(err));
+      setErrorMessages((err as { messages?: string[] })?.messages ?? []);
       setResult(null);
     } finally {
       setIsRunning(false);
@@ -178,9 +182,9 @@ export function QueryPanel({
           <div className="min-h-0 flex-1 overflow-hidden">
             <QueryResultsTable result={result} error={error} isRunning={isRunning} />
           </div>
-          {!isRunning && !error && result?.messages && result.messages.length > 0 && (
+          {!isRunning && messages.length > 0 && (
             <div className="max-h-24 shrink-0 overflow-y-auto border-t border-border px-3 py-1.5 font-mono text-xs whitespace-pre-wrap text-muted">
-              {result.messages.join("\n")}
+              {messages.join("\n")}
             </div>
           )}
           {!isRunning && result && !error && (
@@ -188,7 +192,7 @@ export function QueryPanel({
               <span className="text-xs text-muted">
                 {result.rowCount != null
                   ? getRowLabel(result.rowCount, result.rows.length, result.isTruncated)
-                  : result.command}
+                  : result.command || "Commands completed successfully"}
                 {" · "}
                 {result.executionTimeMs}ms
               </span>

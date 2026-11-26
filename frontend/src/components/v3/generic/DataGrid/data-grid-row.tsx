@@ -288,7 +288,7 @@ function DataGridRowImpl<TData>({
                 isSearchMatch={isSearchMatch}
                 isActiveSearchMatch={isActiveSearchMatch}
                 isDirty={isCellDirty}
-                readOnly={readOnly}
+                readOnly={readOnly || Boolean(cell.column.columnDef.meta?.readOnly)}
               />
             )}
           </div>

@@ -136,6 +136,9 @@ const SELECT_COLUMN: ColumnDef<RowData> = {
   enableResizing: false
 };
 
+// Identity, computed, rowversion and temporal period columns reject written values
+const isGeneratedAlways = (col: ColumnInfo) => col.identityGeneration === "ALWAYS";
+
 function buildColumnDefs(
   cols: ColumnInfo[],
   primaryKeys: string[],
@@ -159,7 +162,8 @@ function buildColumnDefs(
         label: col.name,
         typeLabel: col.type,
         cell: pgTypeToCellOpts(),
-        columnIndicator
+        columnIndicator,
+        readOnly: isGeneratedAlways(col)
       },
       size: getColumnSize(col, Boolean(columnIndicator)),
       minSize: 80,
@@ -507,6 +511,7 @@ export const DataExplorerGrid = ({
         const values: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
           if (
+            !isGeneratedAlways(col) &&
             row[col.name] !== null &&
             row[col.name] !== undefined &&
             String(row[col.name]) !== ""
@@ -526,7 +531,7 @@ export const DataExplorerGrid = ({
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
-          if (!cellValuesEqual(row[col.name], original[col.name])) {
+          if (!isGeneratedAlways(col) && !cellValuesEqual(row[col.name], original[col.name])) {
             changes[col.name] = row[col.name];
           }
         });

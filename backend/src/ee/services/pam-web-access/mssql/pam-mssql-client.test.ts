@@ -2,7 +2,7 @@ import net from "node:net";
 
 import { afterEach, describe, expect, test } from "vitest";
 
-import { connectMssql, MSSQL_REROUTE_MESSAGE } from "./pam-mssql-client";
+import { connectMssql, localOnlyMssqlConnector, MSSQL_REROUTE_MESSAGE } from "./pam-mssql-client";
 
 const TABULAR_RESULT = 0x04;
 const PRELOGIN = 0x12;
@@ -99,5 +99,27 @@ describe("connectMssql", () => {
 
     expect((error as Error).message).toContain(MSSQL_REROUTE_MESSAGE);
     expect(redirectedConnections).toBe(0);
+  });
+
+  test("the shared connector reports a redirect and still dials the relay itself", async () => {
+    let markAccepted = () => {};
+    const accepted = new Promise<void>((resolve) => {
+      markAccepted = resolve;
+    });
+    const relayPort = await listen((socket) => {
+      markAccepted();
+      socket.destroy();
+    });
+    let redirects = 0;
+    const connector = localOnlyMssqlConnector(relayPort, () => {
+      redirects += 1;
+    });
+
+    await expect(connector({ host: "10.0.0.5", port: 1433 })).rejects.toThrow(MSSQL_REROUTE_MESSAGE);
+    const socket = await connector({ host: "127.0.0.1", port: relayPort });
+    socket.destroy();
+
+    await accepted;
+    expect(redirects).toBe(1);
   });
 });

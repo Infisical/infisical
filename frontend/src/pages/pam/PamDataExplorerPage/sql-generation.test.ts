@@ -199,3 +199,31 @@ describe("other dialects", () => {
     ).toBe(`UPDATE "public"."t" SET "born" = '' WHERE "id" = 1 RETURNING *`);
   });
 });
+
+describe("mssql literal edge cases", () => {
+  test("keeps a backslash that ends a line", () => {
+    expect(
+      buildDeleteQuery({
+        schema: "dbo",
+        table: "t",
+        primaryKeyMatch: { label: "C:\\dir\\\r\nnext", code: "a\\\nb" },
+        columnTypes: { label: "nvarchar(max)", code: "varchar(20)" },
+        dialect: "mssql"
+      })
+    ).toBe(
+      "DELETE FROM [dbo].[t] WHERE [label] = CAST(N'C:\\dir\\' AS nvarchar(max)) + N'\r\nnext' AND [code] = CAST('a\\' AS varchar(max)) + '\nb'"
+    );
+  });
+
+  test("matches hierarchyid keys with an unquoted binary literal", () => {
+    expect(
+      buildDeleteQuery({
+        schema: "dbo",
+        table: "t",
+        primaryKeyMatch: { node: "0x58" },
+        columnTypes: { node: "hierarchyid" },
+        dialect: "mssql"
+      })
+    ).toBe("DELETE FROM [dbo].[t] WHERE [node] = 0x58");
+  });
+});

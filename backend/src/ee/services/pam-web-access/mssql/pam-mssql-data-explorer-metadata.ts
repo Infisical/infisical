@@ -25,7 +25,7 @@ export const getTablesQuery = (schema: string) => ({
   params: { schema }
 });
 
-// Alias types resolve to their base type; identity/computed/rowversion are ALWAYS; hidden and column-set sparse columns are skipped
+// Alias types resolve to their base type; identity/computed/rowversion/temporal period columns are ALWAYS; hidden and column-set sparse columns are skipped
 export const getColumnsQuery = (schema: string, table: string) => ({
   sql: `
     SELECT
@@ -43,7 +43,8 @@ export const getColumnsQuery = (schema: string, table: string) => ({
       END AS type,
       c.is_nullable AS nullable,
       CASE
-        WHEN c.is_identity = 1 OR c.is_computed = 1 OR b.name = 'timestamp' THEN 'ALWAYS'
+        WHEN c.is_identity = 1 OR c.is_computed = 1 OR b.name = 'timestamp'
+          OR COALESCE(COLUMNPROPERTY(c.object_id, c.name, 'GeneratedAlwaysType'), 0) <> 0 THEN 'ALWAYS'
         ELSE NULL
       END AS identityGeneration
     FROM sys.columns c

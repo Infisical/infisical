@@ -46,6 +46,7 @@ export const createMssqlConnectionController = async (params: ControllerParams):
     const original = err instanceof MssqlScriptError ? err.original : err;
     const { message, detail } = extractMssqlErrorFields(original);
     const batchContext = err instanceof MssqlScriptError ? err.batchContext : undefined;
+    const messages = err instanceof MssqlScriptError && err.messages.length > 0 ? err.messages : undefined;
     const text = message ?? "Query execution failed";
     sendResponse({
       type: DataExplorerServerMessageType.Error,
@@ -53,7 +54,8 @@ export const createMssqlConnectionController = async (params: ControllerParams):
       connectionId,
       transactionOpen: isInTransaction(),
       error: batchContext ? `${text}\n\n${batchContext}` : text,
-      detail
+      detail,
+      messages
     });
   };
 

@@ -12,7 +12,8 @@ import {
 
 export const MAX_ROWS = 1000;
 const MAX_INFO_MESSAGES = 50;
-const MAX_INFO_MESSAGE_LENGTH = 1000;
+const MAX_SERVER_ERRORS = 50;
+const MAX_MESSAGE_LENGTH = 1000;
 
 export const QUERY_TIMEOUT_MESSAGE = `Query exceeded the ${MSSQL_REQUEST_TIMEOUT_MS / 1000} second limit and was cancelled`;
 
@@ -52,7 +53,8 @@ export type TBatchConnection = Pick<Connection, "execSqlBatch" | "cancel">;
 export class MssqlScriptError extends Error {
   constructor(
     readonly original: unknown,
-    readonly batchContext?: string
+    readonly batchContext?: string,
+    readonly messages: string[] = []
   ) {
     super(original instanceof Error ? original.message : String(original));
   }
@@ -91,7 +93,8 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
 
     const request = new Request(sql, (err) => {
       clearTimeout(timer);
-      if (stoppedAtLimit && (!err || (err as { code?: string }).code === "ECANCEL")) {
+      // After the cancel tedious reports ECANCEL or an earlier server error, which runScript has already collected
+      if (stoppedAtLimit && !timedOut) {
         if (current) replaceOutcome(toRowsOutcome(current));
         resolve({ outcome, stoppedAtLimit, hiddenResultSets });
         return;
@@ -125,7 +128,7 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
 
     request.on("row", (columns: { value: unknown }[]) => {
       const rs = current;
-      if (!rs || rs.isTruncated) return;
+      if (!rs || rs.isTruncated || procResultKept) return;
       if (rs.rows.length === MAX_ROWS) {
         stopAtLimit("rows");
         return;
@@ -189,6 +192,13 @@ const isCancellation = (err: unknown) =>
 
 export type TScriptResult = { outcome: TBatchOutcome; messages: string[] };
 
+type TServerError = { message: string; number?: number; class?: number; state?: number };
+
+const describeServerError = (e: TServerError) =>
+  e.number === undefined ? e.message : `Msg ${e.number}, Level ${e.class ?? 0}, State ${e.state ?? 0}: ${e.message}`;
+
+const toRequestError = (e: TServerError) => Object.assign(new Error(e.message), e);
+
 export const runScript = async (
   conn: TBatchConnection & Pick<Connection, "on" | "removeListener">,
   sql: string,
@@ -197,23 +207,38 @@ export const runScript = async (
   const batches = splitMssqlBatches(sql);
   const deadline = Date.now() + timeoutMs;
   const infoMessages: string[] = [];
+  const serverErrors: TServerError[] = [];
+  let tooManyErrors = false;
   const onInfo = (info: { message?: string }) => {
     if (infoMessages.length < MAX_INFO_MESSAGES && info.message) {
-      infoMessages.push(info.message.slice(0, MAX_INFO_MESSAGE_LENGTH));
+      infoMessages.push(info.message.slice(0, MAX_MESSAGE_LENGTH));
     }
   };
+  // T-SQL keeps going after most errors and tedious rebuilds its AggregateError on each one, so a loop of them is cut off
+  const onError = (token: TServerError) => {
+    if (tooManyErrors) return;
+    if (serverErrors.length === MAX_SERVER_ERRORS) {
+      tooManyErrors = true;
+      conn.cancel();
+      return;
+    }
+    serverErrors.push({ ...token, message: (token.message ?? "").slice(0, MAX_MESSAGE_LENGTH) });
+  };
   conn.on("infoMessage", onInfo);
+  conn.on("errorMessage", onError);
 
   let outcome: TBatchOutcome = { kind: "none" };
   let hiddenResultSets = 0;
   let stoppedAtLimit: TResultLimit | null = null;
+  let stoppedBeforeBatch = false;
   try {
     for (let i = 0; i < batches.length; i += 1) {
       const remaining = deadline - Date.now();
       if (remaining <= 0) {
         throw new MssqlScriptError(
           new Error(QUERY_TIMEOUT_MESSAGE),
-          describeBatchStop(i, batches.length, "was not started")
+          describeBatchStop(i, batches.length, "was not started"),
+          [...infoMessages]
         );
       }
       try {
@@ -223,39 +248,49 @@ export const runScript = async (
         outcome = run.outcome;
         if (run.stoppedAtLimit) {
           stoppedAtLimit = run.stoppedAtLimit;
+          stoppedBeforeBatch = i < batches.length - 1;
           break;
         }
       } catch (err) {
+        if (tooManyErrors) {
+          const context = describeBatchStop(i, batches.length, "failed");
+          throw new MssqlScriptError(
+            toRequestError(serverErrors[0]),
+            [`Stopped after ${MAX_SERVER_ERRORS} errors.`, context].filter(Boolean).join(" "),
+            [...infoMessages]
+          );
+        }
         throw new MssqlScriptError(
           err,
-          describeBatchStop(i, batches.length, isCancellation(err) ? "was cancelled" : "failed")
+          describeBatchStop(i, batches.length, isCancellation(err) ? "was cancelled" : "failed"),
+          [...infoMessages]
         );
       }
     }
   } finally {
     conn.removeListener("infoMessage", onInfo);
+    conn.removeListener("errorMessage", onError);
   }
 
-  const messages = [...infoMessages];
+  // A batch stopped at a limit resolves without its errors, since tedious reports only the cancel
+  const messages = [...serverErrors.map(describeServerError), ...infoMessages];
   if (hiddenResultSets > 0) {
     messages.push(
-      `${hiddenResultSets} earlier result ${hiddenResultSets === 1 ? "set is" : "sets are"} not shown. Run each query on its own to see it.`
+      `${hiddenResultSets} other result ${hiddenResultSets === 1 ? "set is" : "sets are"} not shown. The SQL editor shows one result set per run.`
     );
   }
-  if (stoppedAtLimit === "rows") {
-    messages.push(
-      `Stopped after the first ${MAX_ROWS.toLocaleString("en-US")} rows. Statements after this query did not run.`
-    );
-  }
-  if (stoppedAtLimit === "bytes") {
+  if (stoppedAtLimit) {
     const kept = outcome.kind === "rows" ? outcome.rows.length : 0;
-    messages.push(
-      `Stopped after ${kept.toLocaleString("en-US")} ${kept === 1 ? "row" : "rows"} because the result reached the ${DATA_EXPLORER_MAX_RESULT_BYTES / (1024 * 1024)} MB limit. Statements after this query did not run.`
-    );
+    const reason =
+      stoppedAtLimit === "rows"
+        ? `Stopped after the first ${MAX_ROWS.toLocaleString("en-US")} rows.`
+        : `Stopped after ${kept.toLocaleString("en-US")} ${kept === 1 ? "row" : "rows"} because the result reached the ${DATA_EXPLORER_MAX_RESULT_BYTES / (1024 * 1024)} MB limit.`;
+    const later = stoppedBeforeBatch ? " Later GO batches did not run." : "";
+    messages.push(`${reason} Statements after this query in the same batch may still have run.${later}`);
   }
   if (outcome.kind === "rows" && outcome.lossyColumns.length > 0) {
     messages.push(
-      `Some values in ${outcome.lossyColumns.join(", ")} are too large to show exactly. Select CONVERT(varchar(64), <column>) to see every digit.`
+      `Some values in ${outcome.lossyColumns.join(", ")} are too large to show exactly. Select CONVERT(varchar(64), <column>, 2) to see every digit.`
     );
   }
   return { outcome, messages };

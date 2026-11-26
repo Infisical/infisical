@@ -46,6 +46,7 @@ export type DataExplorerServerMessage =
       error: string;
       detail?: string;
       hint?: string;
+      messages?: string[];
     }
   | {
       type: "connection-opened";

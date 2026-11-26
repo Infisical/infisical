@@ -136,6 +136,8 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
       message = `${rows} ${verb[cmdUpper]}`;
     } else if (isUnattributedCount) {
       message = `${rows} affected`;
+    } else if (cmdUpper === "" && result.rowCount === null && result.fields.length === 0) {
+      message = "Commands completed successfully";
     } else {
       message = "No rows returned";
     }

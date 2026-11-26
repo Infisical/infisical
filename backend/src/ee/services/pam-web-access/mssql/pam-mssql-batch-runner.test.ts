@@ -32,6 +32,7 @@ const cancelError = () => Object.assign(new Error("Canceled."), { code: "ECANCEL
 type FakeConnection = EventEmitter & {
   cancelCount: number;
   executed: string[];
+  lastRequest: TFakeRequest | null;
   isCancelled: () => boolean;
   execSqlBatch: (req: TFakeRequest) => void;
   cancel: () => boolean;
@@ -42,9 +43,11 @@ const createConnection = (scripts: TScript[]): FakeConnection => {
   const conn = Object.assign(new EventEmitter(), {
     cancelCount: 0,
     executed: [] as string[],
+    lastRequest: null as TFakeRequest | null,
     isCancelled: () => active === null,
     execSqlBatch: (req: TFakeRequest) => {
       active = req;
+      conn.lastRequest = req;
       const script = scripts[conn.executed.length] ?? ((r: TFakeRequest) => r.callback());
       conn.executed.push(req.sql);
       void Promise.resolve().then(() => script(req, conn));
@@ -146,7 +149,9 @@ describe("runScript", () => {
     const conn = createConnection([selectRows(MAX_ROWS + 1)]);
     const result = await runScript(asConn(conn), "SELECT 1\nGO\nUPDATE t SET a = 1");
     expect(conn.executed).toEqual(["SELECT 1"]);
-    expect(result.messages).toContain("Stopped after the first 1,000 rows. Statements after this query did not run.");
+    expect(result.messages).toContain(
+      "Stopped after the first 1,000 rows. Statements after this query in the same batch may still have run. Later GO batches did not run."
+    );
   });
 
   test("reports which batches ran when one fails", async () => {
@@ -189,7 +194,7 @@ describe("runScript", () => {
     const result = await runScript(asConn(conn), "PRINT 'hello'; SELECT 1 AS a; SELECT 2 AS b");
     expect(result.messages).toEqual([
       "hello",
-      "1 earlier result set is not shown. Run each query on its own to see it."
+      "1 other result set is not shown. The SQL editor shows one result set per run."
     ]);
     expect(conn.listenerCount("infoMessage")).toBe(0);
   });
@@ -212,6 +217,97 @@ describe("runScript", () => {
   });
 });
 
+describe("runScript server errors", () => {
+  const serverError = (n: number) => ({ message: `boom ${n}`, number: 50000, class: 16, state: 1 });
+
+  test("reports an earlier error when a batch stops at the row cap", async () => {
+    const conn = createConnection([
+      (req, c) => {
+        c.emit("errorMessage", { message: "Divide by zero error encountered.", number: 8134, class: 16, state: 1 });
+        selectRows(MAX_ROWS + 1)(req, c);
+      }
+    ]);
+    const result = await runScript(asConn(conn), "SELECT 1/0; SELECT n FROM nums");
+    expect(result.outcome.kind === "rows" && result.outcome.rows.length).toBe(MAX_ROWS);
+    expect(result.messages[0]).toBe("Msg 8134, Level 16, State 1: Divide by zero error encountered.");
+  });
+
+  test("keeps the rows when tedious reports the earlier error instead of the cancel", async () => {
+    const early = Object.assign(new Error("early error"), { number: 50000, class: 16, state: 1 });
+    const conn = createConnection([
+      (req, c) => {
+        c.emit("errorMessage", { message: "early error", number: 50000, class: 16, state: 1 });
+        req.emit("columnMetadata", columns("n"));
+        for (let i = 0; i <= MAX_ROWS; i += 1) req.emit("row", [{ value: i }]);
+      }
+    ]);
+    conn.cancel = () => {
+      conn.cancelCount += 1;
+      return true;
+    };
+    const pending = runScript(asConn(conn), "RAISERROR('early error', 16, 1); SELECT n FROM nums");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    conn.lastRequest?.callback(early);
+    const result = await pending;
+    expect(result.outcome.kind === "rows" && result.outcome.rows.length).toBe(MAX_ROWS);
+    expect(result.messages[0]).toBe("Msg 50000, Level 16, State 1: early error");
+  });
+
+  test("cancels a flood of errors and keeps the first ones", async () => {
+    const conn = createConnection([
+      (req, c) => {
+        for (let i = 0; i < 1000 && !c.isCancelled(); i += 1) c.emit("errorMessage", serverError(i));
+      }
+    ]);
+    const error = await runScript(asConn(conn), "WHILE 1=1 RAISERROR('x', 16, 1)").catch((e: unknown) => e);
+    expect(conn.cancelCount).toBe(1);
+    expect(error).toBeInstanceOf(MssqlScriptError);
+    expect((error as MssqlScriptError).batchContext).toBe("Stopped after 50 errors.");
+    expect((error as MssqlScriptError).message).toBe("boom 0");
+    expect((error as MssqlScriptError).original).toMatchObject({ number: 50000, class: 16, state: 1 });
+    expect(conn.listenerCount("errorMessage")).toBe(0);
+  });
+
+  test("keeps PRINT output when the script fails", async () => {
+    const failure = Object.assign(new Error("Violation of PRIMARY KEY constraint"), { number: 2627 });
+    const conn = createConnection([
+      (req, c) => {
+        c.emit("infoMessage", { message: "starting" });
+        c.emit("infoMessage", { message: "done" });
+        req.callback(failure);
+      }
+    ]);
+    const error = await runScript(asConn(conn), "PRINT 'starting'; INSERT t VALUES (1); PRINT 'done'").catch(
+      (e: unknown) => e
+    );
+    expect((error as MssqlScriptError).messages).toEqual(["starting", "done"]);
+  });
+});
+
+describe("runBatch procedures", () => {
+  test("skips the rows of a procedure's later result sets instead of capping them", async () => {
+    const conn = createConnection([
+      (req) => {
+        req.emit("columnMetadata", columns("first"));
+        req.emit("row", [{ value: 1 }]);
+        req.emit("doneInProc", 1);
+        req.emit("columnMetadata", columns("second"));
+        for (let i = 0; i < MAX_ROWS + 10; i += 1) req.emit("row", [{ value: i }]);
+        req.emit("doneInProc", MAX_ROWS + 10);
+        req.emit("doneProc");
+        req.callback();
+      }
+    ]);
+    const run = await runBatch(asConn(conn), "EXEC p", { kind: "none" }, 30_000);
+    expect(conn.cancelCount).toBe(0);
+    expect(run.stoppedAtLimit).toBeNull();
+    expect(run.outcome).toMatchObject({ kind: "rows", fields: [{ name: "first" }], rows: [{ first: 1 }] });
+    expect(run.hiddenResultSets).toBe(1);
+  });
+});
+
 describe("runScript size limit", () => {
   test("names the byte limit and the rows actually kept", async () => {
     const big = "x".repeat(Math.ceil(DATA_EXPLORER_MAX_RESULT_BYTES / 4));
@@ -223,7 +319,7 @@ describe("runScript size limit", () => {
     ]);
     const result = await runScript(asConn(conn), "SELECT v FROM t");
     expect(result.messages).toEqual([
-      "Stopped after 3 rows because the result reached the 16 MB limit. Statements after this query did not run."
+      "Stopped after 3 rows because the result reached the 16 MB limit. Statements after this query in the same batch may still have run."
     ]);
   });
 });

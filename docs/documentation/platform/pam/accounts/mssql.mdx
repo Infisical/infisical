@@ -74,11 +74,13 @@ To open a session, follow [Connect to an account](/documentation/platform/pam/ac
   <Tab title="Browser">
     The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries. In the SQL editor, you can separate batches with `GO` lines, as you would in SQL Server Management Studio.
 
-    The SQL editor shows the last result set a script returns, and lists `PRINT` output and other server messages under the results. Limits:
+    The SQL editor shows one result set per script: the last one, or a stored procedure's first one. It lists `PRINT` output, other server messages, and errors under the results. Limits:
 
     - A script can run for up to 30 seconds
-    - If a query returns more than 1,000 rows or 16 MB of data, the SQL editor shows the rows up to that limit and stops the script there, so statements after that query don't run
+    - If a query returns more than 1,000 rows or 16 MB of data, the SQL editor shows the rows up to that limit and cancels the script. By then SQL Server may already have run the statements after that query in the same batch. Later `GO` batches don't run.
     - If a `GO` batch fails, the batches after it don't run, and the error says which batches completed
+
+    SQL Server keeps running a batch after most statement errors, such as a duplicate key, so a later `COMMIT` in the batch commits the statements that succeeded. Add `SET XACT_ABORT ON` at the start of a script to roll back the whole transaction on any error instead.
 
     If a statement fails or you cancel a script, an open transaction stays open. Commit it or roll it back before you close the tab.
   </Tab>

@@ -6,6 +6,7 @@ import {
   extractLastCommand,
   extractSingleStatementCommand,
   formatMssqlValue,
+  isLossyDecimal,
   resolveMssqlTypeName,
   splitMssqlBatches,
   splitMssqlStatements,
@@ -168,6 +169,27 @@ describe("extractMssqlErrorFields", () => {
 
   test("returns undefined for an empty message", () => {
     expect(extractMssqlErrorFields(new Error("")).message).toBeUndefined();
+  });
+});
+
+describe("uniqueColumnNames at scale", () => {
+  test("names 4,096 unnamed columns without rescanning used suffixes", () => {
+    const names = uniqueColumnNames(Array.from({ length: 4096 }, () => ""));
+    expect(new Set(names).size).toBe(4096);
+    expect(names[4095]).toBe("(No column name) (4096)");
+  });
+});
+
+describe("END and lossy decimals", () => {
+  test("a script ending in a block has no command", () => {
+    expect(extractLastCommand("IF NOT EXISTS (SELECT 1) BEGIN CREATE TABLE t (a int); END")).toBe("");
+    expect(extractCommand("END TRY")).toBe("");
+    expect(extractCommand("END CONVERSATION @h")).toBe("END");
+  });
+
+  test("flags money past 2^52 hundredths of a cent", () => {
+    expect(isLossyDecimal(5675238186068714 / 10_000, "MoneyN")).toBe(true);
+    expect(isLossyDecimal(12345.6789, "MoneyN")).toBe(false);
   });
 });
 

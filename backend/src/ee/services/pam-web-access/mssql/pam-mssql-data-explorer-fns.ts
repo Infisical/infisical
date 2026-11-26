@@ -174,12 +174,14 @@ const leadingWords = (sql: string, count: number): string[] => {
 };
 
 const TRANSACTION_KEYWORDS = new Set(["TRAN", "TRANSACTION", "DISTRIBUTED"]);
+const BLOCK_END_KEYWORDS = new Set(["TRY", "CATCH"]);
 const ROW_COUNT_VERBS = new Set(["INSERT", "UPDATE", "DELETE"]);
 
-// BEGIN also opens TRY, CATCH and statement blocks, which must not read as "Transaction started"
+// BEGIN and END also open and close TRY, CATCH and statement blocks, which must not read as a command
 export const extractCommand = (sql: string): string => {
   const [first = "", second = ""] = leadingWords(sql, 2);
   if (first === "BEGIN" && !TRANSACTION_KEYWORDS.has(second)) return "";
+  if (first === "END" && (second === "" || BLOCK_END_KEYWORDS.has(second))) return "";
   return first;
 };
 
@@ -225,10 +227,10 @@ const decimalScale = (typeName: string, scale?: number): number | null => {
   return null;
 };
 
-// tedious decodes decimal and money into a double, which only holds about 15 significant digits exactly
+// tedious divides the stored integer by 10^scale into a double, which can round the last digit once it passes 2^52
 export const isLossyDecimal = (value: unknown, typeName: string, scale?: number): boolean => {
   const digits = decimalScale(typeName, scale);
-  return digits !== null && typeof value === "number" && Math.abs(value) * 10 ** digits > Number.MAX_SAFE_INTEGER;
+  return digits !== null && typeof value === "number" && Math.abs(value) * 10 ** digits > 2 ** 52;
 };
 
 // Rendered losslessly in SQL Server's literal format because the grid sends these values back as row keys
@@ -263,10 +265,16 @@ export const formatMssqlValue = (value: unknown, typeName: string, scale?: numbe
 // SQL Server allows unnamed and duplicate result columns, but rows are keyed by name
 export const uniqueColumnNames = (names: string[]): string[] => {
   const used = new Set<string>();
+  const nextSuffix = new Map<string, number>();
   return names.map((raw) => {
     const base = raw || "(No column name)";
     let name = base;
-    for (let n = 2; used.has(name); n += 1) name = `${base} (${n})`;
+    let n = nextSuffix.get(base) ?? 2;
+    while (used.has(name)) {
+      name = `${base} (${n})`;
+      n += 1;
+    }
+    nextSuffix.set(base, n);
     used.add(name);
     return name;
   });

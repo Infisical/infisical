@@ -164,7 +164,10 @@ export const useDataExplorerSession = ({
                 .filter(Boolean)
                 .join("\n");
               pending.reject(
-                Object.assign(new Error(errMsg), { transactionOpen: serverMsg.transactionOpen })
+                Object.assign(new Error(errMsg), {
+                  transactionOpen: serverMsg.transactionOpen,
+                  messages: serverMsg.messages
+                })
               );
             } else if (serverMsg.type === "connection-open-failed") {
               pending.reject(new Error(serverMsg.error));
