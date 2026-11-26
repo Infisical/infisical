@@ -37,7 +37,7 @@ import { saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, useGo, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo, v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
 import {
   canSetKeystorePassword,
@@ -181,7 +181,7 @@ const InstallationDetail = ({
       text: (cert) => cert.commonName || "N/A",
       render: (cert) => (
         <RowLink
-          link={go.link(orgHref(orgId, `/cert-manager/certificates/${cert.certificateId}`))}
+          link={go.link(certificateHref(orgId, cert.certificateId))}
           title={cert.commonName || "N/A"}
         >
           {cert.commonName || "N/A"}

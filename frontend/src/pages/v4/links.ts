@@ -8,6 +8,18 @@ export const v4Path = <const P extends string>(path: P) => `${V4_PREFIX}${path}`
 
 export const orgHref = (orgId: string, path = "") => `${V4_PREFIX}/organizations/${orgId}${path}`;
 
+export const certificateHref = (
+  orgId: string,
+  certificateId: string,
+  { applicationName }: { applicationName?: string } = {}
+) =>
+  orgHref(
+    orgId,
+    applicationName
+      ? `/cert-manager/applications/${encodeURIComponent(applicationName)}/certificates/${certificateId}`
+      : `/cert-manager/certificates/${certificateId}`
+  );
+
 export const useGo = () => {
   const navigate = useNavigate();
   const resolveHref = useResolveV4Href();

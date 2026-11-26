@@ -11,7 +11,6 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { useNavigate } from "@tanstack/react-router";
 
 import {
   getCertificateImportReference,
@@ -25,7 +24,7 @@ import type { TCertificateProfile } from "@app/hooks/api/certificateProfiles/typ
 import { useOrgId } from "../../../access/permissions";
 import { errorMessage, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
-import { v4Path } from "../../../links";
+import { certificateHref, useGo } from "../../../links";
 
 const MAX_KEYSTORE_BYTES = 1024 * 1024;
 
@@ -192,13 +191,15 @@ const EntryReference = ({
 
 export const ImportCertificatesSheet = ({
   applicationId,
+  applicationName,
   onClose
 }: {
   applicationId?: string;
+  applicationName?: string;
   onClose: () => void;
 }) => {
   const orgId = useOrgId();
-  const navigate = useNavigate();
+  const go = useGo();
   const certificates = useV4Adapter("certificates");
   const importCertificate = certificates.useImportCertificate();
   const importEntries = certificates.useImportPkcs12Entries();
@@ -340,10 +341,7 @@ export const ImportCertificatesSheet = ({
       });
       saved("Certificate imported");
       completed.current = true;
-      navigate({
-        to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
-        params: { orgId, certificateId }
-      });
+      go(certificateHref(orgId, certificateId, { applicationName }));
       return true;
     } catch (error) {
       setHasRun(true);

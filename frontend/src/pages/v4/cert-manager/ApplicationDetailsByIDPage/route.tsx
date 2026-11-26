@@ -10,7 +10,7 @@ const SearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/v4/organizations/$orgId/cert-manager/applications/$applicationName"
+  "/v4/organizations/$orgId/cert-manager/applications/$applicationName/"
 )({
   staticData: { readiness: "full" },
   component: ApplicationDetailsByIDPage,

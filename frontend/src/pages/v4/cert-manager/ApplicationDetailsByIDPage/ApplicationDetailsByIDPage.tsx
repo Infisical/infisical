@@ -50,7 +50,7 @@ import { SettingsTab } from "./settings-tab";
 import { APPLICATION_DOCS, type ApplicationTab, appCan } from "./shared";
 import { SyncsTab } from "./syncs-tab";
 
-const routeId = v4Path("/organizations/$orgId/cert-manager/applications/$applicationName");
+const routeId = v4Path("/organizations/$orgId/cert-manager/applications/$applicationName/");
 const listPath = v4Path("/organizations/$orgId/cert-manager/applications");
 
 const isForbidden = (error: unknown) => isAxiosError(error) && error.response?.status === 403;
@@ -192,7 +192,7 @@ const ApplicationDetail = ({
               tabs={tabs}
               onValueChange={(next) =>
                 navigate({
-                  to: routeId,
+                  to: v4Path("/organizations/$orgId/cert-manager/applications/$applicationName"),
                   params: { orgId, applicationName: application.name },
                   search: { selectedTab: next as ApplicationTab }
                 })
