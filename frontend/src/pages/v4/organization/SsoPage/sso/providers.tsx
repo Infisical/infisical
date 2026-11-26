@@ -46,6 +46,7 @@ import {
   SamlSsoUpgradeIntent
 } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { OrgPermissionActions, OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/context";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
@@ -525,7 +526,7 @@ export const LdapSection = ({ onSwitchProvider }: SectionProps) => {
     <>
       <Card
         variant="framed"
-        title={<ProviderLabel provider={{ name: "LDAP", image: "LDAP.png" }} />}
+        title={<ProviderLabel kind="app-connection" value={AppConnection.LDAP} />}
         action={
           <ProviderMenu
             provider="ldap"

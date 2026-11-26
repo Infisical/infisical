@@ -26,12 +26,13 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 
 import { useOrgPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
 import { Gate } from "../../access/ui";
-import { ProviderLabel } from "../../components/provider-label";
+import { ProviderLabel, providerOf } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 
 const importStarted = () =>
@@ -53,7 +54,7 @@ const MigrationSheet = ({
   children
 }: {
   title: string;
-  image: string;
+  image?: string;
   formId: string;
   pending: boolean;
   dirty: boolean;
@@ -241,7 +242,7 @@ export const VaultImportSheet = ({ onClose }: { onClose: () => void }) => {
   return (
     <MigrationSheet
       title="Import from HCP Vault"
-      image="Vault.png"
+      image={providerOf("app-connection", AppConnection.HCVault)?.image}
       formId={formId}
       pending={isSubmitting}
       dirty={isDirty}

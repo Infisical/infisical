@@ -6,6 +6,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { ExternalMigrationImportStatus, type TDopplerConfig } from "@app/hooks/api/migration/types";
 import { ProviderLabel } from "@app/pages/v4/components/provider-label";
@@ -96,7 +97,7 @@ export function DopplerImportDialog({
         variant="dialog"
         open
         title={
-          <ProviderLabel provider={{ name: "Doppler", image: "Doppler.png" }}>
+          <ProviderLabel kind="app-connection" value={AppConnection.Doppler}>
             Import from Doppler
           </ProviderLabel>
         }

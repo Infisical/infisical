@@ -8,6 +8,7 @@ import {
   createVaultImportSelection,
   vaultImportSelectionReducer
 } from "@app/components/external-migrations/vaultImportSelection";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   ExternalMigrationImportStatus,
@@ -122,7 +123,7 @@ export function VaultImportSheet({
         variant="sheet"
         open
         title={
-          <ProviderLabel provider={{ name: "HashiCorp Vault", image: "Vault.png" }}>
+          <ProviderLabel kind="app-connection" value={AppConnection.HCVault}>
             Import from HashiCorp Vault
           </ProviderLabel>
         }

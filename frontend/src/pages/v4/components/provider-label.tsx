@@ -71,9 +71,6 @@ type ProviderSource =
   | { [K in ProviderKind]: { kind: K; value: ProviderKeys[K]; provider?: never } }[ProviderKind]
   | { kind?: never; value?: never; provider: Provider };
 
-const resolve = (source: ProviderSource) =>
-  source.provider ?? providerOf(source.kind as ProviderKind, source.value as never);
-
 /**
  * The provider logo for a Cipher media slot (option rows, triggers, chips, badges, titles), or
  * undefined for a provider with no logo, which then shows its name alone.
@@ -94,21 +91,18 @@ export const providerMedia = <K extends ProviderKind>(
 export function ProviderLabel({
   size,
   children,
+  kind,
+  value,
+  provider,
   ...props
-}: ProviderSource & {
-  size?: "sm" | "md";
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  const { className } = props;
-  const provider = resolve(props as ProviderSource);
-  const image = provider?.image;
+}: ProviderSource & { size?: "sm" | "md" } & React.ComponentPropsWithRef<"div">) {
+  const image = (provider ?? providerOf(kind as ProviderKind, value as never))?.image;
   return (
     <NameLine
-      className={className}
+      {...props}
       media={image ? <ProviderIcon icon={image} alt="" size={size ?? "md"} /> : undefined}
     >
-      {children ?? provider?.name}
+      {children ?? (provider ?? providerOf(kind as ProviderKind, value as never))?.name}
     </NameLine>
   );
 }

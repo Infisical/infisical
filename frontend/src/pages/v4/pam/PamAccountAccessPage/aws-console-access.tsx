@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TPamAccount } from "@app/hooks/api/pam";
 import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
@@ -74,7 +75,9 @@ export const AwsConsoleAccess = ({ account }: { account: TPamAccount }) => {
     return (
       <AccessPending
         title={
-          <ProviderLabel provider={{ name: "AWS Console", image: "Amazon Web Services.png" }} />
+          <ProviderLabel kind="app-connection" value={AppConnection.AWS}>
+            AWS Console
+          </ProviderLabel>
         }
         label="Connecting to AWS"
       />
