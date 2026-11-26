@@ -148,6 +148,7 @@ const EditIdentityDialog = ({
                 label="Update role"
                 value={role}
                 options={roleOptions(roles)}
+                descriptionLayout="stacked"
                 onChange={setRole}
               />
             </Field>
