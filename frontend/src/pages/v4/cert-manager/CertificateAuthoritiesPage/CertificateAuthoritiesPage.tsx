@@ -482,6 +482,7 @@ const CertificateAuthoritiesScreen = () => {
       <Stack gap={24}>
         <PageHeader
           title="Certificate authorities"
+          description="The CAs that sign your certificates: internal CAs you run in Infisical and external CAs you connect, such as ACME or AD CS."
           tabs={
             readBlocked ? undefined : (
               <Tabs

@@ -329,6 +329,10 @@ export const McpToolsFields = ({
   const sourceOf = (data: TServiceForm) =>
     JSON.stringify(buildListMcpToolsRequest(projectId, service, data));
   const source = sourceOf(form);
+  const sourceRef = useRef(source);
+  useEffect(() => {
+    sourceRef.current = source;
+  });
   // An expired sign-in changes the request, but the list it loaded is still the server's, so it stays on screen.
   const serverTools =
     loaded && (loaded.source === source || (isAuthorizationExpired && !isCredentialMemberProvided))
@@ -374,11 +378,11 @@ export const McpToolsFields = ({
       const tools = await listTools.mutateAsync(
         buildListMcpToolsRequest(projectId, service, form, own)
       );
-      onLoaded({ source: requestSource, tools });
+      if (sourceRef.current === requestSource) onLoaded({ source: requestSource, tools });
       return null;
     } catch (error) {
       const message = serverMessage(error) ?? "The server's tools couldn't be loaded. Try again.";
-      if (!own) setLoadError(message);
+      if (sourceRef.current === requestSource && !own) setLoadError(message);
       return message;
     } finally {
       setLoading(false);

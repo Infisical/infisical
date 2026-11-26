@@ -8,6 +8,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import {
   createPasswordSchema,
   doesPasswordMeetPolicy
@@ -126,6 +127,7 @@ export const UserInfoStep = ({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    if (!isInvite) captureSignupCompleted("email");
 
     const userOrgs = await fetchOrganizations();
     const orgId = userOrgs[0]?.id;

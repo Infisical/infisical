@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -8,7 +9,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -53,7 +55,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
-import { AccessRestricted } from "../../access/ui";
+import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
@@ -130,11 +132,29 @@ type EditDataSourceProps = {
   onSaved: (message: string) => void;
 };
 
-const EditDataSourceContent = ({ dataSource, onClose, onSaved }: EditDataSourceProps) => {
+const EditDataSourceContent = ({
+  dataSource,
+  onClose,
+  onSaved,
+  onRequestClose,
+  onDirtyChange
+}: EditDataSourceProps & {
+  onRequestClose: () => void;
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
   const update = useV4Adapter("secretScanning").useUpdateDataSource();
-  const [name, setName] = useState(dataSource.name);
-  const [description, setDescription] = useState(dataSource.description ?? "");
-  const [scanNewCommits, setScanNewCommits] = useState(dataSource.isScanNewCommitsEnabled);
+  const saved = {
+    name: dataSource.name,
+    description: dataSource.description ?? "",
+    scanNewCommits: dataSource.isScanNewCommitsEnabled
+  };
+  const [draft, setDraft] = useState(saved);
+  const { name, description, scanNewCommits } = draft;
+  const change = (next: Partial<typeof draft>) => {
+    const updated = { ...draft, ...next };
+    setDraft(updated);
+    onDirtyChange(JSON.stringify(updated) !== JSON.stringify(saved));
+  };
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
 
@@ -187,7 +207,7 @@ const EditDataSourceContent = ({ dataSource, onClose, onSaved }: EditDataSourceP
                 value={name}
                 invalid={Boolean(error)}
                 onChange={(event) => {
-                  setName(event.target.value);
+                  change({ name: event.target.value });
                   setError(undefined);
                 }}
               />
@@ -195,7 +215,7 @@ const EditDataSourceContent = ({ dataSource, onClose, onSaved }: EditDataSourceP
             <Field label="Description" optional>
               <Textarea
                 value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                onChange={(event) => change({ description: event.target.value })}
               />
             </Field>
             <Switch
@@ -203,14 +223,14 @@ const EditDataSourceContent = ({ dataSource, onClose, onSaved }: EditDataSourceP
               label="Auto-scan"
               description={`Scan ${resource.pluralNoun} when a ${resource.verb} occurs.`}
               checked={scanNewCommits}
-              onCheckedChange={setScanNewCommits}
+              onCheckedChange={(next) => change({ scanNewCommits: next })}
             />
           </Stack>
         </form>
       </SheetBody>
       <SheetFooter>
         <Inline gap={8} justify="end">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onRequestClose}>
             Cancel
           </Button>
           <Button
@@ -233,18 +253,37 @@ const EditDataSourceSheet = ({
   onSaved
 }: Omit<EditDataSourceProps, "dataSource"> & {
   dataSource?: TSecretScanningDataSourceWithDetails;
-}) => (
-  <Sheet open={Boolean(dataSource)} onOpenChange={(next) => !next && onClose()}>
-    {dataSource && (
-      <EditDataSourceContent
-        key={dataSource.id}
-        dataSource={dataSource}
-        onClose={onClose}
-        onSaved={onSaved}
+}) => {
+  const [dirty, setDirty] = useState(false);
+  const close = () => {
+    setDirty(false);
+    onClose();
+  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: close
+  });
+  return (
+    <>
+      <Sheet open={Boolean(dataSource)} onOpenChange={(next) => !next && requestDiscard()}>
+        {dataSource && (
+          <EditDataSourceContent
+            key={dataSource.id}
+            dataSource={dataSource}
+            onClose={close}
+            onSaved={onSaved}
+            onRequestClose={requestDiscard}
+            onDirtyChange={setDirty}
+          />
+        )}
+      </Sheet>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your changes to this data source will be lost."
       />
-    )}
-  </Sheet>
-);
+    </>
+  );
+};
 
 const dataSourceColumns = (
   orgId: string
@@ -339,18 +378,23 @@ const DeleteDataSourceDialog = ({
   const deleteDataSource = useV4Adapter("secretScanning").useDeleteDataSource();
   return (
     <AlertDialog open={Boolean(dataSource)} onOpenChange={(next) => !next && onClose()}>
-      <AlertDialogContent tone="danger" confirmText={dataSource?.name ?? ""}>
+      <AlertDialogContent
+        tone="danger"
+        confirmText={dataSource?.name ?? ""}
+        pending={deleteDataSource.isPending}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{`Delete ${dataSource?.name ?? "data source"}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            Its findings and scan history are deleted too. You cannot undo this.
+            Its findings and scan history are deleted too. You can&apos;t undo this.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={async () => {
+            onClick={async (event) => {
+              event.preventDefault();
               if (!dataSource) return;
               try {
                 await deleteDataSource.mutateAsync({
@@ -393,18 +437,28 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [upgrading, setUpgrading] = useState(false);
   const { data: subscription } = useV4Adapter("billing").useSubscription(orgId);
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const canCreate =
-    permissionPending ||
-    permission.can(
-      ProjectPermissionSecretScanningDataSourceActions.Create,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+  const canCreate = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Create,
+    ProjectPermissionSub.SecretScanningDataSources
+  );
   const canRead =
     permissionPending ||
     permission.can(
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSub.SecretScanningDataSources
     );
+  const editReason = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Edit,
+    ProjectPermissionSub.SecretScanningDataSources
+  )
+    ? undefined
+    : RESTRICTED;
+  const deleteReason = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Delete,
+    ProjectPermissionSub.SecretScanningDataSources
+  )
+    ? undefined
+    : RESTRICTED;
   const createDisabledReason = canCreate
     ? undefined
     : "You don't have permission to add data sources";
@@ -522,7 +576,14 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             setPage(1);
           }}
           rowActions={{
-            inline: [{ label: "Edit data source", icon: "settings", onSelect: setEditing }],
+            inline: [
+              {
+                label: "Edit data source",
+                icon: "settings",
+                disabledReason: () => editReason,
+                onSelect: setEditing
+              }
+            ],
             menuLabel: "Data source options",
             renderMenu: (row) => (
               <>
@@ -535,7 +596,11 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                   Copy data source ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabledReason={deleteReason}
+                  onSelect={() => setDeleting(row)}
+                >
                   Delete data source
                 </DropdownMenuItem>
               </>

@@ -47,6 +47,12 @@ import type {
 } from "@app/pages/v4/components/app-connection-form";
 
 import { appStateSuffix } from "../connection-redirect";
+import {
+  parseWorkloadIdentityProvider,
+  randomGcpId,
+  toWorkloadIdentityProvider,
+  type WorkloadIdentityProviderParts
+} from "./gcp-workload-identity";
 import { methodLabel, ROTATION_VALUES, rotationFields, withRotation } from "./shared";
 
 const UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
@@ -221,6 +227,71 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
               "The service account ID must end with the first two segments of your organization ID."
           }
         ]
+      },
+      {
+        value: GcpConnectionMethod.WorkloadIdentityFederation,
+        label: methodLabel(GcpConnectionMethod.WorkloadIdentityFederation),
+        description:
+          "Infisical shows the values and gcloud commands that set up GCP once it is created.",
+        // A getter, so each new form suggests its own pool and provider IDs
+        get credentials() {
+          return {
+            projectNumber: "",
+            poolId: randomGcpId(),
+            providerId: randomGcpId(),
+            serviceAccountEmail: ""
+          };
+        },
+        fields: [
+          {
+            name: "credentials.projectNumber",
+            label: "Project number",
+            mono: true,
+            placeholder: "123456789012",
+            description:
+              'The number of the GCP project that holds the workload identity pool. Find it with gcloud projects describe <PROJECT_ID> --format="value(projectNumber)".'
+          },
+          {
+            name: "credentials.poolId",
+            label: "Pool ID",
+            mono: true,
+            description:
+              "The workload identity pool that trusts this connection. The setup commands create it if it doesn't exist."
+          },
+          {
+            name: "credentials.providerId",
+            label: "Provider ID",
+            mono: true,
+            description:
+              "The pool's OIDC provider. The setup commands create it if it doesn't exist."
+          },
+          {
+            name: "credentials.serviceAccountEmail",
+            label: "Service account email",
+            optional: true,
+            mono: true,
+            placeholder: "infisical@my-project.iam.gserviceaccount.com",
+            description:
+              "The service account Infisical impersonates. Leave it empty to grant GCP roles to the connection's principal directly."
+          }
+        ],
+        toPayload: (credentials) => ({
+          workloadIdentityProvider: toWorkloadIdentityProvider(
+            credentials as WorkloadIdentityProviderParts
+          ),
+          serviceAccountEmail:
+            (credentials.serviceAccountEmail as string | undefined)?.trim() || undefined
+        }),
+        fromStored: (stored) => ({
+          ...(parseWorkloadIdentityProvider(
+            stored.workloadIdentityProvider as string | undefined
+          ) ?? {
+            projectNumber: "",
+            poolId: "",
+            providerId: ""
+          }),
+          serviceAccountEmail: (stored.serviceAccountEmail as string | undefined) ?? ""
+        })
       }
     ]
   },

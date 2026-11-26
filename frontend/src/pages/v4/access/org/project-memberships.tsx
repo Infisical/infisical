@@ -409,7 +409,8 @@ export const ProjectMembershipsSection = ({
   subjectName,
   username,
   canEdit,
-  canAdd = true
+  canAdd = true,
+  addAllowed = canEdit
 }: {
   subject: MembershipSubject;
   subjectId: string;
@@ -417,6 +418,7 @@ export const ProjectMembershipsSection = ({
   username?: string;
   canEdit: boolean;
   canAdd?: boolean;
+  addAllowed?: boolean;
 }) => {
   const go = useGo();
   const orgId = useOrgId();
@@ -529,11 +531,11 @@ export const ProjectMembershipsSection = ({
               placeholder="Search by project name"
             />
             {canAdd && (
-              <Gate allowed={canEdit}>
+              <Gate allowed={addAllowed}>
                 <Button
                   variant="accent"
                   icon="plus"
-                  disabled={!canEdit}
+                  disabled={!addAllowed}
                   onClick={() => setAdding(true)}
                 >
                   Add to product

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -30,19 +30,24 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { isCustomOrgRole, OrgMembershipRole } from "@app/helpers/roles";
 import type { IncidentContact } from "@app/hooks/api/incidentContacts/types";
 import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
-import { GenericResourceNameSchema } from "@app/lib/schemas";
+import { GenericResourceNameSchema, slugSchema } from "@app/lib/schemas";
 
 import { useOrgPermission } from "../../access/permissions";
 import { failed, saved as savedToast } from "../../access/toast";
-import { ListToolbar } from "../../access/ui";
+import { AccessRestricted, ListToolbar, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
@@ -57,39 +62,50 @@ const noop = () => {};
 
 const GENERAL_TAB = "tab-org-general";
 
-const detailsSchema = z.object({
+const orgDetailsSchema = z.object({
   name: GenericResourceNameSchema,
   slug: z
     .string()
     .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
 });
 
+const subOrgDetailsSchema = z.object({ name: GenericResourceNameSchema, slug: slugSchema() });
+
 type Details = { name: string; slug: string; role: string };
 
 const OrganizationDetails = ({
   organization,
-  roles
+  roles,
+  isSubOrganization,
+  canEdit
 }: {
   organization: Organization;
-  roles: Pick<TOrgRole, "id" | "name" | "slug">[];
+  roles?: Pick<TOrgRole, "id" | "name" | "slug">[];
+  isSubOrganization: boolean;
+  canEdit: boolean;
 }) => {
+  const queryClient = useQueryClient();
   const updateOrganization = useV4Adapter("org").useUpdateOrganization();
+  const updateSubOrganization = useV4Adapter("orgSettings").useUpdateSubOrganization();
   const [saved, setSaved] = useState<Details>({
     name: organization.name,
     slug: organization.slug,
     role: isCustomOrgRole(organization.defaultMembershipRole)
-      ? (roles.find((role) => role.id === organization.defaultMembershipRole)?.slug ?? "")
+      ? (roles?.find((role) => role.id === organization.defaultMembershipRole)?.slug ?? "")
       : organization.defaultMembershipRole
   });
   const [draft, setDraft] = useState(saved);
   const [copied, setCopied] = useState(false);
   const dirty = draft.name !== saved.name || draft.slug !== saved.slug || draft.role !== saved.role;
-  const issues = detailsSchema.safeParse(draft).error?.flatten().fieldErrors;
+  const issues = (isSubOrganization ? subOrgDetailsSchema : orgDetailsSchema)
+    .safeParse(draft)
+    .error?.flatten().fieldErrors;
   return (
     <SettingsCard
       title="Organization details"
       hint={`Changes apply to everyone in ${saved.name}.`}
       dirty={dirty}
+      locked={canEdit ? undefined : RESTRICTED}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {
         if (issues) {
@@ -97,12 +113,21 @@ const OrganizationDetails = ({
           return;
         }
         try {
-          await updateOrganization.mutateAsync({
-            orgId: organization.id,
-            name: draft.name,
-            slug: draft.slug,
-            defaultMembershipRoleSlug: draft.role || undefined
-          });
+          if (isSubOrganization) {
+            await updateSubOrganization.mutateAsync({
+              subOrgId: organization.id,
+              name: draft.name,
+              slug: draft.slug
+            });
+            queryClient.invalidateQueries();
+          } else {
+            await updateOrganization.mutateAsync({
+              orgId: organization.id,
+              name: draft.name,
+              slug: draft.slug,
+              defaultMembershipRoleSlug: draft.role || undefined
+            });
+          }
         } catch (error) {
           failed("Failed to save organization details", error);
           return;
@@ -116,6 +141,7 @@ const OrganizationDetails = ({
           <Input
             value={draft.name}
             invalid={Boolean(issues?.name)}
+            disabledReason={canEdit ? undefined : RESTRICTED}
             autoComplete="off"
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           />
@@ -150,21 +176,25 @@ const OrganizationDetails = ({
             mono
             value={draft.slug}
             invalid={Boolean(issues?.slug)}
+            disabledReason={canEdit ? undefined : RESTRICTED}
             onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
           />
         </Field>
-        <Field
-          label="Default organization member role"
-          description="New members get this role unless their invite sets another."
-        >
-          <Select
-            aria-label="Default organization member role"
-            placeholder="Select role"
-            options={roles.map((role) => ({ value: role.slug, label: role.name }))}
-            value={draft.role}
-            onChange={(role: string) => setDraft({ ...draft, role })}
-          />
-        </Field>
+        {roles && !isSubOrganization && (
+          <Field
+            label="Default organization member role"
+            description="New members get this role unless their invite sets another."
+          >
+            <Select
+              aria-label="Default organization member role"
+              placeholder="Select role"
+              options={roles.map((role) => ({ value: role.slug, label: role.name }))}
+              value={draft.role}
+              disabled={!canEdit}
+              onChange={(role: string) => setDraft({ ...draft, role })}
+            />
+          </Field>
+        )}
       </Stack>
     </SettingsCard>
   );
@@ -245,13 +275,18 @@ const AddContactDialog = ({
   );
 };
 
-const IncidentContacts = ({ orgId }: { orgId: string }) => {
-  const org = useV4Adapter("org");
-  const { data: contacts = [], isPending } = org.useIncidentContacts(orgId);
-  const deleteContact = org.useDeleteIncidentContact();
-  const [search, setSearch] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [removing, setRemoving] = useState<IncidentContact | null>(null);
+const IncidentContactsTable = ({
+  orgId,
+  search,
+  canDelete,
+  onRemove
+}: {
+  orgId: string;
+  search: string;
+  canDelete: boolean;
+  onRemove: (contact: IncidentContact) => void;
+}) => {
+  const { data: contacts = [], isPending } = useV4Adapter("org").useIncidentContacts(orgId);
   const needle = search.trim().toLowerCase();
   const rows = contacts.filter((entry) => entry.email.toLowerCase().includes(needle));
   const columns: DataTableColumn<IncidentContact>[] = [
@@ -270,6 +305,52 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
       render: (row) => new Date(row.createdAt).toISOString().slice(0, 10)
     }
   ];
+  return isPending || rows.length > 0 ? (
+    <DataTable
+      label="Incident contacts"
+      rows={rows}
+      columns={columns}
+      loading={isPending}
+      getRowId={(row) => row.id}
+      rowLabel={(row) => row.email}
+      rowActions={{
+        renderMenu: (row) => (
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!canDelete}
+            description={canDelete ? undefined : RESTRICTED}
+            onSelect={() => onRemove(row)}
+          >
+            <Icon name="trash" />
+            Remove contact
+          </DropdownMenuItem>
+        )
+      }}
+    />
+  ) : (
+    <EmptyState
+      size="sm"
+      icon="search"
+      title={contacts.length ? "No contacts match" : "No incident contacts"}
+    />
+  );
+};
+
+const IncidentContacts = ({ orgId }: { orgId: string }) => {
+  const deleteContact = useV4Adapter("org").useDeleteIncidentContact();
+  const { permission } = useOrgPermission();
+  const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  const canCreate = permission.can(
+    OrgPermissionActions.Create,
+    OrgPermissionSubjects.IncidentAccount
+  );
+  const canDelete = permission.can(
+    OrgPermissionActions.Delete,
+    OrgPermissionSubjects.IncidentAccount
+  );
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<IncidentContact | null>(null);
   return (
     <>
       <SettingsCard
@@ -283,35 +364,26 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
               onSearch={setSearch}
               placeholder="Search incident contacts by email"
             />
-            <Button variant="accent" icon="plus" onClick={() => setAdding(true)}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabledReason={canCreate ? undefined : RESTRICTED}
+              onClick={() => setAdding(true)}
+            >
               Add contact
             </Button>
           </Inline>
         }
       >
-        {isPending || rows.length > 0 ? (
-          <DataTable
-            label="Incident contacts"
-            rows={rows}
-            columns={columns}
-            loading={isPending}
-            getRowId={(row) => row.id}
-            rowLabel={(row) => row.email}
-            rowActions={{
-              renderMenu: (row) => (
-                <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
-                  <Icon name="trash" />
-                  Remove contact
-                </DropdownMenuItem>
-              )
-            }}
+        {canRead ? (
+          <IncidentContactsTable
+            orgId={orgId}
+            search={search}
+            canDelete={canDelete}
+            onRemove={setRemoving}
           />
         ) : (
-          <EmptyState
-            size="sm"
-            icon="search"
-            title={contacts.length ? "No contacts match" : "No incident contacts"}
-          />
+          <AccessRestricted />
         )}
       </SettingsCard>
       <AddContactDialog orgId={orgId} open={adding} onOpenChange={setAdding} />
@@ -415,8 +487,12 @@ const GeneralTab = () => {
   const { organization: current } = useV4Session();
   const org = useV4Adapter("org");
   const { data: organization } = org.useOrganization(current.id);
-  const { data: roles } = org.useRoles(current.id);
-  const { hasOrgRole } = useOrgPermission();
+  const { permission, isPending: isPermissionPending, hasOrgRole } = useOrgPermission();
+  const needsRoles =
+    !current.isSubOrganization &&
+    permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  const canEdit = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+  const { data: roles } = org.useRoles(current.id, needsRoles);
   return (
     <Stack gap={24}>
       <PageHeader
@@ -434,8 +510,14 @@ const GeneralTab = () => {
           applications, and external migrations have moved to Integrations.
         </AlertDescription>
       </Alert>
-      {organization && roles ? (
-        <OrganizationDetails key={organization.id} organization={organization} roles={roles} />
+      {organization && !isPermissionPending && (roles || !needsRoles) ? (
+        <OrganizationDetails
+          key={organization.id}
+          organization={organization}
+          roles={needsRoles ? roles : undefined}
+          isSubOrganization={current.isSubOrganization}
+          canEdit={canEdit}
+        />
       ) : (
         <SettingsCard title="Organization details" loading onSave={noop} />
       )}
@@ -470,9 +552,24 @@ const SubOrgsUpgrade = () => {
   );
 };
 
+const MOVED_SETTINGS_TABS: Record<string, string> = {
+  "workflow-integrations": "/integrations?selectedTab=workflow-integrations",
+  "tag-audit-log-streams": "/audit-logs?selectedTab=streams",
+  "oauth-applications": "/oauth-applications",
+  "tab-external-migrations": "/integrations?selectedTab=external-migrations",
+  "sso-settings": "/sso?selectedTab=sso",
+  "provisioning-settings": "/sso?selectedTab=provisioning",
+  "project-templates": "/projects/secret-management/product-settings"
+};
+
 export const SettingsPage = () => {
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/settings" });
+  const moved = MOVED_SETTINGS_TABS[selectedTab];
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/settings" });
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (moved) navigate({ href: orgHref(orgId, moved), replace: true });
+  }, [moved, orgId]);
   const { organization } = useV4Session();
   const { data: entitlements } = useV4Adapter("orgSettings").useEntitlements(orgId);
   const isSubOrg = organization.isSubOrganization;
@@ -488,6 +585,7 @@ export const SettingsPage = () => {
       hidden: isSubOrg
     }
   ].filter((tab) => !tab.hidden);
+  if (moved) return null;
   const active = tabs.find((tab) => tab.key === selectedTab) ?? tabs[0];
   const Active = active.component;
   return (

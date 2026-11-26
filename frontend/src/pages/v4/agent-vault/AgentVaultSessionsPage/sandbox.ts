@@ -9,8 +9,10 @@ import cursorWorkerDockerfile from "./sandbox-scripts/cursor-worker-dockerfile.t
 import cursorWorkerEntrypoint from "./sandbox-scripts/cursor-worker-entrypoint.sh.txt?raw";
 import cursorWorkerEnv from "./sandbox-scripts/cursor-worker-env.sh.txt?raw";
 import cursorWorkersNamespace from "./sandbox-scripts/cursor-workers.yaml.txt?raw";
+import daytonaImageGo from "./sandbox-scripts/daytona-image.go.txt?raw";
 import daytonaImagePy from "./sandbox-scripts/daytona-image.py.txt?raw";
 import daytonaImageTs from "./sandbox-scripts/daytona-image.ts.txt?raw";
+import daytonaRunGo from "./sandbox-scripts/daytona-run.go.txt?raw";
 import daytonaRunPy from "./sandbox-scripts/daytona-run.py.txt?raw";
 import daytonaRunTs from "./sandbox-scripts/daytona-run.ts.txt?raw";
 import dockerCompose from "./sandbox-scripts/docker-compose.yaml.txt?raw";
@@ -24,8 +26,10 @@ import kubernetesDockerfile from "./sandbox-scripts/kubernetes-dockerfile.txt?ra
 import kubernetesOrchestratorRole from "./sandbox-scripts/kubernetes-orchestrator-role.yaml.txt?raw";
 import kubernetesProxy from "./sandbox-scripts/kubernetes-proxy.yaml.txt?raw";
 import kubernetesRunAgent from "./sandbox-scripts/kubernetes-run-agent.sh.txt?raw";
+import modalImageGo from "./sandbox-scripts/modal-image.go.txt?raw";
 import modalImagePy from "./sandbox-scripts/modal-image.py.txt?raw";
 import modalImageTs from "./sandbox-scripts/modal-image.ts.txt?raw";
+import modalRunGo from "./sandbox-scripts/modal-run.go.txt?raw";
 import modalRunPy from "./sandbox-scripts/modal-run.py.txt?raw";
 import modalRunTs from "./sandbox-scripts/modal-run.ts.txt?raw";
 import { AGENT_VAULT_DOCS } from "./sessions";
@@ -41,7 +45,8 @@ export enum ScriptProvider {
 
 export enum ScriptLanguage {
   TypeScript = "typescript",
-  Python = "python"
+  Python = "python",
+  Go = "go"
 }
 
 export type TSandboxScript = { fileName: string; code: string };
@@ -50,14 +55,19 @@ export type TSandboxScript = { fileName: string; code: string };
 // Files the guide names only in its prose carry their name here instead.
 type TScriptSource = string | TSandboxScript;
 
-const LANGUAGE_SCRIPTS: Partial<Record<ScriptProvider, Record<ScriptLanguage, TScriptSource[]>>> = {
+type TLanguageScripts = Record<ScriptLanguage.TypeScript, TScriptSource[]> &
+  Partial<Record<ScriptLanguage, TScriptSource[]>>;
+
+const LANGUAGE_SCRIPTS: Partial<Record<ScriptProvider, TLanguageScripts>> = {
   [ScriptProvider.Modal]: {
     [ScriptLanguage.TypeScript]: [modalImageTs, modalRunTs],
-    [ScriptLanguage.Python]: [modalImagePy, modalRunPy]
+    [ScriptLanguage.Python]: [modalImagePy, modalRunPy],
+    [ScriptLanguage.Go]: [modalImageGo, modalRunGo]
   },
   [ScriptProvider.Daytona]: {
     [ScriptLanguage.TypeScript]: [daytonaImageTs, daytonaRunTs],
-    [ScriptLanguage.Python]: [daytonaImagePy, daytonaRunPy]
+    [ScriptLanguage.Python]: [daytonaImagePy, daytonaRunPy],
+    [ScriptLanguage.Go]: [daytonaImageGo, daytonaRunGo]
   },
   [ScriptProvider.E2B]: {
     [ScriptLanguage.TypeScript]: [e2bRunTs],
@@ -93,6 +103,12 @@ const SHELL_SCRIPTS: Partial<Record<ScriptProvider, TScriptSource[]>> = {
 };
 
 export const hasScriptLanguages = (provider: ScriptProvider) => Boolean(LANGUAGE_SCRIPTS[provider]);
+
+export const scriptLanguagesFor = (provider: ScriptProvider) =>
+  Object.values(ScriptLanguage).filter((language) => LANGUAGE_SCRIPTS[provider]?.[language]);
+
+export const resolveScriptLanguage = (provider: ScriptProvider, preferred: ScriptLanguage) =>
+  LANGUAGE_SCRIPTS[provider]?.[preferred] ? preferred : ScriptLanguage.TypeScript;
 
 type TSandboxValues = { siteUrl: string; projectId: string; accessBundle: string };
 
@@ -172,7 +188,8 @@ export const PLATFORMS: Record<ScriptProvider, TPlatformDetails> = {
 
 export const LANGUAGE_NAMES: Record<ScriptLanguage, string> = {
   [ScriptLanguage.TypeScript]: "TypeScript",
-  [ScriptLanguage.Python]: "Python"
+  [ScriptLanguage.Python]: "Python",
+  [ScriptLanguage.Go]: "Go"
 };
 
 type TPromptValues = {
@@ -200,6 +217,7 @@ export const codeLanguageForFile = (fileName: string) => {
   if (fileName.split("/").pop()?.startsWith("Dockerfile")) return "dockerfile";
   if (fileName.endsWith(".ts")) return "typescript";
   if (fileName.endsWith(".py")) return "python";
+  if (fileName.endsWith(".go")) return "go";
   if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) return "yaml";
   if (fileName.endsWith(".sh")) return "bash";
   return undefined;
@@ -215,6 +233,7 @@ export const runCommand = (token: string, siteUrl: string) =>
 export enum SnippetLanguage {
   Python = "python",
   TypeScript = "typescript",
+  Go = "go",
   Cli = "cli"
 }
 
@@ -227,8 +246,9 @@ export type SnippetValues = {
 };
 
 export const INSTALL_COMMANDS: Record<SnippetLanguage, string> = {
-  [SnippetLanguage.Python]: "pip install 'infisicalsdk>=1.3.0'",
+  [SnippetLanguage.Python]: "pip install 'infisicalsdk>=1.4.0'",
   [SnippetLanguage.TypeScript]: "npm install @infisical/sdk",
+  [SnippetLanguage.Go]: "go get github.com/infisical/go-sdk",
   [SnippetLanguage.Cli]: "npm install -g @infisical/cli"
 };
 
@@ -275,6 +295,37 @@ try {
   await runAgent(session.token); // Your code that starts the agent
 } finally {
   await client.agentVault().sessions.revoke(session.id);
+}`;
+  }
+
+  if (language === SnippetLanguage.Go) {
+    return `package main
+
+import (
+	"context"
+	"log"
+
+	infisical "github.com/infisical/go-sdk"
+)
+
+func main() {
+	client := infisical.NewInfisicalClient(context.Background(), infisical.Config{SiteUrl: "${siteUrl}"})
+	_, err := client.Auth().UniversalAuthLogin("${clientId}", "${clientSecret}")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+		ProjectID:    "${projectId}",
+		AccessBundle: "${accessBundle}",
+		TTL:          "1h",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.AgentVault().Sessions().Revoke(session.ID)
+
+	runAgent(session.Token) // Your code that starts the agent
 }`;
   }
 

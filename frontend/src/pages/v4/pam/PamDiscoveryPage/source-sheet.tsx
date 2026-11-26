@@ -6,20 +6,20 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Link } from "@infisical/cipher/ui/link";
 import { DataList } from "@infisical/cipher/ui/list";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import {
   Sheet,
+  SheetAside,
   SheetBody,
   SheetContent,
   SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SheetHeader
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
@@ -147,13 +147,22 @@ const StagedTab = ({
 
   return (
     <Stack gap={16}>
-      <Input
-        icon="search"
-        aria-label="Search staged accounts"
-        placeholder="Search accounts..."
-        value={paging.search}
-        onChange={(event) => paging.setSearch(event.target.value)}
-      />
+      <Inline gap={8} wrap={false}>
+        <Input
+          icon="search"
+          aria-label="Search staged accounts"
+          placeholder="Search accounts..."
+          value={paging.search}
+          onChange={(event) => paging.setSearch(event.target.value)}
+        />
+        <Button
+          variant="outline"
+          disabledReason={selectedAccounts.length ? undefined : "Select accounts to import"}
+          onClick={() => setImporting(true)}
+        >
+          {selectedAccounts.length ? `Import ${selectedAccounts.length}` : "Import"}
+        </Button>
+      </Inline>
       <DataTable
         ghost={false}
         label="Staged accounts"
@@ -188,19 +197,6 @@ const StagedTab = ({
           />
         }
         pagination={paging.pagination(data?.totalCount ?? 0, "Staged account pages")}
-        actionBar={
-          selectedAccounts.length > 0 ? (
-            <FloatingActionBar
-              label="Selected account actions"
-              count={selectedAccounts.length}
-              onClear={() => setSelected({})}
-              noun={selectedAccounts.length === 1 ? "account" : "accounts"}
-              actions={[
-                { label: "Import accounts", icon: "download", onClick: () => setImporting(true) }
-              ]}
-            />
-          ) : undefined
-        }
       />
       <ImportDialog
         open={importing}
@@ -432,55 +428,17 @@ const SourceBody = ({
   draft?: TSourceForm;
   onDraft: (draft?: TSourceForm) => void;
 }) => {
-  const { orgId } = useParams({ from: v4Path("/organizations/$orgId") });
   const pam = useV4Adapter("pam");
-  const { data: types = [] } = pam.useDiscoveryTypes();
   const { data: accountTypes = [] } = pam.useAccountTypes();
-  const { data: accounts = [] } = pam.useAccounts();
   const runsQuery = pam.useDiscoveryRuns(source.id, { refetchInterval: 5000 });
   const runs = runsQuery.data ?? [];
   const typeMap = new Map(accountTypes.map((meta) => [meta.type as string, meta]));
-  const credential = accounts.find((entry) => entry.id === source.credentialAccountId);
   const showDependencies =
     source.discoveryType !== PamDiscoveryType.Postgres &&
     source.discoveryType !== PamDiscoveryType.MsSQL;
 
   return (
-    <Stack gap={24}>
-      <DataList
-        variant="meta"
-        items={[
-          [
-            "Type",
-            types.find((entry) => entry.type === source.discoveryType)?.name ?? source.discoveryType
-          ],
-          [
-            "Status",
-            <DiscoveryStatus key="status" status={runs[0]?.status} error={runs[0]?.errorMessage} />
-          ],
-          [
-            "Credential account",
-            credential ? (
-              <RowLink
-                key="credential"
-                link={{
-                  to: v4Path("/organizations/$orgId/$"),
-                  params: {
-                    orgId,
-                    _splat: `pam/accounts/${credential.accountType}/${credential.id}/access`
-                  }
-                }}
-              >
-                {accountLabel(credential)}
-              </RowLink>
-            ) : (
-              "None"
-            )
-          ],
-          ["Schedule", SCHEDULE_LABELS[source.schedule]],
-          ["Last run", formatDate(source.lastRunAt) ?? "Never"]
-        ]}
-      />
+    <>
       {tab === PamSheetTab.General && (
         <StagedTab source={source} typeMap={typeMap} showDependencies={showDependencies} />
       )}
@@ -489,7 +447,47 @@ const SourceBody = ({
       {tab === PamSheetTab.Configuration && (
         <ConfigurationTab source={source} draft={draft} onDraft={onDraft} />
       )}
-    </Stack>
+    </>
+  );
+};
+
+const SourceSummary = ({ source }: { source: TPamDiscoverySource }) => {
+  const { orgId } = useParams({ from: v4Path("/organizations/$orgId") });
+  const pam = useV4Adapter("pam");
+  const { data: accounts = [] } = pam.useAccounts();
+  const { data: runs = [] } = pam.useDiscoveryRuns(source.id, { refetchInterval: 5000 });
+  const credential = accounts.find((entry) => entry.id === source.credentialAccountId);
+  return (
+    <DataList
+      variant="props"
+      items={[
+        [
+          "Status",
+          <DiscoveryStatus key="status" status={runs[0]?.status} error={runs[0]?.errorMessage} />
+        ],
+        [
+          "Credential account",
+          credential ? (
+            <Link
+              key="credential"
+              link={{
+                to: v4Path("/organizations/$orgId/$"),
+                params: {
+                  orgId,
+                  _splat: `pam/accounts/${credential.accountType}/${credential.id}/access`
+                }
+              }}
+            >
+              {accountLabel(credential)}
+            </Link>
+          ) : (
+            "None"
+          )
+        ],
+        ["Schedule", SCHEDULE_LABELS[source.schedule]],
+        ["Last run", formatDate(source.lastRunAt) ?? "Never"]
+      ]}
+    />
   );
 };
 
@@ -516,7 +514,9 @@ export const SourceSheet = ({
   const triggerScan = pam.useTriggerDiscoveryScan();
   const [draft, setDraft] = useState<TSourceForm>();
   const [scanning, setScanning] = useState(false);
+  const { data: types = [] } = pam.useDiscoveryTypes();
   const source = sources?.find((entry) => entry.id === sourceId);
+  const typeMeta = types.find((entry) => entry.type === source?.discoveryType);
   const close = () => {
     setDraft(undefined);
     onClose();
@@ -543,7 +543,17 @@ export const SourceSheet = ({
   return (
     <>
       <Sheet open={Boolean(sourceId)} onOpenChange={(open) => !open && guard.requestDiscard()}>
-        <SheetContent size="lg">
+        <SheetContent size="xl">
+          <SheetAside
+            mainLabel="Source"
+            media={typeMeta && <ProviderIcon icon={typeMeta.icon} alt={typeMeta.name} size="md" />}
+            title={source?.name ?? "Discovery source"}
+            badges={
+              source && <Badge tone="outline">{typeMeta?.name ?? source.discoveryType}</Badge>
+            }
+          >
+            {source ? <SourceSummary source={source} /> : <Skeleton lines={4} />}
+          </SheetAside>
           <SheetHeader
             tabs={
               source && (
@@ -563,9 +573,7 @@ export const SourceSheet = ({
                 </Tabs>
               )
             }
-          >
-            <SheetTitle>{source?.name ?? "Discovery source"}</SheetTitle>
-          </SheetHeader>
+          />
           <SheetBody
             {...(source && {
               role: "tabpanel",

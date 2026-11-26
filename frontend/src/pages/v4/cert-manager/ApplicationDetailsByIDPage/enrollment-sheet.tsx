@@ -41,6 +41,7 @@ import {
   isMethodConfigured,
   METHOD_LABELS
 } from "./enrollment-model";
+import { MicrosoftAutoenrollmentEnrollmentPanel } from "./enrollment-ms-autoenroll";
 import { ScepEnrollmentPanel } from "./enrollment-scep";
 
 export { type EnrollmentMethod, METHOD_LABELS } from "./enrollment-model";
@@ -49,7 +50,8 @@ const METHOD_DESCRIPTIONS: Record<EnrollmentMethod, string> = {
   api: "Issue certificates from the UI or programmatically through the API.",
   est: "Enroll enterprise devices and IoT with the EST protocol.",
   acme: "Automate renewal with ACME clients such as Certbot or Caddy.",
-  scep: "Provision device certificates through MDM platforms such as Jamf or Intune."
+  scep: "Provision device certificates through MDM platforms such as Jamf or Intune.",
+  "microsoft-autoenrollment": "Enroll domain-joined Windows computers through Group Policy."
 };
 
 type EnrollmentSheetProps = {
@@ -64,11 +66,12 @@ type EnrollmentSheetProps = {
 type AddMenuProps = {
   methods: EnrollmentMethod[];
   locked: Partial<Record<EnrollmentMethod, boolean>>;
+  unsupported: Partial<Record<EnrollmentMethod, string>>;
   disabled: boolean;
   onAdd: (method: EnrollmentMethod) => void;
 };
 
-const AddMethodMenu = ({ methods, locked, disabled, onAdd }: AddMenuProps) => (
+const AddMethodMenu = ({ methods, locked, unsupported, disabled, onAdd }: AddMenuProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="outline" size="sm" icon="plus" layout="trigger" disabled={disabled}>
@@ -80,6 +83,7 @@ const AddMethodMenu = ({ methods, locked, disabled, onAdd }: AddMenuProps) => (
         <DropdownMenuItem
           key={method}
           description={METHOD_DESCRIPTIONS[method]}
+          disabledReason={unsupported[method]}
           onSelect={() => onAdd(method)}
         >
           {METHOD_LABELS[method]}
@@ -150,12 +154,14 @@ const MethodPanel = ({
   drafts,
   setDraft,
   canCreateConnection,
+  onUpgradeRequired,
   ...shared
 }: SharedPanelProps & {
   method: EnrollmentMethod;
   drafts: EnrollmentDrafts;
   setDraft: <M extends EnrollmentMethod>(method: M, draft: EnrollmentDrafts[M]) => void;
   canCreateConnection: boolean;
+  onUpgradeRequired?: () => void;
 }) => {
   if (method === "api")
     return (
@@ -181,12 +187,22 @@ const MethodPanel = ({
         onDraft={(draft) => setDraft("acme", draft)}
       />
     );
+  if (method === "scep")
+    return (
+      <ScepEnrollmentPanel
+        {...shared}
+        draft={drafts.scep}
+        onDraft={(draft) => setDraft("scep", draft)}
+        canCreateConnection={canCreateConnection}
+      />
+    );
   return (
-    <ScepEnrollmentPanel
+    <MicrosoftAutoenrollmentEnrollmentPanel
       {...shared}
-      draft={drafts.scep}
-      onDraft={(draft) => setDraft("scep", draft)}
+      draft={drafts["microsoft-autoenrollment"]}
+      onDraft={(draft) => setDraft("microsoft-autoenrollment", draft)}
       canCreateConnection={canCreateConnection}
+      onUpgradeRequired={onUpgradeRequired}
     />
   );
 };
@@ -221,8 +237,17 @@ const EnrollmentView = ({
   const active = selected && visible.includes(selected) ? selected : visible[0];
   const locked: Partial<Record<EnrollmentMethod, boolean>> = {
     est: plan?.est === false,
-    scep: plan?.scep === false
+    scep: plan?.scep === false,
+    "microsoft-autoenrollment": plan?.microsoftAutoenrollment === false
   };
+  const unsupported: Partial<Record<EnrollmentMethod, string>> = {
+    "microsoft-autoenrollment": state?.microsoftAutoenrollmentUnsupportedReason ?? undefined
+  };
+  const openMethodUpgradeGate = (method: EnrollmentMethod) =>
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
 
   const closeGuard = useDiscardChangesGuard({
     isDirty: Object.keys(drafts).length > 0,
@@ -241,10 +266,7 @@ const EnrollmentView = ({
 
   const add = (method: EnrollmentMethod) => {
     if (locked[method]) {
-      openUpgradeGate({
-        intent: CertificateEnrollmentUpgradeIntent,
-        paywallKey: `cert-manager.application-enrollment.${method}`
-      });
+      openMethodUpgradeGate(method);
       return;
     }
     setAdded((current) => [...current, method]);
@@ -265,6 +287,7 @@ const EnrollmentView = ({
       (method) => !configured.has(method) && !added.includes(method)
     ),
     locked,
+    unsupported,
     disabled: busy,
     onAdd: add
   };
@@ -314,6 +337,7 @@ const EnrollmentView = ({
               drafts={drafts}
               setDraft={setDraft}
               canCreateConnection={canCreateConnection}
+              onUpgradeRequired={locked[active] ? () => openMethodUpgradeGate(active) : undefined}
               applicationId={applicationId}
               profileId={profileId}
               profileSlug={profileSlug}

@@ -16,6 +16,7 @@ import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type ApprovalRequestDetailsQuery = V4QueryResult<TSecretApprovalRequest> & {
   isError: boolean;
+  isFetching: boolean;
   refetch: () => unknown;
 };
 
@@ -23,6 +24,9 @@ export type SecretsChangeRequestsAdapter = {
   useApprovalRequests: (
     dto: TGetSecretApprovalRequestList
   ) => V4QueryResult<{ approvals: TSecretApprovalRequest[]; totalCount: number }>;
+  useFetchApprovalRequests: () => (
+    dto: TGetSecretApprovalRequestList
+  ) => Promise<{ approvals: TSecretApprovalRequest[]; totalCount: number }>;
   useApprovalRequestCount: (
     dto: TGetSecretApprovalRequestCount
   ) => V4QueryResult<TSecretApprovalRequestCount>;

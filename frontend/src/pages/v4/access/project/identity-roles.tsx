@@ -41,6 +41,8 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { identitySubject, type ProjectIdentityMembership } from "./identity-common";
+import { useIdentityRoleAccess } from "./member-access";
+import { useProjectPlanGates } from "./plan-gates";
 import { accessLabel, linksIdentityRoles } from "./product";
 import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
@@ -73,6 +75,7 @@ const EditRoleDialog = ({
   roles,
   canEdit,
   grant,
+  blocked,
   onOpenChange
 }: {
   projectId: string;
@@ -80,6 +83,7 @@ const EditRoleDialog = ({
   roles: readonly ProjectRoleOption[];
   canEdit: boolean;
   grant?: Grant;
+  blocked: (drafts: readonly GrantDraft[]) => boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
   const setRoles = useSetRoles(projectId, membership.identity.id);
@@ -99,11 +103,13 @@ const EditRoleDialog = ({
             loading={pending}
             disabled={!dirty || !canEdit}
             onClick={async () => {
+              const drafts = membership.roles.map((role) =>
+                role.id === grant?.id ? draft : draftOf(role)
+              );
+              if (blocked(drafts)) return;
               setPending(true);
               try {
-                await setRoles(
-                  membership.roles.map((role) => (role.id === grant?.id ? draft : draftOf(role)))
-                );
+                await setRoles(drafts);
                 saved("Successfully updated role");
                 onOpenChange(false);
               } catch (error) {
@@ -131,17 +137,25 @@ export const IdentityRoleDetailsSection = ({
   const go = useGo();
   const scope = useProjectScope();
   const { permission } = useProjectPermission(projectId);
-  const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId, scope.projectType);
+  const { assignable, optionsFor, targetAllowed } = useIdentityRoleAccess(
+    projectId,
+    membership.identity.id
+  );
+  const gates = useProjectPlanGates();
+  const blocked = (drafts: readonly GrantDraft[]) =>
+    gates.customRolesBlocked(
+      drafts.map((draft) => draft.role),
+      "project.identity-role-modify"
+    );
   const setRoles = useSetRoles(projectId, membership.identity.id);
   const [adding, setAdding] = useState<number>();
   const [modifying, setModifying] = useState<Grant>();
   const [removing, setRemoving] = useState<Grant>();
   const [removePending, setRemovePending] = useState(false);
-  const canEdit = permission.can(
-    ProjectPermissionIdentityActions.Edit,
-    identitySubject(membership.identity.id)
-  );
-  const addable = roles.filter(
+  const canEdit =
+    targetAllowed &&
+    permission.can(ProjectPermissionIdentityActions.Edit, identitySubject(membership.identity.id));
+  const addable = assignable.filter(
     (role) => !membership.roles.some((grant) => grantSlug(grant) === role.slug)
   );
   let addReason: string | undefined;
@@ -245,8 +259,10 @@ export const IdentityRoleDetailsSection = ({
         options={addable}
         onOpenChange={(open) => !open && setAdding(undefined)}
         onAdd={async (grant) => {
+          const drafts = [...membership.roles.map(draftOf), grant];
+          if (blocked(drafts)) return false;
           try {
-            await setRoles([...membership.roles.map(draftOf), grant]);
+            await setRoles(drafts);
             saved("Successfully added role");
             return true;
           } catch (error) {
@@ -259,9 +275,10 @@ export const IdentityRoleDetailsSection = ({
         key={modifying?.id}
         projectId={projectId}
         membership={membership}
-        roles={roles}
+        roles={modifying ? optionsFor(grantSlug(modifying)) : assignable}
         canEdit={canEdit}
         grant={modifying}
+        blocked={blocked}
         onOpenChange={(open) => !open && setModifying(undefined)}
       />
       <AlertDialog
@@ -300,6 +317,7 @@ export const IdentityRoleDetailsSection = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {gates.upgradeGate}
     </>
   );
 };

@@ -19,7 +19,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { Tooltip, TooltipText } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { UnlinkIcon } from "lucide-react";
 
@@ -39,6 +39,7 @@ import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { targetOf } from "./agent-vault-utils";
+import { OAuthStatusBadge } from "./service-oauth";
 import { DateCell, Dash, ServiceIcon } from "./shared";
 
 import css from "./resources.module.css";
@@ -90,36 +91,58 @@ const Target = ({ service }: { service: TAgentVaultService }) => {
   );
 };
 
-const SetupBadge = ({ service }: { service: TAgentVaultService }) => {
+const SetupBadge = ({
+  service,
+  onSetUp
+}: {
+  service: TAgentVaultService;
+  onSetUp: (service: TAgentVaultService) => void;
+}) => {
   const { personalValues } = service;
   if (!personalValues) return null;
-  if (!personalValues.isConfigured)
-    return (
-      <Badge tone="warn" icon="alert">
-        Requires setup
-      </Badge>
-    );
-  if (
-    personalValues.fields.some(
-      (field) => field.oauth?.status === AgentVaultOauthStatus.NeedsAdditionalScopes
-    )
-  )
-    return (
-      <Badge tone="warn" icon="alert">
-        Missing scopes
-      </Badge>
-    );
+  const isMissingScopes = personalValues.fields.some(
+    (field) => field.oauth?.status === AgentVaultOauthStatus.NeedsAdditionalScopes
+  );
+  const needsAttention = !personalValues.isConfigured || isMissingScopes;
+  let label = "Configured";
+  if (!personalValues.isConfigured) label = "Requires setup";
+  else if (isMissingScopes) label = "Missing scopes";
   return (
-    <Badge tone="soft" icon="check-c">
-      Configured
+    <Badge
+      tone={needsAttention ? "warn" : "soft"}
+      icon={needsAttention ? "alert" : "check-c"}
+      asChild
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onSetUp(service);
+        }}
+      >
+        {label}
+      </button>
     </Badge>
   );
 };
 
-const oauthNeedsAttention = (service: TAgentVaultService) =>
-  service.credential.type === AgentVaultCredentialType.OAuth &&
-  Boolean(service.credential.status) &&
-  service.credential.status !== AgentVaultOauthStatus.Connected;
+const OAuthAttention = ({ service }: { service: TAgentVaultService }) => {
+  const { credential } = service;
+  if (
+    credential.type !== AgentVaultCredentialType.OAuth ||
+    !credential.status ||
+    credential.status === AgentVaultOauthStatus.Connected
+  )
+    return null;
+  if (!credential.variable) return <OAuthStatusBadge status={credential.status} />;
+  return (
+    <TooltipText
+      content={`Uses the ${credential.variable.key} variable. Authorize it on the Variables page.`}
+    >
+      <OAuthStatusBadge status={credential.status} />
+    </TooltipText>
+  );
+};
 
 export const ServicesTable = ({
   orgId,
@@ -171,11 +194,7 @@ export const ServicesTable = ({
           <span title={service.name} className={css.name}>
             {service.name}
           </span>
-          {oauthNeedsAttention(service) && (
-            <Badge tone="warn" icon="alert">
-              Reconnect
-            </Badge>
-          )}
+          <OAuthAttention service={service} />
           {service.description && (
             <Meta mono={false} title={service.description} className={css.description}>
               {service.description}
@@ -239,7 +258,7 @@ export const ServicesTable = ({
       header: "Personal values",
       hideHeader: true,
       width: 144,
-      render: (service) => <SetupBadge service={service} />
+      render: (service) => <SetupBadge service={service} onSetUp={onSetUp} />
     }
   ];
 

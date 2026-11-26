@@ -1,7 +1,6 @@
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection } from "@app/hooks/api/appConnections/types";
-import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 
 import { CONNECTION_PRESETS } from "../data/integrations/connection-presets";
 import { notPorted } from "../not-ported";
@@ -18,9 +17,18 @@ export const credentialsBlock = (row: TAppConnection) =>
     ? undefined
     : notPorted("Editing these credentials");
 
-export const isManagedIdentity = (connection: Pick<TAppConnection, "app" | "method">) =>
-  connection.app === AppConnection.AzureKeyVault &&
-  connection.method === AzureKeyVaultConnectionMethod.ManagedIdentity;
+/** The stored credentials a federated connection sends back to verify itself as it is. */
+export const verifyCredentials = (connection: TAppConnection) => {
+  if (connection.app === AppConnection.GCP) {
+    const { workloadIdentityProvider, serviceAccountEmail } = connection.credentials as {
+      workloadIdentityProvider: string;
+      serviceAccountEmail?: string;
+    };
+    return { workloadIdentityProvider, serviceAccountEmail: serviceAccountEmail || undefined };
+  }
+  const { tenantId, clientId } = connection.credentials as { tenantId: string; clientId: string };
+  return { tenantId, clientId };
+};
 
 export type FederatedCredential = {
   issuerUrl: string | null;

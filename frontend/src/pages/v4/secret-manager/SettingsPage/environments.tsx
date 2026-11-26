@@ -37,6 +37,8 @@ import slugify from "@sindresorhus/slugify";
 import { addDays, format, intervalToDuration } from "date-fns";
 import { z } from "zod";
 
+import { hasEnvironmentCapacity } from "@app/components/license/UpgradeGate/environment-limit";
+import { EnvironmentLimitUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -52,6 +54,7 @@ import { useProjectScope } from "../../access/project/scope";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
+import { useUpgradeGate } from "../../license";
 
 const GRACE_DAYS = 14;
 
@@ -440,9 +443,7 @@ const blockedReasons = ({
   const overLimit = limit ? Math.max(0, count - limit) : 0;
   const planLimit = `Your plan allows ${limit} environments.`;
 
-  let createBlocked: string | undefined;
-  if (!canCreate) createBlocked = RESTRICTED;
-  else if (limit && count >= limit) createBlocked = `${planLimit} Upgrade to add more.`;
+  const createBlocked = canCreate ? undefined : RESTRICTED;
 
   let editBlocked: string | undefined;
   if (!canEdit) editBlocked = RESTRICTED;
@@ -499,6 +500,7 @@ export const EnvironmentsSettings = () => {
     key: 0
   });
   const [confirm, setConfirm] = useState<Confirm>();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { active, busy, reorder } = useEnvironmentOrder(
     projectId,
     project?.environments,
@@ -579,7 +581,16 @@ export const EnvironmentsSettings = () => {
             variant="accent"
             icon="plus"
             disabledReason={createBlocked}
-            onClick={() => setDialog({ open: true, key: Date.now() })}
+            onClick={() => {
+              if (hasEnvironmentCapacity(environmentLimit, active.length)) {
+                setDialog({ open: true, key: Date.now() });
+                return;
+              }
+              openUpgradeGate({
+                intent: EnvironmentLimitUpgradeIntent,
+                paywallKey: "secret-manager.environment"
+              });
+            }}
           >
             Create environment
           </Button>
@@ -620,6 +631,7 @@ export const EnvironmentsSettings = () => {
         onClose={() => setConfirm(undefined)}
         onSwitch={setConfirm}
       />
+      {upgradeGate}
     </Stack>
   );
 };

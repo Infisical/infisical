@@ -142,6 +142,7 @@ import {
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api/projectIdentityMembership/mutations";
 import {
+  projectIdentityMembershipQuery,
   useGetProjectIdentityMembershipV2,
   useListProjectIdentityMemberships
 } from "@app/hooks/api/projectIdentityMembership/queries";
@@ -387,6 +388,8 @@ export const accessLive: AccessAdapter = {
   useProjectUsers: useGetWorkspaceUsers,
   useProjectUser: useGetWorkspaceUserDetails,
   useAvailableProjectUsers: useGetAvailableProjectUsers,
+  useAvailableProjectIdentities: (params) =>
+    useQuery({ ...projectIdentityMembershipQuery.listAvailable(params), refetchOnMount: "always" }),
   useAddProjectUsers: useAddUserToWsNonE2EE,
   useUpdateProjectUserRoles: useUpdateUserWorkspaceRole,
   useRemoveProjectUsers: useDeleteUserFromWorkspace,

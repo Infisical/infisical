@@ -235,9 +235,9 @@ const ProxySettingsDialog = ({
     name: proxy?.name ?? "",
     description: proxy?.description ?? "",
     trafficPolicy:
-      proxy && !isServiceHostsPolicy(proxy.trafficPolicy)
-        ? AgentVaultTrafficPolicy.AnyHost
-        : AgentVaultTrafficPolicy.ServiceHosts,
+      proxy && isServiceHostsPolicy(proxy.trafficPolicy)
+        ? AgentVaultTrafficPolicy.ServiceHosts
+        : AgentVaultTrafficPolicy.AnyHost,
     allowedHosts: proxy?.allowedHosts ?? "",
     pollInterval: String(proxy?.pollInterval ?? 60)
   });
@@ -395,7 +395,7 @@ const ProxyTokenDialog = ({
   const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
   return (
     <Dialog open={Boolean(proxyToken)} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Proxy token</DialogTitle>
           <DialogDescription>
@@ -546,6 +546,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
   const revoke = resources.useRevokeProxyAccess(projectId);
   const rotate = resources.useRotateProxyToken(projectId);
   const fetchCa = resources.useProxyCa();
+  const isConfirmPending = rotate.isPending || revoke.isPending || remove.isPending;
 
   const downloadCa = async (proxy: TAgentVaultProxy) => {
     try {
@@ -762,9 +763,13 @@ const Proxies = ({ projectId }: { projectId: string }) => {
         proxyToken={proxyToken}
         onOpenChange={(open) => !open && setProxyToken(undefined)}
       />
-      <AlertDialog open={Boolean(confirm)} onOpenChange={(open) => !open && setConfirm(undefined)}>
+      <AlertDialog
+        open={Boolean(confirm)}
+        onOpenChange={(open) => !open && !isConfirmPending && setConfirm(undefined)}
+      >
         <AlertDialogContent
           tone={confirm?.kind === "rotate" ? "neutral" : "danger"}
+          pending={isConfirmPending}
           confirmText={confirm && confirm.kind !== "rotate" ? confirm.proxy.name : undefined}
         >
           <AlertDialogHeader>
@@ -777,7 +782,14 @@ const Proxies = ({ projectId }: { projectId: string }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => confirm && runConfirm(confirm)}>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isConfirmPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (confirm) runConfirm(confirm);
+              }}
+            >
               {confirm ? CONFIRM_COPY[confirm.kind].action : ""}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -14,6 +14,7 @@ import {
 import { Badge, Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,7 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
   Popover,
@@ -39,9 +40,19 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
 import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_RESOURCE_EVENT_TYPES,
+  ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES,
+  ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS,
   AlertEventType,
   AlertResourceType,
   channelFormSchema,
@@ -55,9 +66,13 @@ import {
   toChannelForm,
   toChannelInput
 } from "@app/hooks/api/alerts/utils";
+import { SecretScanningScanTrigger } from "@app/hooks/api/secretScanningV2/enums";
 
-import { ChannelsStep } from "../../cert-manager/SettingsPage/alert-channels";
-import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
+import { useOrgId, useOrgPermission, useProjectPermission } from "../access/permissions";
+import { failed, readableFailure, saved } from "../access/toast";
+import { Gate, RESTRICTED } from "../access/ui";
+import { ChannelsStep, type TRecipientGroup } from "../cert-manager/SettingsPage/alert-channels";
+import { useAlertMembers } from "../cert-manager/SettingsPage/alert-members";
 import {
   MAX_CHANNELS,
   type TDraftChannel,
@@ -66,24 +81,50 @@ import {
   toFieldErrors,
   validateChannels,
   withoutErrors
-} from "../../cert-manager/SettingsPage/alert-model";
-import { useV4Adapter } from "../../data/adapters";
-import { failed, readableFailure, saved } from "../toast";
-import { Gate } from "../ui";
+} from "../cert-manager/SettingsPage/alert-model";
+import { useV4Adapter } from "../data/adapters";
 
-const EVENT_TYPES = ALERT_RESOURCE_EVENT_TYPES[AlertResourceType.IdentityAuthentication];
-
-const EVENT_LABELS: Partial<Record<AlertEventType, string>> = {
+const EVENT_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change",
+  [AlertEventType.PamAccessRequested]: "Access requested",
+  [AlertEventType.PamAccessRequestApproved]: "Request approved",
+  [AlertEventType.PamAccessRequestDenied]: "Request denied",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-glass used",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery failure",
+  [AlertEventType.SecretRotationFailed]: "Rotation failure",
+  [AlertEventType.SecretSyncFailed]: "Sync failure",
+  [AlertEventType.HoneyTokenTriggered]: "Honey token triggered",
+  [AlertEventType.SecretScanningSecretsDetected]: "Secrets detected",
+  [AlertEventType.SecretScanningScanFailed]: "Scan failure",
+  [AlertEventType.GatewayOffline]: "Gateway offline"
 };
 
-const DEFAULT_NAMES: Partial<Record<AlertEventType, string>> = {
+const DEFAULT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
+  [AlertEventType.PamAccessRequested]: "Access requested alert",
+  [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
+  [AlertEventType.PamAccessRequestDenied]: "Request denied alert",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-glass alert",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert",
+  [AlertEventType.SecretRotationFailed]: "Rotation failure alert",
+  [AlertEventType.SecretSyncFailed]: "Sync failure alert",
+  [AlertEventType.HoneyTokenTriggered]: "Honey token trigger alert",
+  [AlertEventType.SecretScanningSecretsDetected]: "Secrets detected",
+  [AlertEventType.SecretScanningScanFailed]: "Secret scanning failed",
+  [AlertEventType.GatewayOffline]: "Gateway offline alert"
 };
+
+const SCAN_TRIGGER_OPTIONS = [
+  { value: SecretScanningScanTrigger.Push, label: "Push" },
+  { value: SecretScanningScanTrigger.PullRequest, label: "Pull request" },
+  { value: SecretScanningScanTrigger.Manual, label: "Manual scan" },
+  { value: SecretScanningScanTrigger.ResourcesAdded, label: "New resource" }
+];
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
+const GROUP_LIMIT = 100;
 
 const eventLabel = (alert: TAlert) =>
   EVENT_LABELS[alert.eventType as AlertEventType] ?? alert.eventType;
@@ -96,6 +137,7 @@ const formSchema = z
     enabled: z.boolean(),
     alertBeforeDays: z.string(),
     dailyReminder: z.boolean(),
+    scanTriggers: z.array(z.nativeEnum(SecretScanningScanTrigger)),
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
   .superRefine((form, ctx) => {
@@ -114,40 +156,65 @@ type TDraft = Omit<z.infer<typeof formSchema>, "channels"> & { channels: TDraftC
 
 const DETAIL_FIELDS = ["eventType", "name", "description", "alertBeforeDays"];
 
-const useIdentityAlerts = (identityId: string, projectId?: string) =>
-  useV4Adapter("certManagerSettings").useAlerts({
-    resourceType: AlertResourceType.IdentityAuthentication,
-    resourceId: identityId,
-    ...(projectId ? { projectId } : {})
+type TResourceAlertsProps = {
+  resourceType: AlertResourceType;
+  resourceId?: string;
+  projectId?: string;
+  canEdit: boolean;
+  readOnly?: boolean;
+};
+
+export const useAlertGroups = (projectId?: string): TRecipientGroup[] | undefined => {
+  const orgId = useOrgId();
+  const access = useV4Adapter("access");
+  const { permission } = useOrgPermission();
+  const { permission: projectPermission } = useProjectPermission(projectId ?? "");
+  const canReadOrgGroups =
+    !projectId && permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  const canReadProjectGroups =
+    Boolean(projectId) &&
+    projectPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+  const orgGroups = access.useOrgGroups({
+    organizationId: canReadOrgGroups ? orgId : "",
+    limit: GROUP_LIMIT
   });
+  const projectGroups = access.useProjectGroups(projectId ?? "", undefined, {
+    enabled: canReadProjectGroups
+  });
+  if (canReadOrgGroups) return orgGroups.data?.groups;
+  if (canReadProjectGroups) return projectGroups.data?.map(({ group }) => group);
+  return undefined;
+};
 
 const AlertSheet = ({
-  identityId,
+  resourceType,
+  resourceId,
   projectId,
   alert,
   used,
   onOpenChange
-}: {
-  identityId: string;
-  projectId?: string;
+}: Omit<TResourceAlertsProps, "canEdit" | "readOnly"> & {
   alert?: TAlert;
-  used: AlertEventType[];
+  used: Set<string>;
   onOpenChange: (open: boolean) => void;
 }) => {
   const settings = useV4Adapter("certManagerSettings");
   const createAlert = settings.useCreateAlert();
   const updateAlert = settings.useUpdateAlert();
   const members = useAlertMembers(projectId);
-  const firstFree = EVENT_TYPES.find((event) => !used.includes(event)) ?? EVENT_TYPES[0];
+  const groupOptions = useAlertGroups(projectId);
+  const eventTypes = ALERT_RESOURCE_EVENT_TYPES[resourceType];
+  const firstFree = eventTypes.find((event) => !used.has(event)) ?? eventTypes[0];
   const [initial] = useState((): TDraft => ({
     eventType: (alert?.eventType as AlertEventType) ?? firstFree,
-    name: alert?.name ?? DEFAULT_NAMES[firstFree] ?? "",
+    name: alert?.name ?? DEFAULT_NAMES[firstFree],
     description: alert?.description ?? "",
     enabled: alert?.enabled ?? true,
     alertBeforeDays: String(
       parseAlertBeforeDays(alert?.condition?.alertBefore) ?? DEFAULT_ALERT_BEFORE_DAYS
     ),
     dailyReminder: alert?.condition?.dailyReminder ?? false,
+    scanTriggers: alert?.condition?.scanTriggers ?? [],
     channels: (alert?.channels ?? []).map((channel) => toDraftChannel(toChannelForm(channel)))
   }));
   const [draft, setDraft] = useState(initial);
@@ -159,6 +226,7 @@ const AlertSheet = ({
     onDiscard: () => onOpenChange(false)
   });
   const isExpiry = draft.eventType === AlertEventType.IdentityAuthenticationExpiry;
+  const isSecretScanning = resourceType === AlertResourceType.SecretScanning;
 
   const update = (patch: Partial<TDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
@@ -171,12 +239,14 @@ const AlertSheet = ({
     const parsed = formSchema.safeParse(draft);
     if (!parsed.success) throw new Error("Fix the highlighted fields, then try again.");
     const { data } = parsed;
-    const condition = isExpiry
-      ? {
-          alertBefore: toAlertBefore(Number(data.alertBeforeDays)),
-          dailyReminder: data.dailyReminder
-        }
-      : null;
+    let condition: Record<string, unknown> | null = null;
+    if (isExpiry)
+      condition = {
+        alertBefore: toAlertBefore(Number(data.alertBeforeDays)),
+        dailyReminder: data.dailyReminder
+      };
+    else if (isSecretScanning && data.scanTriggers.length)
+      condition = { scanTriggers: data.scanTriggers };
     const channels = data.channels.map(toChannelInput);
     if (alert) {
       await updateAlert
@@ -195,8 +265,8 @@ const AlertSheet = ({
         .mutateAsync({
           name: data.name,
           description: data.description || undefined,
-          resourceType: AlertResourceType.IdentityAuthentication,
-          resourceId: identityId,
+          resourceType,
+          resourceId: resourceId ?? null,
           eventType: data.eventType,
           condition,
           enabled: data.enabled,
@@ -246,18 +316,18 @@ const AlertSheet = ({
                   <Select
                     label="Event"
                     value={draft.eventType}
-                    disabled={Boolean(alert)}
-                    options={EVENT_TYPES.map((event) => ({
+                    disabled={Boolean(alert) || eventTypes.length === 1}
+                    options={eventTypes.map((event) => ({
                       value: event,
-                      label: EVENT_LABELS[event] ?? event,
-                      disabled: used.includes(event)
+                      label: EVENT_LABELS[event],
+                      disabled: used.has(event)
                     }))}
                     onChange={(value) => {
                       const next = value as AlertEventType;
                       update({
                         eventType: next,
                         ...(draft.name === DEFAULT_NAMES[draft.eventType] && {
-                          name: DEFAULT_NAMES[next] ?? ""
+                          name: DEFAULT_NAMES[next]
                         })
                       });
                     }}
@@ -299,6 +369,25 @@ const AlertSheet = ({
                     />
                   </Stack>
                 )}
+                {isSecretScanning && (
+                  <Field
+                    wide
+                    label="Scans"
+                    optional
+                    description="Leave empty to alert on every kind of scan. To stop alerts from pull requests, select every kind except Pull request."
+                  >
+                    <Combobox
+                      multiple
+                      label="Scans"
+                      options={SCAN_TRIGGER_OPTIONS}
+                      value={draft.scanTriggers}
+                      placeholder="All scans"
+                      onChange={(values) =>
+                        update({ scanTriggers: values as SecretScanningScanTrigger[] })
+                      }
+                    />
+                  </Field>
+                )}
                 <Switch
                   layout="row"
                   label="Enabled"
@@ -326,12 +415,16 @@ const AlertSheet = ({
                 projectId={projectId}
                 alertId={alert?.id}
                 members={members}
-                allowEmailAddresses={false}
+                groupOptions={groupOptions}
+                allowEmailAddresses={ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES.includes(
+                  resourceType
+                )}
+                projectRecipients={
+                  Boolean(projectId) &&
+                  ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS.includes(resourceType)
+                }
                 hasEnterprise
-                resource={{
-                  resourceType: AlertResourceType.IdentityAuthentication,
-                  resourceId: identityId
-                }}
+                resource={{ resourceType, resourceId: resourceId ?? alert?.resourceId ?? null }}
               />
             )
           }
@@ -368,85 +461,79 @@ const AlertRow = ({
   onRemove: () => void;
 }) => {
   const updateAlert = useV4Adapter("certManagerSettings").useUpdateAlert();
+  const channels = channelSummary(alert);
   return (
     <Inline gap={12} justify="between" wrap={false}>
       <Stack gap={2} style={{ minWidth: 0 }}>
         <SmallText truncate>{alert.name}</SmallText>
         <SmallText muted truncate>
-          {channelSummary(alert)
-            ? `${eventLabel(alert)} via ${channelSummary(alert)}`
-            : eventLabel(alert)}
+          {channels ? `${eventLabel(alert)} via ${channels}` : eventLabel(alert)}
         </SmallText>
       </Stack>
-      {editable ? (
-        <Inline gap={4} wrap={false}>
-          <Switch
-            size="sm"
-            aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
-            checked={alert.enabled}
-            disabledReason={canEdit ? undefined : "Access restricted"}
-            onCheckedChange={(enabled) =>
-              updateAlert
-                .mutateAsync({ alertId: alert.id, enabled })
-                .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
-                .catch((error) => failed("Failed to update the alert", error))
-            }
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                icon="more"
-                iconOnly
-                disabledReason={canEdit ? undefined : "Access restricted"}
-              >
-                {`Options for ${alert.name}`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onEdit}>
-                <Icon name="settings" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={onRemove}>
-                <Icon name="trash" />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Inline>
-      ) : (
-        <Badge tone={alert.enabled ? "ok" : "outline"}>
-          {alert.enabled ? "Active" : "Disabled"}
-        </Badge>
-      )}
+      <InlineItem shrink={false}>
+        {editable ? (
+          <Inline gap={4} wrap={false}>
+            <Switch
+              size="sm"
+              aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
+              checked={alert.enabled}
+              disabledReason={canEdit ? undefined : RESTRICTED}
+              onCheckedChange={(enabled) =>
+                updateAlert
+                  .mutateAsync({ alertId: alert.id, enabled })
+                  .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
+                  .catch((error) => failed("Failed to update the alert", error))
+              }
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  icon="more"
+                  iconOnly
+                  disabledReason={canEdit ? undefined : RESTRICTED}
+                >
+                  {`Options for ${alert.name}`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={onEdit}>
+                  <Icon name="settings" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                  <Icon name="trash" />
+                  Remove
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Inline>
+        ) : (
+          <Badge tone={alert.enabled ? "ok" : "outline"}>
+            {alert.enabled ? "Active" : "Disabled"}
+          </Badge>
+        )}
+      </InlineItem>
     </Inline>
   );
 };
 
-type AlertActionProps = {
-  identityId: string;
-  projectId?: string;
-  canEdit: boolean;
-  readOnly?: boolean;
-};
-
-const IdentityAlertMenu = ({
-  identityId,
+const ResourceAlertMenu = ({
+  resourceType,
+  resourceId,
   projectId,
   canEdit,
   readOnly = false,
   alerts
-}: AlertActionProps & { alerts: TAlert[] }) => {
-  const settings = useV4Adapter("certManagerSettings");
-  const deleteAlert = settings.useDeleteAlert();
+}: TResourceAlertsProps & { alerts: TAlert[] }) => {
+  const deleteAlert = useV4Adapter("certManagerSettings").useDeleteAlert();
   const [listOpen, setListOpen] = useState(false);
   const [editing, setEditing] = useState<{ alert?: TAlert }>();
   const [deleting, setDeleting] = useState<TAlert>();
-  const used = alerts.map(({ eventType }) => eventType as AlertEventType);
+  const used = new Set(resourceId ? alerts.map(({ eventType }) => eventType) : []);
   const enabledCount = alerts.filter(({ enabled }) => enabled).length;
-  const canAdd = EVENT_TYPES.some((event) => !used.includes(event));
+  const canAdd = ALERT_RESOURCE_EVENT_TYPES[resourceType].some((event) => !used.has(event));
   const editable = !readOnly;
 
   const open = (alert?: TAlert) => {
@@ -517,10 +604,11 @@ const IdentityAlertMenu = ({
       )}
       {editable && editing && (
         <AlertSheet
-          identityId={identityId}
+          resourceType={resourceType}
+          resourceId={resourceId}
           projectId={projectId}
           alert={editing.alert}
-          used={used.filter((event) => event !== editing.alert?.eventType)}
+          used={new Set([...used].filter((event) => event !== editing.alert?.eventType))}
           onOpenChange={(next) => !next && setEditing(undefined)}
         />
       )}
@@ -560,8 +648,12 @@ const IdentityAlertMenu = ({
   );
 };
 
-export const IdentityAlertAction = (props: AlertActionProps) => {
-  const query = useIdentityAlerts(props.identityId, props.projectId);
+export const ResourceAlertAction = (props: TResourceAlertsProps) => {
+  const query = useV4Adapter("certManagerSettings").useAlerts({
+    resourceType: props.resourceType,
+    ...(props.resourceId ? { resourceId: props.resourceId } : {}),
+    ...(props.projectId ? { projectId: props.projectId } : {})
+  });
   if (!query.data)
     return (
       <Button
@@ -576,5 +668,5 @@ export const IdentityAlertAction = (props: AlertActionProps) => {
       </Button>
     );
   if (!query.data.length && props.readOnly) return null;
-  return <IdentityAlertMenu {...props} alerts={query.data} />;
+  return <ResourceAlertMenu {...props} alerts={query.data} />;
 };

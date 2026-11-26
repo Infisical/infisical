@@ -20,7 +20,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
-import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, type TProjectPermission } from "@app/hooks/api/roles/types";
 import { RoleTemplates } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
@@ -55,13 +54,11 @@ const templatePermissions = (projectType: ProjectType, templateIds: readonly str
 };
 
 const AddIdentityForm = ({
-  orgId,
   projectId,
   pending,
   setPending,
   onClose
 }: {
-  orgId: string;
   projectId: string;
   pending: boolean;
   setPending: (pending: boolean) => void;
@@ -90,12 +87,9 @@ const AddIdentityForm = ({
   );
   const createAgentVaultIdentity = agentVault.useCreateManagedIdentity(projectId);
   const addAgentVaultMembers = agentVault.useAddMembers(projectId);
-  const { data: orgIdentities } = access.useSearchOrgIdentities({
-    orgId,
-    offset: 0,
-    limit: 100,
-    scope: [SearchIdentitiesScope.OrganizationScope],
-    search: {}
+  const { data: availableIdentities } = access.useAvailableProjectIdentities({
+    projectId,
+    projectType: scope.projectType
   });
   const { data: members } = access.useProjectIdentities({
     projectId,
@@ -124,17 +118,17 @@ const AddIdentityForm = ({
   const assignable = useMemo(() => {
     if (isAgentVault) return agentVaultAssignable ?? [];
     const existing = new Set(members?.identityMemberships.map((entry) => entry.identity.id));
-    return (orgIdentities?.identities ?? [])
-      .filter((row) => !existing.has(row.identity.id))
-      .map((row) => row.identity);
-  }, [isAgentVault, agentVaultAssignable, orgIdentities, members]);
+    return (availableIdentities ?? []).filter((identity) => !existing.has(identity.id));
+  }, [isAgentVault, agentVaultAssignable, availableIdentities, members]);
 
   const [mode, setMode] = useState<AddIdentityMode>();
   const currentMode = mode ?? (assignable.length > 0 ? "assign" : "create");
   const [name, setName] = useState("");
   const [identityId, setIdentityId] = useState("");
   const [role, setRole] = useState<string>(
-    isAgentVault ? ProjectMembershipRole.Member : ProjectMembershipRole.NoAccess
+    isAgentVault || scope.projectType === ProjectType.CertificateManager
+      ? ProjectMembershipRole.Member
+      : ProjectMembershipRole.NoAccess
   );
   const [errors, setErrors] = useState<{ name?: string; identity?: string }>({});
 
@@ -355,12 +349,10 @@ const AddIdentityForm = ({
 };
 
 export const AddProjectIdentitySheet = ({
-  orgId,
   projectId,
   open,
   onOpenChange
 }: {
-  orgId: string;
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -375,7 +367,6 @@ export const AddProjectIdentitySheet = ({
         </SheetHeader>
         {open && (
           <AddIdentityForm
-            orgId={orgId}
             projectId={projectId}
             pending={pending}
             setPending={setPending}

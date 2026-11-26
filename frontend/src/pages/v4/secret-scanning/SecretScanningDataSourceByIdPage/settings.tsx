@@ -31,6 +31,7 @@ import {
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
@@ -39,6 +40,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 
 type Toggle = "isScanNewCommitsEnabled" | "isHistoricalScanEnabled" | "isDiscoveryEnabled";
@@ -233,6 +235,18 @@ export const SettingsTab = ({
     <Stack gap={16}>
       <General dataSource={dataSource} canEdit={canEdit} />
       <Scanning dataSource={dataSource} canEdit={canEdit} />
+      <SettingsCard
+        title="Notifications"
+        description={`Choose who's alerted when a scan of ${dataSource.name} finds secrets or fails.`}
+        action={
+          <ResourceAlertAction
+            resourceType={AlertResourceType.SecretScanning}
+            resourceId={dataSource.id}
+            projectId={dataSource.projectId}
+            canEdit={canEdit}
+          />
+        }
+      />
       <SettingsCard
         tone="danger"
         title="Delete data source"
