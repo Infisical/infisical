@@ -39,6 +39,7 @@ import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultMember, TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { PendingInvitationBadge } from "../../access/product/agent-vault/shared";
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import {
@@ -64,6 +65,9 @@ const MemberCell = ({ member }: { member: TActor }) => (
       <span title={memberDisplayName(member)}>{memberDisplayName(member)}</span>
       <Meta mono={false}>{memberSubtitle(member)}</Meta>
     </Stack>
+    {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
+      <PendingInvitationBadge />
+    )}
   </Inline>
 );
 
@@ -83,19 +87,23 @@ const ManageAccessContent = ({
   const searchParam = debouncedSearch.trim() || undefined;
   const actorType = type === ALL ? undefined : type;
 
-  const { data, isPending } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
+  const { data, isPending, error } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
     actorType,
     search: searchParam,
     limit: PER_PAGE,
     offset: (page - 1) * PER_PAGE
   });
-  const { data: available, isPending: isAvailablePending } =
-    resources.useAvailableAccessBundleMembers(
-      projectId,
-      accessBundle.id,
-      { actorType, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
-      true
-    );
+  const {
+    data: available,
+    isPending: isAvailablePending,
+    isFetching: isAvailableFetching,
+    error: availableError
+  } = resources.useAvailableAccessBundleMembers(
+    projectId,
+    accessBundle.id,
+    { actorType, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
+    true
+  );
   const addMembers = resources.useAddAccessBundleMembers(projectId);
   const revokeMembers = resources.useRevokeAccessBundleMembers(projectId);
 
@@ -170,7 +178,7 @@ const ManageAccessContent = ({
         <Button
           variant="outline"
           size="sm"
-          disabled={addMembers.isPending}
+          disabled={addMembers.isPending || isAvailableFetching}
           aria-label={`Grant access to ${memberDisplayName(member)}`}
           onClick={() => grant(member)}
         >
@@ -243,16 +251,25 @@ const ManageAccessContent = ({
               loadingRows={3}
               rowActions={revokeActions}
               empty={
-                <EmptyState
-                  size="sm"
-                  media="bare"
-                  icon={searchParam ? "search" : "users"}
-                  title={
-                    searchParam || type !== ALL
-                      ? `No ${typeLabel} with access match`
-                      : "No one has access yet"
-                  }
-                />
+                error ? (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon="alert"
+                    title="Couldn't load members with access"
+                  />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon={searchParam ? "search" : "users"}
+                    title={
+                      searchParam || type !== ALL
+                        ? `No ${typeLabel} with access match`
+                        : "No one has access yet"
+                    }
+                  />
+                )
               }
               pagination={
                 totalCount > PER_PAGE ? (
@@ -281,7 +298,18 @@ const ManageAccessContent = ({
               rowLabel={memberDisplayName}
               loading={isAvailablePending}
               loadingRows={2}
-              empty={<EmptyState size="sm" media="bare" icon="users" title={noCandidates} />}
+              empty={
+                availableError ? (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon="alert"
+                    title="Couldn't load members without access"
+                  />
+                ) : (
+                  <EmptyState size="sm" media="bare" icon="users" title={noCandidates} />
+                )
+              }
               end={
                 candidateCount > candidates.length ? (
                   <Meta mono={false}>
