@@ -185,7 +185,9 @@ export const OauthConsentPage = () => {
         </Link>
 
         <CardHeader className="text-center">
-          <CardTitle className="justify-center">Authorize Application</CardTitle>
+          <CardTitle className="justify-center">
+            {authorizeInfo ? `Authorize ${authorizeInfo.clientName}` : "Authorize Application"}
+          </CardTitle>
           <CardDescription>
             An external application is requesting access to your Infisical account.
           </CardDescription>
@@ -253,6 +255,19 @@ export const OauthConsentPage = () => {
               ))}
             </div>
           )}
+          {/* The name comes from the application's own metadata document, so any site can claim any name. */}
+          {authorizeInfo?.publicClientHost && (
+            <Alert variant="warning">
+              <AlertDescription>
+                <p>
+                  This application identifies itself as{" "}
+                  <span className="font-medium">{authorizeInfo.clientName}</span>. Continue only if
+                  you started this sign-in from{" "}
+                  <span className="font-medium">{authorizeInfo.clientName}</span>.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
           {isGrantingSecretValues && (
             <Alert variant="warning">
               <AlertDescription>
@@ -276,6 +291,13 @@ export const OauthConsentPage = () => {
                 challenge. The application must initiate the request with PKCE enabled.
               </AlertDescription>
             </Alert>
+          )}
+
+          {isRequestValidated && (
+            <div className="flex flex-col gap-1 text-xs text-accent">
+              <p>After you authorize, you&apos;ll be sent to</p>
+              <p className="font-mono break-all text-foreground">{search.redirect_uri}</p>
+            </div>
           )}
 
           <div className="flex gap-3">
