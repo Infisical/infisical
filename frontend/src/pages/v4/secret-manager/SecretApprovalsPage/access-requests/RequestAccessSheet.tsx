@@ -349,20 +349,22 @@ export const RequestAccessSheet = ({
   project,
   policies,
   honeyTokens,
+  defaults,
   onClose
 }: {
   project: Project;
   policies: TAccessApprovalPolicy[];
   honeyTokens: boolean;
+  defaults?: { environment: string; secretPath: string; actions: string[] };
   onClose: () => void;
 }) => {
   const approvals = useV4Adapter("accessApprovals");
   const createRequest = approvals.useCreateRequest();
   const formId = useId();
   const initial: Draft = {
-    environment: project.environments[0]?.slug ?? "",
-    secretPath: "",
-    resources: [{ subject: ProjectPermissionSub.Secrets, actions: [] }],
+    environment: defaults?.environment ?? project.environments[0]?.slug ?? "",
+    secretPath: defaults?.secretPath ?? "",
+    resources: [{ subject: ProjectPermissionSub.Secrets, actions: defaults?.actions ?? [] }],
     isTemporary: false,
     temporaryRange: "1h",
     note: ""
