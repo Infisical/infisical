@@ -55,7 +55,10 @@ export const resolveTtlInputs = (period: number, ttl: number, maxTTL: number) =>
 // Verify the JWT signature and assert it carries the IDENTITY_ACCESS_TOKEN type
 // claim. Caller still asserts the per-flow required claims via the helpers below.
 export const verifyAccessTokenJwt = (accessToken: string): TIdentityAccessTokenJwtPayload => {
-  const decoded = crypto.jwt().verify(accessToken, getConfig().AUTH_SECRET) as TIdentityAccessTokenJwtPayload;
+  // Tokens are issued by signIdentityAccessToken with the default HS256, so only accept that.
+  const decoded = crypto.jwt().verify(accessToken, getConfig().AUTH_SECRET, {
+    algorithms: ["HS256"]
+  }) as TIdentityAccessTokenJwtPayload;
   if (decoded.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
     throw new BadRequestError({ message: "Token is not an identity access token" });
   }
