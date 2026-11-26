@@ -267,7 +267,12 @@ function MoveSecretsDialogContent({
       .sort((left, right) => left.localeCompare(right))
   ].map((path) => {
     const disabled = isCandidateBlocked(path);
-    return { value: path, label: path, disabled, description: disabled ? SELF_MOVE_REASON : undefined };
+    return {
+      value: path,
+      label: path,
+      disabled,
+      description: disabled ? SELF_MOVE_REASON : undefined
+    };
   });
 
   const destinationSelected =
