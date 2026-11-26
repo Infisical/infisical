@@ -18,6 +18,7 @@ export const PgSqlLock = {
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
+  SecretImportPositions: (folderId: string) => pgAdvisoryLockHashText(`secret-import-positions:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   OrgInviteSeats: (orgId: string) => pgAdvisoryLockHashText(`org-invite-seats:${orgId}`),
   CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
