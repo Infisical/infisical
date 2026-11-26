@@ -56,25 +56,26 @@ const LocationDetails = ({
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <Detail className="col-span-2">
+      <Detail>
         <DetailLabel>
           {resource
             ? RESOURCE_DESCRIPTION_HELPER[resource.dataSourceType].singularTitle
             : "Resource"}
         </DetailLabel>
-        <DetailValue>
-          {location.resourceName}
+        <DetailValue className="flex items-center gap-1.5">
           {resource && (
-            <p className="flex items-center gap-1.5 text-xs text-muted">
-              <ProviderIcon
-                alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source`}
-                icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
-                className="size-3.5"
-              />
-              {resource.dataSourceName}
-            </p>
+            <ProviderIcon
+              alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source`}
+              icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+              className="size-4 shrink-0"
+            />
           )}
+          <span className="truncate">{location.resourceName}</span>
         </DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Data Source</DetailLabel>
+        <DetailValue>{resource ? resource.dataSourceName : "-"}</DetailValue>
       </Detail>
       <Detail>
         <DetailLabel>File</DetailLabel>
