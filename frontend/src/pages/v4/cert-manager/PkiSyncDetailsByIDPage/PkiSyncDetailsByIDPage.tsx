@@ -32,8 +32,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { EditDetailsButton, RESTRICTED } from "../../access/ui";
-import { ProviderIcon } from "../../components/provider-icon";
-import { providerOf } from "../../components/provider-label";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -208,7 +207,6 @@ const SyncDetails = ({
   const [dialog, setDialog] = useState<PkiSyncDialogKind>();
   const [editing, setEditing] = useState<PkiSyncEditSection>();
   const destinationItems = usePkiSyncDestinationItems(sync);
-  const destinationImage = providerOf("pki-sync", sync.destination)?.image;
   const mappingItems = pkiSyncFieldMappingItems(sync);
   const failure = getPkiSyncFailureMessage(sync.syncStatus, sync.lastSyncMessage);
   const hasHealthCheck = Boolean(
@@ -268,7 +266,7 @@ const SyncDetails = ({
         <PageHeader
           breadcrumb={[{ label: backLabel, href: backHref }]}
           title={sync.name}
-          media={destinationImage && <ProviderIcon icon={destinationImage} alt="" size="xl" />}
+          media={providerMedia("pki-sync", sync.destination, "xl")}
           badges={
             <Inline gap={8} align="center" wrap={false}>
               <SyncStatus sync={sync} badge="control-sm" />
