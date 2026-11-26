@@ -53,6 +53,16 @@ This is useful for comparing secrets, identifying if anything is missing, and ma
 
 ![Secrets overview page showing secrets across all environments](/images/platform/project/secrets-overview-2.png)
 
+### Save edits across environments
+
+When the overview shows more than one environment, it collects your unsaved edits in a pending changes bar at the bottom of the page, so you don't have to save each row. A new secret typed into the add row counts as one change for each environment shown. Unsaved edits stay pending when you collapse a row or change pages, and Infisical drops them when you open another folder.
+
+- **Review**: shows each change grouped by environment, with a field for the commit message
+- **Save**: saves every pending change
+- **Discard**: drops every pending change
+
+Infisical saves the changes as one [commit](/documentation/platform/pit-recovery) per environment, each with the same message. Environments with an [approval policy](/documentation/platform/pr-workflows) open a change request instead of committing directly. If an environment fails to save, its edits stay pending while the other environments save. If other secrets reference a secret you changed, you must type `confirm` before Infisical saves.
+
 ## Secrets dashboard
 
 The **Secrets Dashboard** page appears when you select a specific environment to manage its secrets.
