@@ -12,7 +12,7 @@ import type { ProjectType } from "@app/hooks/api/projects/types";
 import type { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
 
-import { readableFailure, saved } from "../../../access/toast";
+import { duplicateNameMessage, readableFailure, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 
 const schema = z.object({
@@ -46,21 +46,26 @@ export const TemplateDetailsDialog = ({
   });
 
   const submit = async () => {
-    const result = template
-      ? await updateTemplate
-          .mutateAsync({
+    let result: TProjectTemplate;
+    try {
+      result = template
+        ? await updateTemplate.mutateAsync({
             templateId: template.id,
             name: draft.name,
             description: draft.description
           })
-          .catch(readableFailure("Couldn't update template details"))
-      : await createTemplate
-          .mutateAsync({
+        : await createTemplate.mutateAsync({
             name: draft.name,
             description: draft.description || undefined,
             type: projectType
-          })
-          .catch(readableFailure("Couldn't create project template"));
+          });
+    } catch (error) {
+      const conflict = duplicateNameMessage(error, draft.name);
+      if (conflict) return { fields: { name: conflict } };
+      return readableFailure(
+        template ? "Couldn't update template details" : "Couldn't create project template"
+      )(error);
+    }
     saved(template ? "Template details updated" : `Project template "${result.name}" created`);
     completed.current = true;
     onOpenChange(false);
