@@ -86,8 +86,9 @@ export const VariableDialog = ({
   const isTaken = Boolean(lookupKey && existing.has(lookupKey));
   const usedByCount = variable?.usedByServices.length ?? 0;
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
+  const isDirty = key !== (variable?.key ?? initialKey) || Boolean(value);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: key !== (variable?.key ?? initialKey) || Boolean(value),
+    isDirty,
     onDiscard: () => onOpenChange(false)
   });
 
@@ -189,7 +190,13 @@ export const VariableDialog = ({
             <Button variant="ghost" disabled={pending} onClick={requestDiscard}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" form="agent-vault-variable" loading={pending}>
+            <Button
+              variant="primary"
+              type="submit"
+              form="agent-vault-variable"
+              loading={pending}
+              disabled={Boolean(variable) && !isDirty}
+            >
               {variable ? "Save" : "Add variable"}
             </Button>
           </DialogFooter>
