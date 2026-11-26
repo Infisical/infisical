@@ -52,10 +52,11 @@ const compare = (a: TAuditLogStream, b: TAuditLogStream, columnId: string) =>
 
 const Products = ({ stream }: { stream: TAuditLogStream }) => {
   const products = sortProducts(stream.filters?.products ?? []);
-  if (!products.length) return <Meta mono={false}>All products</Meta>;
+  const pamSessionActivity = stream.filters?.pamSessionActivity;
   const overflow = products.slice(MAX_PRODUCTS);
   return (
     <Inline gap={4} align="center" wrap={false}>
+      {!products.length && <Meta mono={false}>All products</Meta>}
       {products.slice(0, MAX_PRODUCTS).map((product) => (
         <Badge key={product} tone="outline">
           {PRODUCT_LABELS[product]}
@@ -65,6 +66,19 @@ const Products = ({ stream }: { stream: TAuditLogStream }) => {
         <Tooltip content={overflow.map((product) => PRODUCT_LABELS[product]).join(", ")}>
           <Badge tone="soft" tabIndex={0}>
             +{overflow.length}
+          </Badge>
+        </Tooltip>
+      )}
+      {pamSessionActivity && (
+        <Tooltip
+          content={
+            pamSessionActivity.includeOutput
+              ? "Commands, queries and requests from PAM sessions, including their output."
+              : "Commands, queries and requests from PAM sessions, without their output."
+          }
+        >
+          <Badge tone="outline" tabIndex={0}>
+            PAM Sessions
           </Badge>
         </Tooltip>
       )}

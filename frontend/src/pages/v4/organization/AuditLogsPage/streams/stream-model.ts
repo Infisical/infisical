@@ -130,13 +130,15 @@ export type StreamFormValues = {
   credentials: Record<string, unknown>;
   streamMode?: StreamMode;
   products: AuditLogStreamProduct[];
+  pamSessionActivity?: { includeOutput: boolean } | null;
 };
 
 export const streamFormSchema = (provider: FormProvider) =>
   z.object({
     credentials: CREDENTIAL_SCHEMAS[provider],
     streamMode: z.nativeEnum(StreamMode).optional(),
-    products: z.nativeEnum(AuditLogStreamProduct).array()
+    products: z.nativeEnum(AuditLogStreamProduct).array(),
+    pamSessionActivity: z.object({ includeOutput: z.boolean() }).nullish()
   });
 
 const emptyCredentials: Record<FormProvider, Record<string, unknown>> = {
@@ -166,9 +168,16 @@ export const toFormValues = (
   return {
     credentials,
     streamMode: stream.streamMode ?? StreamMode.Batch,
-    products: stream.filters?.products ?? []
+    products: stream.filters?.products ?? [],
+    pamSessionActivity: stream.filters?.pamSessionActivity ?? null
   };
 };
+
+export const hasPamSessionActivity = (provider: LogProvider) =>
+  provider === LogProvider.Azure ||
+  provider === LogProvider.Cribl ||
+  provider === LogProvider.Custom ||
+  provider === LogProvider.Datadog;
 
 export const hasStreamMode = (provider: LogProvider) =>
   provider === LogProvider.Custom || provider === LogProvider.Cribl;
