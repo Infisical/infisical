@@ -66,6 +66,7 @@ type TOauthClientServiceFactoryDep = {
   tokenService: Pick<
     TAuthTokenServiceFactory,
     | "getUserTokenSession"
+    | "createUserTokenSession"
     | "getUserTokenSessionById"
     | "validateRefreshToken"
     | "validateRefreshTokenAccess"
@@ -673,11 +674,17 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    const tokenSession = await tokenService.getUserTokenSession({
+    // Each consent to a public client gets its own session. Sessions are otherwise shared per user, IP and client, so a
+    // second connection (another org, another config) would rotate the first one's refresh token, and its next refresh
+    // would look like token reuse and end both.
+    const sessionDetails = {
       userId: dto.userId,
       ip: dto.ip,
       userAgent: getOauthClientSessionUserAgent(client.clientId)
-    });
+    };
+    const tokenSession = client.orgId
+      ? await tokenService.getUserTokenSession(sessionDetails)
+      : await tokenService.createUserTokenSession(sessionDetails);
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 
     const code = crypto.randomBytes(32).toString("hex");
