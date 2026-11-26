@@ -894,7 +894,7 @@ session = client.agent_vault.sessions.create(
 - `metadata` (Dict[str, str], optional): key/value pairs that say who or what the session is for, such as a run ID or ticket (up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key)
 - `on_behalf_of_user_email` (str, optional): the email address of the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user) (raises a `ValueError` if you also pass `on_behalf_of_user_id`)
 - `on_behalf_of_user_id` (str, optional): the ID of the user that the session is created on behalf of (raises a `ValueError` if you also pass `on_behalf_of_user_email`)
-- `services` (List[Dict[str, Any]], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
+- `services` (List[Dict[str, Any]], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 30)
 
 **Returns:**
 - `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
@@ -942,7 +942,7 @@ session = client.agent_vault.sessions.create(
 - Each service is a dictionary that describes an HTTP API (`"type": "http"`), an MCP server (`"type": "mcp"`), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) (`"type": "postgres"`, `"mysql"`, or `"ssh"`)
 - The dictionaries use the API's field names, such as `hostPattern` rather than `host_pattern`
 - Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
-- A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
+- A session can have up to 30 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
 - If a machine identity creates the session on behalf of a user, the machine identity needs the **Admin** role and the user doesn't, and the inline services don't use the user's personal values
 - In each session that the `create`, `get`, `list`, and `update` methods return, `services` lists the inline services without their secrets
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
@@ -137,5 +138,123 @@ func TestCrossProjectImport(t *testing.T) {
 		// Assert
 		require.Equal(t, 2, importCount(t, target))
 		require.Equal(t, []map[string]string{{"LOCAL_KEY": "from-target"}}, importedSecrets(t, tn.Admin, target))
+	})
+}
+
+// Every route that returns an import names the project it reads from in importEnv.projectId, so a client can tell a
+// cross-project import from a local one without listing the source project's environments.
+func TestCrossProjectImport_SourceProject(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should name the source project when the import is created", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		secretmanager.GrantFolder(t, source, target, sourceRoot)
+
+		// Action
+		res := crossImport(t, target, source, sourceRoot, false)
+
+		// Assert
+		require.NotNilf(t, res.JSON200, "importing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, source.ID, res.JSON200.SecretImport.ImportEnv.ProjectId)
+	})
+
+	t.Run("should name the source project when the import is read by ID", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		secretmanager.GrantFolder(t, source, target, sourceRoot)
+		importID := secretmanager.CreateImport(t, target, "dev", sourceRoot, secretmanager.FromProject(source))
+
+		// Action
+		res, err := tn.Admin.API.GetSecretImportWithResponse(t.Context(), importID)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "reading the import returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, source.ID, res.JSON200.SecretImport.ImportEnv.ProjectId)
+	})
+
+	t.Run("should name the source project when the imports are listed", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		secretmanager.GrantFolder(t, source, target, sourceRoot)
+		secretmanager.CreateImport(t, target, "dev", sourceRoot, secretmanager.FromProject(source))
+
+		// Action
+		res, err := tn.Admin.API.ListSecretImportsWithResponse(t.Context(), &api.ListSecretImportsParams{
+			ProjectId: target.ID, Environment: "dev",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "listing imports returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Len(t, res.JSON200.SecretImports, 1)
+		require.Equal(t, source.ID, res.JSON200.SecretImports[0].ImportEnv.ProjectId)
+	})
+
+	t.Run("should name the source project when the import is updated", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		secretmanager.GrantFolder(t, source, target, sourceRoot)
+		importID := secretmanager.CreateImport(t, target, "dev", sourceRoot, secretmanager.FromProject(source))
+		body := api.UpdateSecretImportJSONRequestBody{ProjectId: target.ID, Environment: "dev"}
+		body.Import.Position = new(float32(1))
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretImportWithResponse(t.Context(), importID, body)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "updating the import returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, source.ID, res.JSON200.SecretImport.ImportEnv.ProjectId)
+	})
+
+	t.Run("should name the source project when the import is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		secretmanager.GrantFolder(t, source, target, sourceRoot)
+		importID := secretmanager.CreateImport(t, target, "dev", sourceRoot, secretmanager.FromProject(source))
+
+		// Action
+		res, err := tn.Admin.API.DeleteSecretImportWithResponse(t.Context(), importID,
+			api.DeleteSecretImportJSONRequestBody{ProjectId: target.ID, Environment: "dev"})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "deleting the import returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, source.ID, res.JSON200.SecretImport.ImportEnv.ProjectId)
+	})
+
+	t.Run("should name the importing project when the import reads from the same project", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		importID := secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"})
+
+		// Action
+		res, err := tn.Admin.API.GetSecretImportWithResponse(t.Context(), importID)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "reading the import returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equal(t, proj.ID, res.JSON200.SecretImport.ImportEnv.ProjectId)
 	})
 }
