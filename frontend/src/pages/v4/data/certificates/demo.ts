@@ -678,14 +678,47 @@ const viewChange = (viewId: string, patch: Partial<TCertificateInventoryView>) =
   return found;
 };
 
-const demoPem = (cert: TCertificate, label: string) =>
-  [
+const demoPem = (cert: TCertificate, label: string) => {
+  const seed = `demo ${label.toLowerCase()} for ${cert.commonName} ${cert.serialNumber} `;
+  return [
     `-----BEGIN ${label}-----`,
-    ...(btoa(`demo ${label.toLowerCase()} for ${cert.commonName} ${cert.serialNumber}`).match(
-      /.{1,64}/g
-    ) ?? []),
+    ...(btoa(seed.repeat(Math.ceil(900 / seed.length))).match(/.{1,64}/g) ?? []),
     `-----END ${label}-----`
   ].join("\n");
+};
+
+const demoLongChains: Record<string, string[]> = {
+  "4c9e2b71-0d8f-4a36-b5e1-9f7a3c6d2e80": [
+    "Acme Payments Issuing CA G3",
+    "Acme PCI Cardholder Data Environment Policy CA",
+    "Acme Internal Root CA cross-signed by Acme Legacy Root 2016",
+    "Acme Legacy Root 2016"
+  ]
+};
+
+const demoCertificatePem = (serialNumber: string) => {
+  const cert = store.get().find((entry) => entry.serialNumber === serialNumber);
+  if (!cert) return undefined;
+  const chainNames = demoLongChains[cert.id] ?? (cert.caId ? authorities.map((ca) => ca.name) : []);
+  return {
+    serialNumber,
+    certificate: demoPem(cert, "CERTIFICATE"),
+    certificateChain: chainNames
+      .map((name) => demoPem({ ...cert, commonName: name }, "CERTIFICATE"))
+      .join("\n"),
+    privateKey: cert.hasPrivateKey === false ? null : demoPem(cert, "PRIVATE KEY")
+  };
+};
+
+const useDemoCertificatePem = (serialNumber: string, withKey: boolean) => {
+  store.use();
+  const pem = serialNumber ? demoCertificatePem(serialNumber) : undefined;
+  return {
+    data: pem && (withKey ? pem : { ...pem, privateKey: undefined }),
+    isPending: !pem,
+    error: serialNumber && !pem ? new Error("Certificate not found") : null
+  };
+};
 
 export const certificatesDemo: CertificatesAdapter = {
   useInstanceState: () =>
@@ -994,6 +1027,8 @@ export const certificatesDemo: CertificatesAdapter = {
     ]);
     return { certificate: issuedResponse(issued), certificateRequestId };
   }),
+  useCertificateBody: (serialNumber) => useDemoCertificatePem(serialNumber, false),
+  useCertificateBundle: (serialNumber) => useDemoCertificatePem(serialNumber, true),
   useExportCertificate: fixtureMutation(({ certificateId, fileName, format, pkcs12 }) => {
     const cert = store.get().find((entry) => entry.id === certificateId);
     if (!cert) throw new Error("Certificate not found");
