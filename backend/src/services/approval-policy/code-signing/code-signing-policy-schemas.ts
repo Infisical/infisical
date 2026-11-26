@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
+import { auditSafeText } from "@app/server/lib/schemas";
 
 import {
   BaseApprovalPolicySchema,
@@ -126,10 +127,20 @@ export const CodeSigningRequestSchema = BaseApprovalRequestSchema.extend({
   })
 });
 
+export const signingJustificationSchema = ({ required = false }: { required?: boolean } = {}) => {
+  const text = z.string().trim().max(MAX_SIGNING_JUSTIFICATION_LENGTH);
+  return auditSafeText(required ? text.min(1) : text, { allowMultiline: true });
+};
+
 export const CreateCodeSigningRequestSchema = BaseCreateApprovalRequestSchema.extend({
+  justification: signingJustificationSchema().nullable().optional(),
   requestData: CodeSigningPolicyRequestDataSchema.extend({
+    justification: signingJustificationSchema().optional(),
     scope: CodeSigningScopeInputSchema.optional()
   })
+}).transform((body) => {
+  const justification = body.justification || body.requestData.justification || undefined;
+  return { ...body, justification, requestData: { ...body.requestData, justification } };
 });
 
 export const CodeSigningRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
