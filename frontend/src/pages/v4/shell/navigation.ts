@@ -448,7 +448,12 @@ export const pkiSections: readonly ShellNavSection[] = [
         label: "Signers",
         icon: "pen-nib",
         path: `${pki}/code-signing`
-      },
+      }
+    ]
+  },
+  {
+    label: "Configuration",
+    items: [
       {
         id: "authorities",
         label: "Certificate authorities",
