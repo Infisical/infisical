@@ -144,15 +144,18 @@ const statusMeta: Record<EnvironmentStatus, Glyph & { label: string }> = {
 export function StatusCell({
   status,
   hasOverride,
+  pending,
   annotations
 }: {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  pending?: "create" | "update";
   annotations?: ReactNode;
 }) {
   const meta = statusMeta[status];
+  const pendingLabel = pending === "create" ? "Unsaved new value" : "Unsaved change";
   return (
-    <TableCell className={styles.statusCell} data-status={status}>
+    <TableCell className={styles.statusCell} data-status={status} data-pending={pending}>
       <span className={styles.statusLine}>
         <span className={styles.statusGroup}>
           <Tooltip content={meta.label}>
@@ -168,6 +171,13 @@ export function StatusCell({
             </Tooltip>
           )}
         </span>
+        {pending && (
+          <Tooltip content={pendingLabel}>
+            <span className={styles.pendingMark}>
+              <Icon name="pencil" label={pendingLabel} />
+            </span>
+          </Tooltip>
+        )}
         {annotations}
       </span>
     </TableCell>

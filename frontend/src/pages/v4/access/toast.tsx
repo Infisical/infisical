@@ -50,5 +50,8 @@ export const duplicateNameMessage = (error: unknown, name: string) => {
   return message.includes(`"${name}"`) || message.includes(`'${name}'`) ? message : undefined;
 };
 
+export const warned = (title: string, description?: string) =>
+  v4Toast.warning(title, { description });
+
 export const failed = (title: string, error?: unknown) =>
   toast({ tone: "bad", title, description: errorMessage(error) });
