@@ -16,10 +16,6 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate } from "@tanstack/react-router";
 
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import { CertificateRequestStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
 import {
@@ -28,7 +24,6 @@ import {
   type TPkiApplication
 } from "@app/hooks/api/pkiApplications/types";
 
-import { useProjectPermission } from "../../access/permissions";
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
@@ -125,21 +120,19 @@ const RequestStatus = ({
 
 export const RequestsTab = ({
   orgId,
-  projectId,
   application,
   access
 }: {
   orgId: string;
-  projectId: string;
-  application?: TPkiApplication;
-  access?: PkiApplicationPermission;
+  application: TPkiApplication;
+  access: PkiApplicationPermission;
 }) => {
   const [requesting, setRequesting] = useState(false);
-  const { permission } = useProjectPermission(projectId);
-  const canRequest = access
-    ? appCan(access, PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Certificates)
-    : !application &&
-      permission.can(ProjectPermissionCertificateActions.Create, ProjectPermissionSub.Certificates);
+  const canRequest = appCan(
+    access,
+    PkiApplicationResourceActions.Create,
+    PkiApplicationResourceSub.Certificates
+  );
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
@@ -157,7 +150,7 @@ export const RequestsTab = ({
     isPending,
     error: loadError
   } = adapter.useCertificateRequests({
-    applicationId: application?.id,
+    applicationId: application.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
     sortBy: "createdAt",
@@ -227,7 +220,7 @@ export const RequestsTab = ({
       header: "Status",
       width: 176,
       render: (request) => (
-        <RequestStatus request={request} orgId={orgId} applicationName={application?.name} />
+        <RequestStatus request={request} orgId={orgId} applicationName={application.name} />
       )
     },
     {
@@ -286,14 +279,14 @@ export const RequestsTab = ({
       />
       {requesting && (
         <RequestCertificateSheet
-          applicationId={application?.id}
-          applicationName={application?.name}
+          applicationId={application.id}
+          applicationName={application.name}
           onClose={() => setRequesting(false)}
         />
       )}
       <DataTable
         filtered={filtered}
-        label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
+        label={`Certificate requests in ${application.name}`}
         rows={rows}
         loading={isPending}
         columns={columns}
@@ -319,7 +312,7 @@ export const RequestsTab = ({
                       navigate({
                         to: certificatePath,
                         params: { orgId, certificateId: request.certificateId ?? "" },
-                        search: application ? { fromApplication: application.name } : {}
+                        search: { fromApplication: application.name }
                       })
                     }
                   >
