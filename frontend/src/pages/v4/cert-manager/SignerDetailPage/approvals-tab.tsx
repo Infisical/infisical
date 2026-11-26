@@ -40,6 +40,7 @@ import {
 
 import { failed } from "../../access/toast";
 import { Muted, RESTRICTED } from "../../access/ui";
+import { ApprovalSteps } from "../../components/approval-steps";
 import { NoExpiry } from "../../components/no-expiry";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
@@ -244,23 +245,15 @@ const PolicyCard = ({
             ]
           ]}
         />
-        <DataList
-          variant="props"
-          density="compact"
-          items={policy.steps.map((step, index) => [
-            step.name || `Step ${step.stepNumber ?? index + 1}`,
-            <Stack
-              key={`${step.stepNumber ?? ""}:${step.approvers.map((approver) => approver.id).join(",")}`}
-              gap={4}
-            >
-              <span>
-                {step.approvers
-                  .map((approver) => labels.get(approver.id) ?? `${approver.id.slice(0, 8)}...`)
-                  .join(", ")}
-              </span>
-              <Muted>{`${step.requiredApprovals} required`}</Muted>
-            </Stack>
-          ])}
+        <ApprovalSteps
+          steps={policy.steps.map((step) => ({
+            name: step.name,
+            requiredApprovals: step.requiredApprovals,
+            approvers: step.approvers.map((approver) => ({
+              id: approver.id,
+              name: labels.get(approver.id) ?? `${approver.id.slice(0, 8)}...`
+            }))
+          }))}
         />
       </Stack>
       {sheet}

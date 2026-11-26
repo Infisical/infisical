@@ -31,6 +31,7 @@ import {
 
 import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
+import { ApprovalSteps } from "../../components/approval-steps";
 import { useV4Adapter } from "../../data/adapters";
 import { policyTypeLabel } from "../components/approval";
 import { CertificateProfileSheet } from "../components/profile-sheet";
@@ -226,22 +227,16 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
       : ([
           ["Machine identity bypass", draft.bypassForMachineIdentities ? "Enabled" : "Disabled"]
         ] as DataListItem[])),
-    ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"],
-    ...draft.steps.map((entry, index): DataListItem => [
-      entry.name ? `Step ${index + 1}: ${entry.name}` : `Step ${index + 1}`,
-      [
-        `Requires ${entry.requiredApprovals} approval${entry.requiredApprovals === "1" ? "" : "s"}`,
-        entry.users.length
-          ? `Users: ${entry.users.map((id) => nameOf(userOptions, id)).join(", ")}`
-          : "",
-        entry.groups.length
-          ? `Groups: ${entry.groups.map((id) => nameOf(groupOptions, id)).join(", ")}`
-          : ""
-      ]
-        .filter(Boolean)
-        .join(". ")
-    ])
+    ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"]
   ];
+  const reviewSteps = draft.steps.map((entry) => ({
+    name: entry.name,
+    requiredApprovals: Number(entry.requiredApprovals) || 0,
+    approvers: [
+      ...entry.users.map((id) => ({ id, name: nameOf(userOptions, id) })),
+      ...entry.groups.map((id) => ({ id, name: nameOf(groupOptions, id) }))
+    ]
+  }));
   return (
     <>
       <MultiStep
@@ -507,7 +502,12 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
           },
           {
             title: "Review",
-            content: <DataList variant="props" density="compact" items={review} />
+            content: (
+              <Stack gap={16}>
+                <DataList variant="props" density="compact" items={review} />
+                <ApprovalSteps steps={reviewSteps} />
+              </Stack>
+            )
           }
         ]}
       />
