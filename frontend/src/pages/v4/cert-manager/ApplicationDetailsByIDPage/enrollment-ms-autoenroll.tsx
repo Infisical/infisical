@@ -44,6 +44,7 @@ import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
+import { useRotationConfirmation } from "../../integrations/app-connection-extras";
 import {
   countText,
   ENROLLMENT_DOCS,
@@ -142,12 +143,22 @@ const LdapConnectionField = ({
   const adapter = useV4Adapter("pkiApplications");
   const connections = adapter.useLdapConnections(projectId);
   const createConnection = adapter.useCreateLdapConnection();
+  const rotation = useRotationConfirmation();
   const creation = connectionCreation({
     preset: CONNECTION_PRESETS[AppConnection.LDAP],
     disabledReason: canCreateConnection
       ? undefined
       : "Your role doesn't allow creating connections",
-    create: async ({ method, name, description, credentials }) => {
+    create: async ({
+      method,
+      name,
+      description,
+      credentials,
+      isAutoRotationEnabled,
+      rotation: schedule
+    }) => {
+      if (isAutoRotationEnabled && !(await rotation.confirm()))
+        throw new Error("Automatic rotation wasn't turned on, so the connection was not created.");
       try {
         return await createConnection.mutateAsync({
           app: AppConnection.LDAP,
@@ -155,6 +166,8 @@ const LdapConnectionField = ({
           method: method as TAppConnection["method"],
           credentials: credentials as TAppConnection["credentials"],
           description: (description as string | undefined)?.trim() || null,
+          isAutoRotationEnabled: Boolean(isAutoRotationEnabled),
+          rotation: schedule,
           projectId
         } as TCreateAppConnectionDTO);
       } catch (cause) {
@@ -183,6 +196,7 @@ const LdapConnectionField = ({
         creation={creation}
         onChange={onChange}
       />
+      {rotation.dialog}
     </Field>
   );
 };
