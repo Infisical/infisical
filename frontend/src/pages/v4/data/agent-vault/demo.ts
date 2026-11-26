@@ -1127,7 +1127,9 @@ export const agentVaultDemo: AgentVaultAdapter = {
   useDelegation: (projectId, machineIdentityId) => ({
     data: delegations.use()[delegationKey(projectId, machineIdentityId)] ?? null,
     isPending: false,
-    error: null
+    isFetching: false,
+    error: null,
+    refetch: async () => undefined
   }),
   useAvailableDelegationSubjects: (projectId, machineIdentityId, { actorType, search, limit }) => {
     const term = search?.trim().toLowerCase();

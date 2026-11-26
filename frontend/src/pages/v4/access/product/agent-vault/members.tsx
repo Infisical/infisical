@@ -142,8 +142,7 @@ export const AgentVaultMembersTab = () => {
         rows={list.rows}
         columns={columns}
         rowActions={{
-          menuDisabledReason: (member) =>
-            member.email === session.user.email ? SELF_REASON : undefined,
+          menuDisabledReason: (member) => (member.id === session.user.id ? SELF_REASON : undefined),
           renderMenu: (member) => (
             <>
               <DropdownMenuItem onSelect={() => setEditing(member)}>

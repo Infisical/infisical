@@ -184,7 +184,10 @@ export type AgentVaultAdapter = {
     projectId: string,
     machineIdentityId: string,
     enabled?: boolean
-  ) => V4QueryResult<TAgentVaultDelegationDetail | null>;
+  ) => V4QueryResult<TAgentVaultDelegationDetail | null> & {
+    isFetching: boolean;
+    refetch: () => Promise<unknown>;
+  };
   useAvailableDelegationSubjects: (
     projectId: string,
     machineIdentityId: string,
