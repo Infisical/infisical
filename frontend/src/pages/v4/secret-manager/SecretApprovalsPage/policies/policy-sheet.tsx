@@ -3,9 +3,19 @@ import { Controller, FormProvider, useFieldArray, useForm, useWatch } from "reac
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
-import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
+} from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { Field, FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -38,8 +48,9 @@ import {
 import type { TDelegatedApprovalPolicyInput } from "@app/hooks/api/delegatedApprovals/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import type { Project } from "@app/hooks/api/projects/types";
+import type { TSecretApprovalPolicyImport } from "@app/hooks/api/secretApproval/types";
 
-import { failed, saved } from "../../../access/toast";
+import { failed, saved, toast } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { ApproverOptions } from "../../../data/approval-policies/contract";
 import { ApproverPicker } from "./approver-picker";
@@ -92,6 +103,7 @@ const editValuesOf = (policy: PolicyRecord): TApprovalPolicyFormSchema => {
     enforcementLevel: policy.enforcementLevel,
     allowedSelfApprovals: policy.allowedSelfApprovals,
     bypassForMachineIdentities: policy.bypassForMachineIdentities ?? true,
+    enforceOnSecretImports: policy.enforceOnSecretImports ?? false,
     maxTimePeriod: policy.maxTimePeriod,
     requestExpirationTime: policy.requestExpirationTime,
     sequenceApprovers: steps.length
@@ -128,6 +140,7 @@ const createValues = (policyType: PolicyType): TApprovalPolicyFormSchema => ({
   enforcementLevel: EnforcementLevel.Hard,
   allowedSelfApprovals: true,
   bypassForMachineIdentities: false,
+  enforceOnSecretImports: false,
   sequenceApprovers: [emptyStep()],
   isDelegated: false,
   delegatedApproval: {}
@@ -151,11 +164,12 @@ const PolicyForm = ({
   approverOptions: ApproverOptions;
   enterpriseAppConnections: boolean;
   onDirtyChange: (dirty: boolean) => void;
-  onDone: () => void;
+  onDone: (directImports?: TSecretApprovalPolicyImport[]) => void;
 }) => {
   const adapter = useV4Adapter("approvalPolicies");
   const createChange = adapter.useCreateChangePolicy();
   const updateChange = adapter.useUpdateChangePolicy();
+  const listDirectImports = adapter.useDirectImports();
   const createAccess = adapter.useCreateAccessPolicy();
   const updateAccess = adapter.useUpdateAccessPolicy();
   const isEdit = Boolean(policy);
@@ -219,6 +233,7 @@ const PolicyForm = ({
     sequenceApprovers,
     isDelegated: delegated,
     delegatedApproval,
+    enforceOnSecretImports,
     ...data
   }: TApprovalPolicyFormSchema) => {
     const bypassers = [...userBypassers, ...groupBypassers];
@@ -232,17 +247,21 @@ const PolicyForm = ({
       stepNumber: index + 1,
       numberOfApprovals: step.approvals
     }));
+    let savedChangePolicyId: string | undefined;
     try {
       if (data.policyType === PolicyType.ChangePolicy) {
         const dto = {
           ...data,
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
+          enforceOnSecretImports,
           environments: slugs,
           projectId: project.id
         };
-        if (policy) await updateChange.mutateAsync({ id: policy.id, ...dto });
-        else await createChange.mutateAsync(dto);
+        const result = policy
+          ? await updateChange.mutateAsync({ id: policy.id, ...dto })
+          : await createChange.mutateAsync(dto);
+        savedChangePolicyId = result?.approval?.id ?? policy?.id;
       } else if (delegated) {
         const dto = {
           ...data,
@@ -272,7 +291,6 @@ const PolicyForm = ({
         else await createAccess.mutateAsync(dto);
       }
       saved(policy ? "Policy updated" : "Policy created");
-      onDone();
     } catch (error) {
       const message: unknown = isAxiosError(error)
         ? error.response?.data?.message
@@ -286,6 +304,21 @@ const PolicyForm = ({
         return;
       }
       failed(policy ? "Couldn't update policy" : "Couldn't create policy", error);
+      return;
+    }
+    if (!enforceOnSecretImports || !savedChangePolicyId) {
+      onDone();
+      return;
+    }
+    try {
+      onDone(await listDirectImports(savedChangePolicyId));
+    } catch {
+      toast({
+        title: "Couldn't list the imports that ignore this policy",
+        description:
+          "The policy was saved. Check this path's imports and recreate any that read their source directly."
+      });
+      onDone();
     }
   };
 
@@ -748,6 +781,21 @@ const PolicyForm = ({
                   {!isAccess && (
                     <Controller
                       control={control}
+                      name="enforceOnSecretImports"
+                      render={({ field: { value, onChange } }) => (
+                        <Switch
+                          layout="row"
+                          label="Require approval for imported secrets"
+                          description="Imports from this project into this path need approval to change their values."
+                          checked={value}
+                          onCheckedChange={onChange}
+                        />
+                      )}
+                    />
+                  )}
+                  {!isAccess && (
+                    <Controller
+                      control={control}
                       name="bypassForMachineIdentities"
                       render={({ field: { value, onChange } }) => (
                         <Switch
@@ -832,6 +880,69 @@ const PolicyForm = ({
   );
 };
 
+const directImportColumns: DataTableColumn<TSecretApprovalPolicyImport>[] = [
+  {
+    id: "folder",
+    header: "Folder",
+    primary: true,
+    grow: true,
+    text: (entry) => `${entry.environment.name} ${entry.secretPath}`,
+    render: (entry) => (
+      <Inline gap={8} align="center" wrap={false}>
+        <Badge tone="outline">{entry.environment.name}</Badge>
+        <code>{entry.secretPath}</code>
+      </Inline>
+    )
+  },
+  {
+    id: "source",
+    header: "Imports from",
+    grow: true,
+    text: (entry) => `${entry.sourceEnvironment.name} ${entry.sourceSecretPath}`,
+    render: (entry) => (
+      <Inline gap={8} align="center" wrap={false}>
+        <Badge tone="outline">{entry.sourceEnvironment.name}</Badge>
+        <code>{entry.sourceSecretPath}</code>
+      </Inline>
+    )
+  }
+];
+
+const DirectImportsDialog = ({
+  imports,
+  onClose
+}: {
+  imports: TSecretApprovalPolicyImport[];
+  onClose: () => void;
+}) => (
+  <AlertDialog open onOpenChange={(next) => !next && onClose()}>
+    <AlertDialogContent icon="alert">
+      <AlertDialogHeader>
+        <AlertDialogTitle>Recreate imports that ignore this policy</AlertDialogTitle>
+        <AlertDialogDescription>
+          {imports.length === 1
+            ? "This import reads its source directly"
+            : `These ${imports.length} imports read their source directly`}
+          , so changes to their values don&apos;t need approval. Recreate each one as an import that
+          respects approval policies, then delete the old one after the new import&apos;s first
+          change request is merged.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <DataTable
+        ghost={false}
+        label="Imports that ignore this policy"
+        rows={imports}
+        columns={directImportColumns}
+        getRowId={(entry) => entry.id}
+        rowLabel={(entry) => `${entry.environment.name} ${entry.secretPath}`}
+      />
+      <AlertDialogFooter>
+        <AlertDialogAction>Done</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
+
 export const PolicySheet = ({
   open,
   onOpenChange,
@@ -852,6 +963,7 @@ export const PolicySheet = ({
   const [dirty, setDirty] = useState(false);
   const [session, setSession] = useState(0);
   const [wasOpen, setWasOpen] = useState(open);
+  const [directImports, setDirectImports] = useState<TSecretApprovalPolicyImport[]>();
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) setSession(session + 1);
@@ -859,6 +971,10 @@ export const PolicySheet = ({
   const close = () => {
     setDirty(false);
     onOpenChange(false);
+  };
+  const done = (imports?: TSecretApprovalPolicyImport[]) => {
+    close();
+    if (imports?.length) setDirectImports(imports);
   };
   const guard = useDiscardChangesGuard({ isDirty: dirty, onDiscard: close });
   return (
@@ -878,9 +994,12 @@ export const PolicySheet = ({
           approverOptions={approverOptions}
           enterpriseAppConnections={enterpriseAppConnections}
           onDirtyChange={setDirty}
-          onDone={close}
+          onDone={done}
         />
       </Sheet>
+      {directImports && (
+        <DirectImportsDialog imports={directImports} onClose={() => setDirectImports(undefined)} />
+      )}
       <DiscardChangesAlertDialog
         {...guard.discardDialogProps}
         description="Your unsaved policy changes will be lost."

@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Separator } from "@infisical/cipher/ui/separator";
@@ -7,7 +14,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -20,13 +26,16 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { ChevronUpIcon } from "lucide-react";
 
 import {
+  ApprovalStatus,
   BulkChangeRequestAction,
   type TBulkChangeRequestResult
 } from "@app/hooks/api/secretApprovalRequest/types";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { toast } from "../../../access/toast";
-import { useV4Adapter } from "../../../data/adapters";
+import { useV4Adapter, useV4Mode } from "../../../data/adapters";
+import { useV4Session } from "../../../data/session/contract";
 import { ChangeItem } from "./ChangeItem";
 import { approvedCount, authorName, type ChangeRequest, changeTitle, plural } from "./parts";
 
@@ -35,6 +44,7 @@ import styles from "./bulk-review.module.css";
 type Decision = "approve" | "reject";
 type Outcome =
   | { status: "merged"; reviewError?: string }
+  | { status: "reviewed" }
   | { status: "rejected" }
   | { status: "awaiting" }
   | { status: "approved"; message: string }
@@ -43,8 +53,24 @@ type Overlap = { secretKey: string; slug: string; mergesFirst: boolean };
 
 const PENDING_APPROVALS = /needs \d+ approval\(s\)/;
 
+const existingDecisionOf = (request: ChangeRequest, userId: string): Decision | undefined => {
+  const ownReview = request.reviewers.find((reviewer) => reviewer.userId === userId);
+  if (ownReview?.status === ApprovalStatus.APPROVED) return "approve";
+  if (ownReview?.status === ApprovalStatus.REJECTED) return "reject";
+  const needsMyReview =
+    !ownReview && request.policy.approvers.some((approver) => approver.userId === userId);
+  if (!needsMyReview && approvedCount(request) >= request.policy.approvals) return "approve";
+  return undefined;
+};
+
 const OutcomeText = ({ outcome }: { outcome?: Outcome }) => {
   if (!outcome) return <Meta mono={false}>Working</Meta>;
+  if (outcome.status === "reviewed")
+    return (
+      <StatusText tone="ok" icon="check-c">
+        Approved
+      </StatusText>
+    );
   if (outcome.status === "awaiting")
     return (
       <StatusText tone="ok" icon="check-c">
@@ -100,6 +126,8 @@ const ReviewContent = ({
   setSubmitting: (submitting: boolean) => void;
 }) => {
   const secrets = useV4Adapter("secrets");
+  const mode = useV4Mode();
+  const { user, organization } = useV4Session();
   const bulkAct = secrets.useBulkActOnApprovalRequests();
   const [requests] = useState(() =>
     [...selected].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -113,6 +141,22 @@ const ReviewContent = ({
     requests.map(({ id }, index) => [id, detailQueries[index]?.data])
   );
   const hasAllDetails = detailQueries.every(({ data }) => Boolean(data));
+  const hasFreshDetails = detailQueries.every(({ data, isFetching }) => data && !isFetching);
+  const [existing, setExisting] = useState<Record<string, Decision>>();
+  if (!existing && hasFreshDetails) {
+    const baseline = Object.fromEntries(
+      requests.flatMap((request) => {
+        const decision = existingDecisionOf(details[request.id] ?? request, user.id);
+        return decision ? [[request.id, decision] as const] : [];
+      })
+    );
+    setExisting(baseline);
+    setDecisions((current) => ({ ...baseline, ...current }));
+    setCollapsed((current) => ({
+      ...Object.fromEntries(Object.keys(baseline).map((id) => [id, true])),
+      ...current
+    }));
+  }
 
   const groups = useMemo(() => {
     const byLocation = new Map<string, ChangeRequest[]>();
@@ -157,41 +201,86 @@ const ReviewContent = ({
 
   const decided = requests.filter(({ id }) => decisions[id]).length;
   const approveCount = requests.filter(({ id }) => decisions[id] === "approve").length;
+  const remaining = requests.length - decided;
+  const changedCount = requests.filter(
+    ({ id }) => decisions[id] && decisions[id] !== existing?.[id]
+  ).length;
   let submitBlocked: string | undefined;
   if (!hasAllDetails) submitBlocked = "Wait for every request's changes to load";
   else if (decided < requests.length) submitBlocked = "Approve or reject every request first";
 
-  const submit = async () => {
+  const decideAll = (decision: Decision, onlyRemaining: boolean) =>
+    setDecisions((current) =>
+      Object.fromEntries(
+        requests.map(({ id }) => [id, onlyRemaining ? (current[id] ?? decision) : decision])
+      )
+    );
+
+  const submit = async (shouldMerge: boolean) => {
     setSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
-      const idsFor = (decision: Decision) =>
-        requests.filter(({ id }) => decisions[id] === decision).map(({ id }) => id);
-      const approveIds = idsFor("approve");
-      const rejectIds = idsFor("reject");
-      const approveResults = approveIds.length
-        ? await bulkAct.mutateAsync({
-            projectId,
-            action: BulkChangeRequestAction.Approve,
-            comment: reviewComment,
-            requestIds: approveIds
-          })
-        : [];
-      const rejectResults = rejectIds.length
-        ? await bulkAct.mutateAsync({
-            projectId,
-            action: BulkChangeRequestAction.Reject,
-            comment: reviewComment,
-            requestIds: rejectIds
-          })
-        : [];
-      const mergeResults = approveIds.length
-        ? await bulkAct.mutateAsync({
-            projectId,
-            action: BulkChangeRequestAction.Merge,
-            requestIds: approveIds
-          })
-        : [];
+      const idsFor = (decision: Decision, unchanged: boolean) =>
+        requests
+          .filter(
+            ({ id }) => decisions[id] === decision && (existing?.[id] === decision) === unchanged
+          )
+          .map(({ id }) => id);
+      const unchangedResults = (decision: Decision): TBulkChangeRequestResult[] =>
+        idsFor(decision, true).map((id) => ({ id, isSuccess: true }));
+      const approveIds = idsFor("approve", false);
+      const rejectIds = idsFor("reject", false);
+      const mergeIds = requests.filter(({ id }) => decisions[id] === "approve").map(({ id }) => id);
+      if (mode === "live")
+        [
+          { decision: "approved" as const, count: approveIds.length },
+          { decision: "rejected" as const, count: rejectIds.length }
+        ]
+          .filter(({ count }) => count > 0)
+          .forEach(({ decision, count }) =>
+            analytics.captureForOrganization(
+              AnalyticsEvent.SecretApprovalReviewSubmitted,
+              organization.id,
+              {
+                projectId,
+                mode: "bulk",
+                decision,
+                requestCount: count,
+                entryPoint: "bulk-review-sheet",
+                mergeRequested: decision === "approved" && shouldMerge
+              }
+            )
+          );
+      const approveResults = [
+        ...unchangedResults("approve"),
+        ...(approveIds.length
+          ? await bulkAct.mutateAsync({
+              projectId,
+              action: BulkChangeRequestAction.Approve,
+              comment: reviewComment,
+              requestIds: approveIds
+            })
+          : [])
+      ];
+      const rejectResults = [
+        ...unchangedResults("reject"),
+        ...(rejectIds.length
+          ? await bulkAct.mutateAsync({
+              projectId,
+              action: BulkChangeRequestAction.Reject,
+              comment: reviewComment,
+              requestIds: rejectIds
+            })
+          : [])
+      ];
+      const mergeResults =
+        shouldMerge && mergeIds.length
+          ? await bulkAct.mutateAsync({
+              projectId,
+              action: BulkChangeRequestAction.Merge,
+              requestIds: mergeIds
+            })
+          : [];
 
       const next: Record<string, Outcome> = {};
       rejectResults.forEach(({ id, isSuccess, errorMessage }) => {
@@ -199,6 +288,12 @@ const ReviewContent = ({
           ? { status: "rejected" }
           : { status: "failed", message: errorMessage ?? "Review failed" };
       });
+      if (!shouldMerge)
+        approveResults.forEach(({ id, isSuccess, errorMessage }) => {
+          next[id] = isSuccess
+            ? { status: "reviewed" }
+            : { status: "failed", message: errorMessage ?? "Review failed" };
+        });
       mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
         const review = approveResults.find((result) => result.id === id);
         if (isSuccess) {
@@ -277,7 +372,6 @@ const ReviewContent = ({
     <>
       <SheetHeader>
         <SheetTitle>{`Review ${plural(requests.length, "change request")}`}</SheetTitle>
-        <SheetDescription>Approved requests merge once they meet their policy.</SheetDescription>
       </SheetHeader>
       <SheetBody>
         <Stack gap={24}>
@@ -334,6 +428,16 @@ const ReviewContent = ({
                               <ToggleGroupItem value="reject">Reject</ToggleGroupItem>
                             </ToggleGroup>
                           )}
+                          {!outcomes &&
+                            !submitting &&
+                            decisions[request.id] &&
+                            decisions[request.id] === existing?.[request.id] && (
+                              <Meta mono={false}>
+                                {decisions[request.id] === "approve"
+                                  ? "Already approved"
+                                  : "Already rejected"}
+                              </Meta>
+                            )}
                           <Button
                             variant="ghost"
                             size="icon-xs"
@@ -405,16 +509,65 @@ const ReviewContent = ({
               <Meta mono={false} role="status" style={{ marginInlineEnd: "auto" }}>
                 {`${decided} of ${requests.length} reviewed`}
               </Meta>
-              <Button variant="outline" disabled={submitting} onClick={onClose}>
+              <Button variant="ghost" disabled={submitting} onClick={onClose}>
                 Cancel
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button layout="trigger" variant="outline" disabled={submitting}>
+                    Decide all
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabledReason={remaining ? undefined : "Every request has a decision"}
+                    description="Keeps the decisions you already made."
+                    onSelect={() => decideAll("approve", true)}
+                  >
+                    {`Approve remaining (${remaining})`}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabledReason={remaining ? undefined : "Every request has a decision"}
+                    description="Keeps the decisions you already made."
+                    onSelect={() => decideAll("reject", true)}
+                  >
+                    {`Reject remaining (${remaining})`}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    description="Replaces every decision, including rejections."
+                    onSelect={() => decideAll("approve", false)}
+                  >
+                    {`Approve all ${requests.length}`}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    description="Replaces every decision, including approvals."
+                    onSelect={() => decideAll("reject", false)}
+                  >
+                    {`Reject all ${requests.length}`}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                loading={submitting}
+                disabledReason={
+                  submitBlocked ??
+                  (changedCount ? undefined : "You already reviewed these requests")
+                }
+                onClick={() => submit(false)}
+              >
+                Submit reviews
               </Button>
               <Button
                 variant="primary"
                 loading={submitting}
-                disabledReason={submitBlocked}
-                onClick={submit}
+                disabledReason={
+                  submitBlocked ?? (approveCount ? undefined : "Approve a request to merge it")
+                }
+                onClick={() => submit(true)}
               >
-                {approveCount ? `Submit and merge ${approveCount}` : "Submit reviews"}
+                {`Submit and merge ${approveCount}`}
               </Button>
             </Inline>
           </Stack>

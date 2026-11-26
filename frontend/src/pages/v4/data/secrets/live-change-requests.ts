@@ -5,6 +5,7 @@ import {
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api/secretApprovalRequest/mutation";
 import {
+  fetchSecretApprovalRequestList,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequestDetails,
   useGetSecretApprovalRequestDetailsList,
@@ -16,6 +17,7 @@ import type { SecretsChangeRequestsAdapter } from "./contract-change-requests";
 
 export const secretsChangeRequestsLive: SecretsChangeRequestsAdapter = {
   useApprovalRequests: useGetSecretApprovalRequests,
+  useFetchApprovalRequests: () => fetchSecretApprovalRequestList,
   useApprovalRequestCount: useGetSecretApprovalRequestCount,
   useApprovalRequestDetails: useGetSecretApprovalRequestDetails,
   useApprovalRequestDetailsList: (ids) => useGetSecretApprovalRequestDetailsList({ ids }),

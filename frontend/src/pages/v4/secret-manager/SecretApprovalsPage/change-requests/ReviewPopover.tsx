@@ -6,9 +6,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/po
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import { ApprovalStatus } from "@app/hooks/api/secretApprovalRequest/types";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { failed, toast } from "../../../access/toast";
-import { useV4Adapter } from "../../../data/adapters";
+import { useV4Adapter, useV4Mode } from "../../../data/adapters";
+import { useV4Session } from "../../../data/session/contract";
 import type { ChangeRequest } from "./parts";
 
 export const ReviewPopover = ({
@@ -29,12 +31,27 @@ export const ReviewPopover = ({
   const secrets = useV4Adapter("secrets");
   const review = secrets.useReviewApprovalRequest();
   const merge = secrets.useMergeApprovalRequest();
+  const mode = useV4Mode();
+  const { organization } = useV4Session();
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [running, setRunning] = useState<"approve" | "merge" | "reject">();
 
   const submit = async (status: ApprovalStatus, andMerge = false) => {
     setRunning(andMerge ? "merge" : (status === ApprovalStatus.APPROVED && "approve") || "reject");
+    if (mode === "live")
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretApprovalReviewSubmitted,
+        organization.id,
+        {
+          projectId,
+          mode: "single",
+          decision: status === ApprovalStatus.APPROVED ? "approved" : "rejected",
+          requestCount: 1,
+          entryPoint: "request-detail",
+          mergeRequested: andMerge
+        }
+      );
     try {
       await review.mutateAsync({ id: request.id, projectId, status, comment });
     } catch (error) {

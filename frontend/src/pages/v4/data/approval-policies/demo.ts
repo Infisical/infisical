@@ -306,7 +306,7 @@ export const approvalPoliciesDemo: ApprovalPoliciesAdapter = {
           enforceOnSecretImports: Boolean(dto.enforceOnSecretImports)
         };
         store.update((state) => ({ ...state, change: [policy, ...state.change] }));
-        return {};
+        return { approval: policy };
       }
     };
   },
@@ -333,14 +333,33 @@ export const approvalPoliciesDemo: ApprovalPoliciesAdapter = {
           approvers: approvers ? toApprovers(approvers, emails) : current.approvers,
           bypassForMachineIdentities:
             dto.bypassForMachineIdentities ?? current.bypassForMachineIdentities,
+          enforceOnSecretImports: dto.enforceOnSecretImports ?? current.enforceOnSecretImports,
           updatedAt: new Date()
         };
         store.update((state) => ({
           ...state,
           change: state.change.map((policy) => (policy.id === id ? next : policy))
         }));
-        return {};
+        return { approval: next };
       }
+    };
+  },
+  useDirectImports: () => {
+    const store = useStore();
+    return async (policyId) => {
+      const policy = store.get().change.find((entry) => entry.id === policyId);
+      const [environment] = policy?.environments ?? [];
+      if (!policy?.enforceOnSecretImports || !environment) return [];
+      return [
+        {
+          id: `${policyId}-import`,
+          environment,
+          secretPath: policy.secretPath || "/",
+          sourceEnvironment: ENVIRONMENTS.dev,
+          sourceSecretPath: "/shared",
+          isReplication: false
+        }
+      ];
     };
   },
   useDeleteChangePolicy: () => {
