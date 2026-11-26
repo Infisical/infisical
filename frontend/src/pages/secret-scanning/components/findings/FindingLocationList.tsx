@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
   Skeleton
 } from "@app/components/v3";
+import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningFindingLocation,
   TSecretScanningFindingResource,
@@ -39,12 +40,29 @@ const formatDate = (date: string) => format(new Date(date), "MMM d, yyyy h:mm a"
 const formatRange = (start: number, end: number) =>
   start === end ? `${start}` : `${start}-${end}`;
 
-const LocationDetails = ({ location }: { location: TSecretScanningFindingLocation }) => {
+const LocationDetails = ({
+  location,
+  resource
+}: {
+  location: TSecretScanningFindingLocation;
+  resource?: TSecretScanningFindingResource;
+}) => {
   const { details } = location;
   const position = `${details.file}:${details.startLine}`;
 
   return (
     <div className="grid grid-cols-2 gap-4">
+      <Detail className="col-span-2">
+        <DetailLabel>
+          {resource
+            ? RESOURCE_DESCRIPTION_HELPER[resource.dataSourceType].singularTitle
+            : "Resource"}
+        </DetailLabel>
+        <DetailValue>
+          {location.resourceName}
+          {resource && <p className="text-xs text-muted">{resource.dataSourceName}</p>}
+        </DetailValue>
+      </Detail>
       <Detail>
         <DetailLabel>File</DetailLabel>
         <DetailValue>
@@ -181,9 +199,7 @@ export const FindingLocationList = ({
               <AccordionItem key={location.id} value={location.id}>
                 <AccordionTrigger className="min-h-10 overflow-hidden py-0">
                   <span className="flex-1 truncate text-left">
-                    {!selectedResource && resources.length > 1 && (
-                      <span className="text-muted">{location.resourceName} · </span>
-                    )}
+                    <span className="text-muted">{location.resourceName} · </span>
                     {details.file}:{details.startLine}
                   </span>
                   <span className="shrink-0 text-xs font-normal text-muted">
@@ -193,7 +209,10 @@ export const FindingLocationList = ({
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="p-3">
-                  <LocationDetails location={location} />
+                  <LocationDetails
+                    location={location}
+                    resource={resources.find(({ id }) => id === location.resourceId)}
+                  />
                 </AccordionContent>
               </AccordionItem>
             );

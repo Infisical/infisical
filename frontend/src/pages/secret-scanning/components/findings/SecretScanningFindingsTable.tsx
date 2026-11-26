@@ -6,7 +6,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   Card,
   CardAction,
@@ -214,9 +213,6 @@ export const SecretScanningFindingsTable = ({
     : undefined;
   const openIndex = openFinding ? pageIds.indexOf(openFinding.id) : -1;
 
-  const resourceLabel = selectedDataSource
-    ? RESOURCE_DESCRIPTION_HELPER[selectedDataSource.type].singularTitle
-    : "Resource";
   const isFiltered =
     statusFilter !== "all" ||
     Boolean(resourceFilter) ||
@@ -482,7 +478,6 @@ export const SecretScanningFindingsTable = ({
                       onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                     />
                   </TableHead>
-                  <TableHead>{resourceLabel}</TableHead>
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
                   {renderSortableHead(
                     SecretScanningFindingOrderBy.LastDetectedAt,
@@ -499,7 +494,7 @@ export const SecretScanningFindingsTable = ({
                       <TableCell>
                         <Skeleton className="size-4" />
                       </TableCell>
-                      {Array.from({ length: 4 }).map((__, j) => (
+                      {Array.from({ length: 3 }).map((__, j) => (
                         <TableCell key={`finding-skeleton-cell-${j + 1}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -509,9 +504,6 @@ export const SecretScanningFindingsTable = ({
                 {!isPending &&
                   findings.map((finding) => {
                     const isSelected = selectedIds.includes(finding.id);
-                    // the resource the list is filtered by comes first
-                    const [resource, ...otherResources] = finding.resources;
-                    const source = SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType];
 
                     return (
                       <TableRow
@@ -534,32 +526,13 @@ export const SecretScanningFindingsTable = ({
                           />
                         </TableCell>
                         <TableCell isTruncatable>
-                          <p className="flex items-center gap-1.5 truncate">
-                            {!isScoped && (
-                              <ProviderIcon
-                                alt={`${source.name} data source ${resource.dataSourceName}`}
-                                title={resource.dataSourceName}
-                                icon={source.image}
-                                className="size-3.5"
-                              />
-                            )}
-                            <span className="truncate">{resource.name}</span>
-                            {otherResources.length > 0 && (
-                              <Badge
-                                variant="neutral"
-                                title={otherResources.map(({ name }) => name).join(", ")}
-                              >
-                                +{otherResources.length}
-                              </Badge>
-                            )}
-                          </p>
+                          <p className="truncate">{finding.rule}</p>
                           <p className="truncate text-xs text-muted">
                             {finding.locationCount === 1
                               ? "1 location"
                               : `${finding.locationCount} locations`}
                           </p>
                         </TableCell>
-                        <TableCell isTruncatable>{finding.rule}</TableCell>
                         <TableCell>
                           {formatDistanceToNowStrict(new Date(finding.lastDetectedAt), {
                             addSuffix: true
