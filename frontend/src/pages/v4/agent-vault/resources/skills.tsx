@@ -679,7 +679,7 @@ const SkillSheetEditor = ({
   const skillId = skill.id;
   const { data: versions = [], isPending: isVersionsPending } = resources.useSkillVersions(
     projectId,
-    skillId
+    canEdit ? skillId : ""
   );
   const update = resources.useUpdateSkill(projectId);
   const [viewed, setViewed] = useState<number | null>(null);
@@ -816,19 +816,21 @@ const SkillSheetEditor = ({
               />
             )}
           </Stack>
-          <Stack gap={8}>
-            <Heading level={3} size="subsection">
-              Versions
-            </Heading>
-            <SkillVersionsTable
-              skill={skill}
-              versions={versions}
-              loading={isVersionsPending}
-              viewed={viewed}
-              disabled={hasChanges}
-              onView={setViewed}
-            />
-          </Stack>
+          {canEdit && (
+            <Stack gap={8}>
+              <Heading level={3} size="subsection">
+                Versions
+              </Heading>
+              <SkillVersionsTable
+                skill={skill}
+                versions={versions}
+                loading={isVersionsPending}
+                viewed={viewed}
+                disabled={hasChanges}
+                onView={setViewed}
+              />
+            </Stack>
+          )}
         </Stack>
       </SheetBody>
       <SheetFooter>
