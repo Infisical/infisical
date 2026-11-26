@@ -4,7 +4,7 @@ sidebarTitle: "Auto-approval"
 description: "Approve PAM access requests as soon as they're submitted when they pass one of the folder's rules."
 ---
 
-Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket, check whether the requester is on call in incident.io, check who the requester is or which [groups](/documentation/platform/groups) they're in, have your organization's AI model review the request against your instructions, or combine these. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket or Linear issue, check whether the requester is on call in incident.io, check who the requester is or which [groups](/documentation/platform/groups) they're in, have your organization's AI model review the request against your instructions, or combine these. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
 
 Auto-approval has two settings, each managed by a different role:
 
@@ -19,6 +19,7 @@ Infisical reads each service through an [app connection](/integrations/app-conne
 | --- | --- | --- |
 | Jira Cloud and Jira Data Center | A Jira ticket that the requester links | [Jira connection](/integrations/app-connections/jira) |
 | incident.io | Whether the requester is on call | [incident.io connection](/integrations/app-connections/incident-io) |
+| Linear | A Linear issue that the requester links | [Linear connection](/integrations/app-connections/linear) |
 
 ## Prerequisites
 
@@ -96,6 +97,21 @@ Every linked record also has a **hasn't been used before** check. It passes only
 
 To require sign-off in Jira, use **is approved in Jira** rather than **has status**. Only the approvers on a Jira Service Management request can decide its approval, while the requester might be able to change the ticket's status.
 
+### Linear issue
+
+| Check | Passes when |
+| --- | --- |
+| **is assigned to the requester** | The issue's assignee has the same email address in Linear as the requester has in Infisical (it never passes if Linear doesn't share the assignee's email address with the connection's API key) |
+| **has status** | The issue's status is one of the values |
+| **is in team** | The issue is in one of the teams |
+| **has label** | The issue has at least one of the labels |
+
+Rules store team keys, so update them if you change a team's key in Linear. Infisical rejects issues that are archived or in the trash.
+
+<Warning>
+  Linear has no approvals. Anyone on a team can usually create an issue, assign it to themselves, and change its status and labels, including the requester. Don't rely on Linear checks alone to show that someone else signed off. Limit the rule to trusted requesters with a **Requester is** condition, or add an [AI check](#ai-checks) that reads the issue's comments. In the AI check's instructions, name the people who can approve by email address, since Linear users can change their own names.
+</Warning>
+
 ### Requester in incident.io
 
 | Check | Passes when |
@@ -146,7 +162,7 @@ To set up the model, you need permission to edit organization settings:
   </Step>
 </Steps>
 
-The AI reads the requester's reason, the request details, and the linked records. Through a Jira connection, from a request form field or **Additional Context**, it can also read a ticket, read a ticket's Jira Service Management approvals, find users by email, and search tickets with JQL (up to 10 results), but it can't change anything in Jira. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
+The AI reads the requester's reason, the request details, and the linked records. Through a Jira connection, from a request form field or **Additional Context**, it can also read a ticket, read a ticket's Jira Service Management approvals, find users by email, and search tickets with JQL (up to 10 results), but it can't change anything in Jira. Through a Linear connection, it can read an issue with its latest 20 comments, find users by email, and search issues by text (up to 10 results), but it can't change anything in Linear. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
 
 The AI check passes only if the model approves. If the model declines or errors, the check fails like any other check. Infisical allows 30 seconds for all of a request's AI checks together: a check that hasn't decided by then fails, and AI checks in later rules aren't run.
 
@@ -158,7 +174,7 @@ Approvers see the model's reasoning and the tickets it looked up under **Auto-ap
 
 ## Request access with a linked record
 
-If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
+If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site or Linear workspace from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
 
 After you submit the request, the confirmation message shows whether a rule approved it:
 

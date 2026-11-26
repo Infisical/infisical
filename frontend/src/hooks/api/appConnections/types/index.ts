@@ -53,6 +53,7 @@ import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
+import { TLinearConnection } from "./linear-connection";
 import { TLiteLLMConnection } from "./litellm-connection";
 import { TMicrosoftIntuneConnection } from "./microsoft-intune-connection";
 import { TMongoDBConnection } from "./mongodb-connection";
@@ -143,6 +144,7 @@ export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
 export * from "./imperva-connection";
 export * from "./incident-io-connection";
+export * from "./linear-connection";
 export * from "./jenkins-connection";
 export * from "./coolify-connection";
 export * from "./jira-connection";
@@ -295,6 +297,7 @@ export type TAppConnection =
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
+  | TLinearConnection
   | TJenkinsConnection
   | TCoolifyConnection;
 

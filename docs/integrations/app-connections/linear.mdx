@@ -1,0 +1,76 @@
+---
+title: "Linear connection"
+sidebarTitle: "Linear"
+description: "Learn how to configure a Linear connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/linear/form-fields.mdx";
+
+A Linear connection authenticates Infisical to Linear with a [personal API key](https://linear.app/docs/api-and-webhooks#api-keys), so Infisical can read the Linear issues that requesters link to PAM access requests.
+
+<Note>
+    This guide only authenticates Infisical with Linear. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A Linear user who can create API keys (admins always can, and members can if an admin allows it under **Settings** > **Administration** > **API**)
+- Access to the teams whose issues Infisical needs to read
+
+<Note>
+    The connection stops working if its key's user leaves Linear. Consider creating the key as a dedicated Linear user who belongs only to the teams your rules check.
+</Note>
+
+## Step 1: Create an API key
+
+Infisical needs a Linear API key that can read your issues. The key can only read the issues that its user can see.
+
+<Steps>
+    <Step>
+        In Linear, go to **Settings** > **Account** > **Security & Access**, and create a personal API key.
+    </Step>
+    <Step>
+        Enter a name, such as `infisical`, and give the key the **Read** permission. To limit which issues Infisical can read, limit the key to specific teams.
+    </Step>
+    <Step>
+        Copy the key. Linear shows it only once.
+    </Step>
+</Steps>
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the Linear [Create](/api-reference/endpoints/app-connections/linear/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **Linear**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to Linear**.
+    </Step>
+</Steps>
+
+When you select **Connect to Linear**, Infisical checks that Linear accepts the API key, and doesn't save the connection if Linear rejects it.
+
+<Check>
+    Your Linear app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Linear app connection is configured, you can use it to set up the following integrations:
+
+<Card title="PAM auto-approval" icon="zap" href="/documentation/platform/pam/access-requests/auto-approval">
+    Check the Linear issues that requesters link to PAM access requests, and let AI checks read them.
+</Card>

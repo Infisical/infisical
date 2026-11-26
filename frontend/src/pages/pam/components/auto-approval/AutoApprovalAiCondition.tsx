@@ -42,9 +42,8 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
   );
   const hasUnavailable = selected.some((connection) => !connection.app);
 
-  // Inline creation opens one app's form, so it's offered only while a single app has AI lookups
   const creation = useOrgConnectionCreation<TAutoApprovalAiContextConnection>(
-    ai.contextApps.length === 1 ? ai.contextApps[0] : undefined,
+    ai.contextApps,
     (connection) => {
       setCreated((previous) => [
         ...previous,
@@ -63,7 +62,7 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
           aria-label="AI instructions"
           value={condition.prompt ?? ""}
           onChange={(e) => onChange({ ...condition, prompt: e.target.value })}
-          placeholder="Approve if the linked Jira ticket is an open incident assigned to the requester."
+          placeholder="Approve if the linked ticket is an open incident assigned to the requester."
           maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
           isError={isError}
           rows={3}

@@ -177,6 +177,7 @@ import {
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
+import { LinearConnectionListItemSchema, SanitizedLinearConnectionSchema } from "@app/services/app-connection/linear";
 import {
   LiteLLMConnectionListItemSchema,
   SanitizedLiteLLMConnectionSchema
@@ -413,7 +414,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
   ...SanitizedClickHouseConnectionSchema.options,
-  ...SanitizedIncidentIoConnectionSchema.options
+  ...SanitizedIncidentIoConnectionSchema.options,
+  ...SanitizedLinearConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -515,7 +517,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema,
   ClickHouseConnectionListItemSchema,
-  IncidentIoConnectionListItemSchema
+  IncidentIoConnectionListItemSchema,
+  LinearConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

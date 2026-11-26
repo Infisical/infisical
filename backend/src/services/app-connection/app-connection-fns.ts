@@ -238,6 +238,7 @@ import {
   validateLaravelForgeConnectionCredentials
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
+import { getLinearConnectionListItem, LinearConnectionMethod, validateLinearConnectionCredentials } from "./linear";
 import { getLiteLLMConnectionListItem, LiteLLMConnectionMethod, validateLiteLLMConnectionCredentials } from "./litellm";
 import {
   getMicrosoftIntuneConnectionListItem,
@@ -425,7 +426,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo, AppConnection.Linear];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -576,7 +577,8 @@ export const listAppConnectionOptions = async (
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
     getClickHouseConnectionListItem(),
-    getIncidentIoConnectionListItem()
+    getIncidentIoConnectionListItem(),
+    getLinearConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -873,7 +875,8 @@ export const validateAppConnectionCredentials = async (
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Linear]: validateLinearConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -999,6 +1002,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
     case IncidentIoConnectionMethod.ApiKey:
+    case LinearConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -1240,7 +1244,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
   [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
-  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported
+  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported,
+  [AppConnection.Linear]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

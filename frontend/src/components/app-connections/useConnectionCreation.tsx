@@ -8,10 +8,11 @@ import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
+import { AppConnectionsSelect } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionList";
 
 // Shared by the project and organization pickers; each supplies its permission check and form scope
 export const useConnectionCreationDialog = <TOption,>(
-  app: AppConnection | undefined,
+  appOrApps: AppConnection | AppConnection[] | undefined,
   canCreate: boolean,
   formProps: Pick<ComponentProps<typeof AppConnectionForm>, "projectId" | "projectType">,
   onCreated: (connection: TAppConnection) => void
@@ -22,6 +23,7 @@ export const useConnectionCreationDialog = <TOption,>(
   // can only trust it once it exists, and selecting it earlier runs lookups (such as GCP project discovery) that
   // fail until then and are not refetched
   const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
+  const [chosenApp, setChosenApp] = useState<AppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
   const attemptRef = useRef(0);
@@ -33,6 +35,7 @@ export const useConnectionCreationDialog = <TOption,>(
         attemptRef.current += 1;
         setIsDirty(false);
         setCreatedConnection(null);
+        setChosenApp(null);
         cancelRef.current();
       }
     });
@@ -42,9 +45,14 @@ export const useConnectionCreationDialog = <TOption,>(
     requestDiscard();
   };
 
-  if (!app || !canCreate) return undefined;
+  const apps = [appOrApps ?? []].flat();
+  if (!apps.length || !canCreate) return undefined;
 
-  const label = `Create ${APP_CONNECTION_MAP[app].name} Connection`;
+  const app = apps.length === 1 ? apps[0] : chosenApp;
+  const label =
+    apps.length === 1
+      ? `Create ${APP_CONNECTION_MAP[apps[0]].name} Connection`
+      : "Create Connection";
   const attempt = attemptRef.current;
 
   return {
@@ -57,7 +65,12 @@ export const useConnectionCreationDialog = <TOption,>(
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
-        {createdConnection ? (
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {!app ? (
+          <div className="max-h-[60vh] overflow-y-auto px-6 pb-6">
+            <AppConnectionsSelect apps={apps} onSelect={setChosenApp} />
+          </div>
+        ) : createdConnection ? (
           <AppConnectionForm
             appConnection={createdConnection}
             isNewConnection
@@ -67,6 +80,7 @@ export const useConnectionCreationDialog = <TOption,>(
             onComplete={(connection) => {
               if (attempt !== attemptRef.current) return;
               setCreatedConnection(null);
+              setChosenApp(null);
               onCreated(connection);
               complete();
             }}
@@ -87,6 +101,7 @@ export const useConnectionCreationDialog = <TOption,>(
                 setCreatedConnection(connection);
                 return;
               }
+              setChosenApp(null);
               onCreated(connection);
               complete();
             }}

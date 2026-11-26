@@ -334,6 +334,12 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import {
+  TLinearConnection,
+  TLinearConnectionConfig,
+  TLinearConnectionInput,
+  TValidateLinearConnectionCredentialsSchema
+} from "./linear";
+import {
   TLiteLLMConnection,
   TLiteLLMConnectionConfig,
   TLiteLLMConnectionInput,
@@ -689,6 +695,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
+  | TLinearConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -799,6 +806,7 @@ export type TAppConnectionInput = { id: string } & (
   | TJiraConnectionInput
   | TClickHouseConnectionInput
   | TIncidentIoConnectionInput
+  | TLinearConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -942,7 +950,8 @@ export type TAppConnectionConfig =
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig
   | TClickHouseConnectionConfig
-  | TIncidentIoConnectionConfig;
+  | TIncidentIoConnectionConfig
+  | TLinearConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -1043,7 +1052,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema
   | TValidateClickHouseConnectionCredentialsSchema
-  | TValidateIncidentIoConnectionCredentialsSchema;
+  | TValidateIncidentIoConnectionCredentialsSchema
+  | TValidateLinearConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

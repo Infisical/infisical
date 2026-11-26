@@ -1148,6 +1148,7 @@
                   "integrations/app-connections/external-infisical",
                   "integrations/app-connections/laravel-forge",
                   "integrations/app-connections/ldap",
+                  "integrations/app-connections/linear",
                   "integrations/app-connections/litellm",
                   "integrations/app-connections/ssh",
                   "integrations/app-connections/mssql",
@@ -2290,6 +2291,18 @@
                           "api-reference/endpoints/app-connections/ldap/update",
                           "api-reference/endpoints/app-connections/ldap/delete",
                           "api-reference/endpoints/app-connections/ldap/list-groups"
+                        ]
+                      },
+                      {
+                        "group": "Linear",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/linear/list",
+                          "api-reference/endpoints/app-connections/linear/available",
+                          "api-reference/endpoints/app-connections/linear/get-by-id",
+                          "api-reference/endpoints/app-connections/linear/get-by-name",
+                          "api-reference/endpoints/app-connections/linear/create",
+                          "api-reference/endpoints/app-connections/linear/update",
+                          "api-reference/endpoints/app-connections/linear/delete"
                         ]
                       },
                       {

@@ -68,6 +68,7 @@ import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
+import { LinearConnectionForm } from "./LinearConnectionForm";
 import { LiteLLMConnectionForm } from "./LiteLLMConnectionForm";
 import { MicrosoftIntuneConnectionForm } from "./MicrosoftIntuneConnectionForm";
 import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
@@ -408,6 +409,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <JiraConnectionForm onSubmit={onSubmit} />;
       case AppConnection.IncidentIo:
         return <IncidentIoConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Linear:
+        return <LinearConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -734,6 +737,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.IncidentIo:
         return <IncidentIoConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Linear:
+        return <LinearConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:

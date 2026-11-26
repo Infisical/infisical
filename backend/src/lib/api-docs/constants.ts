@@ -3531,6 +3531,10 @@ export const AppConnections = {
     INCIDENT_IO: {
       apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
     },
+    LINEAR: {
+      apiKey:
+        "The Linear personal API key used to read issues. Read access is enough, and limiting the key to specific teams limits which issues Infisical can read."
+    },
     JIRA: {
       instanceUrl:
         "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
