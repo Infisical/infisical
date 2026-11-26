@@ -1039,6 +1039,31 @@ export const setRowLevel = (
   return withSets(allowed, scope, { allow: getSets(allowed, scope).allow, deny: [] });
 };
 
+/** Whether a row allows or denies anything, for every one of them or for one picked out. */
+export const isRowEmpty = (policy: TAgentVaultPolicy, rowKey: TPermissionRowKey) => {
+  const sets = policy[rowKey];
+  if (sets.allow.length || sets.deny.length) return false;
+  return !isResourceRowKey(rowKey) || !policy[rowKey].items.length;
+};
+
+/**
+ * Takes everything off a row: its level, its denies, creating new ones, and any bundles, services or skills picked out.
+ * Rows on the same subject follow, as they do when the row's level is set to none.
+ */
+export const clearPermissionRow = (policy: TAgentVaultPolicy, rowKey: TPermissionRowKey) => {
+  const scope = { rowKey };
+  const leveled = setRowLevel(policy, rowKey, NONE_LEVEL);
+  const cleared = getPermissionRow(rowKey)
+    .actions.filter((action) => action.isAllOnly)
+    .reduce((next, { key }) => unallowKey(next, scope, key), leveled);
+  const withoutDenies = withSets(cleared, scope, {
+    allow: getSets(cleared, scope).allow,
+    deny: []
+  });
+  if (!isResourceRowKey(rowKey)) return withoutDenies;
+  return { ...withoutDenies, [rowKey]: { ...withoutDenies[rowKey], items: [] } };
+};
+
 /** Sets one bundle, service or skill to a named level, or denies it outright. */
 export const setItemLevel = (
   policy: TAgentVaultPolicy,

@@ -212,6 +212,8 @@ type TViewProps = {
   onScopeOpenChange: (scopeKey: string, isOpen: boolean) => void;
   isScopeCollapsed: (scopeKey: string) => boolean;
   onScopeCollapsedChange: (scopeKey: string, isCollapsed: boolean) => void;
+  // Takes the card off the role, with everything it grants. Left out where the role can't be edited.
+  onRemove?: () => void;
   itemsById: Map<string, TPolicyResourceItem>;
   isCatalogPending: boolean;
   // The catalog stops loading past a set number of rows, so an item it lacks may simply not be loaded.
@@ -384,6 +386,7 @@ const ResourceAccessCardView = ({
   onScopeOpenChange,
   isScopeCollapsed,
   onScopeCollapsedChange,
+  onRemove,
   itemsById,
   isCatalogPending,
   isCatalogCutShort,
@@ -484,7 +487,7 @@ const ResourceAccessCardView = ({
         </CardTitle>
         <CardDescription>{row.description}</CardDescription>
         {!isReadOnly && (
-          <CardAction>
+          <CardAction className="flex items-center gap-1">
             <AddResourcesPopover
               rowKey={rowKey}
               canAddAll={!isAllShown}
@@ -495,6 +498,16 @@ const ResourceAccessCardView = ({
               onSearchChange={onSearchChange}
               onAdd={addPicked}
             />
+            {onRemove && (
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label={`Remove ${label}`}
+                onClick={onRemove}
+              >
+                <XIcon />
+              </IconButton>
+            )}
           </CardAction>
         )}
       </CardHeader>

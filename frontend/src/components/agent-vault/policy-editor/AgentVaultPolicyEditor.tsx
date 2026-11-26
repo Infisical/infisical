@@ -10,6 +10,10 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Tabs,
   TabsContent,
   TabsList,
@@ -19,9 +23,14 @@ import { CodeEditor } from "@app/components/v3/generic/CodeEditor";
 import { cn } from "@app/components/v3/utils";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { AddPoliciesPopover } from "./AddPoliciesPopover";
 import {
+  clearPermissionRow,
   getPolicyWarning,
+  isRowEmpty,
+  PERMISSION_ROWS,
   TAgentVaultPolicy,
+  TPermissionRowKey,
   TPolicyKind,
   TUnsupportedRule
 } from "./agentVaultPolicyModel";
@@ -113,6 +122,19 @@ export const AgentVaultPolicyEditor = ({
   const [collapsedScopes, setCollapsedScopes] = useState<string[]>([]);
   const toggled = (keys: string[], scopeKey: string, isIn: boolean) =>
     isIn ? [...new Set([...keys, scopeKey])] : keys.filter((key) => key !== scopeKey);
+  // A row shows once it's added, or while the role allows or denies anything on it.
+  const [addedRows, setAddedRows] = useState<TPermissionRowKey[]>([]);
+  const isRowShown = (rowKey: TPermissionRowKey) =>
+    addedRows.includes(rowKey) || !isRowEmpty(policy, rowKey);
+  const shownRows = PERMISSION_ROWS.map(({ key }) => key).filter(isRowShown);
+  const removeRow = (rowKey: TPermissionRowKey) => {
+    setAddedRows((prev) => prev.filter((key) => key !== rowKey));
+    onPolicyChange(clearPermissionRow(policy, rowKey));
+  };
+  const toggleRow = (rowKey: TPermissionRowKey) =>
+    isRowShown(rowKey) ? removeRow(rowKey) : setAddedRows((prev) => [...prev, rowKey]);
+  const onRemoveRow = isVisualReadOnly ? undefined : removeRow;
+
   const scopeProps = {
     noun,
     policy,
@@ -140,10 +162,18 @@ export const AgentVaultPolicyEditor = ({
         onValueChange={(value) => onTabChange(value as TPolicyEditorTab)}
         className="min-w-0 gap-4"
       >
-        <TabsList variant="av" aria-label={`${noun === "role" ? "Role" : "Policy"} editor views`}>
-          <TabsTrigger value="visual">Visual Editor</TabsTrigger>
-          <TabsTrigger value="json">JSON</TabsTrigger>
-        </TabsList>
+        {/* The tab bar's underline runs the full width, so the button sits over its right end */}
+        <div className="relative">
+          <TabsList variant="av" aria-label={`${noun === "role" ? "Role" : "Policy"} editor views`}>
+            <TabsTrigger value="visual">Visual Editor</TabsTrigger>
+            <TabsTrigger value="json">JSON</TabsTrigger>
+          </TabsList>
+          {tab === "visual" && !isVisualReadOnly && (
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <AddPoliciesPopover isRowShown={isRowShown} onToggleRow={toggleRow} />
+            </div>
+          )}
+        </div>
         {notice}
         {unsupported.length > 0 && (
           <UnsupportedRulesAlert noun={noun} unsupported={unsupported} canEdit={canEdit} />
@@ -163,10 +193,40 @@ export const AgentVaultPolicyEditor = ({
               <AlertDescription>{warning}</AlertDescription>
             </Alert>
           )}
-          <ServicesAccessCard projectId={projectId} {...scopeProps} />
-          <SkillsAccessCard projectId={projectId} {...scopeProps} />
-          <AccessBundlesAccessCard projectId={projectId} {...scopeProps} />
-          <CapabilitiesCard {...scopeProps} />
+          {!shownRows.length && (
+            <Empty className="border py-8">
+              <EmptyHeader>
+                <EmptyTitle>No policies applied</EmptyTitle>
+                <EmptyDescription>
+                  {isVisualReadOnly
+                    ? `This ${noun} doesn't grant anything the visual editor shows.`
+                    : `Add policies to set what this ${noun} grants.`}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+          {isRowShown("services") && (
+            <ServicesAccessCard
+              projectId={projectId}
+              {...scopeProps}
+              onRemove={onRemoveRow && (() => onRemoveRow("services"))}
+            />
+          )}
+          {isRowShown("skills") && (
+            <SkillsAccessCard
+              projectId={projectId}
+              {...scopeProps}
+              onRemove={onRemoveRow && (() => onRemoveRow("skills"))}
+            />
+          )}
+          {isRowShown("accessBundles") && (
+            <AccessBundlesAccessCard
+              projectId={projectId}
+              {...scopeProps}
+              onRemove={onRemoveRow && (() => onRemoveRow("accessBundles"))}
+            />
+          )}
+          <CapabilitiesCard {...scopeProps} shownRows={shownRows} onRemoveRow={onRemoveRow} />
         </TabsContent>
         <TabsContent value="json">
           <Card>
