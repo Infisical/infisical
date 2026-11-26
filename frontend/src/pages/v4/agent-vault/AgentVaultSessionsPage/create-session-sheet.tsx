@@ -626,6 +626,8 @@ const CreateNowForm = ({
     control,
     handleSubmit,
     setError,
+    clearErrors,
+    getFieldState,
     formState: { errors }
   } = form;
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
@@ -682,7 +684,14 @@ const CreateNowForm = ({
                 projectId={projectId}
                 value={field.value}
                 error={fieldState.error?.message}
-                onChange={field.onChange}
+                onChange={(skills) => {
+                  field.onChange(skills);
+                  if (
+                    skills.length &&
+                    getFieldState("services").error?.type === PICK_SOMETHING_ERROR
+                  )
+                    clearErrors("services");
+                }}
               />
             )}
           />
