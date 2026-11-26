@@ -38,3 +38,16 @@ export const unique = <T, K extends string | number | symbol>(
   );
   return Object.values(valueMap);
 };
+
+/**
+ * Merges the results of several list queries (as `useQueries` passes them to `combine`) into one list, newest
+ * first, pending while any query is.
+ */
+export const combineNewestFirst = <T extends { createdAt: string | Date }>(
+  results: { data?: T[]; isPending: boolean }[]
+) => ({
+  data: results
+    .flatMap(({ data = [] }) => data)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  isPending: results.some((result) => result.isPending)
+});

@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApproverType, isCertificateActionPolicyType } from "@app/hooks/api/approvalPolicies";
 
 import { getCertPolicyTypeLabel } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
@@ -34,7 +34,7 @@ export const PolicyReviewStep = () => {
     bypassForMachineIdentities,
     steps
   } = watch();
-  const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
+  const isCertificateActionPolicy = isCertificateActionPolicyType(policyType);
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -67,7 +67,7 @@ export const PolicyReviewStep = () => {
               conditions[0].profileNames.length ? conditions[0].profileNames.join(", ") : "Not set"
             }
           />
-          {!isRevocationPolicy && (
+          {!isCertificateActionPolicy && (
             <ReviewField
               label="Machine Identity Bypass"
               value={bypassForMachineIdentities ? "Enabled" : "Disabled"}

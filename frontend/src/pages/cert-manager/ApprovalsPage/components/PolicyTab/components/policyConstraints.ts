@@ -1,4 +1,8 @@
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  APPLICATION_POLICY_TYPE_LABELS,
+  ApprovalPolicyType,
+  isApplicationPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import {
   CertRequestPolicyConstraints,
   CertRequestPolicyOperation,
@@ -13,6 +17,8 @@ export const getCertPolicyTypeLabel = (
   type: ApprovalPolicyType,
   operation?: CertRequestPolicyOperation
 ) => {
-  if (type === ApprovalPolicyType.CertRevocation) return "Revocation";
-  return operation === CertRequestPolicyOperation.Renewal ? "Renewal" : "Issuance";
+  if (type === ApprovalPolicyType.CertRequest && operation === CertRequestPolicyOperation.Renewal) {
+    return "Renewal";
+  }
+  return isApplicationPolicyType(type) ? APPLICATION_POLICY_TYPE_LABELS[type] : "Issuance";
 };

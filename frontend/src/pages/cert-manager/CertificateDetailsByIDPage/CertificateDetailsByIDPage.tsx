@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { subject } from "@casl/ability";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
@@ -38,8 +39,8 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
-import { useRevocationPolicyProfileNames } from "@app/hooks/api/approvalPolicies";
-import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
+import { ApprovalPolicyType, TCertificateActionPolicyType } from "@app/hooks/api/approvalPolicies";
+import { useCertificateActionApprovalData } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -67,11 +68,15 @@ import { CertificateRevocationModal } from "../CertificatesPage/components/Certi
 import {
   canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
+  CERTIFICATE_ACTION_APPROVALS,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
+  getCertificateActionApproval,
+  getCertificateActionMenuState,
+  getCertificateDeletionTitle,
+  getCertificateDeletionToast,
   getCertificateDeletionWarning,
-  getPendingRevocationRequestLink,
-  getPendingRevocationState,
+  getPendingRequestLink,
   getRenewNowState,
   isExpiringWithinOneDay,
   isManagedCertificate
@@ -118,13 +123,7 @@ const Page = () => {
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
   );
-  const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
-  const pendingRevocationRequest = certificate
-    ? pendingRevocations?.get(certificate.id)
-    : undefined;
-  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(
-    certificate?.applicationId
-  );
+  const actionApprovalData = useCertificateActionApprovalData(certificate?.applicationId);
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
     certificateId: certificate?.id,
@@ -139,12 +138,12 @@ const Page = () => {
   const onDeleteCertificateSubmit = async () => {
     if (!currentProject?.id || !certificate) return;
 
-    await deleteCert({
+    const response = await deleteCert({
       id: certificate.id
     });
 
     createNotification({
-      text: "Successfully deleted certificate",
+      text: getCertificateDeletionToast(response),
       type: "success"
     });
 
@@ -255,47 +254,77 @@ const Page = () => {
         PkiApplicationResourceSub.Certificates
       ))
   );
-  const isRevocationApprovalRequired = Boolean(
-    certificate?.profileName && revocationPolicyProfileNames?.has(certificate.profileName)
+  const getActionApproval = (policyType: TCertificateActionPolicyType) => {
+    const { pending, policyProfileNames } = actionApprovalData[policyType];
+    const pendingRequest = certificate ? pending?.get(certificate.id) : undefined;
+    const approval = getCertificateActionApproval({
+      policyType,
+      certificate: certificate ?? {},
+      pendingRequest,
+      policyProfileNames
+    });
+    const { noun, pastParticiple } = CERTIFICATE_ACTION_APPROVALS[policyType];
+    return {
+      ...approval,
+      noun,
+      pastParticiple,
+      requestLink:
+        approval.isPending && pendingRequest
+          ? getPendingRequestLink(currentProject, policyType, pendingRequest.id)
+          : undefined
+    };
+  };
+  const revocation = getActionApproval(ApprovalPolicyType.CertRevocation);
+  const deletion = getActionApproval(ApprovalPolicyType.CertDeletion);
+  const shownPendingActions = [revocation, deletion].flatMap(({ requestLink, ...action }) =>
+    requestLink ? [{ ...action, requestLink }] : []
   );
-  const pendingRevocation = getPendingRevocationState({
-    pendingRequest: pendingRevocationRequest,
-    isRevoked,
-    isRevocationApprovalRequired
-  });
+  const blockingPendingActions = shownPendingActions.filter(
+    ({ showsPendingNote }) => showsPendingNote
+  );
   const applicationAccess = certificate?.applicationId
     ? getApplicationCertificateAccess({
         applicationName: certificate.applicationName ?? "this application",
         permission: appPermissionData?.permission,
-        isRevocationApprovalRequired
+        isRevocationApprovalRequired: revocation.isApprovalRequired,
+        isDeletionApprovalRequired: deletion.isApprovalRequired
       })
     : undefined;
   const canEditCertificate = applicationAccess
     ? applicationAccess.canEdit
     : Boolean(certSubject && permission.can(ProjectPermissionCertificateActions.Edit, certSubject));
   const canRenewCertificate = applicationAccess ? applicationAccess.canRenew : canEditCertificate;
-  const canDeleteCertificate = applicationAccess
-    ? applicationAccess.canDelete
+  const hasDeletePermission = applicationAccess
+    ? applicationAccess.hasDeletePermission
     : Boolean(
         certSubject && permission.can(ProjectPermissionCertificateActions.Delete, certSubject)
       );
+  const canDeleteCertificate = applicationAccess
+    ? applicationAccess.canDelete
+    : hasDeletePermission;
   const canRevokeCertificate = applicationAccess
     ? applicationAccess.canRevoke
-    : canDeleteCertificate;
+    : hasDeletePermission;
   const canEditPkiSyncs = applicationAccess
     ? applicationAccess.canManagePkiSyncs
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
-  const revokeBlockedReason =
-    pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
-  const pendingRevocationLink =
-    pendingRevocation.isPending && pendingRevocationRequest
-      ? getPendingRevocationRequestLink(currentProject, pendingRevocationRequest.id)
-      : undefined;
-  const pendingRevocationBadge = pendingRevocationLink ? (
-    <Badge variant="warning" asChild>
-      <Link {...pendingRevocationLink}>Revocation Pending</Link>
-    </Badge>
-  ) : null;
+  const revokeMenu = getCertificateActionMenuState({
+    canAct: canRevokeCertificate,
+    approval: revocation,
+    accessBlockedReason: applicationAccess?.revokeBlockedReason
+  });
+  const deleteMenu = getCertificateActionMenuState({
+    canAct: canDeleteCertificate,
+    approval: deletion,
+    accessBlockedReason: applicationAccess?.deleteBlockedReason
+  });
+  const pendingActionBadges = shownPendingActions.length
+    ? shownPendingActions.map(({ pendingLabel, requestLink }) => (
+        <Badge key={pendingLabel} variant="warning" asChild>
+          <Link {...requestLink}>{pendingLabel}</Link>
+        </Badge>
+      ))
+    : null;
 
   let certificateBackLink = (
     <Link
@@ -363,25 +392,27 @@ const Page = () => {
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
           description={
-            pendingRevocationLink ? (
-              <>
-                This certificate isn&apos;t revoked until its{" "}
-                <Link
-                  {...pendingRevocationLink}
-                  className="text-foreground underline underline-offset-2 hover:text-project"
-                >
-                  revocation request
-                </Link>{" "}
-                is approved.
-                {pendingRevocation.revokeReplacesRequestReason &&
-                  ` ${pendingRevocation.revokeReplacesRequestReason}`}
-              </>
-            ) : (
-              "View certificate details"
-            )
+            blockingPendingActions.length
+              ? blockingPendingActions.map(
+                  ({ noun, pastParticiple, requestLink, replacesRequestReason }, index) => (
+                    <Fragment key={noun}>
+                      {index > 0 && " "}
+                      This certificate isn&apos;t {pastParticiple} until its{" "}
+                      <Link
+                        {...requestLink}
+                        className="text-foreground underline underline-offset-2 hover:text-project"
+                      >
+                        {noun} request
+                      </Link>{" "}
+                      is approved.
+                      {replacesRequestReason && ` ${replacesRequestReason}`}
+                    </Fragment>
+                  )
+                )
+              : "View certificate details"
           }
           title={
-            pendingRevocationBadge ? (
+            pendingActionBadges ? (
               // The h1 truncates as one line after its 26px scope icon (plus mr-3), so this box gets the rest
               // of the width; at max-w-full it overflows and the h1 replaces the whole title with an ellipsis.
               <span className="inline-flex max-w-[calc(100%-2.375rem)] items-center gap-x-3 align-bottom">
@@ -391,7 +422,7 @@ const Page = () => {
                 >
                   {displayName}
                 </span>
-                {pendingRevocationBadge}
+                {pendingActionBadges}
               </span>
             ) : (
               displayName
@@ -520,7 +551,7 @@ const Page = () => {
                           handlePopUpOpen("renewCertificate", {
                             certificateId: certificate.id,
                             commonName: displayName,
-                            canRevoke: canDeleteCertificate
+                            canRevoke: hasDeletePermission
                           })
                         }
                       >
@@ -552,18 +583,14 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip
-                    reason={revokeBlockedReason ?? pendingRevocation.revokeReplacesRequestReason}
-                  >
+                  <BlockedActionTooltip reason={revokeMenu.reason}>
                     <DropdownMenuItem
-                      isDisabled={
-                        !canRevokeCertificate || Boolean(pendingRevocation.revokeBlockedReason)
-                      }
-                      isDisabledFocusable={Boolean(revokeBlockedReason)}
+                      isDisabled={revokeMenu.isDisabled}
+                      isDisabledFocusable={revokeMenu.isDisabledFocusable}
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {
                           certificateId: certificate.id,
-                          isRevocationApprovalRequired
+                          isRevocationApprovalRequired: revocation.isApprovalRequired
                         })
                       }
                     >
@@ -572,11 +599,11 @@ const Page = () => {
                   </BlockedActionTooltip>
                 )}
                 {!isDeleted && !(isInventoryView && certificate.applicationId) && (
-                  <BlockedActionTooltip reason={applicationAccess?.deleteBlockedReason}>
+                  <BlockedActionTooltip reason={deleteMenu.reason}>
                     <DropdownMenuItem
                       variant="danger"
-                      isDisabled={!canDeleteCertificate}
-                      isDisabledFocusable={Boolean(applicationAccess?.deleteBlockedReason)}
+                      isDisabled={deleteMenu.isDisabled}
+                      isDisabledFocusable={deleteMenu.isDisabledFocusable}
                       onClick={() => handlePopUpOpen("deleteCertificate")}
                     >
                       Delete Certificate
@@ -590,7 +617,7 @@ const Page = () => {
         <div className="flex flex-col gap-5 lg:flex-row">
           <CertificateOverviewSection
             certificateId={certificate.id}
-            pendingRevocationBadge={pendingRevocationBadge}
+            pendingActionBadges={pendingActionBadges}
           />
           <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
@@ -628,13 +655,14 @@ const Page = () => {
       />
       <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Delete Certificate ${displayName}?`}
+        title={certificate ? getCertificateDeletionTitle(certificate) : "Delete Certificate?"}
         description={
           <>
             {getCertificateDeletionWarning(
               certificate,
               supportsRevocation,
-              isRevocableAfterDeletion
+              isRevocableAfterDeletion,
+              deletion.isApprovalRequired
             )}
             <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
           </>
@@ -642,6 +670,7 @@ const Page = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
         isPending={isLoadingHoldingSyncs}
         confirmKey="confirm"
+        confirmLabel={deletion.isApprovalRequired ? "Request Deletion" : undefined}
         onConfirm={onDeleteCertificateSubmit}
       />
     </div>

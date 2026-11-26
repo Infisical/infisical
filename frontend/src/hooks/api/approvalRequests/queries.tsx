@@ -3,8 +3,13 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ApprovalPolicyScope, ApprovalPolicyType } from "../approvalPolicies/types";
-import { getPendingRevocations } from "./pending-revocations";
+import { useCertificateActionPolicyProfileNames } from "../approvalPolicies/queries";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  TCertificateActionPolicyType
+} from "../approvalPolicies/types";
+import { getPendingCertificateActions } from "./pending-certificate-actions";
 import { TApprovalRequest, TGetApprovalRequestByIdDTO, TListApprovalRequestsDTO } from "./types";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
@@ -42,16 +47,19 @@ export const approvalRequestQuery = {
     })
 };
 
-export const usePendingCertificateRevocations = (applicationId?: string | null) => {
+export const usePendingCertificateActions = (
+  policyType: TCertificateActionPolicyType,
+  applicationId?: string | null
+) => {
   const [expiryTick, onExpiry] = useReducer((tick: number) => tick + 1, 0);
   const { data } = useQuery({
     ...approvalRequestQuery.list({
-      policyType: ApprovalPolicyType.CertRevocation,
+      policyType,
       scope: ApprovalPolicyScope.PkiApplication,
       scopeId: applicationId ?? ""
     }),
     enabled: Boolean(applicationId),
-    select: (requests) => getPendingRevocations(requests, Date.now())
+    select: (requests) => getPendingCertificateActions(requests, Date.now())
   });
 
   // A refetch would not drop a lapsed request: the list still returns it unchanged, so the cached
@@ -67,4 +75,42 @@ export const usePendingCertificateRevocations = (applicationId?: string | null) 
   }, [nextExpiresAt, expiryTick]);
 
   return { data: data?.requestByCertificateId };
+};
+
+// The certificate list and the certificate page both need, for each action an Application can gate, its pending
+// requests and the profiles its policies cover.
+export const useCertificateActionApprovalData = (applicationId?: string | null) => {
+  const { data: pendingRevocations } = usePendingCertificateActions(
+    ApprovalPolicyType.CertRevocation,
+    applicationId
+  );
+  const { data: revocationProfileNames } = useCertificateActionPolicyProfileNames(
+    ApprovalPolicyType.CertRevocation,
+    applicationId
+  );
+  const { data: pendingDeletions } = usePendingCertificateActions(
+    ApprovalPolicyType.CertDeletion,
+    applicationId
+  );
+  const { data: deletionProfileNames } = useCertificateActionPolicyProfileNames(
+    ApprovalPolicyType.CertDeletion,
+    applicationId
+  );
+  const data: Record<
+    TCertificateActionPolicyType,
+    {
+      pending?: ReturnType<typeof usePendingCertificateActions>["data"];
+      policyProfileNames?: Set<string>;
+    }
+  > = {
+    [ApprovalPolicyType.CertRevocation]: {
+      pending: pendingRevocations,
+      policyProfileNames: revocationProfileNames
+    },
+    [ApprovalPolicyType.CertDeletion]: {
+      pending: pendingDeletions,
+      policyProfileNames: deletionProfileNames
+    }
+  };
+  return data;
 };

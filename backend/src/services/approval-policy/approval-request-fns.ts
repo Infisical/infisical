@@ -4,6 +4,7 @@ import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
 
 import {
   ApprovalPolicyType,
@@ -20,10 +21,12 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
+import { TCertDeletionRequestData } from "./cert-deletion/cert-deletion-policy-types";
 import { getRenewedCertificateId } from "./cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
+import { isCertificateActionPolicyType } from "./pki-approvers/certificate-action-policy-fns";
 
 export interface TCreateApprovalRequestWithStepsParams {
   projectId: string;
@@ -270,9 +273,12 @@ export const getApprovalRequestSubjectMetadata = (
     };
   }
 
-  if (request.type === ApprovalPolicyType.CertRevocation) {
-    const { certificateId, commonName, profileName } = requestData as TCertRevocationRequestData;
-    return { certificateId, commonName, profileName };
+  if (isCertificateActionPolicyType(request.type)) {
+    const actionData = requestData as TCertRevocationRequestData | TCertDeletionRequestData;
+    const { certificateId, commonName, profileName } = actionData;
+    // A certificate with only SANs has an empty common name, so the event also carries a name that falls back to the
+    // friendly name and then the serial.
+    return { certificateId, certificateName: getCertificateDisplayName(actionData), commonName, profileName };
   }
 
   if (request.type === ApprovalPolicyType.CertCodeSigning) {

@@ -19,12 +19,14 @@ import {
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import {
   CertExtendedKeyUsage,
+  CertificateDeletionStatus,
   CertificateRevocationStatus,
   CertKeyUsage,
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { DeleteCertResponseSchemas, sendDeletionPendingApproval } from "./certificate-delete-response";
 import { RevokeCertResponseSchemas, sendRevocationPendingApproval } from "./certificate-revoke-response";
 
 export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) => {
@@ -550,18 +552,15 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
+      description:
+        "Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it. If a deletion approval policy in the certificate's Application covers its profile, the endpoint returns HTTP 202 and the certificate isn't deleted until the approval request is approved.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
-      response: {
-        200: z.object({
-          certificate: SanitizedCertificateSchema
-        })
-      }
+      response: DeleteCertResponseSchemas
     },
-    handler: async (req) => {
-      const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
+    handler: async (req, reply) => {
+      const result = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -569,6 +568,11 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId,
         auditLogInfo: req.auditLogInfo
       });
+      if (result.status === CertificateDeletionStatus.PendingApproval) {
+        return sendDeletionPendingApproval(server, req, reply, result);
+      }
+
+      const { deletedCert, applicationName, statusAtDeletion } = result;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

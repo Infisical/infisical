@@ -34,13 +34,17 @@ type TPkiApproverRule = {
 };
 
 export const PKI_APPROVER_RULES: Record<
-  ApprovalPolicyType.CertRequest | ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertRequest | ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion,
   TPkiApproverRule
 > = {
   // Issuance approvers have always been any member of the Application, whatever their role. A policy from before
   // Applications names Certificate Management members.
   [ApprovalPolicyType.CertRequest]: { judgesRequestsWithoutApplication: true },
   [ApprovalPolicyType.CertRevocation]: {
+    isApprovingApplicationRole: (role) => role !== ResourceMembershipRole.Auditor,
+    judgesRequestsWithoutApplication: false
+  },
+  [ApprovalPolicyType.CertDeletion]: {
     isApprovingApplicationRole: (role) => role !== ResourceMembershipRole.Auditor,
     judgesRequestsWithoutApplication: false
   }

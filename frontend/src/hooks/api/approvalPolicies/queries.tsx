@@ -4,11 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import {
   ApprovalPolicyScope,
-  ApprovalPolicyType,
   CertRequestPolicyConditions,
   TApprovalPolicy,
   TAutoApprovalCatalog,
   TAutoApprovalOption,
+  TCertificateActionPolicyType,
   TGetApprovalPolicyByIdDTO,
   TGetAutoApprovalCatalogDTO,
   TListApprovalPoliciesDTO,
@@ -88,11 +88,14 @@ export const approvalPolicyQuery = {
     })
 };
 
-// Mirrors the backend's revocation policy match: only active policies count, by profile slug.
-export const useRevocationPolicyProfileNames = (applicationId?: string | null) =>
+// Mirrors the backend's policy match: only active policies count, by profile slug.
+export const useCertificateActionPolicyProfileNames = (
+  policyType: TCertificateActionPolicyType,
+  applicationId?: string | null
+) =>
   useQuery({
     ...approvalPolicyQuery.list({
-      policyType: ApprovalPolicyType.CertRevocation,
+      policyType,
       scope: ApprovalPolicyScope.PkiApplication,
       scopeId: applicationId ?? ""
     }),

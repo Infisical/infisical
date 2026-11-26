@@ -3,11 +3,17 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalRequests } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  ResourceType,
+  TApprovalRequests,
+  TCertificates
+} from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -27,6 +33,7 @@ import { asSentence } from "@app/lib/fn/string";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import {
   isApprovalRequestExpired,
@@ -34,16 +41,20 @@ import {
 } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
-import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
+  getApprovalRequestAuditLabel,
+  getApprovalRequestSubjectMetadata
+} from "@app/services/approval-policy/approval-request-fns";
+import { TCertDeletionRequestData } from "@app/services/approval-policy/cert-deletion/cert-deletion-policy-types";
+import { TCertRevocationRequestData } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
+import {
+  ApprovalStepShortfallKind,
+  CERTIFICATE_ACTIONS,
   formatApproverCount,
-  getRevocationStepShortfall,
-  RevocationStepShortfallKind
-} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-fns";
-import {
-  TCertRevocationRequestData,
-  TMatchedCertRevocationPolicy
-} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
+  getApprovalStepShortfall,
+  TCertificateActionPolicyType
+} from "@app/services/approval-policy/pki-approvers/certificate-action-policy-fns";
+import { TMatchedCertificateActionPolicy } from "@app/services/approval-policy/pki-approvers/certificate-action-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -97,7 +108,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSignerDALFactory } from "@app/services/signer/signer-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import {
+  PostHogEventTypes,
+  TCertificateDeletedEvent,
+  TCertificateRevokedEvent
+} from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -116,7 +131,10 @@ import {
   detectSanType,
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
-import { assertCanRevokeOrRequestRevocation } from "../certificate-common/certificate-permission-fns";
+import {
+  assertCanDeleteOrRequestDeletion,
+  assertCanRevokeOrRequestRevocation
+} from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   buildCsrRenewalCertificateRequest,
@@ -146,10 +164,12 @@ import {
 } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
+  ApprovedDeletionOutcomeKind,
   ApprovedRevocationFailureStage,
   ApprovedRevocationOutcomeKind,
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
+  CertificateDeletionStatus,
   CertificateRevocationSource,
   CertificateRevocationStatus,
   CertKeyUsage,
@@ -189,6 +209,7 @@ type TCertificateServiceFactoryDep = {
     | "findByIdForUpdate"
     | "primaryNode"
     | "findPendingRevocationApprovalRequest"
+    | "findPendingDeletionApprovalRequest"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
@@ -230,9 +251,19 @@ type TCertificateServiceFactoryDep = {
     TApprovalPolicyServiceFactory,
     "matchPolicy" | "isPendingRequestUndecidable" | "createRequestFromPolicy" | "notifyApprovedActionFailed"
   >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update" | "findByIdForUpdate">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
+
+type TApprovedDeletionOutcome =
+  | {
+      kind: ApprovedDeletionOutcomeKind.Deleted;
+      deletedCert: TCertificates;
+      pkiSyncIdsHoldingCertificate: string[];
+    }
+  | { kind: ApprovedDeletionOutcomeKind.AlreadyDeleted }
+  | { kind: ApprovedDeletionOutcomeKind.Failed; reason: string };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
 
@@ -275,6 +306,7 @@ export const certificateServiceFactory = ({
   userDAL,
   identityDAL,
   approvalPolicyService,
+  approvalPolicyDAL,
   approvalRequestDAL,
   telemetryService
 }: TCertificateServiceFactoryDep) => {
@@ -599,6 +631,196 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $matchCertificateActionPolicy = async (
+    policyType: TCertificateActionPolicyType,
+    cert: { applicationId?: string | null; profileId?: string | null },
+    projectId: string
+  ) => {
+    if (!cert.applicationId || !cert.profileId) return null;
+
+    const profile = await certificateProfileDAL.findById(cert.profileId, certificateDAL.primaryNode());
+    if (!profile) return null;
+
+    const policy = (await approvalPolicyService.matchPolicy(policyType, projectId, {
+      profileName: profile.slug,
+      applicationId: cert.applicationId
+    })) as TMatchedCertificateActionPolicy | null;
+    if (!policy) return null;
+
+    return { policy, profile };
+  };
+
+  const $resolveApprovalRequester = async (
+    policyType: TCertificateActionPolicyType,
+    actor: ActorType,
+    actorId: string
+  ) => {
+    if (actor === ActorType.USER) {
+      const user = await userDAL.findById(actorId);
+      return {
+        requesterUserId: actorId,
+        machineIdentityId: null,
+        requesterName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email || "Unknown User",
+        requesterEmail: user?.email || ""
+      };
+    }
+
+    if (actor === ActorType.IDENTITY) {
+      const identity = await identityDAL.findById(actorId);
+      return {
+        requesterUserId: null,
+        machineIdentityId: actorId,
+        requesterName: identity?.name || "Machine Identity",
+        requesterEmail: ""
+      };
+    }
+
+    throw new BadRequestError({
+      message: `Only users and machine identities can request a certificate ${CERTIFICATE_ACTIONS[policyType].noun}`
+    });
+  };
+
+  const $openCertificateActionRequest = async ({
+    policyType,
+    cert,
+    projectId,
+    policy,
+    requestData,
+    actor,
+    actorId,
+    actorOrgId,
+    assertStillActionable
+  }: {
+    policyType: TCertificateActionPolicyType;
+    cert: { id: string; commonName: string; friendlyName?: string | null; serialNumber: string };
+    projectId: string;
+    policy: TMatchedCertificateActionPolicy;
+    requestData: TCertRevocationRequestData | TCertDeletionRequestData;
+    actor: ActorType;
+    actorId: string;
+    actorOrgId: string;
+    assertStillActionable: (
+      lockedCert: Awaited<ReturnType<typeof certificateDAL.findByIdForUpdate>>,
+      tx: Knex
+    ) => Promise<void>;
+  }) => {
+    const { noun, label } = CERTIFICATE_ACTIONS[policyType];
+    const certificateName = getCertificateDisplayName(cert);
+
+    policy.steps.forEach((step, index) => {
+      const shortfall = getApprovalStepShortfall(step);
+      if (shortfall?.kind === ApprovalStepShortfallKind.NoApprovers) {
+        throw new BadRequestError({
+          message: `${label} approval policy '${policy.name}' has no approvers who can approve on step ${index + 1}, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy.`
+        });
+      }
+      if (shortfall?.kind === ApprovalStepShortfallKind.TooFewApprovers) {
+        throw new BadRequestError({
+          message: `${label} approval policy '${policy.name}' requires ${shortfall.requiredApprovals} approvals on step ${index + 1} but has only ${formatApproverCount(shortfall.approverCount)} who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals.`
+        });
+      }
+    });
+    const requester = await $resolveApprovalRequester(policyType, actor, actorId);
+    const findPendingRequest =
+      policyType === ApprovalPolicyType.CertDeletion
+        ? certificateDAL.findPendingDeletionApprovalRequest
+        : certificateDAL.findPendingRevocationApprovalRequest;
+
+    const {
+      created: { request: approvalRequest, notifyApprovers },
+      replaced
+    } = await certificateDAL.transaction(async (tx) => {
+      // Locking the certificate serializes requests for it, so two concurrent requests can't both pass the pending
+      // check below.
+      const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
+      await assertStillActionable(lockedCert, tx);
+
+      const pending = await findPendingRequest({ certificateId: cert.id, projectId }, tx);
+      let replacedRequest: TApprovalRequests | null = null;
+      if (pending) {
+        const decidedMeanwhile = new BadRequestError({
+          message: `An earlier ${noun} request for certificate '${certificateName}' was decided while you were making this one. Check the certificate's status and try again.`
+        });
+        // Approve and reject hold this lock while they record a vote or move the request to its next step, so the
+        // step and votes read below can't change before the request is closed.
+        const locked = await approvalRequestDAL.findByIdForUpdate(pending.id, tx);
+        if (locked?.status !== ApprovalRequestStatus.Pending) throw decidedMeanwhile;
+
+        const expired = isApprovalRequestExpired(locked);
+        // A request keeps the approvers it was raised with. Once too few of them can approve, it would block every
+        // request for this certificate until it expires, which a policy with no maximum TTL never does.
+        const undecidable = !expired && (await approvalPolicyService.isPendingRequestUndecidable(locked.id, tx));
+        if (!expired && !undecidable) {
+          throw new BadRequestError({
+            message: `A ${noun} of certificate '${certificateName}' is already waiting for approval.`
+          });
+        }
+        // Expiry is applied lazily, so a lapsed request still reads as pending until something marks it.
+        const [closed] = await approvalRequestDAL.update(
+          { id: locked.id, status: ApprovalRequestStatus.Pending },
+          { status: expired ? ApprovalRequestStatus.Expired : ApprovalRequestStatus.Cancelled },
+          tx
+        );
+        if (!closed) throw decidedMeanwhile;
+        if (undecidable) replacedRequest = closed;
+      }
+
+      const created = await approvalPolicyService.createRequestFromPolicy({
+        projectId,
+        organizationId: actorOrgId,
+        policy,
+        requestData,
+        justification: null,
+        expiresAt: policy.maxRequestTtl ? new Date(Date.now() + ms(policy.maxRequestTtl)) : null,
+        ...requester,
+        deferApproverNotification: true,
+        tx
+      });
+      return { created, replaced: replacedRequest };
+    });
+
+    if (replaced) {
+      await auditLogService.createAuditLog({
+        projectId: replaced.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            policyType: replaced.type,
+            approvalRequestId: replaced.id,
+            requesterName: replaced.requesterName,
+            requesterEmail: replaced.requesterEmail,
+            reason: `The request's approvers can no longer approve it, so a new ${noun} request replaced it.`,
+            ...getApprovalRequestSubjectMetadata(replaced)
+          }
+        }
+      });
+    }
+
+    await notifyApprovers();
+
+    return {
+      approvalRequestId: approvalRequest.id,
+      requesterName: approvalRequest.requesterName,
+      requesterEmail: approvalRequest.requesterEmail,
+      approvalPolicyId: policy.id,
+      approvalPolicyName: policy.name
+    };
+  };
+
+  const $deletionSignerError = () =>
+    new BadRequestError({
+      message: "Cannot delete certificate because it is currently in use by a code signing signer"
+    });
+
+  const $alreadyDeletedError = (
+    cert: { commonName: string; friendlyName?: string | null; serialNumber: string },
+    deletedAt?: Date | null
+  ) =>
+    new BadRequestError({
+      message: `Certificate '${getCertificateDisplayName(cert)}' was already deleted${deletedAt ? ` on ${new Date(deletedAt).toISOString()}` : ""}.`
+    });
+
   /**
    * Delete certificate with serial number [serialNumber]
    */
@@ -611,9 +833,12 @@ export const certificateServiceFactory = ({
     actorOrgId,
     auditLogInfo
   }: TDeleteCertDTO) => {
+    // The row decides whether the deletion needs approval (its Application and profile), so a replica that hasn't
+    // seen the certificate join a covered Application would let the caller delete it directly.
+    const primary = certificateDAL.primaryNode();
     const cert = id
-      ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      ? await certificateDAL.findById(id, primary)
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber }, primary);
     if (!cert) {
       throw new NotFoundError({
         message: id
@@ -622,65 +847,77 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+    const { canDeleteDirectly } = await assertCanDeleteOrRequestDeletion({
+      certificate: cert,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
 
-    if (cert.applicationId) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId: cert.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: cert.applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Delete,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: cert.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
+    if (cert.deletedAt) throw $alreadyDeletedError(cert, cert.deletedAt);
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Delete,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: cert.commonName,
-          altNames: cert.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: cert.serialNumber,
-          metadata: certMetadata
-        })
-      );
+    if (await signerDAL.findOne({ certificateId: cert.id }, primary)) throw $deletionSignerError();
+
+    const approval = await $matchCertificateActionPolicy(ApprovalPolicyType.CertDeletion, cert, cert.projectId);
+    if (!approval && !canDeleteDirectly) {
+      throw new ForbiddenRequestError({
+        message: `Certificate '${getCertificateDisplayName(cert)}' isn't covered by a deletion approval policy, so you need permission to delete it directly. Ask an Application Admin to delete it.`
+      });
     }
 
-    if (cert.deletedAt) {
-      throw new BadRequestError({
-        message: `Certificate '${getCertificateDisplayName(cert)}' was already deleted on ${cert.deletedAt.toISOString()}.`
+    if (approval && cert.applicationId) {
+      const { policy, profile } = approval;
+      const requestData: TCertDeletionRequestData = {
+        certificateId: cert.id,
+        serialNumber: cert.serialNumber,
+        commonName: cert.commonName,
+        friendlyName: cert.friendlyName,
+        altNames: cert.altNames,
+        profileId: profile.id,
+        profileName: profile.slug,
+        applicationId: cert.applicationId
+      };
+
+      const opened = await $openCertificateActionRequest({
+        policyType: ApprovalPolicyType.CertDeletion,
+        cert,
+        projectId: cert.projectId,
+        policy,
+        requestData,
+        actor,
+        actorId,
+        actorOrgId,
+        assertStillActionable: async (lockedCert, tx) => {
+          if (!lockedCert || lockedCert.deletedAt) throw $alreadyDeletedError(cert, lockedCert?.deletedAt);
+          if (await signerDAL.findOne({ certificateId: cert.id }, tx)) throw $deletionSignerError();
+        }
       });
+
+      return {
+        status: CertificateDeletionStatus.PendingApproval as const,
+        ...opened,
+        cert,
+        applicationName: await $resolveApplicationName(cert.applicationId)
+      };
     }
 
     const { deletedCert, pkiSyncIdsHoldingCertificate } = await certificateDAL.transaction(async (tx) => {
       await certificateDAL.lockSerialNumber(cert.serialNumber, tx);
       const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
-      if (!lockedCert || lockedCert.deletedAt) {
+      if (!lockedCert || lockedCert.deletedAt) throw $alreadyDeletedError(cert, lockedCert?.deletedAt);
+      // Coverage was decided from the row read before the lock, so an assignment to an Application that committed
+      // since would let this delete skip that Application's deletion policy.
+      if (lockedCert.applicationId !== cert.applicationId || lockedCert.profileId !== cert.profileId) {
         throw new BadRequestError({
-          message: `Certificate '${getCertificateDisplayName(cert)}' was already deleted${lockedCert?.deletedAt ? ` on ${new Date(lockedCert.deletedAt).toISOString()}` : ""}.`
+          message: `The Application or profile of certificate '${getCertificateDisplayName(cert)}' changed while it was being deleted, so it wasn't deleted. Delete it again.`
         });
       }
 
       const signer = await signerDAL.findOne({ certificateId: cert.id }, tx);
-      if (signer) {
-        throw new BadRequestError({
-          message: "Cannot delete certificate because it is currently in use by a code signing signer"
-        });
-      }
+      if (signer) throw $deletionSignerError();
 
       const { deletedCertificates, pkiSyncIdsHoldingCertificates } = await softDeleteCertificates(
         { certificateIds: [cert.id], actorType: actor, actorId },
@@ -710,6 +947,7 @@ export const certificateServiceFactory = ({
     usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     return {
+      status: CertificateDeletionStatus.Deleted as const,
       deletedCert,
       statusAtDeletion: resolveCertificateStatus(deletedCert),
       applicationName: await $resolveApplicationName(deletedCert.applicationId)
@@ -1156,45 +1394,6 @@ export const certificateServiceFactory = ({
     return $completeRevocationOrThrow({ cert, ca, revocationReason, orgId });
   };
 
-  const $matchRevocationApprovalPolicy = async (cert: TRevocableCertificate, projectId: string) => {
-    if (!cert.applicationId || !cert.profileId) return null;
-
-    const profile = await certificateProfileDAL.findById(cert.profileId, certificateDAL.primaryNode());
-    if (!profile) return null;
-
-    const policy = (await approvalPolicyService.matchPolicy(ApprovalPolicyType.CertRevocation, projectId, {
-      profileName: profile.slug,
-      applicationId: cert.applicationId
-    })) as TMatchedCertRevocationPolicy | null;
-    if (!policy) return null;
-
-    return { policy, profile };
-  };
-
-  const $resolveRevocationRequester = async (actor: ActorType, actorId: string) => {
-    if (actor === ActorType.USER) {
-      const user = await userDAL.findById(actorId);
-      return {
-        requesterUserId: actorId,
-        machineIdentityId: null,
-        requesterName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email || "Unknown User",
-        requesterEmail: user?.email || ""
-      };
-    }
-
-    if (actor === ActorType.IDENTITY) {
-      const identity = await identityDAL.findById(actorId);
-      return {
-        requesterUserId: null,
-        machineIdentityId: actorId,
-        requesterName: identity?.name || "Machine Identity",
-        requesterEmail: ""
-      };
-    }
-
-    throw new BadRequestError({ message: "Only users and machine identities can request a certificate revocation" });
-  };
-
   const revokeCert = async ({
     id,
     serialNumber,
@@ -1228,7 +1427,7 @@ export const certificateServiceFactory = ({
 
     await $assertNotUsedBySigner(cert);
 
-    const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
+    const approval = await $matchCertificateActionPolicy(ApprovalPolicyType.CertRevocation, cert, ca.projectId);
     if (!approval && !canRevokeDirectly) {
       throw new ForbiddenRequestError({
         message: `Certificate '${getCertificateDisplayName(cert)}' isn't covered by a revocation approval policy, so you need permission to revoke it directly. Ask an Application Admin to revoke it.`
@@ -1242,20 +1441,6 @@ export const certificateServiceFactory = ({
 
     if (approval && cert.applicationId) {
       const { policy, profile } = approval;
-      policy.steps.forEach((step, index) => {
-        const shortfall = getRevocationStepShortfall(step);
-        if (shortfall?.kind === RevocationStepShortfallKind.NoApprovers) {
-          throw new BadRequestError({
-            message: `Revocation approval policy '${policy.name}' has no approvers who can approve on step ${index + 1}, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy.`
-          });
-        }
-        if (shortfall?.kind === RevocationStepShortfallKind.TooFewApprovers) {
-          throw new BadRequestError({
-            message: `Revocation approval policy '${policy.name}' requires ${shortfall.requiredApprovals} approvals on step ${index + 1} but has only ${formatApproverCount(shortfall.approverCount)} who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals.`
-          });
-        }
-      });
-      const requester = await $resolveRevocationRequester(actor, actorId);
       const requestData: TCertRevocationRequestData = {
         certificateId: cert.id,
         serialNumber: cert.serialNumber,
@@ -1266,90 +1451,24 @@ export const certificateServiceFactory = ({
         revocationReason
       };
 
-      const {
-        created: { request: approvalRequest, notifyApprovers },
-        replaced
-      } = await certificateDAL.transaction(async (tx) => {
-        // Locking the certificate serializes revocation requests for it, so two concurrent requests can't
-        // both pass the pending check below.
-        const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
+      const opened = await $openCertificateActionRequest({
+        policyType: ApprovalPolicyType.CertRevocation,
+        cert,
+        projectId: ca.projectId,
+        policy,
+        requestData,
+        actor,
+        actorId,
+        actorOrgId,
         // Another path (an approved request, a sync, a signer) can revoke the certificate after it was read above.
-        if (lockedCert?.status === CertStatus.REVOKED) throw $alreadyRevokedError(cert);
-
-        const pending = await certificateDAL.findPendingRevocationApprovalRequest(
-          { certificateId: cert.id, projectId: ca.projectId },
-          tx
-        );
-        let replacedRequest: TApprovalRequests | null = null;
-        if (pending) {
-          const decidedMeanwhile = new BadRequestError({
-            message: `An earlier revocation request for certificate '${getCertificateDisplayName(cert)}' was decided while you were making this one. Check the certificate's status and try again.`
-          });
-          // Approve and reject hold this lock while they record a vote or move the request to its next step, so the
-          // step and votes read below can't change before the request is closed.
-          const locked = await approvalRequestDAL.findByIdForUpdate(pending.id, tx);
-          if (locked?.status !== ApprovalRequestStatus.Pending) throw decidedMeanwhile;
-
-          const expired = isApprovalRequestExpired(locked);
-          // A request keeps the approvers it was raised with. Once too few of them can approve, it would block every
-          // revocation of this certificate until it expires, which a policy with no maximum TTL never does.
-          const undecidable = !expired && (await approvalPolicyService.isPendingRequestUndecidable(locked.id, tx));
-          if (!expired && !undecidable) {
-            throw new BadRequestError({
-              message: `A revocation of certificate '${getCertificateDisplayName(cert)}' is already waiting for approval.`
-            });
-          }
-          // Expiry is applied lazily, so a lapsed request still reads as pending until something marks it.
-          const [closed] = await approvalRequestDAL.update(
-            { id: locked.id, status: ApprovalRequestStatus.Pending },
-            { status: expired ? ApprovalRequestStatus.Expired : ApprovalRequestStatus.Cancelled },
-            tx
-          );
-          if (!closed) throw decidedMeanwhile;
-          if (undecidable) replacedRequest = closed;
+        assertStillActionable: async (lockedCert) => {
+          if (lockedCert?.status === CertStatus.REVOKED) throw $alreadyRevokedError(cert);
         }
-
-        const created = await approvalPolicyService.createRequestFromPolicy({
-          projectId: ca.projectId,
-          organizationId: actorOrgId,
-          policy,
-          requestData,
-          justification: null,
-          expiresAt: policy.maxRequestTtl ? new Date(Date.now() + ms(policy.maxRequestTtl)) : null,
-          ...requester,
-          deferApproverNotification: true,
-          tx
-        });
-        return { created, replaced: replacedRequest };
       });
-
-      if (replaced) {
-        await auditLogService.createAuditLog({
-          projectId: replaced.projectId,
-          actor: { type: ActorType.PLATFORM, metadata: {} },
-          event: {
-            type: EventType.APPROVAL_REQUEST_CANCEL,
-            metadata: {
-              policyType: replaced.type,
-              approvalRequestId: replaced.id,
-              requesterName: replaced.requesterName,
-              requesterEmail: replaced.requesterEmail,
-              reason: "The request's approvers can no longer approve it, so a new revocation request replaced it.",
-              ...getApprovalRequestSubjectMetadata(replaced)
-            }
-          }
-        });
-      }
-
-      await notifyApprovers();
 
       return {
         status: CertificateRevocationStatus.PendingApproval as const,
-        approvalRequestId: approvalRequest.id,
-        requesterName: approvalRequest.requesterName,
-        requesterEmail: approvalRequest.requesterEmail,
-        approvalPolicyId: policy.id,
-        approvalPolicyName: policy.name,
+        ...opened,
         cert,
         applicationName,
         ca: caResult
@@ -1424,6 +1543,69 @@ export const certificateServiceFactory = ({
           `Failed to rebuild the CRL after a platform revocation, the hourly CRL rebuild job will retry [caId=${caId}] [error=${err instanceof Error ? err.message : String(err)}]`
         );
       }
+    }
+  };
+
+  // Revocation and deletion record an approved request's outcome the same way: as the platform, labelled with names
+  // that are read best effort, with a failure audited and notified and a success counted for the requester.
+  const $approvedActionRecorder = (
+    approvalRequest: TApprovalRequest,
+    policyType: TCertificateActionPolicyType,
+    certificateId: string
+  ) => {
+    const { noun } = CERTIFICATE_ACTIONS[policyType];
+    const actor = { type: ActorType.PLATFORM as const, metadata: {} };
+    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`;
+    return {
+      logContext,
+      audit: (event: TCreateAuditLogDTO["event"]) =>
+        auditLogService.createAuditLog({ projectId: approvalRequest.projectId, actor, event }),
+      // The name only labels the event, so failing to read it mustn't lose the event or the failure notice.
+      resolveApplicationName: (id?: string | null) =>
+        $resolveApplicationName(id).catch((error) => {
+          logger.warn(error, `Failed to read the Application name for an approved ${noun}'s audit event ${logContext}`);
+          return null;
+        }),
+      // Identifying fields come from the request, which always has them: the certificate may be gone or unreadable.
+      recordFailure: async (event: TCreateAuditLogDTO["event"], reason: string) => {
+        try {
+          await auditLogService.createAuditLog({ projectId: approvalRequest.projectId, actor, event });
+        } catch (error) {
+          logger.error(error, `Failed to record a failed approved ${noun}'s audit event ${logContext}`);
+        }
+        await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
+      },
+      sendRequesterTelemetry: async (payload: TCertificateRevokedEvent | TCertificateDeletedEvent) => {
+        const distinctId = approvalRequest.machineIdentityId
+          ? `identity-${approvalRequest.machineIdentityId}`
+          : approvalRequest.requesterId && approvalRequest.requesterEmail;
+        if (!distinctId) return;
+        await telemetryService.sendPostHogEvents({
+          ...payload,
+          distinctId,
+          organizationId: approvalRequest.organizationId
+        });
+      }
+    };
+  };
+
+  // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo the
+  // approval and the requester never sees the error. It records its outcome in the audit log instead and never throws.
+  const $runApprovedCertificateAction = async <R extends { certificateId: string }, O extends { kind: string }>(
+    approvalRequest: TApprovalRequest,
+    policyType: TCertificateActionPolicyType,
+    perform: (requestData: R) => Promise<O>,
+    record: (requestData: R, outcome: O) => Promise<void>
+  ) => {
+    const requestData = approvalRequest.requestData.requestData as unknown as R;
+    const outcome = await perform(requestData);
+    try {
+      await record(requestData, outcome);
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to record the outcome of an approved ${CERTIFICATE_ACTIONS[policyType].noun} [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+      );
     }
   };
 
@@ -1572,108 +1754,204 @@ export const certificateServiceFactory = ({
     { certificateId, commonName, serialNumber, applicationId, revocationReason }: TCertRevocationRequestData,
     outcome: TApprovedRevocationOutcome
   ) => {
-    const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
-    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`;
-    // The name only labels the event, so failing to read it mustn't lose the event or the failure notice.
-    const resolveLabel = (id?: string | null) =>
-      $resolveApplicationName(id).catch((error) => {
-        logger.warn(
-          error,
-          `Failed to read the Application name for an approved revocation's audit event ${logContext}`
-        );
-        return null;
-      });
+    const recorder = $approvedActionRecorder(approvalRequest, ApprovalPolicyType.CertRevocation, certificateId);
 
     if (outcome.kind === ApprovedRevocationOutcomeKind.AlreadyRevoked) {
-      logger.info(`Approved revocation skipped: certificate already revoked ${logContext}`);
+      logger.info(`Approved revocation skipped: certificate already revoked ${recorder.logContext}`);
       return;
     }
 
+    const requester = { requesterName: approvalRequest.requesterName, requesterEmail: approvalRequest.requesterEmail };
+
     if (outcome.kind === ApprovedRevocationOutcomeKind.Failed) {
-      // Identifying fields come from the request, which always has them: the certificate itself may be gone
-      // (its CA was deleted and cascaded) or unreadable by the time the revocation fails.
-      const { reason } = outcome;
-      try {
-        await auditLogService.createAuditLog({
-          projectId: approvalRequest.projectId,
-          actor: auditActor,
-          event: {
-            type: EventType.CERT_REVOCATION_FAILED,
-            metadata: {
-              certId: certificateId,
-              cn: commonName,
-              serialNumber,
-              applicationId,
-              applicationName: await resolveLabel(applicationId),
-              revocationReason,
-              approvalRequestId: approvalRequest.id,
-              requesterName: approvalRequest.requesterName,
-              requesterEmail: approvalRequest.requesterEmail,
-              error: reason
-            }
+      await recorder.recordFailure(
+        {
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: {
+            certId: certificateId,
+            cn: commonName,
+            serialNumber,
+            applicationId,
+            applicationName: await recorder.resolveApplicationName(applicationId),
+            revocationReason,
+            approvalRequestId: approvalRequest.id,
+            ...requester,
+            error: outcome.reason
           }
-        });
-      } catch (error) {
-        logger.error(error, `Failed to record a failed approved revocation's audit event ${logContext}`);
-      }
-      await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
+        },
+        outcome.reason
+      );
       return;
     }
 
     const { cert, crlWarning } = outcome;
-    await auditLogService.createAuditLog({
-      projectId: approvalRequest.projectId,
-      actor: auditActor,
-      event: {
-        type: EventType.REVOKE_CERT,
-        metadata: {
-          certId: cert.id,
-          cn: cert.commonName,
-          serialNumber: cert.serialNumber,
-          applicationId: cert.applicationId,
-          applicationName: await resolveLabel(cert.applicationId),
-          revocationReason,
-          approvalRequestId: approvalRequest.id,
-          requesterName: approvalRequest.requesterName,
-          requesterEmail: approvalRequest.requesterEmail,
-          crlWarning
-        }
+    await recorder.audit({
+      type: EventType.REVOKE_CERT,
+      metadata: {
+        certId: cert.id,
+        cn: cert.commonName,
+        serialNumber: cert.serialNumber,
+        applicationId: cert.applicationId,
+        applicationName: await recorder.resolveApplicationName(cert.applicationId),
+        revocationReason,
+        approvalRequestId: approvalRequest.id,
+        ...requester,
+        crlWarning
       }
     });
-
-    const requesterDistinctId = approvalRequest.machineIdentityId
-      ? `identity-${approvalRequest.machineIdentityId}`
-      : approvalRequest.requesterId && approvalRequest.requesterEmail;
-    if (requesterDistinctId) {
-      await telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.CertificateRevoked,
-        distinctId: requesterDistinctId,
-        organizationId: approvalRequest.organizationId,
-        properties: {
-          orgId: approvalRequest.organizationId,
-          projectId: approvalRequest.projectId,
-          revocationReason
-        }
-      });
-    }
+    await recorder.sendRequesterTelemetry({
+      event: PostHogEventTypes.CertificateRevoked,
+      properties: { orgId: approvalRequest.organizationId, projectId: approvalRequest.projectId, revocationReason }
+    });
   };
 
-  // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo
-  // the approval and the requester never sees the error. It records its outcome in the audit log instead and
-  // never throws.
-  const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
-    const requestData = approvalRequest.requestData.requestData as TCertRevocationRequestData;
-    const outcome = await $revokeForApproval(approvalRequest, requestData);
+  const revokeApprovedCertificate = (approvalRequest: TApprovalRequest) =>
+    $runApprovedCertificateAction(
+      approvalRequest,
+      ApprovalPolicyType.CertRevocation,
+      (requestData: TCertRevocationRequestData) => $revokeForApproval(approvalRequest, requestData),
+      (requestData, outcome) => $recordApprovedRevocation(approvalRequest, requestData, outcome)
+    );
 
+  const $deleteForApproval = async (
+    approvalRequest: TApprovalRequest,
+    { certificateId, commonName, friendlyName, serialNumber }: TCertDeletionRequestData
+  ): Promise<TApprovedDeletionOutcome> => {
+    // The certificate shows as deleted by whoever asked for it. The audit log records that an approval let it happen.
+    // Deleting the requester clears its ID on the request, and only a user requester has an email.
+    const deletedBy =
+      approvalRequest.requesterId || approvalRequest.requesterEmail
+        ? { actorType: ActorType.USER, actorId: approvalRequest.requesterId }
+        : { actorType: ActorType.IDENTITY, actorId: approvalRequest.machineIdentityId };
     try {
-      await $recordApprovedRevocation(approvalRequest, requestData, outcome);
+      return await certificateDAL.transaction(async (tx): Promise<TApprovedDeletionOutcome> => {
+        await certificateDAL.lockSerialNumber(serialNumber, tx);
+        const locked = await certificateDAL.findByIdForUpdate(certificateId, tx);
+        // A certificate whose CA was deleted is gone with it, which is the end the request asked for.
+        if (!locked || locked.deletedAt) return { kind: ApprovedDeletionOutcomeKind.AlreadyDeleted };
+
+        if (await signerDAL.findOne({ certificateId }, tx)) {
+          return {
+            kind: ApprovedDeletionOutcomeKind.Failed,
+            reason: `Certificate '${getCertificateDisplayName({ commonName, friendlyName, serialNumber })}' is now used by a code signing signer, so it wasn't deleted. Remove it from the signer, then delete it again.`
+          };
+        }
+
+        const { deletedCertificates, pkiSyncIdsHoldingCertificates } = await softDeleteCertificates(
+          { certificateIds: [certificateId], ...deletedBy },
+          {
+            certificateDAL,
+            certificateBodyDAL,
+            certificateSecretDAL,
+            certificateRequestDAL,
+            pkiCollectionItemDAL,
+            certificateSyncDAL
+          },
+          tx
+        );
+        const [deletedCert] = deletedCertificates;
+        if (!deletedCert) return { kind: ApprovedDeletionOutcomeKind.AlreadyDeleted };
+        return {
+          kind: ApprovedDeletionOutcomeKind.Deleted,
+          deletedCert,
+          pkiSyncIdsHoldingCertificate: pkiSyncIdsHoldingCertificates
+        };
+      });
     } catch (error) {
       logger.error(
         error,
-        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+        `Failed to delete certificate after approval [certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`
       );
+      return {
+        kind: ApprovedDeletionOutcomeKind.Failed,
+        reason: "An unexpected error stopped the deletion, so the certificate wasn't deleted. Delete it again to retry."
+      };
     }
   };
+
+  const $recordApprovedDeletion = async (
+    approvalRequest: TApprovalRequest,
+    { certificateId, commonName, friendlyName, serialNumber, applicationId }: TCertDeletionRequestData,
+    outcome: TApprovedDeletionOutcome
+  ) => {
+    const recorder = $approvedActionRecorder(approvalRequest, ApprovalPolicyType.CertDeletion, certificateId);
+
+    if (outcome.kind === ApprovedDeletionOutcomeKind.AlreadyDeleted) {
+      logger.info(`Approved deletion skipped: certificate already deleted ${recorder.logContext}`);
+      return;
+    }
+
+    // The policy only labels the events, so failing to read it mustn't lose them.
+    const policy = approvalRequest.policyId
+      ? await approvalPolicyDAL.findById(approvalRequest.policyId).catch((error) => {
+          logger.warn(
+            error,
+            `Failed to read the approval policy for an approved deletion's audit event ${recorder.logContext}`
+          );
+          return undefined;
+        })
+      : undefined;
+    const approvalLabel = getApprovalRequestAuditLabel(approvalRequest, policy);
+
+    if (outcome.kind === ApprovedDeletionOutcomeKind.Failed) {
+      await recorder.recordFailure(
+        {
+          type: EventType.CERT_DELETION_FAILED,
+          metadata: {
+            certId: certificateId,
+            cn: commonName,
+            friendlyName,
+            serialNumber,
+            applicationId,
+            applicationName: await recorder.resolveApplicationName(applicationId),
+            ...approvalLabel,
+            error: outcome.reason
+          }
+        },
+        outcome.reason
+      );
+      return;
+    }
+
+    const { deletedCert, pkiSyncIdsHoldingCertificate } = outcome;
+    await triggerSyncsForDeletedCertificate(
+      deletedCert.id,
+      pkiSyncIdsHoldingCertificate,
+      { pkiSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
+      { commonName: deletedCert.commonName, projectId: deletedCert.projectId, applicationId: deletedCert.applicationId }
+    );
+
+    usageMeteringService.emit(approvalRequest.organizationId, Meter.ActiveCerts);
+    usageMeteringService.emit(approvalRequest.organizationId, Meter.WildcardCerts);
+
+    await recorder.audit({
+      type: EventType.DELETE_CERT,
+      metadata: {
+        certId: deletedCert.id,
+        cn: deletedCert.commonName,
+        friendlyName: deletedCert.friendlyName,
+        serialNumber: deletedCert.serialNumber,
+        notAfter: deletedCert.notAfter.toISOString(),
+        source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+        statusAtDeletion: resolveCertificateStatus(deletedCert),
+        applicationId: deletedCert.applicationId,
+        applicationName: await recorder.resolveApplicationName(deletedCert.applicationId),
+        ...approvalLabel
+      }
+    });
+    await recorder.sendRequesterTelemetry({
+      event: PostHogEventTypes.CertificateDeleted,
+      properties: { orgId: approvalRequest.organizationId, projectId: approvalRequest.projectId }
+    });
+  };
+
+  const deleteApprovedCertificate = (approvalRequest: TApprovalRequest) =>
+    $runApprovedCertificateAction(
+      approvalRequest,
+      ApprovalPolicyType.CertDeletion,
+      (requestData: TCertDeletionRequestData) => $deleteForApproval(approvalRequest, requestData),
+      (requestData, outcome) => $recordApprovedDeletion(approvalRequest, requestData, outcome)
+    );
 
   /**
    * Return certificate body and certificate chain for certificate with
@@ -2035,10 +2313,15 @@ export const certificateServiceFactory = ({
             "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
         }
       );
-      const recordApproval = await $matchRevocationApprovalPolicy(deletedRecord, deletedRecord.projectId);
+      const recordApproval = await $matchCertificateActionPolicy(
+        ApprovalPolicyType.CertRevocation,
+        deletedRecord,
+        deletedRecord.projectId
+      );
       if (!recordApproval && !canRevokeDirectly) throw $buildRevokePermissionError(permissionMessage);
       if (recordApproval) {
-        const copyApproval = await $matchRevocationApprovalPolicy(
+        const copyApproval = await $matchCertificateActionPolicy(
+          ApprovalPolicyType.CertRevocation,
           { ...deletedRecord, applicationId: applicationId ?? null, profileId: profileId ?? null },
           projectId
         );
@@ -2778,6 +3061,7 @@ export const certificateServiceFactory = ({
     deleteCert,
     revokeCert,
     revokeApprovedCertificate,
+    deleteApprovedCertificate,
     revokeCertAsPlatform,
     rebuildCrlsAfterPlatformRevocations,
     revokeOwnedCertificate,

@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
+import { getCertificateLabel } from "@app/components/utilities/certificateDisplayUtils";
 import {
   Badge,
   Button,
@@ -24,14 +25,20 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  APPLICATION_POLICY_TYPE_LABELS,
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  isCertificateActionPolicyType,
+  TCertificateActionPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   CertRequestRequestData,
-  CertRevocationRequestData,
   CodeSigningRequestData,
   isCertRenewalRequest,
+  TCertificateActionRequestData,
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
@@ -54,15 +61,26 @@ import {
 const ROUTE_ID =
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId" as const;
 
-const RevocationDetailsSection = ({
+const CERTIFICATE_ACTION_PENDING_NOTES: Record<TCertificateActionPolicyType, string> = {
+  [ApprovalPolicyType.CertRevocation]:
+    "The certificate isn't revoked until this request is approved. Once approved, it is revoked with the reason above and added to its CA's revocation list.",
+  [ApprovalPolicyType.CertDeletion]:
+    "The certificate isn't deleted until this request is approved. Deleting doesn't revoke it, so if it's still active, it stays trusted until it expires."
+};
+
+const CertificateActionDetailsSection = ({
+  policyType,
   requestProject,
   requestData,
+  applicationName,
   isPending,
   requesterName,
   requesterEmail
 }: {
+  policyType: TCertificateActionPolicyType;
   requestProject: Pick<Project, "id" | "type" | "orgId">;
-  requestData: CertRevocationRequestData;
+  requestData: TCertificateActionRequestData;
+  applicationName?: string;
   isPending: boolean;
   requesterName?: string;
   requesterEmail?: string;
@@ -82,7 +100,7 @@ const RevocationDetailsSection = ({
     <Card>
       <CardHeader>
         <CardTitle role="heading" aria-level={3}>
-          Revocation Details
+          {APPLICATION_POLICY_TYPE_LABELS[policyType]} Details
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -94,16 +112,18 @@ const RevocationDetailsSection = ({
                 {...getCertManagerLink(requestProject, `certificates/${requestData.certificateId}`)}
                 className="font-mono underline hover:text-foreground-secondary"
               >
-                {requestData.commonName || requestData.serialNumber.toUpperCase()}
+                {getCertificateLabel(requestData, requestData.serialNumber.toUpperCase())}
               </Link>
             </p>
           </div>
-          <div>
-            <span className="text-xs text-muted">Revocation Reason</span>
-            <p className="text-sm text-foreground">
-              {crlReasonToNameMap[requestData.revocationReason] ?? requestData.revocationReason}
-            </p>
-          </div>
+          {"revocationReason" in requestData && (
+            <div>
+              <span className="text-xs text-muted">Revocation Reason</span>
+              <p className="text-sm text-foreground">
+                {crlReasonToNameMap[requestData.revocationReason] ?? requestData.revocationReason}
+              </p>
+            </div>
+          )}
           <div>
             <span className="text-xs text-muted">Serial Number</span>
             <p className="font-mono text-xs break-all text-foreground">
@@ -114,11 +134,16 @@ const RevocationDetailsSection = ({
             <span className="text-xs text-muted">Profile</span>
             <p className="font-mono text-xs text-foreground">{requestData.profileName}</p>
           </div>
+          {applicationName && (
+            <div>
+              <span className="text-xs text-muted">Application</span>
+              <p className="font-mono text-xs text-foreground">{applicationName}</p>
+            </div>
+          )}
         </div>
         {isPending && (
           <p className="mt-4 border-t border-border-control pt-4 text-xs text-muted">
-            The certificate isn&apos;t revoked until this request is approved. Once approved, it is
-            revoked with the reason above and added to its CA&apos;s revocation list.
+            {CERTIFICATE_ACTION_PENDING_NOTES[policyType]}
           </p>
         )}
       </CardContent>
@@ -232,8 +257,10 @@ const PageContent = () => {
 
   const resolvedPolicyType = policyType || ApprovalPolicyType.CertRequest;
   const isCodeSigning = resolvedPolicyType === ApprovalPolicyType.CertCodeSigning;
-  const isRevocation = resolvedPolicyType === ApprovalPolicyType.CertRevocation;
-  const returnsToRequests = from === "root-requests" || isRevocation;
+  const certificateActionType = isCertificateActionPolicyType(resolvedPolicyType)
+    ? resolvedPolicyType
+    : undefined;
+  const returnsToRequests = from === "root-requests" || Boolean(certificateActionType);
 
   const { data: request, isPending } = useQuery(
     approvalRequestQuery.getById({
@@ -390,20 +417,23 @@ const PageContent = () => {
       </>
     );
 
-    if (isRevocation) {
-      const revocationData = request.requestData.requestData as CertRevocationRequestData;
+    if (certificateActionType) {
+      const actionData = request.requestData.requestData as TCertificateActionRequestData;
+      const actionLabel = APPLICATION_POLICY_TYPE_LABELS[certificateActionType];
       return (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-normal text-foreground">Certificate Revocation Request</h1>
+            <h1 className="text-2xl font-normal text-foreground">
+              Certificate {actionLabel} Request
+            </h1>
             <Badge variant={getStatusBadgeVariant(request.status)}>
               {getStatusLabel(request.status)}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted">
-            Revocation request for{" "}
+            {actionLabel} request for{" "}
             <span className="font-medium text-foreground-secondary">
-              {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
+              {getCertificateLabel(actionData, actionData.serialNumber.toUpperCase())}
             </span>{" "}
             by {request.requesterName || "Unknown"}
             {applicationLink}
@@ -455,11 +485,13 @@ const PageContent = () => {
         />
       );
     }
-    if (isRevocation) {
+    if (certificateActionType) {
       return (
-        <RevocationDetailsSection
+        <CertificateActionDetailsSection
+          policyType={certificateActionType}
           requestProject={requestProject}
-          requestData={request.requestData.requestData as CertRevocationRequestData}
+          requestData={request.requestData.requestData as TCertificateActionRequestData}
+          applicationName={requestApplication?.name}
           isPending={request.status === ApprovalRequestStatus.Pending}
           requesterName={request.requesterName}
           requesterEmail={request.requesterEmail}

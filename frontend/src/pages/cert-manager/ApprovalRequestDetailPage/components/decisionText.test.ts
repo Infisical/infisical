@@ -34,4 +34,14 @@ describe("getDecisionText", () => {
       getDecisionText(renewalRequest({ certificateId: "cert-1", raisedByAutoRenewal: false }))
     );
   });
+
+  it("says approving a deletion deletes the certificate and rejecting it keeps the certificate", () => {
+    const text = getDecisionText({ type: ApprovalPolicyType.CertDeletion } as TApprovalRequest);
+    expect(text.approve).toBe(
+      "Once every step approves, the certificate is deleted. This can't be undone."
+    );
+    expect(text.reject).toBe(
+      "The request is closed and the certificate isn't deleted. The requester can ask again."
+    );
+  });
 });

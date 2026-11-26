@@ -24,6 +24,7 @@ import {
   ApprovalPolicyType,
   CertRequestPolicyConditions,
   CertRequestPolicyOperation,
+  isCertificateActionPolicyType,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -56,6 +57,13 @@ const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[]
   { name: "Approval Sequence", key: "approvals", fields: ["steps"] },
   { name: "Review", key: "review", fields: [] }
 ];
+
+const POLICY_DESCRIPTIONS: Partial<Record<ApprovalPolicyType, string>> = {
+  [ApprovalPolicyType.CertRevocation]:
+    "Configure a certificate approval policy requiring approval for certificate revocation.",
+  [ApprovalPolicyType.CertDeletion]:
+    "Configure a certificate approval policy requiring approval for certificate deletion."
+};
 
 export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) => {
   const { currentProject } = useProject();
@@ -144,11 +152,14 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
   const onSubmit = async ({ policyType, operation, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
 
-    const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
     const policyFields = {
       ...data,
-      bypassForMachineIdentities: isRevocationPolicy ? false : data.bypassForMachineIdentities,
-      constraints: isRevocationPolicy ? {} : { ...(operation && { operation }) }
+      bypassForMachineIdentities: isCertificateActionPolicyType(policyType)
+        ? false
+        : data.bypassForMachineIdentities,
+      constraints: isCertificateActionPolicyType(policyType)
+        ? {}
+        : { ...(operation && { operation }) }
     };
 
     try {
@@ -236,11 +247,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               : "Create Certificate Approval Policy"}
           </SheetTitle>
           <SheetDescription>
-            {`Configure a certificate approval policy requiring approval for certificate ${
-              selectedPolicyType === ApprovalPolicyType.CertRevocation
-                ? "revocation"
-                : POLICY_OPERATION_NOUN[selectedOperation ?? CertRequestPolicyOperation.Issuance]
-            }.`}
+            {POLICY_DESCRIPTIONS[selectedPolicyType] ??
+              `Configure a certificate approval policy requiring approval for certificate ${
+                POLICY_OPERATION_NOUN[selectedOperation ?? CertRequestPolicyOperation.Issuance]
+              }.`}
           </SheetDescription>
         </SheetHeader>
         <FormProvider {...formMethods}>
@@ -283,7 +293,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                 <TabsContent value="approvals">
                   <PolicyApprovalSteps
                     applicationId={applicationId}
-                    excludeAuditors={selectedPolicyType === ApprovalPolicyType.CertRevocation}
+                    excludeAuditors={isCertificateActionPolicyType(selectedPolicyType)}
                   />
                 </TabsContent>
                 <TabsContent value="review">

@@ -266,6 +266,11 @@ export const issueApplicationCertificate = (dto: {
     (res) => ok<{ certificate: { certificateId: string } }>(res).certificate.certificateId
   );
 
+const pendingApprovalRequestId = (res: LightMyRequestResponse) => {
+  expect(res.statusCode, res.payload).toBe(202);
+  return res.json<{ approvalRequestId: string }>().approvalRequestId;
+};
+
 export const revokeCertificate = (dto: { certificateId: string; authToken: string }) =>
   request(
     {
@@ -274,10 +279,27 @@ export const revokeCertificate = (dto: { certificateId: string; authToken: strin
       headers: auth(dto.authToken),
       body: { revocationReason: CrlReason.KEY_COMPROMISE }
     },
-    (res) => {
-      expect(res.statusCode, res.payload).toBe(202);
-      return res.json<{ approvalRequestId: string }>().approvalRequestId;
-    }
+    pendingApprovalRequestId
+  );
+
+export const deleteCertificate = (dto: { certificateId: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}`,
+      headers: auth(dto.authToken)
+    },
+    pendingApprovalRequestId
+  );
+
+export const deleteCertificateBySerialNumber = (dto: { serialNumber: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/pki/certificates/${dto.serialNumber}`,
+      headers: auth(dto.authToken)
+    },
+    pendingApprovalRequestId
   );
 
 export type TCertificate = {
@@ -357,13 +379,12 @@ export type TCertRequestApprovalRequest = {
 type TApplicationApprovalRequestByType = {
   [ApprovalPolicyType.CertRequest]: TCertRequestApprovalRequest;
   [ApprovalPolicyType.CertRevocation]: { id: string; approversCanNoLongerApprove: boolean };
+  [ApprovalPolicyType.CertDeletion]: { id: string; approversCanNoLongerApprove: boolean };
 };
 
 type TPkiApprovalPolicyType = keyof TApplicationApprovalRequestByType;
 
 const approvalPoliciesUrl = (policyType: TPkiApprovalPolicyType) => `/api/v1/approval-policies/${policyType}`;
-
-const revocationPoliciesUrl = approvalPoliciesUrl(ApprovalPolicyType.CertRevocation);
 
 // Policies need the pkiApprovals plan feature (see overrideLicenseFeatures).
 export const createApprovalPolicy = (dto: {
@@ -394,7 +415,8 @@ export const createApprovalPolicy = (dto: {
       ok<{ policy: { id: string; name: string; constraints: { constraints: Record<string, unknown> } } }>(res).policy
   );
 
-export const updateRevocationApprovalPolicy = (dto: {
+export const updateApprovalPolicy = (dto: {
+  policyType: TPkiApprovalPolicyType;
   policyId: string;
   steps: TApprovalPolicyStep[];
   authToken: string;
@@ -402,29 +424,33 @@ export const updateRevocationApprovalPolicy = (dto: {
   request(
     {
       method: "PATCH",
-      url: `${revocationPoliciesUrl}/${dto.policyId}`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/${dto.policyId}`,
       headers: auth(dto.authToken),
       body: { steps: dto.steps }
     },
     (res) => ok<{ policy: { id: string } }>(res).policy
   );
 
-export const getRevocationApprovalPolicy = (dto: { policyId: string; authToken: string }) =>
+export const getApprovalPolicy = (dto: { policyType: TPkiApprovalPolicyType; policyId: string; authToken: string }) =>
   request(
     {
       method: "GET",
-      url: `${revocationPoliciesUrl}/${dto.policyId}`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/${dto.policyId}`,
       headers: auth(dto.authToken)
     },
     (res) => ok<{ policy: { id: string; steps: TApprovalPolicyStep[] } }>(res).policy
   );
 
 // The query the Certificate Manager requests page and its sidebar count send.
-export const listProjectRevocationRequests = (dto: { projectId: string; authToken: string }) =>
+export const listProjectApprovalRequests = (dto: {
+  policyType: TPkiApprovalPolicyType;
+  projectId: string;
+  authToken: string;
+}) =>
   request(
     {
       method: "GET",
-      url: `${revocationPoliciesUrl}/requests`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/requests`,
       headers: auth(dto.authToken),
       query: { scope: ApprovalPolicyScope.Project, id: dto.projectId }
     },
@@ -446,21 +472,25 @@ export const listApplicationApprovalRequests = <TPolicyType extends TPkiApproval
     (res) => ok<{ requests: TApplicationApprovalRequestByType[TPolicyType][] }>(res).requests
   );
 
-export const cancelRevocationRequest = (dto: { requestId: string; authToken: string }) =>
+export const cancelApprovalRequest = (dto: {
+  policyType: TPkiApprovalPolicyType;
+  requestId: string;
+  authToken: string;
+}) =>
   request(
     {
       method: "POST",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}/cancel`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/requests/${dto.requestId}/cancel`,
       headers: auth(dto.authToken)
     },
     (res) => ok<{ request: { id: string; status: string } }>(res).request
   );
 
-export const getRevocationRequest = (dto: { requestId: string; authToken: string }) =>
+export const getApprovalRequest = (dto: { policyType: TPkiApprovalPolicyType; requestId: string; authToken: string }) =>
   request(
     {
       method: "GET",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/requests/${dto.requestId}`,
       headers: auth(dto.authToken)
     },
     (res) =>

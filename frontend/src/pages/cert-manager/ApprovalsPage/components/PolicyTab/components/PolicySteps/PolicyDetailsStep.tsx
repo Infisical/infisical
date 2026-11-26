@@ -18,7 +18,11 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { ApprovalPolicyType, CertRequestPolicyOperation } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyType,
+  CertRequestPolicyOperation,
+  isCertificateActionPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   PkiApplicationResourceActions,
@@ -43,6 +47,14 @@ type Props = {
 };
 
 const REVOCATION_PICKER_VALUE = "revocation";
+const DELETION_PICKER_VALUE = "deletion";
+
+const PROFILES_DESCRIPTION: Partial<Record<ApprovalPolicyType, string>> = {
+  [ApprovalPolicyType.CertRevocation]:
+    "Revoking a certificate issued from these selected profiles requires approval",
+  [ApprovalPolicyType.CertDeletion]:
+    "Deleting a certificate issued from these selected profiles requires approval"
+};
 
 const BYPASS_ACTION = {
   [CertRequestPolicyOperation.Issuance]: "issue or renew",
@@ -51,7 +63,8 @@ const BYPASS_ACTION = {
 
 export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
   const { control, getValues, setValue, watch } = useFormContext<TPolicyForm>();
-  const isRevocationPolicy = watch("policyType") === ApprovalPolicyType.CertRevocation;
+  const policyType = watch("policyType");
+  const isCertificateActionPolicy = isCertificateActionPolicyType(policyType);
   const operation = watch("operation");
 
   const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
@@ -193,9 +206,10 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
         control={control}
         name="policyType"
         render={({ field: { onChange, ...field } }) => {
-          const pickerValue = isRevocationPolicy
-            ? REVOCATION_PICKER_VALUE
-            : (operation ?? CertRequestPolicyOperation.Issuance);
+          let pickerValue: string = operation ?? CertRequestPolicyOperation.Issuance;
+          if (policyType === ApprovalPolicyType.CertRevocation)
+            pickerValue = REVOCATION_PICKER_VALUE;
+          if (policyType === ApprovalPolicyType.CertDeletion) pickerValue = DELETION_PICKER_VALUE;
           return (
             <Field>
               <FieldLabel htmlFor="policy-type">Policy Type</FieldLabel>
@@ -204,8 +218,12 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                   value={pickerValue}
                   name={field.name}
                   onValueChange={(value) => {
-                    if (value === REVOCATION_PICKER_VALUE) {
-                      onChange(ApprovalPolicyType.CertRevocation);
+                    if (value === REVOCATION_PICKER_VALUE || value === DELETION_PICKER_VALUE) {
+                      onChange(
+                        value === REVOCATION_PICKER_VALUE
+                          ? ApprovalPolicyType.CertRevocation
+                          : ApprovalPolicyType.CertDeletion
+                      );
                       setValue("operation", undefined);
                       return;
                     }
@@ -233,6 +251,11 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     {applicationId && (
                       <SelectItem value={REVOCATION_PICKER_VALUE}>
                         {getCertPolicyTypeLabel(ApprovalPolicyType.CertRevocation)}
+                      </SelectItem>
+                    )}
+                    {applicationId && (
+                      <SelectItem value={DELETION_PICKER_VALUE}>
+                        {getCertPolicyTypeLabel(ApprovalPolicyType.CertDeletion)}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -284,9 +307,8 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                 }
               />
               <FieldDescription isOpen={!error}>
-                {isRevocationPolicy
-                  ? "Revoking a certificate issued from these selected profiles requires approval"
-                  : "Policy applies to certificates issued from these selected profiles"}
+                {PROFILES_DESCRIPTION[policyType] ??
+                  "Policy applies to certificates issued from these selected profiles"}
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
@@ -294,7 +316,7 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
         )}
       />
 
-      {!isRevocationPolicy && (
+      {!isCertificateActionPolicy && (
         <Controller
           control={control}
           name="bypassForMachineIdentities"

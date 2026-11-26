@@ -2,7 +2,7 @@ import { ReactNode, useId, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
@@ -69,9 +69,9 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
+  APPLICATION_POLICY_TYPES,
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType,
   CertRequestPolicyConditions,
   TApprovalPolicy,
   useDeleteApprovalPolicy
@@ -88,6 +88,7 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { combineNewestFirst } from "@app/lib/fn/array";
 import {
   getCertPolicyTypeLabel,
   getPolicyOperation
@@ -189,29 +190,16 @@ const ApplicationPoliciesTable = ({
   canEdit,
   canDelete
 }: ApplicationPoliciesTableProps) => {
-  const { data: issuancePolicies = [], isPending: isIssuancePending } = useQuery(
-    approvalPolicyQuery.list({
-      policyType: ApprovalPolicyType.CertRequest,
-      scope: ApprovalPolicyScope.PkiApplication,
-      scopeId: applicationId
-    })
-  );
-  const { data: revocationPolicies = [], isPending: isRevocationPending } = useQuery(
-    approvalPolicyQuery.list({
-      policyType: ApprovalPolicyType.CertRevocation,
-      scope: ApprovalPolicyScope.PkiApplication,
-      scopeId: applicationId
-    })
-  );
-  const isPending = isIssuancePending || isRevocationPending;
-
-  const sortedPolicies = useMemo(
-    () =>
-      [...issuancePolicies, ...revocationPolicies].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    [issuancePolicies, revocationPolicies]
-  );
+  const { data: sortedPolicies, isPending } = useQueries({
+    queries: APPLICATION_POLICY_TYPES.map((policyType) =>
+      approvalPolicyQuery.list({
+        policyType,
+        scope: ApprovalPolicyScope.PkiApplication,
+        scopeId: applicationId
+      })
+    ),
+    combine: combineNewestFirst<TApprovalPolicy>
+  });
 
   if (!isPending && sortedPolicies.length === 0) {
     return (
@@ -219,8 +207,8 @@ const ApplicationPoliciesTable = ({
         <EmptyHeader>
           <EmptyTitle>No approval policies</EmptyTitle>
           <EmptyDescription>
-            Create one to require approval before certificates are issued or revoked in this
-            application.
+            Create one to require approval before certificates are issued, revoked or deleted in
+            this application.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -655,7 +643,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <DocumentationLinkBadge href={PkiDocsUrls.applications.approvals} />
           </CardTitle>
           <CardDescription>
-            Require approval before certificates are issued or revoked in this application.
+            Require approval before certificates are issued, revoked or deleted in this application.
           </CardDescription>
           <CardAction>
             <Tooltip>

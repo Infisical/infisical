@@ -18,6 +18,7 @@ import {
   ApprovalRequestStatus,
   CertRequestPolicyOperation
 } from "@app/services/approval-policy/approval-policy-enums";
+import { TCertificateActionPolicyType } from "@app/services/approval-policy/pki-approvers/certificate-action-policy-fns";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
@@ -1067,20 +1068,27 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findPendingRevocationApprovalRequest = async (
+  const $findPendingCertificateActionRequest = async (
+    type: TCertificateActionPolicyType,
     { certificateId, projectId }: { certificateId: string; projectId: string },
     tx?: Knex
   ) => {
     try {
       const row = await (tx || db)(TableName.ApprovalRequests)
-        .where({ projectId, type: ApprovalPolicyType.CertRevocation, status: ApprovalRequestStatus.Pending })
+        .where({ projectId, type, status: ApprovalRequestStatus.Pending })
         .whereRaw(`"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'certificateId' = ?`, [certificateId])
         .first("id", "expiresAt");
       return row as { id: string; expiresAt: Date | null } | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find pending revocation approval request" });
+      throw new DatabaseError({ error, name: `Find pending ${type} approval request` });
     }
   };
+
+  const findPendingRevocationApprovalRequest = (filter: { certificateId: string; projectId: string }, tx?: Knex) =>
+    $findPendingCertificateActionRequest(ApprovalPolicyType.CertRevocation, filter, tx);
+
+  const findPendingDeletionApprovalRequest = (filter: { certificateId: string; projectId: string }, tx?: Knex) =>
+    $findPendingCertificateActionRequest(ApprovalPolicyType.CertDeletion, filter, tx);
 
   const getOriginatingRequestByCertId = async (certId: string, tx?: Knex): Promise<TOriginatingCertificateRequest> => {
     try {
@@ -1816,6 +1824,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
     findPendingRevocationApprovalRequest,
+    findPendingDeletionApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     canRenewFromCsr,
