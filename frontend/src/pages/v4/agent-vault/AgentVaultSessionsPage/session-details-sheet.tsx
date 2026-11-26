@@ -32,11 +32,7 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
-import {
-  AgentVaultMemberType,
-  type AgentVaultServiceType,
-  AgentVaultSessionStatus
-} from "@app/hooks/api/agentVault/enums";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultSession, TAgentVaultSessionActor } from "@app/hooks/api/agentVault/types";
 
 import { MetadataEditor } from "../../access/org/metadata-editor";
@@ -51,15 +47,18 @@ import {
   canEditSession,
   formatSessionExpiry,
   formatTimestamp,
+  inlineServiceHookText,
   inlineServiceTarget,
   isSameSessionMetadata,
   metadataRecordToRows,
   metadataRowsToRecord,
   SESSION_STATUS,
   sessionInlineServices,
+  sessionInlineSkills,
   sessionLabelSchema,
   sessionMetadataErrors,
   sessionNamedServices,
+  sessionNamedSkills,
   type TMetadataErrors,
   useCanActOnSession
 } from "./sessions";
@@ -82,12 +81,12 @@ const ActorValue = ({ actor }: { actor: TAgentVaultSessionActor }) => {
 
 const SHOWN_NAMED_SERVICES = 2;
 const SHOWN_INLINE_SERVICES = 1;
+const SHOWN_SKILLS = 2;
 
 type TListedService = {
   id: string;
   name: string;
-  type: AgentVaultServiceType;
-  hostPattern: string | null;
+  media: React.ReactNode;
   tooltip: string;
   detail: string | null;
 };
@@ -109,7 +108,7 @@ const ServiceList = ({
       {services.slice(0, shown).map((service) => (
         <Tooltip key={service.id} content={service.tooltip}>
           <Inline gap={8} align="center" wrap={false} tabIndex={0} style={{ minWidth: 0 }}>
-            <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
+            {service.media}
             <span className="truncate">{service.name}</span>
           </Inline>
         </Tooltip>
@@ -130,9 +129,7 @@ const ServiceList = ({
                     label={service.name}
                     title={service.name}
                     description={service.detail ?? undefined}
-                    media={
-                      <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
-                    }
+                    media={service.media}
                   />
                 ))}
               </List>
@@ -349,6 +346,53 @@ const LabelField = ({
   );
 };
 
+const SkillDetails = ({ session }: { session: TAgentVaultSession }) => {
+  const namedSkills = sessionNamedSkills(session);
+  const inlineSkills = sessionInlineSkills(session);
+  return (
+    <>
+      {namedSkills.length > 0 && (
+        <Detail>
+          <DetailLabel>Skills</DetailLabel>
+          <DetailValue>
+            <ServiceList
+              label="Skills"
+              caption="The project's skills, named when the session was created."
+              shown={SHOWN_SKILLS}
+              services={namedSkills.map((skill) => ({
+                id: skill.id,
+                name: skill.name,
+                media: <Icon name="book" />,
+                tooltip: `A project skill this session names. ${skill.description}`,
+                detail: skill.description
+              }))}
+            />
+          </DetailValue>
+        </Detail>
+      )}
+      {inlineSkills.length > 0 && (
+        <Detail>
+          <DetailLabel>Inline skills</DetailLabel>
+          <DetailValue>
+            <ServiceList
+              label="Inline skills"
+              caption="Sent with the session when it was created."
+              shown={SHOWN_SKILLS}
+              services={inlineSkills.map((skill) => ({
+                id: skill.id,
+                name: skill.name,
+                media: <Icon name="book" />,
+                tooltip: `Sent with this session when it was created. ${skill.description}`,
+                detail: skill.description
+              }))}
+            />
+          </DetailValue>
+        </Detail>
+      )}
+    </>
+  );
+};
+
 const Details = ({
   orgId,
   projectId,
@@ -441,8 +485,9 @@ const Details = ({
                 services={namedServices.map((service) => ({
                   id: service.id,
                   name: service.name,
-                  type: service.type,
-                  hostPattern: service.hostPattern,
+                  media: (
+                    <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
+                  ),
                   tooltip: service.description
                     ? `A project service this session names. ${service.description}`
                     : "A project service this session names",
@@ -462,19 +507,30 @@ const Details = ({
                 shown={SHOWN_INLINE_SERVICES}
                 services={inlineServices.map((service) => {
                   const target = inlineServiceTarget(service);
+                  const hookText = inlineServiceHookText(service);
                   return {
                     id: service.id,
                     name: service.name,
-                    type: service.type,
-                    hostPattern: hostPatternOf(service),
-                    tooltip: `Sent with this session when it was created, for ${target}.`,
-                    detail: target === service.name ? null : target
+                    media: (
+                      <ServiceIcon
+                        hostPattern={hostPatternOf(service)}
+                        serviceType={service.type}
+                      />
+                    ),
+                    tooltip: `Sent with this session when it was created, for ${target}.${
+                      hookText ? ` ${hookText}` : ""
+                    }`,
+                    detail:
+                      [target === service.name ? null : target, hookText]
+                        .filter(Boolean)
+                        .join(" · ") || null
                   };
                 })}
               />
             </DetailValue>
           </Detail>
         )}
+        <SkillDetails session={session} />
         <Detail>
           <DetailLabel>Created</DetailLabel>
           <DetailValue>{formatTimestamp(session.createdAt)}</DetailValue>

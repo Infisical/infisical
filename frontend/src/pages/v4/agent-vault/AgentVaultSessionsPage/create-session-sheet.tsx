@@ -41,12 +41,13 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useTimedReset } from "@app/hooks";
-import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { AgentVaultMemberType, AgentVaultSessionErrorCode } from "@app/hooks/api/agentVault/enums";
 import type {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession,
   TAgentVaultProjectService,
-  TAgentVaultService
+  TAgentVaultService,
+  TAgentVaultSkill
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -81,7 +82,6 @@ import {
 import {
   currentSiteUrl,
   formatSessionExpiry,
-  isSessionServicesError,
   metadataRowsToRecord,
   sessionLabelSchema,
   sessionMetadataRowsSchema
@@ -298,23 +298,38 @@ const IdentityDescription = ({
 
 const MAX_NAMED_SERVICES = 50;
 const SERVICE_PICKER_LIMIT = 50;
+const MAX_NAMED_SKILLS = 20;
+const SKILL_PICKER_LIMIT = 50;
 const PICK_SOMETHING_ERROR = "pickSomething";
+const SERVICE_FIELD_ERRORS: string[] = [
+  AgentVaultSessionErrorCode.ServiceNotGranted,
+  AgentVaultSessionErrorCode.ServiceHostConflict
+];
 
 const createNowSchema = z
   .object({
     services: z.custom<TAgentVaultProjectService[]>(),
+    skills: z.custom<TAgentVaultSkill[]>(),
     label: sessionLabelSchema,
     metadata: sessionMetadataRowsSchema,
     ttlPreset: z.string(),
     customTtl: z.string()
   })
-  .superRefine(({ services, ttlPreset, customTtl }, ctx) => {
+  .superRefine(({ services, skills, ttlPreset, customTtl }, ctx) => {
     if (services.length > MAX_NAMED_SERVICES)
       ctx.addIssue({
         code: "custom",
         path: ["services"],
         message: `A session can name up to ${MAX_NAMED_SERVICES} services. Remove ${
           services.length - MAX_NAMED_SERVICES
+        } to continue.`
+      });
+    if (skills.length > MAX_NAMED_SKILLS)
+      ctx.addIssue({
+        code: "custom",
+        path: ["skills"],
+        message: `A session can name up to ${MAX_NAMED_SKILLS} skills. Remove ${
+          skills.length - MAX_NAMED_SKILLS
         } to continue.`
       });
     if (ttlPreset !== CUSTOM_TTL) return;
@@ -326,6 +341,7 @@ type TCreateNowForm = z.infer<typeof createNowSchema>;
 
 const CREATE_NOW_DEFAULTS: TCreateNowForm = {
   services: [],
+  skills: [],
   label: "",
   metadata: [],
   ttlPreset: "7d",
@@ -337,9 +353,10 @@ type TCreateNowValues = {
   label?: string;
   metadata?: Record<string, string>;
   services: string[];
+  skills: string[];
 };
 
-type TCreateNowResult = { servicesError?: string } | undefined;
+type TCreateNowResult = { servicesError?: string; skillsError?: string } | undefined;
 
 const ServicesField = ({
   projectId,
@@ -386,6 +403,55 @@ const ServicesField = ({
         onChange={(ids) => {
           const picked = new Set(ids);
           onChange(known.filter((service) => picked.has(service.id)));
+        }}
+      />
+    </Field>
+  );
+};
+
+const SkillsField = ({
+  projectId,
+  value,
+  error,
+  onChange
+}: {
+  projectId: string;
+  value: TAgentVaultSkill[];
+  error?: string;
+  onChange: (skills: TAgentVaultSkill[]) => void;
+}) => {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const { data, isFetching } = useV4Adapter("agentVaultResources").useSkills(projectId, {
+    search: debouncedSearch.trim() || undefined,
+    limit: SKILL_PICKER_LIMIT
+  });
+  const listed = data?.skills ?? [];
+  const selectedIds = new Set(value.map((skill) => skill.id));
+  const known = [...value, ...listed.filter((skill) => !selectedIds.has(skill.id))];
+  return (
+    <Field
+      label="Skills"
+      error={error}
+      description="The project's skills an agent gets with this session, beside or instead of an access bundle's."
+    >
+      <MultiSelect
+        label="Skills"
+        placeholder="Pick skills"
+        searchPlaceholder="Search skills"
+        invalid={Boolean(error)}
+        loading={isFetching}
+        onSearch={setSearch}
+        options={known.map((skill) => ({
+          value: skill.id,
+          label: skill.name,
+          description: skill.description,
+          media: <Icon name="book" />
+        }))}
+        value={value.map((skill) => skill.id)}
+        onChange={(ids) => {
+          const picked = new Set(ids);
+          onChange(known.filter((skill) => picked.has(skill.id)));
         }}
       />
     </Field>
@@ -565,22 +631,24 @@ const CreateNowForm = ({
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
   const selectedServices = useWatch({ control, name: "services" });
   const submit = async (values: TCreateNowForm) => {
-    if (!accessBundle && !values.services.length) {
+    if (!accessBundle && !values.services.length && !values.skills.length) {
       setError("services", {
         type: PICK_SOMETHING_ERROR,
-        message: "Pick an access bundle or at least one service."
+        message: "Pick an access bundle, or at least one service or skill."
       });
       return;
     }
     const metadata = metadataRowsToRecord(values.metadata);
     const result = await onCreate({
       services: values.services.map((service) => service.name),
+      skills: values.skills.map((skill) => skill.name),
       ttl: values.ttlPreset === CUSTOM_TTL ? values.customTtl.trim() : values.ttlPreset,
       label: values.label || undefined,
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined
     });
     if (result?.servicesError)
       setError("services", { type: "server", message: result.servicesError });
+    if (result?.skillsError) setError("skills", { type: "server", message: result.skillsError });
   };
   const metadataRowErrors = Array.isArray(errors.metadata)
     ? errors.metadata.map((row) => ({ key: row?.key?.message, value: row?.value?.message }))
@@ -599,6 +667,18 @@ const CreateNowForm = ({
             name="services"
             render={({ field, fieldState }) => (
               <ServicesField
+                projectId={projectId}
+                value={field.value}
+                error={fieldState.error?.message}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="skills"
+            render={({ field, fieldState }) => (
+              <SkillsField
                 projectId={projectId}
                 value={field.value}
                 error={fieldState.error?.message}
@@ -885,7 +965,7 @@ const AccessBundleField = ({
       label="Access bundle"
       description={
         isCreateNow
-          ? "Optional when you pick services below."
+          ? "Optional when you pick services or skills below."
           : "The services an agent can reach with this session."
       }
     >
@@ -1316,22 +1396,31 @@ export const CreateSessionSheet = ({
       createNowForm.clearErrors("services");
   };
 
-  const onCreate = async ({ services, ...values }: TCreateNowValues): Promise<TCreateNowResult> => {
+  const onCreate = async ({
+    services,
+    skills,
+    ...values
+  }: TCreateNowValues): Promise<TCreateNowResult> => {
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle?.name,
         services: services.length ? services : undefined,
+        skills: skills.length ? skills : undefined,
         ...values
       });
       saved("Session created");
       setCreated(session);
       return undefined;
     } catch (error) {
-      const message = isAxiosError<{ message?: string }>(error)
-        ? error.response?.status === 400 && error.response.data?.message
+      const response = isAxiosError<{ error?: unknown; message?: unknown }>(error)
+        ? error.response?.data
         : undefined;
-      if (services.length && message && isSessionServicesError(message))
-        return { servicesError: message };
+      if (typeof response?.error === "string" && typeof response.message === "string") {
+        if (services.length && SERVICE_FIELD_ERRORS.includes(response.error))
+          return { servicesError: response.message };
+        if (skills.length && response.error === AgentVaultSessionErrorCode.SkillNotGranted)
+          return { skillsError: response.message };
+      }
       failed("Failed to create session", error);
       return undefined;
     }
