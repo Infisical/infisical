@@ -4,8 +4,10 @@ import { Combobox } from "@infisical/cipher/ui/combobox";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Grid, Inline, InlineGrow, Stack } from "@infisical/cipher/ui/layout";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
+
+import styles from "./policy-editor.module.css";
 
 export type ApproverKind = "user" | "group";
 export type ApproverOption = { value: string; label: string; kind: ApproverKind };
@@ -126,7 +128,7 @@ export const PolicyStepsEditor = ({
             />
           }
         >
-          <Stack gap={12}>
+          <Stack gap={12} className={styles.step}>
             <Field label="Step name">
               <Input
                 value={step.name}
@@ -134,28 +136,26 @@ export const PolicyStepsEditor = ({
                 onChange={(event) => patchStep(step.key, { name: event.target.value })}
               />
             </Field>
-            <Inline gap={12} align="start" wrap={false}>
-              <InlineGrow>
-                <Field
+            <div className={styles.approvers}>
+              <Field
+                label="Approvers"
+                description="Approvers must already be members, and can't be auditors."
+                wide
+              >
+                <Combobox
+                  multiple
                   label="Approvers"
-                  description="Approvers must already be members, and can't be auditors."
-                >
-                  <Combobox
-                    multiple
-                    label="Approvers"
-                    placeholder="Select approvers"
-                    emptyText={emptyApproversText}
-                    options={options}
-                    value={step.approvers}
-                    onValueChange={(approvers) => patchStep(step.key, { approvers })}
-                  />
-                </Field>
-              </InlineGrow>
+                  placeholder="Select approvers"
+                  emptyText={emptyApproversText}
+                  options={options}
+                  value={step.approvers}
+                  onValueChange={(approvers) => patchStep(step.key, { approvers })}
+                />
+              </Field>
               <Field label="Required">
                 <Input
                   type="number"
                   min={1}
-                  width="xs"
                   value={String(step.requiredApprovals)}
                   onChange={(event) =>
                     patchStep(step.key, {
@@ -164,7 +164,7 @@ export const PolicyStepsEditor = ({
                   }
                 />
               </Field>
-            </Inline>
+            </div>
           </Stack>
         </Card>
       ))}
