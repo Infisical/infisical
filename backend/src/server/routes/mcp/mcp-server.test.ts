@@ -7,13 +7,29 @@ import { createMcpServer } from "./mcp-server";
 vi.mock("@app/lib/request-context/oauth-delegation", () => ({ isScopeNarrowedRequest: () => true }));
 
 type TJsonSchema = { description?: string; properties?: Record<string, TJsonSchema> };
+type TToolResult = { isError?: boolean; content: { text: string }[] };
 
-// No service is stubbed besides the denial audit, so a tool call that gets past its own checks fails.
-const callMcp = async <T>(scopes: OauthScope[], method: string, params?: Record<string, unknown>) => {
-  const server = { services: { auditLog: { recordPermissionDenied: vi.fn().mockResolvedValue(undefined) } } };
+// Only the services a test passes, plus audit logs and analytics, exist, so a tool that reaches any other fails.
+const callMcp = async <T>(
+  scopes: OauthScope[],
+  method: string,
+  params?: Record<string, unknown>,
+  services: Record<string, unknown> = {}
+) => {
+  const server = {
+    services: {
+      auditLog: {
+        recordPermissionDenied: vi.fn().mockResolvedValue(undefined),
+        createAuditLog: vi.fn().mockResolvedValue(undefined)
+      },
+      telemetry: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
+      ...services
+    }
+  };
   const req = {
     method: "POST",
     permission: { type: "user", id: "user-id", orgId: "org-id", authMethod: null },
+    auth: { actor: "user", user: { username: "user@example.com" } },
     auditLogInfo: {}
   };
   const handler = createMcpHandler(() => createMcpServer(server as never, req as never, scopes));
@@ -56,22 +72,55 @@ describe("MCP tools", () => {
       [OauthScope.SecretsDescribe, OauthScope.SecretsRead].map((scope) => [tool, scope])
     )
   )("%s refuses a personal secret on a %s connection", async (tool, scope) => {
-    const result = await callMcp<{ isError?: boolean; content: { text: string }[] }>(
-      [scope as OauthScope],
-      "tools/call",
-      {
-        name: tool,
-        arguments: {
-          projectId: "project-id",
-          environmentSlug: "dev",
-          secretName: "DB_PASSWORD",
-          secretValue: "local",
-          type: "personal"
-        }
+    const result = await callMcp<TToolResult>([scope as OauthScope], "tools/call", {
+      name: tool,
+      arguments: {
+        projectId: "project-id",
+        environmentSlug: "dev",
+        secretName: "DB_PASSWORD",
+        secretValue: "local",
+        type: "personal"
       }
-    );
+    });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("Reconnect and choose Full Access");
+  });
+
+  // The service returns the user's own personal values unmasked even when values weren't requested.
+  test("list-secrets shows no values on a secrets:describe connection, even personal ones", async () => {
+    const personalSecret = {
+      id: "secret-id",
+      secretKey: "DB_PASSWORD",
+      type: "personal",
+      secretValue: "my-value",
+      secretValueHidden: false,
+      secretComment: "",
+      secretPath: "/",
+      version: 1
+    };
+    const getSecretsRaw = vi.fn().mockResolvedValue({
+      secrets: [personalSecret],
+      imports: [{ environment: "dev", secretPath: "/shared", secrets: [personalSecret] }]
+    });
+
+    const result = await callMcp<TToolResult>(
+      [OauthScope.SecretsDescribe],
+      "tools/call",
+      {
+        name: "list-secrets",
+        arguments: { projectId: "project-id", environmentSlug: "dev", includePersonalOverrides: true }
+      },
+      { secret: { getSecretsRaw } }
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).not.toContain("my-value");
+    const output = JSON.parse(result.content[0].text) as {
+      secrets: Record<string, unknown>[];
+      imports: { secrets: Record<string, unknown>[] }[];
+    };
+    expect(output.secrets[0]).toMatchObject({ secretKey: "DB_PASSWORD", secretValueHidden: true });
+    expect(output.imports[0].secrets[0]).toMatchObject({ secretValueHidden: true });
   });
 });

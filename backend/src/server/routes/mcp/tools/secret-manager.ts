@@ -60,25 +60,6 @@ type TRawSecret = {
   version: number;
 };
 
-const $toSecretOutput = ({
-  id,
-  secretKey,
-  type,
-  secretValue,
-  secretValueHidden,
-  secretComment,
-  secretPath,
-  version
-}: TRawSecret) => ({
-  id,
-  secretKey,
-  type,
-  ...(secretValueHidden ? { secretValueHidden } : { secretValue }),
-  secretComment,
-  secretPath,
-  version
-});
-
 type TSecretLocation = z.output<typeof SecretLocationSchema> & { secretName: string };
 
 // Each tool does what the REST route behind it does: the same service call, audit log and read tracking, with the
@@ -94,6 +75,26 @@ export const registerSecretManagerTools = ({
 }: TMcpToolContext) => {
   // Describe Only grants names and metadata; values also need the user's consent to secrets:read.
   const canReadSecretValues = scopes.includes(OauthScope.SecretsRead);
+
+  // The service never masks the user's own personal secrets, so a connection without secrets:read is masked here.
+  const $toSecretOutput = ({
+    id,
+    secretKey,
+    type,
+    secretValue,
+    secretValueHidden,
+    secretComment,
+    secretPath,
+    version
+  }: TRawSecret) => ({
+    id,
+    secretKey,
+    type,
+    ...(secretValueHidden || !canReadSecretValues ? { secretValueHidden: true } : { secretValue }),
+    secretComment,
+    secretPath,
+    version
+  });
 
   // The services behind list-projects and list-folders check membership but no ability, so the scopes never narrow
   // them. Without this a write-only connection could list what it was not allowed to see.
