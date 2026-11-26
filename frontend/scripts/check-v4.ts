@@ -1232,6 +1232,16 @@ export const v4Checks: readonly V4Check[] = [
       "A Suspense fallback is a Loader (size page for a page or a lazy page chunk) or Skeleton shapes for a known layout. Never a Spinner, bare status text or null.",
     appliesTo: isAuthored,
     markup: [/\bfallback=\{\s*(?:null\b|<(?!Loader\b|Skeleton\b)[\w.]+|["'`])/g]
+  },
+  {
+    id: "bare-provider-name",
+    rule: "provider-icons",
+    message:
+      "A provider or integration name shown as a value carries its logo. Render ProviderLabel (pages/v4/components/provider-label.tsx), or pass providerMedia(kind, key) to the slot's media. A name inside a sentence takes v4-check-ignore bare-provider-name with that reason.",
+    appliesTo: (file) => isAuthored(file) && isMarkup(file) && !file.endsWith("/provider-label.tsx"),
+    markup: [
+      /(?<![=$\w])\{\s*(?:[A-Z][A-Z_]*_MAP\[[^\]]+\]\??\.name|identityAuthToNameMap\[[^\]]+\]|(?:destinationNameOf|appName|appConnectionName|authMethodName)\([^()]*\))\s*\}/g
+    ]
   }
 ];
 
