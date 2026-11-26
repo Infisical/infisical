@@ -70,7 +70,7 @@ type Drafts = Record<string, unknown>;
 type CardProps = {
   template: TPamAccountTemplateDetail;
   drafts: Drafts;
-  setDraft: (key: string, value?: unknown) => void;
+  setDraft: (key: string, value?: unknown, onlyIf?: unknown) => void;
 };
 
 const APPROVAL_DEPENDENT_POLICIES = [
@@ -94,11 +94,13 @@ const lastSaved = new Map<string, TemplateState>();
 const rebase = (
   latest: Record<string, unknown>,
   base: Record<string, unknown>,
-  next: Record<string, unknown>
+  next: Record<string, unknown>,
+  touched: string[] = []
 ) => {
   const out = { ...latest };
-  new Set([...Object.keys(base), ...Object.keys(next)]).forEach((key) => {
-    if (JSON.stringify(base[key]) === JSON.stringify(next[key])) return;
+  const forced = new Set(touched);
+  new Set([...Object.keys(base), ...Object.keys(next), ...touched]).forEach((key) => {
+    if (!forced.has(key) && JSON.stringify(base[key]) === JSON.stringify(next[key])) return;
     if (key in next) out[key] = next[key];
     else delete out[key];
   });
@@ -110,7 +112,8 @@ const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
   const run = async (
     patch: Omit<TUpdatePamAccountTemplateDTO, "templateId">,
     success: string,
-    failure: string
+    failure: string,
+    touched?: string[]
   ) => {
     const base = template;
     const queued = (saveQueues.get(base.id) ?? Promise.resolve()).then(async () => {
@@ -123,7 +126,7 @@ const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
           settings: rebase(settingsOf(latest), settingsOf(base), patch.settings)
         }),
         ...(patch.policies && {
-          policies: rebase(policiesOf(latest), policiesOf(base), patch.policies)
+          policies: rebase(policiesOf(latest), policiesOf(base), patch.policies, touched)
         })
       });
       lastSaved.set(base.id, result);
@@ -165,12 +168,22 @@ const PoliciesCard = ({
 
   const savePolicy = async (key: PamPolicyType, label: string, value: unknown) => {
     const next = { ...policies };
+    const submitted = drafts[`policy:${key}`];
+    const touched: string[] = [key];
     if (value === null || value === undefined) delete next[key];
     else next[key] = value;
     if (key === PamPolicyType.RequiresApproval && value !== true)
-      APPROVAL_DEPENDENT_POLICIES.forEach((dependent) => delete next[dependent]);
-    const result = await run({ policies: next }, `${label} updated`, `Could not update ${label}`);
-    if (result) setDraft(`policy:${key}`);
+      APPROVAL_DEPENDENT_POLICIES.forEach((dependent) => {
+        delete next[dependent];
+        touched.push(dependent);
+      });
+    const result = await run(
+      { policies: next },
+      `${label} updated`,
+      `Could not update ${label}`,
+      touched
+    );
+    if (result) setDraft(`policy:${key}`, undefined, submitted);
     return Boolean(result);
   };
 
@@ -660,7 +673,7 @@ const MaskingCard = ({ template, drafts, setDraft }: CardProps) => {
                 "Masking patterns updated",
                 "Could not update the masking patterns"
               );
-              if (result) setDraft("maskingPatterns");
+              if (result) setDraft("maskingPatterns", undefined, draft);
             }}
           />
         </Field>
@@ -696,7 +709,7 @@ const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
       "Template updated",
       "Could not update the template"
     );
-    if (result) setDraft("details");
+    if (result) setDraft("details", undefined, draft);
   };
 
   return (
@@ -847,8 +860,9 @@ export const TemplateSheet = ({
     isDirty: Object.keys(drafts).length > 0,
     onDiscard: close
   });
-  const setDraft = (key: string, value?: unknown) =>
+  const setDraft = (key: string, value?: unknown, onlyIf?: unknown) =>
     setDrafts((current) => {
+      if (onlyIf !== undefined && current[key] !== onlyIf) return current;
       const next = { ...current };
       if (value === undefined) delete next[key];
       else next[key] = value;
