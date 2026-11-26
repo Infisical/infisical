@@ -409,9 +409,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval } = resolveAccessControls(
-        a.templatePolicies
-      );
+      const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval, maxAccessDurationSeconds } =
+        resolveAccessControls(a.templatePolicies);
       const statusEntry = accessStatusMap.get(a.id);
       const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
       const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
@@ -451,6 +450,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         requiresApproval,
         supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
+        maxAccessDurationSeconds,
         accessStatus: requiresApproval
           ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
           : ApprovalAccessStatus.None,
@@ -1346,8 +1346,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason, requireMfa, allowBreakGlass, allowAutoApproval } =
-          resolveAccessControls(a.templatePolicies);
+        const {
+          requiresApproval,
+          requireReason,
+          requireMfa,
+          allowBreakGlass,
+          allowAutoApproval,
+          maxAccessDurationSeconds
+        } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
         const hasPolicyConfigured = a.folderId
@@ -1373,6 +1379,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
           requireReason,
+          maxAccessDurationSeconds,
           // Machine identities cannot satisfy MFA, so launch rejects them outright (see
           // pam-session-service). Callers acting as an identity should treat this as unusable.
           requireMfa,

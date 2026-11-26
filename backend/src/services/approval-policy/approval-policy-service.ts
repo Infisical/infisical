@@ -2728,6 +2728,7 @@ export const approvalPolicyServiceFactory = ({
         ...request,
         grantId: grant?.id ?? null,
         grantExpiresAt: grant?.expiresAt ?? null,
+        grantCreatedAt: grant?.createdAt ?? null,
         grantStatus: grant?.status ?? null,
         isBreakGlass: Boolean(grant?.isBreakGlass),
         bypassReason: grant?.bypassReason ?? null,

@@ -3,6 +3,7 @@ import z from "zod";
 import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
+import { MaxAccessDurationSecondsResponseSchema } from "@app/ee/services/pam/pam-policies";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -31,8 +32,10 @@ const EnrichedRequestSchema = RequestSchema.extend({
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
   accessType: z.nativeEnum(PamAccessType),
+  maxAccessDurationSeconds: MaxAccessDurationSecondsResponseSchema,
   grantId: z.string().uuid().nullable(),
   grantExpiresAt: z.date().nullable(),
+  grantCreatedAt: z.date().nullable(),
   grantStatus: z.string().nullable(),
   isBreakGlass: z.boolean(),
   bypassReason: z.string().nullable()
