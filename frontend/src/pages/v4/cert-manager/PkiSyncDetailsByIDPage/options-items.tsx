@@ -102,10 +102,6 @@ export const pkiSyncFieldMappingItems = (pkiSync: TPkiSync): DataListItem[] => {
   ]);
 };
 
-export function SyncErrorMessage({ message }: { message: string }) {
-  return <Code style={wrapAnywhere}>{message}</Code>;
-}
-
 function HostCommandValue({
   label,
   command,
@@ -192,11 +188,7 @@ export function PkiSyncCommandsCard({
           <Meta key="last-checked">Never</Meta>
         )
       ]);
-    if (checkErrorMessage)
-      items.push([
-        "Last check error",
-        <SyncErrorMessage key="check-error" message={checkErrorMessage} />
-      ]);
+    if (checkErrorMessage) items.push(["Last check error", checkErrorMessage]);
   }
   if (canRunPostSync)
     items.push([
