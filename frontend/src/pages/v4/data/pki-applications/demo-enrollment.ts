@@ -3,8 +3,11 @@ import type { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/app
 import { MicrosoftIntuneConnectionMethod } from "@app/hooks/api/appConnections/types/microsoft-intune-connection";
 import { CaType } from "@app/hooks/api/ca/enums";
 import {
+  MicrosoftAutoenrollmentChannelBindingStatus,
   ScepChallengeType,
-  type TPkiApplicationEnrollmentState
+  type TMicrosoftAutoenrollmentEnrollment,
+  type TPkiApplicationEnrollmentState,
+  type TSetMicrosoftAutoenrollmentEnrollmentDTO
 } from "@app/hooks/api/pkiApplications/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
@@ -14,6 +17,7 @@ import {
   DEMO_PROJECT_ID,
   demoApplications,
   demoProfiles,
+  demoProfileSlugs,
   type EnrollmentMethodKey,
   setDemoProfileMethod
 } from "./demo-store";
@@ -100,6 +104,54 @@ const scepConfig = (applicationId: string, profileId: string, settings: ScepSett
   raCertExpiresAt: "2027-08-19T21:10:00Z"
 });
 
+const SERVICE_PRINCIPAL_NAME = "HTTP/app.infisical.com";
+const LDAP_CONNECTION_ID = "7a3e1c90-5b2d-4f86-a4c1-0e9d8b2f6c53";
+
+const DEMO_AD_GROUPS = [
+  "Domain Computers",
+  "Workstations - Finance",
+  "Workstations - Engineering",
+  "Kiosks - Warehouse",
+  "Servers - Web Tier",
+  "Servers - Database Tier"
+].map((name, index) => ({
+  name,
+  sid: `S-1-5-21-3623811015-3361044348-30300820-${1100 + index}`
+}));
+
+const microsoftAutoenrollmentConfig = (
+  applicationId: string,
+  profileId: string,
+  input: Omit<TSetMicrosoftAutoenrollmentEnrollmentDTO, "applicationId" | "profileId">,
+  current: TMicrosoftAutoenrollmentEnrollment | null
+): TMicrosoftAutoenrollmentEnrollment => {
+  const renewBeforeDays = input.renewBeforeDays ?? current?.renewBeforeDays ?? 42;
+  const allowedGroups = input.allowedGroupSids
+    ? DEMO_AD_GROUPS.filter((group) => input.allowedGroupSids?.includes(group.sid))
+    : (current?.allowedGroups ?? []);
+  const rotated = Boolean(input.keytab || input.reuseKeytab);
+  return {
+    id: current?.id ?? `microsoft-autoenrollment-${applicationId}-${profileId}`,
+    policyUrl: `${SITE_URL}/api/v1/cert-manager/microsoft-autoenrollment/${pathOf(applicationId, profileId)}/policy`,
+    policyId: current?.policyId ?? `{${profileId.toUpperCase()}}`,
+    templateName: `Infisical-${demoProfileSlugs[profileId] ?? "profile"}`,
+    templateOid: current?.templateOid ?? "1.3.6.1.4.1.311.21.8.4721896.10233648.1.42",
+    allowedGroups,
+    renewBeforeDays,
+    effectiveRenewBeforeSeconds: renewBeforeDays * 86400,
+    servicePrincipalName: `${SERVICE_PRINCIPAL_NAME}@CORP.EXAMPLE.COM`,
+    keyVersion: rotated ? (current?.keyVersion ?? 2) + 1 : (current?.keyVersion ?? 3),
+    connectionId: input.connectionId ?? current?.connectionId ?? LDAP_CONNECTION_ID,
+    allowAnyChannelBinding:
+      input.allowAnyChannelBinding ?? current?.allowAnyChannelBinding ?? false,
+    channelBinding: { status: MicrosoftAutoenrollmentChannelBindingStatus.Enforced, reason: null }
+  };
+};
+
+const ldapConnections = createFixtureStore<TAvailableAppConnection[]>([
+  { id: LDAP_CONNECTION_ID, name: "corp-active-directory", projectId: DEMO_PROJECT_ID }
+]);
+
 const INTUNE_CONNECTION_ID = "b17c4e92-3a5d-4f08-9c61-2e8d7a0f5b34";
 
 const intuneConnections = createFixtureStore<TAvailableAppConnection[]>([
@@ -138,6 +190,15 @@ const seed = () =>
         });
         state.scepConfigured = true;
       }
+      if (profile.microsoftAutoenrollmentConfigId) {
+        state.microsoftAutoenrollment = microsoftAutoenrollmentConfig(
+          applicationId,
+          profileId,
+          { allowedGroupSids: [DEMO_AD_GROUPS[1].sid, DEMO_AD_GROUPS[2].sid] },
+          null
+        );
+        state.microsoftAutoenrollmentConfigured = true;
+      }
       return [keyOf(applicationId, profileId), state];
     })
   );
@@ -156,8 +217,29 @@ const isConfigured = (state: TPkiApplicationEnrollmentState, method: EnrollmentM
   if (method === "api") return Boolean(state.api);
   if (method === "est") return state.estConfigured;
   if (method === "acme") return state.acmeConfigured;
-  return state.scepConfigured;
+  if (method === "scep") return state.scepConfigured;
+  return state.microsoftAutoenrollmentConfigured;
 };
+
+const withOtherProfiles = (
+  all: Record<string, TPkiApplicationEnrollmentState>,
+  state: TPkiApplicationEnrollmentState
+): TPkiApplicationEnrollmentState => ({
+  ...state,
+  microsoftAutoenrollmentOtherProfiles: Object.values(all).flatMap((entry) =>
+    entry.microsoftAutoenrollment && entry.profileId !== state.profileId
+      ? [
+          {
+            profileId: entry.profileId,
+            profileName: demoProfileSlugs[entry.profileId] ?? entry.profileId,
+            servicePrincipalName: entry.microsoftAutoenrollment.servicePrincipalName,
+            keyVersion: entry.microsoftAutoenrollment.keyVersion,
+            connectionId: entry.microsoftAutoenrollment.connectionId
+          }
+        ]
+      : []
+  )
+});
 
 const patch = (
   applicationId: string,
@@ -176,9 +258,16 @@ const patch = (
 };
 
 export const enrollmentDemo: PkiApplicationsEnrollmentAdapter = {
-  useEnrollment: (applicationId, profileId) =>
-    ready(states.use()[keyOf(applicationId, profileId)] ?? emptyState(applicationId, profileId)),
-  useEnrollmentPlan: () => ready({ est: true, scep: true }),
+  useEnrollment: (applicationId, profileId) => {
+    const all = states.use();
+    return ready(
+      withOtherProfiles(
+        all,
+        all[keyOf(applicationId, profileId)] ?? emptyState(applicationId, profileId)
+      )
+    );
+  },
+  useEnrollmentPlan: () => ready({ est: true, scep: true, microsoftAutoenrollment: true }),
   useSetApiEnrollment: fixtureMutation(({ applicationId, profileId, autoRenew, renewBeforeDays }) =>
     patch(applicationId, profileId, "api", (current) => ({
       ...current,
@@ -292,5 +381,67 @@ export const enrollmentDemo: PkiApplicationsEnrollmentAdapter = {
       { id: created.id, name: created.name, projectId: created.projectId }
     ]);
     return created;
-  })
+  }),
+  useSetMicrosoftAutoenrollmentEnrollment: fixtureMutation(
+    ({ applicationId, profileId, ...input }) =>
+      patch(applicationId, profileId, "microsoft-autoenrollment", (current) => ({
+        ...current,
+        microsoftAutoenrollment: microsoftAutoenrollmentConfig(
+          applicationId,
+          profileId,
+          input,
+          current.microsoftAutoenrollment
+        ),
+        microsoftAutoenrollmentConfigured: true
+      }))
+  ),
+  useClearMicrosoftAutoenrollmentEnrollment: fixtureMutation(({ applicationId, profileId }) =>
+    patch(applicationId, profileId, "microsoft-autoenrollment", (current) => ({
+      ...current,
+      microsoftAutoenrollment: null,
+      microsoftAutoenrollmentConfigured: false
+    }))
+  ),
+  useReenrollMicrosoftAutoenrollmentComputers: fixtureMutation((input) => input),
+  useMicrosoftAutoenrollmentServicePrincipal: () =>
+    ready({ servicePrincipalName: SERVICE_PRINCIPAL_NAME }),
+  useLdapConnections: (projectId) =>
+    ready(
+      ldapConnections.use().filter((entry) => !entry.projectId || entry.projectId === projectId)
+    ),
+  useCreateLdapConnection: fixtureMutation((input) => {
+    const now = new Date().toISOString();
+    const created = {
+      id: crypto.randomUUID(),
+      name: input.name,
+      description: input.description ?? null,
+      version: 1,
+      orgId: V4_DEMO_ORG_ID,
+      projectId: input.projectId ?? DEMO_PROJECT_ID,
+      createdAt: now,
+      updatedAt: now,
+      app: AppConnection.LDAP,
+      method: input.method,
+      credentials: input.credentials
+    } as TAppConnection;
+    ldapConnections.update((current) => [
+      ...current,
+      { id: created.id, name: created.name, projectId: created.projectId }
+    ]);
+    return created;
+  }),
+  useLdapGroups: (connectionId, search) => {
+    const query = search?.toLowerCase() ?? "";
+    return {
+      ...ready(
+        connectionId
+          ? {
+              groups: DEMO_AD_GROUPS.filter((group) => group.name.toLowerCase().includes(query)),
+              isTruncated: false
+            }
+          : undefined
+      ),
+      isFetching: false
+    };
+  }
 };

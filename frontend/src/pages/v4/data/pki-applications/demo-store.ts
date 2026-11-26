@@ -9,7 +9,15 @@ import { createFixtureStore } from "../fixture-store";
 
 export const DEMO_PROJECT_ID = "internal-pki";
 
-export type EnrollmentMethodKey = "api" | "est" | "acme" | "scep";
+export type EnrollmentMethodKey = "api" | "est" | "acme" | "scep" | "microsoft-autoenrollment";
+
+const CONFIG_ID_FIELDS: Record<EnrollmentMethodKey, keyof TPkiApplicationProfile> = {
+  api: "apiConfigId",
+  est: "estConfigId",
+  acme: "acmeConfigId",
+  scep: "scepConfigId",
+  "microsoft-autoenrollment": "microsoftAutoenrollmentConfigId"
+};
 
 export const demoProfileSlugs: Record<string, string> = {
   "4a6c2e81-0b3d-4f57-8e19-7d2a5c0f3b64": "tls-server",
@@ -86,6 +94,9 @@ const attachment = (
   estConfigId: methods.est ? `est-${applicationId}-${profileId}` : null,
   acmeConfigId: methods.acme ? `acme-${applicationId}-${profileId}` : null,
   scepConfigId: methods.scep ? `scep-${applicationId}-${profileId}` : null,
+  microsoftAutoenrollmentConfigId: methods["microsoft-autoenrollment"]
+    ? `microsoft-autoenrollment-${applicationId}-${profileId}`
+    : null,
   createdAt,
   updatedAt: createdAt
 });
@@ -94,7 +105,12 @@ export const demoProfiles = createFixtureStore<TPkiApplicationProfile[]>([
   attachment(PAYMENTS, TLS_SERVER, { api: true, acme: true }, "2026-03-14T17:25:00Z"),
   attachment(PAYMENTS, MTLS_CLIENT, { est: true }, "2026-03-20T11:00:00Z"),
   attachment(PAYMENTS, CODE_SIGNING, {}, "2026-09-02T10:30:00Z"),
-  attachment(PLATFORM, TLS_SERVER, { acme: true }, "2026-05-02T09:45:00Z"),
+  attachment(
+    PLATFORM,
+    TLS_SERVER,
+    { acme: true, "microsoft-autoenrollment": true },
+    "2026-05-02T09:45:00Z"
+  ),
   attachment(IOT, MTLS_CLIENT, { scep: true }, "2026-08-19T21:10:00Z")
 ]);
 
@@ -109,7 +125,9 @@ export const setDemoProfileMethod = (
       entry.applicationId === applicationId && entry.profileId === profileId
         ? {
             ...entry,
-            [`${method}ConfigId`]: configured ? `${method}-${applicationId}-${profileId}` : null,
+            [CONFIG_ID_FIELDS[method]]: configured
+              ? `${method}-${applicationId}-${profileId}`
+              : null,
             updatedAt: new Date().toISOString()
           }
         : entry

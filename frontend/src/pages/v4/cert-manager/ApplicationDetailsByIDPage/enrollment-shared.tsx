@@ -14,7 +14,12 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { SheetBody, SheetFooter } from "@infisical/cipher/ui/sheet";
 
 import { failed, saved } from "../../access/toast";
-import { type EnrollmentBodyProps, type EnrollmentMethod, METHOD_LABELS } from "./enrollment-model";
+import {
+  type EnrollmentBodyProps,
+  type EnrollmentMethod,
+  METHOD_LABELS,
+  methodTitle
+} from "./enrollment-model";
 
 export const EnrollmentBody = ({
   lead,
@@ -38,25 +43,28 @@ const DisableMethodButton = ({
   applicationId,
   profileId,
   clear,
+  consequence,
   disabled
 }: {
   method: EnrollmentMethod;
   applicationId: string;
   profileId: string;
   clear: MethodMutation;
+  consequence?: string;
   disabled: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const label = METHOD_LABELS[method];
+  const title = methodTitle(method);
   const confirm = async () => {
     setPending(true);
     try {
       await clear.mutateAsync({ applicationId, profileId });
-      saved(`${label} enrollment disabled`);
+      saved(`${title} disabled`);
       setOpen(false);
     } catch (error) {
-      failed(`Couldn't disable ${label} enrollment`, error);
+      failed(`Couldn't disable ${title}`, error);
     } finally {
       setPending(false);
     }
@@ -69,10 +77,11 @@ const DisableMethodButton = ({
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent tone="danger" icon="alert" pending={pending}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disable {label} enrollment?</AlertDialogTitle>
+            <AlertDialogTitle>Disable {title}?</AlertDialogTitle>
             <AlertDialogDescription>
               Clients using {label} with this profile through this application can no longer request
               certificates. Certificates already issued stay valid.
+              {consequence && ` ${consequence}`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -97,7 +106,8 @@ export const EnrollmentFooter = ({
   onCancel,
   applicationId,
   profileId,
-  clear
+  clear,
+  consequence
 }: {
   method: EnrollmentMethod;
   configured: boolean;
@@ -109,6 +119,7 @@ export const EnrollmentFooter = ({
   applicationId: string;
   profileId: string;
   clear: MethodMutation;
+  consequence?: string;
 }) => (
   <SheetFooter>
     <Inline justify="between">
@@ -134,6 +145,7 @@ export const EnrollmentFooter = ({
           applicationId={applicationId}
           profileId={profileId}
           clear={clear}
+          consequence={consequence}
           disabled={busy}
         />
       )}
